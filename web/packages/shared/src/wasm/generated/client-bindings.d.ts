@@ -373,6 +373,7 @@ export interface BrowserSessionBinding extends ClassHandle {
   error(): string;
   close(): void;
   process(_0: any): any;
+  processBatch(_0: any): any;
 }
 
 type ClientBytes = Uint8Array;

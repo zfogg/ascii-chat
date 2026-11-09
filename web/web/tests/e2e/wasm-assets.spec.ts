@@ -152,6 +152,24 @@ test("browser session close makes later processing safe and structured", async (
   expect(result.writable).toBe(false);
 });
 
+test("browser session batches transport events with a bounded ABI", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const module = getClientWasmModule()!;
+    const session = new module.BrowserSessionBinding(false, 0, new Uint8Array(), new Uint8Array(), new Uint8Array());
+    const batch = session.processBatch([{ type: "connected" }, { type: "disconnected" }]);
+    const oversized = session.processBatch(Array.from({ length: 129 }, () => ({ type: "snapshot" })));
+    session.close();
+    session.delete();
+    return { length: batch.length, oversized: oversized[0]?.code };
+  });
+  expect(result.length).toBe(2);
+  expect(result.oversized).not.toBe(0);
+});
+
 test("session UI binding close is idempotent and clears ownership", async ({ page }) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {

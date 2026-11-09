@@ -138,6 +138,22 @@ public:
     return result;
   }
 
+  emscripten::val processBatch(emscripten::val events) {
+    emscripten::val batch = emscripten::val::array();
+    const unsigned count = events["length"].as<unsigned>();
+    if (count > 128) {
+      emscripten::val error = emscripten::val::object();
+      error.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
+      error.set("message", "Browser session event batch exceeds 128 events");
+      error.set("retryable", false);
+      batch.call<void>("push", error);
+      return batch;
+    }
+    for (unsigned index = 0; index < count; ++index)
+      batch.call<void>("push", process(events[index]));
+    return batch;
+  }
+
 private:
   int input_bytes(const std::vector<uint8_t> &bytes, bool receive) {
     return receive ? browser_session_receive(session_.get(), bytes.data(), bytes.size())
@@ -155,5 +171,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_browser_session) {
       .function("ready", &BrowserSessionBinding::ready)
       .function("error", &BrowserSessionBinding::error)
       .function("close", &BrowserSessionBinding::close)
-      .function("process", &BrowserSessionBinding::process);
+      .function("process", &BrowserSessionBinding::process)
+      .function("processBatch", &BrowserSessionBinding::processBatch);
 }
