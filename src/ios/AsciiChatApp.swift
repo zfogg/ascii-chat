@@ -917,6 +917,11 @@ struct ContentView: View {
     }
 
     private func startSelectedSession() {
+        if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") {
+            // Automated simulator runs use the synthetic mirror and must not
+            // inherit a previously persisted device audio setting.
+            UserDefaults.standard.removeObject(forKey: "ascii-chat.ios.options.patch")
+        }
         let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
         configureRenderBridge(fontSize: fontSizePt)
         // Apply persisted options before the native entry point reads GET_OPTION.
