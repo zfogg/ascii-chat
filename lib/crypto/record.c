@@ -45,7 +45,8 @@ asciichat_error_t crypto_record_seal_into(crypto_record_t *state, unsigned traff
   size_t cipher_capacity = plain_length + state->crypto->nonce_size + state->crypto->mac_size;
   if (capacity < CRYPTO_RECORD_EPOCH_SIZE + cipher_capacity)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Record ciphertext output is too small");
-  uint8_t *plain = buffer_alloc(NULL, plain_length);
+  buffer_domain_t *domain = traffic_class == CRYPTO_RECORD_CONTROL_CHANNEL ? buffer_control_domain() : NULL;
+  uint8_t *plain = buffer_alloc(domain, plain_length);
   if (!plain) {
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate Record packet");
   }

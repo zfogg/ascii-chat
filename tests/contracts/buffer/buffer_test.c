@@ -391,7 +391,9 @@ static void websocket_control_reserve_contract(void) {
       transport.crypto_ctx = encrypted ? &crypto : NULL;
       for (size_t i = 0; i < 2; ++i) {
         packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(types[i])};
-        cr_assert_eq(websocket_transport_send(&transport, &header, sizeof(header)), ASCIICHAT_OK);
+        asciichat_error_t result = websocket_transport_send(&transport, &header, sizeof(header));
+        cr_assert_eq(result, ASCIICHAT_OK, "client=%d encrypted=%d type=%d: %s", client, encrypted, types[i],
+                     asciichat_error_string(result));
         websocket_msg_t message;
         cr_assert(ringbuffer_read(ws.send_queue, &message));
         packet_header_t wire;
