@@ -17,6 +17,16 @@ const runNpm = (args, cwd) =>
   execFileSync(process.execPath, [npm, ...args], { cwd, stdio: "inherit" });
 try {
   runNpm(["pack", "--pack-destination", sample], packageDir);
+  const packageManifest = JSON.parse(
+    await readFile(resolve(packageDir, "dist/renderer-manifest.json"), "utf8"),
+  );
+  if (
+    packageManifest.module !== "renderer" ||
+    !packageManifest.features?.renderLoop ||
+    !packageManifest.features?.pixelCallback ||
+    !packageManifest.codecs?.includes("hevc")
+  )
+    throw new Error("Renderer capability manifest is incomplete");
   await writeFile(
     resolve(sample, "package.json"),
     JSON.stringify({ private: true, type: "module" }),
