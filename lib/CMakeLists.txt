@@ -812,6 +812,16 @@ elseif(TARGET nghttp2::nghttp2_static)
 else()
     find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h NO_CMAKE_FIND_ROOT_PATH)
     find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static NO_CMAKE_FIND_ROOT_PATH)
+    if(UNIX AND (NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY))
+        # vcpkg's toolchain can disable the default system prefixes even when
+        # the distro package is installed.  Retry the canonical Unix prefixes.
+        find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h
+            PATHS /usr/include /usr/local/include
+            NO_DEFAULT_PATH)
+        find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static
+            PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/local/lib
+            NO_DEFAULT_PATH)
+    endif()
     if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY)
         message(FATAL_ERROR "nghttp2 development files are required for the shared HTTP/2 server")
     endif()
