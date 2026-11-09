@@ -885,7 +885,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
             function ? function : "?");
   errno_print_stacks();
   g_recording = previous;
-#ifdef EMSCRIPTEN_BUILD
+#if defined(EMSCRIPTEN_BUILD) || defined(PLATFORM_IOS)
   SET_ERRNO(code, "%s", message);
 #else
   exit(code);
