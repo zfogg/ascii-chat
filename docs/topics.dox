@@ -18,6 +18,64 @@
  * authored guides and notes. The sections below are the source-oriented architecture
  * map; each topic page connects its design notes to the relevant files and symbols.
  *
+ * @section topics_authored Authored Topics
+ *
+ * The authored pages below are first-class Topics grouped by subsystem. Topic
+ * Categories remains the curated browsing index, but every durable migrated page
+ * is also reachable from this Topics page.
+ *
+ * @subsection topics_authored_network Network and runtime
+ *
+ * - @ref md_docs_2networking-runtime "Connection ownership and execution"
+ * - @ref md_docs_2event-driven-io "Native event-driven I/O"
+ * - @ref topic_quic "ACIP over QUIC"
+ * - @ref md_docs_2transport-backpressure "Transport backpressure and media admission"
+ * - @ref md_docs_2network-copy-reduction "Network copy reduction"
+ * - @ref md_docs_2measured-host-handoff "Measured host selection and handoff"
+ * - @ref md_docs_2runtime-settings "Runtime settings"
+ * - @ref md_docs_2recording "Recording session audio and ASCII video"
+ * - @ref md_docs_2live-media-input "Open media during a session"
+ *
+ * @subsection topics_authored_crypto Cryptography and discovery
+ *
+ * - @ref md_docs_2crypto-policy "Connection security policy"
+ * - @ref md_docs_2crypto-records "Authenticated packet records and rotation"
+ * - @ref md_docs_2discovery-key-sets "Discovery session authentication keys"
+ * - @ref md_docs_2host-designation "Discovery host designation"
+ *
+ * @subsection topics_authored_audio Audio
+ *
+ * - @ref md_docs_2audio-channels "Audio channels"
+ * - @ref md_docs_2audio-reliability "Audio reliability and validation"
+ * - @ref md_docs_2audio-spectral "FFTW spectral audio processing"
+ *
+ * @subsection topics_authored_ui User interface and rendering
+ *
+ * - @ref md_docs_2session-tui "Shared session TUI"
+ * - @ref md_docs_2terminal-ui "Terminal presentation"
+ * - @ref md_docs_2terminal-notices "Important terminal notices"
+ * - @ref md_docs_2keyboard-input "Keyboard input"
+ * - @ref md_docs_2keymask "Keymask public-key art"
+ * - @ref md_docs_2zalgo "Zalgo terminal effect"
+ * - @ref md_docs_2simd-emission "Shared ASCII terminal emission"
+ * - @ref md_docs_2face-follow "Face Follow"
+ *
+ * @subsection topics_authored_development Development and operations
+ *
+ * - @ref md_docs_2mcp "MCP rendering server"
+ * - @ref md_docs_2telemetry "OpenTelemetry"
+ * - @ref md_docs_2stats "Shared statistics collection"
+ * - @ref md_docs_2sync-activity "Sync inspector activity"
+ * - @ref md_docs_2sync-tui "Sync primitive inspector"
+ * - @ref md_docs_2simd "Portable SIMD builds"
+ * - @ref md_docs_2cmake-workflows "CMake workflows"
+ * - @ref md_docs_2dependency-builds "Dependency builds"
+ * - @ref md_docs_2ci "Continuous integration"
+ * - @ref md_docs_2windows-build-performance "Windows build performance"
+ * - @ref md_docs_2test-patterns "Shared native and browser test patterns"
+ * - @ref md_docs_2acip-preparation "ACIP packet preparation validation"
+ * - @ref md_docs_2client-connection-lifecycle "Shared connection ownership"
+ *
  * @section topics_utilities 🛠️ Utilities
  *
  * @copybrief module_utilities

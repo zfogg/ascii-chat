@@ -54,22 +54,6 @@ html {
     min-height: 100vh;
   }
 
-  /* There is no page outline in this documentation. Do not reserve a blank
-   * second grid column for Doxygen's optional right-hand page navigation. */
-  #container {
-    display: block !important;
-    width: 100% !important;
-  }
-
-  #page-nav {
-    display: none !important;
-  }
-
-  #doc-content {
-    width: calc(100% - var(--side-nav-fixed-width)) !important;
-    margin-left: var(--side-nav-fixed-width) !important;
-  }
-
   #doc-content > div,
   #doc-content > div > div.contents {
     width: 100% !important;
