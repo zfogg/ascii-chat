@@ -9,6 +9,10 @@ extern "C" {
 // session per module ensures no Embind object can destroy another session.
 class RendererSessionBinding {
 public:
+  static int apiVersion() {
+    return 1;
+  }
+
   RendererSessionBinding() {
     if (active_) {
       result_ = SET_ERRNO(ERROR_INVALID_STATE, "Renderer session is already initialized");
@@ -51,9 +55,9 @@ private:
 bool RendererSessionBinding::active_ = false;
 
 EMSCRIPTEN_BINDINGS(ascii_chat_renderer_module) {
-  emscripten::function("rendererApiVersion", +[]() { return 1; });
   emscripten::class_<RendererSessionBinding>("RendererSessionBinding")
       .constructor<>()
+      .class_function("apiVersion", &RendererSessionBinding::apiVersion)
       .function("valid", &RendererSessionBinding::valid)
       .function("error", &RendererSessionBinding::error)
       .function("close", &RendererSessionBinding::close);
