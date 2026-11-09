@@ -642,6 +642,12 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 
   atomic_store_u64(&g_log.terminal_output_enabled, preserve_terminal_output);
 
+#ifdef PLATFORM_IOS
+  // iOS has no terminal or writable log-file destination. The platform log
+  // hook routes formatted entries to Apple's unified logging system instead.
+  atomic_store_u64(&g_log.terminal_output_enabled, false);
+#endif
+
   // Reset terminal detection if needed
   if (g_log.terminal_caps_initialized && !g_log.terminal_caps.detection_reliable) {
     g_log.terminal_caps_initialized = false;
@@ -1229,6 +1235,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Validate UTF-8 in formatted message
     validate_log_message_utf8(msg_buffer, "mmap log message");
 
+    platform_log_hook(level, msg_buffer);
+
     if (!g_notice_text)
       session_log_buffer_append(g_history, msg_buffer);
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
@@ -1312,6 +1320,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
+
+  platform_log_hook(level, log_buffer);
 
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;
