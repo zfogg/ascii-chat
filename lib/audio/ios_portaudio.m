@@ -196,8 +196,8 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
                       double sample_rate, unsigned long frames_per_buffer, unsigned long flags,
                       PaStreamCallback *callback, void *user_data) {
   (void)flags;
-  if (!stream)
-    return -1;
+  if (!stream || sample_rate <= 0 || (!input && !output))
+    return paInvalidDevice;
   ios_audio_refresh_devices();
   PaStream *opened = SAFE_CALLOC(1, sizeof(*opened), PaStream *);
   opened->callback = callback;
@@ -242,7 +242,9 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
 
 PaError Pa_StartStream(PaStream *stream) {
   if (!stream || !stream->engine)
-    return -1;
+    return paInvalidDevice;
+  if (stream->active)
+    return paNoError;
   AVAudioSession *session = [AVAudioSession sharedInstance];
   [session setCategory:AVAudioSessionCategoryPlayAndRecord error:NULL];
   [session setMode:AVAudioSessionModeVideoChat error:NULL];
@@ -328,9 +330,17 @@ PaError Pa_StartStream(PaStream *stream) {
     [stream->engine connect:stream->source to:stream->engine.mainMixerNode format:format];
   }
   NSError *error = nil;
-  [stream->engine startAndReturnError:&error];
-  if (error)
-    return -1;
+  if (![stream->engine startAndReturnError:&error] || error) {
+    if (stream->input_channels > 0)
+      [stream->engine.inputNode removeTapOnBus:0];
+    if (stream->interruption_observer) {
+      [[NSNotificationCenter defaultCenter] removeObserver:stream->interruption_observer];
+      stream->interruption_observer = nil;
+    }
+    [stream->engine stop];
+    [session setActive:NO error:NULL];
+    return paNoDevice;
+  }
   if (stream->player)
     [stream->player play];
   stream->active = YES;
