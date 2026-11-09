@@ -585,8 +585,9 @@ std::string Transformer::run() {
     index_control_flow(cursor);
     visit(cursor);
   }
-  if (seen_.size() != macros_.size())
-    fail("unhandled defer macro expansion");
+  for (const auto &[position, ignored] : macros_)
+    if (!seen_.count(position))
+      fail_at(position, "unhandled defer macro expansion; use defer as a direct statement inside a function block");
   for (auto position : marker_offsets)
     if (!seen_.count(position))
       fail_at(position, "defer hidden by an unsupported macro expansion; write the cleanup directly");

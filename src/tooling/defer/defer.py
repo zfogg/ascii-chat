@@ -614,7 +614,7 @@ class Transformer:
                 start, "inline assembly in a function with defer is unsupported; move it to another function"
             ))
         if kind == cindex.CursorKind.INDIRECT_GOTO_STMT:
-            raise TransformError(f"computed goto cannot be transformed (byte {start})")
+            raise TransformError(self.diagnostic(start, "computed goto cannot be transformed"))
         if kind == cindex.CursorKind.GOTO_STMT:
             refs = [
                 child.spelling
@@ -622,7 +622,7 @@ class Transformer:
                 if child.kind == cindex.CursorKind.LABEL_REF
             ]
             if len(refs) != 1 or refs[0] not in self.labels:
-                raise TransformError(f"cannot determine goto target at byte {start}")
+                raise TransformError(self.diagnostic(start, "cannot determine goto target"))
             destination, target_scopes = self.labels[refs[0]]
             current_scopes = tuple(scope.start for scope in self.scopes)
             common = 0
@@ -753,9 +753,9 @@ class Transformer:
                     self.visit(cursor)
         missed = set(self.macros) - self.seen
         if missed:
-            raise TransformError(
-                f"unhandled defer macro expansion(s) at byte offsets {sorted(missed)}"
-            )
+            raise TransformError(self.diagnostic(
+                min(missed), "unhandled defer macro expansion; use defer as a direct statement inside a function block"
+            ))
         for position in marker_offsets:
             if position not in self.seen:
                 raise TransformError(self.diagnostic(position, "defer hidden by an unsupported macro expansion; write the cleanup directly"))
