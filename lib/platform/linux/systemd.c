@@ -76,9 +76,16 @@ void platform_systemd_journal_log(int level, const char *message, const char *fi
   if (!platform_systemd_is_managed() || !sd_journal_send || !message)
     return;
   int priority = level >= 5 ? 2 : level >= 4 ? 3 : level >= 3 ? 4 : level >= 2 ? 6 : 7;
+#ifndef NDEBUG
   (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "CODE_FILE=%s", file ? file : "",
                         "CODE_LINE=%d", line, "CODE_FUNC=%s", function ? function : "", "SYSLOG_IDENTIFIER=%s",
                         "ascii-chat");
+#else
+  (void)file;
+  (void)line;
+  (void)function;
+  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "ascii-chat");
+#endif
 #else
   (void)level;
   (void)message;
