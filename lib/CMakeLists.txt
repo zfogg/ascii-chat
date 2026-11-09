@@ -810,6 +810,11 @@ if(TARGET nghttp2::nghttp2)
 elseif(TARGET nghttp2::nghttp2_static)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2_static)
 else()
+    # CI reuses configure caches across dependency-install changes.  A prior
+    # configure may have cached NOTFOUND before libnghttp2-dev was installed;
+    # clear those negative probes so the fallback search is retried.
+    unset(ASCIICHAT_NGHTTP2_INCLUDE_DIR CACHE)
+    unset(ASCIICHAT_NGHTTP2_LIBRARY CACHE)
     find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h)
     find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static)
     if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY)
