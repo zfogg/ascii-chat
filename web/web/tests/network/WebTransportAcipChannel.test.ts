@@ -7,10 +7,60 @@ const state = vi.hoisted(() => ({
   sent: [] as Array<{ flow: number; delivery: string; packet: Uint8Array }>,
   init: vi.fn(),
   close: vi.fn(),
-  begin: vi.fn(() => 0),
+  begin: vi.fn((_mode?: unknown) => 0),
   receive: vi.fn(() => 3),
   cryptoPolicy: vi.fn(() => 1),
+  process: vi.fn(
+    (event: {
+      type: string;
+      packet?: Uint8Array;
+      operation?: string;
+      [key: string]: any;
+    }) => {
+      if (event.type === "resolve-crypto-policy")
+        return { code: 0, mode: 1, state: 1 };
+      if (event.type === "quic-init") return { code: 0, state: 1 };
+      if (event.type === "quic-tick") return { code: 0, outputs: [], state: 1 };
+      if (event.type === "quic-packet")
+        return {
+          code: 0,
+          bytes:
+            event.operation === "seal"
+              ? wrap(event.packet!)
+              : event.packet!.slice(22),
+          sequence: 1n,
+          state: 1,
+        };
+      if (event.type === "serialize")
+        return {
+          code: 0,
+          bytes: packet(
+            Number(event["packetType"] ?? 0),
+            (event["payload"] as Uint8Array | undefined) ?? new Uint8Array(),
+          ),
+          state: 1,
+        };
+      if (event.type === "parse")
+        return {
+          code: 0,
+          packet: {
+            type: new DataView(
+              event.packet!.buffer,
+              event.packet!.byteOffset,
+            ).getUint16(8),
+          },
+          state: 1,
+        };
+      if (event.type === "begin-handshake") {
+        state.begin(event["mode"]);
+        return { code: 0, state: 2 };
+      }
+      if (event.type === "receive-handshake-packet") return { code: 0, state: 3 };
+      return { code: 0, state: 1 };
+    },
+  ),
   sendCallback: null as ((packet: Uint8Array) => void) | null,
+  module: { sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined },
 }));
 function packet(type: number, payload: Uint8Array): Uint8Array {
   const result = new Uint8Array(22 + payload.length);
@@ -22,31 +72,12 @@ function wrap(inner: Uint8Array): Uint8Array {
   return packet(1200, inner);
 }
 vi.mock("../../src/wasm/client", () => ({
-  initPacketSecurity: state.init,
-  tickPacketSecurity: () => [],
-  beginClientHandshake: state.begin,
-  receiveClientHandshake: state.receive,
+  processClientEvent: state.process,
   ConnectionState: { CONNECTED: 3 },
-  registerSendPacketCallback: (callback: (packet: Uint8Array) => void) => {
-    state.sendCallback = callback;
-  },
-  resolveCryptoPolicy: state.cryptoPolicy,
-  parsePacket: (value: Uint8Array) => ({
-    type: new DataView(value.buffer, value.byteOffset).getUint16(8),
-  }),
+  getClientModule: () => state.module,
   throwWasmError: () => {
     throw new Error("WASM failure");
   },
-  serializePacket: packet,
-  processSecurePacket: (
-    operation: string,
-    _flow: number,
-    _delivery: number,
-    value: Uint8Array,
-  ) => ({
-    packet: operation === "seal" ? wrap(value) : value.slice(22),
-    sequence: 1n,
-  }),
 }));
 vi.mock("../../src/network/WebTransportBridge", () => ({
   createBrowserWebTransportBridge: (
@@ -85,17 +116,23 @@ describe("WebTransport ACIP channel", () => {
       failed,
     });
     await channel.connectWithWasmHandshake();
-    expect(state.cryptoPolicy).toHaveBeenCalledWith("https://localhost/", true);
+    expect(state.process).toHaveBeenCalledWith({
+      type: "resolve-crypto-policy",
+      wss: false,
+      encryption: 1,
+    });
     expect(state.begin).toHaveBeenCalledOnce();
-    state.sendCallback!(packet(1, new Uint8Array()));
+    state.module.sendPacketCallback!(packet(1, new Uint8Array()));
     expect(state.sent.at(-1)).toMatchObject({ flow: 0, delivery: "reliable" });
     state.onPacket!({
       flow: 0,
       delivery: "reliable",
       packet: packet(1108, new Uint8Array()),
     });
-    expect(state.receive).toHaveBeenCalledOnce();
-    expect(state.init).toHaveBeenCalledOnce();
+    expect(state.process).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "receive-handshake-packet" }),
+    );
+    expect(state.process).toHaveBeenCalledWith({ type: "quic-init" });
     expect(channel.isReady()).toBe(false);
     state.onPacket!({
       flow: 0,
@@ -132,7 +169,7 @@ describe("WebTransport ACIP channel", () => {
     state.onPacket!({ flow: 0, delivery: "reliable", packet: hello });
     expect(handshake).toHaveBeenCalledWith(hello);
     channel.authenticated();
-    expect(state.init).toHaveBeenCalledOnce();
+    expect(state.process).toHaveBeenCalledWith({ type: "quic-init" });
     const receive = (type: number, payload: number[], flow: 0 | 1 = 0) =>
       state.onPacket!({
         flow,

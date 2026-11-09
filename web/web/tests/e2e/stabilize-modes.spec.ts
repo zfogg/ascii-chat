@@ -57,7 +57,9 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
                 renderer,
                 stabilize: enabled,
               });
-              m.sessionRenderResetStabilizer();
+              const frame = new m.MirrorFrameBinding();
+              frame.reset();
+              frame.delete();
               return [
                 convert(100, renderMode === 1),
                 convert(104, renderMode === 1),

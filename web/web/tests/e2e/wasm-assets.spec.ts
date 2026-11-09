@@ -7,13 +7,52 @@ const version = createHash("sha256")
   .digest("hex")
   .slice(0, 32);
 
+test("published WASM manifest declares module capabilities", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const manifest = await page.evaluate(async () =>
+    (await fetch("/wasm/manifest.json")).json(),
+  );
+  expect(manifest.capabilities.client.transports).toEqual([
+    "webrtc",
+    "webtransport",
+    "websocket",
+  ]);
+  expect(manifest.capabilities.mirror.features.renderer).toBe(true);
+  expect(manifest.capabilities.client.codecs).toContain("hevc");
+});
+
+test("client protocol metadata comes from the native session binding", async ({ page }) => {
+  await page.goto("/client");
+  const info = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const session = new (getClientWasmModule()!).ClientSessionBinding({});
+    const value = session.protocolInfo();
+    session.close();
+    session.delete();
+    return value;
+  });
+  expect(info.protocolVersion).toBe(1);
+  expect(info.connectionStates).toEqual([
+    "disconnected",
+    "connecting",
+    "handshake",
+    "connected",
+    "error",
+  ]);
+  expect(info.cryptoModes.none).toBe(0);
+  expect(info.cryptoModes.encrypt).toBeGreaterThan(0);
+});
+
 test("binding failures record actionable C errors", async ({ page }) => {
   await page.goto("/client");
   const errors = await page.evaluate(async () => {
     const moduleUrl = "/src/wasm/client.ts";
-    const { initClientWasm, getClientWasmModule, parsePacket } = await import(
-      /* @vite-ignore */ moduleUrl
-    );
+    const { initClientWasm, getClientWasmModule, processClientEvent } =
+      await import(/* @vite-ignore */ moduleUrl);
     await initClientWasm();
     const m =
       getClientWasmModule() as unknown as import("../../../packages/shared/src/wasm/generated/client-bindings").MainModule;
@@ -21,6 +60,14 @@ test("binding failures record actionable C errors", async ({ page }) => {
     const processor = new m.AudioProcessorBinding(48000, true, 16);
     const renderer = new m.AsciiRendererBinding(2, 2, 12, false, 0);
     const session = new m.ClientSessionBinding({});
+    const structuredError = session.process({ type: "unknown-event" });
+    if (
+      structuredError.code === 0 ||
+      typeof structuredError.message !== "string" ||
+      typeof structuredError.retryable !== "boolean"
+    ) {
+      throw new Error("Client session did not return a structured error");
+    }
     const snapshot = (run: () => unknown) => {
       m.browser_error_dismiss();
       try {
@@ -42,25 +89,34 @@ test("binding failures record actionable C errors", async ({ page }) => {
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
         snapshot(() =>
           session.process({
-            type: "handle-handshake-stage",
-            stage: 3,
-            packet: new Uint8Array(1),
+            type: "receive-handshake-packet",
+            payload: new Uint8Array(1),
           }),
         ),
-        snapshot(() => parsePacket(new Uint8Array())),
+        snapshot(() => {
+          const result = processClientEvent({
+            type: "parse",
+            packet: new Uint8Array(),
+          });
+          if (result.code)
+            throw new Error(`Packet parse failed (${result.code})`);
+        }),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
-        snapshot(() =>
-          m.handoffEncode(
-            1,
-            new Uint8Array(1),
-            new Uint8Array(16),
-            0,
-            0,
-            0,
-            0,
-            0,
-          ),
-        ),
+        snapshot(() => {
+          const result = processClientEvent({
+            type: "handoff-encode",
+            kind: 1,
+            session: new Uint8Array(1),
+            participant: new Uint8Array(16),
+            generation: 0,
+            sequence: 0,
+            capabilities: 0,
+            natTier: 0,
+            port: 0,
+          });
+          if (result.code)
+            throw new Error(`Handoff encode failed (${result.code})`);
+        }),
       ].filter(Boolean);
     } finally {
       m.browser_error_dismiss();
@@ -77,6 +133,23 @@ test("binding failures record actionable C errors", async ({ page }) => {
   }
 });
 
+test("browser session close makes later processing safe and structured", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const module = getClientWasmModule()!;
+    const session = new module.BrowserSessionBinding(false, 0, new Uint8Array(), new Uint8Array(), new Uint8Array());
+    session.close();
+    return session.process({ type: "snapshot" });
+  });
+  expect(result.code).not.toBe(0);
+  expect(result.message).toContain("not initialized");
+  expect(result.retryable).toBe(false);
+  expect(result.writable).toBe(false);
+});
+
 test("key parsing preserves unrelated errors and returns only its own frames", async ({
   page,
 }) => {
@@ -91,9 +164,8 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     module.browser_error_dismiss();
     const session = new module.ClientSessionBinding({});
     session.process({
-      type: "handle-handshake-stage",
-      stage: 99,
-      packet: new Uint8Array(),
+      type: "receive-handshake-packet",
+      payload: new Uint8Array(),
     });
     const beforeCount = module.errorSnapshot();
     const before = module.errorFrame(0);
@@ -153,7 +225,7 @@ test("face tracking and client public keys use the native bindings", async ({
   expect(result.parseError).toContain("Invalid binary OpenPGP public key");
 });
 
-test("client session ownership rejects overlap and supports reinitialization", async ({
+test("client sessions own independent state and support reinitialization", async ({
   page,
 }) => {
   await page.goto("/client");
@@ -165,17 +237,24 @@ test("client session ownership rejects overlap and supports reinitialization", a
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
     const first = new module.ClientSessionBinding({ width: 48, height: 24 });
-    const overlap = new module.ClientSessionBinding({});
+    const overlap = new module.ClientSessionBinding({ width: 48, height: 24 });
     const result = {
       first: first.valid(),
-      overlap: overlap.valid(),
+    overlap: overlap.valid(),
+      close: typeof first.close,
       width: module.readOptions()?.values.width,
       key: -1,
+      secondKey: -1,
+      secondAfterClose: -1,
       reinitialized: false,
     };
-    overlap.delete();
     result.key = first.process({ type: "generate-keypair" }).code;
+    result.secondKey = overlap.process({ type: "generate-keypair" }).code;
+    first.close();
     first.delete();
+    result.secondAfterClose = overlap.process({ type: "snapshot" }).code;
+    overlap.close();
+    overlap.delete();
     const next = new module.ClientSessionBinding({});
     result.reinitialized = next.valid();
     next.delete();
@@ -183,10 +262,71 @@ test("client session ownership rejects overlap and supports reinitialization", a
   });
   expect(result).toEqual({
     first: true,
-    overlap: false,
+    overlap: true,
     width: 48,
     key: 0,
+    secondKey: 0,
+    secondAfterClose: 0,
     reinitialized: true,
+    close: "function",
+  });
+});
+
+test("browser ABI exposes owned session names without legacy peer bindings", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const names = await page.evaluate(async () => {
+    const url = "/src/wasm/dist/client.js";
+    const factory = (await import(/* @vite-ignore */ url)).default;
+    const module = await factory({
+      locateFile: (name: string) => "/src/wasm/dist/" + name,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    return {
+      client: typeof module.ClientSessionBinding,
+      browser: typeof module.BrowserSessionBinding,
+      oldPeer: "PeerCryptoBinding" in module,
+    };
+  });
+  expect(names).toEqual({
+    client: "function",
+    browser: "function",
+    oldPeer: false,
+  });
+});
+
+test("client session exposes lifecycle snapshots and transport events", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const factory = (await import("/src/wasm/dist/client.js")).default;
+    const module = await factory({
+      locateFile: (name: string) => "/src/wasm/dist/" + name,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const session = new module.ClientSessionBinding({});
+    const initial = session.process({ type: "snapshot" });
+    const opening = session.process({ type: "transport-open" });
+    const connected = session.process({ type: "transport-connected" });
+    const ready = session.process({ type: "snapshot" });
+    session.process({ type: "transport-closed" });
+    session.delete();
+    return {
+      initial: initial.state,
+      opening: opening.state,
+      connected: connected.state,
+      ready: ready.ready,
+      writable: ready.writable,
+    };
+  });
+  expect(result).toEqual({
+    initial: 0,
+    opening: 1,
+    connected: 3,
+    ready: true,
+    writable: true,
   });
 });
 
@@ -232,12 +372,23 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     const {
       initClientWasm,
       getClientWasmModule,
-      PeerCryptoSession,
-      serializePacket,
+      BrowserSession,
+      processClientEvent,
       PacketType,
     } = await import(/* @vite-ignore */ moduleUrl);
     await initClientWasm();
     const module = getClientWasmModule();
+    const serializePacket = (packetType: number, payload: Uint8Array) => {
+      const result = processClientEvent({
+        type: "serialize",
+        packetType,
+        payload,
+        clientId: 0,
+      });
+      if (result.code || !result.bytes)
+        throw new Error(`Serialization failed (${result.code})`);
+      return result.bytes;
+    };
     const dsp = new module.AudioProcessorBinding(48000, true, 1920);
     const input = new Float32Array(1920).fill(0.25);
     const output = new Float32Array(input.length);
@@ -256,7 +407,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     mono.delete();
     const codec = new module.OpusCodecBinding(48000, 2, 64000, 4000);
     const competingCodec = new module.OpusCodecBinding(48000, 2, 64000, 4000);
-    const competingRejected = !competingCodec.valid();
+    const competingAccepted = competingCodec.valid();
     competingCodec.delete();
     const pcm = Int16Array.from({ length: 1920 }, (_, i) =>
       Math.round(5000 * Math.sin(i / 13)),
@@ -274,7 +425,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     };
     const opus = {
       valid: codec.valid(),
-      competingRejected,
+      competingAccepted,
       bytes: encoded?.length ?? 0,
       samples: decoded?.length ?? 0,
       invalid: codec.encode(new Int16Array(12000)),
@@ -284,12 +435,13 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
       encoded: Array.from(encoded ?? []),
       decoded: Array.from(decoded ?? []),
     };
-    module.configureCrypto(
-      new Uint8Array(),
-      new Uint8Array(3),
-      new Uint8Array(),
-    );
-    const invalidPeer = new module.PeerCryptoBinding(
+    processClientEvent({
+      type: "configure-crypto",
+      password: new Uint8Array(),
+      identity: new Uint8Array(3),
+      expected: new Uint8Array(),
+    });
+    const invalidPeer = new module.BrowserSessionBinding(
       false,
       1,
       new Uint8Array(),
@@ -299,11 +451,12 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     const invalidPeerError = invalidPeer.error();
     invalidPeer.delete();
     module.browser_error_dismiss();
-    const invalidConfig = module.configureCrypto(
-      new Uint8Array(),
-      new Uint8Array(3),
-      new Uint8Array(),
-    );
+    const invalidConfig = processClientEvent({
+      type: "configure-crypto",
+      password: new Uint8Array(),
+      identity: new Uint8Array(3),
+      expected: new Uint8Array(),
+    });
     module.errorSnapshot();
     const invalidConfigError = module.errorFrame(0).message;
     module.browser_error_dismiss();
@@ -311,13 +464,13 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     async function exercise(quic: boolean) {
       const toClient: Uint8Array[] = [],
         toServer: Uint8Array[] = [];
-      const client = await PeerCryptoSession.create(
+      const client = await BrowserSession.create(
         { password: "password-for-interop-test" },
         true,
         false,
         (p: Uint8Array) => toServer.push(p),
       );
-      const server = await PeerCryptoSession.create(
+      const server = await BrowserSession.create(
         { password: "password-for-interop-test" },
         true,
         true,
@@ -342,7 +495,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
           throw new Error(
             `Peer handshake did not finish: client=${client.ready} server=${server.ready} c2s=${toServer.length} s2c=${toClient.length}`,
           );
-        const original = serializePacket(PacketType.PING, new Uint8Array(8), 0);
+        const original = serializePacket(PacketType.PING, new Uint8Array(8));
         let decoded: Uint8Array | null = null;
         let sequence = "";
         if (quic) {
@@ -425,7 +578,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
   expect(result.monoStatus).toBe(0);
   expect(result.monoSample).toBe(0.125);
   expect(result.opus.valid).toBe(true);
-  expect(result.opus.competingRejected).toBe(true);
+  expect(result.opus.competingAccepted).toBe(true);
   expect(result.opus.bytes).toBeGreaterThan(0);
   expect(result.opus.samples).toBe(1920);
   expect(result.reusedBytes).toBeGreaterThan(0);

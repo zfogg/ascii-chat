@@ -49,12 +49,12 @@ test.describe("WASM browser boundary measurements", () => {
       height: expect.any(Number),
     });
   });
-  test("renderer reuses its returned pixel buffer", async ({
+  test("renderer returns an independent owned pixel buffer", async ({
     rendererPage,
   }) => {
     const result = await rendererPage.evaluate(() => {
       const r = window.__boundary.renderer;
-      return r.render("hello", 0) === r.render("hello", 0);
+      return r.render("hello", 0) !== r.render("hello", 0);
     });
     expect(result).toBe(true);
   });
@@ -88,7 +88,7 @@ test.describe("WASM browser boundary measurements", () => {
       ).resultBytes,
     ).toBeGreaterThan(0);
   });
-  test("renderer zalgo mode measurement", async ({ rendererPage }) => {
+  test("renderer zalgo mode returns an owned snapshot", async ({ rendererPage }) => {
     expect(
       (
         await measure(
@@ -96,7 +96,7 @@ test.describe("WASM browser boundary measurements", () => {
           '() => window.__boundary.renderer.render("ascii", 1)',
         )
       ).stableResultIdentity,
-    ).toBe(true);
+    ).toBe(false);
   });
   test("renderer dimensions remain stable across frames", async ({
     rendererPage,

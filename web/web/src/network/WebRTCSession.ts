@@ -20,11 +20,10 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
-  PeerCryptoSession,
+  BrowserSession,
   ConnectionState,
   PacketType,
-  parsePacket,
-  serializePacket,
+  processClientEvent,
   type ParsedPacket,
 } from "../wasm/client";
 import type { ClientCryptoOptions } from "../wasm/client";
@@ -93,7 +92,7 @@ export class WebRTCSession implements ClientSession {
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
-  private peerCrypto: PeerCryptoSession | null = null;
+  private peerCrypto: BrowserSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -396,7 +395,7 @@ export class WebRTCSession implements ClientSession {
       negotiated: true,
       id: 0,
     });
-    this.peerCrypto = await PeerCryptoSession.create(
+    this.peerCrypto = await BrowserSession.create(
       {
         ...this.options.cryptoOptions,
         password: this.options.cryptoOptions?.password || this.options.password,
@@ -426,7 +425,10 @@ export class WebRTCSession implements ClientSession {
             const decoded = this.peerCrypto!.receive(bytes);
             if (!decoded) return;
             bytes = decoded;
-            const packet = parsePacket(bytes);
+            const parsed = processClientEvent({ type: "parse", packet: bytes });
+            if (parsed.code || !parsed.packet)
+              throw new Error(`Peer packet parsing failed (${parsed.code})`);
+            const packet = parsed.packet;
             if (packet.type === PacketType.ERROR_MESSAGE) {
               const action = presentRemoteError(bytes.slice(22));
               if (action !== RemoteErrorAction.Continue) {
@@ -630,7 +632,15 @@ export class WebRTCSession implements ClientSession {
           this.waitForSuccessor();
         },
       );
-    const admission = this.outbound.submit(serializePacket(type, payload, 0));
+    const serialized = processClientEvent({
+      type: "serialize",
+      packetType: type,
+      payload,
+      clientId: 0,
+    });
+    if (serialized.code || !serialized.bytes)
+      throw new Error(`Packet serialization failed (${serialized.code})`);
+    const admission = this.outbound.submit(serialized.bytes);
     if (
       admission === "congested" &&
       type !== PacketType.IMAGE_FRAME &&

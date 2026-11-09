@@ -3,7 +3,6 @@
 #include "byte_arrays.h"
 extern "C" {
 #include <ascii-chat/network/acip/acds_protocol.h>
-#include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/common.h>
 }
 #include <emscripten.h>
@@ -21,9 +20,7 @@ static asciichat_error_t browser_send(void *p, packet_type_t type, const void *p
   return ASCIICHAT_OK;
 }
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(OptionalHandoffBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(DiscoverySnapshotValue);
-EMSCRIPTEN_DECLARE_VAL_TYPE(HandoffActionValue);
 
 static std::vector<uint8_t> protocol_input(ProtocolBytes input, bool terminate = false) {
   auto bytes = binding_copy_input(input);
@@ -113,58 +110,16 @@ private:
   acds_protocol_t *session_;
 };
 
-static OptionalHandoffBytes handoff_encode(int kind, ProtocolBytes session, ProtocolBytes participant,
-                                           unsigned generation, unsigned sequence, int capabilities, int nat_tier,
-                                           int port) {
-  auto session_id = protocol_input(session);
-  auto participant_id = protocol_input(participant);
-  if (session_id.size() != 16 || participant_id.size() != 16) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Handoff identifiers must be 16 bytes");
-    return OptionalHandoffBytes(emscripten::val::null());
-  }
-  uint8_t buffer[64];
-  consensus_handoff_message_t message{};
-  message.kind = static_cast<uint8_t>(kind);
-  message.generation = generation;
-  message.sequence = sequence;
-  message.capabilities = static_cast<uint8_t>(capabilities);
-  message.nat_tier = static_cast<uint8_t>(nat_tier);
-  message.port = static_cast<uint16_t>(port);
-  memcpy(message.session, session_id.data(), SESSION_ID_SIZE);
-  memcpy(message.participant, participant_id.data(), SESSION_ID_SIZE);
-  consensus_handoff_encode(&message, buffer);
-  emscripten::val result = emscripten::val::global("Uint8Array").new_(sizeof(buffer));
-  result.call<void>("set", emscripten::val(emscripten::typed_memory_view(sizeof(buffer), buffer)));
-  return OptionalHandoffBytes(result);
-}
-static HandoffActionValue handoff_decode(ProtocolBytes packet) {
-  auto bytes = protocol_input(packet);
-  consensus_handoff_message_t message{};
-  if (consensus_handoff_decode(bytes.data(), bytes.size(), &message) != ASCIICHAT_OK)
-    return HandoffActionValue(emscripten::val::null());
-  emscripten::val result = emscripten::val::object();
-  result.set("kind", message.kind);
-  result.set("participant", binding_copy_output(message.participant, SESSION_ID_SIZE));
-  result.set("generation", message.generation);
-  result.set("sequence", message.sequence);
-  return HandoffActionValue(result);
-}
-
 EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
   emscripten::register_type<DiscoverySnapshotValue>(
       "DiscoverySnapshotValue",
       "{ state: number; terminal: boolean; error: string; name: string; joined: { participantId: Uint8Array; "
       "sessionId: Uint8Array; hostId: Uint8Array; turnUsername: string; turnPassword: string; serverAddress: string; "
       "serverPort: number; sessionType: number; quicPort: number; webtransportUrl: string } }");
-  emscripten::register_type<HandoffActionValue>(
-      "HandoffActionValue", "{ kind: number; participant: Uint8Array; generation: number; sequence: number } | null");
   emscripten::register_type<ProtocolBytes>("ProtocolBytes", "Uint8Array");
-  emscripten::register_type<OptionalHandoffBytes>("OptionalHandoffBytes", "Uint8Array | null");
   emscripten::class_<DiscoveryBinding>("DiscoveryBinding")
       .constructor<>()
       .function("valid", &DiscoveryBinding::valid)
       .function("callbackToken", &DiscoveryBinding::callbackToken)
       .function("process", &DiscoveryBinding::process);
-  emscripten::function("handoffEncode", &handoff_encode);
-  emscripten::function("handoffDecode", &handoff_decode);
 }

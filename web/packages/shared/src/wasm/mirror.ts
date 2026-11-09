@@ -13,7 +13,6 @@ import {
   type OptionValues,
 } from "@ascii-chat/shared/wasm/options";
 export type MirrorModule = MainModule & {
-  HEAPU8: Uint8Array;
   canvas?: HTMLCanvasElement;
 };
 
@@ -130,7 +129,7 @@ export function cleanupMirrorWasm(): void {
 }
 
 export function resetRenderStabilizer(): void {
-  wasmModule?.sessionRenderResetStabilizer();
+  renderer?.reset();
 }
 
 /** Release per-session rendering state while keeping the shared module alive. */
@@ -159,10 +158,6 @@ export function convertFrameToAscii(
     );
   }
 
-  if (!wasmModule.HEAPU8) {
-    throw new Error("WASM module not fully initialized. HEAPU8 is undefined.");
-  }
-
   // Validate dimensions
   if (
     !Number.isSafeInteger(srcWidth) ||
@@ -185,12 +180,9 @@ export function convertFrameToAscii(
     );
   }
 
-  // Growing the WASM heap can invalidate a view supplied by a caller.
-  const input =
-    rgbaData.buffer === wasmModule.HEAPU8.buffer ? rgbaData.slice() : rgbaData;
   renderer ??= AsciiRenderer.fromModule(wasmModule);
   const frame = renderer.render(
-    input,
+    rgbaData,
     srcWidth,
     srcHeight,
     contentFit === "contain",
@@ -210,8 +202,6 @@ export function transformCaptureRgba(
   height: number,
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  if (rgba.buffer === wasmModule.HEAPU8.buffer)
-    throw new Error("Capture input must be JavaScript-owned");
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
     throw new Error("Invalid capture dimensions");
   renderer ??= AsciiRenderer.fromModule(wasmModule);
@@ -230,14 +220,9 @@ export function submitAudioVisualizationSamples(
   source: AudioVisualizationSource = "media",
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const input =
-    samples.buffer === wasmModule.HEAPU8.buffer ? samples.slice() : samples;
   renderer ??= AsciiRenderer.fromModule(wasmModule);
-  renderer.submitAudio(input, source);
+  renderer.submitAudio(samples, source);
 }
-
-/** @deprecated Use submitAudioVisualizationSamples. */
-export const submitAudioSamples = submitAudioVisualizationSamples;
 
 export function renderAudioVisualization(
   width: number,
@@ -277,7 +262,7 @@ export function renderAudioVisualizationFrame(
  * Check if WASM module is ready
  */
 export function isWasmReady(): boolean {
-  return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
+  return wasmModule !== null;
 }
 
 /**

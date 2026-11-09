@@ -26,8 +26,6 @@ try {
       "install",
       "--offline",
       "--ignore-scripts",
-      "--no-audit",
-      "--no-fund",
       `./ascii-chat-${version}.tgz`,
     ],
     sample,

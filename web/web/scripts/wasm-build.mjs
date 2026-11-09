@@ -146,6 +146,24 @@ if (
     JSON.stringify(
       {
         sourceHash: sourceHash(),
+        capabilities: {
+          mirror: {
+            module: "mirror",
+            protocolVersion: "1",
+            codecs: ["raw", "h264", "hevc", "opus"],
+            transports: ["webrtc", "webtransport", "websocket"],
+            rendererModes: ["luminance", "glyph"],
+            features: { stabilization: true, renderer: true, opus: true },
+          },
+          client: {
+            module: "client",
+            protocolVersion: "1",
+            codecs: ["raw", "h264", "hevc", "opus"],
+            transports: ["webrtc", "webtransport", "websocket"],
+            rendererModes: [],
+            features: { stabilization: false, renderer: false, opus: true },
+          },
+        },
         files: Object.fromEntries(
           files.map((file) => [
             file,

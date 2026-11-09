@@ -4,7 +4,7 @@
 import type {
   RuntimeValues,
   ClientWasmBindings,
-  PeerCryptoBinding,
+  BrowserSessionBinding,
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
 import {
@@ -43,7 +43,6 @@ export async function readCryptoKeyFile(file: File): Promise<string> {
 }
 
 type ClientModule = ClientWasmBindings & {
-  HEAPU8: Uint8Array;
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
   hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
   discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
@@ -292,10 +291,18 @@ export async function configureClientCrypto(
 ): Promise<void> {
   await withClientCredentials(
     options,
-    (module, password, identity, expected) => {
-      const result = module.configureCrypto(password, identity, expected);
-      if (result !== 0)
-        throwWasmError(result, "WASM rejected the configured crypto settings");
+    (_module, password, identity, expected) => {
+      const result = processClientEvent({
+        type: "configure-crypto",
+        password,
+        identity,
+        expected,
+      });
+      if (result.code)
+        throwWasmError(
+          result.code,
+          "WASM rejected the configured crypto settings",
+        );
     },
   );
 }
@@ -476,6 +483,7 @@ export function cleanupClientWasm(): void {
   console.log("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
     if (clientInitialized) {
+      clientSession?.close();
       clientSession?.delete();
       clientSession = null;
       clientInitialized = false;
@@ -514,40 +522,11 @@ export async function generateKeypair(): Promise<string> {
   return publicKeyHex;
 }
 
-/**
- * Set server address for known_hosts verification
- */
-export function setServerAddress(serverHost: string, serverPort: number): void {
-  console.log(
-    `[Client WASM] Setting server address: ${serverHost}:${serverPort}`,
-  );
-  checkClientEvent(
-    processClientEvent({
-      type: "set-server",
-      host: serverHost,
-      port: serverPort,
-    }),
-    "Failed to set server address",
-  );
-}
-
-function handleHandshake(
-  stage: number,
-  rawPacket: Uint8Array,
-  description: string,
-): void {
-  const result = processClientEvent({
-    type: "handle-handshake-stage",
-    stage,
-    packet: rawPacket,
-  });
-  if (result.code !== 0)
-    throwWasmError(result.code, `Failed to handle ${description}`);
-}
-
-type ClientEventResult = {
+export type ClientEventResult = {
   code: number;
   state: ConnectionState;
+  message?: string;
+  retryable?: boolean;
   bytes?: Uint8Array;
   packet?: ParsedPacket;
   outputs?: { flow: 0 | 1 | 2; packet: Uint8Array }[];
@@ -555,9 +534,21 @@ type ClientEventResult = {
   sequence?: bigint;
   publicKey?: string;
   mode?: number;
+  ready?: boolean;
+  queuedBytes?: number;
+  writable?: boolean;
+  action?: {
+    kind: number;
+    participant: Uint8Array;
+    generation: number;
+    sequence: number;
+  } | null;
 };
 
-function processClientEvent(event: Record<string, unknown>): ClientEventResult {
+/** The single coarse client/session ABI for browser events and native effects. */
+export function processClientEvent(
+  event: Record<string, unknown>,
+): ClientEventResult {
   if (!clientSession || !clientInitialized)
     throw new Error("WASM client session is not initialized");
   return clientSession.process(event) as ClientEventResult;
@@ -571,158 +562,11 @@ function checkClientEvent(
   return result;
 }
 
-export function beginClientHandshake(discovery = false, mode = 0): void {
-  checkClientEvent(
-    processClientEvent({ type: "begin-handshake", discovery, mode }),
-    "Could not begin security negotiation",
-  );
-}
-
-export function receiveClientHandshake(
-  discovery: boolean,
-  packetType: number,
-  payload: Uint8Array,
-): ConnectionState {
-  const result = checkClientEvent(
-    processClientEvent({
-      type: "receive-handshake",
-      discovery,
-      packetType,
-      payload,
-    }),
-    "Security handshake rejected",
-  );
-  return result.state;
-}
-
-export function handleCryptoParameters(rawPacket: Uint8Array): void {
-  handleHandshake(0, rawPacket, "CRYPTO_PARAMETERS");
-}
-export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
-  handleHandshake(1, rawPacket, "KEY_EXCHANGE_INIT");
-}
-export function handleAuthChallenge(rawPacket: Uint8Array): void {
-  handleHandshake(2, rawPacket, "AUTH_CHALLENGE");
-}
-export function handleHandshakeComplete(rawPacket: Uint8Array): void {
-  handleHandshake(3, rawPacket, "HANDSHAKE_COMPLETE");
-}
-/**
- * Register callback for WASM to send packets back to JavaScript
- * This is called by crypto handshake callbacks when they need to send responses
- */
-export function registerSendPacketCallback(
-  callback: (rawPacket: Uint8Array) => void,
-): void {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  console.log("[Client WASM] Registered sendPacketCallback");
-  wasmModule.sendPacketCallback = callback;
-}
-
-/** Encrypt a complete packet or decrypt an encrypted payload. */
-function cryptPacket(encrypt: boolean, packet: Uint8Array): Uint8Array {
-  const result = checkClientEvent(
-    processClientEvent({ type: "crypt", encrypt, packet }),
-    encrypt ? "Encryption failed" : "Decryption failed",
-  );
-  if (!result.bytes) throw new Error("WASM crypt operation returned no bytes");
-  return result.bytes;
-}
-export function encryptPacket(plaintext: Uint8Array): Uint8Array {
-  return cryptPacket(true, plaintext);
-}
-export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
-  return cryptPacket(false, ciphertext);
-}
-/** Initialize per-connection QUIC security after the authenticated handshake. */
-export function initPacketSecurity(): void {
-  checkClientEvent(
-    processClientEvent({ type: "quic-init" }),
-    "QUIC security initialization failed",
-  );
-}
-
-export function getSecurityEpoch(): number {
-  return clientInitialized
-    ? (processClientEvent({ type: "quic-state" }).epoch ?? -1)
-    : -1;
-}
-
-/** Runs the shared C rekey coordinator and drains its bounded reliable output. */
-export function tickPacketSecurity(): {
-  flow: 0 | 1 | 2;
-  packet: Uint8Array;
-}[] {
-  const result = checkClientEvent(
-    processClientEvent({ type: "quic-tick" }),
-    "QUIC rekey failed",
-  );
-  return result.outputs ?? [];
-}
-
-/** Authenticate a complete packet and its QUIC flow and delivery metadata. */
-export function processSecurePacket(
-  operation: "seal" | "open",
-  flow: 0 | 1 | 2,
-  delivery: 0 | 1,
-  packet: Uint8Array,
-  quietFailure = false,
-): { packet: Uint8Array; sequence: bigint } {
-  const result = processClientEvent({
-    type: "quic-packet",
-    operation,
-    flow,
-    delivery,
-    packet,
-  });
-  if (result.code !== 0) {
-    if (quietFailure && operation === "open" && delivery === 1)
-      throw new Error(`QUIC packet ${operation} failed (${result.code})`);
-    throwWasmError(result.code, `QUIC packet ${operation} failed`);
-  }
-  if (!result.bytes || result.sequence === undefined)
-    throw new Error("QUIC packet operation returned incomplete output");
-  return { packet: result.bytes, sequence: result.sequence };
-}
-/** Parse a validated packet and copy its metadata into JavaScript. */
-export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
-  const result = checkClientEvent(
-    processClientEvent({ type: "parse", packet: rawPacket }),
-    "Failed to parse packet",
-  );
-  if (!result.packet) throw new Error("Failed to parse packet");
-  return result.packet;
-}
-
-/** Serialize a packet to a JavaScript-owned array. */
-export function serializePacket(
-  packetType: number,
-  payload: Uint8Array,
-  clientId: number,
-): Uint8Array {
-  const result = checkClientEvent(
-    processClientEvent({ type: "serialize", packetType, payload, clientId }),
-    "Serialization failed",
-  );
-  if (!result.bytes) throw new Error("Serialization returned no bytes");
-  return result.bytes;
-}
-/**
- * Get current connection state
- */
-export function getConnectionState(): ConnectionState {
-  if (!clientInitialized) throw new Error("WASM module not initialized");
-  return processClientEvent({ type: "state" }).state;
-}
-
 /**
  * Check if WASM module is ready
  */
 export function isWasmReady(): boolean {
-  return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
+  return wasmModule !== null;
 }
 
 /**
@@ -732,34 +576,16 @@ export function getClientModule(): ClientModule | null {
   return wasmModule;
 }
 
-/** Uses the shared C policy after configureClientCrypto has installed credentials. */
-export function resolveCryptoPolicy(
-  serverUrl: string,
-  encryption?: boolean,
-): number {
-  if (!wasmModule) throw new Error("WASM client is not initialized");
-  const result = checkClientEvent(
-    processClientEvent({
-      type: "resolve-crypto-policy",
-      wss: new URL(serverUrl).protocol === "wss:",
-      encryption: encryption === undefined ? -1 : encryption ? 1 : 0,
-    }),
-    "Invalid crypto policy",
-  );
-  if (result.mode === undefined) throw new Error("Invalid crypto policy");
-  return result.mode;
-}
-
 /** Separate ACIP context for one media peer; signaling retains its own context. */
-export class PeerCryptoSession {
+export class BrowserSession {
   private securityTimer: ReturnType<typeof setInterval> | null = null;
   private independentChannels = false;
   private constructor(
-    private binding: PeerCryptoBinding | null,
+    private binding: BrowserSessionBinding | null,
     private send: (packet: Uint8Array) => void,
   ) {}
 
-  private getBinding(): PeerCryptoBinding {
+  private getBinding(): BrowserSessionBinding {
     if (!this.binding) throw new Error("Peer crypto session is closed");
     return this.binding;
   }
@@ -769,7 +595,7 @@ export class PeerCryptoSession {
     encryption: boolean | undefined,
     server: boolean,
     send: (packet: Uint8Array) => void,
-  ): Promise<PeerCryptoSession> {
+  ): Promise<BrowserSession> {
     const credentials = { ...options };
     if (server) {
       delete credentials.expectedServerPublicKeyText;
@@ -780,7 +606,7 @@ export class PeerCryptoSession {
     return withClientCredentials(
       credentials,
       (module, password, identity, expected) => {
-        const binding = new module.PeerCryptoBinding(
+        const binding = new module.BrowserSessionBinding(
           server,
           encryption === undefined ? -1 : encryption ? 1 : 0,
           password,
@@ -805,7 +631,7 @@ export class PeerCryptoSession {
           binding.delete();
           throwWasmError(started, message);
         }
-        return new PeerCryptoSession(binding, send);
+        return new BrowserSession(binding, send);
       },
     );
   }
@@ -925,6 +751,7 @@ export class PeerCryptoSession {
   close(): void {
     if (this.securityTimer) clearInterval(this.securityTimer);
     this.securityTimer = null;
+    this.binding?.close();
     this.binding?.delete();
     this.binding = null;
   }

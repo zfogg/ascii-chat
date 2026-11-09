@@ -1,4 +1,3 @@
-import { tickPacketSecurity } from "../wasm/client";
 import { OutboundQueue } from "./OutboundQueue";
 import { serializeClientInitialization } from "./ClientInitialization";
 /**
@@ -9,18 +8,11 @@ import { serializeClientInitialization } from "./ClientInitialization";
 import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
-  beginClientHandshake,
-  receiveClientHandshake,
-  resolveCryptoPolicy,
+  processClientEvent,
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
-  setServerAddress,
-  registerSendPacketCallback,
-  encryptPacket,
-  decryptPacket,
-  parsePacket,
-  serializePacket,
+  getClientModule,
   configureClientCrypto,
   ConnectionState,
   PacketType,
@@ -29,6 +21,7 @@ import {
   type ClientInitOptions,
   type ClientCryptoOptions,
   isReportedWasmError,
+  throwWasmError,
 } from "../wasm/client";
 import {
   forwardJavaScriptError,
@@ -156,10 +149,19 @@ export class ClientConnection {
       cleanupClientWasm();
       return false;
     }
-    this.cryptoMode = resolveCryptoPolicy(
-      this.options.serverUrl,
-      this.options.applicationEncryption,
-    );
+    const policy = processClientEvent({
+      type: "resolve-crypto-policy",
+      wss: new URL(this.options.serverUrl).protocol === "wss:",
+      encryption:
+        this.options.applicationEncryption === undefined
+          ? -1
+          : this.options.applicationEncryption
+            ? 1
+            : 0,
+    });
+    if (policy.code || policy.mode === undefined)
+      throwWasmError(policy.code || -1, "Invalid crypto policy");
+    this.cryptoMode = policy.mode;
     const publicKey = await generateKeypair();
     if (this.isUserDisconnecting) {
       cleanupClientWasm();
@@ -167,13 +169,16 @@ export class ClientConnection {
     }
     this.clientPublicKey = publicKey;
     const url = new URL(this.options.serverUrl);
-    setServerAddress(
-      url.hostname,
-      parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226),
-    );
-    registerSendPacketCallback((rawPacket: Uint8Array) => {
-      this.socket?.send(rawPacket);
+    const serverResult = processClientEvent({
+      type: "set-server",
+      host: url.hostname,
+      port: parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226),
     });
+    if (serverResult.code)
+      throwWasmError(serverResult.code, "Failed to set server address");
+    getClientModule()!.sendPacketCallback = (rawPacket: Uint8Array) => {
+      this.socket?.send(rawPacket);
+    };
     return true;
   }
 
@@ -253,7 +258,9 @@ export class ClientConnection {
       )
         return;
       try {
-        for (const { packet } of tickPacketSecurity())
+        const result = processClientEvent({ type: "quic-tick" });
+        if (result.code) throw new Error(`QUIC rekey failed (${result.code})`);
+        for (const { packet } of result.outputs ?? [])
           this.socket?.send(packet);
       } catch (error) {
         this.disconnect();
@@ -297,7 +304,13 @@ export class ClientConnection {
     if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
 
     try {
-      beginClientHandshake(this.options.discoveryHandshake, this.cryptoMode);
+      const handshake = processClientEvent({
+        type: "begin-handshake",
+        discovery: this.options.discoveryHandshake,
+        mode: this.cryptoMode,
+      });
+      if (handshake.code)
+        throw new Error(`Handshake failed (${handshake.code})`);
     } catch (error) {
       if (isReportedWasmError(error)) forwardJavaScriptError(error);
       else reportJavaScriptError(error);
@@ -337,7 +350,13 @@ export class ClientConnection {
 
     try {
       // Parse packet header
-      const parsed = parsePacket(rawPacket);
+      const parsedResult = processClientEvent({
+        type: "parse",
+        packet: rawPacket,
+      });
+      if (parsedResult.code || !parsedResult.packet)
+        throw new Error(`Packet parse failed (${parsedResult.code})`);
+      const parsed = parsedResult.packet;
 
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
@@ -349,11 +368,15 @@ export class ClientConnection {
       }
 
       if (this.transportState !== ConnectionState.CONNECTED) {
-        const next = receiveClientHandshake(
-          Boolean(this.options.discoveryHandshake),
-          parsed.type,
+        const handshake = processClientEvent({
+          type: "receive-handshake",
+          discovery: Boolean(this.options.discoveryHandshake),
+          packetType: parsed.type,
           payload,
-        );
+        });
+        if (handshake.code)
+          throw new Error(`Handshake rejected (${handshake.code})`);
+        const next = handshake.state;
         if (next === ConnectionState.CONNECTED) {
           this.wasEverConnected = true;
           this.transportState = ConnectionState.CONNECTED;
@@ -383,8 +406,14 @@ export class ClientConnection {
         // );
         try {
           // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
-          // console.log(`[ClientConnection] Calling decryptPacket...`);
-          const plaintext = new Uint8Array(decryptPacket(payload));
+          const decryptResult = processClientEvent({
+            type: "crypt",
+            encrypt: false,
+            packet: payload,
+          });
+          if (decryptResult.code || !decryptResult.bytes)
+            throw new Error(`Decryption failed (${decryptResult.code})`);
+          const plaintext = new Uint8Array(decryptResult.bytes);
           if (!plaintext.length) return;
           // console.log(
           //   `[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`,
@@ -394,7 +423,15 @@ export class ClientConnection {
           // );
 
           // Parse the inner packet header
-          const innerParsed = parsePacket(plaintext);
+          const innerParsedResult = processClientEvent({
+            type: "parse",
+            packet: plaintext,
+          });
+          if (innerParsedResult.code || !innerParsedResult.packet)
+            throw new Error(
+              `Inner packet parse failed (${innerParsedResult.code})`,
+            );
+          const innerParsed = innerParsedResult.packet;
           // console.log(
           //   `[ClientConnection] Inner packet type: ${innerParsed.type}`,
           // );
@@ -503,9 +540,15 @@ export class ClientConnection {
           console.error(error);
         },
       );
-    const admission = this.outbound.submit(
-      serializePacket(packetType, payload, 0),
-    );
+    const result = processClientEvent({
+      type: "serialize",
+      packetType,
+      payload,
+      clientId: 0,
+    });
+    if (result.code || !result.bytes)
+      throw new Error(`Serialization failed (${result.code})`);
+    const admission = this.outbound.submit(result.bytes);
     if (
       admission === "congested" &&
       packetType !== PacketType.IMAGE_FRAME &&
@@ -533,22 +576,49 @@ export class ClientConnection {
 
       if (state === ConnectionState.CONNECTED) {
         if (!this.usesApplicationEncryption) {
-          this.socket.send(serializePacket(packetType, payload, 0));
+          const plainResult = processClientEvent({
+            type: "serialize",
+            packetType,
+            payload,
+            clientId: 0,
+          });
+          if (plainResult.code || !plainResult.bytes)
+            throw new Error(`Serialization failed (${plainResult.code})`);
+          this.socket.send(plainResult.bytes);
           return;
         }
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
-        const plaintextPacket = serializePacket(packetType, payload, 0);
+        const plaintextResult = processClientEvent({
+          type: "serialize",
+          packetType,
+          payload,
+          clientId: 0,
+        });
+        if (plaintextResult.code || !plaintextResult.bytes)
+          throw new Error(`Serialization failed (${plaintextResult.code})`);
+        const plaintextPacket = plaintextResult.bytes;
 
         // 2. Encrypt the entire plaintext packet
-        const ciphertext = encryptPacket(plaintextPacket);
+        const encryptResult = processClientEvent({
+          type: "crypt",
+          encrypt: true,
+          packet: plaintextPacket,
+        });
+        if (encryptResult.code || !encryptResult.bytes)
+          throw new Error(`Encryption failed (${encryptResult.code})`);
+        const ciphertext = encryptResult.bytes;
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
-        const encryptedPacket = serializePacket(
-          PacketType.ENCRYPTED,
-          ciphertext,
-          0,
-        );
+        const encryptedResult = processClientEvent({
+          type: "serialize",
+          packetType: PacketType.ENCRYPTED,
+          payload: ciphertext,
+          clientId: 0,
+        });
+        if (encryptedResult.code || !encryptedResult.bytes)
+          throw new Error(`Serialization failed (${encryptedResult.code})`);
+        const encryptedPacket = encryptedResult.bytes;
 
         this.socket.send(encryptedPacket);
       } else if (state === ConnectionState.HANDSHAKE) {

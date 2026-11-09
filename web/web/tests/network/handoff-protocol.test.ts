@@ -27,7 +27,28 @@ const module = vi.hoisted(() => ({
     return bytes;
   },
 }));
-vi.mock("../../src/wasm/client", () => ({ getClientModule: () => module }));
+vi.mock("../../src/wasm/client", () => ({
+  getClientModule: () => module,
+  processClientEvent: (event: Record<string, unknown>) => {
+    if (event["type"] === "handoff-encode")
+      return {
+        code: 0,
+        bytes: module.handoffEncode(
+          event["kind"] as number,
+          event["session"] as Uint8Array,
+          event["participant"] as Uint8Array,
+          event["generation"] as number,
+          event["sequence"] as number,
+          2,
+          255,
+          0,
+        ),
+      };
+    if (event["type"] === "handoff-decode")
+      return { code: 0, action: module.handoffDecode() };
+    throw new Error("Unexpected client event");
+  },
+}));
 it("keeps the original probe clock and sequence through slow host startup", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] });
   const joined = {

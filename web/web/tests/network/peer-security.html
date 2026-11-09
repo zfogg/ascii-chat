@@ -7,15 +7,31 @@
     <script type="module">
       import {
         initClientWasm,
-        PeerCryptoSession,
-        serializePacket,
-        parsePacket,
+        BrowserSession,
+        processClientEvent,
         PacketType,
       } from "/src/wasm/client.ts";
       import { WebRTCBridge } from "/src/network/WebRTCBridge.ts";
 
       window.runPeerSecurityTest = async (settings = {}) => {
         await initClientWasm({ width: 40, height: 12 });
+        const serializePacket = (packetType, payload) => {
+          const result = processClientEvent({
+            type: "serialize",
+            packetType,
+            payload,
+            clientId: 0,
+          });
+          if (result.code || !result.bytes)
+            throw new Error(`Serialization failed (${result.code})`);
+          return result.bytes;
+        };
+        const parsePacket = (packet) => {
+          const result = processClientEvent({ type: "parse", packet });
+          if (result.code || !result.packet)
+            throw new Error(`Packet parse failed (${result.code})`);
+          return result.packet;
+        };
         const pcs = [new RTCPeerConnection(), new RTCPeerConnection()];
         const channels = pcs.map((pc) =>
           pc.createDataChannel("acip", {
@@ -43,7 +59,7 @@
         };
         try {
           for (let i = 0; i < 2; i++) {
-            peers[i] = await PeerCryptoSession.create(
+            peers[i] = await BrowserSession.create(
               settings[i ? "client" : "server"] || {},
               settings[i ? "clientEncryption" : "serverEncryption"] ??
                 settings.encryption,

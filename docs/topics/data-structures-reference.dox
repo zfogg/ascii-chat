@@ -1730,7 +1730,7 @@
  * @brief Context for broadcasting to session participants
  */
 /**
- * @struct browser_peer_crypto_t
+ * @struct browser_session_t
  * @brief Working data used by browser peer crypto.
  */
 /**

@@ -22,6 +22,7 @@
           getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
         });
         assert(m.initializeClientOptions({}) === 0, "init");
+        const client = new m.ClientSessionBinding({});
         let packets = [];
         m.discoverySend = (handle, type, payload) =>
           packets.push({ type, payload });
@@ -155,17 +156,22 @@
         test("handoff decode returns an owned action", () => {
           const session = new Uint8Array(16).fill(1);
           const participant = new Uint8Array(16).fill(2);
-          const encoded = m.handoffEncode(
-            3,
+          const encodedResult = client.process({
+            type: "handoff-encode",
+            kind: 3,
             session,
             participant,
-            7,
-            9,
-            2,
-            255,
-            0,
-          );
-          const action = m.handoffDecode(encoded);
+            generation: 7,
+            sequence: 9,
+            capabilities: 2,
+            natTier: 255,
+            port: 0,
+          });
+          const encoded = encodedResult.bytes;
+          const action = client.process({
+            type: "handoff-decode",
+            packet: encoded,
+          }).action;
           assert(
             action.kind === 3 &&
               action.generation === 7 &&
@@ -176,12 +182,19 @@
             action.participant.every((byte) => byte === 2),
             "participant",
           );
-          assert(m.handoffDecode(new Uint8Array(1)) === null, "invalid packet");
+          assert(
+            client.process({
+              type: "handoff-decode",
+              packet: new Uint8Array(1),
+            }).code !== 0,
+            "invalid packet",
+          );
           assert(
             action.participant.every((byte) => byte === 2),
             "owned result",
           );
         });
+        client.delete();
         results.textContent = lines.join("\n") + "\n\n9 tests passed";
         document.title = "PASS: shared C discovery protocol";
       } catch (error) {

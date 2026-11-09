@@ -1,4 +1,4 @@
-#include "security.h"
+#include <ascii-chat/network/browser/security.h>
 #include <ascii-chat/buffer.h>
 #include <emscripten.h>
 #include <string.h>

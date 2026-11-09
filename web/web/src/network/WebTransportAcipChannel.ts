@@ -1,13 +1,6 @@
 import {
-  initPacketSecurity,
-  tickPacketSecurity,
-  processSecurePacket,
-  serializePacket,
-  beginClientHandshake,
-  receiveClientHandshake,
-  registerSendPacketCallback,
-  resolveCryptoPolicy,
-  parsePacket,
+  processClientEvent,
+  getClientModule,
   ConnectionState,
 } from "../wasm/client";
 import { AcipQuicProtocol } from "./AcipQuicProtocol";
@@ -46,28 +39,64 @@ export class WebTransportAcipChannel {
   ) {
     this.protocol = new AcipQuicProtocol(
       security ?? {
-        init: initPacketSecurity,
-        tick: () => tickPacketSecurity(),
-        seal: (flow, delivery, packet) =>
-          processSecurePacket(
-            "seal",
+        init: () => {
+          const result = processClientEvent({ type: "quic-init" });
+          if (result.code)
+            throw new Error(
+              `QUIC security initialization failed (${result.code})`,
+            );
+        },
+        tick: () => {
+          const result = processClientEvent({ type: "quic-tick" });
+          if (result.code)
+            throw new Error(`QUIC rekey failed (${result.code})`);
+          return result.outputs ?? [];
+        },
+        seal: (flow, delivery, packet) => {
+          const result = processClientEvent({
+            type: "quic-packet",
+            operation: "seal",
             flow,
-            delivery === "datagram" ? 1 : 0,
+            delivery: delivery === "datagram" ? 1 : 0,
             packet,
-          ).packet,
-        open: (flow, delivery, packet) =>
-          processSecurePacket(
-            "open",
+          });
+          if (result.code || !result.bytes || result.sequence === undefined)
+            throw new Error(`QUIC packet seal failed (${result.code})`);
+          return result.bytes;
+        },
+        open: (flow, delivery, packet) => {
+          const result = processClientEvent({
+            type: "quic-packet",
+            operation: "open",
             flow,
-            delivery === "datagram" ? 1 : 0,
+            delivery: delivery === "datagram" ? 1 : 0,
             packet,
-            delivery === "datagram",
-          ),
+          });
+          if (result.code) {
+            if (delivery === "datagram")
+              throw new Error(`QUIC packet open failed (${result.code})`);
+            throw new Error(`QUIC packet open failed (${result.code})`);
+          }
+          return {
+            packet: result.bytes ?? new Uint8Array(),
+            sequence: result.sequence ?? 0n,
+          };
+        },
       },
       {
         send: (flow, delivery, packet, deadline) =>
           this.bridge.send(flow, delivery, packet, deadline),
-        serialize: (type, payload) => serializePacket(type, payload, 0),
+        serialize: (type, payload) => {
+          const result = processClientEvent({
+            type: "serialize",
+            packetType: type,
+            payload,
+            clientId: 0,
+          });
+          if (result.code || !result.bytes)
+            throw new Error(`Packet serialization failed (${result.code})`);
+          return result.bytes;
+        },
         handshake: (packet) => {
           if (this.automaticHandshake) this.receiveHandshake(packet);
           callbacks.handshake(packet);
@@ -97,12 +126,23 @@ export class WebTransportAcipChannel {
   async connectWithWasmHandshake(): Promise<void> {
     if (this.automaticHandshake || this.closed)
       throw new Error("QUIC handshake already started");
-    resolveCryptoPolicy(this.url, true);
+    const policy = processClientEvent({
+      type: "resolve-crypto-policy",
+      wss: new URL(this.url).protocol === "wss:",
+      encryption: 1,
+    });
+    if (policy.code)
+      throw new Error(`Crypto policy resolution failed (${policy.code})`);
     this.automaticHandshake = true;
-    registerSendPacketCallback((packet) => this.sendHandshake(packet));
+    getClientModule()!.sendPacketCallback = (packet) => this.sendHandshake(packet);
     try {
       await this.bridge.connect();
-      beginClientHandshake(false);
+      const result = processClientEvent({
+        type: "begin-handshake",
+        discovery: false,
+        mode: 0,
+      });
+      if (result.code) throw new Error(`Handshake failed (${result.code})`);
     } catch (error) {
       this.close();
       throw error;
@@ -110,11 +150,15 @@ export class WebTransportAcipChannel {
   }
 
   private receiveHandshake(packet: Uint8Array): void {
-    const parsed = parsePacket(packet);
-    const payload = packet.subarray(22);
-    const next = receiveClientHandshake(false, parsed.type, payload);
-    if (next === ConnectionState.CONNECTED)
-      this.authenticated();
+    const nextResult = processClientEvent({
+      type: "receive-handshake-packet",
+      discovery: false,
+      payload: packet,
+    });
+    if (nextResult.code)
+      throw new Error(`Security handshake rejected (${nextResult.code})`);
+    const next = nextResult.state;
+    if (next === ConnectionState.CONNECTED) this.authenticated();
   }
 
   sendHandshake(packet: Uint8Array): void {

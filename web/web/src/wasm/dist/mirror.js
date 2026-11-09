@@ -6618,8 +6618,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2852336: () => Module.getRandomValue(),
-    2852372: () => {
+    2852320: () => Module.getRandomValue(),
+    2852356: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;

@@ -14,13 +14,35 @@ import {
 
 vi.mock("../../src/wasm/client", async (original) => ({
   ...(await original<typeof import("../../src/wasm/client")>()),
-  serializePacket(type: number, payload: Uint8Array) {
-    const bytes = new Uint8Array(22 + payload.length);
-    const view = new DataView(bytes.buffer);
-    view.setUint16(8, type, false);
-    view.setUint32(10, payload.length, false);
-    bytes.set(payload, 22);
-    return bytes;
+  processClientEvent(event: Record<string, unknown>) {
+    if (event["type"] === "serialize") {
+      const payload = event["payload"] as Uint8Array;
+      const bytes = new Uint8Array(22 + payload.length);
+      const view = new DataView(bytes.buffer);
+      view.setUint16(8, event["packetType"] as number, false);
+      view.setUint32(10, payload.length, false);
+      bytes.set(payload, 22);
+      return { code: 0, state: ConnectionState.CONNECTED, bytes };
+    }
+    if (event["type"] === "parse") {
+      const bytes = event["packet"] as Uint8Array;
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength,
+      );
+      return {
+        code: 0,
+        state: ConnectionState.CONNECTED,
+        packet: {
+          type: view.getUint16(8, false),
+          length: view.getUint32(10, false),
+          client_id: view.getUint32(18, false),
+          crc32: view.getUint32(14, false),
+        },
+      };
+    }
+    throw new Error(`Unexpected client event: ${String(event["type"])}`);
   },
 }));
 
@@ -74,8 +96,9 @@ vi.mock("../../src/network/ClientConnection", () => ({
 }));
 
 vi.mock("../../src/network/DiscoveryProtocol", async () => {
-  const { SessionRejectedError } =
-    await import("../../src/network/acdsProtocol");
+  const { SessionRejectedError } = await import(
+    "../../src/network/acdsProtocol"
+  );
   return {
     DiscoveryProtocol: class {
       constructor(private send: (type: number, payload: Uint8Array) => void) {}

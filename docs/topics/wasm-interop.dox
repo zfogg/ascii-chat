@@ -12,10 +12,10 @@
  * artifacts. Rebuild and publish both modules together after changing a binding.
  *
  * Browser code should prefer the shared TypeScript facades and generated binding
- * types. `SessionUiBinding`, `MirrorFrameBinding`, `TerminalRendererBinding`,
- * `AudioProcessorBinding`, `OpusCodecBinding`, `ClientSessionBinding`, and `PeerCryptoBinding` own their
+ * types. `SessionUiBinding`, `MirrorFrameBinding`, `AsciiRendererBinding`,
+ * `AudioProcessorBinding`, `OpusCodecBinding`, `ClientSessionBinding`, and `BrowserSessionBinding` own their
  * C resources. An Embind object must be deleted once after its last use; facades
- * such as the renderer lifecycle and `PeerCryptoSession.close()` make repeated
+ * such as the renderer lifecycle and `BrowserSession.close()` make repeated
  * cleanup safe. Deleting a client session releases its handshake state; browser host
  * state also releases its clients and transports together. The C options and mirror initialization functions remain
  * module-local, so they must be initialized before creating objects that use
@@ -33,7 +33,7 @@
  * work.
  *
  * Client bindings are grouped by responsibility: `networking.cpp` owns connection
- * setup and QUIC transport operations; `protocol.cpp` handles handshake and packet conversion; `common/opts.cpp`
+ * setup, handshake, packet conversion, and QUIC transport operations; `common/opts.cpp`
  * handles settings conversion; `client_frames.cpp` validates and sends frames.
  * `discovery.cpp` binds discovery and handoff, `session_host.cpp` binds the shared
  * session host, and `av_state.cpp` owns asynchronous media lifecycle state. Their
@@ -46,7 +46,7 @@
  * cannot be reliably wiped. C error snapshots are copied into JavaScript values
  * before reporting them.
  *
- * Embind is the browser-facing API, including options and host control. The browser renderer owns its `SessionUiBinding` directly and deletes it when the renderer is released; browser key conversion stays with the renderer. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
+ * Embind is the browser-facing API, including options and host control. The browser renderer owns its `SessionUiBinding` directly and deletes it when the renderer is released; browser key conversion stays with the renderer. `AsciiRendererBinding` exposes `dimensions()` and `render(text, zalgo)`, returning a fresh JavaScript-owned pixel snapshot for each successful render. Render failures remain available through `error()` even when construction succeeded. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
  * client and mirror initialization bindings accept an options object using the same field names and atomic validation; they initialize native mode defaults before applying that object. No shell-style argument parsing is involved.
  * C functions used by adapters are declared in the corresponding web headers,
  * which their implementations include as well. Emscripten's filesystem remains

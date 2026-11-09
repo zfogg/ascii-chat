@@ -1,6 +1,6 @@
 const HANDOFF_FRAME_SIZE = 64;
 const HANDOFF_PROBE_PAYLOAD_SIZE = 65536;
-import { getClientModule } from "../wasm/client";
+import { getClientModule, processClientEvent } from "../wasm/client";
 import type { JoinedSession } from "./acdsProtocol";
 
 export const HANDOFF_PACKET = 6090;
@@ -25,20 +25,20 @@ export class HandoffProtocol {
     generation: number,
     sequence: number,
   ): Uint8Array {
-    const module = getClientModule();
-    if (!module) throw new Error("Client WASM module is unavailable");
-    const frame = module.handoffEncode(
+    const result = processClientEvent({
+      type: "handoff-encode",
       kind,
-      this.joined.sessionId,
-      this.joined.participantId,
+      session: this.joined.sessionId,
+      participant: this.joined.participantId,
       generation,
       sequence,
-      2,
-      255,
-      0,
-    );
-    if (!frame) throw new Error("Invalid handoff identifiers");
-    return frame;
+      capabilities: 2,
+      natTier: 255,
+      port: 0,
+    });
+    if (result.code || !result.bytes)
+      throw new Error(`Invalid handoff identifiers (${result.code})`);
+    return result.bytes;
   }
   private sample(): void {
     if (this.stopped) return;
@@ -61,9 +61,14 @@ export class HandoffProtocol {
       !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
     )
       return true;
-    const module = getClientModule();
-    if (!module) throw new Error("Client WASM module is unavailable");
-    const action = module.handoffDecode(bytes);
+    const actionResult = processClientEvent({ type: "handoff-decode", packet: bytes });
+    if (actionResult.code) throw new Error(`Invalid handoff frame (${actionResult.code})`);
+    const action = actionResult.action as {
+      kind: number;
+      participant: Uint8Array;
+      generation: number;
+      sequence: number;
+    } | null;
     if (!action) throw new Error("Invalid handoff frame");
     if (action.generation < this.generation) return true;
     this.generation = action.generation;
@@ -73,6 +78,8 @@ export class HandoffProtocol {
         (value, i) => value === this.joined.participantId[i],
       )
     ) {
+      const module = getClientModule();
+      if (!module) throw new Error("Client WASM module is unavailable");
       const result = module.browser_host_create();
       this.prepared = result === 0;
       this.send(

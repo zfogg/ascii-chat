@@ -353,26 +353,21 @@ type PeerBytes = Uint8Array;
 
 type NullablePeerBytes = Uint8Array | null;
 
-export interface PeerCryptoBinding extends ClassHandle {
+export interface BrowserSessionBinding extends ClassHandle {
   valid(): boolean;
   ready(): boolean;
   error(): string;
+  close(): void;
   process(_0: any): any;
 }
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
+  protocolInfo(): any;
   error(): number;
+  close(): void;
   process(_0: any): any;
 }
-
-type QuicControlResult = {
-  code: number;
-  flow: number;
-  packet: Uint8Array | null;
-};
-
-type QuicPacketResult = { code: number; sequence: bigint; packet: Uint8Array };
 
 type KeyInput = Uint8Array;
 
@@ -429,16 +424,7 @@ type DiscoverySnapshotValue = {
   };
 };
 
-type HandoffActionValue = {
-  kind: number;
-  participant: Uint8Array;
-  generation: number;
-  sequence: number;
-} | null;
-
 type ProtocolBytes = Uint8Array;
-
-type OptionalHandoffBytes = Uint8Array | null;
 
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
@@ -462,6 +448,7 @@ type RgbaBytes = Uint8Array | Uint8ClampedArray;
 type VisualizationSamples = Float32Array;
 
 export interface MirrorFrameBinding extends ClassHandle {
+  reset(): void;
   convert(
     _0: RgbaBytes,
     _1: number,
@@ -510,15 +497,14 @@ interface EmbindModule {
   OpusCodecBinding: {
     new (_0: number, _1: number, _2: number, _3: number): OpusCodecBinding;
   };
-  configureCrypto(_0: PeerBytes, _1: PeerBytes, _2: PeerBytes): number;
-  PeerCryptoBinding: {
+  BrowserSessionBinding: {
     new (
       _0: boolean,
       _1: number,
       _2: PeerBytes,
       _3: PeerBytes,
       _4: PeerBytes,
-    ): PeerCryptoBinding;
+    ): BrowserSessionBinding;
   };
   ClientSessionBinding: {
     new (_0: OptionsPatch): ClientSessionBinding;
@@ -545,17 +531,6 @@ interface EmbindModule {
   DiscoveryBinding: {
     new (): DiscoveryBinding;
   };
-  handoffEncode(
-    _0: number,
-    _1: ProtocolBytes,
-    _2: ProtocolBytes,
-    _3: number,
-    _4: number,
-    _5: number,
-    _6: number,
-    _7: number,
-  ): OptionalHandoffBytes;
-  handoffDecode(_0: ProtocolBytes): HandoffActionValue;
   browser_host_create(): number;
   browser_host_destroy(): void;
   browser_host_add_client(): number;
@@ -573,7 +548,6 @@ interface EmbindModule {
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
-  sessionRenderResetStabilizer(): void;
   browser_capture_transform_required(): number;
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;

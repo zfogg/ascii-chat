@@ -7,7 +7,7 @@ G('security','Authenticate & encrypt','Inside a call','CLI + browser','Who am I 
  C('policy','Resolve policy','Supplied authentication material and transport security determine ACIP security mode.',
  P(L+'crypto/policy.c','crypto_policy_resolve','Resolve application mode','Policy considers secure transport, encrypt/no-encrypt flags, passwords, identity, and verification keys. Invalid combinations fail before handshake.'),
  P(N+'connectionSecurity.ts','getConnectionSecurityLines','Describe browser layers','The UI labels WS/WSS signaling, WebRTC DTLS media, and optional application encryption separately. Follow these alongside the selected session strategy.'),
- P('src/web/peer_crypto.c',None,'Scope crypto per peer','Peer crypto exports support individual peer sessions. A signaling connection is not automatically the media peer identity.','src/web/client.c')),
+ P('lib/network/browser/session.c',None,'Browser ACIP session','Browser sessions reuse the shared ACIP security and packet pipeline while adapting browser-owned transports.','src/web/client.c')),
  C('handshake','Establish readiness','Normal media requires the agreed security state to be ready.',
  P('src/client/crypto.c','client_crypto_handshake','Drive native client negotiation','The adapter coordinates shared handshake logic with the active transport and client error state.',L+'crypto/handshake/client.c'),
  P('src/server/crypto.c','server_crypto_event','Advance server negotiation','Per-client security packets advance the server handshake. Failed negotiation prevents media workers from starting.',L+'crypto/handshake/server.c'),

@@ -34,7 +34,7 @@ public:
     return renderer_ && !result_;
   }
   int error() const {
-    return result_;
+    return render_error_ ? render_error_ : result_;
   }
   emscripten::val dimensions() const {
     emscripten::val result = emscripten::val::object();
@@ -46,24 +46,24 @@ public:
   }
   emscripten::val render(const std::string &text, int zalgo) {
     if (!renderer_) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer is not initialized");
+      render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer is not initialized");
       return emscripten::val::null();
     }
     const int zalgo_result = term_renderer_set_zalgo(renderer_, zalgo);
     if (zalgo_result) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Cannot set renderer Zalgo level");
+      render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Cannot set renderer Zalgo level");
       return emscripten::val::null();
     }
     const int feed_result = term_renderer_feed(renderer_, text.data(), text.size());
     if (feed_result) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Cannot feed ANSI text to renderer");
+      render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Cannot feed ANSI text to renderer");
       return emscripten::val::null();
     }
     const int w = term_renderer_width_px(renderer_), h = term_renderer_height_px(renderer_),
               pitch = term_renderer_pitch(renderer_);
     const uint8_t *pixels = term_renderer_pixels(renderer_);
     if (!pixels || w <= 0 || h <= 0 || pitch <= 0 || static_cast<uint64_t>(pitch) < static_cast<uint64_t>(w) * 4) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer has invalid pixel storage");
+      render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer has invalid pixel storage");
       return emscripten::val::null();
     }
     if (output_.isUndefined() || output_["length"].as<size_t>() != static_cast<size_t>(w) * h * 4)
@@ -78,12 +78,14 @@ public:
             row * row_bytes);
       }
     }
-    return output_;
+    render_error_ = 0;
+    return output_.call<emscripten::val>("slice");
   }
 
 private:
   terminal_renderer_s *renderer_ = nullptr;
   int result_;
+  int render_error_ = 0;
   emscripten::val output_;
 };
 

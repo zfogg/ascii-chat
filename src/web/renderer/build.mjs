@@ -1,4 +1,4 @@
-import { copyFile } from "node:fs/promises";
+import { copyFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,4 +14,25 @@ for (const file of ["renderer.js", "renderer.wasm", "renderer-bindings.d.ts"]) {
 await copyFile(
   new URL("../../../LICENSE.txt", import.meta.url),
   new URL("LICENSE.txt", dest),
+);
+await writeFile(
+  new URL("renderer-manifest.json", dest),
+  `${JSON.stringify(
+    {
+      module: "renderer",
+      protocolVersion: "1",
+      codecs: ["raw", "h264", "hevc"],
+      transports: [],
+      rendererModes: ["luminance", "glyph"],
+      features: {
+        stabilization: true,
+        frameStabilization: true,
+        faceStabilization: true,
+        renderLoop: true,
+        pixelCallback: true,
+      },
+    },
+    null,
+    2,
+  )}\n`,
 );

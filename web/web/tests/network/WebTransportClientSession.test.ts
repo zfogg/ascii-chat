@@ -16,7 +16,21 @@ const state = vi.hoisted(() => ({
   configure: vi.fn(async () => {}),
   keypair: vi.fn(async () => "client-key"),
   address: vi.fn(),
+  module: { sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined },
   endpoint: "",
+  process: vi.fn((event: { type: string; [key: string]: any }) => {
+    if (event.type === "serialize") {
+      const payload = event["payload"] as Uint8Array;
+      const result = new Uint8Array(22 + payload.length);
+      new DataView(result.buffer).setUint16(8, Number(event["packetType"]));
+      result.set(payload, 22);
+      return { code: 0, bytes: result, state: 1 };
+    }
+    if (event.type === "parse")
+      return { code: 0, packet: { type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(8) }, state: 1 };
+    if (event.type === "quic-state") return { code: 0, epoch: 0, state: 1 };
+    return { code: 0, state: 1 };
+  }),
 }));
 vi.mock("../../src/wasm/client", () => ({
   ConnectionState: {
@@ -36,16 +50,26 @@ vi.mock("../../src/wasm/client", () => ({
   initClientWasm: state.init,
   configureClientCrypto: state.configure,
   generateKeypair: state.keypair,
-  setServerAddress: state.address,
-  serializePacket: (type: number, payload: Uint8Array) => {
-    const result = new Uint8Array(22 + payload.length);
-    new DataView(result.buffer).setUint16(8, type);
-    result.set(payload, 22);
-    return result;
+  getClientModule: () => state.module,
+  processClientEvent: (event: { type: string; [key: string]: unknown }) => {
+    if (event.type === "set-server") {
+      state.address(event["host"], event["port"]);
+    }
+    if (event.type === "serialize") {
+      const payload = event["payload"] as Uint8Array;
+      const bytes = new Uint8Array(22 + payload.length);
+      new DataView(bytes.buffer).setUint16(8, Number(event["packetType"]));
+      bytes.set(payload, 22);
+      return { code: 0, state: 1, bytes };
+    }
+    if (event.type === "parse")
+      return {
+        code: 0,
+        state: 1,
+        packet: { type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(8) },
+      };
+    return { code: 0, state: 1, mode: 1 };
   },
-  parsePacket: (packet: Uint8Array) => ({
-    type: new DataView(packet.buffer, packet.byteOffset).getUint16(8),
-  }),
 }));
 vi.mock("../../src/network/WebTransportAcipChannel", () => ({
   WebTransportAcipChannel: class {

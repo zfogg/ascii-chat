@@ -164,8 +164,9 @@ current binding families are:
   `complete`, `current`, `active`, `beginStop`, `finishStop`) for lifecycle
   synchronization.
 - `client_frames.cpp`: `validateFrame` for incoming frame validation.
-- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `process`)
-  plus `handoffEncode`/`handoffDecode`.
+- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `process`).
+  Handoff encoding/decoding belongs to the client session event ABI rather than
+  separate browser-visible helpers.
 - `face.cpp`: `faceReset`, `faceDetect`, and `faceTick`.
 - `frame.cpp`: stabilizer/capture helpers plus `MirrorFrameBinding`
   (`convert`, `transform`, `submitAudio`, `renderAudio`).
@@ -176,9 +177,12 @@ current binding families are:
 - `networking.cpp`: client initialization/cleanup and the
   `ClientSessionBinding.process(event)` session boundary for handshake,
   packet, crypto-policy, addressing, and QUIC events.
-- `peer_crypto.cpp`: `configureCrypto` and `PeerCryptoBinding.process(event)`
-  for session crypto, reliable send/receive/tick, QUIC lifecycle/output, and
-  packet sealing/opening.
+  `ClientSessionBinding.protocolInfo()` is the native source for stable
+  protocol version, connection-state, and crypto-mode metadata.
+- `browser_session.cpp`: `configureCrypto` and `BrowserSessionBinding.process(event)`
+  for the browser transport-backed session. It reuses the shared ACIP security,
+  handshake, packet, and QUIC code for reliable send/receive/tick, lifecycle,
+  and packet sealing/opening.
 - The old granular `protocol.cpp` binding was removed. Packet parsing,
   serialization, handshake, and crypto are reached through the client session
   event API and its TypeScript domain helpers.
@@ -249,6 +253,12 @@ The shared package's `AsciiRenderer`, hooks, raster worker, and utilities are
 the intended consumer of `renderer-web`. Extend those APIs when adding a
 renderer feature; do not make `web/web` privately reimplement the renderer.
 
+Do not add wrapper functions around already-bound methods. Call the generated
+Embind class or the existing coarse event boundary directly. A helper is only
+appropriate when it owns real browser lifecycle work, validation, or domain
+behavior; a function that merely forwards arguments to a WASM method is extra
+ABI-shaped indirection and should not be introduced.
+
 The longer-term goal is to publish `renderer-web` as the open-source
 `ascii-chat` npm package: a polished browser renderer anyone can use to render
 ASCII art. Expect that package to grow around the same core with H.264/HEVC
@@ -277,7 +287,7 @@ and the E2E tests in `web/web/tests/e2e/video-encoding.spec.ts` together.
 ## Crypto and browser transports
 
 `web/web/{discovery,client}` use the same application crypto/session machinery
-as the CLI through the client and peer-crypto bindings. The transport wrapper
+as the CLI through the client and browser-session bindings. The transport wrapper
 differs: browsers use WSS/WebSocket fallback, WebRTC/DTLS, and WebTransport
 HTTP/3/QUIC where available, with browser APIs handling the underlying socket,
 TLS, and ICE mechanics. Native QUIC and browser WebTransport share ACIP

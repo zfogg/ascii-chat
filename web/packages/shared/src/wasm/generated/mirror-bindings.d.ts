@@ -338,6 +338,7 @@ type RgbaBytes = Uint8Array | Uint8ClampedArray;
 type VisualizationSamples = Float32Array;
 
 export interface MirrorFrameBinding extends ClassHandle {
+  reset(): void;
   convert(
     _0: RgbaBytes,
     _1: number,
@@ -379,7 +380,6 @@ interface EmbindModule {
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
-  sessionRenderResetStabilizer(): void;
   browser_capture_transform_required(): number;
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;

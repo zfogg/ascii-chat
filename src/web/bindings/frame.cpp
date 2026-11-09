@@ -17,6 +17,9 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 // remain owned by JavaScript. No heap view escapes this synchronous call.
 class MirrorFrameBinding {
 public:
+  void reset() {
+    session_render_reset_stabilizer();
+  }
   std::optional<std::string> convert(RgbaBytes rgba, int width, int height, bool contain) {
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length) {
@@ -89,12 +92,12 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
-  emscripten::function("sessionRenderResetStabilizer", &session_render_reset_stabilizer);
   emscripten::function("browser_capture_transform_required", &browser_capture_transform_required);
   emscripten::register_type<RgbaBytes>("RgbaBytes", "Uint8Array | Uint8ClampedArray");
   emscripten::register_type<VisualizationSamples>("VisualizationSamples", "Float32Array");
   emscripten::class_<MirrorFrameBinding>("MirrorFrameBinding")
       .constructor<>()
+      .function("reset", &MirrorFrameBinding::reset)
       .function("convert", &MirrorFrameBinding::convert)
       .function("transform", &MirrorFrameBinding::transform)
       .function("submitAudio", &MirrorFrameBinding::submitAudio)

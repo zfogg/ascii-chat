@@ -3,7 +3,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
 
-#include "security.h"
+#include <ascii-chat/network/browser/security.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
@@ -13,6 +13,7 @@
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <ascii-chat/network/acip/settings.h>
+#include <ascii-chat/network/browser/transport.h>
 
 static acip_render_settings_t remote_render_settings;
 
@@ -80,7 +81,6 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
@@ -98,118 +98,70 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/magic.h>
-#include <opus.h>
 #include <sodium.h>
 
 // ============================================================================
 // WASM Transport Implementation
 // ============================================================================
 
-/**
- * WASM transport that forwards complete ACIP packets to JavaScript
- */
-static asciichat_error_t browser_transport_send(acip_transport_t *transport, const void *data, size_t len) {
-
-  if (!transport || !data || !len)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser transport packet");
-
-  // Forward complete packet (header + payload) to JavaScript WebSocket bridge
-  js_send_raw_packet((const uint8_t *)data, len);
-
-  return ASCIICHAT_OK;
+static void wasm_transport_output(const void *data, size_t length, void *user_data) {
+  (void)user_data;
+  js_send_raw_packet((const uint8_t *)data, length);
 }
-
-static asciichat_error_t browser_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
-                                                void **out_allocated_buffer) {
-  // Not used - packets arrive via JavaScript callbacks
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "recv not supported on WASM transport");
-}
-
-static asciichat_error_t browser_transport_close(acip_transport_t *transport) {
-  return ASCIICHAT_OK; // Nothing to close
-}
-
-static acip_transport_type_t browser_transport_get_type(acip_transport_t *transport) {
-  return ACIP_TRANSPORT_WEBSOCKET; // Closest match
-}
-
-static socket_t browser_transport_get_socket(acip_transport_t *transport) {
-  return INVALID_SOCKET_VALUE;
-}
-
-static bool browser_transport_is_connected(acip_transport_t *transport) {
-  return true; // Always "connected" from WASM perspective
-}
-
-static const acip_transport_methods_t browser_transport_methods = {.send = browser_transport_send,
-                                                                   .recv = browser_transport_recv,
-                                                                   .close = browser_transport_close,
-                                                                   .get_type = browser_transport_get_type,
-                                                                   .get_socket = browser_transport_get_socket,
-                                                                   .is_connected = browser_transport_is_connected,
-                                                                   .destroy_impl = NULL};
-
-static acip_transport_t g_wasm_transport = {
-    .methods = &browser_transport_methods, .crypto_ctx = NULL, .impl_data = NULL};
 
 // ============================================================================
 // Global State
 // ============================================================================
 
-// Global state for client session
-static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
-static bool g_initialized = false;
-static bool g_handshake_complete = false;
-static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT;
-static bool g_version_received = false;
-static char g_crypto_password[WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE] = {0};
-static uint8_t g_client_identity_key[crypto_sign_SECRETKEYBYTES] = {0};
-static uint8_t g_expected_server_identity_key[crypto_sign_PUBLICKEYBYTES] = {0};
-static bool g_has_client_identity_key = false;
-static bool g_has_expected_server_identity_key = false;
+typedef struct client_state {
+  crypto_handshake_context_t crypto_handshake_ctx;
+  bool initialized;
+  bool handshake_complete;
+  uint8_t crypto_mode;
+  bool version_received;
+  char crypto_password[WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE];
+  uint8_t client_identity_key[crypto_sign_SECRETKEYBYTES];
+  uint8_t expected_server_identity_key[crypto_sign_PUBLICKEYBYTES];
+  bool has_client_identity_key;
+  bool has_expected_server_identity_key;
+} client_state_t;
 
-// Opus codec state
-static OpusEncoder *g_opus_encoder = NULL;
-static OpusDecoder *g_opus_decoder = NULL;
+static client_state_t *client_state(browser_transport_t *transport) {
+  return transport ? browser_transport_client_state(transport) : NULL;
+}
 
-// Connection state enum (exposed to JS)
-typedef enum {
-  CONNECTION_STATE_DISCONNECTED = 0,
-  CONNECTION_STATE_CONNECTING = 1,
-  CONNECTION_STATE_HANDSHAKE = 2,
-  CONNECTION_STATE_CONNECTED = 3,
-  CONNECTION_STATE_ERROR = 4
-} connection_state_t;
-
-static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
-
-static int apply_client_crypto_options(void) {
-  crypto_handshake_context_t *ctx = &g_crypto_handshake_ctx;
+static int apply_client_crypto_options(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
+    return -1;
+  }
+  crypto_handshake_context_t *ctx = &state->crypto_handshake_ctx;
   if (ctx->state != CRYPTO_HANDSHAKE_INIT) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not ready for crypto options");
     return -1;
   }
 
-  if (g_crypto_password[0] != '\0') {
-    crypto_result_t result = crypto_derive_password_key(&ctx->crypto_ctx, g_crypto_password);
+  if (state->crypto_password[0] != '\0') {
+    crypto_result_t result = crypto_derive_password_key(&ctx->crypto_ctx, state->crypto_password);
     if (result != CRYPTO_OK)
       return -1;
     ctx->crypto_ctx.has_password = true;
     ctx->has_password = true;
-    SAFE_STRNCPY(ctx->password, g_crypto_password, sizeof(ctx->password) - 1);
+    SAFE_STRNCPY(ctx->password, state->crypto_password, sizeof(ctx->password) - 1);
   }
 
-  if (g_has_client_identity_key) {
+  if (state->has_client_identity_key) {
     ctx->client_private_key.type = KEY_TYPE_ED25519;
-    memcpy(ctx->client_private_key.key.ed25519, g_client_identity_key, sizeof(g_client_identity_key));
-    memcpy(ctx->client_private_key.public_key, g_client_identity_key + crypto_sign_SEEDBYTES,
+    memcpy(ctx->client_private_key.key.ed25519, state->client_identity_key, sizeof(state->client_identity_key));
+    memcpy(ctx->client_private_key.public_key, state->client_identity_key + crypto_sign_SEEDBYTES,
            crypto_sign_PUBLICKEYBYTES);
-    memcpy(ctx->client_public_key.key, g_client_identity_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES);
+    memcpy(ctx->client_public_key.key, state->client_identity_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES);
     ctx->client_public_key.type = KEY_TYPE_ED25519;
   }
 
-  if (g_has_expected_server_identity_key) {
-    memcpy(ctx->expected_server_key_bytes, g_expected_server_identity_key, sizeof(ctx->expected_server_key_bytes));
+  if (state->has_expected_server_identity_key) {
+    memcpy(ctx->expected_server_key_bytes, state->expected_server_identity_key, sizeof(ctx->expected_server_key_bytes));
     ctx->expected_server_key_bytes_set = true;
     ctx->verify_server_key = true;
   }
@@ -217,26 +169,27 @@ static int apply_client_crypto_options(void) {
 }
 
 /** Configure browser-provided authentication material for the next handshake. */
-int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
+int client_configure_crypto_options(browser_transport_t *transport, const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key) {
-  if (!g_initialized) {
+  client_state_t *state = client_state(transport);
+  if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
   }
 
-  sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
-  sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
-  sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
-  g_has_client_identity_key = false;
-  g_has_expected_server_identity_key = false;
+  sodium_memzero(state->crypto_password, sizeof(state->crypto_password));
+  sodium_memzero(state->client_identity_key, sizeof(state->client_identity_key));
+  sodium_memzero(state->expected_server_identity_key, sizeof(state->expected_server_identity_key));
+  state->has_client_identity_key = false;
+  state->has_expected_server_identity_key = false;
 
   if (password && password[0] != '\0') {
-    size_t length = strnlen(password, sizeof(g_crypto_password));
-    if (length < 8 || length >= sizeof(g_crypto_password)) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Client password must contain 8 to %zu bytes", sizeof(g_crypto_password) - 1);
+    size_t length = strnlen(password, sizeof(state->crypto_password));
+    if (length < 8 || length >= sizeof(state->crypto_password)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client password must contain 8 to %zu bytes", sizeof(state->crypto_password) - 1);
       return -1;
     }
-    SAFE_STRNCPY(g_crypto_password, password, sizeof(g_crypto_password) - 1);
+    SAFE_STRNCPY(state->crypto_password, password, sizeof(state->crypto_password) - 1);
   }
 
   if (identity_secret_key) {
@@ -248,14 +201,14 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
       SET_ERRNO(ERROR_INVALID_PARAM, "Client identity secret key is invalid");
       return -1;
     }
-    memcpy(g_client_identity_key, identity_secret_key, sizeof(g_client_identity_key));
+    memcpy(state->client_identity_key, identity_secret_key, sizeof(state->client_identity_key));
     sodium_memzero(derived_public_key, sizeof(derived_public_key));
-    g_has_client_identity_key = true;
+    state->has_client_identity_key = true;
   }
 
   if (expected_server_public_key) {
-    memcpy(g_expected_server_identity_key, expected_server_public_key, sizeof(g_expected_server_identity_key));
-    g_has_expected_server_identity_key = true;
+    memcpy(state->expected_server_identity_key, expected_server_public_key, sizeof(state->expected_server_identity_key));
+    state->has_expected_server_identity_key = true;
   }
   return 0;
 }
@@ -394,10 +347,23 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
  * Initialize client mode with native defaults.
  * @return 0 on success, -1 on error
  */
-int client_init(void) {
+int client_init(browser_transport_t *transport) {
+  if (!transport)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize client without a browser transport");
+  client_state_t *state = client_state(transport);
+  if (!state) {
+    state = SAFE_CALLOC(1, sizeof(*state), client_state_t *);
+    if (!state)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser client state");
+    state->crypto_mode = ACIP_CRYPTO_ENCRYPT;
+    browser_transport_set_client_state(transport, state);
+  }
   // The module, renderers, and allocator outlive individual connections.
-  if (g_initialized)
+  if (state->initialized) {
+    browser_transport_set_output_callback(transport, wasm_transport_output, NULL);
+    browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
     return 0;
+  }
   char *argv[] = {"client", NULL};
   asciichat_error_t err = options_init(1, argv);
   if (err != ASCIICHAT_OK)
@@ -422,30 +388,37 @@ int client_init(void) {
   // Initialize ANSI color code generation
   ansi_fast_init();
 
-  g_initialized = true;
-  g_connection_state = CONNECTION_STATE_DISCONNECTED;
+  browser_transport_set_output_callback(transport, wasm_transport_output, NULL);
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
+
+  state->initialized = true;
 
   return 0;
 }
 
-void client_cleanup(void) {
+void client_cleanup(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return;
   remote_render_settings = (acip_render_settings_t){0};
   errno_destroy();
 
   // Clean up crypto handshake context
-  crypto_handshake_destroy(&g_crypto_handshake_ctx);
-  memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+  crypto_handshake_destroy(&state->crypto_handshake_ctx);
+  memset(&state->crypto_handshake_ctx, 0, sizeof(state->crypto_handshake_ctx));
 
-  g_handshake_complete = false;
-  g_wasm_transport.crypto_ctx = NULL;
-  g_connection_state = CONNECTION_STATE_DISCONNECTED;
-  sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
-  sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
-  sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
-  g_has_client_identity_key = false;
-  g_has_expected_server_identity_key = false;
+  state->handshake_complete = false;
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
+  sodium_memzero(state->crypto_password, sizeof(state->crypto_password));
+  sodium_memzero(state->client_identity_key, sizeof(state->client_identity_key));
+  sodium_memzero(state->expected_server_identity_key, sizeof(state->expected_server_identity_key));
+  state->has_client_identity_key = false;
+  state->has_expected_server_identity_key = false;
+  state->initialized = false;
   // Keep module-wide options and buffer domains alive while browser renderers
   // still reference them. Connection cleanup only resets authentication state.
+  SAFE_FREE(state);
+  browser_transport_set_client_state(transport, NULL);
 }
 
 // ============================================================================
@@ -456,33 +429,33 @@ void client_cleanup(void) {
  * Generate client keypair for handshake
  * @return 0 on success, -1 on error
  */
-int client_generate_keypair(void) {
-
-  if (!g_initialized) {
+int client_generate_keypair(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
   }
 
   // A replacement handshake must not retain the previous connection's sequence state.
   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
-  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-    crypto_handshake_destroy(&g_crypto_handshake_ctx);
-    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-    g_handshake_complete = false;
+  if (state->crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+    crypto_handshake_destroy(&state->crypto_handshake_ctx);
+    memset(&state->crypto_handshake_ctx, 0, sizeof(state->crypto_handshake_ctx));
+    state->handshake_complete = false;
   }
 
   // Initialize crypto handshake context
-  asciichat_error_t result = crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false /* is_server */);
+  asciichat_error_t result = crypto_handshake_init("wasm-client", &state->crypto_handshake_ctx, false /* is_server */);
   if (result != ASCIICHAT_OK) {
     return -1;
   }
-  if (apply_client_crypto_options() != 0) {
-    crypto_handshake_destroy(&g_crypto_handshake_ctx);
-    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+  if (apply_client_crypto_options(transport) != 0) {
+    crypto_handshake_destroy(&state->crypto_handshake_ctx);
+    memset(&state->crypto_handshake_ctx, 0, sizeof(state->crypto_handshake_ctx));
     return -1;
   }
 
-  g_connection_state = CONNECTION_STATE_DISCONNECTED;
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
   return 0;
 }
 
@@ -492,8 +465,9 @@ int client_generate_keypair(void) {
  * @param server_port Server port number
  * @return 0 on success, -1 on error
  */
-int client_set_server_address(const char *server_host, int server_port) {
-  if (!g_initialized) {
+int client_set_server_address(browser_transport_t *transport, const char *server_host, int server_port) {
+  client_state_t *state = client_state(transport);
+  if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
   }
@@ -504,256 +478,19 @@ int client_set_server_address(const char *server_host, int server_port) {
   }
 
   // Set server IP and port in handshake context
-  SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
-  g_crypto_handshake_ctx.server_port = server_port;
+  SAFE_STRNCPY(state->crypto_handshake_ctx.server_ip, server_host, sizeof(state->crypto_handshake_ctx.server_ip));
+  state->crypto_handshake_ctx.server_port = server_port;
 
   return 0;
 }
 
-const uint8_t *client_public_key_bytes(void) {
-  if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
+const uint8_t *client_public_key_bytes(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state || state->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not initialized");
     return NULL;
   }
-  return g_crypto_handshake_ctx.crypto_ctx.public_key;
-}
-
-/**
- * Handle CRYPTO_KEY_EXCHANGE_INIT packet from server
- * This is the first step of the crypto handshake
- * @param packet Raw packet data including header
- * @param packet_len Total packet length
- * @return 0 on success, -1 on error
- */
-int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
-
-  // Safety check: if handshake context is not in INIT state, reinitialize it
-  // This handles cases where previous handshakes weren't properly cleaned up
-  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
-
-    // Destroy and reset
-    if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-      crypto_handshake_destroy(&g_crypto_handshake_ctx);
-    }
-    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-
-    // Reinitialize to INIT state
-    asciichat_error_t init_result = crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false);
-    if (init_result != ASCIICHAT_OK) {
-      return -1;
-    }
-    if (apply_client_crypto_options() != 0)
-      return -1;
-  }
-
-  if (!packet || packet_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client handshake packet");
-    return -1;
-  }
-
-  // Extract packet type and payload
-  if (packet_len < sizeof(packet_header_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake packet is shorter than its header");
-    return -1;
-  }
-
-  const packet_header_t *header = (const packet_header_t *)packet;
-  packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload_src = packet + sizeof(packet_header_t);
-  size_t payload_len = packet_len - sizeof(packet_header_t);
-
-  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
-  // The raw packet pointer from JS cannot be passed directly because the crypto
-  // handshake function calls buffer_release() on the payload when done.
-  uint8_t *payload = NULL;
-  if (payload_len > 0) {
-    payload = buffer_alloc(NULL, payload_len);
-    if (!payload) {
-      g_connection_state = CONNECTION_STATE_ERROR;
-      return -1;
-    }
-    memcpy(payload, payload_src, payload_len);
-  }
-
-  // Process key exchange using transport-abstracted handshake
-
-  asciichat_error_t result = crypto_handshake_client_key_exchange(&g_crypto_handshake_ctx, &g_wasm_transport,
-                                                                  packet_type, payload, payload_len);
-
-  if (result != ASCIICHAT_OK) {
-    g_connection_state = CONNECTION_STATE_ERROR;
-    return -1;
-  }
-
-  g_connection_state = CONNECTION_STATE_HANDSHAKE;
-  return 0;
-}
-
-/**
- * Handle CRYPTO_PARAMETERS packet from server
- * Sets up the key size negotiation before KEY_EXCHANGE_INIT
- * @param packet Raw packet data including header
- * @param packet_len Total packet length
- * @return 0 on success, -1 on error
- */
-int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
-
-  if (!packet || packet_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client crypto parameters packet");
-    return -1;
-  }
-
-  // Discovery sends CRYPTO_PARAMETERS before KEY_EXCHANGE_INIT. Initialize
-  // here so the negotiated values survive the subsequent key exchange packet.
-  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
-    if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-      crypto_handshake_destroy(&g_crypto_handshake_ctx);
-    }
-    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-    if (crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false) != ASCIICHAT_OK) {
-      return -1;
-    }
-    if (apply_client_crypto_options() != 0)
-      return -1;
-  }
-
-  // Extract packet type and payload
-  if (packet_len < sizeof(packet_header_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Client crypto parameters packet is shorter than its header");
-    return -1;
-  }
-
-  const packet_header_t *header = (const packet_header_t *)packet;
-  packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload_src = packet + sizeof(packet_header_t);
-  size_t payload_len = packet_len - sizeof(packet_header_t);
-
-  // Allocate payload copy from buffer domain
-  uint8_t *payload = NULL;
-  if (payload_len > 0) {
-    payload = buffer_alloc(NULL, payload_len);
-    if (!payload) {
-      g_connection_state = CONNECTION_STATE_ERROR;
-      return -1;
-    }
-    memcpy(payload, payload_src, payload_len);
-  }
-
-  // Process crypto parameters
-  asciichat_error_t result =
-      crypto_handshake_set_parameters(&g_crypto_handshake_ctx, (const crypto_parameters_packet_t *)payload);
-
-  // Free payload
-  if (payload) {
-    buffer_release(payload);
-  }
-
-  if (result != ASCIICHAT_OK) {
-    g_connection_state = CONNECTION_STATE_ERROR;
-    return -1;
-  }
-
-  return 0;
-}
-
-/**
- * Handle CRYPTO_AUTH_CHALLENGE packet from server
- * @param packet Raw packet data including header
- * @param packet_len Total packet length
- * @return 0 on success, -1 on error
- */
-int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
-
-  if (!packet || packet_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client authentication challenge packet");
-    return -1;
-  }
-
-  // Extract packet type and payload
-  if (packet_len < sizeof(packet_header_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Client authentication challenge is shorter than its header");
-    return -1;
-  }
-
-  const packet_header_t *header = (const packet_header_t *)packet;
-  packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload_src = packet + sizeof(packet_header_t);
-  size_t payload_len = packet_len - sizeof(packet_header_t);
-
-  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
-  uint8_t *payload = NULL;
-  if (payload_len > 0) {
-    payload = buffer_alloc(NULL, payload_len);
-    if (!payload) {
-      g_connection_state = CONNECTION_STATE_ERROR;
-      return -1;
-    }
-    memcpy(payload, payload_src, payload_len);
-  }
-
-  // Process auth challenge
-  asciichat_error_t result = crypto_handshake_client_auth_response(&g_crypto_handshake_ctx, &g_wasm_transport,
-                                                                   packet_type, payload, payload_len);
-
-  if (result != ASCIICHAT_OK) {
-    g_connection_state = CONNECTION_STATE_ERROR;
-    return -1;
-  }
-
-  return 0;
-}
-
-/**
- * Handle CRYPTO_HANDSHAKE_COMPLETE packet from server
- * @param packet Raw packet data including header
- * @param packet_len Total packet length
- * @return 0 on success, -1 on error
- */
-int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
-
-  if (!packet || packet_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client handshake completion packet");
-    return -1;
-  }
-
-  // Extract packet type and payload
-  if (packet_len < sizeof(packet_header_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake completion is shorter than its header");
-    return -1;
-  }
-
-  const packet_header_t *header = (const packet_header_t *)packet;
-  packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload_src = packet + sizeof(packet_header_t);
-  size_t payload_len = packet_len - sizeof(packet_header_t);
-
-  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
-  uint8_t *payload = NULL;
-  if (payload_len > 0) {
-    payload = buffer_alloc(NULL, payload_len);
-    if (!payload) {
-      g_connection_state = CONNECTION_STATE_ERROR;
-      return -1;
-    }
-    memcpy(payload, payload_src, payload_len);
-  }
-
-  // Complete handshake (takes ownership of payload and will free it)
-  asciichat_error_t result =
-      crypto_handshake_client_complete(&g_crypto_handshake_ctx, &g_wasm_transport, packet_type, payload, payload_len);
-
-  if (result != ASCIICHAT_OK) {
-    g_connection_state = CONNECTION_STATE_ERROR;
-    return -1;
-  }
-
-  g_handshake_complete = true;
-  g_connection_state = CONNECTION_STATE_CONNECTED;
-
-  // Update transport with the crypto context so ACIP can encrypt/decrypt packets
-  g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
-
-  return 0;
+  return state->crypto_handshake_ctx.crypto_ctx.public_key;
 }
 
 // ============================================================================
@@ -769,9 +506,10 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
  * @param out_len Output parameter for ciphertext length
  * @return 0 on success, -1 on error
  */
-int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
+int client_encrypt_packet(browser_transport_t *transport, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                           size_t *out_len) {
-  if (!g_handshake_complete) {
+  client_state_t *state = client_state(transport);
+  if (!state || !state->handshake_complete) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
     return -1;
   }
@@ -791,7 +529,7 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
   }
   memcpy(&header, plaintext, sizeof(header));
   acip_traffic_class_t channel = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
-  asciichat_error_t result = acip_security_seal(&g_crypto_handshake_ctx.crypto_ctx, channel, ACIP_DELIVERY_RELIABLE,
+  asciichat_error_t result = acip_security_seal(&state->crypto_handshake_ctx.crypto_ctx, channel, ACIP_DELIVERY_RELIABLE,
                                                 plaintext, plaintext_len, &wire, &length);
   if (result == ASCIICHAT_OK) {
     *out_len = length - sizeof(packet_header_t);
@@ -810,9 +548,10 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
  * @param out_len Output parameter for plaintext length
  * @return 0 on success, -1 on error
  */
-int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
+int client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len) {
-  if (!g_handshake_complete) {
+  client_state_t *state = client_state(transport);
+  if (!state || !state->handshake_complete) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
     return -1;
   }
@@ -827,7 +566,7 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
   uint64_t sequence;
   bool consumed = false;
   asciichat_error_t result =
-      acip_security_decrypt(&g_crypto_handshake_ctx.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE,
+      acip_security_decrypt(&state->crypto_handshake_ctx.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE,
                             ciphertext, ciphertext_len, &plain, &length, &sequence, &consumed);
   if (result == ASCIICHAT_OK && !consumed) {
     memcpy(plaintext, plain, length);
@@ -845,203 +584,83 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
  * Get current connection state
  * @return Connection state enum value
  */
-int client_get_connection_state(void) {
-  return (int)g_connection_state;
+int client_get_connection_state(const browser_transport_t *transport) {
+  return transport ? (int)browser_transport_state(transport) : BROWSER_TRANSPORT_DISCONNECTED;
 }
 
-// ============================================================================
-// Opus Audio Codec API
-// ============================================================================
-
-/**
- * Initialize Opus encoder
- * @param sample_rate Sample rate (8000, 16000, 24000, or 48000)
- * @param channels Number of channels (1=mono, 2=stereo)
- * @param bitrate Target bitrate in bits/sec
- * @return 0 on success, -1 on error
- */
-int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
-  if (g_opus_encoder) {
-    opus_encoder_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-  }
-
-  int error;
-  g_opus_encoder = opus_encoder_create(sample_rate, channels,
-                                       bitrate >= 128000 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP, &error);
-  if (error != OPUS_OK || !g_opus_encoder) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize Opus encoder: %s", opus_strerror(error));
-    return -1;
-  }
-
-  // Set bitrate
-  if (opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
-    opus_encoder_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder bitrate: %d", bitrate);
-    return -1;
-  }
-
-  return 0;
+asciichat_error_t client_acds_handshake_begin(browser_transport_t *transport, uint8_t mode) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
+  state->crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  return acds_handshake_begin(browser_transport_base(transport), mode);
 }
-
-/**
- * Initialize Opus decoder
- * @param sample_rate Sample rate (8000, 16000, 24000, or 48000)
- * @param channels Number of channels (1=mono, 2=stereo)
- * @return 0 on success, -1 on error
- */
-int client_opus_decoder_init(int sample_rate, int channels) {
-  if (g_opus_decoder) {
-    opus_decoder_destroy(g_opus_decoder);
-    g_opus_decoder = NULL;
-  }
-
-  int error;
-  g_opus_decoder = opus_decoder_create(sample_rate, channels, &error);
-  if (error != OPUS_OK || !g_opus_decoder) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize Opus decoder: %s", opus_strerror(error));
-    return -1;
-  }
-
-  return 0;
-}
-
-/**
- * Encode PCM audio to Opus
- * @param pcm_data Input PCM data (Int16 samples)
- * @param frame_size Number of samples per channel
- * @param opus_data Output buffer for Opus data
- * @param max_opus_bytes Maximum size of output buffer
- * @return Number of bytes encoded, or -1 on error
- */
-int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_data, int max_opus_bytes) {
-  if (!g_opus_encoder) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Opus encoder is not initialized");
-    return -1;
-  }
-
-  if (!pcm_data || !opus_data || frame_size <= 0 || max_opus_bytes <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder buffers or lengths");
-    return -1;
-  }
-
-  int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
-  if (encoded_bytes < 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Opus encoding failed: %s", opus_strerror(encoded_bytes));
-    return -1;
-  }
-
-  return encoded_bytes;
-}
-
-/**
- * Decode Opus audio to PCM
- * @param opus_data Input Opus data
- * @param opus_bytes Length of Opus data
- * @param pcm_data Output buffer for PCM samples (Int16)
- * @param frame_size Maximum number of samples per channel
- * @param decode_fec Whether to use FEC
- * @return Number of samples decoded per channel, or -1 on error
- */
-int client_opus_decode(const uint8_t *opus_data, int opus_bytes, int16_t *pcm_data, int frame_size, int decode_fec) {
-  if (!g_opus_decoder) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Opus decoder is not initialized");
-    return -1;
-  }
-
-  if ((!opus_data && opus_bytes > 0) || opus_bytes < 0 || !pcm_data || frame_size <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus decoder buffers or lengths");
-    return -1;
-  }
-
-  int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
-  if (decoded_samples < 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Opus decoding failed: %s", opus_strerror(decoded_samples));
-    return -1;
-  }
-
-  return decoded_samples;
-}
-
-/**
- * Cleanup Opus encoder
- */
-void client_opus_encoder_cleanup(void) {
-  if (g_opus_encoder) {
-    opus_encoder_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-  }
-}
-
-/**
- * Cleanup Opus decoder
- */
-void client_opus_decoder_cleanup(void) {
-  if (g_opus_decoder) {
-    opus_decoder_destroy(g_opus_decoder);
-    g_opus_decoder = NULL;
-  }
-}
-
-asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
-  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
-  return acds_handshake_begin(&g_wasm_transport, mode);
-}
-asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
-  asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
+asciichat_error_t client_acds_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
+  asciichat_error_t result = acds_handshake_receive(&state->crypto_handshake_ctx, browser_transport_base(transport), type, payload, length);
   if (result != ASCIICHAT_OK) {
-    g_connection_state = CONNECTION_STATE_ERROR;
+    browser_transport_set_state(transport, BROWSER_TRANSPORT_ERROR);
     return result;
   }
-  if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    g_handshake_complete = true;
-    g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
-    g_connection_state = CONNECTION_STATE_CONNECTED;
+  if (state->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+    state->handshake_complete = true;
+    browser_transport_base(transport)->crypto_ctx = &state->crypto_handshake_ctx.crypto_ctx;
+    browser_transport_set_state(transport, BROWSER_TRANSPORT_CONNECTED);
   } else {
-    g_connection_state = CONNECTION_STATE_HANDSHAKE;
+    browser_transport_set_state(transport, BROWSER_TRANSPORT_HANDSHAKE);
   }
   return ASCIICHAT_OK;
 }
 
 /** Resolve browser inputs through the same policy as native and mobile clients. */
-int client_resolve_crypto_policy(bool secure, int encryption) {
+int client_resolve_crypto_policy(browser_transport_t *transport, bool secure, int encryption) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
   crypto_policy_t policy = {
       .transport_secure = secure,
       .encrypt = encryption == 1,
       .no_encrypt = encryption == 0,
-      .has_password = g_crypto_password[0] != '\0',
-      .has_identity = g_has_client_identity_key,
-      .has_verification_key = g_has_expected_server_identity_key,
+      .has_password = state->crypto_password[0] != '\0',
+      .has_identity = state->has_client_identity_key,
+      .has_verification_key = state->has_expected_server_identity_key,
   };
   uint8_t mode;
   if (crypto_policy_resolve(&policy, &mode) != ASCIICHAT_OK)
     return -1;
-  g_crypto_mode = mode;
+  state->crypto_mode = mode;
   return mode;
 }
 
-asciichat_error_t client_handshake_begin(void) {
-  g_connection_state = CONNECTION_STATE_CONNECTING;
-  g_version_received = false;
-  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
-  return acds_handshake_begin(&g_wasm_transport, g_crypto_mode);
+asciichat_error_t client_handshake_begin(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_CONNECTING);
+  state->version_received = false;
+  state->crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode);
+  return acds_handshake_begin(browser_transport_base(transport), state->crypto_mode);
 }
 
-asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length) {
-  if (!g_version_received && type != PACKET_TYPE_PROTOCOL_VERSION)
+asciichat_error_t client_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
+  if (!state->version_received && type != PACKET_TYPE_PROTOCOL_VERSION)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected server protocol version first");
   if (type == PACKET_TYPE_PROTOCOL_VERSION) {
-    if (g_version_received)
+    if (state->version_received)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Duplicate server protocol version");
     if (!payload || length != sizeof(protocol_version_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
     const protocol_version_packet_t *version = payload;
-    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != g_crypto_mode)
+    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != state->crypto_mode)
       return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
-    g_version_received = true;
-    if (g_crypto_mode == ACIP_CRYPTO_NONE) {
-      g_connection_state = CONNECTION_STATE_CONNECTED;
+    state->version_received = true;
+    if (state->crypto_mode == ACIP_CRYPTO_NONE) {
+      browser_transport_set_state(transport, BROWSER_TRANSPORT_CONNECTED);
       return ASCIICHAT_OK;
     }
     crypto_capabilities_packet_t caps = {0};
@@ -1049,23 +668,23 @@ asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, s
     caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
     caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
     caps.preferred_kex = KEX_ALGO_X25519;
-    caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
-    caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
-    caps.requires_verification = g_has_expected_server_identity_key;
+    caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(state->crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+    caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    caps.requires_verification = state->has_expected_server_identity_key;
     asciichat_error_t result =
-        packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
-    if (result != ASCIICHAT_OK || !g_has_expected_server_identity_key)
+        packet_send_via_transport(browser_transport_base(transport), PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    if (result != ASCIICHAT_OK || !state->has_expected_server_identity_key)
       return result;
-    return packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, g_expected_server_identity_key,
-                                     sizeof(g_expected_server_identity_key), 0);
+    return packet_send_via_transport(browser_transport_base(transport), PACKET_TYPE_CRYPTO_CLIENT_HELLO, state->expected_server_identity_key,
+                                     sizeof(state->expected_server_identity_key), 0);
   }
   if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
     if (!payload || length != sizeof(crypto_parameters_packet_t) ||
         (((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
-            ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode))
+            ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode))
       return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
   }
-  return client_acds_handshake_receive(type, payload, length);
+  return client_acds_handshake_receive(transport, type, payload, length);
 }
 
 /* Browser transport marshals framing, then invokes the SAME network content
@@ -1105,6 +724,7 @@ asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_l
   return decompress_data_exact(encoded, encoded_length, output, output_length);
 }
 
-crypto_context_t *client_security_context(void) {
-  return g_handshake_complete ? &g_crypto_handshake_ctx.crypto_ctx : NULL;
+crypto_context_t *client_security_context(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  return state && state->handshake_complete ? &state->crypto_handshake_ctx.crypto_ctx : NULL;
 }

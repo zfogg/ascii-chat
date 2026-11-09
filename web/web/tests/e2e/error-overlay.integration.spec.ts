@@ -193,9 +193,9 @@ for (const encryption of [false, true]) {
       incoming = incoming.then(() =>
         endpoint.evaluate(async (encryption) => {
           const url = "/src/wasm/client.ts";
-          const { PeerCryptoSession } = await import(/* @vite-ignore */ url);
+          const { BrowserSession } = await import(/* @vite-ignore */ url);
           window.__errorPeer?.close();
-          window.__errorPeer = await PeerCryptoSession.create(
+          window.__errorPeer = await BrowserSession.create(
             {},
             encryption,
             true,
@@ -322,7 +322,7 @@ for (const encryption of [false, true]) {
 
 declare global {
   interface Window {
-    __errorPeer?: import("../../src/wasm/client").PeerCryptoSession;
+    __errorPeer?: import("../../src/wasm/client").BrowserSession;
     __errorConnection?: import("../../src/network/ClientConnection").ClientConnection;
     __errorStates: number[];
     __errorReports: string[];
@@ -338,17 +338,28 @@ for (const terminalCode of [48, 53]) {
     await page.evaluate(async () => {
       const engineUrl = "/src/wasm/client.ts";
       const sessionUrl = "/src/network/WebRTCSession.ts";
-      const { initClientWasm, PeerCryptoSession, serializePacket, PacketType } =
+      const { initClientWasm, BrowserSession, processClientEvent, PacketType } =
         await import(/* @vite-ignore */ engineUrl);
       const { WebRTCSession } = await import(/* @vite-ignore */ sessionUrl);
       await initClientWasm();
+      const serializePacket = (packetType: number, payload: Uint8Array) => {
+        const result = processClientEvent({
+          type: "serialize",
+          packetType,
+          payload,
+          clientId: 0,
+        });
+        if (result.code || !result.bytes)
+          throw new Error("Serialization failed");
+        return result.bytes;
+      };
       const remote = new RTCPeerConnection({ iceServers: [] });
       const channel = remote.createDataChannel("acip", {
         negotiated: true,
         id: 0,
         ordered: true,
       });
-      const crypto = await PeerCryptoSession.create(
+      const crypto = await BrowserSession.create(
         {},
         true,
         true,
@@ -365,7 +376,7 @@ for (const terminalCode of [48, 53]) {
         if (crypto.ready && !acknowledged) {
           acknowledged = true;
           crypto.sendPacket(
-            serializePacket(PacketType.SERVER_STATE, new Uint8Array(), 0),
+            serializePacket(PacketType.SERVER_STATE, new Uint8Array()),
           );
         }
       };
@@ -431,12 +442,18 @@ for (const terminalCode of [48, 53]) {
         .toContain(2003);
       await page.evaluate(async () => {
         const url = "/src/wasm/client.ts";
-        const { serializePacket, PacketType } = await import(
+        const { processClientEvent, PacketType } = await import(
           /* @vite-ignore */ url
         );
-        window.__rtcError!.crypto.sendPacket(
-          serializePacket(PacketType.PING, new Uint8Array(8), 0),
-        );
+        const result = processClientEvent({
+          type: "serialize",
+          packetType: PacketType.PING,
+          payload: new Uint8Array(8),
+          clientId: 0,
+        });
+        if (result.code || !result.bytes)
+          throw new Error("Serialization failed");
+        window.__rtcError!.crypto.sendPacket(result.bytes);
       });
       await expect
         .poll(() => page.evaluate(() => window.__rtcError!.received))
@@ -468,7 +485,7 @@ declare global {
     __rtcError?: {
       session: import("../../src/network/WebRTCSession").WebRTCSession;
       remote: RTCPeerConnection;
-      crypto: import("../../src/wasm/client").PeerCryptoSession;
+      crypto: import("../../src/wasm/client").BrowserSession;
       received: number[];
     };
   }

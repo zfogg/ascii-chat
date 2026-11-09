@@ -6,6 +6,7 @@ extern "C" {
 
 #include <cstddef>
 #include <cstdint>
+#include <opus.h>
 #include <string>
 #include <vector>
 
@@ -70,28 +71,30 @@ private:
   std::vector<float> scratch_;
 };
 
-static bool opus_codec_in_use = false;
-
-// The underlying client codec is module-local. Scratch is allocated before
-// audio callbacks and retained for the lifetime of this codec.
 class OpusCodecBinding {
 public:
   OpusCodecBinding(int sample_rate, int channels, int bitrate, unsigned max_packet) : channels_(channels) {
-    if (opus_codec_in_use) {
-      SET_ERRNO(ERROR_AUDIO_IN_USE, "Browser Opus codec is already in use");
-      return;
-    }
     if (sample_rate <= 0 || sample_rate > 48000 || (channels != 1 && channels != 2) || !max_packet) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus codec configuration");
       return;
     }
-    if (client_opus_encoder_init(sample_rate, channels, bitrate) != 0) {
-      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus encoder");
+    int error = OPUS_OK;
+    encoder_ = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_AUDIO, &error);
+    if (error != OPUS_OK || !encoder_) {
+      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus encoder: %s", opus_strerror(error));
       return;
     }
-    if (client_opus_decoder_init(sample_rate, channels) != 0) {
-      client_opus_encoder_cleanup();
-      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus decoder");
+    if (opus_encoder_ctl(encoder_, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
+      opus_encoder_destroy(encoder_);
+      encoder_ = nullptr;
+      SET_ERRNO(ERROR_AUDIO, "Cannot configure browser Opus encoder");
+      return;
+    }
+    decoder_ = opus_decoder_create(sample_rate, channels, &error);
+    if (error != OPUS_OK || !decoder_) {
+      opus_encoder_destroy(encoder_);
+      encoder_ = nullptr;
+      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus decoder: %s", opus_strerror(error));
       return;
     }
     const size_t frame = (static_cast<size_t>(sample_rate) * 12 + 99) / 100;
@@ -99,14 +102,12 @@ public:
     encoded_.resize(max_packet);
     input_.resize(65535);
     initialized_ = true;
-    opus_codec_in_use = true;
   }
   ~OpusCodecBinding() {
-    if (initialized_) {
-      client_opus_encoder_cleanup();
-      client_opus_decoder_cleanup();
-      opus_codec_in_use = false;
-    }
+    if (encoder_)
+      opus_encoder_destroy(encoder_);
+    if (decoder_)
+      opus_decoder_destroy(decoder_);
   }
   OpusCodecBinding(const OpusCodecBinding &) = delete;
   OpusCodecBinding &operator=(const OpusCodecBinding &) = delete;
@@ -126,8 +127,8 @@ public:
     }
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, pcm_.data()));
     view.call<void>("set", samples);
-    const int size = client_opus_encode(pcm_.data(), static_cast<int>(count / channels_), encoded_.data(),
-                                        static_cast<int>(encoded_.size()));
+    const int size = opus_encode(encoder_, pcm_.data(), static_cast<int>(count / channels_), encoded_.data(),
+                                 static_cast<int>(encoded_.size()));
     if (size < 0) {
       SET_ERRNO(ERROR_AUDIO, "Browser Opus encoding failed");
       return NullableOpusBytes(emscripten::val::null());
@@ -148,7 +149,7 @@ public:
     }
     if (count)
       emscripten::val(emscripten::typed_memory_view(count, input_.data())).call<void>("set", packet);
-    const int samples = client_opus_decode(input_.data(), static_cast<int>(count), pcm_.data(), frame_size, 0);
+    const int samples = opus_decode(decoder_, input_.data(), static_cast<int>(count), pcm_.data(), frame_size, 0);
     if (samples < 0) {
       SET_ERRNO(ERROR_AUDIO, "Browser Opus decoding failed");
       return NullablePcmSamples(emscripten::val::null());
@@ -162,6 +163,8 @@ public:
 private:
   int channels_;
   bool initialized_ = false;
+  OpusEncoder *encoder_ = nullptr;
+  OpusDecoder *decoder_ = nullptr;
   std::vector<int16_t> pcm_;
   std::vector<uint8_t> encoded_, input_;
 };

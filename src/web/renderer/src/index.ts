@@ -52,7 +52,6 @@ export type RendererModule = Pick<
   | "browser_options_revision"
   | "patchOptions"
   | "readOptions"
-  | "sessionRenderResetStabilizer"
   | "MirrorFrameBinding"
   | "AsciiRendererBinding"
   | "TestPatternBinding"
@@ -164,7 +163,7 @@ export class AsciiRenderer {
   }
   reset(): void {
     this.check();
-    this.module.sessionRenderResetStabilizer();
+    this.frame.reset();
   }
   /** Rasterize an ANSI frame to the supplied canvas with the native terminal renderer. */
   draw(

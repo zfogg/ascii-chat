@@ -1,4 +1,9 @@
-export { createWasmModule, getWasmAssetUrl } from "./assetUrl";
+export {
+  createWasmModule,
+  getWasmAssetUrl,
+  getWasmCapabilities,
+} from "./assetUrl";
+export type { WasmCapabilityManifest } from "./assetUrl";
 export type { ClientLikeKind } from "./assetUrl";
 export {
   initMirrorWasm,
@@ -10,7 +15,6 @@ export {
   convertFrameToAscii,
   transformCaptureRgba,
   submitAudioVisualizationSamples,
-  submitAudioSamples,
   renderAudioVisualization,
   renderAudioVisualizationFrame,
   isWasmReady,
@@ -40,7 +44,7 @@ export type { SessionUiEvent } from "../components/AsciiRenderer/types";
 export type {
   AudioProcessorBinding,
   OpusCodecBinding,
-  PeerCryptoBinding,
+  BrowserSessionBinding,
   DiscoveryBinding,
   HostPacketBinding,
   AVStateBinding,

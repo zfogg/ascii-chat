@@ -1,105 +1,45 @@
-#include "peer_crypto.h"
+#include <ascii-chat/network/browser/session.h>
+#include <ascii-chat/network/browser/transport.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/util/endian.h>
-#include "security.h"
+#include <ascii-chat/network/browser/security.h>
 #include <emscripten.h>
 #include <string.h>
 
-typedef struct peer_output {
-  struct peer_output *next;
-  void *data;
-  size_t length;
-} peer_output_t;
-
-struct browser_peer_crypto {
+struct browser_session {
   acip_security_t security;
   bool quic_handshake;
-  acip_transport_t transport;
-  peer_output_t *output, *tail;
+  browser_transport_t *browser;
   void *received;
   size_t received_length;
 };
 
-const char *peer_crypto_error(void) {
+const char *browser_session_error(void) {
   static asciichat_error_context_t error;
   return HAS_ERRNO(&error) ? error.context_message : "Peer security operation failed";
 }
 
-static asciichat_error_t peer_send(acip_transport_t *transport, const void *data, size_t length) {
-  browser_peer_crypto_t *peer = transport->impl_data;
-  socket_buffer_t input = {.data = data, .len = length};
-  acip_packet_plan_t plan;
-  crypto_context_t *send_crypto = peer->security.ready ? transport->crypto_ctx : NULL;
-  asciichat_error_t result = acip_packet_plan(send_crypto, &input, 1, &plan);
-  if (result != ASCIICHAT_OK)
-    return result;
-  peer_output_t *output = SAFE_CALLOC(1, sizeof(*output), peer_output_t *);
-  if (!output)
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer output");
-  output->length = plan.encrypt ? sizeof(packet_header_t) + plan.ciphertext_capacity : length;
-  output->data = buffer_alloc(plan.domain, output->length);
-  if (!output->data) {
-    SAFE_FREE(output);
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer packet");
-  }
-  if (plan.encrypt) {
-    packet_header_t header;
-    size_t encrypted_length = 0;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header),
-                                 plan.ciphertext_capacity, &header, &encrypted_length);
-    if (result != ASCIICHAT_OK) {
-      buffer_release(output->data);
-      SAFE_FREE(output);
-      return result;
-    }
-    memcpy(output->data, &header, sizeof(header));
-    output->length = sizeof(header) + encrypted_length;
-  } else {
-    memcpy(output->data, data, length);
-  }
-  if (peer->tail)
-    peer->tail->next = output;
-  else
-    peer->output = output;
-  peer->tail = output;
-  return ASCIICHAT_OK;
+void browser_session_output_pop(browser_session_t *peer) {
+  if (peer)
+    browser_transport_output_pop(peer->browser);
 }
 
-static bool peer_connected(acip_transport_t *transport) {
-  (void)transport;
-  return true;
-}
-
-static const acip_transport_methods_t peer_methods = {.send = peer_send, .is_connected = peer_connected};
-
-void peer_crypto_output_pop(browser_peer_crypto_t *peer) {
-  if (!peer || !peer->output)
-    return;
-  peer_output_t *output = peer->output;
-  peer->output = output->next;
-  if (!peer->output)
-    peer->tail = NULL;
-  buffer_release(output->data);
-  SAFE_FREE(output);
-}
-
-void peer_crypto_destroy(browser_peer_crypto_t *peer) {
+void browser_session_destroy(browser_session_t *peer) {
   if (!peer)
     return;
-  while (peer->output)
-    peer_crypto_output_pop(peer);
   buffer_release(peer->received);
   acip_security_cleanup(&peer->security);
+  browser_transport_destroy(peer->browser);
   SAFE_FREE(peer);
 }
 
-browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
+browser_session_t *browser_session_create(bool server, int encryption, const char *password, const uint8_t *identity,
                                           const uint8_t *expected_key) {
-  browser_peer_crypto_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_peer_crypto_t *);
+  browser_session_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_session_t *);
   if (!peer) {
     SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security state");
     return NULL;
@@ -118,7 +58,7 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
     result = policy.has_password ? crypto_handshake_init_with_password("browser_peer", ctx, server, password)
                                  : crypto_handshake_init("browser_peer", ctx, server);
   if (result != ASCIICHAT_OK) {
-    peer_crypto_destroy(peer);
+    browser_session_destroy(peer);
     return NULL;
   }
   if (identity) {
@@ -133,7 +73,7 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
   if (expected_key && server) {
     ctx->client_whitelist = SAFE_CALLOC(1, sizeof(public_key_t), public_key_t *);
     if (!ctx->client_whitelist) {
-      peer_crypto_destroy(peer);
+      browser_session_destroy(peer);
       SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer key whitelist");
       return NULL;
     }
@@ -146,46 +86,65 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
     ctx->expected_server_key_bytes_set = true;
     memcpy(ctx->expected_server_key_bytes, expected_key, ED25519_PUBLIC_KEY_SIZE);
   }
-  peer->transport.methods = &peer_methods;
-  peer->transport.impl_data = peer;
+  peer->browser = browser_transport_create();
+  if (!peer->browser) {
+    browser_session_destroy(peer);
+    return NULL;
+  }
+  // The browser owns the actual WebSocket/WebRTC channel.  It must explicitly
+  // publish that channel's state; the transport is not connected merely
+  // because its C object exists.
   return peer;
 }
 
-asciichat_error_t peer_crypto_start(browser_peer_crypto_t *peer) {
+asciichat_error_t browser_session_start(browser_session_t *peer) {
   if (!peer)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");
-  return acip_security_start(&peer->security, &peer->transport);
+  return acip_security_start(&peer->security, browser_transport_base(peer->browser));
 }
 
-bool peer_crypto_ready(browser_peer_crypto_t *peer) {
+void browser_session_set_connected(browser_session_t *peer, bool connected) {
+  if (peer)
+    browser_transport_set_connected(peer->browser, connected);
+}
+
+bool browser_session_ready(browser_session_t *peer) {
   return peer && peer->security.ready;
 }
 
-const void *peer_crypto_output_data(browser_peer_crypto_t *peer) {
-  return peer && peer->output ? peer->output->data : NULL;
+size_t browser_session_queued_bytes(const browser_session_t *peer) {
+  return peer ? browser_transport_queued_bytes(peer->browser) : 0;
 }
 
-size_t peer_crypto_output_size(browser_peer_crypto_t *peer) {
-  return peer && peer->output ? peer->output->length : 0;
+bool browser_session_writable(const browser_session_t *peer, size_t additional_bytes) {
+  return peer && browser_transport_writable(peer->browser, additional_bytes);
 }
 
-const void *peer_crypto_received_data(browser_peer_crypto_t *peer) {
+const void *browser_session_output_data(browser_session_t *peer) {
+  return peer ? browser_transport_output_data(peer->browser) : NULL;
+}
+
+size_t browser_session_output_size(browser_session_t *peer) {
+  return peer ? browser_transport_output_size(peer->browser) : 0;
+}
+
+const void *browser_session_received_data(browser_session_t *peer) {
   return peer ? peer->received : NULL;
 }
 
-size_t peer_crypto_received_size(browser_peer_crypto_t *peer) {
+size_t browser_session_received_size(browser_session_t *peer) {
   return peer ? peer->received_length : 0;
 }
 
-asciichat_error_t peer_crypto_send(browser_peer_crypto_t *peer, const void *data, size_t length) {
+asciichat_error_t browser_session_send(browser_session_t *peer, const void *data, size_t length) {
   if (!peer || !data || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer packet or security state");
   if (!peer->security.ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Peer security is not ready");
-  return peer_send(&peer->transport, data, length);
+  return acip_transport_send(browser_transport_base(peer->browser), data, length);
 }
 
-asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *data, size_t length) {
+asciichat_error_t browser_session_receive(browser_session_t *peer, const void *data, size_t length) {
   if (!peer || !data)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer packet or security state");
   if (length < sizeof(packet_header_t))
@@ -202,7 +161,8 @@ asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *d
   if (validation != ASCIICHAT_OK)
     return validation;
   if (!peer->security.ready) {
-    asciichat_error_t result = acip_security_receive(&peer->security, &peer->transport, type, payload, payload_length);
+    asciichat_error_t result = acip_security_receive(&peer->security, browser_transport_base(peer->browser), type,
+                                                     payload, payload_length);
     if (result != ASCIICHAT_OK || !peer->quic_handshake || type != PACKET_TYPE_PROTOCOL_VERSION)
       return result;
     crypto_capabilities_packet_t caps = {0};
@@ -213,10 +173,11 @@ asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *d
     caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(peer->security.mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
     caps.preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
     caps.requires_verification = peer->security.handshake.verify_server_key;
-    result = packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    result = packet_send_via_transport(browser_transport_base(peer->browser), PACKET_TYPE_CRYPTO_CAPABILITIES,
+                                       &caps, sizeof(caps), 0);
     if (result != ASCIICHAT_OK || !caps.requires_verification)
       return result;
-    return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO,
+    return packet_send_via_transport(browser_transport_base(peer->browser), PACKET_TYPE_CRYPTO_CLIENT_HELLO,
                                      peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
   }
   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode);
@@ -243,19 +204,19 @@ asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *d
   return result;
 }
 
-crypto_context_t *peer_security_context(browser_peer_crypto_t *peer) {
+crypto_context_t *browser_session_security_context(browser_session_t *peer) {
   return peer ? &peer->security.handshake.crypto_ctx : NULL;
 }
 
-asciichat_error_t peer_crypto_tick(browser_peer_crypto_t *peer) {
+asciichat_error_t browser_session_tick(browser_session_t *peer) {
   if (!peer)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");
   if (!peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return ASCIICHAT_OK;
-  return acip_security_flush(&peer->transport);
+      return acip_security_flush(browser_transport_base(peer->browser));
 }
 
-asciichat_error_t peer_crypto_quic_begin(browser_peer_crypto_t *peer) {
+asciichat_error_t browser_session_quic_begin(browser_session_t *peer) {
   if (!peer || peer->security.version_received || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
   peer->quic_handshake = true;

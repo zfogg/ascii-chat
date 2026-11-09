@@ -20,6 +20,7 @@
     },
     "./renderer.wasm": "./dist/renderer.wasm",
     "./renderer.js": "./dist/renderer.js",
+    "./renderer-manifest.json": "./dist/renderer-manifest.json",
     "./options": {
       "types": "./dist/options.d.ts",
       "import": "./dist/options.js"
