@@ -5,6 +5,7 @@ import { ConnectionState } from "../../src/wasm/client";
 const harness = vi.hoisted(() => ({
   init: vi.fn(async () => {}),
   crypto: vi.fn(async () => {}),
+  capabilities: vi.fn(() => {}),
   key: vi.fn(async () => "public-key"),
   cleanup: vi.fn(),
   address: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("../../src/wasm/client", async (original) => ({
   ...(await original<typeof import("../../src/wasm/client")>()),
   initClientWasm: harness.init,
   configureClientCrypto: harness.crypto,
+  configureBrowserCapabilities: harness.capabilities,
   generateKeypair: harness.key,
   cleanupClientWasm: harness.cleanup,
   processClientEvent: vi.fn((event: Record<string, unknown>) =>
@@ -53,6 +55,7 @@ beforeEach(() => {
   harness.sockets = [];
   harness.init.mockImplementation(async () => {});
   harness.crypto.mockImplementation(async () => {});
+  harness.capabilities.mockImplementation(() => {});
   harness.key.mockImplementation(async () => "public-key");
 });
 const create = () =>
