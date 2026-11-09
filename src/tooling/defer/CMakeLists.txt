@@ -30,13 +30,14 @@ if(ASCIICHAT_DEFER_BUILD_FUZZER)
     target_link_libraries(ascii-defer-fuzz PRIVATE ascii-llvm-support ascii-libclang)
 endif()
 
+find_package(Threads REQUIRED)
 add_executable(ascii-defer-native main.cpp)
 set_target_properties(ascii-defer-native PROPERTIES OUTPUT_NAME defer-tool CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 if(APPLE)
     set_property(TARGET ascii-defer-native APPEND PROPERTY BUILD_RPATH "$<TARGET_FILE_DIR:ascii-libclang>")
 endif()
 ascii_configure_llvm_host_tool(ascii-defer-native)
-target_link_libraries(ascii-defer-native PRIVATE ascii-defer-core)
+target_link_libraries(ascii-defer-native PRIVATE ascii-defer-core Threads::Threads)
 if(WIN32)
     add_custom_command(TARGET ascii-defer-native POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:ascii-libclang>" "$<TARGET_FILE_DIR:ascii-defer-native>"
