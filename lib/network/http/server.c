@@ -20,6 +20,7 @@ struct http_server {
   uv_loop_t loop;
   uv_tcp_t listener;
   uv_async_t stop_async;
+  uv_async_t wake_async;
   bool running;
   bool thread_started;
   asciichat_thread_t thread;
@@ -57,6 +58,9 @@ struct http_client {
   bool http2_mode;
 };
 static void stop_async_cb(uv_async_t *async);
+static void wake_async_cb(uv_async_t *async) {
+  (void)async;
+}
 
 static void client_freed(uv_handle_t *handle) {
   http_client_t *c = handle->data;
@@ -406,6 +410,8 @@ static void stop_async_cb(uv_async_t *async) {
   for (http_client_t *c = s->clients; c; c = c->next)
     client_close(c);
   uv_close((uv_handle_t *)async, NULL);
+  if (!uv_is_closing((uv_handle_t *)&s->wake_async))
+    uv_close((uv_handle_t *)&s->wake_async, NULL);
   uv_stop(&s->loop);
 }
 static void *http_loop_thread(void *arg) {
@@ -431,8 +437,22 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   s->listener.data = s;
   uv_async_init(&s->loop, &s->stop_async, stop_async_cb);
   s->stop_async.data = s;
+  if (uv_async_init(&s->loop, &s->wake_async, wake_async_cb) != 0) {
+    uv_close((uv_handle_t *)&s->stop_async, NULL);
+    uv_close((uv_handle_t *)&s->listener, NULL);
+    uv_run(&s->loop, UV_RUN_DEFAULT);
+    uv_loop_close(&s->loop);
+    SAFE_FREE(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP wakeup handle");
+  }
+  s->wake_async.data = s;
   *out = s;
   return ASCIICHAT_OK;
+}
+asciichat_error_t http_server_wakeup(http_server_t *s) {
+  if (!s || !s->running || uv_is_closing((uv_handle_t *)&s->wake_async))
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is not running");
+  return uv_async_send(&s->wake_async) == 0 ? ASCIICHAT_OK : SET_ERRNO(ERROR_NETWORK, "Cannot wake HTTP event loop");
 }
 asciichat_error_t http_server_start(http_server_t *s) {
   if (!s || s->running)

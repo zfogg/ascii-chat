@@ -63,6 +63,7 @@ Test(http_server, starts_and_drains_private_loop) {
                                  .on_request = request};
   cr_assert_eq(http_server_init(&server, &config), ASCIICHAT_OK);
   cr_assert_eq(http_server_start(server), ASCIICHAT_OK);
+  cr_assert_eq(http_server_wakeup(server), ASCIICHAT_OK);
   http_server_stop(server);
   http_server_stop(server);
   http_server_destroy(&server);
