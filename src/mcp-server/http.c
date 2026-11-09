@@ -321,6 +321,9 @@ static void shared_http_wakeup(void *user_data) {
       (void)http_response_write(response, body, length);
       shared_http_finish(response, 200);
       free(body);
+    } else {
+      /* Always terminate the retained transport before releasing its slot. */
+      shared_http_finish(response, 500);
     }
     j->connection = NULL;
     http_response_release(&response);
