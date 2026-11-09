@@ -879,19 +879,16 @@ export class PeerCryptoSession {
       }, 100);
     }
     if (this.binding) {
-      const result = this.binding.process({ type: "tick" })["code"] as number;
-      if (result) throwWasmError(result, "Peer rekey failed");
-    }
-    while (this.binding) {
-      const packets = this.binding.process({ type: "tick" })[
-        "outputs"
-      ] as Uint8Array[];
-      for (const packet of packets) this.send(packet);
-      if (!packets.length) break;
+      const result = this.binding.process({ type: "tick" }) as {
+        code: number;
+        outputs?: Uint8Array[];
+      };
+      if (result.code) throwWasmError(result.code, "Peer rekey failed");
+      for (const packet of result.outputs ?? []) this.send(packet);
     }
   }
 
-  private input(packet: Uint8Array, receive: boolean): void {
+  private input(packet: Uint8Array, receive: boolean): Record<string, unknown> {
     const binding = this.getBinding();
     const result = binding.process({
       type: receive ? "receive" : "send",
@@ -900,15 +897,11 @@ export class PeerCryptoSession {
     const code = result["code"] as number;
     if (code !== 0) throwWasmError(code, binding.error());
     this.flush();
+    return result as Record<string, unknown>;
   }
 
   receive(packet: Uint8Array): Uint8Array | null {
-    this.input(packet, true);
-    return (
-      (this.binding?.process({ type: "tick" })[
-        "received"
-      ] as Uint8Array | null) ?? null
-    );
+    return (this.input(packet, true)["received"] as Uint8Array | null) ?? null;
   }
 
   sendPacket(packet: Uint8Array): void {

@@ -81,13 +81,13 @@ public:
       result.set("code", code);
       if (!bytes.empty()) sodium_memzero(bytes.data(), bytes.size());
     } else if (type == "tick") {
-      result.set("code", peer_crypto_tick(peer_.get()));
+      result.set("code", static_cast<int>(peer_crypto_tick(peer_.get())));
     } else if (type == "quic-begin") {
       result.set("code", peer_crypto_quic_begin(peer_.get()));
     } else if (type == "quic-init") {
-      result.set("code", browser_security_init(peer_security_context(peer_.get())));
+      result.set("code", static_cast<int>(browser_security_init(peer_security_context(peer_.get()))));
     } else if (type == "quic-tick") {
-      result.set("code", browser_security_tick(peer_security_context(peer_.get())));
+      result.set("code", static_cast<int>(browser_security_tick(peer_security_context(peer_.get()))));
       result.set("epoch", browser_security_epoch(peer_security_context(peer_.get())));
       emscripten::val quic_outputs = emscripten::val::array();
       for (unsigned i = 0; i < 16; ++i) {

@@ -11,21 +11,23 @@ test("binding failures record actionable C errors", async ({ page }) => {
   await page.goto("/client");
   const errors = await page.evaluate(async () => {
     const moduleUrl = "/src/wasm/client.ts";
-    const {
-      initClientWasm,
-      getClientWasmModule,
-      handleHandshakeComplete,
-      parsePacket,
-    } = await import(/* @vite-ignore */ moduleUrl);
+    const { initClientWasm, getClientWasmModule, parsePacket } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
     await initClientWasm();
     const m =
       getClientWasmModule() as unknown as import("../../../packages/shared/src/wasm/generated/client-bindings").MainModule;
     const frame = new m.MirrorFrameBinding();
     const processor = new m.AudioProcessorBinding(48000, true, 16);
     const renderer = new m.AsciiRendererBinding(2, 2, 12, false, 0);
+    const session = new m.ClientSessionBinding({});
     const snapshot = (run: () => unknown) => {
       m.browser_error_dismiss();
-      run();
+      try {
+        run();
+      } catch {
+        // The public TypeScript helper may throw after recording the C error.
+      }
       const count = m.errorSnapshot();
       return count ? m.errorFrame(0) : null;
     };
@@ -38,7 +40,13 @@ test("binding failures record actionable C errors", async ({ page }) => {
         ),
         snapshot(() => renderer.render("", 0)),
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
-        snapshot(() => handleHandshakeComplete(new Uint8Array(1))),
+        snapshot(() =>
+          session.process({
+            type: "handle-handshake-stage",
+            stage: 3,
+            packet: new Uint8Array(1),
+          }),
+        ),
         snapshot(() => parsePacket(new Uint8Array())),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
         snapshot(() =>
@@ -57,6 +65,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
     } finally {
       m.browser_error_dismiss();
       renderer.delete();
+      session.delete();
       processor.delete();
       frame.delete();
     }
@@ -80,7 +89,12 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     await initClientWasm();
     const module = getClientWasmModule();
     module.browser_error_dismiss();
-    module.handleHandshake(99, new Uint8Array());
+    const session = new module.ClientSessionBinding({});
+    session.process({
+      type: "handle-handshake-stage",
+      stage: 99,
+      packet: new Uint8Array(),
+    });
     const beforeCount = module.errorSnapshot();
     const before = module.errorFrame(0);
     const parsed = module.parseKey(3, true, new Uint8Array());
@@ -89,6 +103,7 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
       module.errorFrame(i),
     );
     module.browser_error_dismiss();
+    session.delete();
     return { beforeCount, before, parsed, pending };
   });
   expect(result.beforeCount).toBeGreaterThan(0);
@@ -126,11 +141,14 @@ test("face tracking and client public keys use the native bindings", async ({
       1,
     );
     const face = Array.from(module.faceTick(1, true));
-    const keyStatus = module.client_generate_keypair();
-    const key = module.clientPublicKey();
+    const session = new module.ClientSessionBinding({});
+    const keyResult = session.process({ type: "generate-keypair" });
+    const keyStatus = keyResult.code;
+    const key = keyResult.publicKey;
     module.parseKey(99, false, new Uint8Array());
     module.parseKey(3, true, new Uint8Array());
     const parseError = module.keyParserError();
+    session.delete();
     return { faceStatus, face, keyStatus, key, parseError };
   });
   expect(result.faceStatus).toBe(0);
@@ -162,7 +180,7 @@ test("client session ownership rejects overlap and supports reinitialization", a
       reinitialized: false,
     };
     overlap.delete();
-    result.key = module.client_generate_keypair();
+    result.key = first.process({ type: "generate-keypair" }).code;
     first.delete();
     const next = new module.ClientSessionBinding({});
     result.reinitialized = next.valid();
