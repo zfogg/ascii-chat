@@ -481,6 +481,13 @@ private struct IOSSettingsView: View {
     @State private var fft = false
     @State private var flipX = false
     @State private var flipY = false
+    @State private var audioAnalysis = false
+    @State private var noAudioPlayback = false
+    @State private var encodeAudio = true
+    @State private var noAudioMixer = false
+    @State private var testPattern = false
+    @State private var snapshotMode = false
+    @State private var mediaLoop = false
 
     private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
     private let filters = ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
@@ -525,6 +532,13 @@ private struct IOSSettingsView: View {
         if let value = values["fft"] as? Bool { fft = value }
         if let value = values["flip_x"] as? Bool { flipX = value }
         if let value = values["flip_y"] as? Bool { flipY = value }
+        if let value = values["audio_analysis"] as? Bool { audioAnalysis = value }
+        if let value = values["no_audio_playback"] as? Bool { noAudioPlayback = value }
+        if let value = values["encode_audio"] as? Bool { encodeAudio = value }
+        if let value = values["no_audio_mixer"] as? Bool { noAudioMixer = value }
+        if let value = values["test_pattern"] as? Bool { testPattern = value }
+        if let value = values["snapshot_mode"] as? Bool { snapshotMode = value }
+        if let value = values["media_loop"] as? Bool { mediaLoop = value }
     }
 
     var body: some View {
@@ -588,6 +602,12 @@ private struct IOSSettingsView: View {
                         .onChange(of: waveform) { _, value in applyJSON(["waveform": value]) }
                     Toggle("FFT", isOn: $fft)
                         .onChange(of: fft) { _, value in applyJSON(["fft": value]) }
+                    Toggle("Test pattern", isOn: $testPattern)
+                        .onChange(of: testPattern) { _, value in applyJSON(["test_pattern": value]) }
+                    Toggle("Snapshot mode", isOn: $snapshotMode)
+                        .onChange(of: snapshotMode) { _, value in applyJSON(["snapshot_mode": value]) }
+                    Toggle("Loop media", isOn: $mediaLoop)
+                        .onChange(of: mediaLoop) { _, value in applyJSON(["media_loop": value]) }
                 }
                 Section("Audio") {
                     if !audioDevices.isEmpty {
@@ -617,6 +637,14 @@ private struct IOSSettingsView: View {
                     }
                     Toggle("Audio", isOn: $audioEnabled)
                         .onChange(of: audioEnabled) { _, value in applyJSON(["audio_enabled": value]) }
+                    Toggle("Audio analysis", isOn: $audioAnalysis)
+                        .onChange(of: audioAnalysis) { _, value in applyJSON(["audio_analysis": value]) }
+                    Toggle("Disable playback", isOn: $noAudioPlayback)
+                        .onChange(of: noAudioPlayback) { _, value in applyJSON(["no_audio_playback": value]) }
+                    Toggle("Encode audio", isOn: $encodeAudio)
+                        .onChange(of: encodeAudio) { _, value in applyJSON(["encode_audio": value]) }
+                    Toggle("Disable audio mixer", isOn: $noAudioMixer)
+                        .onChange(of: noAudioMixer) { _, value in applyJSON(["no_audio_mixer": value]) }
                     Picker("FFT size", selection: $audioFFTSize) {
                         ForEach(["512", "1024", "2048"], id: \.self, content: Text.init)
                     }
@@ -736,7 +764,11 @@ private struct IOSSettingsView: View {
                                    "width": Int(renderWidth), "height": Int(renderHeight),
                                    "zalgo": Int(zalgo), "snapshot_delay": snapshotDelay,
                                    "waveform": waveform, "fft": fft, "flip_x": flipX,
-                                   "flip_y": flipY])
+                                   "flip_y": flipY, "test_pattern": testPattern,
+                                   "snapshot_mode": snapshotMode, "media_loop": mediaLoop,
+                                   "audio_analysis": audioAnalysis,
+                                   "no_audio_playback": noAudioPlayback,
+                                   "encode_audio": encodeAudio, "no_audio_mixer": noAudioMixer])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
                 }
