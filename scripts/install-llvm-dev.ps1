@@ -68,7 +68,19 @@ if (-not (Test-Path -LiteralPath $archive)) {
     $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/$prefix.tar.xz"
     Write-Host "Downloading LLVM $version development archive for $Architecture"
     $partial = "$archive.download"
-    Invoke-WebRequest -Uri $url -OutFile $partial
+    $downloaded = $false
+    for ($attempt = 1; $attempt -le 3 -and -not $downloaded; $attempt++) {
+        Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+        try {
+            Write-Host "LLVM download attempt $attempt/3"
+            Invoke-WebRequest -Uri $url -OutFile $partial -TimeoutSec 300
+            $downloaded = $true
+        } catch {
+            if ($attempt -eq 3) { throw }
+            Write-Warning "LLVM download attempt $attempt failed: $($_.Exception.Message); retrying"
+            Start-Sleep -Seconds ([int](5 * $attempt))
+        }
+    }
     if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash -ne $hash) {
         throw "LLVM development archive SHA-256 mismatch: $partial"
     }
