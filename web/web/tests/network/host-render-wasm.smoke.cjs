@@ -71,11 +71,6 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
-      const args = { width: 40, height: 12 };
-      if (m.initClient(args)) throw new Error("client init failed");
-      const selection = { waveform: true };
-      if (m.patchOptions(selection, -1))
-        throw new Error("waveform selection failed");
       const revision = m.browser_options_revision();
       const normalProbe = new m.AsciiRendererBinding(1, 1, 24, false, 1);
       const matrixProbe = new m.AsciiRendererBinding(1, 1, 24, true, 2);
@@ -129,11 +124,12 @@ const path = require("node:path");
       } finally {
         brailleRenderer.delete();
       }
-      if (m.browser_host_create()) throw new Error("host create failed");
-      const ids = [m.browser_host_add_client(), m.browser_host_add_client()];
-      if (m.browser_host_set_local_client(ids[0]))
+      let host = new m.BrowserHostBinding();
+      if (!host.valid()) throw new Error("host create failed");
+      const ids = [host.addClient(), host.addClient()];
+      if (host.setLocalClient(ids[0]))
         throw new Error("local target failed");
-      const hostInput = new m.HostPacketBinding();
+      let hostInput = new m.HostPacketBinding(host);
       const send = (id, type, bytes) => {
         const result = hostInput.receive(id, type, bytes);
         if (result) throw new Error(`receive ${type}: ${result}`);
@@ -297,7 +293,7 @@ const path = require("node:path");
           }
         }
       };
-      if (m.browser_host_render()) throw new Error("render failed");
+      if (host.render()) throw new Error("render failed");
       const first = output.splice(0);
       const patch = (id, values) => {
         const json = new TextEncoder().encode(JSON.stringify(values));
@@ -312,7 +308,7 @@ const path = require("node:path");
       patch(ids[0], { color_mode: 0, palette_custom: "ZZ" });
       patch(ids[1], { color_mode: 3 });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m.browser_host_render()) throw new Error("updated render failed");
+      if (host.render()) throw new Error("updated render failed");
       const updated = output.splice(0);
       patch(ids[0], {
         renderer: 1,
@@ -326,7 +322,7 @@ const path = require("node:path");
         palette_explicit: true,
       });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m.browser_host_render())
+      if (host.render())
         throw new Error("per-viewer renderer failed");
       const distinct = output.splice(0);
       const glyphFrame = distinct.find((frame) => frame.id === ids[0]);
@@ -342,7 +338,7 @@ const path = require("node:path");
         throw new Error("Per-viewer renderer palettes were not respected");
       patch(ids[1], { color_mode: 0, render_mode: 2 });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m.browser_host_render())
+      if (host.render())
         throw new Error("monochrome half-block render failed");
       const halfBlock = output.splice(0).find((frame) => frame.id === ids[1]);
       if (!halfBlock || !/[░▒▓█]/u.test(halfBlock.text))
@@ -359,7 +355,7 @@ const path = require("node:path");
         for (let i = 24; i < image.length; i += 3) image.fill(value, i, i + 3);
         send(ids[0], 3001, image);
         await new Promise((resolve) => setTimeout(resolve, 20));
-        if (m.browser_host_render())
+        if (host.render())
           throw new Error("stabilization render failed");
         return output.splice(0).map((frame) => ({
           id: frame.id,
@@ -441,7 +437,7 @@ const path = require("node:path");
           batch.set(encoded, 18);
           sourcePackets.push(batch.slice());
           send(ids[0], 4001, batch);
-          if (m.browser_host_render_audio())
+          if (host.renderAudio())
             throw new Error("Host audio tick failed");
         }
         codec.delete();
@@ -463,10 +459,13 @@ const path = require("node:path");
           throw new Error("sender hears its own microphone");
         // A second, independent (silent) input stream must not contaminate
         // the first stream's decoder or the listener's predictive encoder.
-        m.browser_host_destroy();
-        if (m.browser_host_create()) throw new Error("second host failed");
-        ids[0] = m.browser_host_add_client();
-        ids[1] = m.browser_host_add_client();
+        hostInput.delete();
+        host.close();
+        host = new m.BrowserHostBinding();
+        if (!host.valid()) throw new Error("second host failed");
+        hostInput = new m.HostPacketBinding(host);
+        ids[0] = host.addClient();
+        ids[1] = host.addClient();
         const concurrent = [];
         m.hostPacketCallback = (id, bytes) => {
           if (
@@ -478,7 +477,7 @@ const path = require("node:path");
         for (let frame = 0; frame < sourcePackets.length; frame++) {
           send(ids[0], 4001, sourcePackets[frame]);
           send(ids[1], 4001, ownPackets[frame].subarray(22));
-          if (m.browser_host_render_audio())
+          if (host.renderAudio())
             throw new Error("concurrent audio tick failed");
         }
         if (
@@ -495,7 +494,7 @@ const path = require("node:path");
       } finally {
         codec.delete();
         hostInput.delete();
-        m.browser_host_destroy();
+        host.close();
       }
       // A frame may carry an older palette, but may not contradict its acknowledged revision.
       const acknowledged = new TextEncoder().encode(
@@ -550,8 +549,11 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
-      const mirrorArgs = { width: 40, height: 12 };
-      if (mirror.initMirror(mirrorArgs)) throw new Error("mirror init failed");
+      const mirrorSession = new mirror.MirrorSessionBinding({
+        width: 40,
+        height: 12,
+      });
+      if (!mirrorSession.valid()) throw new Error("mirror init failed");
       const rgba = new Uint8Array(8 * 4 * 4);
       for (let i = 0; i < rgba.length; i += 4) {
         rgba[i] = 180;
@@ -603,7 +605,8 @@ const path = require("node:path");
         }
       } finally {
         mirrorFrame.delete();
-        mirror.mirror_cleanup();
+        mirrorSession.close();
+        mirrorSession.delete();
       }
       if (mirrorFrames !== 24) throw new Error("Missing mirror mode coverage");
       return {
