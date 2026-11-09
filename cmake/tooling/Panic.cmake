@@ -21,6 +21,7 @@ function(ascii_panic_prepare)
         CACHE_DIR_NAME "panic-tool-${_cache_id}"
         OUTPUT_EXECUTABLE "ascii-instr-panic"
         PREBUILT_VAR ASCIICHAT_PANIC_TOOL
+        PASS_LLVM_CONFIG
         CLEAN_INCOMPLETE_CACHE
         CREATE_IMPORTED_TARGET "ascii-instr-panic"
     )
