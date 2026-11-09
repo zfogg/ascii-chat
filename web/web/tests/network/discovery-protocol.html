@@ -21,14 +21,20 @@
           printErr: () => {},
           getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
         });
-        assert(m.initClient({}) === 0, "init");
+        assert(m.initializeClientOptions({}) === 0, "init");
         let packets = [];
         m.discoverySend = (handle, type, payload) =>
           packets.push({ type, payload });
-        const snap = (p) => p.snapshot();
+        const snap = (p) => p.process({ type: "snapshot" });
         const enter = (p, create, name, password) =>
-          p.enter(create, name, new TextEncoder().encode(password));
-        const receive = (p, type, bytes) => p.receive(type, bytes);
+          p.process({
+            type: "enter",
+            create,
+            name,
+            password: new TextEncoder().encode(password),
+          }).code;
+        const receive = (p, type, bytes) =>
+          p.process({ type: "receive", packetType: type, packet: bytes }).code;
         const test = (name, fn) => {
           packets = [];
           const p = new m.DiscoveryBinding();
@@ -118,12 +124,12 @@
           joined[196] = 1;
           assert(!receive(p, 6005, joined), "joined");
           assert(snap(p).state === 6 && snap(p).joined.hostId[0] === 2, "host");
-          assert(!p.leave(), "leave");
+          assert(!p.process({ type: "leave" }).code, "leave");
           assert(
             packets[2].type === 6006 && packets[2].payload.length === 32,
             "leave wire",
           );
-          p.leave();
+          p.process({ type: "leave" });
           assert(packets.length === 3, "idempotent leave");
         });
         test("wrong password preserves reason and stops retries", (p) => {

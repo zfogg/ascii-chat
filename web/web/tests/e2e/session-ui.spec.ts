@@ -44,15 +44,15 @@ async function observe(page: Page) {
       return patch(values, revision);
     };
     const renderer = m.AsciiRendererBinding.prototype;
-    const feed = renderer.feed;
+    const render = renderer.render;
     window.__sessionUiFrames = [];
-    renderer.feed = function (this: unknown, value: string) {
+    renderer.render = function (this: unknown, value: string, zalgo: number) {
       // Inspect rendered text independently of terminal color decoration.
       const text = value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed.call(this, value);
+      return render.call(this, value, zalgo);
     };
   }, moduleUrl);
   await expect

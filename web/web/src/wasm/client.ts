@@ -796,7 +796,9 @@ export class PeerCryptoSession {
           code: number;
           outputs?: Uint8Array[];
         };
-        for (const packet of startedResult.outputs ?? []) send(packet);
+        for (const packet of startedResult.outputs ?? []) {
+          send(packet);
+        }
         const started = startedResult.code;
         if (started) {
           const message = binding.error();
@@ -904,9 +906,10 @@ export class PeerCryptoSession {
     const result = binding.process({
       type: receive ? "receive" : "send",
       packet,
-    });
+    }) as { code: number; outputs?: Uint8Array[] };
     const code = result["code"] as number;
     if (code !== 0) throwWasmError(code, binding.error());
+    for (const output of result.outputs ?? []) this.send(output);
     this.flush();
     return result as Record<string, unknown>;
   }
