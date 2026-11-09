@@ -1,6 +1,7 @@
 #include <emscripten/bind.h>
 extern "C" {
 #include <ascii-chat/network/browser/session.h>
+#include <ascii-chat/network/errors.h>
 #include "../client.h"
 }
 #include "client_bytes.h"
@@ -118,6 +119,15 @@ public:
       if (!output.empty()) sodium_memzero(output.data(), output.size());
     } else {
         result.set("code", SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser session event"));
+    }
+    const int code = result["code"].as<int>();
+    if (code) {
+      asciichat_error_context_t context{};
+      const bool has_context = errno_has(&context);
+      result.set("message", has_context && context.context_message[0]
+                                 ? std::string(context.context_message)
+                                 : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      result.set("retryable", network_error_action(static_cast<asciichat_error_t>(code)) == NETWORK_ERROR_RETRY);
     }
     emscripten::val outputs = emscripten::val::array();
     for (unsigned i = 0; i < 16; ++i) {
