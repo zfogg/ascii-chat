@@ -567,6 +567,10 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # the same version as the linked libraries.
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
+# The defer transformer parses video sources from the compilation database
+# before external FFmpeg headers are installed; keep this target's include
+# search path explicit instead of relying only on the project interface target.
+target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FaceDetection.cmake)
 ascii_chat_add_face_detector(ascii-chat-video)
 
