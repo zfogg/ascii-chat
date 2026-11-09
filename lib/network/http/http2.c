@@ -21,6 +21,7 @@ typedef struct {
   char *header_names[HTTP2_MAX_HEADERS];
   char *header_values[HTTP2_MAX_HEADERS];
   size_t header_count;
+  bool dispatched;
 } request_state_t;
 
 typedef struct {
@@ -117,11 +118,13 @@ static int on_data(nghttp2_session *session, uint8_t flags, int32_t stream_id, c
 
 static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, void *user_data) {
   http2_connection_t *connection = user_data;
-  if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM))
+  if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) ||
+      (frame->hd.type != NGHTTP2_HEADERS && frame->hd.type != NGHTTP2_DATA))
     return 0;
   request_state_t *request = get_request(session, frame->hd.stream_id);
-  if (!request || !request->method || !request->path)
+  if (!request || request->dispatched || !request->method || !request->path)
     return NGHTTP2_ERR_PROTOCOL;
+  request->dispatched = true;
   http2_request_view_t view = {.method = request->method,
                                .path = request->path,
                                .body = request->body,
