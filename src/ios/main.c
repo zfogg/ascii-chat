@@ -100,7 +100,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   int argc = 7;
 #ifdef ASCIICHAT_IOS_SIMULATOR
   argv[argc++] = simulator_audio;
-  if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT) {
     argv[argc++] = test_pattern;
   }
 #endif
