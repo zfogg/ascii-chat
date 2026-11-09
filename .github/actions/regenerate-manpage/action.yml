@@ -1,0 +1,34 @@
+name: Regenerate manpage
+description: Generate, commit, and push the repository manpage using the current build directory
+inputs:
+  commit:
+    description: Commit and push the generated manpage
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Generate manpage
+      shell: bash
+      env:
+        ASCII_CHAT_QUESTION_PROMPT_RESPONSE: y
+        ASCIICHAT_RESOURCE_DIR: ${{ github.workspace }}/build
+      run: |
+        chmod +x build/bin/ascii-chat
+        mkdir -p share/man/man1
+        build/bin/ascii-chat --man-page-create share/man/man1/ascii-chat.1
+        test -s share/man/man1/ascii-chat.1
+
+    - name: Commit and push manpage
+      if: inputs.commit == 'true'
+      shell: bash
+      run: |
+        if git diff --quiet -- share/man/man1/ascii-chat.1 && git ls-files --error-unmatch share/man/man1/ascii-chat.1 >/dev/null 2>&1; then
+          echo "Manpage is unchanged"
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add share/man/man1/ascii-chat.1
+        git commit -m "docs: regenerate manpage"
+        git push origin HEAD:${GITHUB_REF_NAME}
