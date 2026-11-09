@@ -510,7 +510,9 @@ echo "You can now run: cmake --build --preset debug"
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then
   curl -fsSL https://vite.plus | bash
-  export PATH="$HOME/.vite-plus/bin:$PATH"
+  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"
+  fi
 fi
 if command -v vp >/dev/null 2>&1; then
   (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
@@ -518,6 +520,3 @@ if command -v vp >/dev/null 2>&1; then
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
-
-corepack enable
-pnpm install --frozen-lockfile
