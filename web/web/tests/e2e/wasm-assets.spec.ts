@@ -402,7 +402,9 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     session.delete();
     return {
       initial: initial.state,
+      initialOk: initial.ok,
       opening: opening.state,
+      openingOk: opening.ok,
       connected: connected.state,
       ready: ready.ready,
       writable: ready.writable,
@@ -423,7 +425,9 @@ test("client session exposes lifecycle snapshots and transport events", async ({
   });
   expect(result).toEqual({
     initial: 0,
+    initialOk: true,
     opening: 1,
+    openingOk: true,
     connected: 3,
     ready: true,
     writable: true,

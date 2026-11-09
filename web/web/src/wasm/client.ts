@@ -531,6 +531,7 @@ export async function generateKeypair(): Promise<string> {
 }
 
 export type ClientEventResult = {
+  ok?: boolean;
   code: number;
   state: ConnectionState;
   message?: string;

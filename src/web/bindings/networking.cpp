@@ -401,6 +401,7 @@ public:
 private:
   emscripten::val result(int code) const {
     emscripten::val response = emscripten::val::object();
+    response.set("ok", code == 0);
     response.set("code", code);
     response.set("state", client_get_connection_state(transport_.get()));
     if (code) {
