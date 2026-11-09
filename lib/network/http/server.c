@@ -484,6 +484,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
                                        .user_data = server->config.user_data};
   request.storage = (char *)body;
   request.body_length = body_length;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_RECEIVED, body_length);
   const char *peer = peer_address ? peer_address : "unknown";
   bool allowed = false;
   if (rate_limiter_check(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST, &server->request_rate_limit, &allowed) !=
@@ -491,6 +492,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
     http_response_t limited = {.server = server,
+                               .protocol = HTTP_PROTOCOL_3,
                                .status = 429,
                                .max_body_length = server->config.max_request_body_bytes,
                                .http3_submit = submit,
@@ -498,8 +500,12 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
     return http_response_finish(&limited);
   }
   rate_limiter_record(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST);
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
+  uint64_t request_start = time_get_ns();
   if (!http_request_admit(server)) {
     http_response_t limited = {.server = server,
+                               .protocol = HTTP_PROTOCOL_3,
                                .status = 429,
                                .max_body_length = server->config.max_request_body_bytes,
                                .http3_submit = submit,
@@ -507,6 +513,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
     return http_response_finish(&limited);
   }
   http_response_t response = {.server = server,
+                              .protocol = HTTP_PROTOCOL_3,
                               .status = 200,
                               .max_body_length = server->config.max_request_body_bytes,
                               .inflight_accounted = true,
@@ -522,9 +529,15 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
     asciichat_error_t result = http_response_finish(&response);
     ASCII_OTEL_ATTR_INT("http.status", response.status);
     ASCII_OTEL_ATTR_INT("http.response_bytes", (int64_t)response.body_length);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
+    if (result == ASCIICHAT_OK && response.protocol == HTTP_PROTOCOL_3)
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_SENT, response.body_length);
     SAFE_FREE(response.body);
     return result;
   }
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
   return ASCIICHAT_OK;
 }
 const http_request_info_t *http_request_info(const http_request_t *r) {
