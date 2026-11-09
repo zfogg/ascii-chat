@@ -34,6 +34,9 @@
 #include <stdbool.h>
 
 /**
+ * @brief The framing fields needed to locate and classify one OpenPGP packet body
+ * @brief The parsed identity portion of an OpenPGP public-key packet
+ * @brief The parsed public and private material from an OpenPGP secret-key packet
  * @name OpenPGP Constants
  * @{
  */

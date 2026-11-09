@@ -12,6 +12,7 @@
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/platform/process.h>
@@ -347,6 +348,13 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
   // Parse each SSH key line
   line_start = response_text;
   size_t parsed_keys = 0;
+  defer_named(release_keys, {
+    for (size_t i = 0; i < parsed_keys; i++) {
+      SAFE_FREE((*keys_out)[i]);
+    }
+    SAFE_FREE(*keys_out);
+    *keys_out = NULL;
+  });
 
   while (parsed_keys < key_count && (line_end = strchr(line_start, '\n')) != NULL) {
     size_t line_len = line_end - line_start;
@@ -356,12 +364,6 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
       // Allocate space for this key line
       (*keys_out)[parsed_keys] = SAFE_MALLOC(line_len + 1, char *);
       if (!(*keys_out)[parsed_keys]) {
-        // Cleanup previously allocated keys
-        for (size_t i = 0; i < parsed_keys; i++) {
-          SAFE_FREE((*keys_out)[i]);
-        }
-        SAFE_FREE(*keys_out);
-        *keys_out = NULL;
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SSH key string");
       }
 
@@ -381,12 +383,6 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
     if (line_len > 0) {
       (*keys_out)[parsed_keys] = SAFE_MALLOC(line_len + 1, char *);
       if (!(*keys_out)[parsed_keys]) {
-        // Cleanup previously allocated keys
-        for (size_t i = 0; i < parsed_keys; i++) {
-          SAFE_FREE((*keys_out)[i]);
-        }
-        SAFE_FREE(*keys_out);
-        *keys_out = NULL;
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SSH key string");
       }
       memcpy((*keys_out)[parsed_keys], line_start, line_len);
@@ -396,6 +392,7 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
   }
 
   *num_keys = parsed_keys;
+  defer_cancel(release_keys);
   return ASCIICHAT_OK;
 }
 
@@ -498,6 +495,13 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
   // Process each key ID to get full fingerprint
   size_t valid_keys = 0;
+  defer_named(release_keys, {
+    for (size_t i = 0; i < valid_keys; i++) {
+      SAFE_FREE((*keys_out)[i]);
+    }
+    SAFE_FREE(*keys_out);
+    *keys_out = NULL;
+  });
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
     char list_cmd[BUFFER_SIZE_SMALL];
@@ -555,12 +559,6 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     size_t gpg_key_len = strlen("gpg:") + strlen(fingerprint) + 1;
     (*keys_out)[valid_keys] = SAFE_MALLOC(gpg_key_len, char *);
     if (!(*keys_out)[valid_keys]) {
-      // Cleanup on allocation failure
-      for (size_t cleanup = 0; cleanup < valid_keys; cleanup++) {
-        SAFE_FREE((*keys_out)[cleanup]);
-      }
-      SAFE_FREE(*keys_out);
-      *keys_out = NULL;
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
     }
 
@@ -570,11 +568,10 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 
   if (valid_keys == 0) {
-    SAFE_FREE(*keys_out);
-    *keys_out = NULL;
     return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid Ed25519 keys found in imported GPG keys");
   }
 
   *num_keys = valid_keys;
+  defer_cancel(release_keys);
   return ASCIICHAT_OK;
 }

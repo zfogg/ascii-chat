@@ -93,6 +93,9 @@ typedef enum asciichat_instr_selector_type {
 
 /**
  * @brief Selector for filtering instrumentation output by file, function, or module
+ * @brief Dynamic array of instrumentation selectors for filtering output
+ * @brief asciichat instr runtime keeps the values that move through the subsystem: `fd`, `pid`, `thread_id`, `sequence`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief Selector for filtering instrumentation output by file, function, or module
  */
 typedef struct asciichat_instr_only_selector {
   asciichat_instr_selector_type_t type; ///< Type of selector (file substring, glob, function glob, or module)

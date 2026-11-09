@@ -51,6 +51,9 @@ typedef struct {
 } static_mutex_t;
 
 /**
+ * @brief Statically initialized mutex wrapper for globals touched during startup. The embedded `mutex` carries the platform lock and `initialized` records whether runtime setup has completed; callers use normal mutex operations after initialization.
+ * @brief Reader-writer lock wrapper for global state that needs safe static initialization. `lock` is the platform lock and `initialized` makes one-time setup visible; the global owner retains it until process shutdown.
+ * @brief Wrapper for a condition variable that must be usable before normal runtime initialization. `cond` contains the platform primitive and `initialized` prevents duplicate setup; global owners keep it for the process lifetime rather than freeing it like a heap condition variable.
  * @brief Static reader-writer lock structure for global rwlocks requiring static initialization
  *
  * Provides lazy initialization for reader-writer locks that need to work before main().

@@ -1,4 +1,5 @@
 /**
+ * @brief This is the handoff point for h265 client context. Callers fill `encoder`, `source_type`, `source_location`, `current_width` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @file session/h265/client.c
  * @brief Client-side H.265 media capture and encoding pipeline
  */

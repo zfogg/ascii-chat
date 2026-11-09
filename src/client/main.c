@@ -136,6 +136,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Client connection session state for session_client_like integration
  * @brief Global WebRTC peer manager (legacy compatibility)
  *
  * Client mode no longer uses WebRTC, but protocol.c still references this.

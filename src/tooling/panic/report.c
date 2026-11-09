@@ -37,6 +37,10 @@
 #endif
 
 /**
+ * @brief Owned fields extracted from one instrumentation log line
+ * @brief Configuration for panic report generation
+ * @brief Dynamic array of thread IDs for filtering instrumentation logs
+ * @brief Hash table entry for thread-local last log record
  * @brief Dynamic array of thread IDs for filtering instrumentation logs
  */
 typedef struct thread_filter_list {
@@ -546,6 +550,9 @@ typedef struct {
   const report_config_t *config;
   thread_entry_t **entries;
   bool success;
+/**
+ * @brief collect ctx is intentionally a small, concrete record. Fields such as `config`, `entries`, `success` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } collect_ctx_t;
 
 static bool collect_entry_cb(const platform_dir_entry_t *entry, void *user_data) {

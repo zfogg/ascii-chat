@@ -167,6 +167,9 @@ const char *named_update_name(uintptr_t key, const char *new_base_name);
 const char *named_get(uintptr_t key);
 
 /** Copied display metadata; never contains pointers into a live registry entry. */
+/**
+ * @brief The useful part of named metadata is in its fields: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   char name[DEBUG_NAMED_NAME_BUFFER_SIZE];
   char type[DEBUG_NAMED_TYPE_BUFFER_SIZE];

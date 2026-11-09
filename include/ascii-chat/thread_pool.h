@@ -79,6 +79,11 @@
 #include "platform/abstraction.h"
 
 // Forward declaration
+/**
+ * @brief One queued function call waiting for a thread-pool worker
+ * @brief Thread handle and shutdown metadata for one pool-owned thread
+ * @brief This is the handoff point for thread pool. Callers fill `threads`, `threads_mutex`, `thread_count`, `is_work_queue_mode` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct thread_pool thread_pool_t;
 typedef struct thread_pool_entry thread_pool_entry_t;
 

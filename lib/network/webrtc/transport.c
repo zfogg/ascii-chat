@@ -46,6 +46,7 @@
 #include <string.h>
 
 /**
+ * @brief Receive queue element (variable-length message)
  * @brief Maximum receive queue size (messages buffered before recv())
  *
  * Power of 2 for ringbuffer optimization. Completed ACIP packets are queued here.
@@ -96,6 +97,8 @@ typedef struct {
   uint64_t disconnected_since_ns; ///< Start of the current transient ICE disconnect
   mutex_t state_mutex;            ///< Protect state changes
   mutex_t send_mutex;             ///< Keep chunks from concurrent packets together
+/**
+ */
 } webrtc_transport_data_t;
 
 static void webrtc_abort(webrtc_transport_data_t *wrtc) {
@@ -185,6 +188,7 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
 }
 
 /**
+ * @brief webrtc transport data keeps the values that move through the subsystem: `peer_conn`, `data_channel`, `security`, `ready_user_data`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief DataChannel message callback - push to receive queue
  */
 static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *data, size_t len, void *user_data) {

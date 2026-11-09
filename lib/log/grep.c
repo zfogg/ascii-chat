@@ -35,6 +35,7 @@
 #endif
 
 /**
+ * @brief grep pattern keeps the values that move through the subsystem: `original`, `parsed_pattern`, `compiled`, `is_fixed_string`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Compiled filter entry used to match logs and print context
  */
 typedef struct {

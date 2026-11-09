@@ -23,6 +23,7 @@
 
 /**
  * @brief Callback profiling statistics for a single LWS callback reason
+ * @brief Callback profiling statistics for a single LWS callback reason
  */
 typedef struct {
   uint64_t invocation_count;   ///< Number of times callback was invoked

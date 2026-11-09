@@ -15,6 +15,7 @@
 
 /**
  * @brief Mode name mapping for bitmask extraction
+ * @brief Mode name mapping for bitmask extraction
  */
 typedef struct {
   uint32_t bit;

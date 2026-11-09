@@ -9,6 +9,9 @@
 #include <emscripten.h>
 #include <string.h>
 
+/**
+ * @brief peer output is intentionally a small, concrete record. Fields such as `next`, `data`, `length` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct peer_output {
   struct peer_output *next;
   void *data;

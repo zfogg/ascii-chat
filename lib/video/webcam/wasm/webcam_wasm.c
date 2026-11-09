@@ -34,7 +34,6 @@
  */
 
 /**
- * @struct webcam_context_t
  * @brief WASM webcam context - holds state for browser-based webcam capture
  */
 struct webcam_context_t {

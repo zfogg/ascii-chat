@@ -6,11 +6,17 @@
 #include <ascii-chat/network/crc32.h>
 #include <string.h>
 
+/**
+ */
 typedef struct packet_node {
   queued_packet_t packet;
   struct packet_node *next;
 } packet_node_t;
 
+/**
+ * @brief For packet node, this is the live record that ties `packet`, `next` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief packet queue keeps the values that move through the subsystem: `mutex`, `head`, `tail`, `domain`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 struct packet_queue {
   mutex_t mutex;
   packet_node_t *head;

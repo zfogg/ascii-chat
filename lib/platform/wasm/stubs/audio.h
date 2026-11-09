@@ -21,6 +21,8 @@ typedef struct {
   uint32_t total_samples; // Total number of samples across all frames
   uint32_t sample_rate;   // Sample rate in Hz (e.g., 48000)
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
+/**
+ */
 } audio_batch_info_t;
 
 // Stub audio frame structure for WASM
@@ -30,6 +32,10 @@ typedef struct {
   size_t size;
   uint32_t sample_rate;
   uint8_t channels;
+/**
+ * @brief The useful part of audio batch info is in `batch_count`, `total_samples`, `sample_rate`, `channels`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief audio frame is intentionally a small, concrete record. Fields such as `data`, `size`, `sample_rate`, `channels` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } audio_frame_t;
 
 // Function declarations (stubs - not actually used in client WASM)

@@ -33,6 +33,8 @@ typedef struct {
   size_t cache_bytes; /**< Maximum idle storage; zero disables caching. */
   uint64_t idle_ns;   /**< Minimum idle age for maintenance trimming. */
   bool control;       /**< May consume the process reserve for control traffic. */
+/**
+ */
 } buffer_domain_config_t;
 
 typedef struct {
@@ -45,6 +47,10 @@ typedef struct {
   uint64_t hits;
   uint64_t allocations;
   uint64_t failures;
+/**
+ * @brief This is the handoff point for buffer domain config. Callers fill `limit_bytes`, `cache_bytes`, `idle_ns`, `control` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief Owns the temporary storage used by buffer stats. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ */
 } buffer_stats_t;
 
 /** Create a domain under the shared process budget. */
@@ -90,6 +96,9 @@ void buffer_unref(const void *data);
   } while (0)
 
 /** Worker-owned reusable storage. Zero-initialize; never share a workspace. */
+/**
+ * @brief Owns the temporary storage used by buffer workspace. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ */
 typedef struct {
   void *data;
   size_t length;

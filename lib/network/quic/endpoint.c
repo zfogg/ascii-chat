@@ -6,6 +6,10 @@
 
 #define ACIP_QUIC_ENDPOINT_MAX_TRANSPORTS 64
 
+/**
+ * @brief This is the handoff point for acip quic endpoint. Callers fill `lane`, `tls`, `udp`, `worker` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for endpoint transport. Callers fill `next`, `connection`, `transport`, `claimed` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct endpoint_transport {
   struct endpoint_transport *next;
   acip_quic_connection_t *connection;

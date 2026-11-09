@@ -226,6 +226,7 @@
 #define COLOR_MODE_TRUECOLOR TERM_COLOR_TRUECOLOR ///< 24-bit truecolor mode
 
 /**
+ * @brief For options state, this is the live record that ties `detected_mode`, `mode_arg_index`, `help`, `version` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Color output setting (--color flag values)
  *
  * Enumeration for the --color option which controls color output behavior:
@@ -959,7 +960,6 @@ typedef enum {
 typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
 
 /**
- * @struct options_t
  * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
  *
  * The fields cover mode selection, terminal and media rendering, audio,

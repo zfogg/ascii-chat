@@ -25,6 +25,7 @@
 #include <ascii-chat/audio/audio.h>
 
 /**
+ * @brief For client info, this is the live record that ties `participant_type`, `network_connection`, `event_ready`, `event_cleanup` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Participant type for distinguishing network vs memory participants
  *
  * Network participants communicate over TCP/IP or WebRTC, while memory

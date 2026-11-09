@@ -27,9 +27,12 @@ typedef struct {
   char host[HOSTNAME_BUFFER_SIZE];
   uint16_t port;
   bool has_explicit_port;
+/**
+ */
 } connection_endpoint_t;
 
 /**
+ * @brief For connection endpoint, this is the live record that ties `protocol`, `port`, `has_explicit_port` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * Resolve an input string into a normalized TCP or WebSocket endpoint.
  *
  * Supported inputs:

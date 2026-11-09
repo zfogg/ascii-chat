@@ -68,6 +68,7 @@ static bool playback_cancelled(void *data);
  * ============================================================================ */
 
 /**
+ * @brief Runtime state for media loading, frame timing, and source switching
  * @brief Runtime state for media loading, frame timing, and source switching.
  *
  * The context owns the active and pending media sources, loader synchronization,

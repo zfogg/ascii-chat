@@ -37,6 +37,7 @@ typedef asciichat_error_t (*acip_acds_handler_func_t)(const void *payload, size_
 
 /**
  * @brief Hash table entry for ACDS packet type to handler mapping
+ * @brief Hash table entry for ACDS packet type to handler mapping
  */
 typedef struct {
   packet_type_t key;   ///< Packet type (0 = empty slot)

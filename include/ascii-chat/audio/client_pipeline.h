@@ -108,6 +108,7 @@ typedef struct {
 } client_audio_pipeline_flags_t;
 
 /**
+ * @brief Component enable/disable flags
  * @brief Default flags with all processing enabled
  */
 #define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                \
@@ -170,6 +171,7 @@ typedef struct {
 } client_audio_pipeline_config_t;
 
 /**
+ * @brief Audio-pipeline setup for channel conversion, Opus encoding, echo handling, and preprocessing. The channel counts, sample rate, frame duration, bitrate, and processor settings are copied into the pipeline during initialization; the config itself can then be stack-owned.
  * @brief Get default configuration
  * @return Configuration with sensible defaults for voice chat
  */
@@ -240,6 +242,7 @@ typedef struct {
 } client_audio_pipeline_t;
 
 /**
+ * @brief When code needs to work with client audio pipeline, it keeps `flags`, `echo_canceller`, `processor`, `preprocess` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @name Lifecycle Functions
  * @{
  */

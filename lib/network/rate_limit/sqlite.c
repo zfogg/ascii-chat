@@ -15,6 +15,7 @@
 #include "../../discovery/queries_generated.h"
 
 /**
+ * @brief This is the handoff point for sqlite backend. Callers fill `db` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @brief SQLite backend data
  */
 typedef struct {

@@ -10,6 +10,7 @@
  */
 
 /**
+ * @brief This is the handoff point for webcam device info. Callers fill `index` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @file os/webcam.h
  * @brief Operating system specific functionality (webcam capture, etc.)
  * @ingroup webcam

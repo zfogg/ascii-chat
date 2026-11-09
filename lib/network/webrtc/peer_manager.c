@@ -32,6 +32,7 @@
 #include <string.h>
 
 /**
+ * @brief webrtc peer manager is intentionally a small, concrete record. Fields such as `role`, `config`, `signaling`, `peers` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Hash-table record for one negotiated WebRTC participant
  *
  * The record is keyed by `participant_id` and owns the peer's libdatachannel
@@ -56,8 +57,13 @@ typedef struct {
   bool gathering_timeout_reported;     ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
+/**
+ */
 } peer_entry_t;
 
+/**
+ * @brief Hash-table record for one negotiated WebRTC participant
+ */
 typedef struct pending_ice_candidate {
   uint8_t participant_id[SESSION_ID_SIZE];
   char *candidate;
@@ -66,6 +72,7 @@ typedef struct pending_ice_candidate {
 } pending_ice_candidate_t;
 
 /**
+ * @brief For pending ice candidate, this is the live record that ties `candidate`, `mid`, `next` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief WebRTC peer manager structure
  */
 typedef struct webrtc_peer_manager {

@@ -14,6 +14,8 @@
 
 /**
  * @brief Election result storage
+ * @brief State machine instance
+ * @brief Election result storage
  */
 typedef struct {
   uint8_t host_id[SESSION_ID_SIZE];   /**< Elected host participant ID */

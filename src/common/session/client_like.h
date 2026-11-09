@@ -71,6 +71,7 @@ typedef enum session_client_like_kind {
  * ============================================================================ */
 
 /**
+ * @brief This is the handoff point for session client like config. Callers fill `run_fn`, `run_user_data`, `kind`, `discovery` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * Mode-specific main loop callback
  *
  * Called after all shared initialization is complete (capture opened, audio

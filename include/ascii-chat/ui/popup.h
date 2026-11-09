@@ -18,7 +18,6 @@ asciichat_error_t ui_popup_frame_titled(frame_buffer_t *output, int row, int col
 
 /** A compact modal drawn over an already-rendered terminal frame. */
 /**
- * @struct ui_popup_t
  * @brief When code needs to work with ui popup, it keeps `title`, `lines`, `line_count`, `footer` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 typedef struct {

@@ -23,6 +23,7 @@
 #include <stddef.h>
 
 /**
+ * @brief Owned slice of a parsed roff man-page section
  * @brief Section type marker
  */
 typedef enum {

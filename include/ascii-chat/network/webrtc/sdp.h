@@ -57,6 +57,9 @@ extern "C" {
 
 /**
  * @brief Opus codec parameters for ascii-chat
+ * @brief Terminal rendering format parameters
+ * @brief Supported terminal capability (for offer/answer)
+ * @brief Opus codec parameters for ascii-chat
  *
  * RFC 7587: RTP Payload Format for the Opus Speech and Audio Codec
  */
@@ -137,6 +140,8 @@ typedef struct {
   /* Raw SDP string (generated from above) */
   char sdp_string[NETWORK_WEBRTC_SDP_SDP_STRING_BUFFER_SIZE]; ///< Complete SDP as null-terminated string
   size_t sdp_length;                                          ///< Length of SDP string (excluding null)
+/**
+ */
 } sdp_session_t;
 
 /* ============================================================================
@@ -144,6 +149,7 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief SDP media session (simplified for WebRTC)
  * @brief Generate SDP offer (client side)
  *
  * Creates an SDP offer with:

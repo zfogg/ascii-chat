@@ -84,6 +84,7 @@
 // ============================================================================
 
 /**
+ * @brief When code needs to work with terminal size, it keeps `rows`, `cols` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Platform-specific getopt include
  *
  * Provides unified getopt functionality across platforms:
@@ -193,6 +194,7 @@ asciichat_error_t terminal_get_size(terminal_size_t *size);
 asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size);
 
 /** Per-consumer resize state; initialize size to the last advertised dimensions.
+ * @brief The useful part of terminal resize watcher is in `size`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * Keep each watcher on one thread. No signal handler or background thread is needed. */
 typedef struct {
   terminal_size_t size;
@@ -780,6 +782,9 @@ typedef struct {
  *
  * @ingroup platform_terminal
  */
+/**
+ * @brief terminal capabilities is intentionally a small, concrete record. Fields such as `color_level`, `capabilities`, `color_count`, `utf8_support` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   /** @brief File descriptor for TTY access */
   int fd;
@@ -795,6 +800,7 @@ typedef struct {
  */
 
 /**
+ * @brief tty info keeps the values that move through the subsystem: `fd`, `path`, `owns_fd`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Detect terminal capabilities
  * @return Terminal capabilities structure with all detected features
  *

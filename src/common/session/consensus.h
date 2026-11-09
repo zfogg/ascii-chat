@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 /**
+ * @brief Mode-specific hooks used by the session consensus adapter
  * @brief Opaque session consensus handle
  */
 typedef struct session_consensus session_consensus_t;

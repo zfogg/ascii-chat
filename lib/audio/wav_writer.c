@@ -14,6 +14,9 @@
 // WAV file header structures
 #pragma pack(push, 1)
 /**
+ * @brief Packed RIFF/WAVE container header written before the format and data chunks
+ * @brief Packed fmt chunk describing PCM/float encoding, channels, rate, and sample width
+ * @brief Packed data chunk header giving the byte count of the following samples
  * @brief Packed RIFF/WAVE container header written before the format and data chunks.
  */
 typedef struct {

@@ -3,6 +3,9 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <math.h>
 
+/**
+ * @brief face follow image is intentionally a small, concrete record. Fields such as `state`, `last_detection`, `source_width`, `source_height` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 struct face_follow_image {
   face_follow_state_t state;
   unsigned char bgr[FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 3], results[FACE_FOLLOW_RESULT_BUFFER_SIZE];

@@ -13,13 +13,23 @@
 
 typedef struct {
   _Atomic uint64_t sequence, observations, total_ns, min_ns, max_ns, last_ns, recorded_ns;
+/**
+ */
 } stats_duration_cell_t;
 
+/**
+ * @brief For stats duration cell, this is the live record that ties `sequence`, `observations`, `total_ns`, `min_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 typedef struct {
   _Atomic uint64_t owner;
   stats_duration_cell_t durations[STATS_DURATION_COUNT];
+/**
+ */
 } stats_duration_shard_t;
 
+/**
+ * @brief stats duration shard keeps the values that move through the subsystem: `owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 struct stats_scope {
   stats_observer_fn observer;
   void *observer_context;
@@ -35,6 +45,10 @@ struct stats_scope {
   stats_duration_shard_t shards[STATS_DURATION_SHARDS];
 };
 
+/**
+ * @brief This is the handoff point for stats scope. Callers fill `observer`, `observer_context`, `id`, `started_ns` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief For stats sampler, this is the live record that ties `config`, `history`, `latest`, `capacity` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 struct stats_sampler {
   stats_sampler_config_t config;
   stats_snapshot_t *history;

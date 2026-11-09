@@ -17,6 +17,9 @@ typedef struct {
   bool accept_native;
   char webtransport_origin[512];
   char webtransport_path[512];
+/**
+ * @brief When code needs to work with acip quic tls, it keeps `ssl_ctx`, `alpn_length`, `server`, `enable_datagrams` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } acip_quic_tls_t;
 
 /** Create a TLS 1.3 server context. Certificate and key are copied by OpenSSL. */

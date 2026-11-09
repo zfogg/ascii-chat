@@ -21,6 +21,9 @@
 #include "../discovery/strings.h"
 
 /**
+ * @brief Host migration state for collecting HOST_LOST packets
+ * @brief Maximum participants per session
+ * @brief Persisted discovery-session record used to admit and route participants
  * @brief Maximum participants per session
  */
 

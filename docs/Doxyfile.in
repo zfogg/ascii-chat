@@ -141,7 +141,11 @@ EXCLUDE                = @ASCII_CHAT_SOURCE_DIR@/tests \
                          @ASCII_CHAT_BINARY_DIR@
 
 EXCLUDE_PATTERNS       = */.deps-cache* \
-                         */deps/*
+                         */deps/* \
+                         */node_modules/* \
+                         */.git/* \
+                         */dist/* \
+                         */build*/*
 
 INPUT_ENCODING         = UTF-8
 

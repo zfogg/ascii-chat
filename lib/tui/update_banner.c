@@ -419,6 +419,9 @@ typedef struct {
   bool exited;
   int64_t status;
   int signal;
+/**
+ * @brief This is the handoff point for update child result. Callers fill `exited`, `status`, `signal` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 } update_child_result_t;
 
 static void update_child_exited(uv_process_t *process, int64_t status, int signal) {

@@ -49,6 +49,7 @@ typedef struct {
 #endif
 
 /** @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered
+ * @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered records, and shutdown state. The context keeps those resources together until the platform mDNS operation is stopped.
  * records, and shutdown state. */
 struct asciichat_mdns_t {
   int socket_fd;                                 /**< UDP socket for mDNS */

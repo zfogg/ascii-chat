@@ -24,6 +24,8 @@
  * ============================================================================ */
 
 /**
+ * @brief One participant's audio input in the host mixer
+ * @brief For session audio ctx, this is the live record that ties `audio_ctx`, `pipeline`, `is_host`, `running` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Maximum number of audio sources for mixing
  */
 #define SESSION_AUDIO_MAX_SOURCES MAX_SESSION_PARTICIPANTS

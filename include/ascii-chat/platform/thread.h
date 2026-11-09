@@ -60,6 +60,7 @@ extern "C" {
 // ============================================================================
 
 /**
+ * @brief Internal thread wrapper for automatic cleanup
  * @brief Platform-specific thread-local storage declaration
  *
  * Use this macro to declare thread-local storage variables that are

@@ -30,6 +30,8 @@ typedef struct {
   bool issue_session;
   char session_id[MCP_SESSION_ID_LENGTH + 1];
   unsigned status;
+/**
+ */
 } http_session_t;
 static void clear_session(http_session_t *session) {
   if (session->file_open) {
@@ -271,9 +273,15 @@ void mcp_http_wake(mcp_server_t *s) {
   if (s->http_context)
     lws_cancel_service(s->http_context);
 }
+/**
+ * @brief http session keeps the values that move through the subsystem: `body`, `response`, `length`, `response_size`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct {
   lws_sorted_usec_list_t timer;
   struct lws_context *context;
+/**
+ * @brief For http pulse, this is the live record that ties `timer`, `context` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 } http_pulse_t;
 static void http_pulse(lws_sorted_usec_list_t *timer) {
   http_pulse_t *pulse = (http_pulse_t *)timer;

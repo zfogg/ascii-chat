@@ -23,6 +23,7 @@
 #define INITIAL_OWNED_STRINGS_CAPACITY 32
 
 /**
+ * @brief The four operations used to handle one registered option type
  * @brief The four operations used to handle one registered option type.
  *
  * The registry selects a handler by `option_type_t`. It compares a field with

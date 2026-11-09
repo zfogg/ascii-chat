@@ -22,6 +22,9 @@ typedef struct {
   packet_decoder_t packets;
   bool failed;
   bool finished;
+/**
+ * @brief The useful part of acip quic stream reader is in `preamble_used`, `traffic_class`, `packets`, `failed`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } acip_quic_stream_reader_t;
 
 asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,

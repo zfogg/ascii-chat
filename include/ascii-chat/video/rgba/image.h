@@ -68,8 +68,6 @@
  */
 
 /**
- * @struct rgb_pixel_t
- * @brief RGB pixel structure
  *
  * Standard RGB pixel structure with 3 bytes per pixel (R, G, B).
  * Packed structure (no padding) for efficient memory usage.
@@ -87,8 +85,7 @@ typedef struct {
 } PACKED_ATTR rgb_pixel_t;
 
 /**
- * @struct rgb_pixel_simd_t
- * @brief SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
+ * @brief rgb pixel is intentionally a small, concrete record. Fields such as `r`, `g`, `b` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  *
  * SIMD-optimized RGB pixel structure with 4-byte alignment for efficient
  * vector operations. Includes padding byte to align to 16-byte boundary
@@ -109,6 +106,7 @@ typedef struct {
 } ALIGNED_ATTR(16) rgb_pixel_simd_t;
 
 /**
+ * @brief SIMD-friendly storage for one RGB pixel. `r`, `g`, and `b` hold the color channels and `padding` keeps the layout aligned for vector loads; it is normally embedded in renderer buffers, not individually allocated.
  * @brief An owned RGB image with dimensions and row-major pixel storage
  *
  * Complete image structure containing dimensions and pixel data.
@@ -131,6 +129,8 @@ typedef struct {
   int w;               ///< Image width in pixels (must be > 0)
   int h;               ///< Image height in pixels (must be > 0)
   rgb_pixel_t *pixels; ///< Pixel data array (width * height RGB pixels, row-major order)
+/**
+ */
 } image_t;
 
 /* ============================================================================
@@ -139,6 +139,7 @@ typedef struct {
  */
 
 /**
+ * @brief An owned RGB image with dimensions and row-major pixel storage
  * @brief Maximum image width (4K resolution)
  *
  * Maximum supported image width in pixels. Set to 3840 pixels

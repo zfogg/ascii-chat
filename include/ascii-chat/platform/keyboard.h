@@ -32,6 +32,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Options for interactive line editing
  * @brief Unified keyboard key code enumeration
  *
  * Maps keyboard input to unified key codes. Arrow keys and special keys

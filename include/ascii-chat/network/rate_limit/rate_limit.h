@@ -41,6 +41,8 @@
 #include <stdint.h>
 
 /**
+ * @brief One sliding-window rate-limit policy
+ * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction
  * @brief Rate limit event types
  */
 typedef enum {

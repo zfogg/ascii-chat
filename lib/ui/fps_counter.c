@@ -17,6 +17,7 @@
 
 /**
  * @brief Per-renderer timing state for the on-screen FPS overlay
+ * @brief Per-renderer timing state for the on-screen FPS overlay
  *
  * Tracks visibility, the frame currently being measured, write completion and
  * failure state, plus monotonic timestamps used to calculate the rolling FPS

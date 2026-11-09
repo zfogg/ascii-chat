@@ -31,6 +31,7 @@ typedef struct network_server network_server_t;
 
 /**
  * @brief Status information for server/discovery service modes
+ * @brief Status information for server/discovery service modes
  *
  * Contains all data needed to display the status screen.
  */

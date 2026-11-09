@@ -32,6 +32,9 @@ typedef struct {
   bool unicode;
   bool secret;
   char text[];
+/**
+ * @brief When code needs to work with prompt snapshot, it keeps `kind`, `prompt_bytes`, `cursor`, `selected_button` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } prompt_snapshot_t;
 
 static void media_center_line(frame_buffer_t *buffer, const char *text, int row, int cols) {

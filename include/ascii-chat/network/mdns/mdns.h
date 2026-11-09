@@ -86,6 +86,7 @@ typedef struct {
 } asciichat_mdns_service_t;
 
 /**
+ * @brief Service information for advertisement
  * @brief Discovered service information
  */
 typedef struct {
@@ -108,6 +109,7 @@ typedef struct {
 } asciichat_mdns_discovery_t;
 
 /**
+ * @brief This is the handoff point for asciichat mdns discovery. Callers fill `port`, `ttl` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @brief Callback for discovered services
  *
  * @param service Discovered service information

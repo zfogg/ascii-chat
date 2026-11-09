@@ -75,6 +75,9 @@ typedef struct {
   atomic_t mode_atomic;            ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
   flow_control_debounce_t debounce;
+/**
+ * @brief log search state is intentionally a small, concrete record. Fields such as `mode`, `len`, `cursor`, `previous_pattern_count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } log_search_state_t;
 
 static log_search_state_t g_search_state = {

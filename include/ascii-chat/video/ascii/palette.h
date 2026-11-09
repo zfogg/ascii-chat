@@ -135,6 +135,7 @@ typedef struct {
 } palette_def_t;
 
 /**
+ * @brief Validated luminance palette used to turn brightness into characters
  * @brief UTF-8 capability detection structure
  *
  * Stores information about terminal UTF-8 support, including detection
@@ -154,6 +155,7 @@ typedef struct {
 } utf8_capabilities_t;
 
 /**
+ * @brief The useful part of utf8 capabilities is in `utf8_support`, `forced_utf8`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @name Built-in Palette Character Strings
  * @{
  * @ingroup palette
@@ -228,6 +230,7 @@ typedef struct {
 } utf8_char_info_t;
 
 /**
+ * @brief When code needs to work with utf8 char info, it keeps `byte_len`, `display_width` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely.
  *
  * The palette keeps character boundaries separate from byte offsets, so a
@@ -255,6 +258,7 @@ typedef struct {
 } utf8_palette_t;
 
 /**
+ * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely
  * @name Default Palette Constants
  * @{
  * @ingroup palette

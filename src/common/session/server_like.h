@@ -24,6 +24,9 @@ typedef void (*session_server_like_cleanup_fn)(void *user_data);
 
 typedef void (*session_server_like_status_fn)(void *user_data, ui_status_t *out_status);
 
+/**
+ * @brief The useful part of session server like config is in `[struct].mdns`, `[struct].upnp`, `init_fn`, `init_user_data`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct session_server_like_config {
 
   session_server_like_init_fn init_fn;

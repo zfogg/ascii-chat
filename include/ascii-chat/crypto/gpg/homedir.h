@@ -40,7 +40,6 @@ extern "C" {
 #endif
 
 /**
- * @struct gpg_homedir_t
  * @brief Opaque handle to a temporary GPG homedir
  */
 typedef struct gpg_homedir gpg_homedir_t;

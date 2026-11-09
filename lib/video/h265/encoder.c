@@ -36,6 +36,9 @@ static int h265_thread_count(void) {
   return half > 4 ? half : 4;
 }
 
+/**
+ * @brief h265 encoder is intentionally a small, concrete record. Fields such as `codec_ctx`, `codec`, `frame`, `packet` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct h265_encoder {
   AVCodecContext *codec_ctx;
   const AVCodec *codec;

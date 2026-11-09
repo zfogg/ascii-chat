@@ -135,6 +135,13 @@
 typedef bool (*parallel_connect_should_exit_fn)(void *user_data);
 
 /**
+ * @brief acds client config is intentionally a small, concrete record. Fields such as `server_port`, `timeout_ms`, `security_policy`, `identity_key` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief acds client keeps the values that move through the subsystem: `config`, `connected`, `transport`, `connection`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief Session creation request parameters
+ * @brief Values returned after ACDS creates a session. The expiry timestamp tells the caller how long the discovery record remains valid; the identifier and endpoint details are copied into connection state before this temporary result is released.
+ * @brief Session join parameters
+ * @brief Outcome of an ACDS join request. `success` controls whether the session type, server port, and error fields are meaningful; callers inspect the response, copy endpoint details they need, and discard the temporary result.
+ * @brief Result returned by ACDS for a session-string lookup. `found` gates the remaining fields; capabilities, participant counts, password/verification requirements, and creation/expiry timestamps describe the session a client may join.
  * @brief ACDS client connection configuration
  */
 typedef struct {

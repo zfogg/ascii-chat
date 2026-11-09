@@ -17,6 +17,9 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
+/**
+ * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct ascii_otel_scope {
   gotel_scope_t scope;
   bool retained;

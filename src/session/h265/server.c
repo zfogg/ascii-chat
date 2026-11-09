@@ -21,8 +21,14 @@ typedef struct {
   uint16_t last_width;
   uint16_t last_height;
   bool in_use;
+/**
+ */
 } h265_client_decoder_t;
 
+/**
+ * @brief The useful part of h265 client decoder is in `client_id`, `decoder`, `last_width`, `last_height`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief h265 server context keeps the values that move through the subsystem: `active_client_count`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct h265_server_context {
   h265_client_decoder_t clients[MAX_CLIENTS];
   uint32_t active_client_count;

@@ -252,6 +252,9 @@ typedef struct {
   const char **manual_env_descs;
   size_t manual_env_count;
   size_t manual_env_capacity;
+/**
+ * @brief This is the handoff point for manpage merge state. Callers fill `in_auto_section`, `found_section_header`, `in_merge_section`, `merge_content_generated` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 } manpage_merge_state_t;
 
 static asciichat_error_t manpage_open_merged_output(const char *output_path, FILE **output, bool *close_output) {

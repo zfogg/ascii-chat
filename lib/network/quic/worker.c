@@ -5,6 +5,9 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 
+/**
+ * @brief For acip quic worker, this is the live record that ties `endpoint`, `lane`, `failure`, `context` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 struct acip_quic_worker {
   acip_quic_udp_endpoint_t *endpoint;
   mutex_t *lane;

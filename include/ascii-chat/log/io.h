@@ -28,6 +28,7 @@ extern "C" {
 
 /**
  * @brief Saved descriptors and temporary file used during stdout/stderr capture
+ * @brief Saved descriptors and temporary file used during stdout/stderr capture
  *
  * `log_io_start()` redirects both standard streams and stores their original
  * descriptors here. `output` receives the captured bytes and is closed by

@@ -64,6 +64,8 @@ typedef struct acip_transport acip_transport_t;
 typedef struct thread_pool thread_pool_t;
 
 /**
+ * @brief Connection-specific values handed to a WebSocket client worker
+ * @brief Runtime state for the WebSocket listener and its client-handler pool
  * @brief Client handler function type
  *
  * Called when a new WebSocket client connects.
@@ -75,6 +77,7 @@ typedef struct thread_pool thread_pool_t;
 typedef void *(*websocket_client_handler_fn)(void *arg);
 
 /**
+ * @brief Listener settings and callbacks used to create a WebSocket server
  * @brief Connection-specific values handed to a WebSocket client worker.
  *
  * The context identifies the ACIP transport and peer address, records whether

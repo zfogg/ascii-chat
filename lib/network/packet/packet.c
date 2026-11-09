@@ -9,6 +9,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
@@ -438,6 +439,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Allocate buffer for payload
   void *payload = NULL;
+  defer_named(release_payload, buffer_release(payload));
   if (pkt_len > 0) {
     payload = buffer_alloc(
         packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL,
@@ -449,17 +451,14 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
     uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
-      buffer_release(payload);
       return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
     }
     if (received != (ssize_t)pkt_len) {
-      buffer_release(payload);
       return SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
     }
 
     // Validate CRC32
     if (packet_validate_crc32(payload, pkt_len, expected_crc) != ASCIICHAT_OK) {
-      buffer_release(payload);
       // Error context is already set by packet_validate_crc32
       return ERROR_NETWORK_PROTOCOL;
     }
@@ -468,6 +467,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Return results
   *type = (packet_type_t)pkt_type;
   *data = payload;
+  defer_cancel(release_payload);
   *len = pkt_len;
 
   return ASCIICHAT_OK;

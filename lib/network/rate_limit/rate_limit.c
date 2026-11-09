@@ -61,6 +61,7 @@ const rate_limit_config_t DEFAULT_RATE_LIMITS[RATE_EVENT_MAX] = {
 // ============================================================================
 
 /**
+ * @brief Private dispatch object joining a rate-limit backend to its operations table
  * @brief Private dispatch object joining a rate-limit backend to its operations table.
  *
  * `ops` selects the backend implementation and `backend_data` points to its

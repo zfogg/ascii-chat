@@ -246,6 +246,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
   // Snapshot fields while holding the manager read lock so removal cannot
   // invalidate a frame-buffer pointer between this scan and its copy.
+/**
+ * @brief One client's video input as seen by the compositor
+ */
   typedef struct {
     char client_id[MAX_CLIENT_ID_LEN];
     bool is_active;

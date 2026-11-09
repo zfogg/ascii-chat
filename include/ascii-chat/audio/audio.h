@@ -83,6 +83,7 @@
  */
 
 /**
+ * @brief When code needs to work with audio device info, it keeps `index`, `max_input_channels`, `max_output_channels`, `default_sample_rate` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Audio context for full-duplex capture and playback
  *
  * Manages a single PortAudio full-duplex stream for simultaneous audio
@@ -167,6 +168,8 @@ typedef struct {
   double output_resample_phase;      ///< 48 kHz source position carried between output callbacks
   float output_resample_previous;    ///< Last source sample used at an output boundary
   bool output_resample_has_previous; ///< Whether a prior output block has been processed
+/**
+ */
 } audio_context_t;
 
 /* ============================================================================
@@ -388,6 +391,9 @@ asciichat_error_t audio_set_realtime_priority(void);
  * and capabilities (input/output channel counts).
  *
  * @ingroup audio
+ */
+/**
+ * @brief Audio context for full-duplex capture and playback
  */
 typedef struct {
   int index;                        ///< PortAudio device index

@@ -51,9 +51,12 @@ typedef struct {
   // Detection status
   bool detection_complete; ///< All probes finished
   asciichat_error_t error; ///< Error if detection failed
+/**
+ */
 } nat_quality_t;
 
 /**
+ * @brief Connectivity measurements collected while judging a peer's NAT path: public-IP and UPnP availability, mapped port, NAT type, reachability, STUN latency, and upload estimate. Discovery uses this value to rank candidates; it owns no live socket.
  * @brief Initialize NAT quality structure with defaults
  * @param quality Structure to initialize
  */

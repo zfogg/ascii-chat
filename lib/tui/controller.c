@@ -50,16 +50,24 @@
 typedef struct {
   _Atomic unsigned references;
   int fd;
+/**
+ */
 } screen_terminal_t;
 
 typedef struct media_snapshot_slot media_snapshot_slot_t;
 
+/**
+ * @brief When code needs to work with media snapshot slot, it keeps `busy`, `snapshot`, `capacity` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief The useful part of screen terminal is in `references`, `fd`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   _Atomic unsigned references;
   media_snapshot_slot_t *slot;
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
   _Alignas(max_align_t) char data[];
+/**
+ */
 } screen_snapshot_t;
 
 struct media_snapshot_slot {
@@ -75,6 +83,9 @@ typedef struct {
   terminal_size_t dimensions;
   size_t len;
   const char *text;
+/**
+ * @brief This is the handoff point for screen snapshot. Callers fill `references`, `slot`, `terminal`, `frame_id` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 } text_snapshot_t;
 static void render_text(terminal_size_t size, const void *data);
 
@@ -609,6 +620,11 @@ typedef struct {
   size_t layer_count;
   int active;
   bool volume, drew, fresh, errors, sync_backdrop;
+/**
+ * @brief screen keeps the values that move through the subsystem: `next`, `owned`, `snapshot`, `render`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief For text snapshot, this is the live record that ties `fd`, `media`, `dimensions`, `len` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief When code needs to work with native view, it keeps `screen`, `layers`, `layer_count`, `active` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,

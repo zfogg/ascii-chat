@@ -75,6 +75,14 @@
 #endif
 
 /**
+ * @brief Cached decimal text for a small integer. `len` says how many characters are valid in the inline representation, allowing hot rendering paths to avoid formatting and allocation for values from one to three digits.
+ * @brief Global decimal cache for digit conversion
+ * @brief Small RGB image view used by the NEON renderer. `w` and `h` describe the image geometry and `pixels` points at row-major RGB storage owned by the caller; the renderer reads it and does not free the pixels.
+ * @brief Run-length encoding state for ANSI color optimization
+ * @brief This is the handoff point for simd benchmark. Callers fill `scalar_time`, `sse2_time`, `ssse3_time`, `avx2_time` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief Growable NUL-terminated buffer used while assembling ASCII output
+ * @brief utf8 char is intentionally a small, concrete record. Fields such as `width`, `byte_len`, `_pad` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief Owns the temporary storage used by utf8 palette cache. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * @name Luminance Calculation Constants
  * @{
  */

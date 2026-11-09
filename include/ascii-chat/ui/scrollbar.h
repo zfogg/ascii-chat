@@ -5,6 +5,9 @@
 typedef struct {
   size_t start, length;
   bool visible;
+/**
+ * @brief For ui scrollbar geometry, this is the live record that ties `start`, `length`, `visible` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 } ui_scrollbar_geometry_t;
 ui_scrollbar_geometry_t ui_scrollbar_measure(size_t total, size_t visible, size_t offset, size_t height);
 /** Format one track cell; caller supplies storage (no allocation or output). */

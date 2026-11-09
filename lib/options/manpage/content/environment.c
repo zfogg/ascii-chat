@@ -57,6 +57,7 @@ char *manpage_content_generate_environment(const options_config_t *config) {
 
 /**
  * @brief Environment variable entry for manpage generation
+ * @brief Environment variable entry for manpage generation
  */
 typedef struct {
   const char *name;             ///< Environment variable name

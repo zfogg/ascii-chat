@@ -677,6 +677,7 @@ void update_dimensions_to_terminal_size(options_t *opts) {
 
 /**
  * @brief Mode metadata for usage display
+ * @brief Mode metadata for usage display
  */
 typedef struct {
   asciichat_mode_t mode;    ///< Application mode

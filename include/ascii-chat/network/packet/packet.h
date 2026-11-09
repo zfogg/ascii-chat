@@ -97,6 +97,13 @@
 #endif
 
 /**
+ * @brief Announces the key-exchange, authentication, and cipher algorithms an endpoint is willing to use. The supported-algorithm fields are capability bitmasks or lists, while the preferred values guide selection; the receiver uses this packet to build the later crypto-parameters message rather than keeping it as session state.
+ * @brief Fixed prefix shared by every ACIP packet on the wire
+ * @brief The first ACIP negotiation packet exchanged by two peers. Its protocol version and revision fields establish wire compatibility, while the encryption, compression, and feature flags tell the receiver which later packet paths are safe to use. It is assembled for transmission and parsed into host-sized values on receipt.
+ * @brief Terminal size update packet
+ * @brief When code needs to work with server state packet, it keeps `connected_client_count`, `active_client_count` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief For stream header, this is the live record that ties `client_id`, `stream_type`, `timestamp` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief The ACIP packet sent when a terminal announces what it can render. `capabilities` and `color_level` describe feature support, while `width`, `height`, and `render_mode` let the peer choose a compatible output format. The packed fields are serialized directly; do not treat this as a long-lived heap object.
  * @name Network Protocol Constants
  * @{
  * @ingroup packet
@@ -880,6 +887,7 @@ _Static_assert(sizeof(protocol_version_packet_t) == 16, "protocol version packet
 void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t supports_encryption);
 
 /**
+ * @brief The wire metadata for one rendered ASCII frame. `width` and `height` describe the terminal grid, `original_size` and `compressed_size` bound the encoded text, and `checksum` detects corruption; flags carry frame-specific options. The variable text follows this fixed prefix and is owned by the packet storage until decoding completes.
  * @brief ASCII frame packet structure (Packet Type 2)
  *
  * Contains complete ASCII art frame with metadata for terminal rendering.
@@ -908,6 +916,7 @@ typedef struct {
 PACKED_ATTR /** @endcond */ ascii_frame_packet_t;
 
 /**
+ * @brief Describes one compressed image sent through ACIP. `width`, `height`, and `pixel_format` tell the decoder how to interpret the payload; `compressed_size` bounds the following bytes, and `checksum` plus `timestamp` support validation and frame ordering. The packet header is fixed-size, but the image bytes are variable-length and owned by the packet buffer.
  * @brief Image frame packet structure (Packet Type 3)
  *
  * Contains raw RGB image with dimensions from camera/webcam.
@@ -936,6 +945,7 @@ typedef struct {
 PACKED_ATTR /** @endcond */ image_frame_packet_t;
 
 /**
+ * @brief The metadata prefix for a batch of encoded audio samples. `batch_count`, `total_samples`, `sample_rate`, and `channels` let the receiver allocate or route the batch correctly before it touches the encoded payload. The header is serialized with the packet; the audio bytes remain in the enclosing packet buffer.
  * @brief Audio batch packet structure (Packet Type 28)
  *
  * Contains multiple audio chunks batched together for efficiency.
@@ -1189,6 +1199,7 @@ typedef struct {
 } packet_envelope_t;
 
 /**
+ * @brief packet envelope is intentionally a small, concrete record. Fields such as `type`, `data`, `len`, `was_encrypted` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Packet reception result codes
  *
  * Result codes for packet reception operations. Negative values indicate

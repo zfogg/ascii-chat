@@ -47,9 +47,12 @@ typedef struct {
   // Beep/tone artifact detection
   uint64_t beep_events;   // Short tonal bursts (codec artifacts, system beeps)
   uint64_t tonal_samples; // Samples in tonal/beep-like patterns
+/**
+ */
 } audio_analysis_stats_t;
 
 /**
+ * @brief Measurements used to diagnose sent or received audio quality
  * @brief Initialize audio analysis
  * @return 0 on success, negative on error
  */

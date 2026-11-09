@@ -82,6 +82,8 @@ typedef struct {
   const char *name;
   const char *unit;
   const char *description;
+/**
+ */
 } stats_descriptor_t;
 
 /** Static metadata; NULL for an invalid ID. Names are stable, lowercase identifiers. */
@@ -89,6 +91,9 @@ const stats_descriptor_t *stats_counter_descriptor(stats_counter_id_t id);
 const stats_descriptor_t *stats_gauge_descriptor(stats_gauge_id_t id);
 const stats_descriptor_t *stats_duration_descriptor(stats_duration_id_t id);
 
+/**
+ * @brief stats descriptor is intentionally a small, concrete record. Fields such as `name`, `unit`, `description` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   bool counters[STATS_COUNTER_COUNT];
   bool gauges[STATS_GAUGE_COUNT];
@@ -111,6 +116,9 @@ typedef struct {
   uint64_t counters[STATS_COUNTER_COUNT];
   uint64_t gauges[STATS_GAUGE_COUNT];
   stats_duration_snapshot_t durations[STATS_DURATION_COUNT];
+/**
+ * @brief The useful part of stats snapshot is in `scope_id`, `started_ns`, `sampled_ns`, `capabilities`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } stats_snapshot_t;
 
 /** Copies capabilities. Create before workers start; destroy after all users join.
@@ -138,6 +146,8 @@ void stats_gauge_set(stats_scope_t *scope, stats_gauge_id_t id, uint64_t value);
 void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_t elapsed_ns);
 
 /** Owned value copy. Concurrent snapshots are serialized. Each duration tuple is
+ * @brief stats sampler config keeps the values that move through the subsystem: `window_ns`, `resolution_ns`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief stats rates is intentionally a small, concrete record. Fields such as `ready`, `elapsed_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * coherent, but independent metrics need not describe one atomic application event.
  * Empty durations have observations/min/max/last/total equal to zero.
  */

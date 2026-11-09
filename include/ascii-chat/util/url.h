@@ -59,6 +59,7 @@ asciichat_error_t hostname_to_ascii(const char *hostname, char *output, size_t c
 
 /**
  * @brief Structure containing parsed URL components
+ * @brief Structure containing parsed URL components
  * @note All string fields are allocated with SAFE_MALLOC() and must be freed by caller
  */
 typedef struct {

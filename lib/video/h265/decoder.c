@@ -2,6 +2,7 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
+ * @brief When code needs to work with h265 decoder, it keeps `codec_ctx`, `frame`, `packet`, `parser` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @file video/h265/decoder.c
  * @brief FFmpeg HEVC decoder for ASCII art frames
  */

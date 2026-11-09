@@ -48,6 +48,11 @@ typedef struct {
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
+/**
+ * @brief When code needs to work with frame slot, it keeps `frame`, `busy`, `capacity` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief Owns the temporary storage used by frame queue. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ * @brief pipeline frame keeps the values that move through the subsystem: `slot`, `pixels`, `w`, `h`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 } pipeline_frame_t;
 
 struct frame_slot_s {
@@ -266,6 +271,9 @@ static bool frame_is_valid(const pipeline_frame_t *f) {
  * Pipeline Context
  * ============================================================================ */
 
+/**
+ * @brief For session pipeline, this is the live record that ties `capture_tid`, `encode_tid`, `input_tid`, `input_start_status` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 struct session_pipeline_s {
   asciichat_thread_t capture_tid;
   asciichat_thread_t encode_tid;

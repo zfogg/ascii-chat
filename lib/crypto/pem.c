@@ -180,6 +180,8 @@ static int looks_like_DER(const unsigned char *buf, size_t len) {
 
 /**
  * @brief Dynamic byte vector for PEM decoding
+ * @brief One decoded PEM (Privacy-Enhanced Mail) block
+ * @brief Dynamic byte vector for PEM decoding
  *
  * Type alias for VECTOR(unsigned char) - a dynamic array of bytes used
  * during PEM parsing and trust anchor conversion.

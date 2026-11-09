@@ -42,6 +42,8 @@ extern "C" {
 #endif
 
 /**
+ * @brief For webrtc peer manager config, this is the live record that ties `role`, `bind_address`, `stun_servers`, `stun_count` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief Hooks that deliver local SDP offers/answers and ICE candidates to ACDS
  * @addtogroup webrtc
  * @brief Manage WebRTC peer connections for session participants
  * @{

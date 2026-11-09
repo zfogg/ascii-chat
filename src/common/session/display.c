@@ -65,6 +65,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Runtime terminal state and reusable workspaces for ASCII rendering
  * @brief Runtime terminal state and reusable workspaces for ASCII rendering.
  *
  * It owns TTY capability data, palette lookup tables, stabilizers, output and

@@ -13,6 +13,9 @@ extern "C" {
 
 /** Mono streaming STFT processor. One owner thread per instance. */
 typedef struct spectral_processor spectral_processor_t;
+/**
+ * @brief For spectral config, this is the live record that ties `sample_rate`, `fft_size`, `noise_gate`, `compressor` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 typedef struct {
   int sample_rate;
   int fft_size; /**< 512, 1024, or 2048; latency is exactly fft_size samples. */

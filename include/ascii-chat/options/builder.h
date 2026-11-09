@@ -154,6 +154,11 @@
 #include "../options/options.h" // For option_mode_bitmask_t
 
 /**
+ * @brief Custom help section descriptor
+ * @brief Example descriptor for programmatic EXAMPLES generation
+ * @brief Mode descriptor for programmatic MODES generation (for help output)
+ * @brief A rule connecting one option to another during validation
+ * @brief Usage line descriptor for programmatic USAGE generation
  * @brief Option value types
  *
  * Defines the type of value an option accepts.
@@ -218,9 +223,12 @@ typedef struct {
 
   // Validation pattern (optional)
   const char *validation_pattern; ///< Optional regex pattern for validation hints
+/**
+ */
 } option_metadata_t;
 
 /**
+ * @brief Completion metadata attached to one option descriptor
  * @brief Option dependency types
  *
  * Defines relationships between options.
@@ -283,9 +291,12 @@ typedef struct {
   // Mode-aware default getter (for options with mode-specific defaults)
   const void *(*mode_default_getter)(
       asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
+/**
+ */
 } option_descriptor_t;
 
 /**
+ * @brief The complete registry entry for one command-line/configuration option
  * @brief Usage line descriptor for programmatic USAGE generation
  *
  * Stores components separately so colors can be applied semantically:
@@ -382,6 +393,7 @@ typedef struct {
 } positional_arg_descriptor_t;
 
 /**
+ * @brief Describes one non-option command-line argument and how the parser consumes it
  * @brief Custom help section descriptor
  *
  * Describes a custom section to be printed in help output.
@@ -430,9 +442,12 @@ typedef struct {
   char **owned_strings;          ///< Strdup'd strings to free on cleanup
   size_t num_owned_strings;      ///< Number of owned strings
   size_t owned_strings_capacity; ///< Allocated capacity
+/**
+ */
 } options_config_t;
 
 /**
+ * @brief Immutable parsing tables produced from an options builder
  * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config.
  *
  * For incrementally constructing option configurations.
@@ -476,6 +491,8 @@ typedef struct {
   char **owned_strings_builder;
   size_t num_owned_strings_builder;
   size_t owned_strings_builder_capacity;
+/**
+ */
 } options_builder_t;
 
 // ============================================================================
@@ -483,6 +500,7 @@ typedef struct {
 // ============================================================================
 
 /**
+ * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config
  * @brief Create empty options builder
  *
  * @param struct_size sizeof(your_options_t) for the target options struct

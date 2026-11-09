@@ -23,6 +23,8 @@ typedef struct {
   char **symbols;
   int count;
   bool tried_symbolize;
+/**
+ */
 } backtrace_t;
 
 #define ASCIICHAT_ERRNO_MESSAGE_MAX 1024
@@ -64,6 +66,10 @@ typedef struct {
   bool has_system_error;
   bool has_wsa_error;
   bool message_truncated;
+/**
+ * @brief This is the handoff point for backtrace. Callers fill `symbols`, `count`, `tried_symbolize` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief asciichat error context is intentionally a small, concrete record. Fields such as `code`, `file`, `line`, `function` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } asciichat_error_context_t;
 
 typedef enum {
@@ -77,9 +83,17 @@ typedef struct {
   asciichat_error_context_t context;
   uint64_t resolved_ns;
   asciichat_errno_outcome_t outcome;
+/**
+ */
 } asciichat_errno_history_t;
 
 /** Checkpoints use IDs, not depths, so concurrent removals cannot invalidate them. */
+/**
+ * @brief When code needs to work with asciichat errno snapshot, it keeps `total`, `copied` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
+/**
+ * @brief The useful part of asciichat errno scope is in `thread_id`, `generation`, `after_id`, `previous_after_id`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   uint64_t thread_id;
   uint64_t generation;
@@ -101,6 +115,10 @@ typedef struct {
   uint64_t overwritten_history;
   size_t pending_errors;
   size_t registered_threads;
+/**
+ * @brief This is the handoff point for asciichat errno history. Callers fill `context`, `resolved_ns`, `outcome` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief For asciichat error stats, this is the live record that ties `total_errors`, `last_error_time`, `last_error_code`, `dropped_errors` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 } asciichat_error_stats_t;
 
 #ifdef __cplusplus

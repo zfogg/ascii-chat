@@ -23,6 +23,9 @@
 #include <ascii-chat/options/options.h>
 
 #define MIXER_LISTENER_SAMPLES 8192
+/**
+ * @brief Owns the temporary storage used by mixer listener buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ */
 typedef struct mixer_listener_buffer {
   float samples[MIXER_LISTENER_SAMPLES];
   size_t read;

@@ -48,6 +48,7 @@ static int find_binary_for_address(struct dl_phdr_info *info, size_t size, void 
 }
 
 /**
+ * @brief linux binary lookup is intentionally a small, concrete record. Fields such as `address`, `match`, `found` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Get binary that contains address on Linux via the ELF program headers
  *
  * Iterates loaded ELF images to find the executable segment containing the

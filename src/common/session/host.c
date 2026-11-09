@@ -72,6 +72,8 @@
  * ============================================================================ */
 
 /**
+ * @brief Keeps the host-side rendering history used to compare successive frames and stabilize output for connected participants. Its buffers and dimensions belong to the host render target and must be reset when the source or terminal geometry changes.
+ * @brief The useful part of session host is in `frame_workspace`, `render_histories`, `port`, `max_clients`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @brief Host-owned live record for one connected participant.
  *
  * It ties the participant ID and network transport to rendering dimensions,
@@ -944,6 +946,9 @@ typedef struct {
   uint32_t client_id;
   network_negotiation_t negotiation;
   private_key_t identity;
+/**
+ * @brief The useful part of host connection is in `client_id`, `negotiation`, `identity`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } host_connection_t;
 static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
   session_host_t *host = arg;

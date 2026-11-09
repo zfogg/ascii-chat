@@ -121,6 +121,7 @@ typedef struct session_log_buffer session_log_buffer_t;
 
 /**
  * @brief Heap-backed message waiting for the logging output thread
+ * @brief Heap-backed message waiting for the logging output thread
  *
  * `message` contains the formatted line and `use_stderr` preserves whether it
  * should be written to stderr or stdout. The entry owns the message pointer

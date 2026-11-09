@@ -13,6 +13,7 @@
 
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -21,6 +22,8 @@
 #include <string.h>
 
 /**
+ * @brief The useful part of memory backend is in `events`, `lock`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief Per-address, per-event timestamp ring used by the in-memory limiter
  * @brief Per-address, per-event timestamp ring used by the in-memory limiter.
  *
  * `key` combines the client address and event type; `timestamps` stores the
@@ -253,15 +256,16 @@ void *memory_backend_create(void) {
     return NULL;
   }
 
+  defer_named(release_backend, SAFE_FREE(backend));
   memset(backend, 0, sizeof(*backend));
 
   if (mutex_init(&backend->lock, "rate_limiter") != 0) {
     log_error("Failed to initialize mutex");
-    SAFE_FREE(backend);
     return NULL;
   }
 
   log_debug("Memory rate limiter backend initialized");
+  defer_cancel(release_backend);
   return backend;
 }
 

@@ -75,6 +75,7 @@ extern "C" {
  * ============================================================================ */
 
 /**
+ * @brief Credentials and callback used while gathering ICE candidates
  * @brief ICE candidate type enumeration (RFC 5245)
  */
 typedef enum {
@@ -137,6 +138,8 @@ typedef struct {
 
   /* Extensions */
   char extensions[NETWORK_WEBRTC_ICE_EXTENSIONS_BUFFER_SIZE]; ///< Additional extensions (e.g., "tcptype passive")
+/**
+ */
 } ice_candidate_t;
 
 /* ============================================================================
@@ -144,6 +147,7 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief Single ICE candidate for connectivity
  * @brief Callback for sending ICE candidate to peer
  *
  * Called by ICE agent when a new candidate is discovered.

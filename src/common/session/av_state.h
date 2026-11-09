@@ -28,6 +28,7 @@ typedef struct {
 } session_av_state_t;
 
 /**
+ * @brief Generation-guarded lifecycle state for one session audio or video stream
  * @brief Allocate an idle audio/video state for callers that need a separate handle.
  * @return Owned state, or NULL on allocation failure. Embedded states may still use zero initialization.
  */

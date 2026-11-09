@@ -96,6 +96,8 @@ typedef struct {
   client_audio_pipeline_t *audio_pipeline;
   uint64_t observed_audio_blocks, observed_audio_samples, observed_audio_ns, observed_audio_gap_ns;
   uint64_t observed_video_frames;
+/**
+ */
 } discovery_video_receiver_t;
 
 static void discovery_media_interrupt(void *context) {
@@ -132,6 +134,9 @@ static void discovery_media_release(void *context) {
   log_info("DISCOVERY_MEDIA_RELEASED: workers=0");
 }
 
+/**
+ * @brief discovery video receiver is intentionally a small, concrete record. Fields such as `connection`, `protocol`, `network`, `receiver_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   session_host_t *host;
   session_audio_ctx_t *audio;
@@ -140,6 +145,8 @@ typedef struct {
   asciichat_thread_t thread;
   bool started;
   asciichat_error_t result;
+/**
+ */
 } discovery_host_audio_capture_t;
 
 static void *discovery_host_audio_capture(void *user_data) {
@@ -363,10 +370,15 @@ static void on_session_ready(const char *session_string, void *user_data) {
   }
 }
 
+/**
+ * @brief This is the handoff point for discovery host audio capture. Callers fill `host`, `audio`, `participant_id`, `running` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct {
   mutex_t mutex;
   char error[DISCOVERY_MAIN_ERROR_BUFFER_SIZE];
   asciichat_error_t error_code;
+/**
+ */
 } discovery_ui_state_t;
 
 /** Save callback errors for reporting after terminal cleanup. */
@@ -381,6 +393,7 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
 }
 
 /**
+ * @brief When code needs to work with discovery ui state, it keeps `mutex`, `error_code` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * Adapter function for session capture exit callback
  * Converts from void*->bool signature to match session_capture_should_exit_fn
  *

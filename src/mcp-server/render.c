@@ -20,6 +20,9 @@ typedef struct {
   uint64_t started, exit_time;
   unsigned timeout;
   bool exited, failed, stopped;
+/**
+ * @brief This is the handoff point for render worker. Callers fill `loop`, `process`, `output`, `errors` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 } render_worker_t;
 static void stop_worker(render_worker_t *w, const char *reason) {
   if (w->failed)

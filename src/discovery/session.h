@@ -43,6 +43,7 @@ extern "C" {
 #endif
 
 /**
+ * @brief When code needs to work with host liveness, it keeps `last_ping_sent_ms`, `last_pong_received_ms`, `consecutive_failures`, `max_failures` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Host liveness detection state
  *
  * Participants periodically ping the host to detect disconnects.
@@ -164,6 +165,9 @@ typedef struct {
   uint64_t host_loss_detected_ms; ///< Local deadline origin while awaiting ACDS recovery
 
   // WebRTC support (NEW)
+/**
+ * @brief The useful part of discovery session is in `state`, `error`, `waiting_peer_start_ns`, `is_initiator`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
   struct webrtc_peer_manager *peer_manager; ///< WebRTC peer connection manager (NULL for TCP sessions)
   bool webrtc_transport_ready;              ///< True when DataChannel is open and transport created
   bool webrtc_connection_initiated;         ///< True when we've called webrtc_peer_manager_connect()
@@ -221,9 +225,12 @@ typedef struct {
   // Exit callback for graceful shutdown during blocking operations
   discovery_should_exit_fn should_exit_callback;
   void *exit_callback_data;
+/**
+ */
 } discovery_config_t;
 
 /**
+ * @brief Configuration for discovery session
  * @brief Create a new discovery session
  * @param config Session configuration
  * @return New session or NULL on error

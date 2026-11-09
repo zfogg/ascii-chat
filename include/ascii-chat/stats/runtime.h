@@ -20,6 +20,9 @@ typedef struct {
   unsigned page;
   unsigned selected;
   uint64_t sampled_ns;
+/**
+ * @brief stats view is intentionally a small, concrete record. Fields such as `count`, `offset`, `page`, `selected` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } stats_view_t;
 
 /** Provider runs on the stats worker; unregister before destroying its data.

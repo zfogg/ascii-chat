@@ -121,6 +121,7 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief session capture config keeps the values that move through the subsystem: `type`, `path`, `target_fps`, `loop`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Opaque session capture context handle
  *
  * Manages media source, FPS tracking, and adaptive sleep state.

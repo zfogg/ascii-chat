@@ -70,6 +70,7 @@
  */
 
 /**
+ * @brief Non-owning source reference used when laying out an ASCII frame. `frame_data` points to the source text and `frame_size` tells the compositor how many bytes are valid; the source must remain alive until layout and copy-out finish.
  * @brief Default ASCII palette characters
  *
  * Default character palette for ASCII art conversion. Contains

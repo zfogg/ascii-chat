@@ -51,6 +51,7 @@
 // ============================================================================
 
 /**
+ * @brief WebRTC data channel for sending/receiving messages
  * @brief WebRTC peer connection state
  *
  * Represents a WebRTC peer-to-peer connection using libdatachannel.
@@ -71,6 +72,7 @@ struct webrtc_peer_connection {
 };
 
 /**
+ * @brief When code needs to work with webrtc peer connection, it keeps `mapping`, `port_reservation`, `mapping_thread`, `mapping_stop` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief WebRTC data channel for sending/receiving messages
  *
  * Bidirectional communication channel over a WebRTC peer connection.

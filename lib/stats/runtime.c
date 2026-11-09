@@ -36,6 +36,9 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
+/**
+ * @brief When code needs to work with stats peer, it keeps `scope`, `sampler`, `id` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 struct stats_peer {
   stats_scope_t *scope;
   stats_sampler_t *sampler;

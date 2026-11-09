@@ -101,7 +101,6 @@ typedef struct {
 } session_host_client_info_t;
 
 /**
- * @struct session_host_client_info_t
  * @brief Snapshot of the address, identity, activity, and connection time for one host client
  * @brief Host-side event hooks for joins, departures, media, and errors.
  * @ingroup session
@@ -153,7 +152,6 @@ typedef struct {
 } session_host_callbacks_t;
 
 /**
- * @struct session_host_callbacks_t
  * @brief Host-side event hooks for joins, departures, media, and errors
  * @brief Listener, capacity, security, and callback settings for a session host.
  * @ingroup session
@@ -191,7 +189,6 @@ typedef struct {
 
   /** @brief Display context for local frame rendering (optional, can be NULL) */
 /**
- * @struct session_host_config_t
  * @brief Listener, capacity, security, and callback settings for a session host
  */
   struct session_display_ctx *display_context;
@@ -434,7 +431,6 @@ asciichat_error_t session_host_set_display(session_host_t *host, struct session_
 
 /** Rendering inputs for a local display backend. Palette is borrowed during the render cycle. */
 /**
- * @struct session_host_render_config_t
  * @brief When code needs to work with session host render config, it keeps `caps`, `palette`, `width`, `height` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 typedef struct {
@@ -445,7 +441,6 @@ typedef struct {
 } session_host_render_config_t;
 
 /** Local output can use a registered client's capabilities/transport, or a display backend.
- * @struct session_host_render_target_t
  * @brief session host render target is intentionally a small, concrete record. Fields such as `client_id`, `context` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * Callbacks execute under the host client lock and must not call host APIs.
  */

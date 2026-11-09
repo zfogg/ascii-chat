@@ -35,6 +35,10 @@
 // ============================================================================
 
 /**
+ * @brief Context for ACDS discovery thread
+ * @brief Thread-safe result sharing between discovery threads
+ * @brief Context for mDNS discovery thread
+ * @brief Internal state for collecting discovered services
  * @brief Thread-safe result sharing between discovery threads
  */
 typedef struct {

@@ -14,6 +14,9 @@ typedef enum {
 } crypto_rekey_message_t;
 typedef asciichat_error_t (*crypto_rekey_emit_fn)(void *, unsigned, crypto_rekey_message_t, const void *, size_t);
 
+/**
+ * @brief crypto rekey session is intentionally a small, concrete record. Fields such as `security`, `send`, `context`, `activated_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   crypto_record_t *security;
   crypto_rekey_emit_fn send;

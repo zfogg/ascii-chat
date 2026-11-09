@@ -10,6 +10,8 @@
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
 
+/**
+ */
 typedef struct async_packet {
   struct async_packet *next;
   void *data;
@@ -36,6 +38,10 @@ typedef struct {
   _Atomic(size_t) queued_wire_bytes;
   bool packet_received;
   atomic_t interrupted;
+/**
+ * @brief The useful part of async packet is in `next`, `data`, `size`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief When code needs to work with async tcp, it keeps `stream`, `mutex` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } async_tcp_t;
 
 static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
