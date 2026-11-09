@@ -403,6 +403,9 @@ private struct IOSSettingsView: View {
     let onClose: () -> Void
     let applyJSON: ([String: Any]) -> Void
     let renderFontSizeChanged: (Double) -> Void
+    let audioDevices: [String]
+    @Binding var selectedAudioDevice: Int32
+    let refreshAudioDevices: () -> Void
     @State private var palette = "standard"
     @State private var colorFilter = "none"
     @State private var renderMode = "foreground"
@@ -506,6 +509,22 @@ private struct IOSSettingsView: View {
                     }
                 }
                 Section("Audio") {
+                    if !audioDevices.isEmpty {
+                        Picker("Audio route", selection: $selectedAudioDevice) {
+                            ForEach(audioDevices.indices, id: \.self) { index in
+                                Text(audioDevices[index]).tag(Int32(index))
+                            }
+                        }
+                        .onChange(of: selectedAudioDevice) { _, device in
+                            guard asciichat_ios_audio_select_device(device) == 0 else { return }
+                            UserDefaults.standard.set(Int(device), forKey: "ascii-chat.ios.audio-device-index")
+                        }
+                        Button {
+                            refreshAudioDevices()
+                        } label: {
+                            Label("Refresh audio devices", systemImage: "arrow.clockwise")
+                        }
+                    }
                     Toggle("Audio", isOn: $audioEnabled)
                         .onChange(of: audioEnabled) { _, value in applyJSON(["audio_enabled": value]) }
                     Picker("FFT size", selection: $audioFFTSize) {
@@ -1273,10 +1292,17 @@ struct ContentView: View {
             .padding(.leading, 8)
         }
         .sheet(isPresented: $showSettings) {
-            IOSSettingsView(onClose: { showSettings = false }, applyJSON: applySettings) { fontSize in
-                UserDefaults.standard.set(fontSize, forKey: "ascii-chat.ios.render-font-size")
-                configureRenderBridge(fontSize: fontSize)
-            }
+            IOSSettingsView(
+                onClose: { showSettings = false },
+                applyJSON: applySettings,
+                renderFontSizeChanged: { fontSize in
+                    UserDefaults.standard.set(fontSize, forKey: "ascii-chat.ios.render-font-size")
+                    configureRenderBridge(fontSize: fontSize)
+                },
+                audioDevices: audioDevices,
+                selectedAudioDevice: $selectedAudioDevice,
+                refreshAudioDevices: refreshAudioDevices
+            )
         }
         .sheet(isPresented: $showTUISwitcher) {
             TUISwitcher(onSelect: selectTUI, onClose: { showTUISwitcher = false })
