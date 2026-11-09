@@ -279,7 +279,7 @@
  */
 +/**
  * @struct terminal_capabilities_packet_t
- * @brief Terminal capabilities packet structure (Packet Type 5)
+ * @brief The ACIP packet sent when a terminal announces what it can render. `capabilities` and `color_level` describe feature support, while `width`, `height`, and `render_mode` let the peer choose a compatible output format. The packed fields are serialized directly; do not treat this as a long-lived heap object.
  */
 /**
  * @struct terminal_capabilities_t
@@ -787,7 +787,7 @@
  */
 /**
  * @struct protocol_version_packet_t
- * @brief Protocol version negotiation packet structure (Packet Type 1)
+ * @brief The first ACIP negotiation packet exchanged by two peers. Its protocol version and revision fields establish wire compatibility, while the encryption, compression, and feature flags tell the receiver which later packet paths are safe to use. It is assembled for transmission and parsed into host-sized values on receipt.
  */
 /**
  * @struct public_key_t
@@ -1267,7 +1267,7 @@
  */
 /**
  * @struct image_frame_packet_t
- * @brief Image frame packet structure (Packet Type 3)
+ * @brief Describes one compressed image sent through ACIP. `width`, `height`, and `pixel_format` tell the decoder how to interpret the payload; `compressed_size` bounds the following bytes, and `checksum` plus `timestamp` support validation and frame ordering. The packet header is fixed-size, but the image bytes are variable-length and owned by the packet buffer.
  */
 /**
  * @struct image_source_t
@@ -1587,7 +1587,7 @@
  */
 /**
  * @struct crypto_capabilities_packet_t
- * @brief Crypto capabilities packet structure (Packet Type 14)
+ * @brief Announces the key-exchange, authentication, and cipher algorithms an endpoint is willing to use. The supported-algorithm fields are capability bitmasks or lists, while the preferred values guide selection; the receiver uses this packet to build the later crypto-parameters message rather than keeping it as session state.
  */
 /**
  * @struct crypto_context_t
@@ -1599,7 +1599,7 @@
  */
 /**
  * @struct crypto_parameters_packet_t
- * @brief Crypto parameters packet structure (Packet Type 15)
+ * @brief Carries the algorithms and encoded-size limits selected for one crypto handshake. The selected KEX, authentication, and cipher values must match the earlier capability exchange; the public-key and signature sizes tell the parser how many bytes follow. It is wire data, so validate every size before indexing or allocating.
  */
 /**
  * @struct crypto_policy_t
@@ -1811,7 +1811,7 @@
  */
 /**
  * @struct audio_batch_packet_t
- * @brief Audio batch packet structure (Packet Type 28)
+ * @brief The metadata prefix for a batch of encoded audio samples. `batch_count`, `total_samples`, `sample_rate`, and `channels` let the receiver allocate or route the batch correctly before it touches the encoded payload. The header is serialized with the packet; the audio bytes remain in the enclosing packet buffer.
  */
 /**
  * @struct audio_context_t
@@ -2035,7 +2035,7 @@
  */
 /**
  * @struct ascii_frame_packet_t
- * @brief ASCII frame packet structure (Packet Type 2)
+ * @brief The wire metadata for one rendered ASCII frame. `width` and `height` describe the terminal grid, `original_size` and `compressed_size` bound the encoded text, and `checksum` detects corruption; flags carry frame-specific options. The variable text follows this fixed prefix and is owned by the packet storage until decoding completes.
  */
 +/**
  * @struct acds_session_lookup_result_t
