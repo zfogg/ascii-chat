@@ -504,15 +504,23 @@ private struct IOSSettingsView: View {
     private let renderModes = ["foreground", "background", "half-block"]
     private let colorModes = ["none", "16", "256", "truecolor"]
 
+    private func enumIndex(_ value: String, in values: [String]) -> Int {
+        values.firstIndex(of: value) ?? 0
+    }
+
     private func loadPersistedValues() {
         guard let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
               let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         if let value = values["render_font_size"] as? NSNumber { renderFontSize = value.doubleValue }
         if let value = values["fps"] as? NSNumber { fps = value.doubleValue }
-        if let value = values["palette"] as? String { palette = value }
-        if let value = values["color_filter"] as? String { colorFilter = value }
-        if let value = values["render_mode"] as? String { renderMode = value }
-        if let value = values["color_mode"] as? String { colorMode = value }
+        if let value = values["palette_type"] as? NSNumber,
+           palettes.indices.contains(value.intValue) { palette = palettes[value.intValue] }
+        if let value = values["color_filter"] as? NSNumber,
+           filters.indices.contains(value.intValue) { colorFilter = filters[value.intValue] }
+        if let value = values["render_mode"] as? NSNumber,
+           renderModes.indices.contains(value.intValue) { renderMode = renderModes[value.intValue] }
+        if let value = values["color_mode"] as? NSNumber,
+           colorModes.indices.contains(value.intValue) { colorMode = colorModes[value.intValue] }
         if let value = values["fps_counter"] as? Bool { fpsCounter = value }
         if let value = values["matrix"] as? Bool { matrix = value }
         if let value = values["face_follow"] as? Bool { faceFollow = value }
@@ -556,13 +564,13 @@ private struct IOSSettingsView: View {
             Form {
                 Section("Display") {
                     Picker("Palette", selection: $palette) { ForEach(palettes, id: \.self, content: Text.init) }
-                        .onChange(of: palette) { _, value in applyJSON(["palette": value]) }
+                        .onChange(of: palette) { _, value in applyJSON(["palette_type": enumIndex(value, in: palettes)]) }
                     Picker("Color filter", selection: $colorFilter) { ForEach(filters, id: \.self, content: Text.init) }
-                        .onChange(of: colorFilter) { _, value in applyJSON(["color_filter": value]) }
+                        .onChange(of: colorFilter) { _, value in applyJSON(["color_filter": enumIndex(value, in: filters)]) }
                     Picker("Render mode", selection: $renderMode) { ForEach(renderModes, id: \.self, content: Text.init) }
-                        .onChange(of: renderMode) { _, value in applyJSON(["render_mode": value]) }
+                        .onChange(of: renderMode) { _, value in applyJSON(["render_mode": enumIndex(value, in: renderModes)]) }
                     Picker("Color mode", selection: $colorMode) { ForEach(colorModes, id: \.self, content: Text.init) }
-                        .onChange(of: colorMode) { _, value in applyJSON(["color_mode": value]) }
+                        .onChange(of: colorMode) { _, value in applyJSON(["color_mode": enumIndex(value, in: colorModes)]) }
                     Toggle("Stretch to fill", isOn: $stretch)
                         .onChange(of: stretch) { _, value in applyJSON(["stretch": value]) }
                     Toggle("Stabilize frames", isOn: $stabilize)
@@ -771,8 +779,10 @@ private struct IOSSettingsView: View {
                 }
                 Section {
                     Button("Apply settings") {
-                        applyJSON(["palette": palette, "color_filter": colorFilter, "render_mode": renderMode,
-                                   "color_mode": colorMode, "fps": Int(fps), "stretch": stretch,
+                        applyJSON(["palette_type": enumIndex(palette, in: palettes),
+                                   "color_filter": enumIndex(colorFilter, in: filters),
+                                   "render_mode": enumIndex(renderMode, in: renderModes),
+                                   "color_mode": enumIndex(colorMode, in: colorModes), "fps": Int(fps), "stretch": stretch,
                                    "stabilize": stabilize, "fps_counter": fpsCounter,
                                    "matrix": matrix, "face_follow": faceFollow,
                                    "audio_enabled": audioEnabled, "audio_fft_size": Int(audioFFTSize) ?? 1024,
