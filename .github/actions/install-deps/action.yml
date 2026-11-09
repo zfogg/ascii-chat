@@ -429,15 +429,19 @@ runs:
           }
           else {
             Write-Host "Installing scoop package: $Package"
-            $scoopCommand = "scoop install $Package --global"
-            $process = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $scoopCommand) -NoNewWindow -PassThru
-            if (-not $process.WaitForExit(900000)) {
-              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            $scoopPath = (Get-Command scoop -ErrorAction Stop).Source
+            $job = Start-Job -ScriptBlock {
+              param($CommandPath, $PackageName)
+              & $CommandPath install $PackageName --global
+              if ($LASTEXITCODE -ne 0) { throw "scoop exited with code $LASTEXITCODE" }
+            } -ArgumentList $scoopPath, $Package
+            if (-not (Wait-Job $job -Timeout 900)) {
+              Stop-Job $job -ErrorAction SilentlyContinue
+              Remove-Job $job -Force -ErrorAction SilentlyContinue
               throw "Scoop package installation timed out after 15 minutes: $Package"
             }
-            if ($process.ExitCode -ne 0) {
-              throw "Scoop package installation failed with exit code $($process.ExitCode): $Package"
-            }
+            Receive-Job $job -ErrorAction Stop
+            Remove-Job $job -Force -ErrorAction SilentlyContinue
           }
         }
 
