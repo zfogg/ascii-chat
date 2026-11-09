@@ -11,6 +11,8 @@
 #define H3_MAX_HEADERS 64U
 #define H3_MAX_TEXT 2048U
 
+typedef struct http3_stream_state http3_stream_state_t;
+
 /**
  * @brief For acip http3 server, this is the live record that ties `http`, `control`, `request`, `settings_length`
  * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
@@ -37,7 +39,28 @@ struct acip_http3_server {
   bool request_end_stream;
   uint8_t *response_body;
   size_t response_length, response_offset;
+  http3_stream_state_t *streams;
 };
+
+struct http3_stream_state {
+  acip_http3_server_t *owner;
+  int64_t stream_id;
+  bool headers_done, responded, malformed;
+  bool method, scheme, authority, protocol, request_path, request_origin;
+  char method_text[32], request_target[H3_MAX_TEXT];
+  char header_names[H3_MAX_HEADERS][H3_MAX_TEXT], header_values[H3_MAX_HEADERS][H3_MAX_TEXT];
+  http_header_t headers[H3_MAX_HEADERS];
+  size_t header_count, header_bytes;
+  uint8_t *request_body;
+  size_t request_body_length, request_body_capacity;
+  bool request_end_stream;
+  uint8_t *response_body;
+  size_t response_length, response_offset;
+  http3_stream_state_t *next;
+};
+
+#define H3_FIELD(server, state, field) ((state) ? (state)->field : (server)->field)
+#define H3_PTR(server, state, field) ((state) ? &(state)->field : &(server)->field)
 
 static bool equal_bytes(nghttp3_vec bytes, const char *value) {
   size_t length = strlen(value);
@@ -87,25 +110,27 @@ static nghttp3_ssize read_response_body(nghttp3_conn *conn, int64_t stream_id, n
                                         uint32_t *flags, void *context, void *stream_context) {
   (void)conn;
   (void)stream_id;
-  (void)stream_context;
   acip_http3_server_t *server = context;
-  size_t remaining = server->response_length - server->response_offset;
+  http3_stream_state_t *state = stream_context;
+  size_t remaining = H3_FIELD(server, state, response_length) - H3_FIELD(server, state, response_offset);
   if (!count || !remaining)
     *flags |= NGHTTP3_DATA_FLAG_EOF;
   if (!remaining)
     return 0;
-  vec[0].base = server->response_body + server->response_offset;
+  vec[0].base = H3_FIELD(server, state, response_body) + H3_FIELD(server, state, response_offset);
   vec[0].len = remaining;
-  server->response_offset = server->response_length;
+  *H3_PTR(server, state, response_offset) = H3_FIELD(server, state, response_length);
   *flags |= NGHTTP3_DATA_FLAG_EOF;
   return 1;
 }
 
 static asciichat_error_t http3_submit_response(void *context, unsigned status, const http_header_t *headers,
                                                size_t header_count, const void *body, size_t body_length) {
-  acip_http3_server_t *server = context;
-  if (!server || server->request < 0 || status < 100 || status > 599 || header_count > H3_MAX_HEADERS ||
-      body_length > http_server_max_response_body(server->http_server) || (!body && body_length))
+  acip_http3_server_t *server = ((http3_stream_state_t *)context)->owner;
+  http3_stream_state_t *state = context;
+  if (!server || (state ? state->stream_id < 0 : server->request < 0) || status < 100 || status > 599 ||
+      header_count > H3_MAX_HEADERS || body_length > http_server_max_response_body(server->http_server) ||
+      (!body && body_length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 response");
   char status_text[4];
   safe_snprintf(status_text, sizeof(status_text), "%u", status);
@@ -117,23 +142,24 @@ static asciichat_error_t http3_submit_response(void *context, unsigned status, c
     fields[i + 1] = (nghttp3_nv){(uint8_t *)headers[i].name, (uint8_t *)headers[i].value, strlen(headers[i].name),
                                  strlen(headers[i].value), NGHTTP3_NV_FLAG_NONE};
   }
-  SAFE_FREE(server->response_body);
-  server->response_length = body_length;
-  server->response_offset = 0;
+  SAFE_FREE(*H3_PTR(server, state, response_body));
+  *H3_PTR(server, state, response_length) = body_length;
+  *H3_PTR(server, state, response_offset) = 0;
   if (body_length) {
-    server->response_body = SAFE_MALLOC(body_length, uint8_t *);
-    if (!server->response_body)
+    *H3_PTR(server, state, response_body) = SAFE_MALLOC(body_length, uint8_t *);
+    if (!H3_FIELD(server, state, response_body))
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/3 response body");
-    memcpy(server->response_body, body, body_length);
+    memcpy(H3_FIELD(server, state, response_body), body, body_length);
   }
   nghttp3_data_reader reader = {.read_data = read_response_body};
-  int result = nghttp3_conn_submit_response(server->http, server->request, fields, header_count + 1,
-                                            body_length ? &reader : NULL);
+  int64_t stream_id = state ? state->stream_id : server->request;
+  int result =
+      nghttp3_conn_submit_response(server->http, stream_id, fields, header_count + 1, body_length ? &reader : NULL);
   if (result != 0) {
-    SAFE_FREE(server->response_body);
+    SAFE_FREE(*H3_PTR(server, state, response_body));
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot submit HTTP/3 response: %s", nghttp3_strerror(result));
   }
-  server->responded = true;
+  *H3_PTR(server, state, responded) = true;
   return ASCIICHAT_OK;
 }
 
@@ -161,15 +187,15 @@ static int maybe_respond(acip_http3_server_t *server) {
   return 0;
 }
 
-static int dispatch_generic_request(acip_http3_server_t *server) {
-  if (!server->http_server || !server->headers_done || !server->settings_received || !server->request_end_stream ||
-      server->responded)
+static int dispatch_generic_request(acip_http3_server_t *server, http3_stream_state_t *state) {
+  if (!state || !server->http_server || !state->headers_done || !server->settings_received ||
+      !state->request_end_stream || state->responded)
     return 0;
-  if (strcmp(server->method_text, "CONNECT") == 0 && server->protocol)
-    return maybe_respond(server);
-  asciichat_error_t result = http_server_dispatch_http3(
-      server->http_server, server->method_text, server->request_target, server->headers, server->header_count,
-      server->request_body, server->request_body_length, NULL, http3_submit_response, server);
+  if (strcmp(state->method_text, "CONNECT") == 0 && state->protocol)
+    return 0;
+  asciichat_error_t result = http_server_dispatch_http3(server->http_server, state->method_text, state->request_target,
+                                                        state->headers, state->header_count, state->request_body,
+                                                        state->request_body_length, NULL, http3_submit_response, state);
   return result == ASCIICHAT_OK ? 0 : NGHTTP3_ERR_CALLBACK_FAILURE;
 }
 
@@ -178,29 +204,30 @@ static int receive_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *da
   (void)conn;
   (void)stream_context;
   acip_http3_server_t *server = context;
-  if (!server->http_server || stream_id != server->request || (!data && length))
+  http3_stream_state_t *state = stream_context;
+  if (!server->http_server || !state || stream_id != state->stream_id || (!data && length))
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   size_t limit = http_server_max_request_body(server->http_server);
-  if (length > limit || server->request_body_length > limit - length)
+  if (length > limit || state->request_body_length > limit - length)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   if (length) {
-    size_t required = server->request_body_length + length;
-    if (required > server->request_body_capacity) {
-      size_t capacity = server->request_body_capacity ? server->request_body_capacity : 4096;
+    size_t required = state->request_body_length + length;
+    if (required > state->request_body_capacity) {
+      size_t capacity = state->request_body_capacity ? state->request_body_capacity : 4096;
       while (capacity < required) {
         if (capacity > SIZE_MAX / 2)
           capacity = required;
         else
           capacity *= 2;
       }
-      uint8_t *body = SAFE_REALLOC(server->request_body, capacity, uint8_t *);
+      uint8_t *body = SAFE_REALLOC(state->request_body, capacity, uint8_t *);
       if (!body)
         return NGHTTP3_ERR_NOMEM;
-      server->request_body = body;
-      server->request_body_capacity = capacity;
+      state->request_body = body;
+      state->request_body_capacity = capacity;
     }
-    memcpy(server->request_body + server->request_body_length, data, length);
-    server->request_body_length += length;
+    memcpy(state->request_body + state->request_body_length, data, length);
+    state->request_body_length += length;
   }
   return 0;
 }
@@ -209,19 +236,37 @@ static int end_stream(nghttp3_conn *conn, int64_t stream_id, void *context, void
   (void)conn;
   (void)stream_context;
   acip_http3_server_t *server = context;
-  if (!server->http_server || stream_id != server->request || server->request_end_stream)
+  http3_stream_state_t *state = stream_context;
+  if (!server->http_server || !state || stream_id != state->stream_id || state->request_end_stream)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
-  server->request_end_stream = true;
-  return dispatch_generic_request(server);
+  state->request_end_stream = true;
+  return dispatch_generic_request(server, state);
 }
 
 static int begin_headers(nghttp3_conn *conn, int64_t stream_id, void *context, void *stream_context) {
   (void)conn;
   (void)stream_context;
   acip_http3_server_t *server = context;
-  if (server->request != -1 || stream_id < 0 || (stream_id & 3) != 0)
+  if (stream_id < 0 || (stream_id & 3) != 0)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
-  server->request = stream_id;
+  if (!server->http_server)
+    if (server->request != -1)
+      return NGHTTP3_ERR_CALLBACK_FAILURE;
+  if (server->http_server) {
+    http3_stream_state_t *state = SAFE_CALLOC(1, sizeof(*state), http3_stream_state_t *);
+    if (!state)
+      return NGHTTP3_ERR_NOMEM;
+    state->owner = server;
+    state->stream_id = stream_id;
+    state->next = server->streams;
+    server->streams = state;
+    if (nghttp3_conn_set_stream_user_data(conn, stream_id, state) != 0) {
+      server->streams = state->next;
+      SAFE_FREE(state);
+      return NGHTTP3_ERR_CALLBACK_FAILURE;
+    }
+  } else
+    server->request = stream_id;
   return 0;
 }
 
@@ -232,30 +277,36 @@ static int receive_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, 
   (void)flags;
   (void)stream_context;
   acip_http3_server_t *server = context;
+  http3_stream_state_t *state = stream_context;
+  if (server->http_server && !state)
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
   nghttp3_vec key = nghttp3_rcbuf_get_buf(name), val = nghttp3_rcbuf_get_buf(value);
-  if (stream_id != server->request || key.len > H3_MAX_HEADER_BYTES - server->header_bytes ||
-      val.len > H3_MAX_HEADER_BYTES - server->header_bytes - key.len)
+  if (stream_id != (state ? state->stream_id : server->request) ||
+      key.len > H3_MAX_HEADER_BYTES - H3_FIELD(server, state, header_bytes) ||
+      val.len > H3_MAX_HEADER_BYTES - H3_FIELD(server, state, header_bytes) - key.len)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
-  server->header_bytes += key.len + val.len;
-  if (key.len >= H3_MAX_TEXT || val.len >= H3_MAX_TEXT || server->header_count >= H3_MAX_HEADERS)
+  *H3_PTR(server, state, header_bytes) += key.len + val.len;
+  if (key.len >= H3_MAX_TEXT || val.len >= H3_MAX_TEXT || H3_FIELD(server, state, header_count) >= H3_MAX_HEADERS)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
-  memcpy(server->header_names[server->header_count], key.base, key.len);
-  server->header_names[server->header_count][key.len] = 0;
-  memcpy(server->header_values[server->header_count], val.base, val.len);
-  server->header_values[server->header_count][val.len] = 0;
-  server->headers[server->header_count] =
-      (http_header_t){server->header_names[server->header_count], server->header_values[server->header_count]};
-  server->header_count++;
+  size_t index = H3_FIELD(server, state, header_count);
+  memcpy(H3_FIELD(server, state, header_names)[index], key.base, key.len);
+  H3_FIELD(server, state, header_names)[index][key.len] = 0;
+  memcpy(H3_FIELD(server, state, header_values)[index], val.base, val.len);
+  H3_FIELD(server, state, header_values)[index][val.len] = 0;
+  H3_FIELD(server, state, headers)
+  [index] =
+      (http_header_t){H3_FIELD(server, state, header_names)[index], H3_FIELD(server, state, header_values)[index]};
+  (*H3_PTR(server, state, header_count))++;
   if (equal_bytes(key, ":method")) {
-    if (val.len >= sizeof(server->method_text))
+    if (val.len >= sizeof(H3_FIELD(server, state, method_text)))
       return NGHTTP3_ERR_CALLBACK_FAILURE;
-    memcpy(server->method_text, val.base, val.len);
-    server->method_text[val.len] = 0;
+    memcpy(H3_FIELD(server, state, method_text), val.base, val.len);
+    H3_FIELD(server, state, method_text)[val.len] = 0;
   } else if (equal_bytes(key, ":path")) {
-    if (val.len >= sizeof(server->request_target))
+    if (val.len >= sizeof(H3_FIELD(server, state, request_target)))
       return NGHTTP3_ERR_CALLBACK_FAILURE;
-    memcpy(server->request_target, val.base, val.len);
-    server->request_target[val.len] = 0;
+    memcpy(H3_FIELD(server, state, request_target), val.base, val.len);
+    H3_FIELD(server, state, request_target)[val.len] = 0;
   }
   bool *field = NULL, valid = false;
   if (equal_bytes(key, ":method")) {
@@ -277,10 +328,27 @@ static int receive_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, 
     field = &server->request_origin;
     valid = server->http_server ? true : equal_bytes(val, server->origin);
   }
-  if (field) {
+  if (field && !state) {
     if (*field || !valid)
       server->malformed = true;
     *field = true;
+  } else if (field) {
+    bool *stream_field = NULL;
+    if (equal_bytes(key, ":method"))
+      stream_field = &state->method;
+    else if (equal_bytes(key, ":scheme"))
+      stream_field = &state->scheme;
+    else if (equal_bytes(key, ":authority"))
+      stream_field = &state->authority;
+    else if (equal_bytes(key, ":protocol"))
+      stream_field = &state->protocol;
+    else if (equal_bytes(key, ":path"))
+      stream_field = &state->request_path;
+    else if (equal_bytes(key, "origin"))
+      stream_field = &state->request_origin;
+    if (*stream_field || !valid)
+      state->malformed = true;
+    *stream_field = true;
   }
   return 0;
 }
@@ -289,10 +357,11 @@ static int end_headers(nghttp3_conn *conn, int64_t stream_id, int fin, void *con
   (void)conn;
   (void)stream_context;
   acip_http3_server_t *server = context;
-  if (stream_id != server->request || server->headers_done)
+  http3_stream_state_t *state = stream_context;
+  if (stream_id != (state ? state->stream_id : server->request) || H3_FIELD(server, state, headers_done))
     return NGHTTP3_ERR_CALLBACK_FAILURE;
-  server->headers_done = true;
-  if (server->http_server)
+  *H3_PTR(server, state, headers_done) = true;
+  if (server->http_server && state)
     return 0;
   server->malformed |= fin != 0;
   return maybe_respond(server);
@@ -305,8 +374,28 @@ static int receive_settings(nghttp3_conn *conn, const nghttp3_proto_settings *se
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   server->settings_received = true;
   if (server->http_server)
-    return dispatch_generic_request(server);
+    return 0;
   return maybe_respond(server);
+}
+
+static int close_stream(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code, void *context,
+                        void *stream_context) {
+  (void)conn;
+  (void)app_error_code;
+  acip_http3_server_t *server = context;
+  http3_stream_state_t *state = stream_context;
+  if (!server || !state || state->stream_id != stream_id)
+    return 0;
+  http_server_invalidate_http3_context(server->http_server, state);
+  http3_stream_state_t **cursor = &server->streams;
+  while (*cursor && *cursor != state)
+    cursor = &(*cursor)->next;
+  if (*cursor == state)
+    *cursor = state->next;
+  SAFE_FREE(state->request_body);
+  SAFE_FREE(state->response_body);
+  SAFE_FREE(state);
+  return 0;
 }
 
 asciichat_error_t acip_http3_server_create(const char *origin, const char *path, int64_t control, int64_t encoder,
@@ -332,7 +421,8 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
   server->http_server = http_server;
   server->request = -1;
   make_settings(server);
-  nghttp3_callbacks callbacks = {.begin_headers = begin_headers,
+  nghttp3_callbacks callbacks = {.stream_close = close_stream,
+                                 .begin_headers = begin_headers,
                                  .recv_header = receive_header,
                                  .end_headers = end_headers,
                                  .recv_data = receive_data,
@@ -355,7 +445,7 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
     acip_http3_server_destroy(&server);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot initialize HTTP/3: %s", nghttp3_strerror(result));
   }
-  nghttp3_conn_set_max_client_streams_bidi(server->http, 1);
+  nghttp3_conn_set_max_client_streams_bidi(server->http, 128);
   *out = server;
   return ASCIICHAT_OK;
 }
@@ -462,6 +552,13 @@ void acip_http3_server_destroy(acip_http3_server_t **server) {
     return;
   http_server_invalidate_http3_context((*server)->http_server, *server);
   nghttp3_conn_del((*server)->http);
+  while ((*server)->streams) {
+    http3_stream_state_t *state = (*server)->streams;
+    (*server)->streams = state->next;
+    SAFE_FREE(state->request_body);
+    SAFE_FREE(state->response_body);
+    SAFE_FREE(state);
+  }
   SAFE_FREE((*server)->request_body);
   SAFE_FREE((*server)->response_body);
   SAFE_FREE(*server);
