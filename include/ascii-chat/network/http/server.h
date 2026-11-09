@@ -85,6 +85,7 @@ const http_request_info_t *http_request_info(const http_request_t *request);
 const void *http_request_body(const http_request_t *request, size_t *length);
 bool http_request_is_cancelled(const http_request_t *request);
 asciichat_error_t http_request_cancel(http_request_t *request);
+bool http_response_is_cancelled(const http_response_t *response);
 
 asciichat_error_t http_response_set_status(http_response_t *response, unsigned status);
 /** Retain a response for completion after the request callback returns. */

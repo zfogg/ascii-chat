@@ -292,6 +292,11 @@ static void shared_http_wakeup(void *user_data) {
     if (!j->started || !j->connection || !atomic_load_bool(&j->done))
       continue;
     http_response_t *response = j->connection;
+    if (http_response_is_cancelled(response)) {
+      j->connection = NULL;
+      http_response_release(&response);
+      continue;
+    }
     if (s->policy.restricted && mcp_download_finalize(&s->policy, j->response, (int64_t)time(NULL)) != ASCIICHAT_OK) {
       yyjson_mut_val *root = yyjson_mut_doc_get_root(j->response);
       yyjson_mut_obj_remove_str(root, "result");

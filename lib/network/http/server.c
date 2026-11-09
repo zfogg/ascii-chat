@@ -49,6 +49,8 @@ struct http_server {
   http_client_t *clients;
   rate_limiter_t *rate_limiter;
   rate_limit_config_t request_rate_limit;
+  mutex_t response_mutex;
+  http_response_t *retained_responses;
 };
 struct http_request {
   http_request_info_t info;
@@ -73,6 +75,9 @@ struct http_response {
   bool finished;
   bool deferred;
   bool retained;
+  bool cancelled;
+  http_server_t *server;
+  http_response_t *next_retained;
   http3_submit_response_fn http3_submit;
   void *http3_context;
 };
@@ -97,6 +102,14 @@ static void wake_async_cb(uv_async_t *async) {
 
 static void client_freed(uv_handle_t *handle) {
   http_client_t *c = handle->data;
+  mutex_lock(&c->server->response_mutex);
+  for (http_response_t *response = c->server->retained_responses; response; response = response->next_retained) {
+    if (response->client == c && !response->cancelled) {
+      response->cancelled = true;
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_CANCELLED, 1);
+    }
+  }
+  mutex_unlock(&c->server->response_mutex);
   if (c->previous)
     c->previous->next = c->next;
   else
@@ -291,6 +304,7 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   copy->max_body_length = r->max_body_length;
   copy->http3_submit = r->http3_submit;
   copy->http3_context = r->http3_context;
+  copy->server = r->server;
   copy->status = r->status;
   copy->header_count = r->header_count;
   memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
@@ -304,6 +318,10 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
     copy->body_length = r->body_length;
   }
   copy->retained = true;
+  mutex_lock(&r->server->response_mutex);
+  copy->next_retained = r->server->retained_responses;
+  r->server->retained_responses = copy;
+  mutex_unlock(&r->server->response_mutex);
   r->deferred = true;
   r->retained = true;
   *retained = copy;
@@ -313,6 +331,16 @@ void http_response_release(http_response_t **response) {
   if (!response || !*response)
     return;
   if ((*response)->retained) {
+    http_server_t *server = (*response)->server;
+    if (server) {
+      mutex_lock(&server->response_mutex);
+      http_response_t **cursor = &server->retained_responses;
+      while (*cursor && *cursor != *response)
+        cursor = &(*cursor)->next_retained;
+      if (*cursor == *response)
+        *cursor = (*response)->next_retained;
+      mutex_unlock(&server->response_mutex);
+    }
     SAFE_FREE((*response)->body);
     SAFE_FREE(*response);
   }
@@ -408,7 +436,8 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
                                        .user_data = server->config.user_data};
   request.storage = (char *)body;
   request.body_length = body_length;
-  http_response_t response = {.status = 200,
+  http_response_t response = {.server = server,
+                              .status = 200,
                               .max_body_length = server->config.max_request_body_bytes,
                               .http3_submit = submit,
                               .http3_context = submit_context};
@@ -440,6 +469,9 @@ size_t http_server_max_request_body(const http_server_t *server) {
   return server ? server->config.max_request_body_bytes : 0;
 }
 bool http_request_is_cancelled(const http_request_t *r) {
+  return !r || r->cancelled;
+}
+bool http_response_is_cancelled(const http_response_t *r) {
   return !r || r->cancelled;
 }
 asciichat_error_t http_request_cancel(http_request_t *r) {
@@ -479,7 +511,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                          &client->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.stream = (uv_stream_t *)&client->tcp,
+    http_response_t limited = {.server = client->server,
+                               .stream = (uv_stream_t *)&client->tcp,
                                .client = client,
                                .http2_stream_id = view->stream_id,
                                .protocol = HTTP_PROTOCOL_2,
@@ -492,7 +525,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
     return result;
   }
   rate_limiter_record(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST);
-  http_response_t response = {.stream = (uv_stream_t *)&client->tcp,
+  http_response_t response = {.server = client->server,
+                              .stream = (uv_stream_t *)&client->tcp,
                               .client = client,
                               .http2_stream_id = view->stream_id,
                               .protocol = HTTP_PROTOCOL_2,
@@ -561,7 +595,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
                          &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.stream = s,
+    http_response_t limited = {.server = c->server,
+                               .stream = s,
                                .protocol = r.info.protocol,
                                .max_body_length = c->server->config.max_request_body_bytes,
                                .status = 429};
@@ -570,7 +605,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     return;
   }
   rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
-  http_response_t resp = {.stream = s,
+  http_response_t resp = {.server = c->server,
+                          .stream = s,
                           .protocol = r.info.protocol,
                           .max_body_length = c->server->config.max_request_body_bytes,
                           .status = 200};
@@ -656,8 +692,13 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   if ((cfg->enable_http3 && !cfg->http3_endpoint) || cfg->tls_certificate || cfg->tls_private_key)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS is endpoint-owned");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
+  if (mutex_init(&s->response_mutex, "http_responses") != 0) {
+    SAFE_FREE(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP response synchronization");
+  }
   s->rate_limiter = rate_limiter_create_memory();
   if (!s->rate_limiter) {
+    mutex_destroy(&s->response_mutex);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_MEMORY, "Cannot initialize HTTP rate limiter");
   }
@@ -671,6 +712,7 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
                                           : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].window_secs;
   if (uv_loop_init(&s->loop) != 0) {
     rate_limiter_destroy(s->rate_limiter);
+    mutex_destroy(&s->response_mutex);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
   }
@@ -683,6 +725,8 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     uv_close((uv_handle_t *)&s->listener, NULL);
     uv_run(&s->loop, UV_RUN_DEFAULT);
     uv_loop_close(&s->loop);
+    mutex_destroy(&s->response_mutex);
+    rate_limiter_destroy(s->rate_limiter);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP wakeup handle");
   }
@@ -764,6 +808,7 @@ void http_server_destroy(http_server_t **p) {
     ;
   uv_loop_close(&s->loop);
   rate_limiter_destroy(s->rate_limiter);
+  mutex_destroy(&s->response_mutex);
   SAFE_FREE(s);
   *p = NULL;
 }
