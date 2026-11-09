@@ -975,7 +975,16 @@ private struct IOSAllOptionsView: View {
     }
 
     private static func storedSliderValue(_ value: Double, for key: String) -> Any {
-        key == "webrtc_ice_timeout" || key == "webrtc_ice_timeout_ms" ? Int((value * 1000.0).rounded()) : value
+        if key == "webrtc_ice_timeout" || key == "webrtc_ice_timeout_ms" {
+            return Int((value * 1000.0).rounded())
+        }
+        switch key {
+        case "width", "height", "zalgo", "fps", "microphone_channels", "microphone_channel",
+             "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
+            return Int(value.rounded())
+        default:
+            return value
+        }
     }
 
     private static func enumValues(for key: String) -> [String]? {
