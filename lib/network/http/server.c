@@ -96,6 +96,7 @@ struct http_client {
   http2_connection_t *http2;
   bool http2_mode;
   bool admitted;
+  bool request_too_large;
   char peer_address[64];
 };
 static size_t http_max_response_body(const http_server_t *server) {
@@ -223,9 +224,13 @@ static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_le
       }
     }
     if (chunk > c->server->config.max_request_body_bytes ||
-        decoded_length > c->server->config.max_request_body_bytes - (size_t)chunk ||
-        c->length < cursor + (size_t)chunk + sizeof("\r\n") - 1 ||
-        memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", sizeof("\r\n") - 1) != 0)
+        decoded_length > c->server->config.max_request_body_bytes - (size_t)chunk) {
+      c->request_too_large = true;
+      goto invalid;
+    }
+    if (c->length < cursor + (size_t)chunk + sizeof("\r\n") - 1)
+      goto incomplete;
+    if (memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", sizeof("\r\n") - 1) != 0)
       goto invalid;
     memcpy(decoded + decoded_length, c->buffer + cursor, (size_t)chunk);
     decoded_length += (size_t)chunk;
@@ -826,8 +831,12 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     return;
   }
   http_request_t r = {0};
-  if (!parse_request(c, &r))
+  c->request_too_large = false;
+  if (!parse_request(c, &r)) {
+    if (c->request_too_large)
+      client_close(c);
     return;
+  }
   if (!c->server->config.enable_http1) {
     client_close(c);
     return;
