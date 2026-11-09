@@ -30,6 +30,7 @@ def main() -> int:
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--stage", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--header-overlays", action="store_true")
     args = parser.parse_args()
     batches: dict[tuple[str, ...], list[tuple[str, str, str]]] = defaultdict(list)
     for line in args.records.read_text(encoding="utf-8").splitlines():
@@ -49,13 +50,15 @@ def main() -> int:
         sources = " ".join(cmake_literal(source) for _, source, _ in entries)
         outputs = " ".join(cmake_literal(output) for _, _, output in entries)
         stamps = " ".join(cmake_literal(Path(output).parent.as_posix() + ".deps") for _, _, output in entries)
+        overlays = " ".join(cmake_literal(Path(output).parent.as_posix() + ".vfs.json") for _, _, output in entries) if args.header_overlays else ""
+        overlay_argument = "--header-overlays" if args.header_overlays else ""
         targets = sorted({target for target, _, _ in entries})
         name = cmake_literal(f"ascii-defer-{batch_id}")
         rules.append(f"""add_custom_command(
-    OUTPUT {outputs} {stamps}
+    OUTPUT {outputs} {stamps} {overlays}
     COMMAND ${{ASCIICHAT_DEFER_PYTHON_COMMAND}} "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
         --batch {cmake_literal(manifest.as_posix())} --libclang "${{ASCIICHAT_LIBCLANG_PATH}}"
-        --compilation-database "${{CMAKE_BINARY_DIR}}" --depfile {cmake_literal(depfile.as_posix())} --dependency-stamps
+        --compilation-database "${{CMAKE_BINARY_DIR}}" --depfile {cmake_literal(depfile.as_posix())} --dependency-stamps {overlay_argument}
     DEPENDS {sources} {cmake_literal(manifest.as_posix())}
         "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
         "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/pyproject.toml"
@@ -64,7 +67,7 @@ def main() -> int:
         "${{CMAKE_BINARY_DIR}}/compile_commands.json"
     DEPFILE {cmake_literal(depfile.as_posix())}
     COMMENT "Transforming defer source batch" VERBATIM)
-add_custom_target({name} DEPENDS {outputs} {stamps})
+add_custom_target({name} DEPENDS {outputs} {stamps} {overlays})
 """)
         if prerequisites:
             required = " ".join(cmake_literal(item) for item in prerequisites)

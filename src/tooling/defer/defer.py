@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import hashlib
+import json
 import os
 import re
 import subprocess
@@ -65,112 +67,123 @@ def macro_reaches_defer(name: str, definitions: dict[str, list[cindex.Cursor]], 
     return result, cyclic
 
 
-def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source: bytes) -> tuple[cindex.TranslationUnit, bytes]:
+def expand_defer_wrappers(tu: cindex.TranslationUnit, path: Path, source: bytes,
+                          allow_other_files: bool = False) -> bytes:
     markers = {"defer", "defer_named", "defer_cancel"}
+    if tu.cursor is None:
+        raise TransformError("Clang returned no translation unit cursor")
+    nodes = list(tu.cursor.get_children())
+    definitions: dict[str, list[cindex.Cursor]] = {}
+    for node in nodes:
+        if node.kind == cindex.CursorKind.MACRO_DEFINITION:
+            definitions.setdefault(node.spelling, []).append(node)
+    memo: dict[str, bool] = {}
+    visiting: set[str] = set()
+
+    edits: list[tuple[int, int, bytes]] = []
+    for node in nodes:
+        if (node.kind != cindex.CursorKind.MACRO_INSTANTIATION or node.spelling in markers
+            or not node.location.file):
+            continue
+        invocation = list(node.get_tokens())
+        if not macro_reaches_defer(node.spelling, definitions, memo, visiting, markers)[0] and not any(token.spelling in markers for token in invocation):
+            continue
+        def wrapper_error(
+            message: str,
+            location: str = f"{node.location.file.name}:{node.location.line}:{node.location.column}",
+        ) -> TransformError:
+            return TransformError(f"{location}: {message}")
+
+        for token in invocation[1:]:
+            if token.spelling == "__COUNTER__":
+                raise wrapper_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely")
+            if (token.kind == cindex.TokenKind.IDENTIFIER and token.spelling in definitions
+                and not macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)[0]):
+                raise wrapper_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
+        if Path(node.location.file.name).resolve() != path:
+            if allow_other_files:
+                continue
+            raise wrapper_error("defer wrapper in included files is not supported; move the function into a C source file")
+        definition = node.referenced
+        if definition is None:
+            raise wrapper_error(f"cannot resolve macro containing defer: {node.spelling}")
+        parts = list(definition.get_tokens())
+        if not parts:
+            raise wrapper_error(f"cannot read macro containing defer: {node.spelling}")
+        function = len(parts) > 1 and parts[1].spelling == "(" and parts[0].extent.end.offset == parts[1].extent.start.offset
+        body = 1
+        parameters: list[str] = []
+        variadic = False
+        if function:
+            body = 2
+            while body < len(parts) and parts[body].spelling != ")":
+                if parts[body].spelling != ",":
+                    if parts[body].spelling == "..." and body + 1 < len(parts) and parts[body + 1].spelling == ")":
+                        variadic = True
+                        parameters.append("__VA_ARGS__")
+                    else:
+                        if parts[body].kind != cindex.TokenKind.IDENTIFIER:
+                            raise wrapper_error("complex defer wrapper parameters are unsupported")
+                        parameters.append(parts[body].spelling)
+                body += 1
+            if body == len(parts):
+                raise wrapper_error("unterminated defer wrapper parameters")
+            body += 1
+        if any(token.spelling in ("#", "##", "__VA_OPT__", "_Pragma", "__COUNTER__") for token in parts[body:]):
+            raise wrapper_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__")
+        first, last = node.extent.start.offset, node.extent.end.offset
+        if b"\n" in source[first:last]:
+            raise wrapper_error("multiline defer wrapper invocations are unsupported")
+        arguments_list: list[bytes] = []
+        if function:
+            if len(invocation) < 3 or invocation[1].spelling != "(":
+                raise wrapper_error("cannot parse defer wrapper invocation")
+            argument_start = invocation[1].extent.end.offset
+            depth = 0
+            for token in invocation[2:]:
+                if token.spelling == ")" and depth == 0:
+                    value = source[argument_start:token.extent.start.offset].strip()
+                    if value or parameters:
+                        arguments_list.append(value)
+                    break
+                if token.spelling == "," and depth == 0:
+                    arguments_list.append(source[argument_start:token.extent.start.offset].strip())
+                    argument_start = token.extent.end.offset
+                elif token.spelling in ("(", "[", "{"):
+                    depth += 1
+                elif token.spelling in (")", "]", "}"):
+                    depth -= 1
+            fixed = len(parameters) - int(variadic)
+            if (not variadic and len(arguments_list) != len(parameters)) or (variadic and len(arguments_list) < fixed):
+                raise wrapper_error("defer wrapper argument count does not match its definition")
+            if variadic:
+                arguments_list = arguments_list[:fixed] + [b", ".join(arguments_list[fixed:])]
+        replacements = dict(zip(parameters, arguments_list, strict=True))
+        expanded = b" ".join(replacements.get(token.spelling, token.spelling.encode("utf-8"))
+                              for token in parts[body:] if token.kind != cindex.TokenKind.COMMENT)
+        edits.append((first, last, expanded))
+    if not edits:
+        return source
+    outermost: list[tuple[int, int, bytes]] = []
+    for first, last, replacement in sorted(edits, key=lambda edit: (edit[0], -edit[1])):
+        if outermost and first < outermost[-1][1]:
+            if last > outermost[-1][1]:
+                raise TransformError("overlapping defer macro expansions cannot be transformed safely")
+            continue
+        outermost.append((first, last, replacement))
+    for first, last, replacement in reversed(outermost):
+        source = source[:first] + replacement + source[last:]
+    return source
+
+
+def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source: bytes) -> tuple[cindex.TranslationUnit, bytes]:
     for _ in range(64):
         tu = index.parse(str(path), args=arguments, unsaved_files=[(str(path), source)],
                          options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
-        if tu.cursor is None:
-            raise TransformError("Clang returned no translation unit cursor")
-        nodes = list(tu.cursor.get_children())
-        definitions: dict[str, list[cindex.Cursor]] = {}
-        for node in nodes:
-            if node.kind == cindex.CursorKind.MACRO_DEFINITION:
-                definitions.setdefault(node.spelling, []).append(node)
-        memo: dict[str, bool] = {}
-        visiting: set[str] = set()
-
-        edits: list[tuple[int, int, bytes]] = []
-        for node in nodes:
-            if (node.kind != cindex.CursorKind.MACRO_INSTANTIATION or node.spelling in markers
-                or not node.location.file):
-                continue
-            invocation = list(node.get_tokens())
-            if not macro_reaches_defer(node.spelling, definitions, memo, visiting, markers)[0] and not any(token.spelling in markers for token in invocation):
-                continue
-            def wrapper_error(
-                message: str,
-                location: str = f"{node.location.file.name}:{node.location.line}:{node.location.column}",
-            ) -> TransformError:
-                return TransformError(f"{location}: {message}")
-
-            for token in invocation[1:]:
-                if token.spelling == "__COUNTER__":
-                    raise wrapper_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely")
-                if (token.kind == cindex.TokenKind.IDENTIFIER and token.spelling in definitions
-                    and not macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)[0]):
-                    raise wrapper_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
-            if Path(node.location.file.name).resolve() != path:
-                raise wrapper_error("defer wrapper in included files is not supported; move the function into a C source file")
-            definition = node.referenced
-            if definition is None:
-                raise wrapper_error(f"cannot resolve macro containing defer: {node.spelling}")
-            parts = list(definition.get_tokens())
-            if not parts:
-                raise wrapper_error(f"cannot read macro containing defer: {node.spelling}")
-            function = len(parts) > 1 and parts[1].spelling == "(" and parts[0].extent.end.offset == parts[1].extent.start.offset
-            body = 1
-            parameters: list[str] = []
-            variadic = False
-            if function:
-                body = 2
-                while body < len(parts) and parts[body].spelling != ")":
-                    if parts[body].spelling != ",":
-                        if parts[body].spelling == "..." and body + 1 < len(parts) and parts[body + 1].spelling == ")":
-                            variadic = True
-                            parameters.append("__VA_ARGS__")
-                        else:
-                            if parts[body].kind != cindex.TokenKind.IDENTIFIER:
-                                raise wrapper_error("complex defer wrapper parameters are unsupported")
-                            parameters.append(parts[body].spelling)
-                    body += 1
-                if body == len(parts):
-                    raise wrapper_error("unterminated defer wrapper parameters")
-                body += 1
-            if any(token.spelling in ("#", "##", "__VA_OPT__", "_Pragma", "__COUNTER__") for token in parts[body:]):
-                raise wrapper_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__")
-            first, last = node.extent.start.offset, node.extent.end.offset
-            if b"\n" in source[first:last]:
-                raise wrapper_error("multiline defer wrapper invocations are unsupported")
-            arguments_list: list[bytes] = []
-            if function:
-                if len(invocation) < 3 or invocation[1].spelling != "(":
-                    raise wrapper_error("cannot parse defer wrapper invocation")
-                argument_start = invocation[1].extent.end.offset
-                depth = 0
-                for token in invocation[2:]:
-                    if token.spelling == ")" and depth == 0:
-                        value = source[argument_start:token.extent.start.offset].strip()
-                        if value or parameters:
-                            arguments_list.append(value)
-                        break
-                    if token.spelling == "," and depth == 0:
-                        arguments_list.append(source[argument_start:token.extent.start.offset].strip())
-                        argument_start = token.extent.end.offset
-                    elif token.spelling in ("(", "[", "{"):
-                        depth += 1
-                    elif token.spelling in (")", "]", "}"):
-                        depth -= 1
-                fixed = len(parameters) - int(variadic)
-                if (not variadic and len(arguments_list) != len(parameters)) or (variadic and len(arguments_list) < fixed):
-                    raise wrapper_error("defer wrapper argument count does not match its definition")
-                if variadic:
-                    arguments_list = arguments_list[:fixed] + [b", ".join(arguments_list[fixed:])]
-            replacements = dict(zip(parameters, arguments_list, strict=True))
-            expanded = b" ".join(replacements.get(token.spelling, token.spelling.encode("utf-8"))
-                                  for token in parts[body:] if token.kind != cindex.TokenKind.COMMENT)
-            edits.append((first, last, expanded))
-        if not edits:
+        expanded = expand_defer_wrappers(tu, path, source)
+        if expanded == source:
             return tu, source
-        outermost: list[tuple[int, int, bytes]] = []
-        for first, last, replacement in sorted(edits, key=lambda edit: (edit[0], -edit[1])):
-            if outermost and first < outermost[-1][1]:
-                if last > outermost[-1][1]:
-                    raise TransformError("overlapping defer macro expansions cannot be transformed safely")
-                continue
-            outermost.append((first, last, replacement))
-        for first, last, replacement in reversed(outermost):
-            source = source[:first] + replacement + source[last:]
+        source = expanded
     raise TransformError("defer wrapper expansion exceeded the recursion limit")
 
 
@@ -200,10 +213,13 @@ class Scope:
 
 
 class Transformer:
-    def __init__(self, path: Path, source: bytes, tu: cindex.TranslationUnit) -> None:
+    def __init__(self, path: Path, source: bytes, tu: cindex.TranslationUnit, allow_other_files: bool = False,
+                 display_path: str | None = None) -> None:
         self.path = path.resolve()
+        self.display_path = display_path or self.path.as_posix()
         self.source = source
         self.tu = tu
+        self.allow_other_files = allow_other_files
         self.edits: list[tuple[int, int, bytes]] = []
         self.exits: list[tuple[int, list[tuple[int, bytes]]]] = []
         self.macros: dict[int, cindex.Cursor] = {}
@@ -236,7 +252,7 @@ class Transformer:
                 and cursor.spelling in ("defer", "defer_named", "defer_cancel")):
                 if self.in_file(cursor):
                     self.macros[cursor.extent.start.offset] = cursor
-                elif cursor.location.file:
+                elif cursor.location.file and not self.allow_other_files:
                     raise TransformError(
                         f"{cursor.location.file}:{cursor.location.line}:{cursor.location.column}: "
                         "defer in included files is not supported; move the function into a C source file"
@@ -253,7 +269,7 @@ class Transformer:
     def diagnostic(self, position: int, message: str) -> str:
         line = self.source.count(b"\n", 0, position) + 1
         column = position - self.source.rfind(b"\n", 0, position)
-        return f"{self.path.as_posix()}:{line}:{column}: {message}"
+        return f"{self.display_path}:{line}:{column}: {message}"
 
     def after_semicolon(self, end: int) -> int:
         pos = end
@@ -330,7 +346,7 @@ class Transformer:
 
     def line_directive(self, offset: int) -> bytes:
         line = self.source.count(b"\n", 0, offset) + 1
-        filename = self.path.as_posix().replace("\\", "\\\\").replace('"', '\\"')
+        filename = self.display_path.replace("\\", "\\\\").replace('"', '\\"')
         return f'\n#line {line} "{filename}"\n'.encode()
 
     def cleanup(self, scopes: list[Scope], offset: int) -> bytes:
@@ -730,12 +746,14 @@ class Transformer:
 
         def collect_markers(cursor: cindex.Cursor) -> None:
             if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__ascii_defer_marker":
-                if not self.in_file(cursor):
+                if not self.in_file(cursor) and not self.allow_other_files:
                     raise TransformError("defer in included files is not supported; move the function into a C source file")
-                marker_offsets.append(cursor.extent.start.offset)
+                if self.in_file(cursor):
+                    marker_offsets.append(cursor.extent.start.offset)
             for child in cursor.get_children():
                 collect_markers(child)
 
+        processed_functions: set[tuple[int, int]] = set()
         for cursor in root.get_children():
             if cursor.kind == cindex.CursorKind.FUNCTION_DECL and cursor.is_definition():
                 collect_markers(cursor)
@@ -746,6 +764,9 @@ class Transformer:
             ):
                 start, end = cursor.extent.start.offset, cursor.extent.end.offset
                 if any(start <= offset < end for offset in self.macros):
+                    if self.allow_other_files and (start, end) in processed_functions:
+                        raise TransformError(self.diagnostic(start, "header function with defer is instantiated multiple times in one translation unit"))
+                    processed_functions.add((start, end))
                     self.labels.clear()
                     self.defer_scopes.clear()
                     self.declarations.clear()
@@ -797,6 +818,10 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
         if value in ("-o", "-MF", "-MT", "-MQ"):
             index += 2
             continue
+        if (value == "-ivfsoverlay" and index + 1 < len(arguments)
+            and Path(arguments[index + 1]).resolve() == Path(str(generated.resolve().parent) + ".vfs.json").resolve()):
+            index += 2
+            continue
         if (
             value in ("--", "-c", "-MD", "-MMD", "-MP")
             or Path(value).resolve() == generated.resolve()
@@ -829,8 +854,8 @@ def paths_alias(first: Path, second: Path) -> bool:
 def is_cpp_source(source: Path, arguments: list[str]) -> bool:
     for index in range(len(arguments) - 2, -1, -1):
         if arguments[index] == "-x":
-            return arguments[index + 1] in ("c++", "c++-header")
-    if source.suffix in (".cpp", ".cc", ".cxx", ".C", ".hpp", ".hh", ".hxx"):
+            return arguments[index + 1] in ("c++", "c++-header", "objective-c++", "objective-c++-header")
+    if source.suffix in (".cpp", ".cc", ".cxx", ".C", ".hpp", ".hh", ".hxx", ".mm"):
         return True
     return any(
         argument.startswith(("-std=c++", "-std=gnu++"))
@@ -842,8 +867,133 @@ def is_cpp_source(source: Path, arguments: list[str]) -> bool:
 def is_objc_source(source: Path, arguments: list[str]) -> bool:
     for index in range(len(arguments) - 2, -1, -1):
         if arguments[index] == "-x":
-            return arguments[index + 1].startswith("objective-c")
-    return source.suffix in (".m", ".mm")
+            return arguments[index + 1] in ("objective-c", "objective-c-header")
+    return source.suffix == ".m"
+
+
+def write_bytes_if_changed(path: Path, contents: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.read_bytes() == contents:
+        return
+    temporary = path.with_name(path.name + f".{os.getpid()}.tmp")
+    temporary.write_bytes(contents)
+    temporary.replace(path)
+
+
+def transform_with_header_overlay(
+    index: cindex.Index, source: Path, output: Path, overlay: Path, arguments: list[str],
+    protected_paths: list[Path],
+) -> tuple[cindex.TranslationUnit, bytes]:
+    contents = {source: source.read_bytes()}
+    header_aliases: dict[Path, set[Path]] = {}
+    header_display_paths: dict[Path, str] = {}
+    root_aliases: list[tuple[Path, Path]] = []
+
+    def add_root(path: Path) -> None:
+        logical = Path(os.path.abspath(path))
+        canonical = logical.resolve()
+        if logical != canonical:
+            root_aliases.append((logical, canonical))
+
+    add_root(source.parent)
+    working_directory = Path.cwd()
+    for position, argument in enumerate(arguments[:-1]):
+        if argument == "-working-directory":
+            working_directory = Path(arguments[position + 1])
+    position = 0
+    while position < len(arguments):
+        argument = arguments[position]
+        include_path = ""
+        if argument in ("-I", "-iquote", "-isystem", "-idirafter") and position + 1 < len(arguments):
+            position += 1
+            include_path = arguments[position]
+        elif argument.startswith("-I") and len(argument) > 2:
+            include_path = argument[2:]
+        if include_path:
+            path = Path(include_path)
+            add_root(path if path.is_absolute() else working_directory / path)
+        position += 1
+    tu: cindex.TranslationUnit | None = None
+    for _ in range(64):
+        tu = index.parse(
+            str(source), args=arguments, unsaved_files=[(str(path), text) for path, text in contents.items()],
+            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+        )
+        marker_files: set[Path] = set()
+        for cursor in tu.cursor.walk_preorder():
+            if (cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__ascii_defer_marker"
+                and cursor.location.file is not None):
+                logical = Path(os.path.abspath(cursor.location.file.name))
+                canonical = logical.resolve()
+                key = source if canonical == source.resolve() else canonical
+                marker_files.add(key)
+                aliases = header_aliases.setdefault(key, set())
+                aliases.update((logical, canonical))
+                header_display_paths.setdefault(key, cursor.location.file.name)
+                for lexical_root, canonical_root in root_aliases:
+                    for candidate, from_root, to_root in ((logical, lexical_root, canonical_root),
+                                                          (logical, canonical_root, lexical_root),
+                                                          (canonical, lexical_root, canonical_root),
+                                                          (canonical, canonical_root, lexical_root)):
+                        try:
+                            aliases.add(to_root / candidate.relative_to(from_root))
+                        except ValueError:
+                            pass
+        changed = False
+        for path in marker_files:
+            if path != source and path.suffix not in (".h", ".hpp", ".hh", ".hxx", ".inc", ".def"):
+                raise TransformError(f"defer in included non-header files is not supported: {path}")
+            if path not in contents:
+                contents[path] = path.read_bytes()
+                changed = True
+        if changed:
+            continue
+        for path, text in contents.items():
+            expanded = expand_defer_wrappers(tu, path, text, allow_other_files=True)
+            if expanded != text:
+                contents[path] = expanded
+                changed = True
+        if not changed:
+            break
+    else:
+        raise TransformError("header defer wrapper expansion exceeded the recursion limit")
+    assert tu is not None
+    dependencies = {source}
+    dependencies.update(Path(item.include.name).resolve() for item in tu.get_includes() if item.include is not None)
+    if any(paths_alias(output, path) for path in dependencies):
+        raise TransformError("output must not overwrite an included file")
+    transformed = {
+        path: Transformer(path, text, tu, allow_other_files=True,
+                          display_path=str(source) if path == source else header_display_paths[path]).transform()
+        for path, text in contents.items()
+    }
+    validation = index.parse(str(source), args=arguments, unsaved_files=[(str(path), text) for path, text in transformed.items()])
+    errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+    if errors:
+        raise TransformError(f"generated C is invalid: {errors[0]}")
+    protected = [output, *dependencies, *protected_paths]
+    if any(paths_alias(overlay, path) for path in protected):
+        raise TransformError("header overlay must not overwrite an input or output")
+    roots: list[dict[str, str]] = []
+    generated: list[tuple[Path, bytes]] = []
+    for path, text in transformed.items():
+        if path == source:
+            continue
+        name = path.as_posix()
+        identity = hashlib.sha256(name.encode() + b"\0" + text).hexdigest()
+        target = Path(str(overlay) + ".headers") / (identity + path.suffix)
+        if paths_alias(target, overlay) or any(paths_alias(target, item) for item in protected):
+            raise TransformError("generated header must not overwrite an input, output, or overlay")
+        if target.exists() and target.read_bytes() != text:
+            raise TransformError(f"generated header path already contains unrelated data: {target}")
+        for alias in sorted(header_aliases[path]):
+            roots.append({"type": "file", "name": alias.as_posix(), "external-contents": target.as_posix()})
+        generated.append((target, text))
+    for path, text in generated:
+        write_bytes_if_changed(path, text)
+    mapping = {"version": 0, "use-external-names": False, "roots": roots}
+    write_bytes_if_changed(overlay, json.dumps(mapping, ensure_ascii=False, indent=2).encode())
+    return tu, transformed[source]
 
 
 def batch_main() -> int:
@@ -854,6 +1004,7 @@ def batch_main() -> int:
     parser.add_argument("--compilation-database", type=Path, required=True)
     parser.add_argument("--depfile", type=Path, required=True)
     parser.add_argument("--dependency-stamps", action="store_true")
+    parser.add_argument("--header-overlays", action="store_true")
     args = parser.parse_args()
     cindex.Config.set_library_file(str(args.libclang.resolve()))
     manifest = args.batch.resolve()
@@ -877,12 +1028,17 @@ def batch_main() -> int:
         if any(paths_alias(stamp, depfile) for stamp in stamp_paths):
             raise TransformError("dependency stamp must not overwrite the depfile")
         part_paths = [Path(str(output.parent) + ".depfile") for output in outputs]
+        overlay_paths = [Path(str(output.parent) + ".vfs.json") for output in outputs] if args.header_overlays else []
         if any(paths_alias(part, depfile) for part in part_paths):
             raise TransformError("batch depfile must not overwrite a per-file depfile")
         for candidate in [depfile, *part_paths, *stamp_paths]:
             if any(paths_alias(candidate, protected) for protected in [*sources, *outputs]):
                 raise TransformError("depfile must not overwrite an input source or output")
-        for source, output in records:
+        protected = [manifest, depfile, *part_paths, *stamp_paths, *sources, *outputs]
+        for index, overlay in enumerate(overlay_paths):
+            if any(paths_alias(overlay, path) for path in [*protected, *overlay_paths[:index]]):
+                raise TransformError("header overlay must not overwrite a batch input or output")
+        for index, (source, output) in enumerate(records):
             part = Path(str(Path(output).parent) + ".depfile")
             sys.argv = [
                 original_argv[0],
@@ -890,12 +1046,14 @@ def batch_main() -> int:
                 str(database),
                 "--depfile",
                 str(part),
+                *(["--header-overlay", str(overlay_paths[index])] if args.header_overlays else []),
                 *(["--dependency-stamp", str(Path(output).parent) + ".deps"] if args.dependency_stamps else []),
                 source,
                 output,
             ]
             os.chdir(original_cwd)
-            if main() != 0:
+            current_protected = [*protected, *overlay_paths[:index], *overlay_paths[index + 1 :]] if args.header_overlays else None
+            if main(current_protected) != 0:
                 return 1
             target, inputs = part.read_text(encoding="utf-8").split(": ", 1)
             if not primary:
@@ -913,13 +1071,14 @@ def batch_main() -> int:
         os.chdir(original_cwd)
 
 
-def main() -> int:
+def main(protected_paths: list[Path] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--explain", metavar="SOURCE:LINE", help="explain cleanup at a source exit")
     parser.add_argument("--show-transformed", metavar="SOURCE:LINE", help="show the transformed function")
     parser.add_argument("--compilation-database", type=Path)
     parser.add_argument("--depfile", type=Path)
     parser.add_argument("--dependency-stamp", type=Path)
+    parser.add_argument("--header-overlay", type=Path)
     parser.add_argument("source", type=Path, nargs="?")
     parser.add_argument("output", type=Path, nargs="?")
     parser.add_argument(
@@ -947,7 +1106,7 @@ def main() -> int:
             path, separator, line = (args.explain or args.show_transformed).rpartition(":")
             if not separator or not path or not line.isascii() or not line.isdigit() or int(line) == 0:
                 raise TransformError("--explain expects source:line with a positive line number")
-            if args.source or args.output or args.depfile or args.compilation_database:
+            if args.source or args.output or args.depfile or args.compilation_database or args.header_overlay:
                 raise TransformError("inspection accepts only explicit Clang arguments")
             source_path = Path(path).resolve()
             if is_objc_source(source_path, clang_args):
@@ -973,12 +1132,16 @@ def main() -> int:
             return 0
         if args.source is None or args.output is None:
             raise TransformError("expected source and output paths")
-        args.source = args.source.resolve()
+        args.source = Path(os.path.abspath(args.source)) if args.header_overlay else args.source.resolve()
         args.output = args.output.resolve()
         if args.depfile:
             args.depfile = args.depfile.resolve()
         if args.dependency_stamp:
             args.dependency_stamp = args.dependency_stamp.resolve()
+        if args.header_overlay:
+            args.header_overlay = args.header_overlay.resolve()
+            if protected_paths is None and (args.depfile or args.dependency_stamp):
+                raise TransformError("--header-overlay cannot yet be combined with dependency files")
         if paths_alias(args.output, args.source):
             raise TransformError("output must not overwrite the input source")
         if args.depfile and any(paths_alias(args.depfile, p) for p in (args.source, args.output)):
@@ -1001,6 +1164,8 @@ def main() -> int:
             raise TransformError(f"LLVM 19 or newer libclang required, found {version}")
         index = cindex.Index.create()
         if is_cpp_source(args.source, clang_args):
+            if args.header_overlay:
+                raise TransformError("C++ uses native scope guards and does not require a header overlay")
             tu = index.parse(str(args.source), args=clang_args, unsaved_files=[(str(args.source), source)])
             errors = [generated_diagnostic(item) for item in tu.diagnostics if item.severity >= cindex.Diagnostic.Error]
             if errors:
@@ -1008,6 +1173,9 @@ def main() -> int:
             escaped = str(args.source).replace("\\", "\\\\").replace('"', '\\"')
             directive = f'\n#line 1 "{escaped}"\n'.encode()
             output = source[:3] + directive + source[3:] if source.startswith(b"\xef\xbb\xbf") else directive + source
+        elif args.header_overlay:
+            tu, output = transform_with_header_overlay(index, args.source, args.output, args.header_overlay,
+                                                       clang_args, protected_paths or [])
         else:
             tu, source = parse_wrapped(index, args.source, clang_args, source)
             output = Transformer(args.source, source, tu).transform()
@@ -1018,11 +1186,11 @@ def main() -> int:
             errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
             if errors:
                 raise TransformError(f"generated C is invalid: {errors[0]}")
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        if not args.output.exists() or args.output.read_bytes() != output:
-            temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")
-            temporary.write_bytes(output)
-            temporary.replace(args.output)
+        includes = {str(args.source)}
+        includes.update(str(inc.include) for inc in tu.get_includes() if inc.include is not None)
+        if any(paths_alias(args.output, Path(path)) for path in includes):
+            raise TransformError("output must not overwrite an included file")
+        write_bytes_if_changed(args.output, output)
         if args.depfile or args.dependency_stamp:
 
             def escape(path: str) -> str:
@@ -1034,10 +1202,6 @@ def main() -> int:
                     .replace(":", "\\:")
                 )
 
-            includes = {str(args.source)}
-            includes.update(
-                str(inc.include) for inc in tu.get_includes() if inc.include is not None
-            )
             if args.depfile:
                 depfile = (
                     escape(str(args.output))
@@ -1050,7 +1214,7 @@ def main() -> int:
                 if any(paths_alias(args.dependency_stamp, Path(path)) for path in includes):
                     raise TransformError("dependency stamp must not overwrite an included file")
                 stamp = "".join(
-                    f"{path}\t{Path(path).stat().st_mtime_ns}\t{Path(path).stat().st_size}\n"
+                    f"{path}\t{Path(path).stat().st_mtime_ns}\t{Path(path).stat().st_size}\t{Path(path).resolve()}\n"
                     for path in sorted(includes)
                 )
                 if not args.dependency_stamp.exists() or args.dependency_stamp.read_text(encoding="utf-8") != stamp:

@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#if defined(__cplusplus) && !defined(__OBJC__)
+#if defined(__cplusplus) && (!defined(__OBJC__) || (defined(OBJC_ZEROCOST_EXCEPTIONS) && OBJC_ZEROCOST_EXCEPTIONS))
 extern "C++" {
 namespace ascii_defer_detail {
 template <typename F> class guard {
@@ -46,7 +46,8 @@ template <typename F> guard<F> make_guard(F action) {
 #define defer_cancel(name) (name).cancel()
 #elif defined(__OBJC__)
 #ifdef __cplusplus
-#define ASCII_DEFER_OBJC_UNSUPPORTED static_assert(false, "defer() is not supported in Objective-C yet")
+#define ASCII_DEFER_OBJC_UNSUPPORTED                                                                                   \
+  static_assert(false, "defer() requires Objective-C++ zero-cost exceptions to be supported and enabled")
 #else
 #define ASCII_DEFER_OBJC_UNSUPPORTED _Static_assert(0, "defer() is not supported in Objective-C yet")
 #endif

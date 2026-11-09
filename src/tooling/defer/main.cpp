@@ -42,6 +42,11 @@ llvm::cl::opt<bool> dependency_stamps("dependency-stamps", llvm::cl::desc("Write
 llvm::cl::opt<bool> incremental("incremental", llvm::cl::desc("Reuse unchanged batch transformations"));
 llvm::cl::opt<bool> preamble("preamble", llvm::cl::desc("Experimentally reuse Clang preambles for validation"));
 llvm::cl::opt<std::string> shared_cache("shared-cache", llvm::cl::desc("Directory for reusable transformation cache"));
+llvm::cl::opt<std::string> header_overlay("header-overlay",
+                                          llvm::cl::desc("Write an experimental per-source Clang header overlay"));
+llvm::cl::opt<bool>
+    header_overlays("header-overlays",
+                    llvm::cl::desc("Write an experimental Clang header overlay for every batch source"));
 llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
@@ -149,7 +154,14 @@ bool restore_shared(const std::filesystem::path &root, const std::string &key, c
     if (current_paths != expected_paths)
       return false;
     result.inputs = std::move(current);
-    const auto content = defer_tool::read_file(root / (key + ".c"));
+    for (const auto &name : result.inputs) {
+      const auto input = fs::u8path(name);
+      std::error_code error;
+      if (fs::weakly_canonical(output) == fs::weakly_canonical(input) ||
+          (fs::exists(output) && fs::exists(input) && fs::equivalent(output, input, error) && !error))
+        throw std::runtime_error("output must not overwrite an included file: " + name);
+    }
+    const auto content = defer_tool::read_file(root / (key + ".data"));
     if (digest(content) != expected_output)
       return false;
     defer_tool::write_if_changed(output, content);
@@ -170,7 +182,7 @@ void save_shared(const std::filesystem::path &root, const std::string &key, cons
         return;
       manifest += normalize_build_path(name, build) + "\t" + hash + "\n";
     }
-    defer_tool::write_if_changed(root / (key + ".c"), content);
+    defer_tool::write_if_changed(root / (key + ".data"), content);
     defer_tool::write_if_changed(root / (key + ".deps"), manifest);
   } catch (const std::exception &) {
     // Shared cache failures must not prevent a valid local build.
@@ -223,12 +235,15 @@ bool cached_dependencies(const std::filesystem::path &source, const std::filesys
     result = {output, {}};
     while (std::getline(lines, line)) {
       const auto last = line.rfind('\t');
-      const auto first = last == std::string::npos ? last : line.rfind('\t', last - 1);
-      if (first == std::string::npos || last == std::string::npos)
+      const auto size_separator = last == std::string::npos ? last : line.rfind('\t', last - 1);
+      const auto first = size_separator == std::string::npos ? size_separator : line.rfind('\t', size_separator - 1);
+      if (first == std::string::npos || size_separator == std::string::npos || last == std::string::npos)
         return false;
       const auto name = line.substr(0, first);
-      const FileMetadata expected{std::stoll(line.substr(first + 1, last - first - 1)),
-                                  std::stoull(line.substr(last + 1))};
+      const FileMetadata expected{std::stoll(line.substr(first + 1, size_separator - first - 1)),
+                                  std::stoull(line.substr(size_separator + 1, last - size_separator - 1))};
+      if (fs::weakly_canonical(fs::u8path(name)) != fs::u8path(line.substr(last + 1)))
+        return false;
       auto found = metadata_cache.find(name);
       if (found == metadata_cache.end()) {
         FileMetadata actual;
@@ -240,7 +255,9 @@ bool cached_dependencies(const std::filesystem::path &source, const std::filesys
         return false;
       result.inputs.insert(name);
     }
-    return result.inputs.count(fs::weakly_canonical(fs::absolute(source)).u8string()) != 0;
+    const auto original = fs::weakly_canonical(fs::absolute(source));
+    return std::any_of(result.inputs.begin(), result.inputs.end(),
+                       [&](const auto &name) { return fs::weakly_canonical(fs::u8path(name)) == original; });
   } catch (const std::exception &) {
     return false;
   }
@@ -280,6 +297,8 @@ int main(int argc, char **argv) {
       defer_tool::verify_libclang(std::filesystem::u8path(libclang.getValue()));
     defer_tool::DriverOptions options;
     options.preamble = preamble;
+    if (!header_overlay.empty())
+      options.header_overlay = std::filesystem::absolute(std::filesystem::u8path(header_overlay.getValue()));
     if (!compilation_database.empty())
       options.compilation_database =
           std::filesystem::absolute(std::filesystem::u8path(compilation_database.getValue()));
@@ -287,7 +306,8 @@ int main(int argc, char **argv) {
                                               : std::filesystem::absolute(std::filesystem::u8path(depfile.getValue()));
     defer_tool::ClangIndex index;
     if (!explain_location.empty() || !show_location.empty()) {
-      if ((!explain_location.empty() && !show_location.empty()) || !batch.empty() || !depfile.empty())
+      if ((!explain_location.empty() && !show_location.empty()) || !batch.empty() || !depfile.empty() ||
+          !options.header_overlay.empty() || header_overlays)
         throw std::runtime_error("inspection modes cannot be combined with each other, --batch, or --depfile");
       const auto location = !show_location.empty() ? show_location.getValue() : explain_location.getValue();
       const auto separator = location.rfind(':');
@@ -305,6 +325,8 @@ int main(int argc, char **argv) {
     std::vector<defer_tool::FileDependencies> dependencies;
     std::vector<std::pair<std::filesystem::path, std::filesystem::path>> inputs;
     if (!batch.empty()) {
+      if (!options.header_overlay.empty())
+        throw std::runtime_error("--header-overlay currently accepts one source at a time");
       if (!sources.empty())
         throw std::runtime_error("batch mode does not accept positional source files");
       auto manifest = defer_tool::read_file(std::filesystem::absolute(std::filesystem::u8path(batch.getValue())));
@@ -320,11 +342,17 @@ int main(int argc, char **argv) {
                             std::filesystem::u8path(line.substr(separator + 1)));
       }
     } else {
+      if (header_overlays)
+        throw std::runtime_error("--header-overlays requires --batch");
       if (sources.size() < 2)
         throw std::runtime_error("expected source and output paths");
       options.clang_arguments.assign(sources.begin() + 2, sources.end());
       inputs.emplace_back(std::filesystem::u8path(sources[0]), std::filesystem::u8path(sources[1]));
     }
+    if (!options.header_overlay.empty() && (!depfile_path.empty() || dependency_stamps || incremental))
+      throw std::runtime_error("--header-overlay cannot yet be combined with dependency files or incremental caching");
+    if (header_overlays && !shared_cache.empty())
+      throw std::runtime_error("--header-overlays cannot yet be combined with shared caching");
     struct PathIdentity {
       std::filesystem::path canonical;
       std::optional<llvm::sys::fs::UniqueID> id;
@@ -345,6 +373,27 @@ int main(int argc, char **argv) {
       const auto &right = identify(b);
       return left.canonical == right.canonical || (left.id && right.id && *left.id == *right.id);
     };
+    std::vector<std::filesystem::path> overlay_paths;
+    if (header_overlays) {
+      options.protected_paths.push_back(std::filesystem::absolute(std::filesystem::u8path(batch.getValue())));
+      if (!depfile_path.empty())
+        options.protected_paths.push_back(depfile_path);
+      for (const auto &[source, output] : inputs) {
+        options.protected_paths.push_back(source);
+        options.protected_paths.push_back(output);
+        options.protected_paths.push_back(std::filesystem::u8path(output.parent_path().u8string() + ".deps"));
+        options.protected_paths.push_back(std::filesystem::u8path(output.parent_path().u8string() + ".cache"));
+        overlay_paths.push_back(std::filesystem::u8path(output.parent_path().u8string() + ".vfs.json"));
+      }
+      for (std::size_t i = 0; i < overlay_paths.size(); ++i) {
+        for (const auto &path : options.protected_paths)
+          if (aliases(overlay_paths[i], path))
+            throw std::runtime_error("header overlay must not overwrite a batch input or output");
+        for (std::size_t j = 0; j < i; ++j)
+          if (aliases(overlay_paths[i], overlay_paths[j]))
+            throw std::runtime_error("header overlay paths must be unique");
+      }
+    }
     for (const auto &[source, output] : inputs) {
       for (const auto &[other_source, other_output] : inputs) {
         if (aliases(output, other_source))
@@ -428,7 +477,8 @@ int main(int argc, char **argv) {
     const auto shared_root = std::filesystem::u8path(shared_cache.getValue());
     if (incremental && !base_context.empty())
       for (std::size_t i = 0; i < inputs.size(); ++i) {
-        contexts[i] = base_context + (options.preamble ? "preamble=1\n" : "preamble=0\n");
+        contexts[i] = base_context + (options.preamble ? "preamble=1\n" : "preamble=0\n") +
+                      (header_overlays ? "header-overlays=1\n" : "header-overlays=0\n");
         auto shared_context = shared_base_context + (options.preamble ? "preamble=1\n" : "preamble=0\n");
         bool next_is_path = false;
         const auto arguments =
@@ -446,6 +496,8 @@ int main(int argc, char **argv) {
         }
         cached[i] =
             cached_dependencies(inputs[i].first, inputs[i].second, contexts[i], metadata_cache, dependencies[i]);
+        if (cached[i] && header_overlays && !defer_tool::validate_header_overlay(overlay_paths[i], dependencies[i]))
+          cached[i] = false;
         if (!shared_cache.empty()) {
           const auto source = std::filesystem::weakly_canonical(std::filesystem::absolute(inputs[i].first)).u8string();
           if (normalize_build_path(source, build_path) == source) {
@@ -472,7 +524,14 @@ int main(int argc, char **argv) {
               restored[i] = true;
               continue;
             }
-            dependencies[i] = defer_tool::transform_file(worker_index, inputs[i].first, inputs[i].second, options);
+            auto file_options = options;
+            if (header_overlays) {
+              file_options.header_overlay = overlay_paths[i];
+              for (std::size_t j = 0; j < overlay_paths.size(); ++j)
+                if (i != j)
+                  file_options.protected_paths.push_back(overlay_paths[j]);
+            }
+            dependencies[i] = defer_tool::transform_file(worker_index, inputs[i].first, inputs[i].second, file_options);
           } catch (...) {
             errors[i] = std::current_exception();
           }
@@ -517,7 +576,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < dependencies.size(); ++i) {
       if (restored[i] || shared_keys[i].empty())
         continue;
-      const auto data = shared_root / (shared_keys[i] + ".c");
+      const auto data = shared_root / (shared_keys[i] + ".data");
       const auto manifest = shared_root / (shared_keys[i] + ".deps");
       if (cached[i] && std::filesystem::exists(data) && std::filesystem::exists(manifest))
         continue;

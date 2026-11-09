@@ -109,10 +109,12 @@ bool prefix(const std::vector<unsigned> &whole, const std::vector<unsigned> &par
 
 class Transformer {
 public:
-  Transformer(CXTranslationUnit unit, std::string path, std::string source)
+  Transformer(CXTranslationUnit unit, std::string path, std::string source, bool allow_other_files = false,
+              std::string display_path = {})
       : unit_(unit), path_(std::filesystem::weakly_canonical(std::filesystem::absolute(std::filesystem::u8path(path)))
                                .generic_u8string()),
-        source_(std::move(source)) {
+        source_(std::move(source)), allow_other_files_(allow_other_files),
+        display_path_(display_path.empty() ? path_ : std::move(display_path)) {
     if (source_.find("__ascii_defer_") != std::string::npos)
       fail("reserved identifier prefix __ascii_defer_ occurs in input");
     const std::regex directive(
@@ -126,6 +128,8 @@ public:
       if (kind == CXCursor_MacroExpansion &&
           (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel")) {
         if (!in_file(cursor)) {
+          if (allow_other_files_)
+            continue;
           CXFile file = nullptr;
           unsigned line = 0, column = 0;
           clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, &line, &column, nullptr);
@@ -154,7 +158,7 @@ private:
     const auto line = 1 + std::count(source_.begin(), source_.begin() + pos, '\n');
     const auto previous = pos == 0 ? std::string::npos : source_.rfind('\n', pos - 1);
     const auto column = previous == std::string::npos ? pos + 1 : pos - previous;
-    fail(path_ + ":" + std::to_string(line) + ":" + std::to_string(column) + ": " + message);
+    fail(display_path_ + ":" + std::to_string(line) + ":" + std::to_string(column) + ": " + message);
   }
   bool in_file(CXCursor cursor) const {
     CXFile file = nullptr;
@@ -171,7 +175,7 @@ private:
     const auto line =
         std::count(source_.begin(), source_.begin() + std::min<std::size_t>(position, source_.size()), '\n') + 1;
     std::string file;
-    for (char c : path_) {
+    for (char c : display_path_) {
       if (c == '\\' || c == '"')
         file += '\\';
       file += c;
@@ -194,6 +198,8 @@ private:
   CXTranslationUnit unit_;
   std::string path_;
   std::string source_;
+  bool allow_other_files_;
+  std::string display_path_;
   std::vector<Edit> edits_;
   std::map<unsigned, CXCursor> macros_;
   std::map<std::string, std::vector<CXCursor>> macro_definitions_;
@@ -380,7 +386,8 @@ void Transformer::visit_defer(CXCursor cursor, CXCursorKind parent) {
   auto opening = std::find_if(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end(),
                               [](const Token &token) { return token.text == "("; });
   if (opening == parts.end() || macro_end <= opening->start || source_[macro_end - 1] != ')')
-    fail("cannot parse defer at byte " + std::to_string(start));
+    fail("cannot parse defer at byte " + std::to_string(start) + " in " + path_ + " (end " + std::to_string(macro_end) +
+         ")");
   const auto argument = static_cast<std::size_t>(opening - parts.begin()) + 1;
   std::string handle;
   unsigned action_begin = opening->start + 1;
@@ -559,13 +566,15 @@ std::string Transformer::run() {
   std::vector<unsigned> marker_offsets;
   std::function<void(CXCursor)> collect_markers = [&](CXCursor cursor) {
     if (clang_getCursorKind(cursor) == CXCursor_CallExpr && spelling(cursor) == "__ascii_defer_marker") {
-      if (!in_file(cursor))
+      if (!in_file(cursor) && !allow_other_files_)
         fail("defer in included files is not supported; move the function into a C source file");
-      marker_offsets.push_back(begin(cursor));
+      if (in_file(cursor))
+        marker_offsets.push_back(begin(cursor));
     }
     for (auto child : children(cursor))
       collect_markers(child);
   };
+  std::set<std::pair<unsigned, unsigned>> processed_functions;
   for (auto cursor : children(clang_getTranslationUnitCursor(unit_))) {
     if (clang_getCursorKind(cursor) == CXCursor_FunctionDecl && clang_isCursorDefinition(cursor))
       collect_markers(cursor);
@@ -579,6 +588,8 @@ std::string Transformer::run() {
       }
     if (!has_defer)
       continue;
+    if (allow_other_files_ && !processed_functions.insert({begin(cursor), end(cursor)}).second)
+      fail_at(begin(cursor), "header function with defer is instantiated multiple times in one translation unit");
     labels_.clear();
     defer_scopes_.clear();
     declarations_.clear();
@@ -652,7 +663,13 @@ std::string transform(CXTranslationUnit unit, const std::string &path, const std
   return Transformer(unit, path, source).run();
 }
 
-std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &path, const std::string &source) {
+std::string transform_translation_unit_file(CXTranslationUnit unit, const std::string &path, const std::string &source,
+                                            const std::string &display_path) {
+  return Transformer(unit, path, source, true, display_path).run();
+}
+
+std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &path, const std::string &source,
+                                  bool allow_other_files) {
   // Index all visible definitions: a wrapper can reach defer through other
   // macros, including definitions from headers and conditional redefinitions.
   std::map<std::string, std::vector<CXCursor>> definitions;
@@ -725,8 +742,11 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
         throw wrapper_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely");
     }
     if (std::filesystem::weakly_canonical(
-            std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical)
+            std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical) {
+      if (allow_other_files)
+        continue;
       throw wrapper_error("defer wrapper in included files is not supported; move the function into a C source file");
+    }
     const auto definition = clang_getCursorReferenced(cursor);
     if (clang_Cursor_isNull(definition))
       throw wrapper_error("cannot resolve macro containing defer: " + spelling(cursor));

@@ -232,11 +232,14 @@ def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environmen
     assert source.read_text(encoding="utf-8") == "void f(void) {}\n"
 
 
-def test_shared_cache_reuses_across_build_directories(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+@pytest.mark.parametrize("extension", ["c", "cpp", "mm"])
+def test_shared_cache_reuses_across_build_directories(
+    tmp_path: Path, compiler_environment: dict[str, str], extension: str
+) -> None:
     binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
     if not binary or CLANG is None:
         pytest.skip("native defer binary and Clang are required")
-    source = tmp_path / "source.c"
+    source = tmp_path / f"source.{extension}"
     source.write_text(
         '#include "generated.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
         'int value; void f(void) { defer(value = VALUE); }\n', encoding="utf-8"
@@ -249,11 +252,12 @@ def test_shared_cache_reuses_across_build_directories(tmp_path: Path, compiler_e
         build = tmp_path / name
         build.mkdir()
         (build / "generated.h").write_text(f"#define VALUE {value}\n", encoding="utf-8")
-        output = build / "generated" / "source.c"
+        output = build / "generated" / f"source.{extension}"
         manifest = build / "batch.txt"
         manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
         commands = [{"directory": str(tmp_path), "file": str(output), "arguments": [
-            CLANG, "-I", str(early), "-I", str(ROOT / "include"), "-I", str(build), "-c", str(output), "-o", str(build / "source.o")
+            CLANG, *(["-fobjc-runtime=gnustep-2.0", "-fobjc-exceptions"] if extension == "mm" else []),
+            "-I", str(early), "-I", str(ROOT / "include"), "-I", str(build), "-c", str(output), "-o", str(build / "source.o")
         ]}]
         (build / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
         return build, output, manifest
@@ -276,7 +280,7 @@ def test_shared_cache_reuses_across_build_directories(tmp_path: Path, compiler_e
     shadowed, _, shadowed_manifest = prepare("shadowed", 1)
     assert "transformed 1 of 1" in run(shadowed, shadowed_manifest)
     (early / "generated.h").unlink()
-    cache_data = next(path for path in shared.glob("*.c") if path.read_text(encoding="utf-8") == first_output.read_text(encoding="utf-8"))
+    cache_data = next(path for path in shared.glob("*.data") if path.read_text(encoding="utf-8") == first_output.read_text(encoding="utf-8"))
     cache_data.unlink()
     os.link(source, cache_data)
     original_source = source.read_text(encoding="utf-8")
@@ -291,7 +295,7 @@ def test_shared_cache_reuses_across_build_directories(tmp_path: Path, compiler_e
     commands[0]["arguments"].insert(1, "-DCHANGED_FLAG=1")
     database.write_text(json.dumps(commands), encoding="utf-8")
     assert "transformed 1 of 1" in run(second, second_manifest)
-    for cache_file in shared.glob("*.c"):
+    for cache_file in shared.glob("*.data"):
         cache_file.write_text("corrupt", encoding="utf-8")
     fourth, _, fourth_manifest = prepare("fourth", 1)
     assert "transformed 1 of 1" in run(fourth, fourth_manifest)
@@ -531,7 +535,498 @@ def test_c_header_as_direct_tool_input(
     assert subprocess.run([str(executable)], check=False).returncode == 0
 
 
-@pytest.mark.parametrize("extension", ["m", "mm"])
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("extension", ["h", "hpp"])
+def test_header_overlay_executes_cleanup(
+    tmp_path: Path, transform_environment: dict[str, str], wrapped: bool, extension: str
+) -> None:
+    if not CLANG:
+        pytest.skip("Clang is required")
+    header = tmp_path / f"header.{extension}"
+    header.write_text(
+        '#if ENABLE_CLEANUP\nstatic inline void clean(int *value) { '
+        + ('WRAPPED(*value = 7);' if wrapped else 'defer(*value = 7);')
+        + ' }\n#endif\n', encoding="utf-8"
+    )
+    source = tmp_path / "source.c"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n#define ENABLE_CLEANUP 1\n'
+        f'#define WRAPPED(action) defer(action)\n#include "{header.name}"\n'
+        'int main(void) { int value = 0; clean(&value); return value != 7; }\n', encoding="utf-8"
+    )
+    output = tmp_path / "generated" / "source.c"
+    overlay = tmp_path / "generated" / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    mapped = json.loads(overlay.read_text(encoding="utf-8"))["roots"]
+    assert any(Path(item["external-contents"]).suffix == f".{extension}" for item in mapped)
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [CLANG, "-std=c17", "-ivfsoverlay", str(overlay), "-I", str(ROOT / "include"), "-I", str(tmp_path), str(output), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+    assert ("WRAPPED(" if wrapped else "defer(") in header.read_text(encoding="utf-8")
+
+
+def test_header_overlays_are_per_translation_unit(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    if not CLANG:
+        pytest.skip("Clang is required")
+    header = tmp_path / "header.h"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *value) { defer(*value = MODE); }\n', encoding="utf-8"
+    )
+    objects = []
+    for number in (1, 2):
+        source = tmp_path / f"source{number}.c"
+        source.write_text(
+            f'#define MODE {number}\n#include "header.h"\n'
+            f'int f{number}(void) {{ int result = 0; clean(&result); return result; }}\n', encoding="utf-8"
+        )
+        output = tmp_path / f"generated{number}" / "source.c"
+        overlay = tmp_path / f"generated{number}" / "overlay.json"
+        result = subprocess.run(
+            [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+            capture_output=True, text=True, env=transform_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        obj = tmp_path / f"source{number}.o"
+        result = subprocess.run(
+            [CLANG, "-std=c17", "-ivfsoverlay", str(overlay), "-I", str(ROOT / "include"), "-I", str(tmp_path), "-c", str(output), "-o", str(obj)],
+            capture_output=True, text=True, env=transform_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        objects.append(str(obj))
+    main = tmp_path / "main.c"
+    main.write_text('int f1(void); int f2(void); int main(void) { return f1() != 1 || f2() != 2; }\n', encoding="utf-8")
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([CLANG, str(main), *objects, "-o", str(executable)], capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_header_overlay_does_not_overwrite_header(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    header = tmp_path / "header.h"
+    original = '#include <ascii-chat/tooling/defer/defer.h>\nstatic inline void f(void) { defer((void)0); }\n'
+    header.write_text(original, encoding="utf-8")
+    source = tmp_path / "source.c"
+    source.write_text('#include "header.h"\n', encoding="utf-8")
+    output = tmp_path / "output.c"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(header), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert header.read_text(encoding="utf-8") == original
+    assert not output.exists()
+
+
+def test_tool_output_cannot_overwrite_included_header(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    header = tmp_path / "header.h"
+    original = '#define VALUE 7\n'
+    header.write_text(original, encoding="utf-8")
+    source = tmp_path / "source.c"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n#include "header.h"\n'
+        'void f(int *n) { defer(*n = VALUE); }\n', encoding="utf-8"
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(header), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "included file" in result.stderr
+    assert header.read_text(encoding="utf-8") == original
+
+
+def test_header_overlay_preserves_nested_relative_includes(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    if not CLANG:
+        pytest.skip("Clang is required")
+    nested_dir = tmp_path / "nested"
+    nested_dir.mkdir()
+    (nested_dir / "base.h").write_text('#include "../cleanup.h"\n', encoding="utf-8")
+    (tmp_path / "cleanup.h").write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\nstatic inline void clean(int *n) { defer(*n = 3); }\n',
+        encoding="utf-8",
+    )
+    source = tmp_path / "source.c"
+    source.write_text('#include "nested/base.h"\nint main(void) { int n = 0; clean(&n); return n != 3; }\n', encoding="utf-8")
+    output = tmp_path / "out" / "source.c"
+    overlay = tmp_path / "out" / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [CLANG, "-std=c17", "-ivfsoverlay", str(overlay), "-I", str(ROOT / "include"), "-I", str(tmp_path), str(output), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_header_overlay_resolves_symlinked_header(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    if not CLANG:
+        pytest.skip("Clang is required")
+    header = tmp_path / "real.h"
+    header.write_text(
+        '#pragma once\n#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *n, const char **name) { defer({ *n = 3; *name = __FILE__; }); }\n', encoding="utf-8"
+    )
+    alias = tmp_path / "alias.h"
+    try:
+        alias.symlink_to(header)
+    except OSError:
+        pytest.skip("file symlinks are not available")
+    source = tmp_path / "source.c"
+    source.write_text('#include "alias.h"\n#include "real.h"\nint puts(const char *);\nint main(void) { int n=0; const char *name=0; clean(&n, &name); puts(name); return n!=3; }\n', encoding="utf-8")
+    output = tmp_path / "out" / "source.c"
+    overlay = tmp_path / "out" / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    header.write_text(
+        '#pragma once\nstatic inline void clean(int *n, const char **name) { *n = 3; *name = __FILE__; }\n',
+        encoding="utf-8",
+    )
+    baseline = tmp_path / ("baseline.exe" if sys.platform == "win32" else "baseline")
+    result = subprocess.run(
+        [CLANG, "-std=c17", "-I", str(tmp_path), str(source), "-o", str(baseline)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    baseline_result = subprocess.run([str(baseline)], capture_output=True, text=True, check=False)
+    assert baseline_result.returncode == 0
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [CLANG, "-std=c17", "-ivfsoverlay", str(overlay), "-I", str(ROOT / "include"), "-I", str(tmp_path), str(output), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    generated_result = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert generated_result.returncode == 0
+    assert generated_result.stdout == baseline_result.stdout
+
+
+def test_header_overlay_rejects_invalid_cleanup_before_writing(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    header = tmp_path / "header.h"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\nstatic inline void clean(void) { defer(undefined_name()); }\n',
+        encoding="utf-8",
+    )
+    source = tmp_path / "source.c"
+    source.write_text('#include "header.h"\n', encoding="utf-8")
+    output = tmp_path / "out" / "source.c"
+    overlay = tmp_path / "out" / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "undefined_name" in result.stderr
+    assert not output.exists()
+    assert not overlay.exists()
+
+
+def test_header_overlay_rejects_repeated_header_instantiations(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    header = tmp_path / "header.h"
+    header.write_text('static inline void FUNCTION(int *n) { defer((*n)++); }\n', encoding="utf-8")
+    source = tmp_path / "source.c"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        '#define FUNCTION first\n#include "header.h"\n#undef FUNCTION\n'
+        '#define FUNCTION second\n#include "header.h"\n', encoding="utf-8"
+    )
+    output = tmp_path / "out" / "source.c"
+    overlay = tmp_path / "out" / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "instantiated multiple times" in result.stderr
+    assert not output.exists() and not overlay.exists()
+
+
+@pytest.mark.parametrize("symlinked", [False, True])
+def test_header_overlay_batch_tracks_dependencies(
+    tmp_path: Path, transform_environment: dict[str, str], symlinked: bool
+) -> None:
+    if not CLANG:
+        pytest.skip("Clang is required")
+    native = bool(transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"))
+    header = tmp_path / "header.h"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *n) { defer(*n = MODE); }\n', encoding="utf-8"
+    )
+    include_name = header.name
+    if symlinked:
+        alias = tmp_path / "alias.h"
+        try:
+            alias.symlink_to(header)
+        except OSError:
+            pytest.skip("file symlinks are not available")
+        include_name = alias.name
+    records = []
+    commands = []
+    outputs = []
+    for number in (1, 2):
+        source = tmp_path / f"source{number}.c"
+        source.write_text(f'#define MODE {number}\n#include "{include_name}"\nint f{number}(void) {{ int n=0; clean(&n); return n; }}\n', encoding="utf-8")
+        output = tmp_path / "out" / f"source{number}.c.defer" / f"source{number}.c"
+        outputs.append(output)
+        records.append(f"{source}\t{output}\n")
+        overlay = Path(str(output.parent) + ".vfs.json")
+        commands.append({"directory": str(tmp_path), "file": str(output), "arguments": [
+            CLANG, "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path), "-ivfsoverlay", str(overlay), "-c", str(output), "-o", str(tmp_path / f"source{number}.o")
+        ]})
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text("".join(records), encoding="utf-8")
+    (tmp_path / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
+    depfile = tmp_path / "batch.d"
+    command = [*tool_command(transform_environment), "--batch", str(manifest), "--header-overlays", "--compilation-database", str(tmp_path), "--depfile", str(depfile), "--dependency-stamps"]
+    command += ["--incremental"] if native else ["--libclang", transform_environment["LIBCLANG_LIBRARY_FILE"]]
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    if native:
+        assert "transformed 2 of 2" in result.stderr
+    assert "header.h" in depfile.read_text(encoding="utf-8") or "alias.h" in depfile.read_text(encoding="utf-8")
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    if native:
+        assert "transformed 0 of 2" in result.stderr
+    if symlinked:
+        alternate = tmp_path / "alternate.h"
+        alternate.write_bytes(header.read_bytes())
+        stat = header.stat()
+        os.utime(alternate, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+        alias.unlink()
+        alias.symlink_to(alternate)
+        result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+        assert result.returncode == 0, result.stderr
+        if native:
+            assert "transformed 2 of 2" in result.stderr
+        assert "alternate.h" in Path(str(outputs[0].parent) + ".deps").read_text(encoding="utf-8")
+    second_output_time = outputs[1].stat().st_mtime_ns
+    second_stamp = Path(str(outputs[1].parent) + ".deps")
+    second_stamp_time = second_stamp.stat().st_mtime_ns
+    time.sleep(1.1)
+    first_source = tmp_path / "source1.c"
+    first_source.write_text(first_source.read_text(encoding="utf-8") + "/* changed */\n", encoding="utf-8")
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    if native:
+        assert "transformed 1 of 2" in result.stderr
+    assert outputs[1].stat().st_mtime_ns == second_output_time
+    assert second_stamp.stat().st_mtime_ns == second_stamp_time
+    first_overlay = Path(str(outputs[0].parent) + ".vfs.json")
+    generated_header = Path(json.loads(first_overlay.read_text(encoding="utf-8"))["roots"][0]["external-contents"])
+    generated_header.unlink()
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    if native:
+        assert "transformed 1 of 2" in result.stderr
+    assert generated_header.is_file()
+    objects = []
+    for number, output in enumerate(outputs, 1):
+        overlay = Path(str(output.parent) + ".vfs.json")
+        stamp = Path(str(output.parent) + ".deps")
+        assert overlay.is_file() and stamp.is_file()
+        assert "header.h" in stamp.read_text(encoding="utf-8") or "alias.h" in stamp.read_text(encoding="utf-8")
+        obj = tmp_path / f"object{number}.o"
+        result = subprocess.run(
+            [CLANG, "-std=c17", "-ivfsoverlay", str(overlay), "-I", str(ROOT / "include"), "-I", str(tmp_path), "-c", str(output), "-o", str(obj)],
+            capture_output=True, text=True, env=transform_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        objects.append(str(obj))
+    main = tmp_path / "main.c"
+    main.write_text('int f1(void); int f2(void); int main(void) { return f1()!=1 || f2()!=2; }\n', encoding="utf-8")
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([CLANG, str(main), *objects, "-o", str(executable)], capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_header_overlay_batch_cannot_replace_other_source(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    first = tmp_path / "first.c"
+    first.write_text("void first(void) {}\n", encoding="utf-8")
+    other = tmp_path / "generated.vfs.json"
+    other.write_text("void other(void) {}\n", encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{first}\t{tmp_path / 'generated' / 'first.c'}\n{other}\t{tmp_path / 'other' / 'other.c'}\n", encoding="utf-8")
+    command = [*tool_command(transform_environment), "--batch", str(manifest), "--header-overlays"]
+    if not transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"):
+        command += ["--libclang", transform_environment["LIBCLANG_LIBRARY_FILE"], "--compilation-database", str(tmp_path), "--depfile", str(tmp_path / "batch.d")]
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert "header overlay must not overwrite" in result.stderr
+    assert other.read_text(encoding="utf-8") == "void other(void) {}\n"
+
+
+def test_header_overlay_native_and_python_outputs_match(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary was not supplied")
+    header = tmp_path / "header.h"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        '#define CLEANUP(action) defer(action)\n'
+        'static inline void clean(int *n) { CLEANUP(*n = 7); }\n', encoding="utf-8"
+    )
+    source = tmp_path / "source.c"
+    source.write_text('#include "header.h"\nint main(void) { int n=0; clean(&n); return n!=7; }\n', encoding="utf-8")
+    outputs: list[bytes] = []
+    headers: list[bytes] = []
+    for name, command in (("native", [binary]), ("python", [sys.executable, str(TOOL)])):
+        output = tmp_path / name / "source.c"
+        overlay = tmp_path / name / "overlay.json"
+        result = subprocess.run(
+            [*command, "--header-overlay", str(overlay), str(source), str(output), "--", "-std=c17", "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+            capture_output=True, text=True, env=compiler_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        outputs.append(output.read_bytes())
+        mapped = json.loads(overlay.read_text(encoding="utf-8"))["roots"]
+        headers.append(Path(mapped[0]["external-contents"]).read_bytes())
+    assert outputs[0] == outputs[1]
+    assert headers[0] == headers[1]
+
+
+@pytest.mark.parametrize("backend", ["NATIVE", "PYTHON"])
+@pytest.mark.parametrize("extension", ["h", "hpp"])
+@pytest.mark.parametrize("mode", ["ON", "AUTO"])
+def test_cmake_experimental_header_overlays_are_incremental(
+    tmp_path: Path, compiler_environment: dict[str, str], backend: str, extension: str, mode: str
+) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    cmake = shutil.which("cmake")
+    clangxx = shutil.which("clang++")
+    if not binary or not cmake or not clangxx or not CLANG or not shutil.which("ninja"):
+        pytest.skip("native defer binary, CMake, Ninja, and Clang are required")
+    src = tmp_path / "src"
+    src.mkdir()
+    if backend == "PYTHON":
+        tool_dir = src / "tooling" / "defer"
+        tool_dir.mkdir(parents=True)
+        for name in ("defer.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
+            shutil.copy2(TOOL.parent / name, tool_dir / name)
+        shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
+    header = src / f"clean.{extension}"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *n) { *n = MODE; }\n', encoding="utf-8"
+    )
+    (src / "main.c").write_text(
+        f'#define MODE 7\n#include "{header.name}"\nint other(void);\n'
+        'int main(void) { int n=0; clean(&n); return n!=7 || other()!=42; }\n', encoding="utf-8"
+    )
+    other = src / "other.c"
+    other.write_text('int other(void) { return 42; }\n', encoding="utf-8")
+    module = (ROOT / "cmake" / "tooling" / "Defer.cmake").as_posix()
+    (tmp_path / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.30)\nproject(defer_header C CXX)\nset(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
+        f'include("{module}")\nadd_subdirectory(src)\nascii_defer_prepare()\n', encoding="utf-8"
+    )
+    (src / "CMakeLists.txt").write_text(
+        'add_executable(ascii-chat-probe main.c other.c)\n'
+        + (f'target_precompile_headers(ascii-chat-probe PRIVATE "${{CMAKE_CURRENT_SOURCE_DIR}}/{header.name}")\n' if mode == "ON" else "")
+        +
+        f'target_include_directories(ascii-chat-probe PRIVATE "{(ROOT / "include").as_posix()}")\n', encoding="utf-8"
+    )
+    build = tmp_path / "out"
+
+    def run(*command: str) -> str:
+        result = subprocess.run(command, capture_output=True, text=True, env=compiler_environment, check=False)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return result.stdout + result.stderr
+
+    run(cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
+        f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DASCIICHAT_DEFER_NATIVE_BINARY={binary}",
+        f"-DASCIICHAT_DEFER_BACKEND={backend}", f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
+        f"-DASCIICHAT_DEFER_HEADER_OVERLAYS={mode}")
+    first_build = run(cmake, "--build", str(build))
+    if mode == "ON":
+        assert "Transforming defer source batch" in first_build
+    else:
+        assert "Transforming defer source batch" not in first_build
+    if backend == "NATIVE" and mode == "ON":
+        assert "transformed 2 of 2" in first_build
+    executable = build / "src" / ("ascii-chat-probe.exe" if sys.platform == "win32" else "ascii-chat-probe")
+    run(str(executable))
+    objects = list((build / "src" / "CMakeFiles").rglob("*.obj" if sys.platform == "win32" else "*.o"))
+    main_obj = next(path for path in objects if "main.c" in path.name)
+    other_obj = next(path for path in objects if "other.c" in path.name)
+    other_mtime = other_obj.stat().st_mtime_ns
+    main_mtime = main_obj.stat().st_mtime_ns
+    time.sleep(1.1)
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *n) { defer(*n = MODE); }\n', encoding="utf-8"
+    )
+    output = run(cmake, "--build", str(build))
+    if mode == "AUTO":
+        assert "Re-running CMake" in output
+        objects = list((build / "src" / "CMakeFiles").rglob("*.obj" if sys.platform == "win32" else "*.o"))
+        main_obj = next(path for path in objects if "defer_transformed" in str(path) and "main.c" in path.name)
+        other_obj = next(path for path in objects if "defer_transformed" in str(path) and "other.c" in path.name)
+        main_mtime = main_obj.stat().st_mtime_ns
+        other_mtime = other_obj.stat().st_mtime_ns
+        time.sleep(1.1)
+        header.write_text(header.read_text(encoding="utf-8") + "/* header edit */\n", encoding="utf-8")
+        output = run(cmake, "--build", str(build))
+    if backend == "NATIVE":
+        assert "transformed 1 of 2" in output
+    assert main_obj.stat().st_mtime_ns > main_mtime
+    assert other_obj.stat().st_mtime_ns == other_mtime
+    run(str(executable))
+    assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
+
+
+@pytest.mark.parametrize(("contents", "expected"), [
+    ('static inline void f(void) { defer((void)0); }\n', True),
+    ('static inline void f(void) { WRAPPED((void)0); }\n', True),
+    ('static inline void f(void) { de\\\nfer((void)0); }\n', True),
+    ('/* defer((void)0); */\nconst char *s = "defer((void)0)";\n', False),
+    ('#define WRAPPED(x) \\\n defer(x)\n/*\n defer((void)0);\n*/\n', False),
+    ('/* a comment */ static inline void f(void) { defer((void)0); }\n', True),
+    ('const char *s = "/* ; */ defer(x)"; /* defer(x); */\n', False),
+    ('static inline void f(void) { int deferred_value = 0; }\n', False),
+    ("static inline void f(void) { char c = '\\\''; defer((void)c); }\n", True),
+    ('/* comment begins\n#define NOT_CODE defer(x)\nends */ static inline void f(void) { defer((void)0); }\n', True),
+])
+def test_cmake_header_detection_ignores_non_code(tmp_path: Path, contents: str, expected: bool) -> None:
+    cmake = shutil.which("cmake")
+    if not cmake:
+        pytest.skip("CMake is required")
+    header = tmp_path / "header.h"
+    header.write_text(contents, encoding="utf-8")
+    script = tmp_path / "scan.cmake"
+    module = (ROOT / "cmake" / "tooling" / "DeferHeaderScan.cmake").as_posix()
+    script.write_text(
+        f'include("{module}")\nfile(READ "{header.as_posix()}" text)\n'
+        'string(REGEX REPLACE "\\\\\\\\\\n" "" text "${text}")\n'
+        'set(wrappers defer WRAPPED)\nascii_defer_header_has_code(found text wrappers)\nmessage("found=${found}")\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"found={'TRUE' if expected else 'FALSE'}" in result.stderr
+
+
+@pytest.mark.parametrize("extension", ["m"])
 def test_objc_tool_fails_closed(tmp_path: Path, transform_environment: dict[str, str], extension: str) -> None:
     source = tmp_path / f"source.{extension}"
     output = tmp_path / f"output.{extension}"
@@ -542,6 +1037,41 @@ def test_objc_tool_fails_closed(tmp_path: Path, transform_environment: dict[str,
     )
     assert result.returncode != 0
     assert "Objective-C" in result.stderr
+    assert not output.exists()
+
+
+def test_objcpp_tool_accepts_exception_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    source = tmp_path / "source.mm"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int value; void f() { defer(value = 1); @throw (id)0; }\n', encoding="utf-8"
+    )
+    output = tmp_path / "output.mm"
+    flags = ["-x", "objective-c++", "-std=c++11", "-fobjc-runtime=gnustep-2.0", "-fobjc-exceptions", "-fexceptions", "-I", str(ROOT / "include")]
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run([compiler, *flags, "-fsyntax-only", str(output)], capture_output=True, text=True,
+                            env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+
+
+def test_objcpp_tool_rejects_legacy_exception_runtime(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "source.mm"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nvoid f() { defer((void)0); }\n', encoding="utf-8")
+    output = tmp_path / "output.mm"
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-x", "objective-c++", "-std=c++11",
+         "-fobjc-runtime=gcc", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "zero-cost exceptions" in result.stderr
     assert not output.exists()
 
 
