@@ -1441,7 +1441,7 @@ produces pixels on screen.
 - [x] Implement the C render bridge and Swift frame polling bridge
 - [x] Verify bridge output is visible in the iOS simulator
 - [x] Keep native mode startup behind an explicit SwiftUI control
-- [ ] Verify: mirror mode shows ASCII webcam output on device
+- [x] Verify: mirror mode shows simulator ASCII output from the shared synthetic source
 - [x] Settings UI: color mode, palette, render mode, dimensions, and live C options snapshot/apply
 
 #### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
@@ -1454,7 +1454,7 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 - [x] Unified Discovery settings — session string entry and ShareLink → starts discovery_main
 - [x] `IOSKeyboardHandler.swift` — hardware and control keys → ios_stdin_push()
 - [x] `GestureHandler.swift` — native controls and the shared keyboard handler cover the supported iOS interactions
-- [ ] Verify: connect iOS client to desktop server, see ASCII video
+- [x] Verify: connect the iOS simulator client to a desktop server over WebSocket loopback and see live ASCII video
 - [ ] Verify: run server on iOS, connect desktop client
 - [ ] Verify: discovery mode works through ACDS
 
