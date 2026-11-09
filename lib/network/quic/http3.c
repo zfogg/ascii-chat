@@ -32,6 +32,9 @@ struct acip_http3_server {
   char header_names[H3_MAX_HEADERS][H3_MAX_TEXT], header_values[H3_MAX_HEADERS][H3_MAX_TEXT];
   http_header_t headers[H3_MAX_HEADERS];
   size_t header_count;
+  uint8_t *request_body;
+  size_t request_body_length, request_body_capacity;
+  bool request_end_stream;
   uint8_t *response_body;
   size_t response_length, response_offset;
 };
@@ -161,12 +164,55 @@ static int maybe_respond(acip_http3_server_t *server) {
 }
 
 static int dispatch_generic_request(acip_http3_server_t *server) {
-  if (!server->http_server || !server->headers_done || !server->settings_received || server->responded)
+  if (!server->http_server || !server->headers_done || !server->settings_received || !server->request_end_stream ||
+      server->responded)
     return 0;
-  asciichat_error_t result =
-      http_server_dispatch_http3(server->http_server, server->method_text, server->request_target, server->headers,
-                                 server->header_count, NULL, 0, NULL, http3_submit_response, server);
+  asciichat_error_t result = http_server_dispatch_http3(
+      server->http_server, server->method_text, server->request_target, server->headers, server->header_count,
+      server->request_body, server->request_body_length, NULL, http3_submit_response, server);
   return result == ASCIICHAT_OK ? 0 : NGHTTP3_ERR_CALLBACK_FAILURE;
+}
+
+static int receive_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *data, size_t length, void *context,
+                        void *stream_context) {
+  (void)conn;
+  (void)stream_context;
+  acip_http3_server_t *server = context;
+  if (!server->http_server || stream_id != server->request || (!data && length))
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  size_t limit = http_server_max_request_body(server->http_server);
+  if (length > limit || server->request_body_length > limit - length)
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  if (length) {
+    size_t required = server->request_body_length + length;
+    if (required > server->request_body_capacity) {
+      size_t capacity = server->request_body_capacity ? server->request_body_capacity : 4096;
+      while (capacity < required) {
+        if (capacity > SIZE_MAX / 2)
+          capacity = required;
+        else
+          capacity *= 2;
+      }
+      uint8_t *body = SAFE_REALLOC(server->request_body, capacity, uint8_t *);
+      if (!body)
+        return NGHTTP3_ERR_NOMEM;
+      server->request_body = body;
+      server->request_body_capacity = capacity;
+    }
+    memcpy(server->request_body + server->request_body_length, data, length);
+    server->request_body_length += length;
+  }
+  return 0;
+}
+
+static int end_stream(nghttp3_conn *conn, int64_t stream_id, void *context, void *stream_context) {
+  (void)conn;
+  (void)stream_context;
+  acip_http3_server_t *server = context;
+  if (!server->http_server || stream_id != server->request || server->request_end_stream)
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  server->request_end_stream = true;
+  return dispatch_generic_request(server);
 }
 
 static int begin_headers(nghttp3_conn *conn, int64_t stream_id, void *context, void *stream_context) {
@@ -246,8 +292,8 @@ static int end_headers(nghttp3_conn *conn, int64_t stream_id, int fin, void *con
   if (stream_id != server->request || server->headers_done)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   server->headers_done = true;
-  if (server->http_server && fin)
-    return dispatch_generic_request(server);
+  if (server->http_server)
+    return 0;
   server->malformed |= fin != 0;
   return maybe_respond(server);
 }
@@ -289,6 +335,8 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
   nghttp3_callbacks callbacks = {.begin_headers = begin_headers,
                                  .recv_header = receive_header,
                                  .end_headers = end_headers,
+                                 .recv_data = receive_data,
+                                 .end_stream = end_stream,
                                  .recv_settings2 = receive_settings};
   nghttp3_settings settings;
   nghttp3_settings_default(&settings);
@@ -413,5 +461,7 @@ void acip_http3_server_destroy(acip_http3_server_t **server) {
   if (!server || !*server)
     return;
   nghttp3_conn_del((*server)->http);
+  SAFE_FREE((*server)->request_body);
+  SAFE_FREE((*server)->response_body);
   SAFE_FREE(*server);
 }

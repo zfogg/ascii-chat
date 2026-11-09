@@ -31,9 +31,10 @@
  * and event-loop callbacks, while handlers own routing and application
  * behavior.  The public contract intentionally does not expose libuv,
  * libwebsockets, TLS, nghttp2, nghttp3, or ngtcp2 types, so MCP, API, and
- * discovery can share the same handler code.  HTTP/3 remains owned by the
- * existing QUIC/WebTransport endpoint until its generic adapter is folded
- * into this contract; it is never silently downgraded.
+ * discovery can share the same handler code.  Generic HTTP/3 request streams
+ * attach to a pre-opened QUIC endpoint through the same handler contract;
+ * WebTransport CONNECT streams remain a separate ACIP transport use of that
+ * endpoint.  An explicitly enabled HTTP version is never silently downgraded.
  *
  * @section network_connection_layer Connections
  *

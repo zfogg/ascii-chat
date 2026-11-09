@@ -400,6 +400,10 @@ const void *http_request_body(const http_request_t *r, size_t *n) {
     *n = r ? r->body_length : 0;
   return r && r->body_length ? r->storage + r->body_offset : NULL;
 }
+
+size_t http_server_max_request_body(const http_server_t *server) {
+  return server ? server->config.max_request_body_bytes : 0;
+}
 bool http_request_is_cancelled(const http_request_t *r) {
   return !r || r->cancelled;
 }
