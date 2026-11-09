@@ -22,8 +22,10 @@ Before changing code, inspect the current tree and run `git status --short
 - `src/web/`: the nested Emscripten project. `CMakeLists.txt` selects the
   browser source set, WASM platform files/stubs, shared native libraries,
   generated fonts, bindings, and the `client`, `mirror`, `renderer`, and host
-  entry points. `src/web/main_wasm.c`, `mirror.c`, `client.c`, `renderer/`, and
-  `bindings/` are the first places to read for a module change.
+  entry points. `src/web/main_wasm.c`, `mirror.c`, `renderer/`, and
+  `bindings/` are the first places to read for a module change. The browser
+  client implementation is in `lib/network/browser/client.c`; the old
+  `src/web/client.c` source has been removed.
 - `src/web/bindings/`: Embind translation units. These are the deliberate
   JavaScript ABI, not a place to expose every C function. Generated TypeScript
   declarations live separately under `web/packages/shared/src/wasm/generated/`.
@@ -163,15 +165,16 @@ current binding families are:
 - `av_state.cpp`: `AVStateBinding` (`valid`, `generation`, `begin`,
   `complete`, `current`, `active`, `beginStop`, `finishStop`) for lifecycle
   synchronization.
-- `client_frames.cpp`: `validateFrame` for incoming frame validation.
-- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `process`).
+- `discovery.cpp`: `DiscoveryBinding` (`valid`, `error`, `close`, `process`,
+  `processBatch`, and `drainOutputs`).
   Handoff encoding/decoding belongs to the client session event ABI rather than
   separate browser-visible helpers.
-- `face.cpp`: `faceReset`, `faceDetect`, and `faceTick`.
+- `face.cpp`: `FaceFollowBinding` (`valid`, `error`, `close`, `reset`, `detect`,
+  and `tick`).
 - `frame.cpp`: stabilizer/capture helpers plus `MirrorFrameBinding`
   (`convert`, `transform`, `submitAudio`, `renderAudio`).
-- `key_parser.cpp`: browser key/error APIs (`parseKey`, `keyParserError`,
-  `errorSnapshot`, `errorFrame`, and dismissal).
+- `key_parser.cpp`: `KeyParserBinding` and `ErrorBinding` for browser key/error
+  parsing, snapshots, frames, and dismissal.
 - `mirror_session.cpp`: `initMirror`, `sessionRenderCleanup`, and
   `mirror_cleanup`.
 - `networking.cpp`: client initialization/cleanup and the
@@ -186,8 +189,8 @@ current binding families are:
 - The old granular `protocol.cpp` binding was removed. Packet parsing,
   serialization, handshake, and crypto are reached through the client session
   event API and its TypeScript domain helpers.
-- `session_host.cpp`: browser host lifecycle/render/audio plus
-  `HostPacketBinding.receive`.
+- `session_host.cpp`: `BrowserHostBinding` browser host lifecycle/render/audio,
+  packet receive, and owned `drainPackets` output.
 - `session_ui.cpp`: UI FPS/volume and `SessionUiBinding` for resize, loading,
   logs, media, key, tick, clear, and redraw.
 - `terminal_renderer.cpp`: `AsciiRendererBinding` (`valid`, `error`,
@@ -321,7 +324,7 @@ crypto handshake or packet format.
 Useful checks include:
 
 ```powershell
-cmake --build build --target mirror-web client-web renderer-web
+cmake --build build/web --target mirror-web client-web renderer-web
 pnpm --dir web/web test
 pnpm --dir web/web exec playwright test tests/e2e/video-encoding.spec.ts
 ```
