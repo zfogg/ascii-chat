@@ -272,12 +272,9 @@ public:
     }
     if (type == "quic-tick") {
       const int code = browser_security_tick(client_security_context(transport_.get()));
-      emscripten::val response = result(code);
-      int output_code = 0;
-      response.set("outputs", quic_outputs(client_security_context(transport_.get()), &output_code));
-      if (!response["code"].as<int>() && output_code)
-        response.set("code", output_code);
-      response.set("epoch", browser_security_epoch(client_security_context(transport_.get())));
+      emscripten::val response = drainOutputs();
+      if (code && response["code"].as<int>() == 0)
+        response.set("code", code);
       return response;
     }
     if (type == "quic-packet") {
@@ -330,6 +327,15 @@ public:
       return response;
     }
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser client event: %s", type.c_str()));
+  }
+  emscripten::val drainOutputs() const {
+    emscripten::val response = result(0);
+    int output_code = 0;
+    response.set("outputs", quic_outputs(client_security_context(transport_.get()), &output_code));
+    if (!response["code"].as<int>() && output_code)
+      response.set("code", output_code);
+    response.set("epoch", browser_security_epoch(client_security_context(transport_.get())));
+    return response;
   }
   emscripten::val processBatch(emscripten::val events) {
     if (!owned_)
@@ -399,6 +405,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("validateFrame", &ClientSessionBinding::validateFrame)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process)
-      .function("processBatch", &ClientSessionBinding::processBatch);
+      .function("processBatch", &ClientSessionBinding::processBatch)
+      .function("drainOutputs", &ClientSessionBinding::drainOutputs);
 
 }

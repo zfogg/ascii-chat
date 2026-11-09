@@ -394,6 +394,7 @@ export interface ClientSessionBinding extends ClassHandle {
   close(): void;
   process(_0: any): any;
   processBatch(_0: any): any;
+  drainOutputs(): any;
 }
 
 type KeyInput = Uint8Array;
@@ -495,6 +496,7 @@ export interface MirrorFrameBinding extends ClassHandle {
     _2: number,
     _3: boolean,
   ): string | undefined;
+  processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): any;
   transform(_0: RgbaBytes, _1: number, _2: number): number;
   submitAudio(_0: VisualizationSamples, _1: number): void;
   renderAudio(_0: number, _1: number, _2: number): string | undefined;
