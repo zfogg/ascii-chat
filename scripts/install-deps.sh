@@ -215,7 +215,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       mandoc \
       dpkg-dev rpm \
       yt-dlp \
-      libwebsockets-dev libuv1-dev libicu-dev  \
+      libwebsockets-dev libuv1-dev libicu-dev libnghttp2-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       curl unzip \
       || true
@@ -424,7 +424,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv icu \
+      libwebsockets libuv icu nghttp2 \
       libvterm freetype2 fontconfig
 
   else
