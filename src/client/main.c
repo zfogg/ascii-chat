@@ -627,6 +627,12 @@ int client_main(void) {
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
 
+  // Preserve the parsed CLI/config password in the session-owned buffer used
+  // by each connection attempt and by password retry handling.
+  const options_t *options = options_get();
+  if (options && options->password[0] != '\0')
+    SAFE_STRNCPY(g_client_session.password, options->password, sizeof(g_client_session.password));
+
   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
   set_interrupt_callback(NULL); // Signal handlers publish application exit only.
