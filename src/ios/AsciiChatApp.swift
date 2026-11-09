@@ -1262,7 +1262,16 @@ struct ContentView: View {
             .flatMap { Int($0.dropFirst("--ios-port=".count)) }
         let serverAddress = launchAddress ?? (persistedValues["address"] as? String ?? "")
         let serverPort = launchPort ?? ((persistedValues["port"] as? NSNumber)?.intValue ?? 27224)
-        let endpoint = serverAddress.isEmpty ? "" : "\(serverAddress):\(serverPort)"
+        let endpoint: String
+        if serverAddress.isEmpty {
+            endpoint = ""
+        } else if serverAddress.hasPrefix("ws://") || serverAddress.hasPrefix("wss://") {
+            // WebSocket URLs carry their own port. Appending the numeric
+            // option here would produce an invalid host:port:port endpoint.
+            endpoint = serverAddress
+        } else {
+            endpoint = "\(serverAddress):\(serverPort)"
+        }
         endpoint.withCString { asciichat_ios_set_server_address($0) }
         sessionModel.start(mode: selectedMode)
         let sessionString = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
