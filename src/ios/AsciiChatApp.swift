@@ -829,7 +829,7 @@ private struct IOSAllOptionsView: View {
             ForEach(values.keys.sorted(), id: \.self) { key in
                 if let value = values[key] as? Bool {
                     Toggle(key.replacingOccurrences(of: "_", with: " ").capitalized,
-                           isOn: Binding(get: { value }, set: {
+                           isOn: Binding(get: { (values[key] as? Bool) ?? value }, set: {
                                values[key] = $0
                                changed = true
                                applyJSON([key: $0])
@@ -837,7 +837,7 @@ private struct IOSAllOptionsView: View {
                 } else if let value = values[key] as? String,
                           let choices = Self.enumValues(for: key) {
                     Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
-                           selection: Binding(get: { value }, set: {
+                           selection: Binding(get: { (values[key] as? String) ?? value }, set: {
                                values[key] = $0
                                changed = true
                                applyJSON([key: $0])
