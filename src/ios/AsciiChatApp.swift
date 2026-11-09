@@ -12,6 +12,7 @@ private extension Notification.Name {
     static let iosSessionStarted = Notification.Name("ascii-chat.ios.session-started")
     static let iosSessionEnded = Notification.Name("ascii-chat.ios.session-ended")
     static let iosRenderFontSizeChanged = Notification.Name("ascii-chat.ios.render-font-size-changed")
+    static let iosRenderFPSChanged = Notification.Name("ascii-chat.ios.render-fps-changed")
 }
 
 @_silgen_name("asciichat_ios_test_frame")
@@ -197,6 +198,8 @@ private final class CRenderView: MTKView {
         configureMetalPipeline(device: metalDevice)
         NotificationCenter.default.addObserver(self, selector: #selector(renderFontSizeChanged),
                                                name: .iosRenderFontSizeChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(renderFPSChanged),
+                                               name: .iosRenderFPSChanged, object: nil)
     }
 
     required init(coder: NSCoder) {
@@ -211,6 +214,8 @@ private final class CRenderView: MTKView {
         configureMetalPipeline(device: metalDevice)
         NotificationCenter.default.addObserver(self, selector: #selector(renderFontSizeChanged),
                                                name: .iosRenderFontSizeChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(renderFPSChanged),
+                                               name: .iosRenderFPSChanged, object: nil)
     }
 
     deinit {
@@ -221,6 +226,11 @@ private final class CRenderView: MTKView {
     @objc private func renderFontSizeChanged() {
         setNeedsLayout()
         layoutIfNeeded()
+    }
+
+    @objc private func renderFPSChanged() {
+        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 1, maximum: 120,
+                                                                preferred: Self.configuredDisplayFPS())
     }
 
     private func configureMetalPipeline(device: MTLDevice?) {
@@ -260,9 +270,21 @@ private final class CRenderView: MTKView {
         displayLink = nil
         guard window != nil else { return }
         let link = CADisplayLink(target: self, selector: #selector(displayFrame))
-        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        let configuredFPS = Self.configuredDisplayFPS()
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 1, maximum: 120, preferred: configuredFPS)
         link.add(to: .main, forMode: .common)
         displayLink = link
+    }
+
+    private static func configuredDisplayFPS() -> Float {
+        guard let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let patch = object as? [String: Any],
+              let value = patch["fps"] as? NSNumber else {
+            return 60
+        }
+        let fps = value.floatValue
+        return fps > 0 ? min(max(fps, 1), 120) : 60
     }
 
     override func layoutSubviews() {
@@ -974,6 +996,9 @@ struct ContentView: View {
             return
         }
         UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
+        if values["fps"] != nil {
+            NotificationCenter.default.post(name: .iosRenderFPSChanged, object: nil)
+        }
     }
 
     private func configureRenderBridge(fontSize: Double) {
