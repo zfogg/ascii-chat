@@ -168,7 +168,7 @@ const path = require("node:path");
         flags,
         metadata = new Uint8Array(),
       ) => {
-        return m.validateFrame(
+        return m.ClientFrameBinding.validate(
           bytes,
           width,
           height,
@@ -212,7 +212,7 @@ const path = require("node:path");
         );
         offset += metadata.length;
         const encoded = payload.subarray(offset);
-        const decoded = m.validateFrame(
+        const decoded = m.ClientFrameBinding.validate(
           encoded,
           view.getUint32(0),
           view.getUint32(4),
@@ -225,7 +225,7 @@ const path = require("node:path");
           throw new Error("Real host frame rejected: " + decoded.code);
         if (
           flags & 2 &&
-          !m.validateFrame(
+          !m.ClientFrameBinding.validate(
             encoded,
             view.getUint32(0),
             view.getUint32(4),

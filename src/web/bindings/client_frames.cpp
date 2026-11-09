@@ -6,8 +6,10 @@ extern "C" {
 #include <cstdint>
 #include <vector>
 
-static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
-                                        unsigned flags, ClientBytes contract, unsigned original_size) {
+class ClientFrameBinding {
+public:
+  static ClientFrameResult validate(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
+                                    unsigned flags, ClientBytes contract, unsigned original_size) {
   const size_t input_size = encoded["length"].as<size_t>();
   const size_t metadata_size = contract["length"].as<size_t>();
   const bool compressed = (flags & 2) != 0;
@@ -33,11 +35,13 @@ static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, uns
   result.set("decodeFailed", decode_failed);
   result.set("bytes", binding_copy_output(text, code == 0 ? original_size : 0));
   return ClientFrameResult(result);
-}
+  }
+};
 
 EMSCRIPTEN_BINDINGS(ascii_chat_client_frames) {
   emscripten::register_type<ClientBytes>("ClientBytes", "Uint8Array");
   emscripten::register_type<ClientFrameResult>("ClientFrameResult",
                                                "{ code: number; decodeFailed: boolean; bytes: Uint8Array }");
-  emscripten::function("validateFrame", &validate_frame);
+  emscripten::class_<ClientFrameBinding>("ClientFrameBinding")
+      .class_function("validate", &ClientFrameBinding::validate);
 }

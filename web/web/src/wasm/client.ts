@@ -780,7 +780,7 @@ export function validateReceivedFrame(
   if (!compressed && bytes.length !== originalSize)
     throw new Error("Uncompressed frame size mismatch");
   if (!wasmModule) throw new Error("Client frame validator is unavailable");
-  const result = wasmModule.validateFrame(
+  const result = wasmModule.ClientFrameBinding.validate(
     bytes,
     width,
     height,

@@ -420,6 +420,8 @@ type ClientFrameResult = {
   bytes: Uint8Array;
 };
 
+export interface ClientFrameBinding extends ClassHandle {}
+
 type DiscoverySnapshotValue = {
   state: number;
   terminal: boolean;
@@ -548,15 +550,17 @@ interface EmbindModule {
     new (): AVStateBinding;
   };
   receiveSettings(_0: ClientBytes): ClientSettingsResult;
-  validateFrame(
-    _0: ClientBytes,
-    _1: number,
-    _2: number,
-    _3: number,
-    _4: number,
-    _5: ClientBytes,
-    _6: number,
-  ): ClientFrameResult;
+  ClientFrameBinding: {
+    validate(
+      _0: ClientBytes,
+      _1: number,
+      _2: number,
+      _3: number,
+      _4: number,
+      _5: ClientBytes,
+      _6: number,
+    ): ClientFrameResult;
+  };
   DiscoveryBinding: {
     new (): DiscoveryBinding;
   };
