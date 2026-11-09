@@ -97,6 +97,7 @@
  * @copybrief module_utilities
  *
  * - @ref topic_util "Utility Functions" - String, path, IP, UTF-8, CRC32, formatting utilities
+ * - @ref systemd "systemd integration" - Linux service units, notifications, and installation
  *
  * @section categories_data 📦 Data Structures
  *

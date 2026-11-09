@@ -33,6 +33,7 @@ set(CORE_SRCS
     ${LIB_DIR}/log/websocket.c
     ${LIB_DIR}/log/io.c
     ${LIB_DIR}/log/asan.c
+    ${LIB_DIR}/platform/linux/systemd.c
     # ui/
     ${LIB_DIR}/tui/session.c
     ${LIB_DIR}/tui/session_status.c

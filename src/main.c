@@ -67,6 +67,7 @@
 // Common headers for version info and initialization
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
@@ -839,6 +840,9 @@ int main(int argc, char *argv[]) {
     log_error("Options not initialized");
     return 1;
   }
+
+  platform_systemd_notify_status("Options loaded; starting ascii-chat");
+  platform_systemd_notify_ready();
 
   // Apply the parsed level after the early logger has initialized.
   log_set_level(opts->log_level);

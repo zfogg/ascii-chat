@@ -706,20 +706,9 @@ endif()
 # Users must enable with: systemctl --user enable ascii-chat-server
 # Or system-wide: sudo systemctl enable ascii-chat-server
 if(UNIX AND NOT APPLE)
-    set(_server_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
-    #set(_discovery_service_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-discovery-service.service")
-
-    # Install to user systemd directory
-    install(FILES "${_server_systemd_service}"
-        DESTINATION lib/systemd/user
-        COMPONENT Runtime
-    )
-    #install(FILES "${_discovery_service_systemd_service}"
-    #    DESTINATION lib/systemd/user
-    #    COMPONENT Runtime
-    #)
-
-    message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
+    file(GLOB _systemd_services "${CMAKE_SOURCE_DIR}/share/systemd/*.service")
+    install(FILES ${_systemd_services} DESTINATION lib/systemd/system COMPONENT Runtime)
+    message(STATUS "${BoldGreen}Configured${ColorReset} ascii-chat systemd services → ${BoldYellow}lib/systemd/system/${ColorReset}")
 endif()
 
 # =============================================================================

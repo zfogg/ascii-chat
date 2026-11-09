@@ -600,7 +600,11 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store_bool(&g_log.level_manually_set, false);
   atomic_store_u64(&g_log.current_size, 0);
 
-  if (filename) {
+  if (filename && strcmp(filename, "/dev/null") == 0) {
+    g_log.filename[0] = '\0';
+    atomic_store_int(&g_log.file, -1);
+    atomic_store_bool(&g_log.terminal_output_enabled, false);
+  } else if (filename) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
 
     if (use_mmap) {

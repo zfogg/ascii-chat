@@ -39,6 +39,7 @@
  * @copybrief module_abstractions
  *
  * - @ref topic_platform "Platform Abstraction Layer"
+ * - @ref systemd "systemd integration"
  * - @ref topic_webcam "Webcam Capture"
  * - @ref md_docs_2keyboard-input "Keyboard input"
  * - @ref md_docs_2terminal-ui "Terminal presentation"

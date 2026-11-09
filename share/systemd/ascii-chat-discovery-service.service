@@ -8,11 +8,16 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
 ExecStart=/usr/bin/ascii-chat acds 0.0.0.0 :: \
   --port 27225 \
   --database /var/lib/ascii-chat/acds.db \
-  --key /etc/ascii-chat/acds_identity.key
+  --key /etc/ascii-chat/acds_identity.key \
+  --color=false \
+  --splash-screen=false \
+  --no-check-update \
+  --otel-endpoint= \
+  --log-file=/dev/null
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=3
@@ -42,6 +47,7 @@ LockPersonality=yes
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ascii-chat-discovery
+WatchdogSec=30s
 
 # Resource limits
 LimitNOFILE=4096

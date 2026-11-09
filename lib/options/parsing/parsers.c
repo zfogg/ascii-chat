@@ -1078,6 +1078,12 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
+  if (strcmp(arg, "/dev/null") == 0) {
+    SAFE_STRNCPY((char *)dest, arg, 255);
+    ((char *)dest)[255] = '\0';
+    return true;
+  }
+
   // Validate and normalize the log file path
   char *normalized = NULL;
   asciichat_error_t result = path_validate_user_path(arg, PATH_ROLE_LOG_FILE, &normalized);

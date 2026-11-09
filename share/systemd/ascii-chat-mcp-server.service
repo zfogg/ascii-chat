@@ -1,0 +1,22 @@
+[Unit]
+Description=ascii-chat MCP HTTP server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/ascii-chat mcp-server --transport=http --address=127.0.0.1 --port=27228 --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ascii-chat-mcp
+WatchdogSec=30s
+
+[Install]
+WantedBy=multi-user.target
