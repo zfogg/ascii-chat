@@ -993,12 +993,14 @@ private struct IOSAllOptionsView: View {
         case "color_filter": return ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
         case "render_mode": return ["foreground", "background", "half-block"]
         case "color_mode": return ["none", "16", "256", "truecolor"]
+        case "utf8": return ["auto", "true", "false"]
         case "renderer": return ["luminance", "glyph"]
-        case "audio_source": return ["microphone", "file", "url", "test"]
-        case "audio_capture_source": return ["microphone", "file", "url", "test"]
+        case "audio_source": return ["all", "call", "mic", "media"]
+        case "audio_capture_source": return ["auto", "mic", "media", "both", "remote"]
         case "audio_fft_size": return ["512", "1024", "2048"]
+        case "video_codec": return ["auto", "hevc", "h264", "raw"]
         case "log_level": return ["DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"]
-        case "render_theme": return ["none", "dark", "light"]
+        case "render_theme": return ["dark", "light", "auto"]
         default: return nil
         }
     }
