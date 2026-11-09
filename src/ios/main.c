@@ -105,6 +105,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
       argv[argc++] = g_ios_session_string;
   } else {
     argv[argc++] = mode_name;
+    if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0')
+      argv[argc++] = g_ios_server_address;
   }
   if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT)
     argv[argc++] = splash;
@@ -126,9 +128,6 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
     argv[argc++] = test_pattern;
   }
 #endif
-  if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0') {
-    argv[argc++] = g_ios_server_address;
-  }
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
