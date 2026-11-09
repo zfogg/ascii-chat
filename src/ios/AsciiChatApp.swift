@@ -360,7 +360,11 @@ private struct CameraAsciiView: View {
             .background(Color.black)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
-        .onAppear { requestMediaPermissions() }
+        .onAppear {
+            if !ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") {
+                requestMediaPermissions()
+            }
+        }
     }
 
     private func requestMediaPermissions() {
