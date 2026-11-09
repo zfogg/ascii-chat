@@ -92,7 +92,7 @@ export class WebRTCSession implements ClientSession {
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
-  private peerCrypto: BrowserSession | null = null;
+  private securitySession: BrowserSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -395,7 +395,7 @@ export class WebRTCSession implements ClientSession {
       negotiated: true,
       id: 0,
     });
-    this.peerCrypto = await BrowserSession.create(
+    this.securitySession = await BrowserSession.create(
       {
         ...this.options.cryptoOptions,
         password: this.options.cryptoOptions?.password || this.options.password,
@@ -408,8 +408,8 @@ export class WebRTCSession implements ClientSession {
       },
     );
     if (this.closed) {
-      this.peerCrypto.close();
-      this.peerCrypto = null;
+      this.securitySession.close();
+      this.securitySession = null;
       return;
     }
     channel.onopen = () => {
@@ -422,7 +422,7 @@ export class WebRTCSession implements ClientSession {
         channel,
         (bytes) => {
           try {
-            const decoded = this.peerCrypto!.receive(bytes);
+            const decoded = this.securitySession!.receive(bytes);
             if (!decoded) return;
             bytes = decoded;
             const parsed = processClientEvent({ type: "receive-packet", packet: bytes });
@@ -480,7 +480,7 @@ export class WebRTCSession implements ClientSession {
         this.peer?.sctp?.maxMessageSize,
       );
       try {
-        this.peerCrypto!.flush();
+        this.securitySession!.flush();
       } catch (error) {
         this.fail(error);
       }
@@ -508,8 +508,8 @@ export class WebRTCSession implements ClientSession {
     this.quic = null;
     this.outbound?.close();
     this.outbound = null;
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;
@@ -623,7 +623,7 @@ export class WebRTCSession implements ClientSession {
     if (!this.outbound)
       this.outbound = new OutboundQueue(
         () => this.bridge?.getBufferedAmount() ?? 0,
-        (packet) => this.peerCrypto!.sendPacket(packet),
+        (packet) => this.securitySession!.sendPacket(packet),
         () => {
           // A failed media queue must not discard the independent ACDS
           // connection needed to commit a successor. Stop this peer and its
@@ -689,8 +689,8 @@ export class WebRTCSession implements ClientSession {
     this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;

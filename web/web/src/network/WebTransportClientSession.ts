@@ -38,7 +38,7 @@ export class WebTransportClientSession implements ClientSession {
   private publicKey: string | null = null;
   private cancelled = false;
   private ownsWasm = false;
-  private peerCrypto: BrowserSession | null = null;
+  private securitySession: BrowserSession | null = null;
   private preparing = false;
   private connectPromise: Promise<void> | null = null;
   private droppedDatagrams = 0;
@@ -116,7 +116,7 @@ export class WebTransportClientSession implements ClientSession {
           });
       if (!prepared || this.cancelled) return;
       if (this.options.discoveryPeer) {
-        this.peerCrypto = await BrowserSession.create(
+        this.securitySession = await BrowserSession.create(
           this.options.cryptoOptions ?? {},
           true,
           false,
@@ -127,7 +127,7 @@ export class WebTransportClientSession implements ClientSession {
           return;
         }
       }
-      const peer = this.peerCrypto;
+      const peer = this.securitySession;
       peer?.beginQuic();
       const channel = new WebTransportAcipChannel(
         this.options.serverUrl,
@@ -245,8 +245,8 @@ export class WebTransportClientSession implements ClientSession {
     );
   }
   getCryptoEpoch(): number {
-    return this.peerCrypto
-      ? this.peerCrypto.quicEpoch
+    return this.securitySession
+      ? this.securitySession.quicEpoch
       : (processClientEvent({ type: "quic-state" }).epoch ?? -1);
   }
 
@@ -297,8 +297,8 @@ export class WebTransportClientSession implements ClientSession {
     this.setState(ConnectionState.DISCONNECTED);
   }
   private releaseWasm(): void {
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (!this.ownsWasm) return;
     this.ownsWasm = false;
     cleanupClientWasm();

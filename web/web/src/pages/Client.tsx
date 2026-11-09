@@ -188,7 +188,7 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
-  const peerCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+  const browserSecurityOptions = useMemo<ClientCryptoOptions>(() => {
     const options: ClientCryptoOptions = {};
     if (discoveryCryptoOptions.password)
       options.password = discoveryCryptoOptions.password;
@@ -328,7 +328,7 @@ export function ClientPage({
             ...(discoveryApplicationEncryption === undefined
               ? {}
               : { applicationEncryption: discoveryApplicationEncryption }),
-            cryptoOptions: peerCryptoOptions,
+            cryptoOptions: browserSecurityOptions,
             signalingCryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
@@ -352,7 +352,7 @@ export function ClientPage({
       signalingUrl,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
-      peerCryptoOptions,
+      browserSecurityOptions,
       stunUrls,
       turnUrls,
       connectionRoute,

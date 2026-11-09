@@ -611,7 +611,7 @@ export class BrowserSession {
   ) {}
 
   private getBinding(): BrowserSessionBinding {
-    if (!this.binding) throw new Error("Peer crypto session is closed");
+    if (!this.binding) throw new Error("Browser security session is closed");
     return this.binding;
   }
 
