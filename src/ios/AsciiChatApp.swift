@@ -187,6 +187,7 @@ private final class CRenderView: MTKView {
     private var sampler: MTLSamplerState?
     private var displayTicks = 0
     private var displayedFrames = 0
+    private var textureFrameIndex = 0
     private var lastFpsLog = CACurrentMediaTime()
     private var displayLink: CADisplayLink?
     private let commandQueue: MTLCommandQueue?
@@ -357,7 +358,10 @@ private final class CRenderView: MTKView {
             sourceHeight = Int(height)
             sourceBytesPerRow = Int(pitch)
         }
-        guard let sourceTexture = (displayedFrames % 2 == 0 ? sourceTexture : sourceTextureReady) else { return }
+        // Keep the upload buffer selection independent from the FPS counter.
+        // The counter is reset for reporting once per second; using it here
+        // can reuse a texture while Metal is still sampling it.
+        guard let sourceTexture = (textureFrameIndex % 2 == 0 ? sourceTexture : sourceTextureReady) else { return }
         sourceTexture.replace(region: MTLRegionMake2D(0, 0, Int(width), Int(height)),
                               mipmapLevel: 0, withBytes: renderPixels, bytesPerRow: Int(pitch))
 
@@ -378,6 +382,7 @@ private final class CRenderView: MTKView {
         commandBuffer.present(drawable)
         commandBuffer.commit()
         lastSequence = sequence
+        textureFrameIndex += 1
         displayedFrames += 1
         let now = CACurrentMediaTime()
         if now - lastFpsLog >= 1.0 {

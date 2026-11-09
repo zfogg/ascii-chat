@@ -39,9 +39,10 @@ static bool ios_render_bridge_init(void) {
       .cols = g_requested_cols,
       .rows = g_requested_rows,
       .font_size_pt = g_requested_font_size_pt,
-      // SwiftUI presents the raster on a light surface; use the matching
-      // terminal palette so default glyphs remain visible in the native view.
-      .theme = TERM_RENDERER_THEME_LIGHT,
+      // The Metal drawable is cleared to black. Use the dark terminal palette
+      // so shared TUI text keeps a readable light default foreground while
+      // preserving the same background as the media renderer.
+      .theme = TERM_RENDERER_THEME_DARK,
       .font_data = g_font_default,
       .font_data_size = g_font_default_size,
   };
