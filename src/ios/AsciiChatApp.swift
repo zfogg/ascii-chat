@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Observation
 import SwiftUI
 import UIKit
 
@@ -314,7 +315,7 @@ private struct CameraAsciiView: View {
     }
 }
 
-private enum IOSMode: Int32, CaseIterable, Identifiable {
+enum IOSMode: Int32, CaseIterable, Identifiable {
     case mirror = 0
     case client = 1
     case discovery = 2
@@ -362,6 +363,7 @@ private struct IOSModeButtonStyle: ButtonStyle {
 }
 
 struct ContentView: View {
+    @State private var sessionModel = IOSSessionModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedMode: IOSMode = .mirror
     @State private var launchMessage = ""
@@ -374,6 +376,7 @@ struct ContentView: View {
     @State private var commandLine = ""
 
     private func startSelectedSession() {
+        sessionModel.start(mode: selectedMode)
         launchMessage = "Starting \(selectedMode.title.lowercased())…"
         didStart = true
         sessionStarted = true
@@ -383,6 +386,7 @@ struct ContentView: View {
         DispatchQueue.global(qos: .userInitiated).async {
             let result = asciichat_ios_main(selectedMode.rawValue)
             DispatchQueue.main.async {
+                sessionModel.finish(result: Int32(result))
                 launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
                 sessionStarted = false
             }
@@ -392,6 +396,7 @@ struct ContentView: View {
     private func stopSelectedSession() {
         guard sessionStarted, !sessionStopping else { return }
         sessionStopping = true
+        sessionModel.stopRequested()
         launchMessage = "Stopping (selectedMode.title.lowercased())…"
         asciichat_ios_request_stop()
         platform_disable_keepawake()
@@ -401,25 +406,6 @@ struct ContentView: View {
         GeometryReader { proxy in
             ZStack {
                 CameraAsciiView()
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: stopSelectedSession) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.red.opacity(0.5))
-                                .frame(width: 56, height: 56)
-                                .contentShape(Rectangle())
-                        }
-                        .disabled(sessionStopping)
-                        .accessibilityLabel("Stop session")
-                        .accessibilityHint("Stops rendering and returns to mode and device settings")
-                        .padding(.trailing, 8)
-                    }
-                    .padding(.top, 8)
-                    Spacer()
-                }
-                .offset(y: -45)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
@@ -536,6 +522,26 @@ struct ContentView: View {
                     }
                 }
             }
+            if sessionStarted || sessionStopping {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: stopSelectedSession) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.red.opacity(0.5))
+                                .frame(width: 56, height: 56)
+                                .contentShape(Rectangle())
+                        }
+                        .disabled(sessionStopping)
+                        .accessibilityLabel("Stop session")
+                        .accessibilityHint("Stops rendering and returns to mode and device settings")
+                        .padding(.trailing, 8)
+                    }
+                    .padding(.top, 8)
+                    Spacer()
+                }
+            }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -550,6 +556,9 @@ struct ContentView: View {
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             lifecycleTick &+= 1
             refreshAudioDevices()
+            if sessionStarted && asciichat_ios_is_running() != 0 {
+                sessionModel.markRunning()
+            }
             if sessionStopping && asciichat_ios_is_running() == 0 {
                 sessionStopping = false
                 sessionStarted = false
