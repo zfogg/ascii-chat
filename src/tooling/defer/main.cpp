@@ -8,14 +8,19 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Process.h>
+#include <llvm/Support/Threading.h>
 #include <llvm/Support/raw_ostream.h>
 #include <filesystem>
+#include <atomic>
+#include <algorithm>
+#include <exception>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 namespace {
 llvm::cl::opt<bool> scan_only("scan", llvm::cl::desc("List source files containing possible defer calls"));
@@ -28,6 +33,8 @@ llvm::cl::list<std::string> sources(llvm::cl::Positional, llvm::cl::desc("<sourc
 llvm::cl::opt<std::string> compilation_database("compilation-database", llvm::cl::desc("CMake compilation database"));
 llvm::cl::opt<std::string> depfile("depfile", llvm::cl::desc("Write header dependencies"));
 llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
+llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
+                             llvm::cl::init(0));
 llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libclang shared library"));
 llvm::cl::opt<std::string> explain_location("explain", llvm::cl::desc("Explain cleanup at source:line"));
 llvm::cl::opt<std::string> show_location("show-transformed",
@@ -120,6 +127,15 @@ int main(int argc, char **argv) {
           throw std::runtime_error("output must not overwrite an input source");
       }
     }
+    for (std::size_t i = 0; i < inputs.size(); ++i)
+      for (std::size_t j = 0; j < i; ++j) {
+        std::error_code error;
+        if (std::filesystem::weakly_canonical(inputs[i].second) ==
+                std::filesystem::weakly_canonical(inputs[j].second) ||
+            (std::filesystem::exists(inputs[i].second) && std::filesystem::exists(inputs[j].second) &&
+             std::filesystem::equivalent(inputs[i].second, inputs[j].second, error) && !error))
+          throw std::runtime_error("batch output paths must be unique");
+      }
     if (!depfile_path.empty()) {
       for (const auto &[source, output] : inputs) {
         for (const auto &protected_path : {source, output}) {
@@ -131,8 +147,47 @@ int main(int argc, char **argv) {
         }
       }
     }
-    for (const auto &[source, output] : inputs)
-      dependencies.push_back(defer_tool::transform_file(index, source, output, options));
+    if (jobs.getNumOccurrences() && jobs == 0)
+      throw std::runtime_error("--jobs must be at least 1");
+    dependencies.resize(inputs.size());
+    std::vector<std::exception_ptr> errors(inputs.size());
+    std::atomic<std::size_t> next{0};
+    const auto worker = [&]() {
+      try {
+        defer_tool::ClangIndex worker_index;
+        while (true) {
+          const auto i = next.fetch_add(1);
+          if (i >= inputs.size())
+            break;
+          try {
+            dependencies[i] = defer_tool::transform_file(worker_index, inputs[i].first, inputs[i].second, options);
+          } catch (...) {
+            errors[i] = std::current_exception();
+          }
+        }
+      } catch (...) {
+        const auto i = next.fetch_add(1);
+        if (i < inputs.size())
+          errors[i] = std::current_exception();
+      }
+    };
+    const auto available = std::max(1u, llvm::hardware_concurrency().compute_thread_count());
+    const auto count = std::min<std::size_t>(jobs ? jobs.getValue() : available, inputs.size());
+    std::vector<std::thread> workers;
+    workers.reserve(count);
+    try {
+      for (std::size_t i = 0; i < count; ++i)
+        workers.emplace_back(worker);
+    } catch (...) {
+      for (auto &thread : workers)
+        thread.join();
+      throw;
+    }
+    for (auto &thread : workers)
+      thread.join();
+    for (const auto &error : errors)
+      if (error)
+        std::rethrow_exception(error);
     if (!depfile_path.empty())
       defer_tool::write_depfile(depfile_path, dependencies);
     return 0;

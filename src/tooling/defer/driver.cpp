@@ -14,6 +14,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #ifdef _WIN32
@@ -26,14 +27,6 @@
 namespace defer_tool {
 namespace fs = std::filesystem;
 namespace {
-
-struct DirectoryGuard {
-  fs::path original = fs::current_path();
-  ~DirectoryGuard() {
-    std::error_code ignored;
-    fs::current_path(original, ignored);
-  }
-};
 
 struct CompilationDatabase {
   CXCompilationDatabase value = nullptr;
@@ -50,6 +43,8 @@ struct CompilationDatabase {
 
 std::string compiler_resource_dir(const std::string &compiler) {
   static std::map<std::string, std::string> cached;
+  static std::mutex cache_mutex;
+  std::lock_guard<std::mutex> lock(cache_mutex);
   const auto key = fs::absolute(fs::u8path(compiler)).u8string();
   if (cached.count(key))
     return cached.at(key);
@@ -102,8 +97,8 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   if (args.empty())
     throw std::runtime_error("empty compile command for " + generated.u8string());
   const auto compiler = args.front();
-  fs::current_path(fs::u8path(directory));
-  std::vector<std::string> result = {"-iquote", source.parent_path().u8string()};
+  const auto working_directory = fs::u8path(directory);
+  std::vector<std::string> result = {"-working-directory", directory, "-iquote", source.parent_path().u8string()};
   for (std::size_t i = 1; i < args.size();) {
     const auto &value = args[i];
     if (value == "-Xclang" && i + 3 < args.size() && args[i + 1] == "-include-pch" && args[i + 2] == "-Xclang") {
@@ -115,7 +110,8 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
       continue;
     }
     if (value == "--" || value == "-c" || value == "-MD" || value == "-MMD" || value == "-MP" ||
-        (!value.empty() && value[0] != '-' && fs::absolute(fs::u8path(value)).lexically_normal() == generated)) {
+        (!value.empty() && value[0] != '-' &&
+         (working_directory / fs::u8path(value)).lexically_normal() == generated)) {
       ++i;
       continue;
     }
@@ -216,7 +212,6 @@ static std::unique_ptr<TranslationUnit> parse_wrapped(CXIndex index, const std::
 
 FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, const fs::path &output_path,
                                 const DriverOptions &options) {
-  DirectoryGuard directory;
   const auto source = fs::weakly_canonical(fs::absolute(source_path));
   const auto output = fs::weakly_canonical(fs::absolute(output_path));
   if (source == output || (fs::exists(source) && fs::exists(output) && fs::equivalent(source, output)))

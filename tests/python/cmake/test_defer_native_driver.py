@@ -152,6 +152,79 @@ def test_invalid_batch_fails_without_creating_output(
     assert "defer-tool:" in result.stderr
 
 
+def test_parallel_batch_matches_serial_with_distinct_compile_directories(
+    native_tool: Path, tmp_path: Path
+) -> None:
+    clang = shutil.which("clang")
+    if not clang:
+        pytest.skip("Clang is required")
+    database = []
+    records = []
+    for index in range(4):
+        directory = tmp_path / f"unit-{index}"
+        directory.mkdir()
+        (directory / "local.h").write_text(f"#define VALUE {index + 1}\n", encoding="utf-8")
+        source = directory / "input.c"
+        source.write_text(
+            '#include "local.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
+            f'int value_{index}(void) {{ int value = VALUE; defer(value++); return value; }}\n',
+            encoding="utf-8",
+        )
+        output = directory / "generated.c"
+        database.append({"directory": str(directory), "file": str(output), "arguments": [
+            clang, "-std=c17", "-I", str(ROOT / "include"), "-I", ".", "-c", str(output),
+        ]})
+        records.append(f"{source.as_posix()}\t{output.as_posix()}\n")
+    (tmp_path / "compile_commands.json").write_text(json.dumps(database), encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text("".join(records), encoding="utf-8")
+    command = [str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path)]
+    serial = subprocess.run([*command, "--jobs=1"], capture_output=True, text=True, check=False)
+    assert serial.returncode == 0, serial.stderr
+    expected = [(tmp_path / f"unit-{i}" / "generated.c").read_bytes() for i in range(4)]
+    parallel = subprocess.run([*command, "--jobs=4"], capture_output=True, text=True, check=False)
+    assert parallel.returncode == 0, parallel.stderr
+    assert [(tmp_path / f"unit-{i}" / "generated.c").read_bytes() for i in range(4)] == expected
+
+
+def test_parallel_batch_rejects_duplicate_outputs(native_tool: Path, tmp_path: Path) -> None:
+    first, second = tmp_path / "a.c", tmp_path / "b.c"
+    first.write_text("int a;\n", encoding="utf-8")
+    second.write_text("int b;\n", encoding="utf-8")
+    output = tmp_path / "output.c"
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{first}\t{output}\n{second}\t{output}\n", encoding="utf-8")
+    result = subprocess.run([str(native_tool), "--batch", str(manifest)], capture_output=True, text=True, check=False)
+    assert result.returncode != 0
+    assert "output paths must be unique" in result.stderr
+    assert not output.exists()
+
+
+def test_parallel_batch_reports_transform_failures(native_tool: Path, tmp_path: Path) -> None:
+    clang = shutil.which("clang")
+    if not clang:
+        pytest.skip("Clang is required")
+    sources = [tmp_path / "first.c", tmp_path / "second.c"]
+    sources[0].write_text("int broken( {\n", encoding="utf-8")
+    sources[1].write_text("int valid(void) { return 0; }\n", encoding="utf-8")
+    outputs = [tmp_path / "first-out.c", tmp_path / "second-out.c"]
+    (tmp_path / "compile_commands.json").write_text(json.dumps([
+        {"directory": str(tmp_path), "file": str(output), "arguments": [clang, "-std=c17", "-c", str(output)]}
+        for output in outputs
+    ]), encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text("".join(f"{source}\t{output}\n" for source, output in zip(sources, outputs)), encoding="utf-8")
+    depfile = tmp_path / "batch.d"
+    result = subprocess.run([
+        str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path),
+        "--depfile", str(depfile), "--jobs=2",
+    ], capture_output=True, text=True, check=False)
+    assert result.returncode != 0
+    assert "Clang could not parse source" in result.stderr
+    assert not outputs[0].exists()
+    assert not depfile.exists()
+
+
 def test_rejects_a_different_explicit_libclang(
     native_tool: Path, tmp_path: Path
 ) -> None:

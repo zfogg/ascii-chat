@@ -82,6 +82,8 @@
  * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
  * cannot be found automatically. A cross build builds a separate host tool;
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
+ * The native tool transforms batch files concurrently using available CPU
+ * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
  *
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or
