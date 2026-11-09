@@ -407,7 +407,7 @@
  */
 /**
  * @struct symbol_entry_t
- * @brief Symbol cache entry structure for address-to-symbol mapping
+ * @brief One address-to-name entry in the symbolizer's hash table. `addr` is the lookup key, `symbol` points to the cached name, and `hh` links the entry into uthash; the cache owns the entry and its duplicated string until it is cleared.
  */
 /**
  * @struct sync_buffer_t
@@ -487,15 +487,15 @@
  */
 /**
  * @struct static_cond_t
- * @brief Static condition variable structure for global condition variables requiring static initialization
+ * @brief Wrapper for a condition variable that must be usable before normal runtime initialization. `cond` contains the platform primitive and `initialized` prevents duplicate setup; global owners keep it for the process lifetime rather than freeing it like a heap condition variable.
  */
 /**
  * @struct static_mutex_t
- * @brief Static mutex structure for global mutexes requiring static initialization
+ * @brief Statically initialized mutex wrapper for globals touched during startup. The embedded `mutex` carries the platform lock and `initialized` records whether runtime setup has completed; callers use normal mutex operations after initialization.
  */
 /**
  * @struct static_rwlock_t
- * @brief Static reader-writer lock structure for global rwlocks requiring static initialization
+ * @brief Reader-writer lock wrapper for global state that needs safe static initialization. `lock` is the platform lock and `initialized` makes one-time setup visible; the global owner retains it until process shutdown.
  */
 /**
  * @struct stats_capabilities_t
@@ -707,7 +707,7 @@
  */
 /**
  * @struct rgb_pixel_simd_t
- * @brief SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
+ * @brief SIMD-friendly storage for one RGB pixel. `r`, `g`, and `b` hold the color channels and `padding` keeps the layout aligned for vector loads; it is normally embedded in renderer buffers, not individually allocated.
  */
 /**
  * @struct rgb_pixel_t
@@ -835,7 +835,7 @@
  */
 /**
  * @struct remote_log_packet_t
- * @brief Remote log packet structure carrying log level and message text
+ * @brief Wire metadata for a log message forwarded between peers. `log_level`, `direction`, and `flags` describe how to display it, while `message_length` bounds the text that follows; parsing validates that length before reading the message.
  */
 +/**
  * @struct palette_def_t
@@ -1091,7 +1091,7 @@
  */
 /**
  * @struct mixer_t
- * @brief Main mixer structure for multi-source audio processing
+ * @brief Owns the host audio mix: source counts, channel and sample-rate settings, per-source buffers, and source IDs. The mixer allocates those source buffers as participants come and go, and its owner drains and frees them during shutdown.
  */
 /**
  * @struct mode_arguments_t
@@ -1115,7 +1115,7 @@
  */
 /**
  * @struct multi_source_frame_t
- * @brief Multi-source frame structure for multi-user support
+ * @brief Queue record for a frame assembled from multiple media sources. `frame_sequence`, `timestamp`, `size`, and `data` identify the payload and its lifetime; the producer owns the data until the consumer finishes processing the record.
  */
 /**
  * @struct mutex_stack_entry_t
@@ -1155,7 +1155,7 @@
  */
 /**
  * @struct nat_quality_t
- * @brief NAT quality assessment result
+ * @brief Connectivity measurements collected while judging a peer's NAT path: public-IP and UPnP availability, mapped port, NAT type, reachability, STUN latency, and upload estimate. Discovery uses this value to rank candidates; it owns no live socket.
  */
 +/**
  * @struct log_record
@@ -1279,7 +1279,7 @@
  */
 /**
  * @struct ImageRGB
- * @brief ImageRGB structure for NEON renderers
+ * @brief Small RGB image view used by the NEON renderer. `w` and `h` describe the image geometry and `pixels` points at row-major RGB storage owned by the caller; the renderer reads it and does not free the pixels.
  */
 /**
  * @struct input_editor_t
@@ -1403,7 +1403,7 @@
  */
 /**
  * @struct error_packet_t
- * @brief Error packet structure carrying error code and textual description
+ * @brief Compact wire description of a remote error. `error_code` identifies the failure and `message_length` bounds the diagnostic text stored after the header; receivers copy or display that text before releasing the packet buffer.
  */
 /**
  * @struct error_thread
@@ -1483,7 +1483,7 @@
  */
 /**
  * @struct dec3_t
- * @brief Decimal conversion cache structure (1-3 digits)
+ * @brief Cached decimal text for a small integer. `len` says how many characters are valid in the inline representation, allowing hot rendering paths to avoid formatting and allocation for values from one to three digits.
  */
 /**
  * @struct digital_rain
@@ -1575,7 +1575,7 @@
  */
 /**
  * @struct consensus_metrics_collection
- * @brief Metrics collection structure for participant quality measurements
+ * @brief Growable collection of participant-quality measurements. `metrics`, `count`, and `capacity` form the pointer/length/capacity trio; the consensus owner grows and frees the array, while readers use it only during its valid snapshot window.
  */
 /**
  * @struct consensus_state
@@ -1643,7 +1643,7 @@
  */
 /**
  * @struct client_manager_t
- * @brief Global client manager structure for server-side client coordination
+ * @brief Server registry for connected clients. `clients_by_id` is the lookup table, `client_count` tracks occupancy, and `mutex` protects both while handlers add, find, or remove clients; the server owns the manager for its lifetime.
  */
 /**
  * @struct client_session_state_t
@@ -1695,7 +1695,7 @@
  */
 /**
  * @struct config_builder_t
- * @brief Helper structure for building config content in a buffer
+ * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned output allocation, while `overflow` records an overrun; callers finish by taking the built buffer through the builder API.
  */
 /**
  * @struct config_file_list_t
@@ -1763,11 +1763,11 @@
  */
 /**
  * @struct category_builder_t
- * @brief Category builder structure - maps categories to their entry arrays
+ * @brief Temporary builder for a help/category index. `name` identifies the category and `entries` points at the entries accumulated for it; the builder is discarded after the final index is emitted.
  */
 /**
  * @struct client_audio_pipeline_config_t
- * @brief Pipeline configuration parameters
+ * @brief Audio-pipeline setup for channel conversion, Opus encoding, echo handling, and preprocessing. The channel counts, sample rate, frame duration, bitrate, and processor settings are copied into the pipeline during initialization; the config itself can then be stack-owned.
  */
 /**
  * @struct client_audio_pipeline_flags_t
@@ -1879,7 +1879,7 @@
  */
 +/**
  * @struct ascii_frame_source_t
- * @brief Frame source structure for grid layout
+ * @brief Non-owning source reference used when laying out an ASCII frame. `frame_data` points to the source text and `frame_size` tells the compositor how many bytes are valid; the source must remain alive until layout and copy-out finish.
  */
 /**
  * @struct ascii_frame_t
@@ -2039,7 +2039,7 @@
  */
 +/**
  * @struct acds_session_lookup_result_t
- * @brief Session lookup result
+ * @brief Result returned by ACDS for a session-string lookup. `found` gates the remaining fields; capabilities, participant counts, password/verification requirements, and creation/expiry timestamps describe the session a client may join.
  */
 /**
  * @struct acds_stats_t
@@ -2187,7 +2187,7 @@
  */
 /**
  * @struct acds_session_create_result_t
- * @brief Session creation result
+ * @brief Values returned after ACDS creates a session. The expiry timestamp tells the caller how long the discovery record remains valid; the identifier and endpoint details are copied into connection state before this temporary result is released.
  */
 /**
  * @struct acds_session_join_params_t
@@ -2195,5 +2195,5 @@
  */
 /**
  * @struct acds_session_join_result_t
- * @brief Session join result
+ * @brief Outcome of an ACDS join request. `success` controls whether the session type, server port, and error fields are meaningful; callers inspect the response, copy endpoint details they need, and discard the temporary result.
  */
