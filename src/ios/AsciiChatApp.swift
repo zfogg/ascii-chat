@@ -1,6 +1,8 @@
 import CoreGraphics
+import CoreImage
 import Foundation
 import Observation
+import MetalKit
 import SwiftUI
 import UIKit
 
@@ -142,10 +144,33 @@ private struct TestFrameView: View {
     }
 }
 
-private final class CRenderView: UIView {
+private final class CRenderView: MTKView {
     private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
     private var lastSequence: UInt64 = 0
     private var displayLink: CADisplayLink?
+    private let commandQueue: MTLCommandQueue?
+    private let ciContext: CIContext?
+
+    override init(frame: CGRect, device: MTLDevice?) {
+        let metalDevice = device ?? MTLCreateSystemDefaultDevice()
+        commandQueue = metalDevice?.makeCommandQueue()
+        ciContext = metalDevice.map { CIContext(mtlDevice: $0) }
+        super.init(frame: frame, device: metalDevice)
+        framebufferOnly = false
+        enableSetNeedsDisplay = false
+        isPaused = true
+    }
+
+    required init(coder: NSCoder) {
+        let metalDevice = MTLCreateSystemDefaultDevice()
+        commandQueue = metalDevice?.makeCommandQueue()
+        ciContext = metalDevice.map { CIContext(mtlDevice: $0) }
+        super.init(coder: coder)
+        device = metalDevice
+        framebufferOnly = false
+        enableSetNeedsDisplay = false
+        isPaused = true
+    }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
@@ -195,17 +220,21 @@ private final class CRenderView: UIView {
                                   provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
         else { return }
 
-        layer.contents = frame
-        layer.contentsGravity = .resize
-        layer.magnificationFilter = .nearest
-        layer.minificationFilter = .nearest
+        guard let drawable = currentDrawable,
+              let commandBuffer = commandQueue?.makeCommandBuffer(),
+              let ciContext else { return }
+        let image = CIImage(cgImage: frame)
+        ciContext.render(image, to: drawable.texture, commandBuffer: commandBuffer,
+                         bounds: image.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
         lastSequence = sequence
     }
 }
 
 private struct CRenderRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> CRenderView {
-        let view = CRenderView()
+        let view = CRenderView(frame: .zero, device: MTLCreateSystemDefaultDevice())
         view.backgroundColor = .black
         return view
     }
@@ -227,23 +256,29 @@ private final class DisplayCloseOverlay: UIView {
               scene.session.role == .windowApplication else { return }
 
         let targetWindow = UIWindow(windowScene: scene)
-        targetWindow.frame = scene.screen.bounds
-        targetWindow.windowLevel = .normal + 1
+        targetWindow.frame = hostWindow.bounds
+        targetWindow.windowLevel = .statusBar + 1
         targetWindow.backgroundColor = .clear
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
         targetWindow.rootViewController = controller
+        controller.view.frame = targetWindow.bounds
+        controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         let closeButton = UIButton(type: .system)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
         closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
+        closeButton.accessibilityLabel = "Stop session"
         closeButton.imageView?.contentMode = .scaleAspectFit
         closeButton.addAction(UIAction { [weak self] _ in self?.onStop?() }, for: .primaryActionTriggered)
         controller.view.addSubview(closeButton)
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: targetWindow.safeAreaLayoutGuide.topAnchor, constant: 4),
-            closeButton.trailingAnchor.constraint(equalTo: targetWindow.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            // The overlay window sits above the status bar. Position the
+            // control immediately below the Dynamic Island/battery area in
+            // the scene's point coordinate space.
+            closeButton.topAnchor.constraint(equalTo: controller.view.topAnchor, constant: 64),
+            closeButton.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor, constant: -8),
             closeButton.widthAnchor.constraint(equalToConstant: 56),
             closeButton.heightAnchor.constraint(equalToConstant: 56),
         ])
