@@ -158,6 +158,41 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
   );
 });
 
+test("renderer render loop honors an FPS limit and pixel callback", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer } = await import(url);
+    const renderer = await createRenderer();
+    let calls = 0;
+    let text = "";
+    const loop = renderer.startRenderLoop({
+      fps: 20,
+      getFrame: (timeMs: number) => ({
+        pixels: renderer.testPattern(32, 24, calls, timeMs),
+        width: 32,
+        height: 24,
+      }),
+      onFrame: (frame: string) => {
+        calls++;
+        text = frame;
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 240));
+    loop.stop();
+    const stopped = calls;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    renderer.dispose();
+    return { calls: stopped, stable: calls === stopped, text: text.length > 0 };
+  });
+  expect(result.calls).toBeGreaterThanOrEqual(2);
+  expect(result.calls).toBeLessThanOrEqual(7);
+  expect(result.stable).toBe(true);
+  expect(result.text).toBe(true);
+});
+
 test("Embind session owns native initialization and cleanup", async ({
   page,
 }) => {

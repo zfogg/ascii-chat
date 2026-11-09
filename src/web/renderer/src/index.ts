@@ -62,6 +62,21 @@ export interface RendererInit {
   pthreadPoolSize?: number;
   moduleUrl?: string | URL;
 }
+export interface RenderLoopFrame {
+  pixels: Uint8Array | Uint8ClampedArray;
+  width: number;
+  height: number;
+  contain?: boolean;
+}
+export interface RenderLoopOptions {
+  fps?: number;
+  getFrame: (timeMs: number) => RenderLoopFrame | null | undefined;
+  onFrame?: (text: string, frame: RenderLoopFrame, timeMs: number) => void;
+}
+export interface RenderLoopHandle {
+  readonly running: boolean;
+  stop(): void;
+}
 const sourceId = (source: AudioSource) => (source === "microphone" ? 0 : 1);
 
 /** Each instance creates an independent WASM module and owns all its state. */
@@ -236,6 +251,43 @@ export class AsciiRenderer {
       this.session?.delete();
       this.disposed = true;
     }
+  }
+  /** Schedule browser frames and render application-owned pixels. */
+  startRenderLoop(options: RenderLoopOptions): RenderLoopHandle {
+    this.check();
+    const targetFps = options.fps === undefined ? 0 : Math.max(0, options.fps);
+    const interval = targetFps > 0 ? 1000 / targetFps : 0;
+    let active = true;
+    let handle = 0;
+    let last = -Infinity;
+    const tick = (timeMs: number) => {
+      if (!active) return;
+      if (timeMs - last >= interval) {
+        const frame = options.getFrame(timeMs);
+        if (frame) {
+          const text = this.render(
+            frame.pixels,
+            frame.width,
+            frame.height,
+            frame.contain ?? false,
+          );
+          last = timeMs;
+          options.onFrame?.(text, frame, timeMs);
+        }
+      }
+      handle = requestAnimationFrame(tick);
+    };
+    handle = requestAnimationFrame(tick);
+    return {
+      get running() {
+        return active;
+      },
+      stop: () => {
+        if (!active) return;
+        active = false;
+        cancelAnimationFrame(handle);
+      },
+    };
   }
   private check(): void {
     if (this.disposed) throw new Error("Renderer has been disposed");

@@ -70,7 +70,10 @@ const spectrum = renderer.renderAudio(80, 40);
 
 Pass `"microphone"` as the last argument to use its separate audio history.
 Matrix rain and rainbow filtering advance when frames are rendered. The package
-does not schedule frames; use `requestAnimationFrame` or your own scheduler.
+can schedule frames for you with `startRenderLoop({ fps, getFrame, onFrame })`.
+`getFrame` supplies application-owned pixels and dimensions; `onFrame` receives
+the rendered ANSI text. Stop the returned handle when the component unmounts.
+Passing `fps: 0` follows the browser animation cadence.
 
 ## Browser requirements and hosting
 
