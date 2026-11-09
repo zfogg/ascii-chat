@@ -1186,17 +1186,19 @@ struct ContentView: View {
         var merged = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
         values.forEach { merged[$0.key] = $0.value }
-        guard JSONSerialization.isValidJSONObject(merged),
-              let data = try? JSONSerialization.data(withJSONObject: merged),
-              let json = String(data: data, encoding: .utf8) else { return }
-        let result = json.withCString { pointer in
-            options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil)
+        guard JSONSerialization.isValidJSONObject(values),
+              let updateData = try? JSONSerialization.data(withJSONObject: values),
+              let updateJSON = String(data: updateData, encoding: .utf8),
+              JSONSerialization.isValidJSONObject(merged),
+              let persistedData = try? JSONSerialization.data(withJSONObject: merged) else { return }
+        let result = updateJSON.withCString { pointer in
+            options_apply_json(pointer, updateJSON.utf8.count, UInt64.max, 0, nil)
         }
         guard result == 0 else {
             launchMessage = "That setting could not be applied (error \(result))."
             return
         }
-        UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
+        UserDefaults.standard.set(persistedData, forKey: "ascii-chat.ios.options.patch")
         NotificationCenter.default.post(name: .iosOptionsChanged, object: nil)
         if values["fps"] != nil {
             NotificationCenter.default.post(name: .iosRenderFPSChanged, object: nil)
