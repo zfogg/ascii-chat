@@ -809,6 +809,7 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   return ASCIICHAT_OK;
 }
 
+#if !defined(PLATFORM_IOS)
 /**
  * Load system CA certificates for TLS/HTTPS (POSIX implementation)
  *
@@ -920,6 +921,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   // No CA bundle found
   return SET_ERRNO(ERROR_CRYPTO, "No CA certificate bundle found in standard locations");
 }
+#endif
 
 /**
  * @brief Get the system temporary directory path (POSIX implementation)
