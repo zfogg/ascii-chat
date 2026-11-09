@@ -13,3 +13,2187 @@
  * sessions, UI, and tooling.  Use the generated structure pages for field
  * details and the owning subsystem's topic for lifecycle rules.
  */
++/**
+ * @struct websocket_server
+ * @brief Runtime state for the WebSocket listener and its client-handler pool
+ */
+/**
+ * @struct websocket_server_config_t
+ * @brief Listener settings and callbacks used to create a WebSocket server
+ */
+/**
+ * @struct websocket_transport_data_t
+ * @brief Private state for one libwebsockets-backed ACIP transport
+ */
+/**
+ * @struct word_cache_entry_t
+ * @brief One owned word in the adjective or noun validation hash table
+ */
+/**
+ * @struct yt_dlp_cache_entry_t
+ * @brief Cached yt-dlp result for one media source and its audio/video requests
+ */
+/**
+ * @struct yt_dlp_request_options_t
+ * @brief Configuration values used by yt dlp request options.
+ */
++/**
+ * @struct wav_writer_t
+ * @brief File handle and sample counters needed to finalize a WAV recording
+ */
+/**
+ * @struct waveform_color_stop_t
+ * @brief Working data used by waveform color stop.
+ */
+/**
+ * @struct webcam_device_info_t
+ * @brief Webcam device information structure
+ */
+/**
+ * @struct webcam_frame_clock_t
+ * @brief Working data used by webcam frame clock.
+ */
+/**
+ * @struct webrtc_config_t
+ * @brief ICE, signaling, DataChannel, and callback settings for a WebRTC peer
+ */
+/**
+ * @struct webrtc_data_channel
+ * @brief WebRTC data channel for sending/receiving messages
+ */
+/**
+ * @struct webrtc_datachannel_callbacks_t
+ * @brief Event hooks and caller context for one WebRTC DataChannel
+ */
+/**
+ * @struct webrtc_peer_connection
+ * @brief WebRTC peer connection state
+ */
+/**
+ * @struct webrtc_peer_manager
+ * @brief WebRTC peer manager structure
+ */
+/**
+ * @struct webrtc_peer_manager_config_t
+ * @brief Peer manager configuration
+ */
+/**
+ * @struct webrtc_recv_msg_t
+ * @brief Receive queue element (variable-length message)
+ */
+/**
+ * @struct webrtc_signaling_callbacks_t
+ * @brief Hooks that deliver local SDP offers/answers and ICE candidates to ACDS
+ */
+/**
+ * @struct webrtc_transport_data_t
+ * @brief WebRTC transport implementation data
+ */
+/**
+ * @struct WebRTCAec3Wrapper
+ * @brief C++ wrapper for WebRTC AEC3 (opaque to C code)
+ */
+/**
+ * @struct websocket_callback_stats_t
+ * @brief Counters and timing aggregates for one WebSocket callback kind
+ */
+/**
+ * @struct websocket_callback_timing_t
+ * @brief Timing aggregates for protocol-init, teardown, writable, and receive callbacks
+ */
+/**
+ * @struct websocket_client_context_t
+ * @brief Connection-specific values handed to a WebSocket client worker
+ */
+/**
+ * @struct websocket_connection_data_t
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
+ */
+/**
+ * @struct websocket_endpoint_t
+ * @brief Working data used by websocket endpoint.
+ */
+/**
+ * @struct websocket_msg_t
+ * @brief Owned WebSocket frame queued for sending or reassembly
+ */
++/**
+ * @struct ui_status_t
+ * @brief Status information for server/discovery service modes
+ */
+/**
+ * @struct ui_table_column_t
+ * @brief Working data used by ui table column.
+ */
+/**
+ * @struct ui_table_t
+ * @brief Working data used by ui table.
+ */
+/**
+ * @struct ui_viewport_range_t
+ * @brief Working data used by ui viewport range.
+ */
+/**
+ * @struct ui_viewport_t
+ * @brief Working data used by ui viewport.
+ */
+/**
+ * @struct update_check_result_t
+ * @brief Update check result data
+ */
+/**
+ * @struct update_child_result_t
+ * @brief Working data used by update child result.
+ */
+/**
+ * @struct url_parts_t
+ * @brief Structure containing parsed URL components
+ */
+/**
+ * @struct usage_descriptor_t
+ * @brief Usage line descriptor for programmatic USAGE generation
+ */
+/**
+ * @struct utf8_capabilities_t
+ * @brief UTF-8 capability detection structure
+ */
+/**
+ * @struct utf8_char_info_t
+ * @brief UTF-8 character information structure
+ */
+/**
+ * @struct utf8_char_t
+ * @brief Working data used by utf8 char.
+ */
+/**
+ * @struct utf8_palette_cache
+ * @brief Working data used by utf8 palette cache.
+ */
+/**
+ * @struct utf8_palette_t
+ * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely
+ */
+/**
+ * @struct video_frame_buffer_t
+ * @brief Double-buffered frame storage shared by a producer and a renderer
+ */
+/**
+ * @struct video_frame_stats_t
+ * @brief Counters and timing measurements used to monitor frame delivery and quality
+ */
+/**
+ * @struct video_frame_t
+ * @brief One captured, decoded, or rendered video frame and its timing metadata
+ */
+/**
+ * @struct wav_data_header_t
+ * @brief Packed data chunk header giving the byte count of the following samples
+ */
+/**
+ * @struct wav_fmt_chunk_t
+ * @brief Packed fmt chunk describing PCM/float encoding, channels, rate, and sample width
+ */
+/**
+ * @struct wav_riff_header_t
+ * @brief Packed RIFF/WAVE container header written before the format and data chunks
+ */
++/**
+ * @struct title_writer_t
+ * @brief Working data used by title writer.
+ */
+/**
+ * @struct tty_info_t
+ * @brief TTY detection and management structure
+ */
+/**
+ * @struct tui_input_events_t
+ * @brief Working data used by tui input events.
+ */
+/**
+ * @struct turn_credentials_t
+ * @brief TURN server credentials (username + password)
+ */
+/**
+ * @struct udp_peer
+ * @brief Working data used by udp peer.
+ */
+/**
+ * @struct ui_button_t
+ * @brief Working data used by ui button.
+ */
+/**
+ * @struct ui_buttons_t
+ * @brief Working data used by ui buttons.
+ */
+/**
+ * @struct ui_discovery_view_t
+ * @brief Working data used by ui discovery view.
+ */
+/**
+ * @struct ui_help_entry_t
+ * @brief Working data used by ui help entry.
+ */
+/**
+ * @struct ui_help_menu_t
+ * @brief Working data used by ui help menu.
+ */
+/**
+ * @struct ui_layout_t
+ * @brief Working data used by ui layout.
+ */
+/**
+ * @struct ui_mdns_config_t
+ * @brief Configuration for TUI discovery
+ */
+/**
+ * @struct ui_mdns_server_t
+ * @brief Discovered server information from mDNS
+ */
+/**
+ * @struct ui_popup_t
+ * @brief Working data used by ui popup.
+ */
+/**
+ * @struct ui_presentation_state_t
+ * @brief Runtime state held by ui presentation state.
+ */
+/**
+ * @struct ui_scrollbar_geometry_t
+ * @brief Working data used by ui scrollbar geometry.
+ */
+/**
+ * @struct ui_selectable_list_t
+ * @brief Working data used by ui selectable list.
+ */
+/**
+ * @struct ui_session
+ * @brief Runtime state held by ui session.
+ */
+/**
+ * @struct ui_session_view_t
+ * @brief Runtime state held by ui session view.
+ */
+/**
+ * @struct ui_splash_view_t
+ * @brief Working data used by ui splash view.
+ */
++/**
+ * @struct terminal_capabilities_packet_t
+ * @brief Terminal capabilities packet structure (Packet Type 5)
+ */
+/**
+ * @struct terminal_capabilities_t
+ * @brief Complete terminal capabilities structure
+ */
+/**
+ * @struct terminal_capability_t
+ * @brief Supported terminal capability (for offer/answer)
+ */
+/**
+ * @struct terminal_fd_reader_s
+ * @brief Working data used by terminal fd reader.
+ */
+/**
+ * @struct terminal_fd_writer_s
+ * @brief Working data used by terminal fd writer.
+ */
+/**
+ * @struct terminal_format_params_t
+ * @brief Terminal rendering format parameters
+ */
+/**
+ * @struct terminal_renderer_s
+ * @brief Working data used by terminal renderer.
+ */
+/**
+ * @struct terminal_resize_watcher_t
+ * @brief Working data used by terminal resize watcher.
+ */
+/**
+ * @struct terminal_screen_config_t
+ * @brief Configuration for terminal screen rendering
+ */
+/**
+ * @struct terminal_size_t
+ * @brief Terminal size structure
+ */
+/**
+ * @struct test_pattern
+ * @brief Working data used by test pattern.
+ */
+/**
+ * @struct text_snapshot_t
+ * @brief Runtime state held by text snapshot.
+ */
+/**
+ * @struct thread_entry
+ * @brief Hash table entry for thread-local last log record
+ */
+/**
+ * @struct thread_filter_list
+ * @brief Dynamic array of thread IDs for filtering instrumentation logs
+ */
+/**
+ * @struct thread_lock_stack_t
+ * @brief Working data used by thread lock stack.
+ */
+/**
+ * @struct thread_pool
+ * @brief Thread pool structure
+ */
+/**
+ * @struct thread_pool_entry
+ * @brief Thread handle and shutdown metadata for one pool-owned thread
+ */
+/**
+ * @struct thread_pool_work_entry
+ * @brief One queued function call waiting for a thread-pool worker
+ */
+/**
+ * @struct thread_registry_entry_t
+ * @brief Working data used by thread registry entry.
+ */
+/**
+ * @struct timer_record
+ * @brief Individual timer record for a named timing operation
+ */
++/**
+ * @struct stats_peer
+ * @brief Measurements tracked by stats peer.
+ */
+/**
+ * @struct stats_rates_t
+ * @brief Measurements tracked by stats rates.
+ */
+/**
+ * @struct stats_sampler
+ * @brief Measurements tracked by stats sampler.
+ */
+/**
+ * @struct stats_sampler_config_t
+ * @brief Configuration values used by stats sampler config.
+ */
+/**
+ * @struct stats_scope
+ * @brief Measurements tracked by stats scope.
+ */
+/**
+ * @struct stats_snapshot_t
+ * @brief Runtime state held by stats snapshot.
+ */
+/**
+ * @struct stats_table_context_t
+ * @brief Runtime state held by stats table context.
+ */
+/**
+ * @struct stats_view_t
+ * @brief Measurements tracked by stats view.
+ */
+/**
+ * @struct stdin_buffer_reader_t
+ * @brief Storage used by stdin buffer reader.
+ */
+/**
+ * @struct stdin_buffer_t
+ * @brief Storage used by stdin buffer.
+ */
+/**
+ * @struct Str
+ * @brief Growable NUL-terminated buffer used while assembling ASCII output
+ */
+/**
+ * @struct stream_header_t
+ * @brief Stream header packet structure
+ */
+/**
+ * @struct symbol_entry_t
+ * @brief Symbol cache entry structure for address-to-symbol mapping
+ */
+/**
+ * @struct sync_buffer_t
+ * @brief Storage used by sync buffer.
+ */
+/**
+ * @struct sync_row_t
+ * @brief Working data used by sync row.
+ */
+/**
+ * @struct sync_sample_t
+ * @brief Working data used by sync sample.
+ */
+/**
+ * @struct tcp_server
+ * @brief Working data used by tcp server.
+ */
+/**
+ * @struct tcp_server_config_t
+ * @brief Configuration values used by tcp server config.
+ */
+/**
+ * @struct tcp_transport_data_t
+ * @brief TCP transport implementation data
+ */
+/**
+ * @struct term_renderer_config_t
+ * @brief Configuration values used by term renderer config.
+ */
++/**
+ * @struct simd_backend_t
+ * @brief Working data used by simd backend.
+ */
+/**
+ * @struct simd_benchmark_t
+ * @brief SIMD benchmark results structure
+ */
+/**
+ * @struct simd_cells_t
+ * @brief Working data used by simd cells.
+ */
+/**
+ * @struct simple_frame_swap_t
+ * @brief Simple atomic frame swap structure
+ */
+/**
+ * @struct size_packet_t
+ * @brief Terminal size update packet
+ */
+/**
+ * @struct socket_buffer_t
+ * @brief Storage used by socket buffer.
+ */
+/**
+ * @struct socket_io_stats_t
+ * @brief Measurements tracked by socket io stats.
+ */
+/**
+ * @struct socket_send_buffer_t
+ * @brief Storage used by socket send buffer.
+ */
+/**
+ * @struct spectral_config_t
+ * @brief Configuration values used by spectral config.
+ */
+/**
+ * @struct spectral_processor
+ * @brief Working data used by spectral processor.
+ */
+/**
+ * @struct sqlite_backend_t
+ * @brief SQLite backend data
+ */
+/**
+ * @struct ssh_private_key_parse_t
+ * @brief Working data used by ssh private key parse.
+ */
+/**
+ * @struct static_cond_t
+ * @brief Static condition variable structure for global condition variables requiring static initialization
+ */
+/**
+ * @struct static_mutex_t
+ * @brief Static mutex structure for global mutexes requiring static initialization
+ */
+/**
+ * @struct static_rwlock_t
+ * @brief Static reader-writer lock structure for global rwlocks requiring static initialization
+ */
+/**
+ * @struct stats_capabilities_t
+ * @brief Measurements tracked by stats capabilities.
+ */
+/**
+ * @struct stats_descriptor_t
+ * @brief Measurements tracked by stats descriptor.
+ */
+/**
+ * @struct stats_duration_cell_t
+ * @brief Measurements tracked by stats duration cell.
+ */
+/**
+ * @struct stats_duration_shard_t
+ * @brief Measurements tracked by stats duration shard.
+ */
+/**
+ * @struct stats_duration_snapshot_t
+ * @brief Runtime state held by stats duration snapshot.
+ */
++/**
+ * @struct session_host
+ * @brief Runtime state held by session host.
+ */
+/**
+ * @struct session_host_callbacks_t
+ * @brief Host-side event hooks for joins, departures, media, and errors
+ */
+/**
+ * @struct session_host_client_info_t
+ * @brief Snapshot of the address, identity, activity, and connection time for one host client
+ */
+/**
+ * @struct session_host_client_t
+ * @brief Host-owned live record for one connected participant
+ */
+/**
+ * @struct session_host_config_t
+ * @brief Listener, capacity, security, and callback settings for a session host
+ */
+/**
+ * @struct session_host_render_config_t
+ * @brief Configuration values used by session host render config.
+ */
+/**
+ * @struct session_host_render_target_t
+ * @brief Runtime state held by session host render target.
+ */
+/**
+ * @struct session_log_buffer
+ * @brief Thread-safe fixed-size history ring for session-screen log lines
+ */
+/**
+ * @struct session_log_entry_t
+ * @brief One formatted session log line and its monotonic history sequence
+ */
+/**
+ * @struct session_participant
+ * @brief Client session state spanning connection, transport, media workers, and callbacks
+ */
+/**
+ * @struct session_participant_callbacks_t
+ * @brief Client-side event hooks for connection, media, settings, and errors
+ */
+/**
+ * @struct session_participant_config_t
+ * @brief Server address, security, media, transport, and callback settings for a participant
+ */
+/**
+ * @struct session_pipeline_s
+ * @brief Runtime state held by session pipeline.
+ */
+/**
+ * @struct session_protocol_media_t
+ * @brief Runtime state held by session protocol media.
+ */
+/**
+ * @struct session_protocol_t
+ * @brief Runtime state held by session protocol.
+ */
+/**
+ * @struct session_server_like_config
+ * @brief Configuration values used by session server like config.
+ */
+/**
+ * @struct session_settings_t
+ * @brief Configuration values used by session settings.
+ */
+/**
+ * @struct setting_map_entry_t
+ * @brief Lookup table for setting string-to-enum mapping
+ */
+/**
+ * @struct sgr256_seq_t
+ * @brief Pre-computed 256-color ANSI SGR sequence
+ */
+/**
+ * @struct SHA1_CTX
+ * @brief Working data used by SHA1 CTX.
+ */
++/**
+ * @struct server_connection_state_t
+ * @brief Runtime state held by server connection state.
+ */
+/**
+ * @struct server_context_t
+ * @brief Server context - encapsulates all server state
+ */
+/**
+ * @struct server_discovery_policy_t
+ * @brief Working data used by server discovery policy.
+ */
+/**
+ * @struct server_discovery_startup_t
+ * @brief Working data used by server discovery startup.
+ */
+/**
+ * @struct server_state_packet_t
+ * @brief Server state packet structure
+ */
+/**
+ * @struct server_stats_t
+ * @brief Counters and rates describing the server's media pipeline
+ */
+/**
+ * @struct server_stats_visit_t
+ * @brief Measurements tracked by server stats visit.
+ */
+/**
+ * @struct session_audio_ctx
+ * @brief Session-owned audio capture, playback, and host-mixing state
+ */
+/**
+ * @struct session_audio_source_t
+ * @brief One participant's audio input in the host mixer
+ */
+/**
+ * @struct session_av_state_t
+ * @brief Generation-guarded lifecycle state for one session audio or video stream
+ */
+/**
+ * @struct session_capture_config_t
+ * @brief Media-source and loader settings used to create a session capture context
+ */
+/**
+ * @struct session_capture_ctx
+ * @brief Runtime state for media loading, frame timing, and source switching
+ */
+/**
+ * @struct session_client_like_config
+ * @brief Configuration values used by session client like config.
+ */
+/**
+ * @struct session_connection_ops_t
+ * @brief Runtime state held by session connection ops.
+ */
+/**
+ * @struct session_connection_t
+ * @brief Runtime state held by session connection.
+ */
+/**
+ * @struct session_consensus
+ * @brief Session adapter that owns consensus topology, coordination, and election state
+ */
+/**
+ * @struct session_consensus_callbacks_t
+ * @brief Mode-specific hooks used by the session consensus adapter
+ */
+/**
+ * @struct session_display_config_t
+ * @brief Terminal-rendering and snapshot settings used to create a display context
+ */
+/**
+ * @struct session_display_ctx
+ * @brief Runtime terminal state and reusable workspaces for ASCII rendering
+ */
+/**
+ * @struct session_entry
+ * @brief Persisted discovery-session record used to admit and route participants
+ */
++/**
+ * @struct render_file_ctx_s
+ * @brief Working data used by render file ctx.
+ */
+/**
+ * @struct render_progress
+ * @brief Working data used by render progress.
+ */
+/**
+ * @struct render_worker_t
+ * @brief Working data used by render worker.
+ */
+/**
+ * @struct rendered_cell_t
+ * @brief Working data used by rendered cell.
+ */
+/**
+ * @struct report_config
+ * @brief Configuration for panic report generation
+ */
+/**
+ * @struct retired_options
+ * @brief Deferred free list for old options structs
+ */
+/**
+ * @struct rgb_error_t
+ * @brief Working data used by rgb error.
+ */
+/**
+ * @struct rgb_pixel_simd_t
+ * @brief SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
+ */
+/**
+ * @struct rgb_pixel_t
+ * @brief RGB pixel structure
+ */
+/**
+ * @struct ringbuffer_t
+ * @brief Lock-free ring buffer structure
+ */
+/**
+ * @struct RLEState
+ * @brief Run-length encoding state for ANSI color optimization
+ */
+/**
+ * @struct runtime_field_t
+ * @brief Working data used by runtime field.
+ */
+/**
+ * @struct rwlock_t
+ * @brief Read-write lock type (POSIX: pthread_rwlock_t with debug tracking)
+ */
+/**
+ * @struct screen
+ * @brief Working data used by screen.
+ */
+/**
+ * @struct screen_snapshot_t
+ * @brief Runtime state held by screen snapshot.
+ */
+/**
+ * @struct screen_terminal_t
+ * @brief Working data used by screen terminal.
+ */
+/**
+ * @struct sdp_session_t
+ * @brief SDP media session (simplified for WebRTC)
+ */
+/**
+ * @struct send_chunk
+ * @brief Working data used by send chunk.
+ */
+/**
+ * @struct send_stream_t
+ * @brief Working data used by send stream.
+ */
+/**
+ * @struct server_client_removal_t
+ * @brief Working data used by server client removal.
+ */
++/**
+ * @struct platform_stderr_redirect_handle_t
+ * @brief Handle for temporary stderr redirection
+ */
+/**
+ * @struct platform_wakeup
+ * @brief Working data used by platform wakeup.
+ */
+/**
+ * @struct positional_arg_descriptor_t
+ * @brief Describes one non-option command-line argument and how the parser consumes it
+ */
+/**
+ * @struct private_key_t
+ * @brief Private identity-key material used for server authentication and signing
+ */
+/**
+ * @struct progress_snapshot_t
+ * @brief Runtime state held by progress snapshot.
+ */
+/**
+ * @struct prompt_opts_t
+ * @brief Working data used by prompt opts.
+ */
+/**
+ * @struct prompt_snapshot_t
+ * @brief Runtime state held by prompt snapshot.
+ */
+/**
+ * @struct protocol_version_packet_t
+ * @brief Protocol version negotiation packet structure (Packet Type 1)
+ */
+/**
+ * @struct public_key_t
+ * @brief The normalized public identity used by ascii-chat's crypto and key-management code
+ */
+/**
+ * @struct queued_packet_t
+ * @brief Wire or message data used by queued packet.
+ */
+/**
+ * @struct quic_transport_t
+ * @brief Working data used by quic transport.
+ */
+/**
+ * @struct rate_event_s
+ * @brief Per-address, per-event timestamp ring used by the in-memory limiter
+ */
+/**
+ * @struct rate_limit_config_t
+ * @brief One sliding-window rate-limit policy
+ */
+/**
+ * @struct rate_limiter_backend_ops_t
+ * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction
+ */
+/**
+ * @struct rate_limiter_s
+ * @brief Private dispatch object joining a rate-limit backend to its operations table
+ */
+/**
+ * @struct receive_context_t
+ * @brief Runtime state held by receive context.
+ */
+/**
+ * @struct receive_stream_t
+ * @brief Working data used by receive stream.
+ */
+/**
+ * @struct received_packet
+ * @brief Wire or message data used by received packet.
+ */
+/**
+ * @struct registry_entry_t
+ * @brief Registry entry - stores option definition with mode bitmask and metadata
+ */
+/**
+ * @struct remote_log_packet_t
+ * @brief Remote log packet structure carrying log level and message text
+ */
++/**
+ * @struct palette_def_t
+ * @brief Validated luminance palette used to turn brightness into characters
+ */
+/**
+ * @struct parallel_connect_config_t
+ * @brief Configuration values used by parallel connect config.
+ */
+/**
+ * @struct parsed_section_t
+ * @brief Owned slice of a parsed roff man-page section
+ */
+/**
+ * @struct participant_t
+ * @brief Maximum participants per session
+ */
+/**
+ * @struct peer_entry_t
+ * @brief Hash-table record for one negotiated WebRTC participant
+ */
+/**
+ * @struct peer_output
+ * @brief Working data used by peer output.
+ */
+/**
+ * @struct pem_object_t
+ * @brief One decoded PEM (Privacy-Enhanced Mail) block
+ */
+/**
+ * @struct pending_ice_candidate
+ * @brief Working data used by pending ice candidate.
+ */
+/**
+ * @struct pipeline_frame_t
+ * @brief Working data used by pipeline frame.
+ */
+/**
+ * @struct platform_binary_match_t
+ * @brief Find which binary(ies) contain a given address
+ */
+/**
+ * @struct platform_dir_entry_t
+ * @brief Directory entry information for platform_dir_foreach()
+ */
+/**
+ * @struct platform_directory_candidate_t
+ * @brief Ordered list of platform-specific application directories
+ */
+/**
+ * @struct platform_directory_list_t
+ * @brief Working data used by platform directory list.
+ */
+/**
+ * @struct platform_event_listener
+ * @brief Working data used by platform event listener.
+ */
+/**
+ * @struct platform_event_loop
+ * @brief Working data used by platform event loop.
+ */
+/**
+ * @struct platform_event_stream
+ * @brief Working data used by platform event stream.
+ */
+/**
+ * @struct platform_mmap
+ * @brief Memory-mapped file handle
+ */
+/**
+ * @struct platform_process_stats_t
+ * @brief Measurements tracked by platform process stats.
+ */
+/**
+ * @struct platform_signal_handler_t
+ * @brief Signal handler descriptor for bulk registration
+ */
+/**
+ * @struct platform_stat_t
+ * @brief File type information from stat()
+ */
++/**
+ * @struct option_type_handler_t
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type
+ */
+/**
+ * @struct options_builder_t
+ * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config
+ */
+/**
+ * @struct options_config_t
+ * @brief Immutable parsing tables produced from an options builder
+ */
+/**
+ * @struct options_edit_t
+ * @brief Configuration values used by options edit.
+ */
+/**
+ * @struct options_patch_result_t
+ * @brief Configuration values used by options patch result.
+ */
+/**
+ * @struct options_patch_t
+ * @brief Configuration values used by options patch.
+ */
+/**
+ * @struct options_snapshot_t
+ * @brief Configuration values used by options snapshot.
+ */
+/**
+ * @struct options_state
+ * @brief Configuration values used by options state.
+ */
+/**
+ * @struct options_t
+ * @brief Immutable, RCU-published snapshot of the application's runtime configuration
+ */
+/**
+ * @struct opus_codec_t
+ * @brief State for one Opus encoding or decoding direction
+ */
+/**
+ * @struct opus_config_t
+ * @brief Opus codec parameters for ascii-chat
+ */
+/**
+ * @struct outbound_packet
+ * @brief Wire or message data used by outbound packet.
+ */
+/**
+ * @struct outbound_stream_t
+ * @brief Working data used by outbound stream.
+ */
+/**
+ * @struct outbuf_t
+ * @brief Dynamic output buffer (auto-expanding)
+ */
+/**
+ * @struct packet_decoder_t
+ * @brief Wire or message data used by packet decoder.
+ */
+/**
+ * @struct packet_envelope_t
+ * @brief Packet envelope containing received packet data
+ */
+/**
+ * @struct packet_header_t
+ * @brief Fixed prefix shared by every ACIP packet on the wire
+ */
+/**
+ * @struct packet_node
+ * @brief Wire or message data used by packet node.
+ */
+/**
+ * @struct packet_queue
+ * @brief Wire or message data used by packet queue.
+ */
+/**
+ * @struct packet_queue_config_t
+ * @brief Configuration values used by packet queue config.
+ */
++/**
+ * @struct nat_upnp_context
+ * @brief Handle to UPnP context
+ */
+/**
+ * @struct native_view_t
+ * @brief Working data used by native view.
+ */
+/**
+ * @struct negotiate_ctx_t
+ * @brief Host negotiation context
+ */
+/**
+ * @struct network_connect_config_t
+ * @brief Configuration values used by network connect config.
+ */
+/**
+ * @struct network_connection
+ * @brief Working data used by network connection.
+ */
+/**
+ * @struct network_connection_callbacks_t
+ * @brief Callbacks and operations used by network connection callbacks.
+ */
+/**
+ * @struct network_establish_config_t
+ * @brief Configuration values used by network establish config.
+ */
+/**
+ * @struct network_establish_result_t
+ * @brief Working data used by network establish result.
+ */
+/**
+ * @struct network_negotiation_t
+ * @brief Working data used by network negotiation.
+ */
+/**
+ * @struct network_server
+ * @brief Working data used by network server.
+ */
+/**
+ * @struct network_server_config_t
+ * @brief Configuration values used by network server config.
+ */
+/**
+ * @struct noise_gate_t
+ * @brief Noise-gate thresholds, smoothing coefficients, and live open/closed state
+ */
+/**
+ * @struct notice_snapshot_t
+ * @brief Runtime state held by notice snapshot.
+ */
+/**
+ * @struct openpgp_packet_header_t
+ * @brief The framing fields needed to locate and classify one OpenPGP packet body
+ */
+/**
+ * @struct openpgp_public_key_t
+ * @brief The parsed identity portion of an OpenPGP public-key packet
+ */
+/**
+ * @struct openpgp_secret_key_t
+ * @brief The parsed public and private material from an OpenPGP secret-key packet
+ */
+/**
+ * @struct option_builder_handler_t
+ * @brief The four operations used to handle one registered option type
+ */
+/**
+ * @struct option_dependency_t
+ * @brief A rule connecting one option to another during validation
+ */
+/**
+ * @struct option_descriptor_t
+ * @brief The complete registry entry for one command-line/configuration option
+ */
+/**
+ * @struct option_metadata_t
+ * @brief Completion metadata attached to one option descriptor
+ */
++/**
+ * @struct media_source_t
+ * @brief Media source for video and audio capture
+ */
+/**
+ * @struct memory_backend_t
+ * @brief Memory backend data
+ */
+/**
+ * @struct mixer_listener_buffer
+ * @brief Storage used by mixer listener buffer.
+ */
+/**
+ * @struct mixer_t
+ * @brief Main mixer structure for multi-source audio processing
+ */
+/**
+ * @struct mode_arguments_t
+ * @brief Working data used by mode arguments.
+ */
+/**
+ * @struct mode_bit_name_t
+ * @brief Mode name mapping for bitmask extraction
+ */
+/**
+ * @struct mode_descriptor_t
+ * @brief Metadata for a mode
+ */
+/**
+ * @struct mode_metadata_t
+ * @brief Mode metadata for usage display
+ */
+/**
+ * @struct mode_string_mapping_t
+ * @brief Mode name mapping for string conversion
+ */
+/**
+ * @struct multi_source_frame_t
+ * @brief Multi-source frame structure for multi-user support
+ */
+/**
+ * @struct mutex_stack_entry_t
+ * @brief Working data used by mutex stack entry.
+ */
+/**
+ * @struct mutex_t
+ * @brief Mutex type (POSIX: pthread_mutex_t with debug tracking)
+ */
+/**
+ * @struct mutex_wait_snapshot_t
+ * @brief Runtime state held by mutex wait snapshot.
+ */
+/**
+ * @struct named_entry
+ * @brief Registry entry for uthash
+ */
+/**
+ * @struct named_iter_entry_t
+ * @brief Working data used by named iter entry.
+ */
+/**
+ * @struct named_metadata_cache_t
+ * @brief Working data used by named metadata cache.
+ */
+/**
+ * @struct named_metadata_entry_t
+ * @brief Working data used by named metadata entry.
+ */
+/**
+ * @struct named_metadata_t
+ * @brief Working data used by named metadata.
+ */
+/**
+ * @struct named_registry_t
+ * @brief Global registry with uthash and rwlock
+ */
+/**
+ * @struct nat_quality_t
+ * @brief NAT quality assessment result
+ */
++/**
+ * @struct log_record
+ * @brief Owned fields extracted from one instrumentation log line
+ */
+/**
+ * @struct log_row_ref_t
+ * @brief Working data used by log row ref.
+ */
+/**
+ * @struct log_search_state_t
+ * @brief Runtime state held by log search state.
+ */
+/**
+ * @struct log_template_t
+ * @brief Compiled log format ready for use in log_template_apply()
+ */
+/**
+ * @struct loop_work_t
+ * @brief Working data used by loop work.
+ */
+/**
+ * @struct lowpass_filter_t
+ * @brief Low-pass filter state
+ */
+/**
+ * @struct lws_callback_stats_t
+ * @brief Callback profiling statistics for a single LWS callback reason
+ */
+/**
+ * @struct manpage_merge_state_t
+ * @brief Runtime state held by manpage merge state.
+ */
+/**
+ * @struct manpage_resources_t
+ * @brief Man page resource container
+ */
+/**
+ * @struct mcp_job
+ * @brief Working data used by mcp job.
+ */
+/**
+ * @struct mcp_policy_t
+ * @brief Working data used by mcp policy.
+ */
+/**
+ * @struct mcp_render_request_t
+ * @brief Wire or message data used by mcp render request.
+ */
+/**
+ * @struct mcp_render_result_t
+ * @brief Working data used by mcp render result.
+ */
+/**
+ * @struct mcp_server
+ * @brief Working data used by mcp server.
+ */
+/**
+ * @struct mdns_query_state_t
+ * @brief Internal state for collecting discovered services
+ */
+/**
+ * @struct mdns_refresh_t
+ * @brief Working data used by mdns refresh.
+ */
+/**
+ * @struct mdns_snapshot_t
+ * @brief TUI-based server selection with formatted display
+ */
+/**
+ * @struct mdns_thread_context_t
+ * @brief Context for mDNS discovery thread
+ */
+/**
+ * @struct media_playlist_t
+ * @brief Working data used by media playlist.
+ */
+/**
+ * @struct media_snapshot_slot
+ * @brief Runtime state held by media snapshot slot.
+ */
++/**
+ * @struct host_lost_candidate_t
+ * @brief Host migration state for collecting HOST_LOST packets
+ */
+/**
+ * @struct host_render_history
+ * @brief Internal session host structure
+ */
+/**
+ * @struct http3_receive_stream_t
+ * @brief Working data used by http3 receive stream.
+ */
+/**
+ * @struct http_pulse_t
+ * @brief Working data used by http pulse.
+ */
+/**
+ * @struct http_session_t
+ * @brief Runtime state held by http session.
+ */
+/**
+ * @struct ice_candidate_t
+ * @brief Single ICE candidate for connectivity
+ */
+/**
+ * @struct ice_config_t
+ * @brief Credentials and callback used while gathering ICE candidates
+ */
+/**
+ * @struct image_frame_packet_t
+ * @brief Image frame packet structure (Packet Type 3)
+ */
+/**
+ * @struct image_source_t
+ * @brief One client's video input as seen by the compositor
+ */
+/**
+ * @struct image_t
+ * @brief An owned RGB image with dimensions and row-major pixel storage
+ */
+/**
+ * @struct ImageRGB
+ * @brief ImageRGB structure for NEON renderers
+ */
+/**
+ * @struct input_editor_t
+ * @brief Working data used by input editor.
+ */
+/**
+ * @struct keyboard_line_edit_opts_t
+ * @brief Options for interactive line editing
+ */
+/**
+ * @struct keyboard_text_decoder_t
+ * @brief Working data used by keyboard text decoder.
+ */
+/**
+ * @struct lifecycle_t
+ * @brief Working data used by lifecycle.
+ */
+/**
+ * @struct linux_binary_lookup_t
+ * @brief Working data used by linux binary lookup.
+ */
+/**
+ * @struct log_buffer_entry_t
+ * @brief Heap-backed message waiting for the logging output thread
+ */
+/**
+ * @struct log_format_spec_t
+ * @brief One literal or conversion token in a compiled log format
+ */
+/**
+ * @struct log_io_t
+ * @brief Saved descriptors and temporary file used during stdout/stderr capture
+ */
+/**
+ * @struct log_mmap_config
+ * @brief Path and size limits for the memory-mapped log file
+ */
++/**
+ * @struct frame_t
+ * @brief One variable-length payload in the video ring buffer
+ */
+/**
+ * @struct framebuffer_t
+ * @brief Mutex-protected ring buffer used to exchange video frames
+ */
+/**
+ * @struct global_dec3_cache_t
+ * @brief Global decimal cache for digit conversion
+ */
+/**
+ * @struct glyph_cache_entry_t
+ * @brief Working data used by glyph cache entry.
+ */
+/**
+ * @struct glyph_candidate_t
+ * @brief Working data used by glyph candidate.
+ */
+/**
+ * @struct gpg_homedir
+ * @brief Internal structure for temporary GPG homedir
+ */
+/**
+ * @struct gpg_homedir_t
+ * @brief Opaque handle to a temporary GPG homedir
+ */
+/**
+ * @struct grep_parse_result_t
+ * @brief Parsed pattern result from /pattern/flags syntax
+ */
+/**
+ * @struct grep_pattern_t
+ * @brief Compiled filter entry used to match logs and print context
+ */
+/**
+ * @struct h265_client_context
+ * @brief Runtime state held by h265 client context.
+ */
+/**
+ * @struct h265_client_decoder_t
+ * @brief Working data used by h265 client decoder.
+ */
+/**
+ * @struct h265_decoder
+ * @brief Working data used by h265 decoder.
+ */
+/**
+ * @struct h265_encoder
+ * @brief Working data used by h265 encoder.
+ */
+/**
+ * @struct h265_packet_header_t
+ * @brief Wire or message data used by h265 packet header.
+ */
+/**
+ * @struct h265_server_context
+ * @brief Runtime state held by h265 server context.
+ */
+/**
+ * @struct handler_hash_entry_t
+ * @brief Hash table entry for packet type to handler mapping
+ */
+/**
+ * @struct help_mode_descriptor_t
+ * @brief Mode descriptor for programmatic MODES generation (for help output)
+ */
+/**
+ * @struct highpass_filter_t
+ * @brief High-pass filter settings and state
+ */
+/**
+ * @struct host_connection_t
+ * @brief Working data used by host connection.
+ */
+/**
+ * @struct host_liveness_t
+ * @brief Host liveness detection state
+ */
++/**
+ * @struct error_frame_t
+ * @brief Working data used by error frame.
+ */
+/**
+ * @struct error_packet_t
+ * @brief Error packet structure carrying error code and textual description
+ */
+/**
+ * @struct error_thread
+ * @brief Working data used by error thread.
+ */
+/**
+ * @struct event_command_t
+ * @brief Working data used by event command.
+ */
+/**
+ * @struct event_work_t
+ * @brief Working data used by event work.
+ */
+/**
+ * @struct event_write
+ * @brief Working data used by event write.
+ */
+/**
+ * @struct example_descriptor_t
+ * @brief Example descriptor for programmatic EXAMPLES generation
+ */
+/**
+ * @struct face_follow_detection_t
+ * @brief Working data used by face follow detection.
+ */
+/**
+ * @struct face_follow_image
+ * @brief Working data used by face follow image.
+ */
+/**
+ * @struct face_follow_rect_t
+ * @brief Working data used by face follow rect.
+ */
+/**
+ * @struct face_follow_state_t
+ * @brief Runtime state held by face follow state.
+ */
+/**
+ * @struct ffmpeg_decoder_t
+ * @brief FFmpeg decoder state for video and audio decoding
+ */
+/**
+ * @struct ffmpeg_encoder_s
+ * @brief Working data used by ffmpeg encoder.
+ */
+/**
+ * @struct find_client_context_t
+ * @brief Context for finding client by participant_id
+ */
+/**
+ * @struct flow_control_debounce_t
+ * @brief Working data used by flow control debounce.
+ */
+/**
+ * @struct fps_counter_s
+ * @brief Per-renderer timing state for the on-screen FPS overlay
+ */
+/**
+ * @struct fps_t
+ * @brief Counters and timestamps used to calculate and report frame rate
+ */
+/**
+ * @struct frame_buffer
+ * @brief Growable byte buffer for assembling one complete terminal frame
+ */
+/**
+ * @struct frame_queue_s
+ * @brief Storage used by frame queue.
+ */
+/**
+ * @struct frame_slot_s
+ * @brief Working data used by frame slot.
+ */
++/**
+ * @struct deadlock_state_t
+ * @brief Runtime state held by deadlock state.
+ */
+/**
+ * @struct dec3_t
+ * @brief Decimal conversion cache structure (1-3 digits)
+ */
+/**
+ * @struct digital_rain
+ * @brief Digital rain effect context
+ */
+/**
+ * @struct digital_rain_column_t
+ * @brief Digital rain column state
+ */
+/**
+ * @struct discovery_config_t
+ * @brief Configuration for discovery session
+ */
+/**
+ * @struct discovery_host_audio_capture_t
+ * @brief Working data used by discovery host audio capture.
+ */
+/**
+ * @struct discovery_result_t
+ * @brief Result from session discovery
+ */
+/**
+ * @struct discovery_session_t
+ * @brief Discovery session context
+ */
+/**
+ * @struct discovery_thread_state_t
+ * @brief Thread-safe result sharing between discovery threads
+ */
+/**
+ * @struct discovery_ui_state_t
+ * @brief Runtime state held by discovery ui state.
+ */
+/**
+ * @struct discovery_video_receiver_t
+ * @brief Working data used by discovery video receiver.
+ */
+/**
+ * @struct ducking_t
+ * @brief Ducking system settings and state
+ */
+/**
+ * @struct election_result_t
+ * @brief Election result storage
+ */
+/**
+ * @struct emit_context_t
+ * @brief Runtime state held by emit context.
+ */
+/**
+ * @struct endpoint_transport
+ * @brief Working data used by endpoint transport.
+ */
+/**
+ * @struct enum_descriptor_t
+ * @brief Enum value mapping for an option
+ */
+/**
+ * @struct enum_to_string_entry_t
+ * @brief Enum value mapping with description for shell completions
+ */
+/**
+ * @struct env_var_entry_t
+ * @brief Environment variable entry for manpage generation
+ */
+/**
+ * @struct errno_tui_row_t
+ * @brief Working data used by errno tui row.
+ */
+/**
+ * @struct errno_tui_state_t
+ * @brief Runtime state held by errno tui state.
+ */
++/**
+ * @struct consensus_coordinator
+ * @brief Internal coordinator structure
+ */
+/**
+ * @struct consensus_handoff_message_t
+ * @brief Wire or message data used by consensus handoff message.
+ */
+/**
+ * @struct consensus_handoff_peer_t
+ * @brief Working data used by consensus handoff peer.
+ */
+/**
+ * @struct consensus_handoff_t
+ * @brief Working data used by consensus handoff.
+ */
+/**
+ * @struct consensus_metrics_collection
+ * @brief Metrics collection structure for participant quality measurements
+ */
+/**
+ * @struct consensus_state
+ * @brief State machine instance
+ */
+/**
+ * @struct consensus_topology
+ * @brief Ring topology for consensus participants
+ */
+/**
+ * @struct crypto_capabilities_packet_t
+ * @brief Crypto capabilities packet structure (Packet Type 14)
+ */
+/**
+ * @struct crypto_context_t
+ * @brief Endpoint cryptographic state for handshake, packet protection, authentication, and rekeying
+ */
+/**
+ * @struct crypto_handshake_context_t
+ * @brief Cryptographic handshake context structure
+ */
+/**
+ * @struct crypto_parameters_packet_t
+ * @brief Crypto parameters packet structure (Packet Type 15)
+ */
+/**
+ * @struct crypto_policy_t
+ * @brief Working data used by crypto policy.
+ */
+/**
+ * @struct crypto_record
+ * @brief Working data used by crypto record.
+ */
+/**
+ * @struct crypto_rekey_session_t
+ * @brief Runtime state held by crypto rekey session.
+ */
+/**
+ * @struct crypto_session
+ * @brief Runtime state held by crypto session.
+ */
+/**
+ * @struct crypto_session_message_t
+ * @brief Runtime state held by crypto session message.
+ */
+/**
+ * @struct custom_section_descriptor_t
+ * @brief Custom help section descriptor
+ */
+/**
+ * @struct database_query
+ * @brief Working data used by database query.
+ */
+/**
+ * @struct database_session_stats_t
+ * @brief Runtime state held by database session stats.
+ */
+/**
+ * @struct datagram_send
+ * @brief Working data used by datagram send.
+ */
++/**
+ * @struct client_list_packet_t
+ * @brief Snapshot of the clients currently known to the server
+ */
+/**
+ * @struct client_manager_t
+ * @brief Global client manager structure for server-side client coordination
+ */
+/**
+ * @struct client_session_state_t
+ * @brief Client connection session state for session_client_like integration
+ */
+/**
+ * @struct collect_ctx_t
+ * @brief Working data used by collect ctx.
+ */
+/**
+ * @struct color_filter_def_t
+ * @brief Color filter metadata structure
+ */
+/**
+ * @struct color_scheme_t
+ * @brief Color scheme definition
+ */
+/**
+ * @struct colorscheme_palette_t
+ * @brief Working data used by colorscheme palette.
+ */
+/**
+ * @struct compiled_color_scheme_t
+ * @brief Compiled ANSI escape codes for a color scheme
+ */
+/**
+ * @struct compression_workspace_t
+ * @brief Storage used by compression workspace.
+ */
+/**
+ * @struct compressor_t
+ * @brief Dynamic range compressor settings and state
+ */
+/**
+ * @struct cond_deadlock_batch_t
+ * @brief Working data used by cond deadlock batch.
+ */
+/**
+ * @struct cond_deadlock_entry_t
+ * @brief Working data used by cond deadlock entry.
+ */
+/**
+ * @struct cond_deadlock_snapshot_t
+ * @brief Runtime state held by cond deadlock snapshot.
+ */
+/**
+ * @struct cond_t
+ * @brief Condition variable type (POSIX: pthread_cond_t with debug tracking)
+ */
+/**
+ * @struct config_builder_t
+ * @brief Helper structure for building config content in a buffer
+ */
+/**
+ * @struct config_file_list_t
+ * @brief List of config file search results
+ */
+/**
+ * @struct config_file_result_t
+ * @brief Result of a config file search
+ */
+/**
+ * @struct config_option_metadata_t
+ * @brief Option metadata for config file parsing
+ */
+/**
+ * @struct connection_attempt_t
+ * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
+ */
+/**
+ * @struct connection_endpoint_t
+ * @brief Working data used by connection endpoint.
+ */
++/**
+ * @struct binary_level_opts_t
+ * @brief Create a new options_t struct with all defaults set
+ */
+/**
+ * @struct binding_t
+ * @brief Working data used by binding.
+ */
+/**
+ * @struct broadcast_context_t
+ * @brief Context for broadcasting to session participants
+ */
+/**
+ * @struct browser_peer_crypto_t
+ * @brief Working data used by browser peer crypto.
+ */
+/**
+ * @struct buffer_budget_t
+ * @brief Storage used by buffer budget.
+ */
+/**
+ * @struct buffer_domain
+ * @brief Storage used by buffer domain.
+ */
+/**
+ * @struct buffer_domain_config_t
+ * @brief Configuration values used by buffer domain config.
+ */
+/**
+ * @struct buffer_header
+ * @brief Wire or message data used by buffer header.
+ */
+/**
+ * @struct buffer_stats_t
+ * @brief Storage used by buffer stats.
+ */
+/**
+ * @struct buffer_workspace_t
+ * @brief Storage used by buffer workspace.
+ */
+/**
+ * @struct bvector
+ * @brief Dynamic byte vector for PEM decoding
+ */
+/**
+ * @struct category_builder_t
+ * @brief Category builder structure - maps categories to their entry arrays
+ */
+/**
+ * @struct client_audio_pipeline_config_t
+ * @brief Pipeline configuration parameters
+ */
+/**
+ * @struct client_audio_pipeline_flags_t
+ * @brief Component enable/disable flags
+ */
+/**
+ * @struct client_audio_pipeline_t
+ * @brief Client audio pipeline state
+ */
+/**
+ * @struct client_connection
+ * @brief Working data used by client connection.
+ */
+/**
+ * @struct client_dispatch_entry_t
+ * @brief Hash table entry for client packet dispatch
+ */
+/**
+ * @struct client_info
+ * @brief Working data used by client info.
+ */
+/**
+ * @struct client_info_packet_t
+ * @brief Client information packet structure
+ */
+/**
+ * @struct client_like_state_t
+ * @brief Runtime state held by client like state.
+ */
++/**
+ * @struct atomic_t
+ * @brief Atomic value wrapper for integral/boolean types
+ */
+/**
+ * @struct audio_analysis_stats_t
+ * @brief Measurements used to diagnose sent or received audio quality
+ */
+/**
+ * @struct audio_batch_info_t
+ * @brief Parsed audio batch packet header information
+ */
+/**
+ * @struct audio_batch_packet_t
+ * @brief Audio batch packet structure (Packet Type 28)
+ */
+/**
+ * @struct audio_context_t
+ * @brief Audio context for full-duplex capture and playback
+ */
+/**
+ * @struct audio_device_info_t
+ * @brief Audio device information structure
+ */
+/**
+ * @struct audio_frame_t
+ * @brief Working data used by audio frame.
+ */
+/**
+ * @struct audio_processor
+ * @brief Working data used by audio processor.
+ */
+/**
+ * @struct audio_processor_config_t
+ * @brief Configuration values used by audio processor config.
+ */
+/**
+ * @struct audio_processor_flags_t
+ * @brief Working data used by audio processor flags.
+ */
+/**
+ * @struct audio_recording
+ * @brief Working data used by audio recording.
+ */
+/**
+ * @struct audio_resampler_t
+ * @brief Working data used by audio resampler.
+ */
+/**
+ * @struct audio_ring_buffer
+ * @brief Audio ring buffer for real-time audio streaming
+ */
+/**
+ * @struct audio_rt_metric_t
+ * @brief Measurements tracked by audio rt metric.
+ */
+/**
+ * @struct audio_send_packet_t
+ * @brief Wire or message data used by audio send packet.
+ */
+/**
+ * @struct auth_failure_packet_t
+ * @brief Authentication failure packet structure
+ */
+/**
+ * @struct backtrace_t
+ * @brief Working data used by backtrace.
+ */
+/**
+ * @struct backtrace_text_t
+ * @brief Capture current stack into bt
+ */
+/**
+ * @struct bin_cache_entry_t
+ * @brief Cache entry for binary PATH lookup
+ */
+/**
+ * @struct binary_actions_t
+ * @brief Working data used by binary actions.
+ */
++/**
+ * @struct ascii_frame_source_t
+ * @brief Frame source structure for grid layout
+ */
+/**
+ * @struct ascii_frame_t
+ * @brief Working data used by ascii frame.
+ */
+/**
+ * @struct ascii_otel_scope
+ * @brief Working data used by ascii otel scope.
+ */
+/**
+ * @struct ascii_stabilizer_t
+ * @brief Working data used by ascii stabilizer.
+ */
+/**
+ * @struct ascii_temporal_cell_t
+ * @brief Working data used by ascii temporal cell.
+ */
+/**
+ * @struct asciichat_errno_history_t
+ * @brief Working data used by asciichat errno history.
+ */
+/**
+ * @struct asciichat_errno_scope_t
+ * @brief Working data used by asciichat errno scope.
+ */
+/**
+ * @struct asciichat_errno_snapshot_t
+ * @brief Runtime state held by asciichat errno snapshot.
+ */
+/**
+ * @struct asciichat_error_context_t
+ * @brief Runtime state held by asciichat error context.
+ */
+/**
+ * @struct asciichat_error_stats_t
+ * @brief Measurements tracked by asciichat error stats.
+ */
+/**
+ * @struct asciichat_instr_only_list
+ * @brief Dynamic array of instrumentation selectors for filtering output
+ */
+/**
+ * @struct asciichat_instr_only_selector
+ * @brief Selector for filtering instrumentation output by file, function, or module
+ */
+/**
+ * @struct asciichat_instr_runtime
+ * @brief Per-thread instrumentation runtime state
+ */
+/**
+ * @struct asciichat_mdns_discovery_t
+ * @brief Discovered service information
+ */
+/**
+ * @struct asciichat_mdns_service_t
+ * @brief Service information for advertisement
+ */
+/**
+ * @struct asciichat_mdns_t
+ * @brief Internal mDNS context structure
+ */
+/**
+ * @struct asciichat_thread_wrapper_t
+ * @brief Internal thread wrapper for automatic cleanup
+ */
+/**
+ * @struct async_packet
+ * @brief Wire or message data used by async packet.
+ */
+/**
+ * @struct async_tcp_t
+ * @brief Working data used by async tcp.
+ */
+/**
+ * @struct atomic_ptr_t
+ * @brief Atomic pointer wrapper
+ */
++/**
+ * @struct acip_security
+ * @brief Working data used by acip security.
+ */
+/**
+ * @struct acip_send_options_t
+ * @brief Configuration values used by acip send options.
+ */
+/**
+ * @struct acip_server_callbacks_t
+ * @brief Server-side packet handler callbacks
+ */
+/**
+ * @struct acip_settings_header_t
+ * @brief Configuration values used by acip settings header.
+ */
+/**
+ * @struct acip_transport
+ * @brief Transport instance structure
+ */
+/**
+ * @struct acip_transport_capabilities_t
+ * @brief Working data used by acip transport capabilities.
+ */
+/**
+ * @struct acip_transport_methods_t
+ * @brief Transport method table (virtual function table)
+ */
+/**
+ * @struct acip_websocket_runtime
+ * @brief Working data used by acip websocket runtime.
+ */
+/**
+ * @struct action_args_t
+ * @brief Action argument structure
+ */
+/**
+ * @struct adaptive_sleep_config_t
+ * @brief Configuration for adaptive sleep behavior
+ */
+/**
+ * @struct adaptive_sleep_state_t
+ * @brief Runtime state for adaptive sleep
+ */
+/**
+ * @struct anchor_list
+ * @brief Vector type for trust anchors
+ */
+/**
+ * @struct animation_config_t
+ * @brief Configuration values used by animation config.
+ */
+/**
+ * @struct animation_sample_t
+ * @brief Working data used by animation sample.
+ */
+/**
+ * @struct animation_t
+ * @brief Working data used by animation.
+ */
+/**
+ * @struct animation_target_t
+ * @brief Working data used by animation target.
+ */
+/**
+ * @struct ansi_rle_context_t
+ * @brief Runtime state held by ansi rle context.
+ */
+/**
+ * @struct ansi_timing_t
+ * @brief Working data used by ansi timing.
+ */
+/**
+ * @struct app_callbacks_t
+ * @brief Callbacks and operations used by app callbacks.
+ */
+/**
+ * @struct ascii_frame_packet_t
+ * @brief ASCII frame packet structure (Packet Type 2)
+ */
++/**
+ * @struct acds_session_lookup_result_t
+ * @brief Session lookup result
+ */
+/**
+ * @struct acds_stats_t
+ * @brief Network statistics for both TCP and WebSocket connections
+ */
+/**
+ * @struct acds_thread_context_t
+ * @brief Context for ACDS discovery thread
+ */
+/**
+ * @struct acip_acds_callbacks_t
+ * @brief ACDS packet handler callbacks
+ */
+/**
+ * @struct acip_client_callbacks_t
+ * @brief Client-side packet handler callbacks
+ */
+/**
+ * @struct acip_frame_workspace_t
+ * @brief Send ASCII frame to client (server → client)
+ */
+/**
+ * @struct acip_http3_server
+ * @brief Working data used by acip http3 server.
+ */
+/**
+ * @struct acip_outbound
+ * @brief Working data used by acip outbound.
+ */
+/**
+ * @struct acip_outbound_stats_t
+ * @brief Measurements tracked by acip outbound stats.
+ */
+/**
+ * @struct acip_packet_plan_t
+ * @brief Wire or message data used by acip packet plan.
+ */
+/**
+ * @struct acip_quic_config_t
+ * @brief Configuration values used by acip quic config.
+ */
+/**
+ * @struct acip_quic_connection
+ * @brief Working data used by acip quic connection.
+ */
+/**
+ * @struct acip_quic_datagram_reader_t
+ * @brief Working data used by acip quic datagram reader.
+ */
+/**
+ * @struct acip_quic_datagram_slot_t
+ * @brief Working data used by acip quic datagram slot.
+ */
+/**
+ * @struct acip_quic_endpoint
+ * @brief Working data used by acip quic endpoint.
+ */
+/**
+ * @struct acip_quic_stream_reader_t
+ * @brief Working data used by acip quic stream reader.
+ */
+/**
+ * @struct acip_quic_tls_t
+ * @brief Working data used by acip quic tls.
+ */
+/**
+ * @struct acip_quic_udp_endpoint
+ * @brief Working data used by acip quic udp endpoint.
+ */
+/**
+ * @struct acip_quic_worker
+ * @brief Working data used by acip quic worker.
+ */
+/**
+ * @struct acip_render_settings_t
+ * @brief Configuration values used by acip render settings.
+ */
++/**
+ * @struct HttpRequest
+ * @brief Parsed HTTP request
+ */
+/**
+ * @struct HttpResponse
+ * @brief HTTP response builder
+ */
+/**
+ * @struct ThreadInfo
+ * @brief Thread information
+ */
+/**
+ * @struct FrameInfo
+ * @brief Stack frame information
+ */
+/**
+ * @struct VariableInfo
+ * @brief Variable information (from LLDB SBValue)
+ */
+/**
+ * @struct BreakpointInfo
+ * @brief Breakpoint information
+ */
+/**
+ * @struct __attribute__
+ * @brief Network quality metrics for a single participant
+ */
+/**
+ * @struct acds_client_config_t
+ * @brief ACDS client connection configuration
+ */
+/**
+ * @struct acds_client_data_t
+ * @brief Per-client connection data
+ */
+/**
+ * @struct acds_client_t
+ * @brief ACDS client connection handle
+ */
+/**
+ * @struct acds_config_t
+ * @brief Discovery server configuration
+ */
+/**
+ * @struct acds_create_key_set_t
+ * @brief Working data used by acds create key set.
+ */
+/**
+ * @struct acds_handoff_entry
+ * @brief Background thread for periodic cleanup
+ */
+/**
+ * @struct acds_hash_entry_t
+ * @brief Hash table entry for ACDS packet type to handler mapping
+ */
+/**
+ * @struct acds_protocol_t
+ * @brief Working data used by acds protocol.
+ */
+/**
+ * @struct acds_server_t
+ * @brief Discovery server state
+ */
+/**
+ * @struct acds_session_create_params_t
+ * @brief Session creation request parameters
+ */
+/**
+ * @struct acds_session_create_result_t
+ * @brief Session creation result
+ */
+/**
+ * @struct acds_session_join_params_t
+ * @brief Session join parameters
+ */
+/**
+ * @struct acds_session_join_result_t
+ * @brief Session join result
+ */

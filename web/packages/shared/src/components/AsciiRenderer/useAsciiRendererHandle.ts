@@ -1,7 +1,9 @@
+import { AsciiRenderer } from "ascii-chat";
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
-import { SessionUi } from "../../wasm/sessionUi";
-import type { SessionUiEvent } from "../../wasm/sessionUi";
+import { browserKeyCode } from "./keyboard";
+import type { SessionUiEvent } from "./types";
+import type { SessionUiBinding } from "../../wasm/generated/mirror-bindings";
 import type { KeyboardEvent } from "react";
 import {
   type ForwardedRef,
@@ -13,6 +15,7 @@ import {
 } from "react";
 import type { AsciiRendererHandle } from "./types";
 import type { MirrorModule } from "../../wasm/mirror";
+import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 import { startGridStabilityProbe } from "./gridStabilityProbe";
 
@@ -23,7 +26,7 @@ interface UseAsciiRendererHandleParams {
   matrixMode?: boolean;
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
-  rendererPtrRef: RefObject<number>;
+  rendererPtrRef: RefObject<TerminalRendererBinding | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   showFps: boolean;
@@ -64,12 +67,15 @@ export function useAsciiRendererHandle({
   onRecreateRenderer,
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const firstRenderDoneRef = useRef(false);
-  const presentedRasterRef = useRef({ renderer: 0, width: 0, height: 0 });
+  const presentedRasterRef = useRef<{
+    renderer: TerminalRendererBinding | null;
+    width: number;
+    height: number;
+  }>({ renderer: null, width: 0, height: 0 });
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const presentedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
-  const textEncoderRef = useRef(new TextEncoder());
   const imageDataRef = useRef<ImageData | null>(null);
   const lastFrameChangedRef = useRef(false);
   const lastContentRef = useRef("");
@@ -111,8 +117,9 @@ export function useAsciiRendererHandle({
     [onDimensionsChange],
   );
 
-  const uiRef = useRef<SessionUi | null>(null);
-  const uiRendererRef = useRef(0);
+  const uiRef = useRef<SessionUiBinding | null>(null);
+  const uiModuleRef = useRef<MirrorModule | null>(null);
+  const uiRendererRef = useRef<TerminalRendererBinding | null>(null);
   const uiProps = useRef({ uiLoading, uiMessage, onUiAction });
   useLayoutEffect(() => {
     uiProps.current = { uiLoading, uiMessage, onUiAction };
@@ -120,9 +127,17 @@ export function useAsciiRendererHandle({
   const ensureUi = useCallback(() => {
     const module = moduleRef.current;
     if (!module || !setupDoneRef.current) return null;
-    if (uiRef.current?.module !== module) {
-      uiRef.current?.destroy();
-      uiRef.current = new SessionUi(module);
+    if (uiModuleRef.current !== module || !uiRef.current) {
+      uiRef.current?.delete();
+      uiRef.current = null;
+      uiModuleRef.current = null;
+      const binding = new module.SessionUiBinding();
+      if (!binding.valid()) {
+        binding.delete();
+        throw new Error("Cannot create session UI");
+      }
+      uiRef.current = binding;
+      uiModuleRef.current = module;
     }
     const ui = uiRef.current;
     if (uiRendererRef.current !== rendererPtrRef.current) {
@@ -208,143 +223,42 @@ export function useAsciiRendererHandle({
         return true;
       }
       try {
-        // Encode string to UTF-8 bytes
-        const data = textEncoderRef.current.encode(ansiString);
-
-        // Apply locally to mirror and received frames without changing the wire protocol.
-        const effectResult = moduleRef.current._term_renderer_set_zalgo(
-          rendererPtrRef.current,
-          Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
-        );
-
-        if (effectResult !== 0) {
-          throw new Error("[AsciiRenderer] Cannot initialize Zalgo renderer");
-        }
-
-        // Allocate memory in WASM and copy data
-        const ptr = moduleRef.current._malloc(data.length);
-        if (!ptr) {
-          throw new Error("[AsciiRenderer] Failed to allocate memory in WASM");
-        }
-
-        const wasmMemory = new Uint8Array(moduleRef.current.HEAPU8.buffer);
-        wasmMemory.set(data, ptr);
-
-        // Render frame - call term_renderer_feed with renderer pointer
-        const renderResult = moduleRef.current._term_renderer_feed(
-          rendererPtrRef.current,
-          ptr,
-          data.length,
-        );
-
-        // Free memory
-        moduleRef.current._free(ptr);
-        if (renderResult !== 0) {
+        const renderer = rendererPtrRef.current;
+        const canvas = canvasRef.current;
+        if (!renderer || !canvas)
+          throw new Error("[AsciiRenderer] Renderer or canvas is unavailable");
+        const w = canvas.width,
+          h = canvas.height;
+        if (
+          w <= 0 ||
+          h <= 0 ||
+          renderer.width() !== w ||
+          renderer.height() !== h
+        )
           throw new Error(
-            `[AsciiRenderer] Frame rendering failed (error ${renderResult}); the font may not support a character`,
+            `[AsciiRenderer] Invalid framebuffer dimensions ${w}x${h}`,
           );
+        let imageData = imageDataRef.current;
+        if (!imageData || imageData.width !== w || imageData.height !== h) {
+          imageData = new ImageData(w, h);
+          imageDataRef.current = imageData;
         }
-
-        // Display framebuffer on canvas
-        try {
-          const canvas = canvasRef.current;
-          if (
-            canvas &&
-            canvas.getContext &&
-            moduleRef.current._term_renderer_pixels
-          ) {
-            const fbPtr = moduleRef.current._term_renderer_pixels(
-              rendererPtrRef.current,
-            );
-            const fbStride = moduleRef.current._term_renderer_pitch(
-              rendererPtrRef.current,
-            );
-            // Use canvas dimensions (set to container size earlier)
-            const fbWidth = canvas.width;
-            const fbHeight = canvas.height;
-
-            if (
-              fbPtr &&
-              fbWidth &&
-              fbHeight &&
-              fbWidth > 0 &&
-              fbHeight > 0 &&
-              typeof fbWidth === "number" &&
-              typeof fbHeight === "number"
-            ) {
-              const w: number = fbWidth as number;
-              const h: number = fbHeight as number;
-              const stride: number = fbStride ? (fbStride as number) : w * 4;
-              const fbData = new Uint8Array(
-                moduleRef.current.HEAPU8.buffer,
-                fbPtr,
-                h * stride,
-              );
-              const rowBytes = w * 4;
-              let imageData = imageDataRef.current;
-              if (
-                !imageData ||
-                imageData.width !== w ||
-                imageData.height !== h
-              ) {
-                imageData = new ImageData(w, h);
-                imageDataRef.current = imageData;
-              }
-              // Compare compact ANSI content rather than millions of raster bytes.
-              // Keep content-change diagnostics separate from presentation FPS.
-              lastFrameChangedRef.current =
-                ansiString !== lastContentRef.current;
-              lastContentRef.current = ansiString;
-              if (stride === rowBytes) {
-                imageData.data.set(fbData);
-              } else {
-                for (let row = 0; row < h; row++) {
-                  const sourceStart = row * stride;
-                  const destinationStart = row * rowBytes;
-                  imageData.data.set(
-                    fbData.subarray(sourceStart, sourceStart + rowBytes),
-                    destinationStart,
-                  );
-                }
-              }
-
-              const ctx = canvas.getContext("2d");
-              if (!ctx) {
-                throw new Error("[AsciiRenderer] Canvas context not found");
-              }
-              ctx.putImageData(imageData, 0, 0);
-              presentedRasterRef.current = {
-                renderer: rendererPtrRef.current,
-                width: w,
-                height: h,
-              };
-              if (ctx) {
-                if (
-                  new URLSearchParams(window.location.search).get(
-                    "verifyGrid",
-                  ) === "1"
-                ) {
-                  startGridStabilityProbe(canvas);
-                }
-              }
-            } else {
-              throw new Error(
-                `[AsciiRenderer] Invalid framebuffer dimensions fbPtr=${fbPtr} fbWidth=${fbWidth} fbHeight=${fbHeight}`,
-              );
-            }
-          } else {
-            throw new Error(
-              "[AsciiRenderer] Canvas or _term_renderer_pixels not ready",
-            );
-          }
-        } catch (displayErr) {
-          console.error(
-            "[AsciiRenderer] Failed to display framebuffer:",
-            displayErr,
-          );
-          return false;
-        }
-
+        AsciiRenderer.rasterize(
+          renderer,
+          ansiString,
+          Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
+          imageData.data,
+        );
+        lastFrameChangedRef.current = ansiString !== lastContentRef.current;
+        lastContentRef.current = ansiString;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("[AsciiRenderer] Canvas context not found");
+        ctx.putImageData(imageData, 0, 0);
+        presentedRasterRef.current = { renderer, width: w, height: h };
+        if (
+          new URLSearchParams(window.location.search).get("verifyGrid") === "1"
+        )
+          startGridStabilityProbe(canvas);
         // Mark first render as done so resize can proceed
         if (!firstRenderDoneRef.current) {
           firstRenderDoneRef.current = true;
@@ -383,7 +297,7 @@ export function useAsciiRendererHandle({
           lastMessage = uiProps.current.uiMessage;
         }
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       }
       id = requestAnimationFrame(tick);
     };
@@ -392,8 +306,9 @@ export function useAsciiRendererHandle({
   }, [ensureUi, paintFrame, resizeTimeoutRef]);
   useEffect(
     () => () => {
-      uiRef.current?.destroy();
+      uiRef.current?.delete();
       uiRef.current = null;
+      uiModuleRef.current = null;
     },
     [],
   );
@@ -403,16 +318,17 @@ export function useAsciiRendererHandle({
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const ui = ensureUi();
       if (!ui) return;
-      const action = ui.key(event.key, event.shiftKey);
+      const code = browserKeyCode(event.key, event.shiftKey);
+      const action = code ? ui.key(code) : 0;
       if (action) {
         event.preventDefault();
         uiProps.current.onUiAction?.({
           action,
           key: event.key,
-          module: ui.module,
+          module: moduleRef.current!,
         });
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       }
     },
     [ensureUi, paintFrame],
@@ -439,10 +355,11 @@ export function useAsciiRendererHandle({
         const ui = ensureUi();
         if (!ui) return false;
         try {
-          ui.media(ansiString);
+          if (ui.media(ansiString) !== 0)
+            throw new Error("Session UI rejected media frame");
           // Keep the newest frame while help/loading owns presentation.
           const frame = ui.tick(performance.now());
-          if (frame === null) return true;
+          if (frame === undefined) return true;
           const painted = paintFrame(frame);
           if (!painted) ui.redraw();
           return painted;
@@ -465,7 +382,7 @@ export function useAsciiRendererHandle({
         if (!ui) return;
         ui.clear();
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       },
 
       recreateRenderer() {

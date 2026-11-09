@@ -3,7 +3,7 @@
 #include <emscripten.h>
 #include <string.h>
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_init(crypto_context_t *ctx) {
+asciichat_error_t browser_security_init(crypto_context_t *ctx) {
   crypto_session_t *session;
   asciichat_error_t result = crypto_session_lock(ctx, &session);
   if (result == ASCIICHAT_OK)
@@ -11,10 +11,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_init(crypto_context_t *c
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_packet(crypto_context_t *ctx, bool seal, uint32_t channel,
-                                                               uint32_t delivery, const uint8_t *packet, size_t length,
-                                                               uint8_t *output, size_t capacity, size_t *out_length,
-                                                               uint64_t *sequence) {
+asciichat_error_t browser_security_packet(crypto_context_t *ctx, bool seal, uint32_t channel, uint32_t delivery,
+                                          const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
+                                          size_t *out_length, uint64_t *sequence) {
   const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
   if (!packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
       capacity < length + (seal ? overhead : 0))
@@ -42,7 +41,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_packet(crypto_context_t 
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_tick(crypto_context_t *ctx) {
+asciichat_error_t browser_security_tick(crypto_context_t *ctx) {
   crypto_session_t *session;
   asciichat_error_t result = crypto_session_lock(ctx, &session);
   if (result == ASCIICHAT_OK) {
@@ -52,8 +51,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_tick(crypto_context_t *c
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_output(crypto_context_t *ctx, uint8_t *output, size_t capacity,
-                                                               size_t *length, uint32_t *channel) {
+asciichat_error_t browser_security_output(crypto_context_t *ctx, uint8_t *output, size_t capacity, size_t *length,
+                                          uint32_t *channel) {
   // The largest control is a public key plus the common framing and record overhead.
   if (!output || !length || !channel || capacity < 256)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser security control buffer");
@@ -69,7 +68,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_security_output(crypto_context_t 
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE double browser_security_epoch(crypto_context_t *ctx) {
+double browser_security_epoch(crypto_context_t *ctx) {
   crypto_session_t *session;
   if (crypto_session_lock(ctx, &session) != ASCIICHAT_OK)
     return -1;

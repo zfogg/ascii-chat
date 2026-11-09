@@ -156,6 +156,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libx264-dev libx265-dev \
       emscripten \
       doxygen \
+      mandoc \
       dpkg-dev rpm \
       yt-dlp \
       libwebsockets-dev libuv1-dev libicu-dev  \
@@ -472,3 +473,6 @@ if command -v vp >/dev/null 2>&1; then
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
+
+corepack enable
+pnpm install --frozen-lockfile

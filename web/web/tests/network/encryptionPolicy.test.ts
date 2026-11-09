@@ -55,8 +55,8 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   getConnectionState: () => 3,
   resolveCryptoPolicy: vi.fn(() => 1),
   getClientModule: () => ({
-    _client_acds_handshake_begin: beginHandshake,
-    _client_handshake_begin: beginHandshake,
+    client_acds_handshake_begin: beginHandshake,
+    client_handshake_begin: beginHandshake,
   }),
   serializePacket: (type: number, payload: Uint8Array) => {
     const bytes = new Uint8Array(22 + payload.length);

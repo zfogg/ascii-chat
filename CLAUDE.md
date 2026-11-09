@@ -52,9 +52,14 @@ The major changes visible in the last six months are:
   Generated catalogs must remain consistent across platforms, and the native
   mmmbed binaries are selected for the host, including Windows ARM64.
 - Documentation has a standalone CMake/Doxygen project, curated topic
-  categories, and a Pages deployment workflow. Durable architecture changes
-  belong in `docs/topics/*.dox` and task-oriented instructions belong in
-  `docs/*.md`; update both navigation and authored content when appropriate.
+  categories, and a Pages deployment workflow. Documentation is welcome and
+  encouraged, but do not create random Markdown files under `docs/`: files
+  that are not part of the rendered Doxygen navigation are easy to miss and
+  never appear in the browser. Put durable architecture, subsystem, workflow,
+  and task documentation in `docs/topics/*.dox`, and update the curated Topic
+  Categories page at `docs/topics/index.dox` when a topic belongs in its
+  navigation. Modify existing rendered documentation freely when it improves
+  the site; keep every new page connected to the Doxygen topic structure.
 
 ## Repository Rules That Are Easy to Miss
 
@@ -166,7 +171,7 @@ browser artifacts by hand; regenerate them through the documented build.
 ## Transport and Protocol Notes
 
 Read `docs/topics/network.dox`, `docs/topics/quic.dox`, `docs/topics/handshake.dox`,
-`docs/topics/client_protocol.dox`, and `docs/networking-runtime.md` before
+`docs/topics/client_protocol.dox` before
 changing connection setup. Read `docs/acip-preparation.md` before changing
 wire formats. The protocol version constants live in
 `include/ascii-chat/common/protocol_constants.h`.

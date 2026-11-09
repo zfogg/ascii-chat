@@ -18,7 +18,7 @@ const MATRIX_OPTIONS: DemoOption[] = [
     settings: {
       matrixRain: true,
       palette: "standard",
-      colorFilter: ColorFilter.RAINBOW,
+      colorFilter: ColorFilter.Rainbow,
     },
   },
 ];

@@ -105,7 +105,7 @@ export class WebTransportAcipChannel {
     registerSendPacketCallback((packet) => this.sendHandshake(packet));
     try {
       await this.bridge.connect();
-      const result = module._client_handshake_begin();
+      const result = module.client_handshake_begin();
       if (result) throwWasmError(result, "Could not begin QUIC ACIP handshake");
     } catch (error) {
       this.close();
@@ -118,21 +118,10 @@ export class WebTransportAcipChannel {
     if (!module) throw new Error("WASM client is not initialized");
     const parsed = parsePacket(packet);
     const payload = packet.subarray(22);
-    const pointer = module._malloc(payload.length || 1);
-    if (!pointer) throw new Error("Cannot allocate QUIC handshake payload");
-    try {
-      module.HEAPU8.set(payload, pointer);
-      const result = module._client_handshake_receive(
-        parsed.type,
-        pointer,
-        payload.length,
-      );
-      if (result) throwWasmError(result, "QUIC ACIP handshake rejected");
-      if (getConnectionState() === ConnectionState.CONNECTED)
-        this.authenticated();
-    } finally {
-      module._free(pointer);
-    }
+    const result = module.receiveHandshake(false, parsed.type, payload);
+    if (result) throwWasmError(result, "QUIC ACIP handshake rejected");
+    if (getConnectionState() === ConnectionState.CONNECTED)
+      this.authenticated();
   }
 
   sendHandshake(packet: Uint8Array): void {

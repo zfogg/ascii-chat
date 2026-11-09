@@ -4,30 +4,27 @@ import {
   HANDOFF_PACKET,
 } from "../../src/network/HandoffProtocol";
 const module = vi.hoisted(() => ({
-  HEAPU8: new Uint8Array(100000),
-  _malloc: () => 128,
-  _free: vi.fn(),
-  handoffResult: {
+  handoffDecode: () => ({
     kind: 6,
     participant: new Uint8Array(16),
     generation: 1,
     sequence: 1,
-  },
-  _browser_handoff_decode: () => 0,
-  _browser_handoff_encode: (
+  }),
+  handoffEncode: (
     kind: number,
-    _session: number,
-    _id: number,
+    _session: Uint8Array,
+    _id: Uint8Array,
     _generation: number,
     sequence: number,
     _caps: number,
     _nat: number,
     _port: number,
-    out: number,
   ) => {
-    const view = new DataView(module.HEAPU8.buffer);
-    view.setUint32(out, kind);
-    view.setUint32(out + 4, sequence);
+    const bytes = new Uint8Array(64);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, kind);
+    view.setUint32(4, sequence);
+    return bytes;
   },
 }));
 vi.mock("../../src/wasm/client", () => ({ getClientModule: () => module }));

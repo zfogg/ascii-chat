@@ -55,7 +55,7 @@ on:
       - ".github/actions/publish-test-results/**"
 
 permissions:
-  contents: read
+  contents: write
   issues: read
   checks: write
   pull-requests: write
@@ -84,9 +84,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
+          cache-dependency-glob: tests/ascii_chat_tests/{pyproject.toml,uv.lock}
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -101,9 +99,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
+          cache-dependency-glob: '{pyproject.toml,uv.lock}'
       - run: uv python install 3.15
       - run: uv sync --frozen
       - run: uv run --frozen python .github/scripts/test_generate_coverage.py
@@ -142,14 +138,6 @@ jobs:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Use the repository-managed Python for ctypes hosts while keeping leak
-      # checks enabled.
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
 
       - name: Install Python test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
@@ -279,6 +267,10 @@ jobs:
 
           echo "Unit tests completed successfully"
 
+      - name: Regenerate and publish manpage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && matrix.os == 'ubuntu-latest' && matrix.build_type == 'release'
+        uses: ./.github/actions/regenerate-manpage
+
       - name: Generate coverage report
         if: always() && matrix.build_type != 'sanitizers'
         uses: ./.github/actions/generate-coverage
@@ -391,12 +383,6 @@ jobs:
           rm -rf build/Testing/criterion-xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
 
       - name: Install terminal test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
@@ -571,12 +557,6 @@ jobs:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
-
       - name: Cache build, dependencies, and ccache
         id: cache-build
         uses: ./.github/actions/cache-build
@@ -728,10 +708,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            uv.lock
-            tests/ascii_chat_tests/uv.lock
       - uses: actions/download-artifact@v4
         with:
           pattern: "*test-results-*"

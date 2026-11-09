@@ -1,31 +1,17 @@
 import { useLayoutEffect } from "react";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
-import {
-  getColorFilter,
-  getColorMode,
-  getFlipX,
-  getFlipY,
-  getMatrixRain,
-  getPalette,
-  getTargetFps,
-} from "../../wasm";
-import {
-  wasmColorModeToString,
-  wasmColorFilterToString,
-} from "../../utils/colorMappers";
 
 import { browserRasterFontSize } from "./rasterConfig";
-import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
+import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 
 const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
-/** Existing scratch budget for the renderer's pointer output. */
-const RENDERER_OUT_BUFFER_SIZE = 8;
+type RendererConfig = { cols: number; rows: number; matrix: boolean };
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
-  rendererPtrRef: RefObject<number>;
+  rendererPtrRef: RefObject<TerminalRendererBinding | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   setUpdateDimensions: (fn: (cols: number, rows: number) => void) => void;
   triggerRendererRecreate: () => void;
@@ -34,7 +20,6 @@ interface UseInitAsciiRendererReturn {
 interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   wasmModuleReady: boolean | undefined;
-  initializeOptions?: boolean;
   matrixMode?: boolean;
   columns?: number;
   rows?: number;
@@ -43,14 +28,13 @@ interface UseInitAsciiRendererParams {
 export function useInitAsciiRenderer({
   canvasRef,
   wasmModuleReady,
-  initializeOptions = true,
   matrixMode = false,
   columns = 0,
   rows = 0,
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
-  const rendererPtrRef = useRef<number>(0);
+  const rendererPtrRef = useRef<TerminalRendererBinding | null>(null);
   const updateDimensionsRef = useRef<
     ((cols: number, rows: number) => void) | null
   >(null);
@@ -69,75 +53,6 @@ export function useInitAsciiRenderer({
     new Map<string, { width: number; height: number }>(),
   );
 
-  // Rebuild and apply args with current settings from WASM state
-  const reinitializeWithCurrentSettings = useCallback(() => {
-    if (!moduleRef.current) {
-      console.warn(
-        "[reinitializeWithCurrentSettings] moduleRef.current is null, skipping reinitialization",
-      );
-      return;
-    }
-
-    try {
-      // Get current rendering settings that affect the renderer appearance
-      const matrixRain = getMatrixRain();
-      const colorMode = getColorMode();
-      const colorFilter = getColorFilter();
-      const palette = getPalette();
-      const flipX = getFlipX();
-      const flipY = getFlipY();
-      const targetFps = getTargetFps();
-
-      // Reconstruct args string with rendering settings
-      const args = ["mirror"];
-      if (matrixRain) {
-        args.push("--matrix");
-      }
-      args.push(`--color-mode`, wasmColorModeToString(colorMode));
-      args.push(`--color-filter`, wasmColorFilterToString(colorFilter));
-      args.push(`--palette`, palette);
-      if (flipX) args.push("--flip-x");
-      if (flipY) args.push("--flip-y");
-      args.push(`--fps`, String(targetFps));
-
-      const argsStr = args.join(" ");
-      console.debug(
-        "[reinitializeWithCurrentSettings] Calling mirror_init_with_args with:",
-        argsStr,
-      );
-
-      // Allocate and copy args string to WASM memory
-      const strLen = moduleRef.current.lengthBytesUTF8(argsStr) + 1;
-      const strPtr = moduleRef.current._malloc(strLen);
-      if (!strPtr) {
-        throw new Error("Failed to allocate memory for args");
-      }
-
-      try {
-        moduleRef.current.stringToUTF8(argsStr, strPtr, strLen);
-        if (!moduleRef.current._mirror_init_with_args) {
-          throw new Error("_mirror_init_with_args is not available");
-        }
-        const initResult = moduleRef.current._mirror_init_with_args(strPtr);
-        if (initResult !== 0) {
-          throw new Error(
-            `Failed to reinitialize mirror C code: ${initResult}`,
-          );
-        }
-        console.debug(
-          "[reinitializeWithCurrentSettings] Successfully reinitialized with current settings",
-        );
-      } finally {
-        moduleRef.current._free(strPtr);
-      }
-    } catch (err) {
-      console.error(
-        "[reinitializeWithCurrentSettings] Error reapplying settings:",
-        err,
-      );
-    }
-  }, []);
-
   // Load WASM module when ready
   useEffect(() => {
     if (wasmModuleReady) {
@@ -151,238 +66,83 @@ export function useInitAsciiRenderer({
     currentMatrixModeRef.current = matrixMode;
   }, [matrixMode]);
 
-  // C owns the renderer configuration's layout and path-buffer capacity.
-  const writeConfigStructFields = useCallback(
-    (configPtr: number, cols: number, rows: number, isMatrixMode: boolean) => {
-      if (!moduleRef.current) {
-        throw new Error(
-          "moduleRef.current is null during writeConfigStructFields",
-        );
-      }
-
-      writeTerminalRendererConfig(
-        moduleRef.current,
-        configPtr,
-        cols,
-        rows,
-        browserRasterFontSize(isMatrixMode),
-        isMatrixMode,
-      );
-    },
-    [],
-  );
-
-  // Allocate and prepare config struct with estimated dimensions
-  const createConfigStruct = useCallback(
-    (
-      containerWidth: number,
-      containerHeight: number,
-      isMatrixMode: boolean = false,
-    ) => {
-      try {
-        if (!moduleRef.current) {
-          throw new Error(
-            "moduleRef.current is null during createConfigStruct",
-          );
-        }
-
-        const configSize = moduleRef.current._wasm_renderer_config_size();
-        const configPtr = moduleRef.current._malloc(configSize);
-
-        if (!configPtr) {
-          throw new Error("_malloc returned null for config struct");
-        }
-
-        // Measure the selected font through the same renderer that paints frames.
-        // Guessing a taller Matrix cell produces too few rows and letterboxes
-        // the entire raster when the canvas uses object-fit: contain.
-        // Query the requested font without changing current engine settings.
-        const fontSelection = rendererFontSelection(isMatrixMode);
-        const metricKey = `${fontSelection}:${moduleRef.current._get_font_default_ptr(fontSelection)}:${moduleRef.current._get_font_default_size(fontSelection)}`;
-        let cell = cellMetricsRef.current.get(metricKey);
-        if (!cell) {
-          writeConfigStructFields(configPtr, 1, 1, isMatrixMode);
-          const outPtr = moduleRef.current._malloc(4);
-          if (!outPtr) {
-            moduleRef.current._free(configPtr);
-            throw new Error("Cannot allocate font measurement output");
-          }
-          let probe = 0;
-          try {
-            const result = moduleRef.current._term_renderer_create(
-              configPtr,
-              outPtr,
-            );
-            if (result !== 0)
-              throw new Error(`Cannot measure renderer font: ${result}`);
-            probe = new DataView(
-              moduleRef.current.HEAPU8.buffer,
-              outPtr,
-              4,
-            ).getUint32(0, true);
-            cell = {
-              width: moduleRef.current._term_renderer_width_px(probe),
-              height: moduleRef.current._term_renderer_height_px(probe),
-            };
-            if (cell.width <= 0 || cell.height <= 0)
-              throw new Error("Renderer font has invalid cell dimensions");
-            cellMetricsRef.current.set(metricKey, cell);
-          } catch (error) {
-            moduleRef.current._free(configPtr);
-            throw error;
-          } finally {
-            if (probe) moduleRef.current._term_renderer_destroy(probe);
-            moduleRef.current._free(outPtr);
-          }
-        }
-
-        const maxContainerHeight = 2000;
-        const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
-        const requested = requestedGridRef.current;
-        // Match UI_MEDIA_MIN_COLS/ROWS in the C option registry. A rejected
-        // dimension leaves the converter on its previous grid and clips frames.
-        const estimatedCols =
-          requested.columns > 0
-            ? Math.min(400, Math.max(20, Math.floor(requested.columns)))
-            : Math.max(20, Math.floor(containerWidth / cell.width));
-
-        const estimatedRows =
-          requested.rows > 0
-            ? Math.min(150, Math.max(10, Math.floor(requested.rows)))
-            : Math.max(10, Math.floor(effectiveHeight / cell.height));
-
-        // Sanity check: ensure grid dimensions are reasonable
-        const maxReasonableCols = 400;
-        const maxReasonableRows = 150;
-
-        if (
-          estimatedCols > maxReasonableCols ||
-          estimatedRows > maxReasonableRows
-        ) {
-          moduleRef.current._free(configPtr);
-          const error = new Error(
-            `[createConfigStruct] Grid dimensions unreasonable: ${estimatedCols}x${estimatedRows} exceeds ${maxReasonableCols}x${maxReasonableRows} (containerHeight=${containerHeight}px was capped to ${effectiveHeight}px)`,
-          );
-          console.error("[createConfigStruct] DIMENSION SANITY CHECK FAILED", {
-            estimatedCols,
-            estimatedRows,
-            containerWidth,
-            containerHeight,
-            effectiveHeight,
-            maxReasonableCols,
-            maxReasonableRows,
-          });
-          throw error;
-        }
-
-        console.debug("[createConfigStruct] ALLOCATING", {
-          configPtr,
-          configSize,
-          containerWidth,
-          containerHeight,
-          estimatedCols,
-          estimatedRows,
-          isMatrixMode,
-        });
-
-        writeConfigStructFields(
-          configPtr,
-          estimatedCols,
-          estimatedRows,
-          isMatrixMode,
-        );
-
-        console.debug(
-          "[createConfigStruct] CONFIG WRITTEN, returning configPtr",
-        );
-
-        return { configPtr, estimatedCols, estimatedRows };
-      } catch (err) {
-        console.error("[createConfigStruct] ERROR:", err);
-        throw err;
-      }
-    },
-    [writeConfigStructFields],
-  );
-
-  // Call WASM renderer creation and return renderer pointer
-  const callRendererCreate = useCallback(
-    (configPtr: number, outPtr: number) => {
-      if (!moduleRef.current) {
-        throw new Error("moduleRef.current is null during callRendererCreate");
-      }
-
-      console.debug("[callRendererCreate] CALLING _term_renderer_create", {
-        configPtr,
-        outPtr,
-      });
-
-      const result = moduleRef.current._term_renderer_create(configPtr, outPtr);
-
-      console.debug("[callRendererCreate] _term_renderer_create returned", {
-        result,
-      });
-
-      if (result !== 0) {
-        throw new Error(
-          `term_renderer_create failed with error code ${result}`,
-        );
-      }
-
-      const rendererPtr = new DataView(
-        moduleRef.current.HEAPU8.buffer,
-        outPtr,
-        4,
-      ).getUint32(0, true);
-      console.debug("[callRendererCreate] EXTRACTED rendererPtr", {
-        rendererPtr,
-      });
-      return rendererPtr;
-    },
-    [],
-  );
-
-  // Get actual renderer dimensions (grid and pixel)
-  const getRendererDimensions = useCallback(() => {
-    if (!moduleRef.current) {
-      throw new Error("moduleRef.current is null during getRendererDimensions");
+  // Embind owns the renderer and builds its configuration on the C side.
+  const callRendererCreate = useCallback((config: RendererConfig) => {
+    const module = moduleRef.current;
+    if (!module) throw new Error("WASM renderer module is unavailable");
+    const renderer = new module.TerminalRendererBinding(
+      config.cols,
+      config.rows,
+      browserRasterFontSize(config.matrix),
+      config.matrix,
+      rendererFontSelection(config.matrix),
+    );
+    if (!renderer.valid()) {
+      const code = renderer.error();
+      renderer.delete();
+      throw new Error(`term_renderer_create failed with error code ${code}`);
     }
-
-    console.debug(
-      "[getRendererDimensions] CALLING getter functions with rendererPtr",
-      {
-        rendererPtr: rendererPtrRef.current,
-      },
-    );
-
-    const cols = moduleRef.current._term_renderer_get_cols(
-      rendererPtrRef.current,
-    );
-    const rows = moduleRef.current._term_renderer_get_rows(
-      rendererPtrRef.current,
-    );
-    const pixelWidth = moduleRef.current._term_renderer_width_px(
-      rendererPtrRef.current,
-    );
-    const pixelHeight = moduleRef.current._term_renderer_height_px(
-      rendererPtrRef.current,
-    );
-
-    console.debug("[getRendererDimensions] RETRIEVED", {
-      cols,
-      rows,
-      pixelWidth,
-      pixelHeight,
-    });
-
-    return {
-      cols,
-      rows,
-      pixelWidth,
-      pixelHeight,
-    };
+    return renderer;
   }, []);
 
+  const createConfigStruct = useCallback(
+    (containerWidth: number, containerHeight: number, isMatrixMode = false) => {
+      const module = moduleRef.current;
+      if (!module) throw new Error("WASM renderer module is unavailable");
+      const selection = rendererFontSelection(isMatrixMode);
+      const metricKey = `${selection}`;
+      let cell = cellMetricsRef.current.get(metricKey);
+      if (!cell) {
+        const probe = callRendererCreate({
+          cols: 1,
+          rows: 1,
+          matrix: isMatrixMode,
+        });
+        try {
+          cell = { width: probe.width(), height: probe.height() };
+          if (cell.width <= 0 || cell.height <= 0)
+            throw new Error("Renderer font has invalid cell dimensions");
+          cellMetricsRef.current.set(metricKey, cell);
+        } finally {
+          probe.delete();
+        }
+      }
+      const requested = requestedGridRef.current;
+      const estimatedCols =
+        requested.columns > 0
+          ? Math.min(400, Math.max(20, Math.floor(requested.columns)))
+          : Math.max(20, Math.floor(containerWidth / cell.width));
+      const estimatedRows =
+        requested.rows > 0
+          ? Math.min(150, Math.max(10, Math.floor(requested.rows)))
+          : Math.max(
+              10,
+              Math.floor(Math.min(containerHeight, 2000) / cell.height),
+            );
+      if (estimatedCols > 400 || estimatedRows > 150)
+        throw new Error(
+          `Grid dimensions exceed limit: ${estimatedCols}x${estimatedRows}`,
+        );
+      const configPtr: RendererConfig = {
+        cols: estimatedCols,
+        rows: estimatedRows,
+        matrix: isMatrixMode,
+      };
+      return { configPtr, estimatedCols, estimatedRows };
+    },
+    [callRendererCreate],
+  );
+
+  const getRendererDimensions = useCallback(() => {
+    const renderer = rendererPtrRef.current;
+    if (!renderer) throw new Error("WASM renderer is unavailable");
+    return {
+      cols: renderer.cols(),
+      rows: renderer.rows(),
+      pixelWidth: renderer.width(),
+      pixelHeight: renderer.height(),
+    };
+  }, []);
   // Handle container resize by recreating renderer and updating canvas
   const handleContainerResize = useCallback(
     (newWidth: number, newHeight: number, canvas: HTMLCanvasElement) => {
@@ -430,11 +190,8 @@ export function useInitAsciiRenderer({
           estimatedCols,
           estimatedRows,
         });
-        const outPtr = moduleRef.current._malloc(4);
-        console.debug("[handleContainerResize] Allocated outPtr", { outPtr });
-
         console.debug(`[handleContainerResize] CALLING callRendererCreate...`);
-        const rendererPtr = callRendererCreate(configPtr, outPtr);
+        const rendererPtr = callRendererCreate(configPtr);
         rendererPtrRef.current = rendererPtr;
 
         console.debug("[handleContainerResize] CALLING getRendererDimensions");
@@ -448,7 +205,7 @@ export function useInitAsciiRenderer({
           }
         } catch (error) {
           rendererPtrRef.current = oldRendererPtr;
-          moduleRef.current._term_renderer_destroy(rendererPtr);
+          rendererPtr.delete();
           throw error;
         }
 
@@ -464,7 +221,7 @@ export function useInitAsciiRenderer({
         canvas.height = dims.pixelHeight;
 
         // Keep the current renderer usable until its replacement is complete.
-        moduleRef.current._term_renderer_destroy(oldRendererPtr);
+        oldRendererPtr.delete();
 
         // Debounce dimension updates to batch multiple resize events
         // Prevents render loop from restarting on every ResizeObserver fire
@@ -482,9 +239,6 @@ export function useInitAsciiRenderer({
           }
           resizeTimeoutRef.current = null;
         }, 300);
-
-        moduleRef.current._free(configPtr);
-        moduleRef.current._free(outPtr);
       } catch (err) {
         // Attempt recovery without reinitialization
         console.error("[AsciiRenderer] FATAL: Failed to resize renderer:", err);
@@ -504,7 +258,7 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
-              const recoveryIsMatrixMode = getMatrixRain();
+              const recoveryIsMatrixMode = currentMatrixModeRef.current;
               const recoveryPixelsPerRow = recoveryIsMatrixMode ? 32 : 20;
               const recoveryCols = Math.max(1, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
@@ -530,25 +284,30 @@ export function useInitAsciiRenderer({
                 recoveryHeight,
                 recoveryIsMatrixMode,
               );
-              const retryOutPtr = moduleRef.current?._malloc(
-                RENDERER_OUT_BUFFER_SIZE,
-              );
-              if (retryOutPtr) {
-                const retryRendererPtr = callRendererCreate(
-                  retryConfigPtr,
-                  retryOutPtr,
-                );
-                rendererPtrRef.current = retryRendererPtr;
-                const retryDims = getRendererDimensions();
-                canvas.width = retryDims.pixelWidth;
-                canvas.height = retryDims.pixelHeight;
-                moduleRef.current?._free(retryConfigPtr);
-                moduleRef.current?._free(retryOutPtr);
-                console.debug(
-                  "[AsciiRenderer] Recovery successful with dimensions:",
-                  retryDims,
+              const retryRendererPtr = callRendererCreate(retryConfigPtr);
+              rendererPtrRef.current = retryRendererPtr;
+              const retryDims = getRendererDimensions();
+              if (retryDims.pixelWidth <= 0 || retryDims.pixelHeight <= 0) {
+                rendererPtrRef.current = oldRendererPtr;
+                retryRendererPtr.delete();
+                throw new Error(
+                  "recovery renderer has invalid pixel dimensions",
+                  { cause: err },
                 );
               }
+              canvas.width = retryDims.pixelWidth;
+              canvas.height = retryDims.pixelHeight;
+              oldRendererPtr.delete();
+              if (resizeTimeoutRef.current) {
+                clearTimeout(resizeTimeoutRef.current);
+                resizeTimeoutRef.current = null;
+              }
+              pendingDimensionsRef.current = null;
+              updateDimensionsRef.current?.(retryDims.cols, retryDims.rows);
+              console.debug(
+                "[AsciiRenderer] Recovery successful with dimensions:",
+                retryDims,
+              );
             } catch (recoveryErr) {
               console.error(
                 "[AsciiRenderer] Recovery also failed:",
@@ -607,11 +366,6 @@ export function useInitAsciiRenderer({
 
       moduleRef.current.canvas = canvas;
 
-      // A shared client WASM instance already has initialized options. Running
-      // mirror_init_with_args on it would initialize the same C option state a
-      // second time and switch the active mode underneath the client.
-      if (initializeOptions) reinitializeWithCurrentSettings();
-
       const container = canvas.parentElement;
       const containerRect = container?.getBoundingClientRect();
       const containerWidth = Math.round(containerRect?.width ?? 1200);
@@ -629,19 +383,13 @@ export function useInitAsciiRenderer({
         containerHeight,
         isMatrixMode,
       );
-      const outPtr = moduleRef.current._malloc(RENDERER_OUT_BUFFER_SIZE);
-
-      const rendererPtr = callRendererCreate(configPtr, outPtr);
+      const rendererPtr = callRendererCreate(configPtr);
       rendererPtrRef.current = rendererPtr;
 
       // Get actual dimensions and set canvas size
       const dims = getRendererDimensions();
       canvas.width = dims.pixelWidth;
       canvas.height = dims.pixelHeight;
-
-      // Free temporary buffers
-      moduleRef.current._free(configPtr);
-      moduleRef.current._free(outPtr);
 
       // Notify parent of initial dimensions
       updateDimensionsRef.current?.(dims.cols, dims.rows);
@@ -657,8 +405,6 @@ export function useInitAsciiRenderer({
       callRendererCreate,
       getRendererDimensions,
       setupResizeObserver,
-      reinitializeWithCurrentSettings,
-      initializeOptions,
       matrixMode,
     ],
   );
@@ -703,6 +449,17 @@ export function useInitAsciiRenderer({
       }
     };
   }, [wasmModuleReady, canvasRef, initializeRenderer]);
+
+  useEffect(
+    () => () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      rendererPtrRef.current?.delete();
+      rendererPtrRef.current = null;
+      setupDoneRef.current = false;
+    },
+    [],
+  );
 
   const triggerRendererRecreate = useCallback(() => {
     if (!moduleRef.current || !canvasRef.current || !setupDoneRef.current) {

@@ -599,6 +599,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(splash_screen, OPTIONS_VALUE_BOOL, "splash-screen"),
     FIELD(status_screen, OPTIONS_VALUE_BOOL, "status-screen"),
     FIELD(matrix_rain, OPTIONS_VALUE_BOOL, "matrix-rain"),
+    FIELD(audio_source, OPTIONS_VALUE_INT, "audio-source"),
     FIELD(waveform, OPTIONS_VALUE_BOOL, "waveform"),
     FIELD(fft, OPTIONS_VALUE_BOOL, "fft"),
     FIELD(fps_counter, OPTIONS_VALUE_BOOL, "fps-counter"),
@@ -655,6 +656,9 @@ bool options_remote_render_field(const char *name) {
 }
 
 static asciichat_error_t validate_field(const runtime_field_t *field, const options_t *candidate) {
+  if (!strcmp(field->name, "audio_source") &&
+      (candidate->audio_source < AUDIO_SOURCE_ALL || candidate->audio_source > AUDIO_SOURCE_MEDIA))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option 'audio_source'");
   const registry_entry_t *entry = registry_find_entry_by_name(field->cli);
   const char *ptr = (const char *)candidate + field->offset;
   if (entry && entry->validate_fn && !entry->validate_fn(candidate))
@@ -978,11 +982,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-                         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
-                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
-                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "speakers_volume") ||
-                         !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
+    if (!remote_only &&
+        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
+         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
+         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
+         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
+         !strcmp(field->name, "audio_enabled")))
       exposed = true;
     if (!exposed)
       continue;

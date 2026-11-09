@@ -1030,9 +1030,6 @@ typedef struct options_state {
   char mcp_downloads_url_prefix[OPTIONS_BUFF_SIZE]; ///< Public HTTP origin for download links
   char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
-  char http_tls_cert[OPTIONS_BUFF_SIZE];            ///< HTTP TLS certificate path
-  char http_tls_key[OPTIONS_BUFF_SIZE];             ///< HTTP TLS key path
-  char http_tls_key_password[OPTIONS_BUFF_SIZE];    ///< HTTP TLS key password
   int discovery_port;                               ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
                                                     ///< exclusive with discovery_port)
