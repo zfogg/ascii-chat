@@ -73,7 +73,9 @@ if (-not (Test-Path -LiteralPath $archive)) {
         Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
         try {
             Write-Host "LLVM download attempt $attempt/3"
-            Invoke-WebRequest -Uri $url -OutFile $partial -TimeoutSec 300
+            & curl.exe --fail --location --connect-timeout 30 --max-time 900 `
+                --retry 3 --retry-delay 5 --retry-all-errors --output $partial $url
+            if ($LASTEXITCODE -ne 0) { throw "curl.exe exited with code $LASTEXITCODE" }
             $downloaded = $true
         } catch {
             if ($attempt -eq 3) { throw }
