@@ -1,6 +1,7 @@
 const HANDOFF_FRAME_SIZE = 64;
 const HANDOFF_PROBE_PAYLOAD_SIZE = 65536;
 import { getClientModule, processClientEvent } from "../wasm/client";
+import type { BrowserHostBinding } from "@ascii-chat/shared/wasm";
 import type { JoinedSession } from "./acdsProtocol";
 
 export const HANDOFF_PACKET = 6090;
@@ -11,6 +12,7 @@ export class HandoffProtocol {
   private sequence = 0;
   private stopped = false;
   private prepared = false;
+  private preparedHost: BrowserHostBinding | null = null;
   constructor(
     private joined: JoinedSession,
     private send: (type: number, data: Uint8Array) => void,
@@ -80,8 +82,9 @@ export class HandoffProtocol {
     ) {
       const module = getClientModule();
       if (!module) throw new Error("Client WASM module is unavailable");
-      const result = module.browser_host_create();
-      this.prepared = result === 0;
+      const host = new module.BrowserHostBinding();
+      this.preparedHost = host;
+      this.prepared = host.valid();
       this.send(
         HANDOFF_PACKET,
         this.frame(result ? 7 : 4, action.generation, action.sequence),
@@ -114,7 +117,9 @@ export class HandoffProtocol {
   }
   private releasePreparedHost(): void {
     if (this.prepared) {
-      getClientModule()?.browser_host_destroy();
+      this.preparedHost?.close();
+      this.preparedHost?.delete();
+      this.preparedHost = null;
       this.prepared = false;
     }
   }

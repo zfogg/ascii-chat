@@ -446,6 +446,17 @@ export interface DiscoveryBinding extends ClassHandle {
   process(_0: any): any;
 }
 
+export interface BrowserHostBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  close(): void;
+  addClient(): number;
+  removeClient(_0: number): void;
+  setLocalClient(_0: number): number;
+  render(): number;
+  renderAudio(): number;
+}
+
 export interface HostPacketBinding extends ClassHandle {
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
@@ -546,15 +557,11 @@ interface EmbindModule {
   DiscoveryBinding: {
     new (): DiscoveryBinding;
   };
-  browser_host_create(): number;
-  browser_host_destroy(): void;
-  browser_host_add_client(): number;
-  browser_host_set_local_client(_0: number): number;
-  browser_host_remove_client(_0: number): void;
-  browser_host_render(): number;
-  browser_host_render_audio(): number;
+  BrowserHostBinding: {
+    new (): BrowserHostBinding;
+  };
   HostPacketBinding: {
-    new (): HostPacketBinding;
+    new (_0: BrowserHostBinding): HostPacketBinding;
   };
   browser_options_revision(): number;
   clientSettings(): string | undefined;

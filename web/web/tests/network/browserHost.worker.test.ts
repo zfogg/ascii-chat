@@ -3,12 +3,19 @@ const wasm = vi.hoisted(() => ({
   hostPacketCallback: undefined as
     | undefined
     | ((id: number, bytes: Uint8Array) => void),
-  browser_host_create: () => 0,
-  browser_host_add_client: vi.fn(() => 1),
-  browser_host_set_local_client: vi.fn(() => 0),
-  browser_host_render: vi.fn(() => 0),
-  browser_host_render_audio: vi.fn(() => 0),
-  HostPacketBinding: class {},
+  BrowserHostBinding: class {
+    constructor() { wasm.host = this; }
+    valid = vi.fn(() => true);
+    addClient = vi.fn(() => 1);
+    setLocalClient = vi.fn(() => 0);
+    render = vi.fn(() => 0);
+    renderAudio = vi.fn(() => 0);
+  },
+  host: undefined as any,
+  HostPacketBinding: class {
+    constructor(_host: unknown) {}
+    receive = vi.fn(() => 0);
+  },
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},
@@ -35,18 +42,19 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   });
   const scope = { postMessage: vi.fn(), onmessage: undefined as any };
   vi.stubGlobal("self", scope);
-  wasm.browser_host_render.mockImplementation(() => {
-    wasm.hostPacketCallback?.(1, new Uint8Array([1]));
-    return 0;
-  });
   await import("../../src/network/browserHost.worker");
   const send = async (data: object) => {
     scope.onmessage({ data });
     for (let i = 0; i < 8; i++) await Promise.resolve();
   };
   await send({ kind: "init" });
+  const host = wasm.host;
+  host.render.mockImplementation(() => {
+    wasm.hostPacketCallback?.(1, new Uint8Array([1]));
+    return 0;
+  });
   await send({ kind: "add", id: 1, local: true });
-  expect(wasm.browser_host_set_local_client).toHaveBeenCalledWith(1);
+  expect(host.setLocalClient).toHaveBeenCalledWith(1);
   await vi.advanceTimersByTimeAsync(34);
   const batches = () =>
     scope.postMessage.mock.calls.filter(([m]) => m.kind === "packets");
@@ -54,7 +62,7 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   await vi.advanceTimersByTimeAsync(100);
   expect(batches()).toHaveLength(2);
   expect(vi.getTimerCount()).toBe(1); // Audio continues on its independent clock.
-  expect(wasm.browser_host_render_audio).toHaveBeenCalled();
+  expect(host.renderAudio).toHaveBeenCalled();
   await send({
     kind: "video",
     id: 1,
@@ -76,19 +84,19 @@ it("delivers synchronous admission readiness to the logical client before C id r
   vi.useFakeTimers();
   const scope = { postMessage: vi.fn(), onmessage: undefined as any };
   vi.stubGlobal("self", scope);
-  wasm.browser_host_render.mockImplementation(() => 0);
-  const readiness = new Uint8Array(22);
-  wasm.browser_host_add_client.mockImplementation(() => {
-    // session_host_set_client_transport sends SERVER_STATE before returning.
-    wasm.hostPacketCallback?.(41, readiness);
-    return 41;
-  });
   await import("../../src/network/browserHost.worker");
+  const readiness = new Uint8Array(22);
   const send = async (data: object) => {
     scope.onmessage({ data });
     for (let i = 0; i < 8; i++) await Promise.resolve();
   };
   await send({ kind: "init" });
+  const host = wasm.host;
+  host.addClient.mockImplementation(() => {
+    // session_host_set_client_transport sends SERVER_STATE before returning.
+    wasm.hostPacketCallback?.(41, readiness);
+    return 41;
+  });
   await send({ kind: "add", id: 91 });
   await vi.advanceTimersByTimeAsync(20);
   const packets = scope.postMessage.mock.calls

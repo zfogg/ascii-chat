@@ -8,11 +8,6 @@ const harness = vi.hoisted(() => ({
   disconnected: vi.fn(),
   module: {
     network_error_action: () => 1,
-    browser_host_create: () => 0,
-    browser_host_add_client: () => 1,
-    browser_host_remove_client: vi.fn(),
-    browser_host_destroy: vi.fn(),
-    browser_host_render: () => 0,
     hostPacketCallback: undefined as
       | undefined
       | ((id: number, bytes: Uint8Array) => void),
