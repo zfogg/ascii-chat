@@ -1032,6 +1032,14 @@ struct ContentView: View {
                     startSelectedSession()
                 }
             }
+            if ProcessInfo.processInfo.arguments.contains("--auto-start-discovery") && !didStart,
+               IOSMode.discovery.isImplemented {
+                selectedMode = .discovery
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    guard !didStart else { return }
+                    startSelectedSession()
+                }
+            }
         }
         .task {
             for await status in sessionModel.events() {
