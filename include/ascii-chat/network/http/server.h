@@ -64,6 +64,8 @@ asciichat_error_t http_server_init(http_server_t **server, const http_server_con
 asciichat_error_t http_server_start(http_server_t *server);
 void http_server_stop(http_server_t *server);
 void http_server_destroy(http_server_t **server);
+/** Run the server loop when embedding the server without a background thread. */
+asciichat_error_t http_server_run(http_server_t *server);
 
 const http_request_info_t *http_request_info(const http_request_t *request);
 const void *http_request_body(const http_request_t *request, size_t *length);

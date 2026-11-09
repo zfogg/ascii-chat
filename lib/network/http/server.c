@@ -1,5 +1,6 @@
 #include <ascii-chat/network/http/server.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/thread.h>
 #include <uv.h>
 #include <string.h>
 
@@ -10,7 +11,10 @@ struct http_server {
   http_server_config_t config;
   uv_loop_t loop;
   uv_tcp_t listener;
+  uv_async_t stop_async;
   bool running;
+  bool loop_started;
+  asciichat_thread_t thread;
   size_t connections;
 };
 struct http_request {
@@ -37,9 +41,12 @@ typedef struct {
   char *buffer;
   size_t length;
 } http_client_t;
+static void stop_async_cb(uv_async_t *async);
 
 static void client_freed(uv_handle_t *handle) {
   http_client_t *c = handle->data;
+  if (c->server->connections)
+    c->server->connections--;
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
 }
@@ -52,17 +59,22 @@ static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
   b->base = SAFE_MALLOC(n, char *);
   b->len = (unsigned)n;
 }
-static const char *header_value(http_request_t *r, const char *name) {
-  for (size_t i = 0; i < r->info.header_count; i++)
-    if (!_stricmp(r->headers[i].name, name))
-      return r->headers[i].value;
-  return NULL;
-}
 static bool parse_request(http_client_t *c, http_request_t *r) {
   char *end = strstr(c->buffer, "\r\n\r\n");
   if (!end)
     return false;
   size_t head = (size_t)(end - c->buffer) + 4;
+  size_t body = 0;
+  for (char *scan = strstr(c->buffer, "\r\n") + 2; scan < end;) {
+    char *next = strstr(scan, "\r\n");
+    if (!next)
+      return false;
+    if (_strnicmp(scan, "Content-Length:", 15) == 0)
+      body = (size_t)strtoull(scan + 15, NULL, 10);
+    scan = next + 2;
+  }
+  if (body > c->server->config.max_request_body_bytes || c->length < head + body)
+    return false;
   char *line = c->buffer;
   char *nl = strstr(line, "\r\n");
   if (!nl)
@@ -100,10 +112,6 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
     }
     p = next + 2;
   }
-  const char *cl = header_value(r, "Content-Length");
-  size_t body = cl ? (size_t)strtoull(cl, NULL, 10) : 0;
-  if (body > c->server->config.max_request_body_bytes || c->length < head + body)
-    return false;
   r->body_offset = head;
   r->body_length = body;
   r->info.headers = r->headers;
@@ -225,7 +233,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     client_close(c);
     return;
   }
-  if (c->length + (size_t)n > HTTP_READ_CAPACITY) {
+  if (c->length + (size_t)n >= HTTP_READ_CAPACITY) {
     SAFE_FREE(base);
     client_close(c);
     return;
@@ -247,6 +255,8 @@ static void connection_cb(uv_stream_t *l, int status) {
   if (status < 0)
     return;
   http_server_t *s = l->data;
+  if (s->connections >= s->config.max_connections)
+    return;
   http_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_client_t *);
   c->server = s;
   c->buffer = SAFE_CALLOC(HTTP_READ_CAPACITY, 1, char *);
@@ -258,11 +268,27 @@ static void connection_cb(uv_stream_t *l, int status) {
   } else
     client_close(c);
 }
+static void stop_async_cb(uv_async_t *async) {
+  http_server_t *s = async->data;
+  if (!uv_is_closing((uv_handle_t *)&s->listener))
+    uv_close((uv_handle_t *)&s->listener, NULL);
+  uv_close((uv_handle_t *)async, NULL);
+  uv_stop(&s->loop);
+}
+static void *http_loop_thread(void *arg) {
+  http_server_t *s = arg;
+  s->loop_started = true;
+  uv_run(&s->loop, UV_RUN_DEFAULT);
+  uv_run(&s->loop, UV_RUN_DEFAULT);
+  return NULL;
+}
 asciichat_error_t http_server_init(http_server_t **out, const http_server_config_t *cfg) {
   if (!out || !cfg || !cfg->on_request || !cfg->enable_http1)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/1.1 and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
+  if (cfg->enable_http2 || cfg->enable_http3 || cfg->tls_certificate || cfg->tls_private_key)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Requested HTTP protocol or TLS backend is not enabled");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
   s->config = *cfg;
   if (uv_loop_init(&s->loop) != 0) {
@@ -271,6 +297,8 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   }
   uv_tcp_init(&s->loop, &s->listener);
   s->listener.data = s;
+  uv_async_init(&s->loop, &s->stop_async, stop_async_cb);
+  s->stop_async.data = s;
   *out = s;
   return ASCIICHAT_OK;
 }
@@ -284,6 +312,14 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
   s->running = true;
+  return acthread_create(&s->thread, "http_io", http_loop_thread, s) == 0
+             ? ASCIICHAT_OK
+             : SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
+}
+asciichat_error_t http_server_run(http_server_t *s) {
+  if (!s || !s->running)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is not running");
+  uv_run(&s->loop, UV_RUN_DEFAULT);
   return ASCIICHAT_OK;
 }
 void http_server_stop(http_server_t *s) {
@@ -291,7 +327,9 @@ void http_server_stop(http_server_t *s) {
     return;
   s->running = false;
   uv_close((uv_handle_t *)&s->listener, NULL);
-  uv_stop(&s->loop);
+  uv_async_send(&s->stop_async);
+  if (s->loop_started)
+    thread_join(&s->thread, NULL);
 }
 void http_server_destroy(http_server_t **p) {
   if (!p || !*p)
