@@ -39,8 +39,8 @@ MemoryDenyWriteExecute=yes
 LockPersonality=yes
 
 # Logging
-StandardOutput=journal
-StandardError=journal
+StandardOutput=null
+StandardError=null
 SyslogIdentifier=ascii-chat-discovery-service
 WatchdogSec=30s
 CPUQuota=100%

@@ -1,12 +1,14 @@
 #include <ascii-chat/platform/systemd.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
 #ifdef HAVE_LIBSYSTEMD
 #include <systemd/sd-daemon.h>
 #include <stdlib.h>
 extern int sd_booted(void) __attribute__((weak));
 extern int sd_notify(int unset_environment, const char *state) __attribute__((weak));
 extern int sd_watchdog_enabled(int unset_environment, uint64_t *usec) __attribute__((weak));
+extern int sd_journal_send(const char *format, ...) __attribute__((weak));
 #endif
 /** @brief Return whether systemd service-manager integration is available. */
 bool platform_systemd_is_managed(void) {
@@ -19,8 +21,11 @@ bool platform_systemd_is_managed(void) {
 /** @brief Notify systemd that service initialization completed. */
 void platform_systemd_notify_ready(void) {
 #ifdef HAVE_LIBSYSTEMD
-  if (platform_systemd_is_managed())
-    (void)sd_notify(0, "READY=1");
+  if (platform_systemd_is_managed() && sd_notify != NULL) {
+    char message[128];
+    (void)snprintf(message, sizeof(message), "READY=1\nMAINPID=%ld", (long)getpid());
+    (void)sd_notify(0, message);
+  }
 #endif
 }
 /** @brief Publish a human-readable service status to systemd. */
@@ -63,5 +68,22 @@ bool platform_systemd_watchdog_enabled(unsigned long long *usec) {
 #else
   (void)usec;
   return false;
+#endif
+}
+/** @brief Send a structured log record to journald when systemd manages us. */
+void platform_systemd_journal_log(int level, const char *message, const char *file, int line, const char *function) {
+#ifdef HAVE_LIBSYSTEMD
+  if (!platform_systemd_is_managed() || !sd_journal_send || !message)
+    return;
+  int priority = level >= 5 ? 2 : level >= 4 ? 3 : level >= 3 ? 4 : level >= 2 ? 6 : 7;
+  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "CODE_FILE=%s", file ? file : "",
+                        "CODE_LINE=%d", line, "CODE_FUNC=%s", function ? function : "", "SYSLOG_IDENTIFIER=%s",
+                        "ascii-chat");
+#else
+  (void)level;
+  (void)message;
+  (void)file;
+  (void)line;
+  (void)function;
 #endif
 }

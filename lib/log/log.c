@@ -44,6 +44,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -1316,6 +1317,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
+  platform_systemd_journal_log(level, log_buffer + header_len, file, line, func);
 
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;

@@ -19,3 +19,11 @@ bool platform_systemd_watchdog_enabled(unsigned long long *usec) {
   (void)usec;
   return false;
 }
+/** @brief Send a structured log record to journald when systemd manages us. */
+void platform_systemd_journal_log(int level, const char *message, const char *file, int line, const char *function) {
+  (void)level;
+  (void)message;
+  (void)file;
+  (void)line;
+  (void)function;
+}
