@@ -3,6 +3,8 @@
 # Provides: OpenSSL::Crypto, OpenSSL::SSL (or static equivalents)
 #
 
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Retry.cmake)
+
 set(ASCIICHAT_OPENSSL_RUNTIME_DIR "" CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
 set(ASCIICHAT_OPENSSL_SOURCE_VERSION "3.6.0")
 set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9")
@@ -44,21 +46,10 @@ if(PLATFORM_IOS)
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
         set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
-        if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
-            file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
-                "${OPENSSL_TARBALL}"
-                EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
-                STATUS DOWNLOAD_STATUS
-                SHOW_PROGRESS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                message(FATAL_ERROR "Failed to download OpenSSL: ${ERROR_MSG}")
-            endif()
-        endif()
+        asciichat_download_with_retry(
+            "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+            "${OPENSSL_TARBALL}" "${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
+        )
 
         # Extract tarball
         if(NOT EXISTS "${OPENSSL_SOURCE_DIR}/Configure")
@@ -206,21 +197,10 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
         set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
-        if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
-            file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
-                "${OPENSSL_TARBALL}"
-                EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
-                STATUS DOWNLOAD_STATUS
-                SHOW_PROGRESS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                message(FATAL_ERROR "Failed to download OpenSSL: ${ERROR_MSG}")
-            endif()
-        endif()
+        asciichat_download_with_retry(
+            "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+            "${OPENSSL_TARBALL}" "${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
+        )
 
         # Extract tarball
         if(NOT EXISTS "${OPENSSL_SOURCE_DIR}/Configure")
@@ -338,7 +318,6 @@ endif()
 if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
     set(OPENSSL_VERSION "${ASCIICHAT_OPENSSL_SOURCE_VERSION}")
     set(OPENSSL_DOWNLOAD_TAG "openssl-${OPENSSL_VERSION}")
-    set(OPENSSL_EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}")
     message(STATUS "Configuring ${BoldBlue}OpenSSL ${OPENSSL_VERSION}${ColorReset} from source...")
 
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}")
@@ -436,15 +415,10 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
 
         # Download OpenSSL source
         set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
-        if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
-            file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
-                "${OPENSSL_TARBALL}"
-                EXPECTED_HASH "${OPENSSL_EXPECTED_HASH}"
-                SHOW_PROGRESS
-            )
-        endif()
+        asciichat_download_with_retry(
+            "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
+            "${OPENSSL_TARBALL}" "${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
+        )
 
         # Extract tarball
         if(NOT EXISTS "${OPENSSL_SOURCE_DIR}/Configure")
