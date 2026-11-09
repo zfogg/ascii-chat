@@ -75,6 +75,7 @@ function wrap(inner: Uint8Array): Uint8Array {
 }
 vi.mock("../../src/wasm/client", () => ({
   processClientEvent: state.process,
+  drainClientOutputs: () => ({ code: 0, outputs: [] }),
   ConnectionState: { CONNECTED: 3 },
   throwWasmError: () => {
     throw new Error("WASM failure");
