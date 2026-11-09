@@ -66,6 +66,18 @@ Test(http_server, rejects_unavailable_http3_and_tls) {
   cr_assert_null(server);
 }
 
+Test(http_server, accepts_http3_with_preopened_endpoint) {
+  http_server_t *server = NULL;
+  http_server_config_t config = {.enable_http3 = true,
+                                 .http3_endpoint = (void *)1,
+                                 .max_connections = 1,
+                                 .max_request_body_bytes = 1024,
+                                 .on_request = request};
+  cr_assert_eq(http_server_init(&server, &config), ASCIICHAT_OK);
+  http_server_destroy(&server);
+  cr_assert_null(server);
+}
+
 Test(http_server, accepts_custom_request_rate_limit) {
   http_server_t *server = NULL;
   http_server_config_t config = {.bind_address = "127.0.0.1",

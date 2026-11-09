@@ -762,10 +762,10 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   }
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
-  params.initial_max_streams_uni = tls->webtransport ? 6 : 3;
-  params.initial_max_streams_bidi = tls->webtransport ? 1 : 0;
-  params.initial_max_stream_data_bidi_local = tls->webtransport ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
-  params.initial_max_stream_data_bidi_remote = tls->webtransport ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
+  params.initial_max_streams_uni = tls->http3 ? 6 : 3;
+  params.initial_max_streams_bidi = tls->http3 ? 1 : 0;
+  params.initial_max_stream_data_bidi_local = tls->http3 ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
+  params.initial_max_stream_data_bidi_remote = tls->http3 ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
   params.initial_max_stream_data_uni = ACIP_QUIC_INITIAL_STREAM_WINDOW;
   params.initial_max_data = ACIP_QUIC_INITIAL_CONNECTION_WINDOW;
   params.max_idle_timeout = ACIP_QUIC_IDLE_TIMEOUT_NS;
@@ -852,7 +852,7 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
     unsigned int protocol_length = 0;
     SSL_get0_alpn_selected(connection->ssl, &protocol, &protocol_length);
     connection->webtransport =
-        connection->tls->webtransport && protocol_length == 2 && protocol && !memcmp(protocol, "h3", sizeof("h3") - 1);
+        connection->tls->http3 && protocol_length == 2 && protocol && !memcmp(protocol, "h3", sizeof("h3") - 1);
     connection->tls_ready = true;
   }
   if (connection->tls_ready && connection->webtransport && !connection->http3) {
@@ -868,7 +868,7 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
     }
     asciichat_error_t result =
         acip_http3_server_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
-                                 encoder, decoder, &connection->http3);
+                                 encoder, decoder, connection->tls->http_server, &connection->http3);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
       return result;
@@ -1484,7 +1484,8 @@ asciichat_error_t quic_connection_handle_expiry(acip_quic_connection_t *connecti
 
 bool quic_connection_accept_ready(const acip_quic_connection_t *connection) {
   return connection && connection->tls_ready && !connection->failed &&
-         (!connection->webtransport || quic_connection_webtransport_ready(connection));
+         (!connection->webtransport || !connection->tls->webtransport ||
+          quic_connection_webtransport_ready(connection));
 }
 
 bool quic_connection_webtransport_ready(const acip_quic_connection_t *connection) {

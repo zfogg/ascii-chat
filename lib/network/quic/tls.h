@@ -5,6 +5,8 @@
 #include <openssl/ssl.h>
 #include <stdbool.h>
 
+typedef struct http_server http_server_t;
+
 /* The context and its ALPN storage must outlive every SSL created from it. */
 typedef struct {
   SSL_CTX *ssl_ctx;
@@ -14,7 +16,9 @@ typedef struct {
   /* Set before creating connections; defaults to disabled. */
   bool enable_datagrams;
   bool webtransport;
+  bool http3;
   bool accept_native;
+  http_server_t *http_server;
   char webtransport_origin[512];
   char webtransport_path[512];
   /**

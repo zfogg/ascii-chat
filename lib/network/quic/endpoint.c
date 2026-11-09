@@ -143,6 +143,12 @@ asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t l
     return SET_ERRNO(ERROR_THREAD, "Cannot initialize QUIC endpoint lane");
   }
   bool webtransport = config->webtransport_origin || config->webtransport_path;
+  bool http3 = webtransport || config->enable_http3 || config->http_server;
+  if (http3 && config->alpn && strcmp(config->alpn, "h3") != 0) {
+    mutex_destroy(&endpoint->lane);
+    SAFE_FREE(endpoint);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires the h3 ALPN");
+  }
   if (webtransport &&
       (!listener || !config->enable_datagrams || !config->webtransport_origin || !config->webtransport_path ||
        strncmp(config->webtransport_origin, "https://", sizeof("https://") - 1) != 0 ||
@@ -156,14 +162,16 @@ asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t l
     SAFE_FREE(endpoint);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid WebTransport listener configuration");
   }
-  const char *alpn = config->alpn ? config->alpn : webtransport ? "h3" : "acip/1";
+  const char *alpn = config->alpn ? config->alpn : http3 ? "h3" : "acip/1";
   asciichat_error_t result =
       listener ? quic_tls_server_create(alpn, config->certificate_file, config->private_key_file, &endpoint->tls)
                : quic_tls_client_create(alpn, config->ca_file, &endpoint->tls);
   if (result == ASCIICHAT_OK) {
     endpoint->tls->enable_datagrams = config->enable_datagrams;
     endpoint->tls->webtransport = webtransport;
+    endpoint->tls->http3 = http3;
     endpoint->tls->accept_native = webtransport && config->accept_native;
+    endpoint->tls->http_server = config->http_server;
     if (endpoint->tls->accept_native) {
       static const unsigned char protocols[] = {2, 'h', '3', 6, 'a', 'c', 'i', 'p', '/', '1'};
       memcpy(endpoint->tls->alpn, protocols, sizeof(protocols));
@@ -193,6 +201,19 @@ asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t l
   }
   *out = endpoint;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t quic_endpoint_set_http_server(acip_quic_endpoint_t *endpoint, http_server_t *server) {
+  if (!endpoint || !endpoint->listener || !endpoint->tls || !endpoint->tls->http3)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Endpoint is not an HTTP/3 listener");
+  mutex_lock(&endpoint->lane);
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (endpoint->stopping || endpoint->count)
+    result = SET_ERRNO(ERROR_INVALID_STATE, "HTTP/3 handler must be attached before connections");
+  else
+    endpoint->tls->http_server = server;
+  mutex_unlock(&endpoint->lane);
+  return result;
 }
 
 asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct sockaddr_storage *address,

@@ -132,7 +132,7 @@ static void pump_client_delayed_settings(nghttp3_conn *client, acip_http3_server
 static void exchange(unsigned scenario) {
   bool allowed = scenario == 0 || scenario == 5;
   acip_http3_server_t *server = NULL;
-  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, &server) == ASCIICHAT_OK);
+  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, NULL, &server) == ASCIICHAT_OK);
   client_state_t capture = {0};
   nghttp3_callbacks callbacks = {
       .recv_header = recv_header, .end_headers = end_headers, .recv_settings2 = recv_settings};
@@ -192,7 +192,7 @@ static uint64_t read_varint(const uint8_t *data, size_t length, size_t *offset) 
 }
 static void test_output_contract(void) {
   acip_http3_server_t *server = NULL;
-  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, &server) == ASCIICHAT_OK);
+  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, NULL, &server) == ASCIICHAT_OK);
   nghttp3_vec vectors[2];
   int64_t stream;
   bool fin;
@@ -292,7 +292,7 @@ int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_http3_server_t *invalid = NULL;
-  CHECK(acip_http3_server_create("http://example", "/acip", 3, 7, 11, &invalid) == ERROR_INVALID_PARAM);
+  CHECK(acip_http3_server_create("http://example", "/acip", 3, 7, 11, NULL, &invalid) == ERROR_INVALID_PARAM);
   CHECK(!invalid);
   test_output_contract();
   test_discovered_endpoint();

@@ -3,10 +3,12 @@
 #include <ascii-chat/network/acip/transport.h>
 
 /** QUIC endpoint for native ACIP and optional HTTP/3 WebTransport. A listener
- * @brief When code needs to work with acip quic config, it keeps `alpn`, `certificate_file`, `private_key_file`, `ca_file` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
- * can negotiate both wire protocols by ALPN on one UDP socket. Requires the
- * platform socket subsystem to be initialized. */
+ * @brief When code needs to work with acip quic config, it keeps `alpn`, `certificate_file`, `private_key_file`,
+ * `ca_file` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown
+ * must release any allocation, lock, thread, or callback context recorded in those fields. can negotiate both wire
+ * protocols by ALPN on one UDP socket. Requires the platform socket subsystem to be initialized. */
 typedef struct acip_quic_endpoint acip_quic_endpoint_t;
+typedef struct http_server http_server_t;
 
 typedef struct {
   const char *alpn;                /**< NULL selects "acip/1". */
@@ -19,29 +21,35 @@ typedef struct {
   bool accept_native;           /**< Also accept acip/1 on a server WebTransport listener. */
   bool prefer_visual_datagrams; /**< Prefer negotiated visual datagrams. */
   bool prefer_audio_datagrams;  /**< Send audio as datagrams when negotiated; otherwise use reliable streams. */
+  bool enable_http3;            /**< Enable generic HTTP/3 request streams on this endpoint. */
+  /** Optional shared HTTP handler for generic HTTP/3 requests on this endpoint. */
+  http_server_t *http_server;
 } acip_quic_config_t;
+
+/** Attach the shared HTTP handler before accepting new HTTP/3 streams. */
+asciichat_error_t quic_endpoint_set_http_server(acip_quic_endpoint_t *endpoint, http_server_t *server);
 
 /** Bind a concrete IPv4 or IPv6 local address and start the endpoint worker.
  * Configuration strings are consumed during this call. The caller retains
  * address storage. A listener requires a matching certificate and key. */
 asciichat_error_t quic_endpoint_open(const struct sockaddr *bind_address, socklen_t bind_length, bool listener,
-                                          const acip_quic_config_t *config, acip_quic_endpoint_t **out);
+                                     const acip_quic_config_t *config, acip_quic_endpoint_t **out);
 asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct sockaddr_storage *address,
-                                             socklen_t *length);
+                                        socklen_t *length);
 
 /** Start a client connection to a resolved address. server_name is used for
  * certificate identity verification and is required even for an IP address.
  * The returned transport is owned by the caller and is initially
  * negotiating TLS. Check capabilities for TLS readiness before ACIP handshake.
  * No application media is enabled until ACIP authentication and readiness. */
-asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sockaddr *remote,
-                                    socklen_t remote_length, const char *server_name, acip_transport_t **out);
+asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length,
+                               const char *server_name, acip_transport_t **out);
 /** Nonblocking accept. Returns ERROR_NETWORK_TIMEOUT when none is available.
  * A returned transport is owned and may still be negotiating TLS. */
 asciichat_error_t quic_accept(acip_quic_endpoint_t *endpoint, acip_transport_t **out);
 /** Copy the current peer address. It may change after a validated migration. */
 asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
-                                                   socklen_t *length);
+                                              socklen_t *length);
 
 /** Start the authenticated transition after the existing ACIP handshake.
  * crypto is borrowed and must outlive the transport. After this call the
@@ -71,4 +79,4 @@ asciichat_error_t quic_endpoint_destroy(acip_quic_endpoint_t **endpoint);
  * A rejected migration retains the original socket and live connection.
  * The new address must have the same family as the existing remote address. */
 asciichat_error_t quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const struct sockaddr *local_address,
-                                             socklen_t length);
+                                        socklen_t length);

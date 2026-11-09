@@ -1,4 +1,6 @@
 #include <ascii-chat/network/http/server.h>
+#include <ascii-chat/network/acip/quic.h>
+#include "server_internal.h"
 #include "http2.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
@@ -53,6 +55,8 @@ struct http_response {
   bool finished;
   bool deferred;
   bool retained;
+  http3_submit_response_fn http3_submit;
+  void *http3_context;
 };
 struct http_client {
   uv_tcp_t tcp;
@@ -265,9 +269,20 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   copy->http2_stream_id = r->http2_stream_id;
   copy->protocol = r->protocol;
   copy->max_body_length = r->max_body_length;
+  copy->http3_submit = r->http3_submit;
+  copy->http3_context = r->http3_context;
   copy->status = r->status;
   copy->header_count = r->header_count;
   memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
+  if (r->body_length) {
+    copy->body = SAFE_MALLOC(r->body_length, char *);
+    if (!copy->body) {
+      SAFE_FREE(copy);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot retain HTTP response body");
+    }
+    memcpy(copy->body, r->body, r->body_length);
+    copy->body_length = r->body_length;
+  }
   copy->retained = true;
   r->deferred = true;
   r->retained = true;
@@ -307,6 +322,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
+  if (r->http3_submit)
+    return r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
   if (r->client && r->client->http2_mode) {
     asciichat_error_t result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status,
                                                                 r->headers, r->header_count, r->body, r->body_length);
@@ -344,6 +361,36 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   uv_buf_t b = uv_buf_init(out, n);
   return uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
                                                         : SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+}
+
+asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *method, const char *path,
+                                             const http_header_t *headers, size_t header_count, const void *body,
+                                             size_t body_length, const char *peer_address,
+                                             http3_submit_response_fn submit, void *submit_context) {
+  if (!server || !method || !path || (header_count && !headers) || (!body && body_length) || !submit ||
+      body_length > server->config.max_request_body_bytes)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 request");
+  http_request_t request = {0};
+  request.info = (http_request_info_t){.method = method,
+                                       .path = path,
+                                       .protocol = HTTP_PROTOCOL_3,
+                                       .headers = headers,
+                                       .header_count = header_count,
+                                       .peer_address = peer_address,
+                                       .user_data = server->config.user_data};
+  request.storage = (char *)body;
+  request.body_length = body_length;
+  http_response_t response = {.status = 200,
+                              .max_body_length = server->config.max_request_body_bytes,
+                              .http3_submit = submit,
+                              .http3_context = submit_context};
+  server->config.on_request(&request, &response, server->config.user_data);
+  if (!response.finished && !response.deferred) {
+    asciichat_error_t result = http_response_finish(&response);
+    SAFE_FREE(response.body);
+    return result;
+  }
+  return ASCIICHAT_OK;
 }
 const http_request_info_t *http_request_info(const http_request_t *r) {
   return r ? &r->info : NULL;
@@ -395,6 +442,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                                .max_body_length = client->server->config.max_request_body_bytes,
                                .status = 429};
     asciichat_error_t result = http_response_finish(&limited);
+    SAFE_FREE(limited.body);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
     return result;
@@ -409,6 +457,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
+    SAFE_FREE(response.body);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
     return result;
@@ -536,8 +585,8 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
-  if (cfg->enable_http3 || cfg->tls_certificate || cfg->tls_private_key)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Requested HTTP/3 or TLS backend is not enabled");
+  if ((cfg->enable_http3 && !cfg->http3_endpoint) || cfg->tls_certificate || cfg->tls_private_key)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS is endpoint-owned");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
   s->rate_limiter = rate_limiter_create_memory();
   if (!s->rate_limiter) {
@@ -581,6 +630,9 @@ asciichat_error_t http_server_wakeup(http_server_t *s) {
 asciichat_error_t http_server_start(http_server_t *s) {
   if (!s || s->running)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is already running");
+  if (s->config.enable_http3 &&
+      quic_endpoint_set_http_server((acip_quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
   const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
   struct sockaddr_storage address;
   int rc;

@@ -55,6 +55,8 @@ typedef struct {
   bool enable_http3;
   const char *tls_certificate;
   const char *tls_private_key;
+  /** Optional pre-opened QUIC HTTP/3 endpoint; ownership remains with caller. */
+  void *http3_endpoint;
   size_t max_connections;
   size_t max_request_body_bytes;
   /** Maximum requests per peer during the configured rate window; zero uses the safe default. */
