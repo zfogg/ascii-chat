@@ -86,7 +86,9 @@ test("binding failures record actionable C errors", async ({ page }) => {
           processor.process(new Float32Array(4), new Float32Array(1)),
         ),
         snapshot(() => renderer.render("", 0)),
-        snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
+        snapshot(() =>
+          new m.FaceFollowBinding().detect(new Uint8ClampedArray(1), 1, 1, 0),
+        ),
         snapshot(() =>
           session.process({
             type: "receive-handshake-packet",
