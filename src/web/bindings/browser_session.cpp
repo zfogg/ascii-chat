@@ -58,6 +58,7 @@ public:
     if (!session_) {
       const int code = SET_ERRNO(ERROR_INVALID_STATE, "Browser session is not initialized");
       result.set("code", code);
+      result.set("ok", false);
       result.set("message", "Browser session is not initialized");
       result.set("retryable", false);
       result.set("outputs", emscripten::val::array());
@@ -135,6 +136,7 @@ public:
                                                        : emscripten::val::null());
     result.set("queuedBytes", browser_session_queued_bytes(session_.get()));
     result.set("writable", browser_session_writable(session_.get(), 0));
+    result.set("ok", result["code"].as<int>() == 0);
     return result;
   }
 
@@ -144,6 +146,7 @@ public:
     if (count > 128) {
       emscripten::val error = emscripten::val::object();
       error.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
+      error.set("ok", false);
       error.set("message", "Browser session event batch exceeds 128 events");
       error.set("retryable", false);
       batch.call<void>("push", error);

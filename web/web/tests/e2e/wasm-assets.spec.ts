@@ -150,6 +150,7 @@ test("browser session close makes later processing safe and structured", async (
     return session.process({ type: "snapshot" });
   });
   expect(result.code).not.toBe(0);
+  expect(result.ok).toBe(false);
   expect(result.message).toContain("not initialized");
   expect(result.retryable).toBe(false);
   expect(result.writable).toBe(false);
@@ -167,10 +168,12 @@ test("browser session batches transport events with a bounded ABI", async ({ pag
     const oversized = session.processBatch(Array.from({ length: 129 }, () => ({ type: "snapshot" })));
     session.close();
     session.delete();
-    return { length: batch.length, oversized: oversized[0]?.code };
+    return { length: batch.length, batchOk: batch.every((entry: { ok?: boolean }) => entry.ok), oversized: oversized[0]?.code, oversizedOk: oversized[0]?.ok };
   });
   expect(result.length).toBe(2);
+  expect(result.batchOk).toBe(true);
   expect(result.oversized).not.toBe(0);
+  expect(result.oversizedOk).toBe(false);
 });
 
 test("session UI binding close is idempotent and clears ownership", async ({ page }) => {
