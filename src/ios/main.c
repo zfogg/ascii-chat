@@ -15,6 +15,7 @@ extern int asciichat_main(int argc, char **argv);
 static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
 static char g_ios_session_string[128];
+static char g_ios_server_address[256];
 
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
@@ -28,6 +29,14 @@ void asciichat_ios_set_session_string(const char *session_string) {
     return;
   }
   snprintf(g_ios_session_string, sizeof(g_ios_session_string), "%s", session_string);
+}
+
+void asciichat_ios_set_server_address(const char *address) {
+  if (!address) {
+    g_ios_server_address[0] = '\0';
+    return;
+  }
+  snprintf(g_ios_server_address, sizeof(g_ios_server_address), "%s", address);
 }
 
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
@@ -76,6 +85,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
 #endif
   if (mode == ASCIICHAT_IOS_MODE_DISCOVERY && g_ios_session_string[0] != '\0') {
     argv[argc++] = g_ios_session_string;
+  } else if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0') {
+    argv[argc++] = g_ios_server_address;
   }
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);

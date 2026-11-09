@@ -29,6 +29,8 @@ private func asciichat_ios_main(_ mode: Int32) -> Int32
 
 @_silgen_name("asciichat_ios_set_session_string")
 private func asciichat_ios_set_session_string(_ sessionString: UnsafePointer<CChar>?)
+@_silgen_name("asciichat_ios_set_server_address")
+private func asciichat_ios_set_server_address(_ address: UnsafePointer<CChar>?)
 
 @_silgen_name("asciichat_ios_mode_available")
 private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
@@ -1181,12 +1183,38 @@ struct ContentView: View {
         }
         let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
         configureRenderBridge(fontSize: fontSizePt)
+        #if targetEnvironment(simulator)
+        // The simulator cannot always resolve the Mac's loopback interface as
+        // `localhost`. Test launches can provide the host endpoint without
+        // changing the persisted production default or the shared C client.
+        var simulatorOverrides: [String: Any] = [:]
+        if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-address=") }) {
+            simulatorOverrides["address"] = String(value.dropFirst("--ios-address=".count))
+        }
+        if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-port=") }),
+           let port = Int(value.dropFirst("--ios-port=".count)) {
+            simulatorOverrides["port"] = port
+        }
+        if !simulatorOverrides.isEmpty {
+            applySettings(simulatorOverrides)
+        }
+        #endif
         // Apply persisted options before the native entry point reads GET_OPTION.
         // This keeps the camera's auto-FPS decision stable for the whole session.
         if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
            let json = String(data: data, encoding: .utf8) {
             json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
         }
+        let persistedValues = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+        let launchAddress = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-address=") })
+            .map { String($0.dropFirst("--ios-address=".count)) }
+        let launchPort = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-port=") })
+            .flatMap { Int($0.dropFirst("--ios-port=".count)) }
+        let serverAddress = launchAddress ?? (persistedValues?["address"] as? String ?? "")
+        let serverPort = launchPort ?? ((persistedValues?["port"] as? NSNumber)?.intValue ?? 27224)
+        let endpoint = serverAddress.isEmpty ? "" : "\(serverAddress):\(serverPort)"
+        endpoint.withCString { asciichat_ios_set_server_address($0) }
         sessionModel.start(mode: selectedMode)
         let sessionString = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["session_string"] as? String ?? ""
