@@ -48,6 +48,12 @@ Test(http_server, exposes_http1_protocol_versions) {
   cr_assert_eq(HTTP_PROTOCOL_3, 3);
 }
 
+Test(http_server, exposes_wakeup_callback_in_configuration) {
+  http_server_config_t config = {0};
+  config.on_wakeup = NULL;
+  cr_assert_null(config.on_wakeup);
+}
+
 Test(http_server, rejects_unavailable_http3_and_tls) {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http1 = true,

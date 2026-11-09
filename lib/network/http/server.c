@@ -66,7 +66,9 @@ struct http_client {
 };
 static void stop_async_cb(uv_async_t *async);
 static void wake_async_cb(uv_async_t *async) {
-  (void)async;
+  http_server_t *s = async->data;
+  if (s->config.on_wakeup)
+    s->config.on_wakeup(s->config.user_data);
 }
 
 static void client_freed(uv_handle_t *handle) {

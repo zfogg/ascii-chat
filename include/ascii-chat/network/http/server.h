@@ -44,6 +44,8 @@ typedef struct {
 typedef void (*http_request_fn)(http_request_t *request, http_response_t *response, void *user_data);
 typedef void (*http_connection_fn)(const char *peer_address, bool connected, void *user_data);
 typedef void (*http_error_fn)(asciichat_error_t error, const char *message, void *user_data);
+/** Invoked on the HTTP event-loop thread after http_server_wakeup(). */
+typedef void (*http_wakeup_fn)(void *user_data);
 
 typedef struct {
   const char *bind_address;
@@ -62,6 +64,7 @@ typedef struct {
   http_request_fn on_request;
   http_connection_fn on_connection;
   http_error_fn on_error;
+  http_wakeup_fn on_wakeup;
   void *user_data;
 } http_server_config_t;
 
