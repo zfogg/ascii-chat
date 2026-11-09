@@ -139,16 +139,6 @@ jobs:
           extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Use the repository-managed Python for ctypes hosts while keeping leak
-      # checks enabled.
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
-            tests/ascii_chat_tests/pyproject.toml
-            tests/ascii_chat_tests/uv.lock
-
       - name: Install Python test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
 
@@ -394,14 +384,6 @@ jobs:
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
-            tests/ascii_chat_tests/pyproject.toml
-            tests/ascii_chat_tests/uv.lock
-
       - name: Install terminal test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
 
@@ -574,10 +556,6 @@ jobs:
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          cache-dependency-glob: '{pyproject.toml,uv.lock}'
 
       - name: Cache build, dependencies, and ccache
         id: cache-build

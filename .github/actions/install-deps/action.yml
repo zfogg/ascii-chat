@@ -347,6 +347,14 @@ runs:
           sudo apt-get install -y --no-install-recommends $extra
         fi
 
+    - name: Export uv path (Unix)
+      if: inputs.os != 'windows'
+      shell: bash
+      run: |
+        uv_path=$(command -v uv)
+        echo "$(dirname "$uv_path")" >> "$GITHUB_PATH"
+        uv --version
+
     # NOTE: vcpkg global cache removed - manifest mode installs packages to
     # ${CMAKE_BINARY_DIR}/vcpkg_installed/ which is included in build directory cache
 
