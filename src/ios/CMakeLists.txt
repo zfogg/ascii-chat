@@ -23,6 +23,7 @@ configure_file("${IOS_CA_CERTIFICATE_BUNDLE}" "${IOS_CA_CERTIFICATE_RESOURCE}" C
 
 add_executable(ascii-chat-ios-app
     AsciiChatApp.swift
+    IOSKeyboardHandler.swift
     IOSSessionModel.swift
     test_frame.c
     ${APP_SRCS}
