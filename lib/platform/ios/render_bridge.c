@@ -1,5 +1,6 @@
 #include <ascii-chat/platform/ios/render_bridge.h>
 
+#include <ascii-chat/common.h>
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/platform/mutex.h>
@@ -16,7 +17,8 @@ static bool g_renderer_mutex_initialized;
 static bool g_renderer_initialized;
 static atomic_uint_fast64_t g_render_sequence;
 #define IOS_RENDER_PENDING_CAPACITY (256U * 1024U)
-static char g_pending_frame[IOS_RENDER_PENDING_CAPACITY];
+static char *g_pending_frame;
+static size_t g_pending_frame_capacity;
 static size_t g_pending_frame_length;
 // The native app must configure the bridge from the actual drawable before
 // starting a C mode. There is no valid fallback grid for a device display.
@@ -32,6 +34,11 @@ static bool ios_render_bridge_init(void) {
   }
   if (g_renderer_initialized)
     return g_renderer != NULL;
+
+  if (!g_pending_frame) {
+    g_pending_frame = SAFE_MALLOC(IOS_RENDER_PENDING_CAPACITY, char *);
+    g_pending_frame_capacity = IOS_RENDER_PENDING_CAPACITY;
+  }
 
   term_renderer_config_t config = {
       // The bridge can initialize before the options TLS context exists. The
@@ -94,11 +101,22 @@ ssize_t ios_render_bridge_write(int fd, const void *data, size_t length) {
     return (ssize_t)length;
 
   mutex_lock(&g_renderer_mutex);
-  if (length > sizeof(g_pending_frame) - g_pending_frame_length) {
-    log_error("iOS render bridge frame exceeds %zu-byte pending buffer", sizeof(g_pending_frame));
-    g_pending_frame_length = 0;
+  if (length > SIZE_MAX - g_pending_frame_length) {
     mutex_unlock(&g_renderer_mutex);
     return -1;
+  }
+  const size_t required = g_pending_frame_length + length;
+  if (required > g_pending_frame_capacity) {
+    size_t next_capacity = g_pending_frame_capacity > 0 ? g_pending_frame_capacity : IOS_RENDER_PENDING_CAPACITY;
+    while (next_capacity < required) {
+      if (next_capacity > SIZE_MAX / 2) {
+        next_capacity = required;
+        break;
+      }
+      next_capacity *= 2;
+    }
+    g_pending_frame = SAFE_REALLOC(g_pending_frame, next_capacity, char *);
+    g_pending_frame_capacity = next_capacity;
   }
   memcpy(g_pending_frame + g_pending_frame_length, data, length);
   g_pending_frame_length += length;
@@ -164,6 +182,8 @@ void ios_render_bridge_reset(void) {
     term_renderer_destroy(g_renderer);
     g_renderer = NULL;
   }
+  SAFE_FREE(g_pending_frame);
+  g_pending_frame_capacity = 0;
   g_renderer_initialized = false;
   g_pending_frame_length = 0;
   atomic_store_explicit(&g_render_sequence, 0, memory_order_release);
