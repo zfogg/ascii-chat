@@ -466,7 +466,7 @@ private struct IOSSettingsView: View {
         if let value = values["compression_level"] as? NSNumber { compressionLevel = value.doubleValue }
         if let value = values["reconnect_attempts"] as? NSNumber { reconnectAttempts = value.doubleValue }
         if let value = values["webrtc_reconnect_attempts"] as? NSNumber { webrtcReconnectAttempts = value.doubleValue }
-        if let value = values["webrtc_ice_timeout"] as? NSNumber { webrtcIceTimeout = value.doubleValue }
+        if let value = values["webrtc_ice_timeout"] as? NSNumber { webrtcIceTimeout = value.doubleValue / 1000.0 }
     }
 
     var body: some View {
@@ -592,7 +592,7 @@ private struct IOSSettingsView: View {
                         Text("WebRTC ICE timeout: \(Int(webrtcIceTimeout)) seconds")
                         Slider(value: $webrtcIceTimeout, in: 0...60, step: 1)
                             .onChange(of: webrtcIceTimeout) { _, value in
-                                applyJSON(["webrtc_ice_timeout": Int(value)])
+                                applyJSON(["webrtc_ice_timeout": Int((value * 1000.0).rounded())])
                             }
                     }
                 }
@@ -628,7 +628,7 @@ private struct IOSSettingsView: View {
                                    "compression_level": Int(compressionLevel),
                                    "reconnect_attempts": Int(reconnectAttempts),
                                    "webrtc_reconnect_attempts": Int(webrtcReconnectAttempts),
-                                   "webrtc_ice_timeout": Int(webrtcIceTimeout),
+                                   "webrtc_ice_timeout": Int((webrtcIceTimeout * 1000.0).rounded()),
                                    "render_font_size": renderFontSize])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
