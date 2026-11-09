@@ -1136,7 +1136,7 @@ struct ContentView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                     .tint(IOSTheme.cyan)
-                    .onChange(of: selectedAudioDevice) { device in
+                    .onChange(of: selectedAudioDevice) { _, device in
                         guard asciichat_ios_audio_select_device(device) == 0 else { return }
                         UserDefaults.standard.set(Int(device), forKey: "ascii-chat.ios.audio-device-index")
                     }
@@ -1280,7 +1280,7 @@ struct ContentView: View {
                 NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
                 if sessionStarted { _ = platform_enable_keepawake() }
