@@ -664,9 +664,10 @@ static int path_validation(ngtcp2_conn *conn, uint32_t flags, const ngtcp2_path 
   (void)user_data;
   if (result == NGTCP2_PATH_VALIDATION_RESULT_SUCCESS && path && path->remote.addr) {
     unsigned port = 0;
-    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= sizeof(struct sockaddr_in))
+    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in))
       port = NET_TO_HOST_U16(((const struct sockaddr_in *)path->remote.addr)->sin_port);
-    else if (path->remote.addr->sa_family == AF_INET6 && path->remote.addrlen >= sizeof(struct sockaddr_in6))
+    else if (path->remote.addr->sa_family == AF_INET6 &&
+             path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in6))
       port = NET_TO_HOST_U16(((const struct sockaddr_in6 *)path->remote.addr)->sin6_port);
     log_info("QUIC peer path validated: port=%u", port);
   }
@@ -855,7 +856,7 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
     connection->tls_ready = true;
   }
   if (connection->tls_ready && connection->webtransport && !connection->http3) {
-    int64_t control, encoder, decoder;
+    int64_t control = 0, encoder = 0, decoder = 0;
     int rc = ngtcp2_conn_open_uni_stream(connection->conn, &control, NULL);
     if (!rc)
       rc = ngtcp2_conn_open_uni_stream(connection->conn, &encoder, NULL);

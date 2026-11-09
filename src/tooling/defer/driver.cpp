@@ -122,6 +122,21 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     result.push_back("-resource-dir");
     result.push_back(compiler_resource_dir(compiler));
   }
+  if (const auto extra = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS")) {
+    const std::string &value = *extra;
+    std::size_t start = 0;
+    while (start <= value.size()) {
+      const auto end = value.find(';', start);
+      const auto directory = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
+      if (!directory.empty()) {
+        result.push_back("-I");
+        result.push_back(directory);
+      }
+      if (end == std::string::npos)
+        break;
+      start = end + 1;
+    }
+  }
   return result;
 }
 

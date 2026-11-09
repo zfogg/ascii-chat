@@ -772,7 +772,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
 }
 
 /** Format the committed snapshot after releasing the shared SQLite mutex. */
-static void database_session_join_response(sqlite3 *db, session_entry_t *session, const acds_config_t *config,
+static void database_session_join_response(session_entry_t *session, const acds_config_t *config,
                                            acip_session_joined_t *resp) {
   const char *session_string = session->session_string;
   // Fill response
@@ -909,7 +909,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   sqlite3_mutex_leave(mutex);
   session_entry_destroy(session);
   if (joined)
-    database_session_join_response(db, joined, config, resp);
+    database_session_join_response(joined, config, resp);
   return result;
 }
 

@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.30)
+
+# The project has intentionally forced cache assignments for platform and
+# dependency setup. Keep those assignments from making every Ninja build
+# re-run CMake; reconfigure explicitly with the selected preset.
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 if(POLICY CMP0174)
     cmake_policy(SET CMP0174 NEW)
 endif()
@@ -289,6 +295,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # All dependencies are now modularized into individual .cmake files in cmake/deps/
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
+
+# The defer parser runs from its own custom command and cannot see target-level
+# include propagation.  Keep the musl FFmpeg headers available to that parser
+# in the top-level scope used when the command is generated.
+if(USE_MUSL)
+    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
