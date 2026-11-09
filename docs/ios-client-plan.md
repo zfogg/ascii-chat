@@ -1466,7 +1466,7 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 - [x] Share sheet (share session string)
 - [ ] TestFlight distribution
 - [ ] Performance profiling: CGImage vs CALayer vs Metal for pixel display
-- [ ] Battery optimization: ensure render loop FPS matches C-side frame rate
+- [x] Battery optimization: display-link polling follows the configured C-side FPS (with a 60 FPS auto cadence)
 - [x] Accessibility labels and hints for startup, settings, TUI, and session controls
 - [x] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
 
