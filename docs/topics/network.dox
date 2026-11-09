@@ -21,6 +21,18 @@
  * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
  * - `include/ascii-chat/network/negotiation.h` — connection establishment
  * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
+ * - `include/ascii-chat/network/http/server.h` — backend-neutral HTTP server contract
+
+ * @section network_http_layer Shared HTTP services
+ *
+ * HTTP-only services use `http_server_t` and the request/response types in
+ * `network/http/server.h`.  The first native backend is a bounded HTTP/1.1
+ * libuv listener.  It owns sockets and event-loop callbacks, while handlers
+ * own routing and application behavior.  The public contract intentionally
+ * does not expose libuv, libwebsockets, TLS, nghttp2, nghttp3, or ngtcp2
+ * types, so MCP, API, discovery, and a future HTTP/2 or HTTP/3 adapter can
+ * share the same handler code.  HTTP/2 and HTTP/3 flags are reserved until
+ * their protocol backends are enabled; they are never silently downgraded.
  *
  * @section network_connection_layer Connections
  *

@@ -1,0 +1,304 @@
+#include <ascii-chat/network/http/server.h>
+#include <ascii-chat/common.h>
+#include <uv.h>
+#include <string.h>
+
+#define HTTP_READ_CAPACITY (1024u * 1024u)
+#define HTTP_HEADER_CAPACITY 64u
+
+struct http_server {
+  http_server_config_t config;
+  uv_loop_t loop;
+  uv_tcp_t listener;
+  bool running;
+  size_t connections;
+};
+struct http_request {
+  http_request_info_t info;
+  http_header_t headers[HTTP_HEADER_CAPACITY];
+  char *storage;
+  size_t storage_length;
+  size_t body_offset;
+  size_t body_length;
+  bool cancelled;
+};
+struct http_response {
+  uv_stream_t *stream;
+  unsigned status;
+  http_header_t headers[HTTP_HEADER_CAPACITY];
+  size_t header_count;
+  char *body;
+  size_t body_length;
+  bool finished;
+};
+typedef struct {
+  uv_tcp_t tcp;
+  http_server_t *server;
+  char *buffer;
+  size_t length;
+} http_client_t;
+
+static void client_freed(uv_handle_t *handle) {
+  http_client_t *c = handle->data;
+  SAFE_FREE(c->buffer);
+  SAFE_FREE(c);
+}
+static void client_close(http_client_t *c) {
+  if (!uv_is_closing((uv_handle_t *)&c->tcp))
+    uv_close((uv_handle_t *)&c->tcp, client_freed);
+}
+static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
+  (void)h;
+  b->base = SAFE_MALLOC(n, char *);
+  b->len = (unsigned)n;
+}
+static const char *header_value(http_request_t *r, const char *name) {
+  for (size_t i = 0; i < r->info.header_count; i++)
+    if (!_stricmp(r->headers[i].name, name))
+      return r->headers[i].value;
+  return NULL;
+}
+static bool parse_request(http_client_t *c, http_request_t *r) {
+  char *end = strstr(c->buffer, "\r\n\r\n");
+  if (!end)
+    return false;
+  size_t head = (size_t)(end - c->buffer) + 4;
+  char *line = c->buffer;
+  char *nl = strstr(line, "\r\n");
+  if (!nl)
+    return false;
+  *nl = 0;
+  char *a = strchr(line, ' '), *b = a ? strchr(a + 1, ' ') : NULL;
+  if (!a || !b)
+    return false;
+  *a = 0;
+  *b = 0;
+  r->storage = c->buffer;
+  r->storage_length = c->length;
+  r->info.method = line;
+  r->info.path = a + 1;
+  r->info.protocol = HTTP_PROTOCOL_11;
+  char *q = strchr(r->info.path, '?');
+  if (q) {
+    *q = 0;
+    r->info.query = q + 1;
+  }
+  char *p = nl + 2;
+  r->info.header_count = 0;
+  while (p < end && *p) {
+    char *next = strstr(p, "\r\n");
+    if (!next)
+      return false;
+    *next = 0;
+    char *colon = strchr(p, ':');
+    if (colon && r->info.header_count < HTTP_HEADER_CAPACITY) {
+      *colon = 0;
+      while (colon[1] == ' ')
+        colon++;
+      r->headers[r->info.header_count] = (http_header_t){p, colon + 1};
+      r->info.header_count++;
+    }
+    p = next + 2;
+  }
+  const char *cl = header_value(r, "Content-Length");
+  size_t body = cl ? (size_t)strtoull(cl, NULL, 10) : 0;
+  if (body > c->server->config.max_request_body_bytes || c->length < head + body)
+    return false;
+  r->body_offset = head;
+  r->body_length = body;
+  r->info.headers = r->headers;
+  r->info.peer_address = "";
+  r->info.user_data = c->server->config.user_data;
+  r->info.protocol = HTTP_PROTOCOL_11;
+  r->info.user_data = c->server->config.user_data;
+  return true;
+}
+typedef struct {
+  char *bytes;
+  uv_stream_t *stream;
+} http_write_t;
+
+static void write_done(uv_write_t *req, int status) {
+  http_write_t *write = req->data;
+  if (!uv_is_closing((uv_handle_t *)write->stream))
+    uv_close((uv_handle_t *)write->stream, client_freed);
+  SAFE_FREE(write->bytes);
+  SAFE_FREE(write);
+  SAFE_FREE(req);
+  (void)status;
+}
+static const char *reason(unsigned s) {
+  switch (s) {
+  case 200:
+    return "OK";
+  case 204:
+    return "No Content";
+  case 400:
+    return "Bad Request";
+  case 404:
+    return "Not Found";
+  case 413:
+    return "Payload Too Large";
+  case 500:
+    return "Internal Server Error";
+  default:
+    return "";
+  }
+}
+asciichat_error_t http_response_set_status(http_response_t *r, unsigned s) {
+  if (!r || s < 100 || s > 599)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP status");
+  r->status = s;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t http_response_set_header(http_response_t *r, const char *n, const char *v) {
+  if (!r || !n || !v || r->header_count >= HTTP_HEADER_CAPACITY)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP response header");
+  r->headers[r->header_count++] = (http_header_t){n, v};
+  return ASCIICHAT_OK;
+}
+asciichat_error_t http_response_write(http_response_t *r, const void *d, size_t n) {
+  if (!r || (!d && n) || r->finished)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response is not writable");
+  char *p = SAFE_REALLOC(r->body, r->body_length + n + 1, char *);
+  if (!p)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response body");
+  r->body = p;
+  memcpy(p + r->body_length, d, n);
+  r->body_length += n;
+  p[r->body_length] = 0;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t http_response_finish(http_response_t *r) {
+  if (!r || r->finished)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
+  r->finished = true;
+  size_t cap = 256 + r->body_length;
+  for (size_t i = 0; i < r->header_count; i++)
+    cap += strlen(r->headers[i].name) + strlen(r->headers[i].value) + 4;
+  char *out = SAFE_MALLOC(cap, char *);
+  if (!out)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
+  int n = safe_snprintf(out, cap, "HTTP/1.1 %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", r->status,
+                        reason(r->status), r->body_length);
+  for (size_t i = 0; i < r->header_count; i++)
+    n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
+  n += safe_snprintf(out + n, cap - (size_t)n, "\r\n");
+  memcpy(out + n, r->body, r->body_length);
+  n += (int)r->body_length;
+  uv_write_t *w = SAFE_CALLOC(1, sizeof(*w), uv_write_t *);
+  http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
+  if (!write) {
+    SAFE_FREE(out);
+    SAFE_FREE(w);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
+  }
+  write->bytes = out;
+  write->stream = r->stream;
+  w->data = write;
+  uv_buf_t b = uv_buf_init(out, n);
+  return uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
+                                                        : SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+}
+const http_request_info_t *http_request_info(const http_request_t *r) {
+  return r ? &r->info : NULL;
+}
+const void *http_request_body(const http_request_t *r, size_t *n) {
+  if (n)
+    *n = r ? r->body_length : 0;
+  return r && r->body_length ? r->storage + r->body_offset : NULL;
+}
+bool http_request_is_cancelled(const http_request_t *r) {
+  return !r || r->cancelled;
+}
+asciichat_error_t http_request_cancel(http_request_t *r) {
+  if (!r)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP request");
+  r->cancelled = true;
+  return ASCIICHAT_OK;
+}
+static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
+  http_client_t *c = s->data;
+  char *base = (char *)b->base;
+  if (n <= 0) {
+    SAFE_FREE(base);
+    client_close(c);
+    return;
+  }
+  if (c->length + (size_t)n > HTTP_READ_CAPACITY) {
+    SAFE_FREE(base);
+    client_close(c);
+    return;
+  }
+  memcpy(c->buffer + c->length, base, (size_t)n);
+  c->length += (size_t)n;
+  SAFE_FREE(base);
+  http_request_t r = {0};
+  if (!parse_request(c, &r))
+    return;
+  http_response_t resp = {.stream = s, .status = 200};
+  c->server->config.on_request(&r, &resp, c->server->config.user_data);
+  if (!resp.finished)
+    http_response_finish(&resp);
+  SAFE_FREE(resp.body);
+  uv_read_stop(s);
+}
+static void connection_cb(uv_stream_t *l, int status) {
+  if (status < 0)
+    return;
+  http_server_t *s = l->data;
+  http_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_client_t *);
+  c->server = s;
+  c->buffer = SAFE_CALLOC(HTTP_READ_CAPACITY, 1, char *);
+  uv_tcp_init(&s->loop, &c->tcp);
+  c->tcp.data = c;
+  if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
+    s->connections++;
+    uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
+  } else
+    client_close(c);
+}
+asciichat_error_t http_server_init(http_server_t **out, const http_server_config_t *cfg) {
+  if (!out || !cfg || !cfg->on_request || !cfg->enable_http1)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/1.1 and a request handler are required");
+  if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
+  http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
+  s->config = *cfg;
+  if (uv_loop_init(&s->loop) != 0) {
+    SAFE_FREE(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
+  }
+  uv_tcp_init(&s->loop, &s->listener);
+  s->listener.data = s;
+  *out = s;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t http_server_start(http_server_t *s) {
+  if (!s || s->running)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is already running");
+  struct sockaddr_in addr;
+  int rc = uv_ip4_addr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", s->config.port, &addr);
+  if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&addr, 0) != 0)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
+  if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
+  s->running = true;
+  return ASCIICHAT_OK;
+}
+void http_server_stop(http_server_t *s) {
+  if (!s)
+    return;
+  s->running = false;
+  uv_close((uv_handle_t *)&s->listener, NULL);
+  uv_stop(&s->loop);
+}
+void http_server_destroy(http_server_t **p) {
+  if (!p || !*p)
+    return;
+  http_server_t *s = *p;
+  http_server_stop(s);
+  uv_loop_close(&s->loop);
+  SAFE_FREE(s);
+  *p = NULL;
+}
