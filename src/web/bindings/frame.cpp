@@ -55,7 +55,17 @@ public:
     emscripten::val result = emscripten::val::object();
     const auto text = convert(rgba, width, height, contain);
     result.set("ok", text.has_value());
-    result.set("code", text ? 0 : error());
+    const int code = text ? 0 : error();
+    result.set("code", code);
+    if (code) {
+      asciichat_error_context_t context{};
+      const bool has_context = errno_has(&context);
+      result.set("message", has_context && context.context_message[0]
+                                 ? std::string(context.context_message)
+                                 : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      // Renderer failures are local input/state errors, never transport retries.
+      result.set("retryable", false);
+    }
     result.set("text", text ? emscripten::val(*text) : emscripten::val::null());
     result.set("width", width);
     result.set("height", height);
