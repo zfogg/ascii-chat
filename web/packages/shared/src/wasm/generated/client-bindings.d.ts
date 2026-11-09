@@ -362,10 +362,6 @@ export interface OpusCodecBinding extends ClassHandle {
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }
 
-type ClientSettingsResult = { code: number; json: string | null };
-
-export interface ClientSettingsBinding extends ClassHandle {}
-
 type PeerBytes = Uint8Array;
 
 type NullablePeerBytes = Uint8Array | null;
@@ -378,10 +374,23 @@ export interface BrowserSessionBinding extends ClassHandle {
   process(_0: any): any;
 }
 
+type ClientBytes = Uint8Array;
+
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
   protocolInfo(): any;
   error(): number;
+  settingsReceive(_0: ClientBytes): any;
+  settingsValues(): any;
+  validateFrame(
+    _0: ClientBytes,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+    _5: ClientBytes,
+    _6: number,
+  ): any;
   close(): void;
   process(_0: any): any;
 }
@@ -417,16 +426,6 @@ export interface AVStateBinding extends ClassHandle {
   beginStop(): void;
   finishStop(): void;
 }
-
-type ClientBytes = Uint8Array;
-
-type ClientFrameResult = {
-  code: number;
-  decodeFailed: boolean;
-  bytes: Uint8Array;
-};
-
-export interface ClientFrameBinding extends ClassHandle {}
 
 type DiscoverySnapshotValue = {
   state: number;
@@ -538,10 +537,6 @@ interface EmbindModule {
   OpusCodecBinding: {
     new (_0: number, _1: number, _2: number, _3: number): OpusCodecBinding;
   };
-  ClientSettingsBinding: {
-    receive(_0: ClientBytes): ClientSettingsResult;
-    values(): string | undefined;
-  };
   BrowserSessionBinding: {
     new (
       _0: boolean,
@@ -565,17 +560,6 @@ interface EmbindModule {
   };
   AVStateBinding: {
     new (): AVStateBinding;
-  };
-  ClientFrameBinding: {
-    validate(
-      _0: ClientBytes,
-      _1: number,
-      _2: number,
-      _3: number,
-      _4: number,
-      _5: ClientBytes,
-      _6: number,
-    ): ClientFrameResult;
   };
   DiscoveryBinding: {
     new (): DiscoveryBinding;

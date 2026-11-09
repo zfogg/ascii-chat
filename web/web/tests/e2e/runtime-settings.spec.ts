@@ -26,12 +26,12 @@ const palettes = (page: Page) =>
 
 const effective = (page: Page) =>
   page.evaluate(async () => {
-    const url = "/src/wasm/client.ts";
-    const { getClientModule } = await import(url);
-    const module = getClientModule();
-    if (!module) return {};
-    const json = module.ClientSettingsBinding.values();
-    return json ? JSON.parse(json) : {};
+    const { currentRemoteRenderSettings } = await import("/src/wasm/client.ts");
+    try {
+      return currentRemoteRenderSettings();
+    } catch {
+      return {};
+    }
   });
 
 const receivedFps = (page: Page) =>

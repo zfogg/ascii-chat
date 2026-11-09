@@ -85,15 +85,20 @@ export interface ClientCryptoOptions {
 
 /** Commit the peer's effective settings in C before notifying browser observers. */
 export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
-  if (!wasmModule) throw new Error("Client engine is unavailable");
-  const settingsBinding = wasmModule.ClientSettingsBinding as unknown as {
-    receive(bytes: Uint8Array): { code: number; json: string | null };
-  };
-  const result = settingsBinding.receive(payload);
+  if (!wasmModule || !clientSession) throw new Error("Client engine is unavailable");
+  const result = clientSession.settingsReceive(payload);
   if (result.code) throwWasmError(result.code, "Invalid remote settings");
   if (result.json === null)
     throw new Error("Cannot read effective remote settings");
   return JSON.parse(result.json) as RuntimeValues;
+}
+
+/** Read the effective remote settings owned by the active client session. */
+export function currentRemoteRenderSettings(): RuntimeValues {
+  if (!clientSession) throw new Error("Client engine is unavailable");
+  const json = clientSession.settingsValues().json;
+  if (json === null) throw new Error("Cannot read effective remote settings");
+  return JSON.parse(json) as RuntimeValues;
 }
 
 // Enums matching libasciichat definitions
@@ -782,8 +787,8 @@ export function validateReceivedFrame(
   const compressed = (flags & 2) !== 0;
   if (!compressed && bytes.length !== originalSize)
     throw new Error("Uncompressed frame size mismatch");
-  if (!wasmModule) throw new Error("Client frame validator is unavailable");
-  const result = wasmModule.ClientFrameBinding.validate(
+  if (!wasmModule || !clientSession) throw new Error("Client frame validator is unavailable");
+  const result = clientSession.validateFrame(
     bytes,
     width,
     height,

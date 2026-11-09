@@ -24,9 +24,9 @@ int client_encrypt_packet(browser_transport_t *transport, const uint8_t *plainte
                           size_t *out_len);
 int client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len);
-asciichat_error_t client_settings_receive(const void *payload, size_t length);
-char *client_settings_values(void);
-asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height,
+asciichat_error_t client_settings_receive(browser_transport_t *transport, const void *payload, size_t length);
+char *client_settings_values(browser_transport_t *transport);
+asciichat_error_t client_validate_frame(browser_transport_t *transport, const char *text, size_t length, uint32_t width, uint32_t height,
                                         uint32_t checksum, uint32_t flags, const void *metadata,
                                         size_t metadata_length);
 asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,

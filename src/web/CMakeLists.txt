@@ -537,12 +537,10 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/client_opts.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/av_state.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_frames.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/discovery.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_host.cpp
     ${LIB_ROOT}/network/consensus/handoff.c

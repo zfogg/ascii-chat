@@ -71,6 +71,8 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
+      const client = new m.ClientSessionBinding({});
+      if (!client.valid()) throw new Error("client session create failed");
       const revision = m.OptionsBinding.revision();
       const normalProbe = new m.AsciiRendererBinding(1, 1, 24, false, 1);
       const matrixProbe = new m.AsciiRendererBinding(1, 1, 24, true, 2);
@@ -168,7 +170,7 @@ const path = require("node:path");
         flags,
         metadata = new Uint8Array(),
       ) => {
-        return m.ClientFrameBinding.validate(
+        return client.validateFrame(
           bytes,
           width,
           height,
@@ -212,7 +214,7 @@ const path = require("node:path");
         );
         offset += metadata.length;
         const encoded = payload.subarray(offset);
-        const decoded = m.ClientFrameBinding.validate(
+        const decoded = client.validateFrame(
           encoded,
           view.getUint32(0),
           view.getUint32(4),
@@ -225,7 +227,7 @@ const path = require("node:path");
           throw new Error("Real host frame rejected: " + decoded.code);
         if (
           flags & 2 &&
-          !m.ClientFrameBinding.validate(
+          !client.validateFrame(
             encoded,
             view.getUint32(0),
             view.getUint32(4),
@@ -511,7 +513,7 @@ const path = require("node:path");
       ackView.setUint32(0, 1);
       ackView.setUint32(12, 90);
       ack.set(acknowledged, 20);
-      const ackResult = m.ClientSettingsBinding.receive(ack).code;
+      const ackResult = client.settingsReceive(ack).code;
       if (ackResult) throw new Error("settings ACK failed: " + ackResult);
       const paletteContract = new Uint8Array(21);
       const paletteView = new DataView(paletteContract.buffer);
@@ -609,6 +611,7 @@ const path = require("node:path");
         mirrorSession.delete();
       }
       if (mirrorFrames !== 24) throw new Error("Missing mirror mode coverage");
+      client.delete();
       return {
         video: [first, updated],
         audioRms: Math.sqrt(audioEnergy / Math.max(1, audioSamples)),

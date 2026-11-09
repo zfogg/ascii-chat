@@ -15,37 +15,9 @@
 #include <ascii-chat/network/acip/settings.h>
 #include <ascii-chat/network/browser/transport.h>
 
-static acip_render_settings_t remote_render_settings;
+typedef struct client_state client_state_t;
+static client_state_t *client_state(browser_transport_t *transport);
 
-/** Effective remote state is separate from this participant's saved preferences. */
-asciichat_error_t client_settings_receive(const void *payload, size_t length) {
-  acip_settings_header_t header;
-  const char *json;
-  size_t json_length;
-  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
-  if (result != ASCIICHAT_OK)
-    return result;
-  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
-            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
-  // Browser capability packets and the shared renderer always support UTF-8.
-  remote_render_settings.caps.utf8_support = true;
-  acip_render_settings_options(&remote_render_settings, current);
-  result = options_prepare_json(current, json, json_length, candidate, true);
-  if (result == ASCIICHAT_OK)
-    result = acip_render_settings_prepare(&remote_render_settings, candidate);
-  if (result == ASCIICHAT_OK)
-    remote_render_settings.revision = header.revision;
-  SAFE_FREE(current);
-  SAFE_FREE(candidate);
-  return result;
-}
-char *client_settings_values(void) {
-  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
-  acip_render_settings_options(&remote_render_settings, values);
-  char *json = options_values_json(values, true);
-  SAFE_FREE(values);
-  return json;
-}
 /**
  * @file client_wasm.c
  * @brief WASM entry point for ascii-chat client mode
@@ -113,7 +85,7 @@ static void wasm_transport_output(const void *data, size_t length, void *user_da
 // Global State
 // ============================================================================
 
-typedef struct client_state {
+struct client_state {
   crypto_handshake_context_t crypto_handshake_ctx;
   bool initialized;
   bool handshake_complete;
@@ -124,10 +96,48 @@ typedef struct client_state {
   uint8_t expected_server_identity_key[crypto_sign_PUBLICKEYBYTES];
   bool has_client_identity_key;
   bool has_expected_server_identity_key;
-} client_state_t;
+  acip_render_settings_t remote_render_settings;
+};
 
 static client_state_t *client_state(browser_transport_t *transport) {
   return transport ? browser_transport_client_state(transport) : NULL;
+}
+
+asciichat_error_t client_settings_receive(browser_transport_t *transport, const void *payload, size_t length) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Browser client transport is not initialized");
+  acip_settings_header_t header;
+  const char *json;
+  size_t json_length;
+  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  state->remote_render_settings.caps.utf8_support = true;
+  acip_render_settings_options(&state->remote_render_settings, current);
+  result = options_prepare_json(current, json, json_length, candidate, true);
+  if (result == ASCIICHAT_OK)
+    result = acip_render_settings_prepare(&state->remote_render_settings, candidate);
+  if (result == ASCIICHAT_OK)
+    state->remote_render_settings.revision = header.revision;
+  SAFE_FREE(current);
+  SAFE_FREE(candidate);
+  return result;
+}
+
+char *client_settings_values(browser_transport_t *transport) {
+  client_state_t *state = client_state(transport);
+  if (!state) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Browser client transport is not initialized");
+    return NULL;
+  }
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  acip_render_settings_options(&state->remote_render_settings, values);
+  char *json = options_values_json(values, true);
+  SAFE_FREE(values);
+  return json;
 }
 
 static int apply_client_crypto_options(browser_transport_t *transport) {
@@ -400,7 +410,6 @@ void client_cleanup(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state)
     return;
-  remote_render_settings = (acip_render_settings_t){0};
   errno_destroy();
 
   // Clean up crypto handshake context
@@ -689,9 +698,12 @@ asciichat_error_t client_handshake_receive(browser_transport_t *transport, uint3
 
 /* Browser transport marshals framing, then invokes the SAME network content
  * contract as native before any terminal parser or recording receives bytes. */
-asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height,
+asciichat_error_t client_validate_frame(browser_transport_t *transport, const char *text, size_t length, uint32_t width, uint32_t height,
                                         uint32_t checksum, uint32_t flags, const void *metadata,
                                         size_t metadata_length) {
+  client_state_t *state = client_state(transport);
+  if (!state)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Browser client transport is not initialized");
   if (flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u))
     return SET_ERRNO(ERROR_INVALID_FRAME, "Unknown browser frame flags");
   acip_render_settings_t settings;
@@ -702,9 +714,9 @@ asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_
     asciichat_error_t decoded = frame_render_contract_decode(metadata, metadata_length, &settings, &effects, &consumed);
     if (decoded != ASCIICHAT_OK)
       return decoded;
-    if (settings.revision && settings.revision == remote_render_settings.revision &&
-        remote_render_settings.palette[0] && remote_render_settings.caps.utf8_support &&
-        strcmp(settings.palette, remote_render_settings.palette) != 0)
+    if (settings.revision && settings.revision == state->remote_render_settings.revision &&
+        state->remote_render_settings.palette[0] && state->remote_render_settings.caps.utf8_support &&
+        strcmp(settings.palette, state->remote_render_settings.palette) != 0)
       return SET_ERRNO(ERROR_INVALID_FRAME, "Browser frame palette contradicts acknowledged revision");
     if (consumed != metadata_length)
       return SET_ERRNO(ERROR_INVALID_FRAME, "Trailing browser frame contract bytes");
