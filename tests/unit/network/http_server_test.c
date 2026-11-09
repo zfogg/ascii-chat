@@ -41,6 +41,13 @@ Test(http_server, accepts_http2_contract) {
   cr_assert_null(server);
 }
 
+Test(http_server, exposes_http1_protocol_versions) {
+  cr_assert_eq(HTTP_PROTOCOL_10, 0);
+  cr_assert_eq(HTTP_PROTOCOL_11, 1);
+  cr_assert_eq(HTTP_PROTOCOL_2, 2);
+  cr_assert_eq(HTTP_PROTOCOL_3, 3);
+}
+
 Test(http_server, rejects_unavailable_http3_and_tls) {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http1 = true,

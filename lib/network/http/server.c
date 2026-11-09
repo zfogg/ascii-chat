@@ -43,6 +43,7 @@ struct http_response {
   uv_stream_t *stream;
   http_client_t *client;
   int32_t http2_stream_id;
+  http_protocol_t protocol;
   unsigned status;
   http_header_t headers[HTTP_HEADER_CAPACITY];
   size_t header_count;
@@ -138,7 +139,12 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
   r->storage_length = c->length;
   r->info.method = line;
   r->info.path = a + 1;
-  r->info.protocol = HTTP_PROTOCOL_11;
+  if (strcmp(b + 1, "HTTP/1.0") == 0)
+    r->info.protocol = HTTP_PROTOCOL_10;
+  else if (strcmp(b + 1, "HTTP/1.1") == 0)
+    r->info.protocol = HTTP_PROTOCOL_11;
+  else
+    return false;
   char *q = strchr(r->info.path, '?');
   if (q) {
     *q = 0;
@@ -166,7 +172,6 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
   r->info.headers = r->headers;
   r->info.peer_address = c->peer_address;
   r->info.user_data = c->server->config.user_data;
-  r->info.protocol = HTTP_PROTOCOL_11;
   r->info.user_data = c->server->config.user_data;
   return true;
 }
@@ -255,6 +260,7 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   copy->stream = r->stream;
   copy->client = r->client;
   copy->http2_stream_id = r->http2_stream_id;
+  copy->protocol = r->protocol;
   copy->status = r->status;
   copy->header_count = r->header_count;
   memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
@@ -308,7 +314,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   char *out = SAFE_MALLOC(cap, char *);
   if (!out)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
-  int n = safe_snprintf(out, cap, "HTTP/1.1 %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", r->status,
+  const char *version = r->protocol == HTTP_PROTOCOL_10 ? "HTTP/1.0" : "HTTP/1.1";
+  int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status,
                         reason(r->status), r->body_length);
   for (size_t i = 0; i < r->header_count; i++)
     n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
@@ -326,6 +333,7 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   write->bytes = out;
   write->length = (size_t)n;
   write->stream = r->stream;
+  write->close_on_done = true;
   w->data = write;
   uv_buf_t b = uv_buf_init(out, n);
   return uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
@@ -371,13 +379,19 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                          &client->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {
-        .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 429};
+    http_response_t limited = {.stream = (uv_stream_t *)&client->tcp,
+                               .client = client,
+                               .http2_stream_id = view->stream_id,
+                               .protocol = HTTP_PROTOCOL_2,
+                               .status = 429};
     return http_response_finish(&limited);
   }
   rate_limiter_record(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST);
-  http_response_t response = {
-      .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 200};
+  http_response_t response = {.stream = (uv_stream_t *)&client->tcp,
+                              .client = client,
+                              .http2_stream_id = view->stream_id,
+                              .protocol = HTTP_PROTOCOL_2,
+                              .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred)
     return http_response_finish(&response);
@@ -431,13 +445,13 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
                          &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.stream = s, .status = 429};
+    http_response_t limited = {.stream = s, .protocol = r.info.protocol, .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
     return;
   }
   rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
-  http_response_t resp = {.stream = s, .status = 200};
+  http_response_t resp = {.stream = s, .protocol = r.info.protocol, .status = 200};
   uint64_t request_start = time_get_ns();
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
@@ -469,7 +483,7 @@ static void connection_cb(uv_stream_t *l, int status) {
     s->connections++;
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
     if (s->config.on_connection)
-      s->config.on_connection("", true, s->config.user_data);
+      s->config.on_connection(c->peer_address, true, s->config.user_data);
     uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
   } else
     client_close(c);

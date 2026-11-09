@@ -19,7 +19,8 @@ typedef struct http_request http_request_t;
 typedef struct http_response http_response_t;
 
 typedef enum {
-  HTTP_PROTOCOL_11 = 0,
+  HTTP_PROTOCOL_10 = 0,
+  HTTP_PROTOCOL_11,
   HTTP_PROTOCOL_2,
   HTTP_PROTOCOL_3,
 } http_protocol_t;
