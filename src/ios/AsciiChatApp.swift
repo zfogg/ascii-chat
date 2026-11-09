@@ -532,8 +532,8 @@ private struct IOSSettingsView: View {
         if let value = values["fft"] as? Bool { fft = value }
         if let value = values["flip_x"] as? Bool { flipX = value }
         if let value = values["flip_y"] as? Bool { flipY = value }
-        if let value = values["audio_analysis"] as? Bool { audioAnalysis = value }
-        if let value = values["no_audio_playback"] as? Bool { noAudioPlayback = value }
+        if let value = values["audio_analysis_enabled"] as? Bool { audioAnalysis = value }
+        if let value = values["audio_no_playback"] as? Bool { noAudioPlayback = value }
         if let value = values["encode_audio"] as? Bool { encodeAudio = value }
         if let value = values["no_audio_mixer"] as? Bool { noAudioMixer = value }
         if let value = values["test_pattern"] as? Bool { testPattern = value }
@@ -638,9 +638,9 @@ private struct IOSSettingsView: View {
                     Toggle("Audio", isOn: $audioEnabled)
                         .onChange(of: audioEnabled) { _, value in applyJSON(["audio_enabled": value]) }
                     Toggle("Audio analysis", isOn: $audioAnalysis)
-                        .onChange(of: audioAnalysis) { _, value in applyJSON(["audio_analysis": value]) }
+                        .onChange(of: audioAnalysis) { _, value in applyJSON(["audio_analysis_enabled": value]) }
                     Toggle("Disable playback", isOn: $noAudioPlayback)
-                        .onChange(of: noAudioPlayback) { _, value in applyJSON(["no_audio_playback": value]) }
+                        .onChange(of: noAudioPlayback) { _, value in applyJSON(["audio_no_playback": value]) }
                     Toggle("Encode audio", isOn: $encodeAudio)
                         .onChange(of: encodeAudio) { _, value in applyJSON(["encode_audio": value]) }
                     Toggle("Disable audio mixer", isOn: $noAudioMixer)
@@ -766,8 +766,8 @@ private struct IOSSettingsView: View {
                                    "waveform": waveform, "fft": fft, "flip_x": flipX,
                                    "flip_y": flipY, "test_pattern": testPattern,
                                    "snapshot_mode": snapshotMode, "media_loop": mediaLoop,
-                                   "audio_analysis": audioAnalysis,
-                                   "no_audio_playback": noAudioPlayback,
+                                   "audio_analysis_enabled": audioAnalysis,
+                                   "audio_no_playback": noAudioPlayback,
                                    "encode_audio": encodeAudio, "no_audio_mixer": noAudioMixer])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
