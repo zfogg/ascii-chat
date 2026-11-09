@@ -410,8 +410,13 @@ asciichat_error_t http_response_finish(http_response_t *r) {
     for (size_t i = 0; i < r->header_count; i++)
       cap += strlen(r->headers[i].name) + strlen(r->headers[i].value) + 4;
     char *out = SAFE_MALLOC(cap, char *);
-    if (!out)
+    if (!out) {
+      if (r->inflight_accounted && !r->deferred) {
+        http_request_release(r->server);
+        r->inflight_accounted = false;
+      }
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
+    }
     const char *version = r->protocol == HTTP_PROTOCOL_10 ? "HTTP/1.0" : "HTTP/1.1";
     int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status,
                           reason(r->status), r->body_length);
@@ -426,6 +431,10 @@ asciichat_error_t http_response_finish(http_response_t *r) {
     if (!write) {
       SAFE_FREE(out);
       SAFE_FREE(w);
+      if (r->inflight_accounted && !r->deferred) {
+        http_request_release(r->server);
+        r->inflight_accounted = false;
+      }
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
     }
     write->bytes = out;
@@ -434,8 +443,14 @@ asciichat_error_t http_response_finish(http_response_t *r) {
     write->close_on_done = true;
     w->data = write;
     uv_buf_t b = uv_buf_init(out, n);
-    result = uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
-                                                            : SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+    if (uv_write(w, r->stream, &b, 1, write_done) == 0) {
+      result = ASCIICHAT_OK;
+    } else {
+      SAFE_FREE(write->bytes);
+      SAFE_FREE(write);
+      SAFE_FREE(w);
+      result = SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+    }
   }
   if (r->inflight_accounted && !r->deferred) {
     http_request_release(r->server);
