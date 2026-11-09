@@ -301,6 +301,13 @@ export interface SessionUiBinding extends ClassHandle {
   tick(_0: number): string | undefined;
 }
 
+export interface MirrorSessionBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  resetRender(): void;
+  close(): void;
+}
+
 export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
@@ -364,8 +371,9 @@ interface EmbindModule {
     new (): SessionUiBinding;
     new (_0: boolean): SessionUiBinding;
   };
-  sessionRenderCleanup(): void;
-  mirror_cleanup(): void;
+  MirrorSessionBinding: {
+    new (_0: OptionsPatch): MirrorSessionBinding;
+  };
   AsciiRendererBinding: {
     new (
       _0: number,
@@ -382,7 +390,6 @@ interface EmbindModule {
     new (_0: number, _1: number): TestPatternBinding;
   };
   browser_options_revision(): number;
-  initMirror(_0: OptionsPatch): number;
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;

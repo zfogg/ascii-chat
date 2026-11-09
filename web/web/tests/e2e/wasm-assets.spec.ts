@@ -345,14 +345,18 @@ test("mirror initialization applies and validates an options object", async ({
       locateFile: (name: string) => base + name,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
-    const rejected = m.initMirror({ width: 48, audio_source: 99 });
-    const accepted = m.initMirror({
+    const rejectedSession = new m.MirrorSessionBinding({ width: 48, audio_source: 99 });
+    const rejected = rejectedSession.error();
+    rejectedSession.delete();
+    const acceptedSession = new m.MirrorSessionBinding({
       width: 48,
       audio_source: 3,
       waveform: true,
     });
+    const accepted = acceptedSession.valid() ? 0 : acceptedSession.error();
     const values = m.readOptions()?.values;
-    m.mirror_cleanup();
+    acceptedSession.close();
+    acceptedSession.delete();
     return {
       rejected,
       accepted,
@@ -690,7 +694,8 @@ test("renderer copies stay valid across WASM memory growth", async ({
       pthreadPoolSize: 0,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
-    if (m.initMirror({})) throw new Error("mirror initialization failed");
+    const mirror = new m.MirrorSessionBinding({});
+    if (!mirror.valid()) throw new Error(`mirror initialization failed: ${mirror.error()}`);
     const frame = new m.MirrorFrameBinding();
     const bad = frame.convert(new Uint8Array(4), 2, 2, true);
     const samples = Float32Array.from({ length: 16384 }, (_, i) =>
@@ -727,7 +732,8 @@ test("renderer copies stay valid across WASM memory growth", async ({
     } finally {
       renderer.delete();
       frame.delete();
-      m.mirror_cleanup();
+      mirror.close();
+      mirror.delete();
     }
   }, version);
   expect(result.after).toBeGreaterThan(result.before);

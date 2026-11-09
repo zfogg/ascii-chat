@@ -26,6 +26,7 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
+let mirrorSession: InstanceType<MirrorModule["MirrorSessionBinding"]> | null = null;
 let renderer: AsciiRenderer | null = null;
 
 function releaseFrameBinding(): void {
@@ -49,7 +50,7 @@ export function adoptMirrorWasmModule(module: MirrorModule): void {
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
   releaseFrameBinding();
-  wasmModule?.sessionRenderCleanup();
+  mirrorSession?.resetRender();
   if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
 }
@@ -103,14 +104,14 @@ export async function initMirrorWasm(
   }
 
   try {
-    const initResult = wasmModule.initMirror(options?.initialOptions ?? {});
-    if (initResult !== 0) {
-      throw new Error(`Failed to initialize mirror C code: ${initResult}`);
-    }
+    mirrorSession = new wasmModule.MirrorSessionBinding(options?.initialOptions ?? {});
+    if (!mirrorSession.valid()) throw new Error(`Failed to initialize mirror C code: ${mirrorSession.error()}`);
 
     resetRuntimeOptions(wasmModule);
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
+    mirrorSession?.delete();
+    mirrorSession = null;
     wasmModule = null;
     throw err;
   }
@@ -122,7 +123,9 @@ export async function initMirrorWasm(
 export function cleanupMirrorWasm(): void {
   releaseFrameBinding();
   if (wasmModule) {
-    wasmModule.mirror_cleanup();
+    mirrorSession?.close();
+    mirrorSession?.delete();
+    mirrorSession = null;
     resetRuntimeOptions(wasmModule);
     wasmModule = null;
   }
@@ -135,7 +138,7 @@ export function resetRenderStabilizer(): void {
 /** Release per-session rendering state while keeping the shared module alive. */
 export function cleanupRenderSession(): void {
   releaseFrameBinding();
-  wasmModule?.sessionRenderCleanup();
+  mirrorSession?.resetRender();
 }
 
 /**
