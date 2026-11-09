@@ -8,6 +8,8 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/network/http/server.h>
 #include <yyjson.h>
 #include <string.h>
 
@@ -106,6 +108,7 @@ typedef struct mcp_server {
   mcp_job_t *jobs;
   mutex_t output_mutex;
   void *http_context;
+  http_server_t *shared_http;
   atomic_t stopping;
   bool initialized;
 } mcp_server_t;
