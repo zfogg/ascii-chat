@@ -1604,7 +1604,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   }
   char *long_opt_value = NULL;
   char *equals = NULL;
-  char *arg_copy = NULL;            // Copy of arg for safe parsing without modifying original
+  char *arg_copy = NULL; // Copy of arg for safe parsing without modifying original
   defer(SAFE_FREE(arg_copy));
   const char *arg_for_lookup = arg; // What to use for option lookup
 

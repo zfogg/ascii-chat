@@ -636,7 +636,6 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   SAFE_FREE(turn_urls);
   SAFE_FREE(ice_servers);
 
-
   if (pc_id < 0) {
     webrtc_mapping_close(pc);
     return SET_ERRNO(ERROR_NETWORK, "Failed to create peer connection (rtc error %d)", pc_id);

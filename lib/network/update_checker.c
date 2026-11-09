@@ -375,7 +375,6 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return SET_ERRNO(ERROR_FORMAT, "Failed to parse GitHub API JSON");
   }
 
-
   // Fill in result
   SAFE_STRNCPY(result->latest_version, latest_tag, sizeof(result->latest_version));
   SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));

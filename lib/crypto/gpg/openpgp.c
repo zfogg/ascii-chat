@@ -870,7 +870,6 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     offset += header.header_len + header.length;
   }
 
-
   if (!found_seckey) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 secret key found in PGP armored block");
   }

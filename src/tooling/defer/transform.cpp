@@ -720,8 +720,7 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
     }
     if (std::filesystem::weakly_canonical(
             std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical)
-      throw wrapper_error(
-          "defer wrapper in included headers is not supported; move the function into a C source file");
+      throw wrapper_error("defer wrapper in included headers is not supported; move the function into a C source file");
     const auto definition = clang_getCursorReferenced(cursor);
     if (clang_Cursor_isNull(definition))
       throw wrapper_error("cannot resolve macro containing defer: " + spelling(cursor));
@@ -757,7 +756,8 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
           return part.text == "#" || part.text == "##" || part.text == "__VA_OPT__" || part.text == "_Pragma" ||
                  part.text == "__COUNTER__";
         }))
-      throw wrapper_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__");
+      throw wrapper_error(
+          "defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__");
     const auto first = begin(cursor), last = end(cursor);
     if (source.substr(first, last - first).find('\n') != std::string::npos)
       throw wrapper_error("multiline defer wrapper invocations are unsupported");
