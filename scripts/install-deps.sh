@@ -445,16 +445,15 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   fi
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
 
-
   # Keep the interpreter and project environment owned by the invoking user
   # when system packages are installed through sudo.
   if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-    python_env="$(dirname "$0")/../tests/ascii_chat_tests/.venv"
-    if [ -d "$python_env" ] && [ ! -L "$python_env" ]; then
-      # Only repair root-owned entries in this known project environment; do
-      # not follow symlinks into user-managed Python installations.
-      find -P "$python_env" -xdev -user 0 -exec chown -h "$SUDO_USER" {} +
-    fi
+    for python_env in "$(dirname "$0")/../tests/ascii_chat_tests/.venv" "$(dirname "$0")/../src/tooling/defer/.venv"; do
+      if [ -d "$python_env" ] && [ ! -L "$python_env" ]; then
+        # Repair only root-owned entries in known environments without following symlinks.
+        find -P "$python_env" -xdev -user 0 -exec chown -h "$SUDO_USER" {} +
+      fi
+    done
     if [ -n "${UV_PROJECT_ENVIRONMENT:-}" ]; then
       case "$UV_PROJECT_ENVIRONMENT" in
         /*) configured_python_env="$UV_PROJECT_ENVIRONMENT" ;;
@@ -491,7 +490,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   else
     echo "Skipping Python pin in the non-writable working directory."
   fi
-  uv tool install --upgrade "yt-dlp[default]"
+  run_uv tool install --upgrade "yt-dlp[default]"
   sync_python_tooling
   if [ -n "${LLVM_VERSION:-}" ]; then
     verify_llvm_for_defer "/usr/lib/llvm-${LLVM_VERSION}/bin/clang"
@@ -568,4 +567,3 @@ fi
 echo ""
 echo "Dependencies installed successfully!"
 echo "You can now run: cmake --build --preset debug"
-
