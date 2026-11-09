@@ -1226,7 +1226,8 @@ struct ContentView: View {
         // Automated simulator sessions cannot interact with the shared terminal
         // TOFU prompt. Keep this opt-in to the simulator harness; normal device
         // launches retain host identity verification and the native prompt path.
-        if ProcessInfo.processInfo.arguments.contains("--auto-start-client") {
+        if ProcessInfo.processInfo.arguments.contains("--auto-start-client") ||
+           ProcessInfo.processInfo.arguments.contains("--auto-start-discovery") {
             setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1)
         }
 #endif
@@ -1243,6 +1244,9 @@ struct ContentView: View {
         if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-port=") }),
            let port = Int(value.dropFirst("--ios-port=".count)) {
             simulatorOverrides["port"] = port
+        }
+        if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-password=") }) {
+            simulatorOverrides["password"] = String(value.dropFirst("--ios-password=".count))
         }
         #endif
         var persistedValues = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
@@ -1274,7 +1278,9 @@ struct ContentView: View {
         }
         endpoint.withCString { asciichat_ios_set_server_address($0) }
         sessionModel.start(mode: selectedMode)
-        let sessionString = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+        let launchSession = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-session=") })
+            .map { String($0.dropFirst("--ios-session=".count)) }
+        let sessionString = launchSession ?? (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["session_string"] as? String ?? ""
         sessionString.withCString { asciichat_ios_set_session_string($0) }
         NotificationCenter.default.post(name: .iosSessionStarted, object: nil)

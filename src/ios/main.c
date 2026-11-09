@@ -69,7 +69,6 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char program[] = "ascii-chat-ios";
   static char mirror[] = "mirror";
   static char client[] = "client";
-  static char discovery[] = "discovery";
   static char splash[] = "--splash-screen=false";
   static char color[] = "--color-mode=truecolor";
   // Zero lets a real camera keep its negotiated delivery rate. Synthetic
@@ -77,6 +76,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char fps[] = "--fps=0";
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char simulator_audio[] = "--audio=false";
+  static char simulator_discovery_service[] = "--discovery-service=127.0.0.1";
+  static char simulator_discovery_port[] = "--discovery-service-port=27225";
+  static char simulator_discovery_insecure[] = "--discovery-insecure=true";
 #endif
   int render_cols = 0;
   int render_rows = 0;
@@ -91,22 +93,37 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   snprintf(width, sizeof(width), "--width=%d", render_cols);
   snprintf(height, sizeof(height), "--height=%d", render_rows);
   static char test_pattern[] = "--test-pattern=1";
-  char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT      ? client
-                    : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
-                                                           : mirror;
+  char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT ? client : mirror;
   /* Synthetic frames are a simulator mirror aid; network clients must use
    * their negotiated remote media instead. */
-  char *argv[] = {program, mode_name, splash, color, fps, width, height, NULL, NULL, NULL};
-  int argc = 7;
+  char *argv[] = {program, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+  int argc = 1;
+  /* Discovery is the binary's default session-string mode. Its positional
+   * session must precede options, while client and mirror retain their mode
+   * token and accept positional values after the shared options. */
+  if (mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
+    if (g_ios_session_string[0] != '\0')
+      argv[argc++] = g_ios_session_string;
+  } else {
+    argv[argc++] = mode_name;
+  }
+  argv[argc++] = splash;
+  argv[argc++] = color;
+  argv[argc++] = fps;
+  argv[argc++] = width;
+  argv[argc++] = height;
 #ifdef ASCIICHAT_IOS_SIMULATOR
   argv[argc++] = simulator_audio;
+  if (mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
+    argv[argc++] = simulator_discovery_service;
+    argv[argc++] = simulator_discovery_port;
+    argv[argc++] = simulator_discovery_insecure;
+  }
   if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT) {
     argv[argc++] = test_pattern;
   }
 #endif
-  if (mode == ASCIICHAT_IOS_MODE_DISCOVERY && g_ios_session_string[0] != '\0') {
-    argv[argc++] = g_ios_session_string;
-  } else if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0') {
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0') {
     argv[argc++] = g_ios_server_address;
   }
   ios_stdin_bridge_reset();

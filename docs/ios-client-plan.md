@@ -1456,7 +1456,7 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 - [x] `GestureHandler.swift` — native controls and the shared keyboard handler cover the supported iOS interactions
 - [x] Verify: connect the iOS simulator client to a desktop server over WebSocket loopback and see live ASCII video
 - [ ] Verify: run server on iOS, connect desktop client
-- [ ] Verify: discovery mode works through ACDS
+- [ ] Verify: discovery mode works through ACDS (iOS reaches the local ACDS join path; the current desktop WebRTC host test removes the session after its ready-dispatch failure before the simulator can complete the join)
 
 #### Phase 4: Polish (ongoing)
 
