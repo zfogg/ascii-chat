@@ -46,6 +46,8 @@ RUN pacman -S --noconfirm --needed \
   openssh \
   gnupg \
   patch \
+  systemd \
+  systemd-sysvcompat \
   libc++ \
   libc++abi \
   python-pyte \
