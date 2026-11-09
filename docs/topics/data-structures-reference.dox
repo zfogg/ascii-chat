@@ -35,7 +35,7 @@
  */
 /**
  * @struct yt_dlp_request_options_t
- * @brief Defines the inputs for yt dlp request options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For yt dlp request options, this is the live record that ties `proxy_specified` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 +/**
  * @struct wav_writer_t
@@ -43,15 +43,15 @@
  */
 /**
  * @struct waveform_color_stop_t
- * @brief Stores one waveform color stop for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief waveform color stop keeps the values that move through the subsystem: `frequency`, `red`, `green`, `blue`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct webcam_device_info_t
- * @brief Describes the data used by webcam device info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for webcam device info. Callers fill `index` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct webcam_frame_clock_t
- * @brief Stores one webcam frame clock for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of webcam frame clock is in `sample`, `previous`, `wall`, `initialized`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct webrtc_config_t
@@ -67,15 +67,15 @@
  */
 /**
  * @struct webrtc_peer_connection
- * @brief Keeps the live state for webrtc peer connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with webrtc peer connection, it keeps `mapping`, `port_reservation`, `mapping_thread`, `mapping_stop` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct webrtc_peer_manager
- * @brief Stores one webrtc peer manager for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief webrtc peer manager is intentionally a small, concrete record. Fields such as `role`, `config`, `signaling`, `peers` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct webrtc_peer_manager_config_t
- * @brief Defines the inputs for webrtc peer manager config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For webrtc peer manager config, this is the live record that ties `role`, `bind_address`, `stun_servers`, `stun_count` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct webrtc_recv_msg_t
@@ -87,7 +87,7 @@
  */
 /**
  * @struct webrtc_transport_data_t
- * @brief Keeps the live state for webrtc transport data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief webrtc transport data keeps the values that move through the subsystem: `peer_conn`, `data_channel`, `security`, `ready_user_data`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct WebRTCAec3Wrapper
@@ -111,7 +111,7 @@
  */
 /**
  * @struct websocket_endpoint_t
- * @brief Describes the data used by websocket endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for websocket endpoint. Callers fill `port`, `use_ssl` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct websocket_msg_t
@@ -123,27 +123,27 @@
  */
 /**
  * @struct ui_table_column_t
- * @brief Stores one ui table column for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of ui table column is in `heading`, `width`, `alignment`, `ellipsis`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct ui_table_t
- * @brief Describes the data used by ui table. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with ui table, it keeps `columns`, `column_count`, `row_count`, `viewport` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct ui_viewport_range_t
- * @brief Keeps the live state for ui viewport range. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief ui viewport range is intentionally a small, concrete record. Fields such as `page`, `pages`, `page_first`, `page_count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ui_viewport_t
- * @brief Keeps the live state for ui viewport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For ui viewport, this is the live record that ties `selected`, `first_visible`, `page_size` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct update_check_result_t
- * @brief Describes the data used by update check result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief update check result keeps the values that move through the subsystem: `update_available`, `last_check_time`, `dismissed_until`, `check_succeeded`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct update_child_result_t
- * @brief Describes the data used by update child result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for update child result. Callers fill `exited`, `status`, `signal` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct url_parts_t
@@ -155,15 +155,15 @@
  */
 /**
  * @struct utf8_capabilities_t
- * @brief Describes the data used by utf8 capabilities. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of utf8 capabilities is in `utf8_support`, `forced_utf8`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct utf8_char_info_t
- * @brief Stores one utf8 char info for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with utf8 char info, it keeps `byte_len`, `display_width` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct utf8_char_t
- * @brief Stores one utf8 char for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief utf8 char is intentionally a small, concrete record. Fields such as `width`, `byte_len`, `_pad` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct utf8_palette_cache
@@ -199,15 +199,15 @@
  */
 +/**
  * @struct title_writer_t
- * @brief Describes the data used by title writer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For title writer, this is the live record that ties `data`, `length`, `capacity` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct tty_info_t
- * @brief Describes the data used by tty info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief tty info keeps the values that move through the subsystem: `fd`, `path`, `owns_fd`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct tui_input_events_t
- * @brief Describes the data used by tui input events. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for tui input events. Callers fill `pasting`, `invalid`, `ready`, `length` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct turn_credentials_t
@@ -215,31 +215,31 @@
  */
 /**
  * @struct udp_peer
- * @brief Stores one udp peer for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of udp peer is in `next`, `connection`, `pending_path`, `pending_length`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct ui_button_t
- * @brief Describes the data used by ui button. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with ui button, it keeps `label`, `shortcut`, `disabled`, `color` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct ui_buttons_t
- * @brief Describes the data used by ui buttons. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief ui buttons is intentionally a small, concrete record. Fields such as `selected` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ui_discovery_view_t
- * @brief Keeps the live state for ui discovery view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For ui discovery view, this is the live record that ties `enabled`, `joining` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct ui_help_entry_t
- * @brief Stores one ui help entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief ui help entry keeps the values that move through the subsystem: `keys`, `description`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct ui_help_menu_t
- * @brief Describes the data used by ui help menu. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for ui help menu. Callers fill `title`, `entries`, `count`, `settings` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct ui_layout_t
- * @brief Describes the data used by ui layout. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of ui layout is in `body_row`, `body_rows`, `detail_row`, `footer_row`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct ui_mdns_config_t
@@ -251,31 +251,31 @@
  */
 /**
  * @struct ui_popup_t
- * @brief Describes the data used by ui popup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with ui popup, it keeps `title`, `lines`, `line_count`, `footer` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct ui_presentation_state_t
- * @brief Keeps the live state for ui presentation state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief ui presentation state is intentionally a small, concrete record. Fields such as `screen`, `covered` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ui_scrollbar_geometry_t
- * @brief Describes the data used by ui scrollbar geometry. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For ui scrollbar geometry, this is the live record that ties `start`, `length`, `visible` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct ui_selectable_list_t
- * @brief Describes the data used by ui selectable list. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief ui selectable list keeps the values that move through the subsystem: `selected`, `first_visible`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct ui_session
- * @brief Keeps the live state for ui session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for ui session. Callers fill `size`, `frame`, `media`, `logs` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct ui_session_view_t
- * @brief Keeps the live state for ui session view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of ui session view is in `screen`, `minimum`, `dirty`, `clear`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct ui_splash_view_t
- * @brief Keeps the live state for ui splash view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with ui splash view, it keeps `discovery`, `animation`, `use_colors` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct terminal_capabilities_packet_t
@@ -283,7 +283,7 @@
  */
 /**
  * @struct terminal_capabilities_t
- * @brief Describes the data used by terminal capabilities. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief terminal capabilities is intentionally a small, concrete record. Fields such as `color_level`, `capabilities`, `color_count`, `utf8_support` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct terminal_capability_t
@@ -291,11 +291,11 @@
  */
 /**
  * @struct terminal_fd_reader_s
- * @brief Describes the data used by terminal fd reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For terminal fd reader, this is the live record that ties `fp`, `frame_height`, `frame_width`, `line_buffer` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct terminal_fd_writer_s
- * @brief Describes the data used by terminal fd writer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief terminal fd writer keeps the values that move through the subsystem: `fp`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct terminal_format_params_t
@@ -303,11 +303,11 @@
  */
 /**
  * @struct terminal_renderer_s
- * @brief Keeps the live state for terminal renderer. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for terminal renderer. Callers fill `vt`, `vts`, `cols`, `rows` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct terminal_resize_watcher_t
- * @brief Describes the data used by terminal resize watcher. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of terminal resize watcher is in `size`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct terminal_screen_config_t
@@ -315,15 +315,15 @@
  */
 /**
  * @struct terminal_size_t
- * @brief Describes the data used by terminal size. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with terminal size, it keeps `rows`, `cols` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct test_pattern
- * @brief Describes the data used by test pattern. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief test pattern is intentionally a small, concrete record. Fields such as `image`, `rgba` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct text_snapshot_t
- * @brief Collects the counters and timestamps for text snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief For text snapshot, this is the live record that ties `fd`, `media`, `dimensions`, `len` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct thread_entry
@@ -335,11 +335,11 @@
  */
 /**
  * @struct thread_lock_stack_t
- * @brief Describes the data used by thread lock stack. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief thread lock stack keeps the values that move through the subsystem: `depth`, `guard`, `telemetry`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct thread_pool
- * @brief Describes the data used by thread pool. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for thread pool. Callers fill `threads`, `threads_mutex`, `thread_count`, `is_work_queue_mode` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct thread_pool_entry
@@ -351,7 +351,7 @@
  */
 /**
  * @struct thread_registry_entry_t
- * @brief Stores one thread registry entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of thread registry entry is in `thread_id`, `stack`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct timer_record
@@ -359,35 +359,35 @@
  */
 +/**
  * @struct stats_peer
- * @brief Collects the counters and timestamps for stats peer. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with stats peer, it keeps `scope`, `sampler`, `id` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct stats_rates_t
- * @brief Collects the counters and timestamps for stats rates. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief stats rates is intentionally a small, concrete record. Fields such as `ready`, `elapsed_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct stats_sampler
- * @brief Collects the counters and timestamps for stats sampler. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief For stats sampler, this is the live record that ties `config`, `history`, `latest`, `capacity` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct stats_sampler_config_t
- * @brief Defines the inputs for stats sampler config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief stats sampler config keeps the values that move through the subsystem: `window_ns`, `resolution_ns`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct stats_scope
- * @brief Collects the counters and timestamps for stats scope. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for stats scope. Callers fill `observer`, `observer_context`, `id`, `started_ns` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct stats_snapshot_t
- * @brief Collects the counters and timestamps for stats snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief The useful part of stats snapshot is in `scope_id`, `started_ns`, `sampled_ns`, `capabilities`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct stats_table_context_t
- * @brief Collects the counters and timestamps for stats table context. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with stats table context, it keeps `view` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct stats_view_t
- * @brief Collects the counters and timestamps for stats view. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief stats view is intentionally a small, concrete record. Fields such as `count`, `offset`, `page`, `selected` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct stdin_buffer_reader_t
@@ -403,7 +403,7 @@
  */
 /**
  * @struct stream_header_t
- * @brief Carries the fields exchanged for stream header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief For stream header, this is the live record that ties `client_id`, `stream_type`, `timestamp` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct symbol_entry_t
@@ -415,43 +415,43 @@
  */
 /**
  * @struct sync_row_t
- * @brief Describes the data used by sync row. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief sync row keeps the values that move through the subsystem: `key`, `owner`, `waiter`, `generation`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct sync_sample_t
- * @brief Stores one sync sample for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief This is the handoff point for sync sample. Callers fill `busy`, `rows`, `count`, `capacity` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct tcp_server
- * @brief Keeps the live state for tcp server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of tcp server is in `event_loop`, `listen_socket`, `listen_socket6`, `running`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct tcp_server_config_t
- * @brief Defines the inputs for tcp server config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with tcp server config, it keeps `port`, `ipv4_address`, `ipv6_address`, `bind_ipv4` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct tcp_transport_data_t
- * @brief Keeps the live state for tcp transport data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief tcp transport data is intentionally a small, concrete record. Fields such as `sockfd`, `owns_socket`, `is_connected`, `zerocopy_disabled` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct term_renderer_config_t
- * @brief Defines the inputs for term renderer config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For term renderer config, this is the live record that ties `cols`, `rows`, `font_size_pt`, `theme` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 +/**
  * @struct simd_backend_t
- * @brief Describes the data used by simd backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief simd backend keeps the values that move through the subsystem: `name`, `required_features`, `luminance`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct simd_benchmark_t
- * @brief Describes the data used by simd benchmark. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for simd benchmark. Callers fill `scalar_time`, `sse2_time`, `ssse3_time`, `avx2_time` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct simd_cells_t
- * @brief Stores one simd cells for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of simd cells is in `luminance`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct simple_frame_swap_t
- * @brief Stores one simple frame swap for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with simple frame swap, it keeps `current_frame`, `frame_a`, `frame_b`, `use_frame_a` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct size_packet_t
@@ -463,7 +463,7 @@
  */
 /**
  * @struct socket_io_stats_t
- * @brief Collects the counters and timestamps for socket io stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief socket io stats is intentionally a small, concrete record. Fields such as `send_calls`, `sent_bytes`, `zerocopy_calls`, `zerocopy_completions` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct socket_send_buffer_t
@@ -471,19 +471,19 @@
  */
 /**
  * @struct spectral_config_t
- * @brief Defines the inputs for spectral config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For spectral config, this is the live record that ties `sample_rate`, `fft_size`, `noise_gate`, `compressor` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct spectral_processor
- * @brief Keeps the live state for spectral processor. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief spectral processor keeps the values that move through the subsystem: `config`, `forward`, `inverse`, `pitch_hz`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct sqlite_backend_t
- * @brief Describes the data used by sqlite backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for sqlite backend. Callers fill `db` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct ssh_private_key_parse_t
- * @brief Describes the data used by ssh private key parse. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of ssh private key parse is in `file_content`, `key_blob`, `key_blob_len`, `offset`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct static_cond_t
@@ -499,27 +499,27 @@
  */
 /**
  * @struct stats_capabilities_t
- * @brief Collects the counters and timestamps for stats capabilities. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with stats capabilities, it keeps the associated state here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct stats_descriptor_t
- * @brief Defines the inputs for stats descriptor. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief stats descriptor is intentionally a small, concrete record. Fields such as `name`, `unit`, `description` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct stats_duration_cell_t
- * @brief Collects the counters and timestamps for stats duration cell. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief For stats duration cell, this is the live record that ties `sequence`, `observations`, `total_ns`, `min_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct stats_duration_shard_t
- * @brief Collects the counters and timestamps for stats duration shard. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief stats duration shard keeps the values that move through the subsystem: `owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct stats_duration_snapshot_t
- * @brief Collects the counters and timestamps for stats duration snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for stats duration snapshot. Callers fill `observations`, `total_ns`, `min_ns`, `max_ns` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 +/**
  * @struct session_host
- * @brief Keeps the live state for session host. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of session host is in `frame_workspace`, `render_histories`, `port`, `max_clients`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct session_host_callbacks_t
@@ -539,11 +539,11 @@
  */
 /**
  * @struct session_host_render_config_t
- * @brief Defines the inputs for session host render config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with session host render config, it keeps `caps`, `palette`, `width`, `height` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct session_host_render_target_t
- * @brief Keeps the live state for session host render target. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief session host render target is intentionally a small, concrete record. Fields such as `client_id`, `context` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct session_log_buffer
@@ -567,23 +567,23 @@
  */
 /**
  * @struct session_pipeline_s
- * @brief Keeps the live state for session pipeline. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For session pipeline, this is the live record that ties `capture_tid`, `encode_tid`, `input_tid`, `input_start_status` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct session_protocol_media_t
- * @brief Keeps the live state for session protocol media. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief session protocol media keeps the values that move through the subsystem: `context`, `terminal_output`, `frame_workspace`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct session_protocol_t
- * @brief Keeps the live state for session protocol. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for session protocol. Callers fill `transport`, `media`, `control`, `callback_result` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct session_server_like_config
- * @brief Defines the inputs for session server like config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief The useful part of session server like config is in `[struct].mdns`, `[struct].upnp`, `init_fn`, `init_user_data`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct session_settings_t
- * @brief Defines the inputs for session settings. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with session settings, it keeps `version`, `width`, `height`, `color_mode` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct setting_map_entry_t
@@ -595,27 +595,27 @@
  */
 /**
  * @struct SHA1_CTX
- * @brief Describes the data used by sha1 ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief SHA1 CTX is intentionally a small, concrete record. Fields such as `count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 +/**
  * @struct server_connection_state_t
- * @brief Keeps the live state for server connection state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For server connection state, this is the live record that ties `negotiation`, `client` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct server_context_t
- * @brief Keeps the live state for server context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief server context keeps the values that move through the subsystem: `network_server`, `rate_limiter`, `client_manager`, `client_manager_rwlock`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct server_discovery_policy_t
- * @brief Defines the inputs for server discovery policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for server discovery policy. Callers fill `password`, `has_password`, `has_identity`, `explicit_expose` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct server_discovery_startup_t
- * @brief Keeps the live state for server discovery startup. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of server discovery startup is in `mdns_only`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct server_state_packet_t
- * @brief Carries the fields exchanged for server state packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief When code needs to work with server state packet, it keeps `connected_client_count`, `active_client_count` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct server_stats_t
@@ -623,11 +623,11 @@
  */
 /**
  * @struct server_stats_visit_t
- * @brief Collects the counters and timestamps for server stats visit. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief server stats visit is intentionally a small, concrete record. Fields such as `view`, `active`, `queued` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct session_audio_ctx
- * @brief Keeps the live state for session audio ctx. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For session audio ctx, this is the live record that ties `audio_ctx`, `pipeline`, `is_host`, `running` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct session_audio_source_t
@@ -639,7 +639,7 @@
  */
 /**
  * @struct session_capture_config_t
- * @brief Defines the inputs for session capture config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief session capture config keeps the values that move through the subsystem: `type`, `path`, `target_fps`, `loop`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct session_capture_ctx
@@ -647,7 +647,7 @@
  */
 /**
  * @struct session_client_like_config
- * @brief Defines the inputs for session client like config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for session client like config. Callers fill `run_fn`, `run_user_data`, `kind`, `discovery` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct session_connection_ops_t
@@ -655,11 +655,11 @@
  */
 /**
  * @struct session_connection_t
- * @brief Keeps the live state for session connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of session connection is in `state`, `owner_thread`, `ops`, `context`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct session_consensus
- * @brief Keeps the live state for session consensus. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with session consensus, it keeps `topology`, `coordinator`, `send_packet`, `on_election` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct session_consensus_callbacks_t
@@ -667,7 +667,7 @@
  */
 /**
  * @struct session_display_config_t
- * @brief Defines the inputs for session display config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief session display config is intentionally a small, concrete record. Fields such as `snapshot_mode`, `palette_type`, `custom_palette`, `color_mode` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct session_display_ctx
@@ -679,19 +679,19 @@
  */
 +/**
  * @struct render_file_ctx_s
- * @brief Describes the data used by render file ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For render file ctx, this is the live record that ties `progress`, `error`, `renderer`, `encoder` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct render_progress
- * @brief Describes the data used by render progress. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief render progress keeps the values that move through the subsystem: `mutex`, `snapshot`, `fd`, `last_preview_ns`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct render_worker_t
- * @brief Keeps the live state for render worker. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for render worker. Callers fill `loop`, `process`, `output`, `errors` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct rendered_cell_t
- * @brief Stores one rendered cell for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of rendered cell is in `character`, `foreground`, `background`, `pixels`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct report_config
@@ -703,7 +703,7 @@
  */
 /**
  * @struct rgb_error_t
- * @brief Describes the data used by rgb error. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with rgb error, it keeps `r`, `g`, `b` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct rgb_pixel_simd_t
@@ -711,7 +711,7 @@
  */
 /**
  * @struct rgb_pixel_t
- * @brief Stores one rgb pixel for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief rgb pixel is intentionally a small, concrete record. Fields such as `r`, `g`, `b` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ringbuffer_t
@@ -723,7 +723,7 @@
  */
 /**
  * @struct runtime_field_t
- * @brief Describes the data used by runtime field. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct rwlock_t
@@ -731,15 +731,15 @@
  */
 /**
  * @struct screen
- * @brief Keeps the live state for screen. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief screen keeps the values that move through the subsystem: `next`, `owned`, `snapshot`, `render`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct screen_snapshot_t
- * @brief Collects the counters and timestamps for screen snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for screen snapshot. Callers fill `references`, `slot`, `terminal`, `frame_id` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct screen_terminal_t
- * @brief Keeps the live state for screen terminal. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of screen terminal is in `references`, `fd`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct sdp_session_t
@@ -747,15 +747,15 @@
  */
 /**
  * @struct send_chunk
- * @brief Carries the fields exchanged for send chunk. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief When code needs to work with send chunk, it keeps `next`, `data`, `length`, `submitted` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct send_stream_t
- * @brief Describes the data used by send stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief send stream is intentionally a small, concrete record. Fields such as `id`, `queued_offset`, `acked_offset`, `head` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct server_client_removal_t
- * @brief Keeps the live state for server client removal. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For server client removal, this is the live record that ties `client` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 +/**
  * @struct platform_stderr_redirect_handle_t
@@ -763,7 +763,7 @@
  */
 /**
  * @struct platform_wakeup
- * @brief Describes the data used by platform wakeup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief platform wakeup keeps the values that move through the subsystem: the fields shown below. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct positional_arg_descriptor_t
@@ -775,15 +775,15 @@
  */
 /**
  * @struct progress_snapshot_t
- * @brief Collects the counters and timestamps for progress snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for progress snapshot. Callers fill `started_ns`, `completed`, `total`, `total_known` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct prompt_opts_t
- * @brief Describes the data used by prompt opts. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of prompt opts is in `timeout_seconds`, `echo`, `same_line`, `mask_char`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct prompt_snapshot_t
- * @brief Collects the counters and timestamps for prompt snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with prompt snapshot, it keeps `kind`, `prompt_bytes`, `cursor`, `selected_button` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct protocol_version_packet_t
@@ -795,11 +795,11 @@
  */
 /**
  * @struct queued_packet_t
- * @brief Carries the fields exchanged for queued packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief queued packet is intentionally a small, concrete record. Fields such as `header`, `data`, `data_len` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct quic_transport_t
- * @brief Keeps the live state for quic transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For quic transport, this is the live record that ties `connection`, `lane`, `received`, `security_changed` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct rate_event_s
@@ -819,15 +819,15 @@
  */
 /**
  * @struct receive_context_t
- * @brief Keeps the live state for receive context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief receive context keeps the values that move through the subsystem: `connection`, `stream`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct receive_stream_t
- * @brief Describes the data used by receive stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for receive stream. Callers fill `id`, `received_offset`, `reader`, `active` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct received_packet
- * @brief Carries the fields exchanged for received packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief The useful part of received packet is in `next`, `data`, `length`, `cost`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct registry_entry_t
@@ -843,7 +843,7 @@
  */
 /**
  * @struct parallel_connect_config_t
- * @brief Defines the inputs for parallel connect config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with parallel connect config, it keeps `hostname`, `port`, `timeout_ms`, `should_exit_callback` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct parsed_section_t
@@ -859,7 +859,7 @@
  */
 /**
  * @struct peer_output
- * @brief Stores one peer output for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief peer output is intentionally a small, concrete record. Fields such as `next`, `data`, `length` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct pem_object_t
@@ -867,11 +867,11 @@
  */
 /**
  * @struct pending_ice_candidate
- * @brief Stores one pending ice candidate for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief For pending ice candidate, this is the live record that ties `candidate`, `mid`, `next` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct pipeline_frame_t
- * @brief Keeps the live state for pipeline frame. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief pipeline frame keeps the values that move through the subsystem: `slot`, `pixels`, `w`, `h`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct platform_binary_match_t
@@ -887,27 +887,27 @@
  */
 /**
  * @struct platform_directory_list_t
- * @brief Stores one platform directory list for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief This is the handoff point for platform directory list. Callers fill `candidates`, `count` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct platform_event_listener
- * @brief Describes the data used by platform event listener. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of platform event listener is in `listener`, `tcp`, `accept`, `arg`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct platform_event_loop
- * @brief Describes the data used by platform event loop. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with platform event loop, it keeps `uv`, `wake`, `tick`, `tick_fn` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct platform_event_stream
- * @brief Describes the data used by platform event stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief platform event stream is intentionally a small, concrete record. Fields such as `listener`, `owner`, `tcp`, `timer` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct platform_mmap
- * @brief Describes the data used by platform mmap. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For platform mmap, this is the live record that ties `addr`, `size`, `fd` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct platform_process_stats_t
- * @brief Collects the counters and timestamps for platform process stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief platform process stats keeps the values that move through the subsystem: `cpu_seconds`, `resident_bytes`, `threads`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct platform_signal_handler_t
@@ -931,27 +931,27 @@
  */
 /**
  * @struct options_edit_t
- * @brief Defines the inputs for options edit. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for options edit. Callers fill `[union].value`, `name`, `type`, `operation` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct options_patch_result_t
- * @brief Defines the inputs for options patch result. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief The useful part of options patch result is in `revision`, `changed`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct options_patch_t
- * @brief Defines the inputs for options patch. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with options patch, it keeps `edits`, `count`, `expected_revision`, `origin` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct options_snapshot_t
- * @brief Defines the inputs for options snapshot. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief options snapshot is intentionally a small, concrete record. Fields such as `values`, `revision`, `origin` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct options_state
- * @brief Defines the inputs for options state. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For options state, this is the live record that ties `detected_mode`, `mode_arg_index`, `help`, `version` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct options_t
- * @brief Defines the inputs for options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief options keeps the values that move through the subsystem: the fields shown below. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct opus_codec_t
@@ -963,11 +963,11 @@
  */
 /**
  * @struct outbound_packet
- * @brief Carries the fields exchanged for outbound packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief This is the handoff point for outbound packet. Callers fill `next`, `data`, `size`, `cost` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct outbound_stream_t
- * @brief Describes the data used by outbound stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of outbound stream is in `type`, `stream`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct outbuf_t
@@ -975,11 +975,11 @@
  */
 /**
  * @struct packet_decoder_t
- * @brief Carries the fields exchanged for packet decoder. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief When code needs to work with packet decoder, it keeps `header_used`, `packet`, `used`, `size` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct packet_envelope_t
- * @brief Carries the fields exchanged for packet envelope. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief packet envelope is intentionally a small, concrete record. Fields such as `type`, `data`, `len`, `was_encrypted` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct packet_header_t
@@ -987,35 +987,35 @@
  */
 /**
  * @struct packet_node
- * @brief Carries the fields exchanged for packet node. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief For packet node, this is the live record that ties `packet`, `next` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct packet_queue
- * @brief Carries the fields exchanged for packet queue. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief packet queue keeps the values that move through the subsystem: `mutex`, `head`, `tail`, `domain`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct packet_queue_config_t
- * @brief Defines the inputs for packet queue config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for packet queue config. Callers fill `max_packets`, `max_bytes`, `overflow` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 +/**
  * @struct nat_upnp_context
- * @brief Keeps the live state for nat upnp context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of nat upnp context is in `mapped_port`, `internal_port`, `is_natpmp`, `control_url`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct native_view_t
- * @brief Keeps the live state for native view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with native view, it keeps `screen`, `layers`, `layer_count`, `active` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct negotiate_ctx_t
- * @brief Describes the data used by negotiate ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief negotiate ctx is intentionally a small, concrete record. Fields such as `is_initiator`, `our_quality`, `peer_quality`, `peer_quality_received` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct network_connect_config_t
- * @brief Defines the inputs for network connect config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For network connect config, this is the live record that ties `timeout_ms`, `callback_data`, `tls_ca_file`, `quic_visual_datagrams` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct network_connection
- * @brief Keeps the live state for network connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief network connection keeps the values that move through the subsystem: `server`, `callbacks`, `callback_context`, `policy`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct network_connection_callbacks_t
@@ -1023,31 +1023,31 @@
  */
 /**
  * @struct network_establish_config_t
- * @brief Defines the inputs for network establish config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for network establish config. Callers fill `name`, `address`, `default_port`, `connect` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct network_establish_result_t
- * @brief Describes the data used by network establish result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of network establish result is in `endpoint`, `password_failure`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct network_negotiation_t
- * @brief Describes the data used by network negotiation. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with network negotiation, it keeps `protocol`, `handshake`, `identity_keys`, `identity_key_count` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct network_server
- * @brief Keeps the live state for network server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief network server is intentionally a small, concrete record. Fields such as `config`, `listener`, `websocket`, `websocket_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct network_server_config_t
- * @brief Defines the inputs for network server config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For network server config, this is the live record that ties `port`, `ipv4_address`, `ipv6_address`, `bind_ipv4` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct noise_gate_t
- * @brief Describes the data used by noise gate. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief noise gate keeps the values that move through the subsystem: `threshold`, `attack_ns`, `release_ns`, `hysteresis`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct notice_snapshot_t
- * @brief Collects the counters and timestamps for notice snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for notice snapshot. Callers fill `severity`, `unicode`, `color`, `started` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct openpgp_packet_header_t
@@ -1083,7 +1083,7 @@
  */
 /**
  * @struct memory_backend_t
- * @brief Describes the data used by memory backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of memory backend is in `events`, `lock`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct mixer_listener_buffer
@@ -1095,7 +1095,7 @@
  */
 /**
  * @struct mode_arguments_t
- * @brief Defines the inputs for mode arguments. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with mode arguments, it keeps `argc`, `argv`, `allocated` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct mode_bit_name_t
@@ -1119,7 +1119,7 @@
  */
 /**
  * @struct mutex_stack_entry_t
- * @brief Stores one mutex stack entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief mutex stack entry is intentionally a small, concrete record. Fields such as `mutex_key`, `mutex_name`, `state`, `timestamp_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct mutex_t
@@ -1127,7 +1127,7 @@
  */
 /**
  * @struct mutex_wait_snapshot_t
- * @brief Collects the counters and timestamps for mutex wait snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief For mutex wait snapshot, this is the live record that ties `mutex_key`, `thread_key`, `since_ns`, `cycle` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct named_entry
@@ -1135,7 +1135,7 @@
  */
 /**
  * @struct named_iter_entry_t
- * @brief Stores one named iter entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief named iter entry keeps the values that move through the subsystem: `key`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct named_metadata_cache_t
@@ -1143,11 +1143,11 @@
  */
 /**
  * @struct named_metadata_entry_t
- * @brief Stores one named metadata entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief This is the handoff point for named metadata entry. Callers fill `key`, `valid`, `metadata` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct named_metadata_t
- * @brief Describes the data used by named metadata. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of named metadata is in its fields: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct named_registry_t
@@ -1163,11 +1163,11 @@
  */
 /**
  * @struct log_row_ref_t
- * @brief Describes the data used by log row ref. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with log row ref, it keeps `entry`, `row` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct log_search_state_t
- * @brief Keeps the live state for log search state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief log search state is intentionally a small, concrete record. Fields such as `mode`, `len`, `cursor`, `previous_pattern_count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct log_template_t
@@ -1175,11 +1175,11 @@
  */
 /**
  * @struct loop_work_t
- * @brief Describes the data used by loop work. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For loop work, this is the live record that ties `request`, `work`, `done`, `arg` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct lowpass_filter_t
- * @brief Describes the data used by lowpass filter. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief lowpass filter keeps the values that move through the subsystem: `cutoff_hz`, `sample_rate`, `alpha`, `prev_output`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct lws_callback_stats_t
@@ -1187,7 +1187,7 @@
  */
 /**
  * @struct manpage_merge_state_t
- * @brief Keeps the live state for manpage merge state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for manpage merge state. Callers fill `in_auto_section`, `found_section_header`, `in_merge_section`, `merge_content_generated` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct manpage_resources_t
@@ -1195,23 +1195,23 @@
  */
 /**
  * @struct mcp_job
- * @brief Describes the data used by mcp job. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of mcp job is in `server`, `message`, `response`, `request`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct mcp_policy_t
- * @brief Defines the inputs for mcp policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with mcp policy, it keeps `hosted`, `restricted`, `address`, `address6` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct mcp_render_request_t
- * @brief Describes the data used by mcp render request. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief mcp render request is intentionally a small, concrete record. Fields such as `argv`, `argc`, `timeout_ms`, `capture_webcam` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct mcp_render_result_t
- * @brief Describes the data used by mcp render result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For mcp render result, this is the live record that ties `text`, `length`, `elapsed_ms`, `timed_out` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct mcp_server
- * @brief Keeps the live state for mcp server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief mcp server keeps the values that move through the subsystem: `policy`, `jobs`, `output_mutex`, `http_context`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct mdns_query_state_t
@@ -1219,7 +1219,7 @@
  */
 /**
  * @struct mdns_refresh_t
- * @brief Describes the data used by mdns refresh. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for mdns refresh. Callers fill `mutex`, `stop`, `thread`, `running` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct mdns_snapshot_t
@@ -1231,11 +1231,11 @@
  */
 /**
  * @struct media_playlist_t
- * @brief Describes the data used by media playlist. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of media playlist is in `count`, `index`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct media_snapshot_slot
- * @brief Collects the counters and timestamps for media snapshot slot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with media snapshot slot, it keeps `busy`, `snapshot`, `capacity` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct host_lost_candidate_t
@@ -1247,15 +1247,15 @@
  */
 /**
  * @struct http3_receive_stream_t
- * @brief Describes the data used by http3 receive stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief http3 receive stream is intentionally a small, concrete record. Fields such as `id`, `offset`, `prefix_used`, `prefix_length` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct http_pulse_t
- * @brief Describes the data used by http pulse. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For http pulse, this is the live record that ties `timer`, `context` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct http_session_t
- * @brief Keeps the live state for http session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief http session keeps the values that move through the subsystem: `body`, `response`, `length`, `response_size`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct ice_candidate_t
@@ -1283,7 +1283,7 @@
  */
 /**
  * @struct input_editor_t
- * @brief Describes the data used by input editor. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for input editor. Callers fill `length`, `cursor`, `deadline`, `active` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct keyboard_line_edit_opts_t
@@ -1291,15 +1291,15 @@
  */
 /**
  * @struct keyboard_text_decoder_t
- * @brief Describes the data used by keyboard text decoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of keyboard text decoder is in `length`, `expected`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct lifecycle_t
- * @brief Keeps the live state for lifecycle. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with lifecycle, it keeps `[union].sync`, `state`, `sync_type`, `sync` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct linux_binary_lookup_t
- * @brief Describes the data used by linux binary lookup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief linux binary lookup is intentionally a small, concrete record. Fields such as `address`, `match`, `found` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct log_buffer_entry_t
@@ -1335,7 +1335,7 @@
  */
 /**
  * @struct glyph_candidate_t
- * @brief Stores one glyph candidate for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief For glyph candidate, this is the live record that ties `sum`, `tone`, `energy`, `key` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct gpg_homedir
@@ -1351,31 +1351,31 @@
  */
 /**
  * @struct grep_pattern_t
- * @brief Describes the data used by grep pattern. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief grep pattern keeps the values that move through the subsystem: `original`, `parsed_pattern`, `compiled`, `is_fixed_string`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct h265_client_context
- * @brief Keeps the live state for h265 client context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for h265 client context. Callers fill `encoder`, `source_type`, `source_location`, `current_width` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct h265_client_decoder_t
- * @brief Keeps the live state for h265 client decoder. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of h265 client decoder is in `client_id`, `decoder`, `last_width`, `last_height`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct h265_decoder
- * @brief Describes the data used by h265 decoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with h265 decoder, it keeps `codec_ctx`, `frame`, `packet`, `parser` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct h265_encoder
- * @brief Describes the data used by h265 encoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief h265 encoder is intentionally a small, concrete record. Fields such as `codec_ctx`, `codec`, `frame`, `packet` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct h265_packet_header_t
- * @brief Carries the fields exchanged for h265 packet header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief For h265 packet header, this is the live record that ties `type`, `client_id`, `frame_num`, `flags` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct h265_server_context
- * @brief Keeps the live state for h265 server context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief h265 server context keeps the values that move through the subsystem: `active_client_count`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct handler_hash_entry_t
@@ -1387,19 +1387,19 @@
  */
 /**
  * @struct highpass_filter_t
- * @brief Describes the data used by highpass filter. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for highpass filter. Callers fill `cutoff_hz`, `sample_rate`, `alpha`, `prev_input` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct host_connection_t
- * @brief Keeps the live state for host connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of host connection is in `client_id`, `negotiation`, `identity`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct host_liveness_t
- * @brief Describes the data used by host liveness. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with host liveness, it keeps `last_ping_sent_ms`, `last_pong_received_ms`, `consecutive_failures`, `max_failures` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct error_frame_t
- * @brief Stores one error frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief error frame is intentionally a small, concrete record. Fields such as `context`, `next`, `used` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct error_packet_t
@@ -1407,19 +1407,19 @@
  */
 /**
  * @struct error_thread
- * @brief Describes the data used by error thread. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For error thread, this is the live record that ties `id`, `generation`, `top`, `depth` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct event_command_t
- * @brief Describes the data used by event command. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief event command keeps the values that move through the subsystem: `fn`, `arg`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct event_work_t
- * @brief Describes the data used by event work. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for event work. Callers fill `work`, `stream`, `run`, `done` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct event_write
- * @brief Describes the data used by event write. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of event write is in `request`, `stream`, `done`, `arg`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct example_descriptor_t
@@ -1427,19 +1427,19 @@
  */
 /**
  * @struct face_follow_detection_t
- * @brief Describes the data used by face follow detection. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with face follow detection, it keeps `box`, `confidence` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct face_follow_image
- * @brief Stores one face follow image for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief face follow image is intentionally a small, concrete record. Fields such as `state`, `last_detection`, `source_width`, `source_height` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct face_follow_rect_t
- * @brief Stores one face follow rect for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief For face follow rect, this is the live record that ties `x`, `y`, `w`, `h` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct face_follow_state_t
- * @brief Keeps the live state for face follow state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief face follow state keeps the values that move through the subsystem: `crop`, `target`, `face`, `last_tick`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct ffmpeg_decoder_t
@@ -1447,7 +1447,7 @@
  */
 /**
  * @struct ffmpeg_encoder_s
- * @brief Describes the data used by ffmpeg encoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for ffmpeg encoder. Callers fill `codec_ctx`, `stream`, `frame`, `frame_encoded` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct find_client_context_t
@@ -1455,7 +1455,7 @@
  */
 /**
  * @struct flow_control_debounce_t
- * @brief Describes the data used by flow control debounce. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of flow control debounce is in `due_ns`, `pending`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct fps_counter_s
@@ -1475,11 +1475,11 @@
  */
 /**
  * @struct frame_slot_s
- * @brief Stores one frame slot for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with frame slot, it keeps `frame`, `busy`, `capacity` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct deadlock_state_t
- * @brief Keeps the live state for deadlock state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief deadlock state is intentionally a small, concrete record. Fields such as `count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct dec3_t
@@ -1487,11 +1487,11 @@
  */
 /**
  * @struct digital_rain
- * @brief Describes the data used by digital rain. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For digital rain, this is the live record that ties `animation`, `animation_timestamp_ns`, `columns`, `num_columns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct digital_rain_column_t
- * @brief Stores one digital rain column for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief digital rain column keeps the values that move through the subsystem: `time_offset`, `speed_multiplier`, `phase_offset`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct discovery_config_t
@@ -1499,7 +1499,7 @@
  */
 /**
  * @struct discovery_host_audio_capture_t
- * @brief Describes the data used by discovery host audio capture. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for discovery host audio capture. Callers fill `host`, `audio`, `participant_id`, `running` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct discovery_result_t
@@ -1507,7 +1507,7 @@
  */
 /**
  * @struct discovery_session_t
- * @brief Keeps the live state for discovery session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of discovery session is in `state`, `error`, `waiting_peer_start_ns`, `is_initiator`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct discovery_thread_state_t
@@ -1515,15 +1515,15 @@
  */
 /**
  * @struct discovery_ui_state_t
- * @brief Keeps the live state for discovery ui state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with discovery ui state, it keeps `mutex`, `error_code` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct discovery_video_receiver_t
- * @brief Describes the data used by discovery video receiver. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief discovery video receiver is intentionally a small, concrete record. Fields such as `connection`, `protocol`, `network`, `receiver_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ducking_t
- * @brief Describes the data used by ducking. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For ducking, this is the live record that ties `threshold_dB`, `leader_margin_dB`, `atten_dB`, `attack_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct election_result_t
@@ -1531,11 +1531,11 @@
  */
 /**
  * @struct emit_context_t
- * @brief Keeps the live state for emit context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief emit context keeps the values that move through the subsystem: `reader`, `emit`, `context`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct endpoint_transport
- * @brief Keeps the live state for endpoint transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for endpoint transport. Callers fill `next`, `connection`, `transport`, `claimed` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct enum_descriptor_t
@@ -1551,11 +1551,11 @@
  */
 /**
  * @struct errno_tui_row_t
- * @brief Describes the data used by errno tui row. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of errno tui row is in `context`, `resolved_ns`, `group_id`, `group_timestamp`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct errno_tui_state_t
- * @brief Keeps the live state for errno tui state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with errno tui state, it keeps `visible`, `stack_sort`, `tab`, `list` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct consensus_coordinator
@@ -1563,15 +1563,15 @@
  */
 /**
  * @struct consensus_handoff_message_t
- * @brief Carries the fields exchanged for consensus handoff message. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief consensus handoff message is intentionally a small, concrete record. Fields such as `kind`, `generation`, `sequence`, `upload_kbps` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct consensus_handoff_peer_t
- * @brief Stores one consensus handoff peer for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief For consensus handoff peer, this is the live record that ties `capabilities`, `nat_tier`, `port`, `pending_capabilities` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct consensus_handoff_t
- * @brief Describes the data used by consensus handoff. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief consensus handoff keeps the values that move through the subsystem: `generation`, `round`, `host_sequence`, `prepare_deadline_ms`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct consensus_metrics_collection
@@ -1595,7 +1595,7 @@
  */
 /**
  * @struct crypto_handshake_context_t
- * @brief Keeps the live state for crypto handshake context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for crypto handshake context. Callers fill `crypto_ctx`, `state`, `is_server`, `password_failure` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct crypto_parameters_packet_t
@@ -1603,23 +1603,23 @@
  */
 /**
  * @struct crypto_policy_t
- * @brief Defines the inputs for crypto policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief The useful part of crypto policy is in `transport_secure`, `encrypt`, `no_encrypt`, `no_auth`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct crypto_record
- * @brief Stores one crypto record for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with crypto record, it keeps `crypto`, `key_epoch`, `last_receive_epoch`, `previous_crypto` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct crypto_rekey_session_t
- * @brief Keeps the live state for crypto rekey session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief crypto rekey session is intentionally a small, concrete record. Fields such as `security`, `send`, `context`, `activated_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct crypto_session
- * @brief Keeps the live state for crypto session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For crypto session, this is the live record that ties `owner`, `mutex`, `records`, `rotation` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct crypto_session_message_t
- * @brief Carries the fields exchanged for crypto session message. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief crypto session message keeps the values that move through the subsystem: `channel`, `type`, `length`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct custom_section_descriptor_t
@@ -1627,15 +1627,15 @@
  */
 /**
  * @struct database_query
- * @brief Describes the data used by database query. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for database query. Callers fill `name`, `sql`, `access`, `rows` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct database_session_stats_t
- * @brief Collects the counters and timestamps for database session stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief The useful part of database session stats is in `participants`, `host_ready`, `migrating`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct datagram_send
- * @brief Describes the data used by datagram send. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with datagram send, it keeps `next`, `data`, `length`, `cost` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 +/**
  * @struct client_list_packet_t
@@ -1651,11 +1651,11 @@
  */
 /**
  * @struct collect_ctx_t
- * @brief Describes the data used by collect ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief collect ctx is intentionally a small, concrete record. Fields such as `config`, `entries`, `success` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct color_filter_def_t
- * @brief Stores one color filter def for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief For color filter def, this is the live record that ties `name`, `cli_name`, `r`, `g` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct color_scheme_t
@@ -1663,7 +1663,7 @@
  */
 /**
  * @struct colorscheme_palette_t
- * @brief Stores one colorscheme palette for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief colorscheme palette keeps the values that move through the subsystem: `background`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct compiled_color_scheme_t
@@ -1675,19 +1675,19 @@
  */
 /**
  * @struct compressor_t
- * @brief Describes the data used by compressor. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for compressor. Callers fill `threshold_dB`, `knee_dB`, `ratio`, `attack_ns` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct cond_deadlock_batch_t
- * @brief Describes the data used by cond deadlock batch. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of cond deadlock batch is in `entries`, `count`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct cond_deadlock_entry_t
- * @brief Stores one cond deadlock entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with cond deadlock entry, it keeps `state` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct cond_deadlock_snapshot_t
- * @brief Collects the counters and timestamps for cond deadlock snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief cond deadlock snapshot is intentionally a small, concrete record. Fields such as `waiting_count`, `last_wait_time_ns`, `last_signal_time_ns`, `last_waiting_key` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct cond_t
@@ -1715,7 +1715,7 @@
  */
 /**
  * @struct connection_endpoint_t
- * @brief Keeps the live state for connection endpoint. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For connection endpoint, this is the live record that ties `protocol`, `port`, `has_explicit_port` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 +/**
  * @struct binary_level_opts_t
@@ -1731,7 +1731,7 @@
  */
 /**
  * @struct browser_peer_crypto_t
- * @brief Stores one browser peer crypto for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief browser peer crypto keeps the values that move through the subsystem: the fields shown below. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct buffer_budget_t
@@ -1743,11 +1743,11 @@
  */
 /**
  * @struct buffer_domain_config_t
- * @brief Defines the inputs for buffer domain config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for buffer domain config. Callers fill `limit_bytes`, `cache_bytes`, `idle_ns`, `control` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct buffer_header
- * @brief Carries the fields exchanged for buffer header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief The useful part of buffer header is in `next`, `domain`, `allocation`, `data`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct buffer_stats_t
@@ -1775,11 +1775,11 @@
  */
 /**
  * @struct client_audio_pipeline_t
- * @brief Keeps the live state for client audio pipeline. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with client audio pipeline, it keeps `flags`, `echo_canceller`, `processor`, `preprocess` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct client_connection
- * @brief Keeps the live state for client connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief client connection is intentionally a small, concrete record. Fields such as `network`, `transport`, `capture_context`, `display_context` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct client_dispatch_entry_t
@@ -1787,15 +1787,15 @@
  */
 /**
  * @struct client_info
- * @brief Keeps the live state for client info. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For client info, this is the live record that ties `participant_type`, `network_connection`, `event_ready`, `event_cleanup` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct client_info_packet_t
- * @brief Carries the fields exchanged for client info packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief client info packet keeps the values that move through the subsystem: `client_id`, `capabilities`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct client_like_state_t
- * @brief Keeps the live state for client like state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for client like state. Callers fill `capture`, `display`, `audio_ctx`, `probe_source` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 +/**
  * @struct atomic_t
@@ -1807,7 +1807,7 @@
  */
 /**
  * @struct audio_batch_info_t
- * @brief Describes the data used by audio batch info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of audio batch info is in `batch_count`, `total_samples`, `sample_rate`, `channels`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct audio_batch_packet_t
@@ -1819,31 +1819,31 @@
  */
 /**
  * @struct audio_device_info_t
- * @brief Describes the data used by audio device info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with audio device info, it keeps `index`, `max_input_channels`, `max_output_channels`, `default_sample_rate` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct audio_frame_t
- * @brief Stores one audio frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief audio frame is intentionally a small, concrete record. Fields such as `data`, `size`, `sample_rate`, `channels` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct audio_processor
- * @brief Keeps the live state for audio processor. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For audio processor, this is the live record that ties `config`, `spectral_left`, `spectral_right`, `compressor` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct audio_processor_config_t
- * @brief Defines the inputs for audio processor config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief audio processor config keeps the values that move through the subsystem: `channels`, `sample_rate`, `flags`, `spectral_enabled`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct audio_processor_flags_t
- * @brief Keeps the live state for audio processor flags. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for audio processor flags. Callers fill `agc`, `compressor`, `noise_gate`, `highpass` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct audio_recording
- * @brief Stores one audio recording for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of audio recording is in `mix`, `channels`, `epoch_ns`, `read_position`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct audio_resampler_t
- * @brief Stores one audio resampler for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with audio resampler, it keeps `phase`, `has_previous` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct audio_ring_buffer
@@ -1851,19 +1851,19 @@
  */
 /**
  * @struct audio_rt_metric_t
- * @brief Collects the counters and timestamps for audio rt metric. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief audio rt metric is intentionally a small, concrete record. Fields such as `state`, `metric`, `value` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct audio_send_packet_t
- * @brief Carries the fields exchanged for audio send packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief For audio send packet, this is the live record that ties `size`, `frame_count`, `telemetry_context` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct auth_failure_packet_t
- * @brief Carries the fields exchanged for auth failure packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief auth failure packet keeps the values that move through the subsystem: `reason_flags`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct backtrace_t
- * @brief Describes the data used by backtrace. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for backtrace. Callers fill `symbols`, `count`, `tried_symbolize` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct backtrace_text_t
@@ -1875,7 +1875,7 @@
  */
 /**
  * @struct binary_actions_t
- * @brief Describes the data used by binary actions. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of binary actions is in `show_version`, `create_config`, `create_manpage`, `has_action`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 +/**
  * @struct ascii_frame_source_t
@@ -1883,39 +1883,39 @@
  */
 /**
  * @struct ascii_frame_t
- * @brief Stores one ascii frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief When code needs to work with ascii frame, it keeps `output`, `output_target`, `width`, `source_height` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct ascii_otel_scope
- * @brief Describes the data used by ascii otel scope. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct ascii_stabilizer_t
- * @brief Describes the data used by ascii stabilizer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For ascii stabilizer, this is the live record that ties `cells`, `width`, `height`, `configuration` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct ascii_temporal_cell_t
- * @brief Stores one ascii temporal cell for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief ascii temporal cell keeps the values that move through the subsystem: `glyph`, `color`, `background`, `source_owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct asciichat_errno_history_t
- * @brief Describes the data used by asciichat errno history. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for asciichat errno history. Callers fill `context`, `resolved_ns`, `outcome` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct asciichat_errno_scope_t
- * @brief Describes the data used by asciichat errno scope. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of asciichat errno scope is in `thread_id`, `generation`, `after_id`, `previous_after_id`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct asciichat_errno_snapshot_t
- * @brief Collects the counters and timestamps for asciichat errno snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief When code needs to work with asciichat errno snapshot, it keeps `total`, `copied` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct asciichat_error_context_t
- * @brief Keeps the live state for asciichat error context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief asciichat error context is intentionally a small, concrete record. Fields such as `code`, `file`, `line`, `function` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct asciichat_error_stats_t
- * @brief Collects the counters and timestamps for asciichat error stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief For asciichat error stats, this is the live record that ties `total_errors`, `last_error_time`, `last_error_code`, `dropped_errors` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct asciichat_instr_only_list
@@ -1927,11 +1927,11 @@
  */
 /**
  * @struct asciichat_instr_runtime
- * @brief Describes the data used by asciichat instr runtime. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief asciichat instr runtime keeps the values that move through the subsystem: `fd`, `pid`, `thread_id`, `sequence`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct asciichat_mdns_discovery_t
- * @brief Describes the data used by asciichat mdns discovery. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for asciichat mdns discovery. Callers fill `port`, `ttl` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct asciichat_mdns_service_t
@@ -1947,11 +1947,11 @@
  */
 /**
  * @struct async_packet
- * @brief Carries the fields exchanged for async packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief The useful part of async packet is in `next`, `data`, `size`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct async_tcp_t
- * @brief Describes the data used by async tcp. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with async tcp, it keeps `stream`, `mutex` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct atomic_ptr_t
@@ -1959,11 +1959,11 @@
  */
 +/**
  * @struct acip_security
- * @brief Describes the data used by acip security. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief acip security is intentionally a small, concrete record. Fields such as `handshake`, `mode`, `forbid_encryption`, `require_encryption` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct acip_send_options_t
- * @brief Defines the inputs for acip send options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For acip send options, this is the live record that ties `traffic_class`, `delivery`, `deadline_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct acip_server_callbacks_t
@@ -1971,15 +1971,15 @@
  */
 /**
  * @struct acip_settings_header_t
- * @brief Defines the inputs for acip settings header. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief acip settings header keeps the values that move through the subsystem: `schema`, `request`, `expected_revision`, `revision`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct acip_transport
- * @brief Keeps the live state for acip transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct acip_transport_capabilities_t
- * @brief Keeps the live state for acip transport capabilities. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`, `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct acip_transport_methods_t
@@ -1987,11 +1987,11 @@
  */
 /**
  * @struct acip_websocket_runtime
- * @brief Describes the data used by acip websocket runtime. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with acip websocket runtime, it keeps `context` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct action_args_t
- * @brief Describes the data used by action args. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief action args is intentionally a small, concrete record. Fields such as `output_path`, `shell_name` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct adaptive_sleep_config_t
@@ -2007,27 +2007,27 @@
  */
 /**
  * @struct animation_config_t
- * @brief Defines the inputs for animation config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief For animation config, this is the live record that ties `type`, `fps`, `speed`, `hidden_policy` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct animation_sample_t
- * @brief Stores one animation sample for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief animation sample keeps the values that move through the subsystem: `type`, `seconds`, `frame`, `changed`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct animation_t
- * @brief Describes the data used by animation. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for animation. Callers fill `config`, `seconds`, `last_ns`, `last_frame` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct animation_target_t
- * @brief Stores one animation target for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of animation target is in `[union].__unnamed0__`, `type`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct ansi_rle_context_t
- * @brief Keeps the live state for ansi rle context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief When code needs to work with ansi rle context, it keeps `buffer`, `capacity`, `length`, `mode` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct ansi_timing_t
- * @brief Describes the data used by ansi timing. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief ansi timing is intentionally a small, concrete record. Fields such as `start_ns`, `end_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct app_callbacks_t
@@ -2063,59 +2063,59 @@
  */
 /**
  * @struct acip_http3_server
- * @brief Keeps the live state for acip http3 server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For acip http3 server, this is the live record that ties `http`, `control`, `request`, `settings_length` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct acip_outbound
- * @brief Describes the data used by acip outbound. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief acip outbound keeps the values that move through the subsystem: `transport`, `mutex`, `changed`, `worker`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct acip_outbound_stats_t
- * @brief Collects the counters and timestamps for acip outbound stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
+ * @brief This is the handoff point for acip outbound stats. Callers fill `application_bytes`, `backend_bytes`, `backend_reserved_bytes`, `peak_bytes` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct acip_packet_plan_t
- * @brief Carries the fields exchanged for acip packet plan. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
+ * @brief The useful part of acip packet plan is in `buffers`, `count`, `plaintext_size`, `ciphertext_capacity`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct acip_quic_config_t
- * @brief Defines the inputs for acip quic config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief When code needs to work with acip quic config, it keeps `alpn`, `certificate_file`, `private_key_file`, `ca_file` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct acip_quic_connection
- * @brief Keeps the live state for acip quic connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief acip quic connection is intentionally a small, concrete record. Fields such as `conn`, `reference`, `crypto`, `ssl` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct acip_quic_datagram_reader_t
- * @brief Describes the data used by acip quic datagram reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief For acip quic datagram reader, this is the live record that ties `bytes`, `last_time_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct acip_quic_datagram_slot_t
- * @brief Describes the data used by acip quic datagram slot. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief acip quic datagram slot keeps the values that move through the subsystem: `data`, `received`, `cost`, `id`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct acip_quic_endpoint
- * @brief Describes the data used by acip quic endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for acip quic endpoint. Callers fill `lane`, `tls`, `udp`, `worker` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct acip_quic_stream_reader_t
- * @brief Describes the data used by acip quic stream reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of acip quic stream reader is in `preamble_used`, `traffic_class`, `packets`, `failed`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct acip_quic_tls_t
- * @brief Describes the data used by acip quic tls. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with acip quic tls, it keeps `ssl_ctx`, `alpn_length`, `server`, `enable_datagrams` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct acip_quic_udp_endpoint
- * @brief Describes the data used by acip quic udp endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief acip quic udp endpoint is intentionally a small, concrete record. Fields such as `socket`, `local`, `local_length`, `server_tls` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct acip_quic_worker
- * @brief Keeps the live state for acip quic worker. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For acip quic worker, this is the live record that ties `endpoint`, `lane`, `failure`, `context` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct acip_render_settings_t
- * @brief Defines the inputs for acip render settings. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief acip render settings keeps the values that move through the subsystem: `caps`, `width`, `height`, `revision`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 +/**
  * @struct HttpRequest
@@ -2127,11 +2127,11 @@
  */
 /**
  * @struct ThreadInfo
- * @brief Describes the data used by threadinfo. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief This is the handoff point for ThreadInfo. Callers fill its members before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct FrameInfo
- * @brief Stores one frameinfo for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
+ * @brief The useful part of FrameInfo is in its fields: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct VariableInfo
@@ -2139,7 +2139,7 @@
  */
 /**
  * @struct BreakpointInfo
- * @brief Describes the data used by breakpointinfo. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with BreakpointInfo, it keeps the associated state here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct __attribute__
@@ -2147,23 +2147,23 @@
  */
 /**
  * @struct acds_client_config_t
- * @brief Defines the inputs for acds client config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief acds client config is intentionally a small, concrete record. Fields such as `server_port`, `timeout_ms`, `security_policy`, `identity_key` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct acds_client_data_t
- * @brief Keeps the live state for acds client data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief For acds client data, this is the live record that ties `joined_session`, `negotiation`, `create_transport_length`, `create_keys` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 /**
  * @struct acds_client_t
- * @brief Keeps the live state for acds client. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief acds client keeps the values that move through the subsystem: `config`, `connected`, `transport`, `connection`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  */
 /**
  * @struct acds_config_t
- * @brief Defines the inputs for acds config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
+ * @brief This is the handoff point for acds config. Callers fill `port`, `log_level`, `require_server_identity`, `require_client_identity` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  */
 /**
  * @struct acds_create_key_set_t
- * @brief Describes the data used by acds create key set. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief The useful part of acds create key set is in `request`, `count`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  */
 /**
  * @struct acds_handoff_entry
@@ -2175,11 +2175,11 @@
  */
 /**
  * @struct acds_protocol_t
- * @brief Describes the data used by acds protocol. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
+ * @brief When code needs to work with acds protocol, it keeps the associated state here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  */
 /**
  * @struct acds_server_t
- * @brief Keeps the live state for acds server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
+ * @brief acds server is intentionally a small, concrete record. Fields such as `network_server`, `handoff_mutex`, `handoffs`, `db` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  */
 /**
  * @struct acds_session_create_params_t
