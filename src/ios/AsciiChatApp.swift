@@ -97,6 +97,15 @@ private func platform_disable_keepawake()
 @_silgen_name("ios_stdin_bridge_push")
 private func ios_stdin_bridge_push(_ data: UnsafeRawPointer, _ length: Int) -> Int
 
+@_silgen_name("asciichat_ios_options_snapshot")
+private func asciichat_ios_options_snapshot(_ buffer: UnsafeMutablePointer<CChar>, _ capacity: Int) -> Int32
+
+@_silgen_name("asciichat_ios_options_apply_json")
+private func asciichat_ios_options_apply_json(_ json: UnsafePointer<CChar>, _ length: Int) -> Int32
+
+@_silgen_name("asciichat_ios_options_set_pending_json")
+private func asciichat_ios_options_set_pending_json(_ json: UnsafePointer<CChar>, _ length: Int) -> Int32
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -198,11 +207,14 @@ private final class CRenderView: MTKView {
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
         let fontSizePt = 6.0
-        // At this point size the bundled font's glyph cell is approximately
-        // 6x12 pixels per scale unit. Use the physical pixel dimensions so
-        // the bitmap itself fills the display instead of being enlarged.
-        let cols = max(1, Int(ceil(Double(pixelWidth) / (3.2 * Double(scale)))))
-        let rows = max(1, Int(ceil(Double(pixelHeight) / (12.0 * Double(scale)))))
+        // The terminal renderer uses a cell height of approximately twice its
+        // glyph advance. Choose rows from the drawable aspect ratio so the C
+        // bitmap is scaled uniformly by Metal instead of squeezing glyphs.
+        // The bundled font's measured advance is about 0.83 pixels per point
+        // at the renderer's 96-DPI FreeType setup. Keep the cell advance large
+        // enough that glyphs remain legible on the native-resolution drawable.
+        let cols = max(1, Int(ceil(Double(pixelWidth) / (fontSizePt * 0.8333))))
+        let rows = max(1, Int(ceil(Double(cols) * Double(pixelHeight) / Double(pixelWidth) * 0.5)))
         ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
         layer.contentsScale = scale
     }
@@ -301,6 +313,61 @@ private enum IOSTheme {
     static let muted = Color(red: 0.68, green: 0.71, blue: 0.80)
 }
 
+private struct IOSSettingsView: View {
+    let onClose: () -> Void
+    let applyJSON: ([String: Any]) -> Void
+    @State private var palette = "standard"
+    @State private var colorFilter = "none"
+    @State private var renderMode = "foreground"
+    @State private var colorMode = "truecolor"
+    @State private var fps = 60.0
+    @State private var audioEnabled = true
+    @State private var stretch = true
+    @State private var stabilize = false
+
+    private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
+    private let filters = ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
+    private let renderModes = ["foreground", "background", "half-block"]
+    private let colorModes = ["none", "16", "256", "truecolor"]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Display") {
+                    Picker("Palette", selection: $palette) { ForEach(palettes, id: \.self, content: Text.init) }
+                    Picker("Color filter", selection: $colorFilter) { ForEach(filters, id: \.self, content: Text.init) }
+                    Picker("Render mode", selection: $renderMode) { ForEach(renderModes, id: \.self, content: Text.init) }
+                    Picker("Color mode", selection: $colorMode) { ForEach(colorModes, id: \.self, content: Text.init) }
+                    Toggle("Stretch to fill", isOn: $stretch)
+                    Toggle("Stabilize frames", isOn: $stabilize)
+                    VStack(alignment: .leading) {
+                        Text("Frame rate: \(Int(fps)) FPS")
+                        Slider(value: $fps, in: 1...144, step: 1)
+                    }
+                }
+                Section("Audio") {
+                    Toggle("Audio", isOn: $audioEnabled)
+                }
+                Section {
+                    Button("Apply settings") {
+                        applyJSON(["palette": palette, "color_filter": colorFilter, "render_mode": renderMode,
+                                   "color_mode": colorMode, "fps": Int(fps), "stretch": stretch,
+                                   "stabilize": stabilize, "audio_enabled": audioEnabled])
+                    }
+                    .foregroundStyle(IOSTheme.websiteCyan)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(IOSTheme.background)
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done", action: onClose).tint(IOSTheme.websiteTeal) }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
 private struct IOSModeButtonStyle: ButtonStyle {
     let selected: Bool
     let enabled: Bool
@@ -335,9 +402,10 @@ struct ContentView: View {
         let scale = screen.nativeScale
         let width = max(1, Int(ceil(screen.bounds.width * scale)))
         let height = max(1, Int(ceil(screen.bounds.height * scale)))
-        let cols = max(1, Int(ceil(Double(width) / (3.2 * Double(scale)))))
-        let rows = max(1, Int(ceil(Double(height) / (12.0 * Double(scale)))))
-            ios_render_bridge_configure(Int32(cols), Int32(rows), 6.0)
+        let fontSizePt = 6.0
+        let cols = max(1, Int(ceil(Double(width) / (fontSizePt * 0.8333))))
+        let rows = max(1, Int(ceil(Double(cols) * Double(height) / Double(width) * 0.5)))
+            ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
         sessionModel.start(mode: selectedMode)
         NotificationCenter.default.post(name: .iosSessionStarted, object: nil)
         launchMessage = "Starting \(selectedMode.title.lowercased())…"
