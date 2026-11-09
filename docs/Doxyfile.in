@@ -16,7 +16,7 @@ PROJECT_LOGO           = @ASCII_CHAT_SOURCE_DIR@/images/installer_icon.png
 
 HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome.css \
                          @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css \
-                         @ASCII_CHAT_SOURCE_DIR@/docs/custom-theme-v2.css
+                         @CUSTOM_THEME_FILENAME@
 
 OUTPUT_DIRECTORY       = @ASCII_CHAT_BINARY_DIR@/share
 CREATE_SUBDIRS         = NO
