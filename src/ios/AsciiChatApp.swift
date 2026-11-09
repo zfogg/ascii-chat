@@ -968,7 +968,7 @@ struct ContentView: View {
                     } else {
                         settingsView
                     }
-                    if didStart && !sessionStarted && !sessionStopping {
+                    if sessionStarted && !sessionStopping {
                         HStack {
                             TextField("Send command or answer", text: $commandLine)
                                 .textFieldStyle(.roundedBorder)
