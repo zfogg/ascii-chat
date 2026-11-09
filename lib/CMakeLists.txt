@@ -817,10 +817,10 @@ else()
         # the distro package is installed.  Retry the canonical Unix prefixes.
         find_path(ASCIICHAT_NGHTTP2_SYSTEM_INCLUDE_DIR nghttp2/nghttp2.h
             PATHS /usr/include /usr/local/include
-            NO_DEFAULT_PATH)
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
         find_library(ASCIICHAT_NGHTTP2_SYSTEM_LIBRARY NAMES nghttp2 nghttp2_static
             PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/local/lib
-            NO_DEFAULT_PATH)
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
         if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR)
             set(ASCIICHAT_NGHTTP2_INCLUDE_DIR ${ASCIICHAT_NGHTTP2_SYSTEM_INCLUDE_DIR})
         endif()
