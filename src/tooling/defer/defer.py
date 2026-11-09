@@ -813,7 +813,11 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
             continue
         result.append(value)
         index += 1
-    if not any(value == "-target" for value in result):
+    # CMake emits either `-target <triple>` or Clang's equivalent
+    # `--target=<triple>`. Preserve native targets when transforming native
+    # sources; only supply the Emscripten target when the compile command has
+    # no target at all.
+    if not any(value == "-target" or value == "--target" or value.startswith("--target=") for value in result):
         result.extend(["-target", "wasm32-unknown-emscripten"])
     if not any(value.startswith("-resource-dir") for value in result):
         process = subprocess.run(
