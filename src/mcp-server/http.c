@@ -402,6 +402,11 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
     shared_http_finish(response, 406);
     return;
   }
+  const char *version = shared_header(info, "mcp-protocol-version");
+  if (version && strcmp(version, "2025-11-25") && strcmp(version, "2025-06-18") && strcmp(version, "2025-03-26")) {
+    shared_http_finish(response, 400);
+    return;
+  }
   size_t length = 0;
   const char *body = http_request_body(request, &length);
   yyjson_doc *doc = body ? yyjson_read(body, length, 0) : NULL;

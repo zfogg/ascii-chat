@@ -8,6 +8,7 @@
 
 #define HTTP2_MAX_TEXT 8192u
 #define HTTP2_MAX_HEADERS 64u
+#define HTTP2_MAX_CONCURRENT_STREAMS 128u
 
 typedef struct {
   int32_t stream_id;
@@ -193,7 +194,10 @@ asciichat_error_t http2_connection_create(http2_connection_t **out, http2_reques
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/2 request callback");
   http2_connection_t *connection = SAFE_CALLOC(1, sizeof(*connection), http2_connection_t *);
   nghttp2_session_callbacks *callbacks = NULL;
-  if (nghttp2_session_callbacks_new(&callbacks) != 0) {
+  nghttp2_option *options = NULL;
+  if (nghttp2_session_callbacks_new(&callbacks) != 0 || nghttp2_option_new(&options) != 0) {
+    nghttp2_session_callbacks_del(callbacks);
+    nghttp2_option_del(options);
     SAFE_FREE(connection);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot initialize HTTP/2 callbacks");
   }
@@ -202,12 +206,20 @@ asciichat_error_t http2_connection_create(http2_connection_t **out, http2_reques
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, on_data);
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, on_frame_recv);
   nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close);
-  if (nghttp2_session_server_new(&connection->session, callbacks, connection) != 0) {
+  if (nghttp2_session_server_new2(&connection->session, callbacks, connection, options) != 0) {
     nghttp2_session_callbacks_del(callbacks);
+    nghttp2_option_del(options);
     SAFE_FREE(connection);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot initialize HTTP/2 session");
   }
   nghttp2_session_callbacks_del(callbacks);
+  nghttp2_option_del(options);
+  nghttp2_settings_entry settings = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTP2_MAX_CONCURRENT_STREAMS};
+  if (nghttp2_submit_settings(connection->session, NGHTTP2_FLAG_NONE, &settings, 1) != 0) {
+    nghttp2_session_del(connection->session);
+    SAFE_FREE(connection);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot configure HTTP/2 stream limit");
+  }
   connection->on_request = on_request;
   connection->user_data = user_data;
   connection->max_body_length = max_request_body_length;
