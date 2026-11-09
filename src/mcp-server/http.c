@@ -471,7 +471,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
   }
   if (issue_session)
     (void)http_response_set_header(response, "MCP-Session-Id", session_id);
-  shared_http_finish(response, has_reply ? 200 : 202);
+  shared_http_finish(response, has_reply ? (encoded ? 200 : 500) : 202);
 }
 
 static asciichat_error_t mcp_http_run_shared(mcp_server_t *s) {

@@ -74,10 +74,10 @@ static int on_header(nghttp2_session *session, const nghttp2_frame *frame, const
   request_state_t *request = get_request(session, frame->hd.stream_id);
   if (!request)
     return NGHTTP2_ERR_CALLBACK_FAILURE;
-  if (name_length == 7 && memcmp(name, ":method", 7) == 0) {
+  if (name_length == sizeof(":method") - 1 && memcmp(name, ":method", sizeof(":method") - 1) == 0) {
     SAFE_FREE(request->method);
     request->method = copy_text(value, value_length);
-  } else if (name_length == 5 && memcmp(name, ":path", 5) == 0) {
+  } else if (name_length == sizeof(":path") - 1 && memcmp(name, ":path", sizeof(":path") - 1) == 0) {
     SAFE_FREE(request->path);
     request->path = copy_text(value, value_length);
   } else if (request->header_count < HTTP2_MAX_HEADERS) {

@@ -109,7 +109,7 @@ static asciichat_error_t http3_submit_response(void *context, unsigned status, c
                                                size_t header_count, const void *body, size_t body_length) {
   acip_http3_server_t *server = context;
   if (!server || server->request < 0 || status < 100 || status > 599 || header_count > H3_MAX_HEADERS ||
-      body_length > H3_MAX_HEADER_BYTES * 64U || (!body && body_length))
+      body_length > http_server_max_response_body(server->http_server) || (!body && body_length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 response");
   char status_text[4];
   safe_snprintf(status_text, sizeof(status_text), "%u", status);
@@ -146,8 +146,9 @@ static int maybe_respond(acip_http3_server_t *server) {
     return 0;
   if (server->http_server)
     return 0;
-  bool accepted = !server->malformed && server->method && server->scheme && server->authority && server->protocol &&
-                  server->request_path && server->request_origin;
+  bool accepted = !server->malformed;
+  accepted = accepted && server->method && server->scheme && server->authority;
+  accepted = accepted && server->protocol && server->request_path && server->request_origin;
   static const uint8_t status_name[] = ":status", ok[] = "200", forbidden[] = "403";
   static const uint8_t draft_name[] = "sec-webtransport-http3-draft", draft_value[] = "draft02";
   nghttp3_nv fields[] = {
@@ -460,6 +461,7 @@ bool acip_http3_server_accepted(const acip_http3_server_t *server, int64_t *sess
 void acip_http3_server_destroy(acip_http3_server_t **server) {
   if (!server || !*server)
     return;
+  http_server_invalidate_http3_context((*server)->http_server, *server);
   nghttp3_conn_del((*server)->http);
   SAFE_FREE((*server)->request_body);
   SAFE_FREE((*server)->response_body);

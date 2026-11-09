@@ -101,6 +101,22 @@ static size_t http_max_response_body(const http_server_t *server) {
   return server->config.max_response_body_bytes ? server->config.max_response_body_bytes
                                                 : server->config.max_request_body_bytes;
 }
+size_t http_server_max_response_body(const http_server_t *server) {
+  return server ? http_max_response_body(server) : 0;
+}
+void http_server_invalidate_http3_context(http_server_t *server, void *context) {
+  if (!server || !context)
+    return;
+  mutex_lock(&server->response_mutex);
+  for (http_response_t *response = server->retained_responses; response; response = response->next_retained) {
+    if (response->http3_context == context) {
+      response->http3_submit = NULL;
+      response->http3_context = NULL;
+      response->cancelled = true;
+    }
+  }
+  mutex_unlock(&server->response_mutex);
+}
 static void stop_async_cb(uv_async_t *async);
 static void wake_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
@@ -188,14 +204,16 @@ static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_le
       return false;
     cursor = (size_t)(line_end - c->buffer) + 2;
     if (chunk == 0) {
-      if (c->length < cursor + 2 || memcmp(c->buffer + cursor, "\r\n", 2) != 0)
+      if (c->length < cursor + sizeof("\r\n") - 1 ||
+          memcmp(c->buffer + cursor, "\r\n", sizeof("\r\n") - 1) != 0)
         return false;
       *body_length = output - offset;
       return true;
     }
     if (output - offset > c->server->config.max_request_body_bytes ||
         chunk > c->server->config.max_request_body_bytes - (output - offset) ||
-        c->length < cursor + (size_t)chunk + 2 || memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", 2) != 0)
+        c->length < cursor + (size_t)chunk + sizeof("\r\n") - 1 ||
+        memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", sizeof("\r\n") - 1) != 0)
       return false;
     memmove(c->buffer + output, c->buffer + cursor, (size_t)chunk);
     output += (size_t)chunk;
@@ -439,6 +457,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
+  if (r->cancelled)
+    return SET_ERRNO(ERROR_CANCELLED, "HTTP response was cancelled");
   asciichat_error_t result;
   if (r->http3_submit)
     result = r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
@@ -689,6 +709,10 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   (void)connection;
   return ASCIICHAT_OK;
 }
+/**
+ * Consume one libuv read, identify the negotiated HTTP protocol, and dispatch
+ * complete HTTP/1.x or HTTP/2 requests while enforcing the receive bound.
+ */
 static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   http_client_t *c = s->data;
   char *base = (char *)b->base;
