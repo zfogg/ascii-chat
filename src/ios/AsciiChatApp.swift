@@ -733,7 +733,12 @@ private struct IOSAllOptionsView: View {
                             .foregroundStyle(IOSTheme.muted)
                         TextField("Value", text: Binding(
                             get: { String(describing: values[key] ?? "") },
-                            set: { values[key] = Self.coerce($0, like: currentValue); changed = true }))
+                            set: {
+                                let next = Self.coerce($0, like: currentValue)
+                                values[key] = next
+                                changed = true
+                                applyJSON([key: next])
+                            }))
                         .textFieldStyle(.roundedBorder)
                     }
                 }
