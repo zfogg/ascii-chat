@@ -1009,14 +1009,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   yyjson_mut_doc_set_root(doc, root);
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
-    bool exposed = options_remote_render_field(field->name);
-    if (!remote_only &&
-        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
-         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
-         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
-         !strcmp(field->name, "audio_enabled")))
-      exposed = true;
+    bool exposed = remote_only ? options_remote_render_field(field->name) : true;
+    // The local iOS settings editor uses the non-remote snapshot to expose the
+    // complete editable runtime registry. This marker is derived state and is
+    // intentionally not patchable.
+    if (!remote_only && !strcmp(field->name, "flip_x_explicit"))
+      exposed = false;
     if (!exposed)
       continue;
     const char *ptr = (const char *)values + field->offset;
