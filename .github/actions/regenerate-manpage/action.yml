@@ -8,14 +8,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install HTML manpage tools
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install --yes mandoc
-        corepack enable
-        pnpm install --frozen-lockfile
-
     - name: Generate manpage
       shell: bash
       env:
