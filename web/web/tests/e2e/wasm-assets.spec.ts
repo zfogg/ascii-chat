@@ -436,19 +436,28 @@ test("browser host owns packet output draining without a module callback", async
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
     const host = new module.BrowserHostBinding();
+    const discovery = new module.DiscoveryBinding();
     const methods = {
       valid: typeof host.valid,
       drainPackets: typeof host.drainPackets,
+      discoveryError: typeof discovery.error,
       callback: "hostPacketCallback" in module,
     };
     const empty = host.drainPackets();
     host.close();
     host.close();
     host.delete();
+    discovery.close();
+    discovery.delete();
     return { methods, empty: empty.length };
   });
   expect(result).toEqual({
-    methods: { valid: "function", drainPackets: "function", callback: false },
+    methods: {
+      valid: "function",
+      drainPackets: "function",
+      discoveryError: "function",
+      callback: false,
+    },
     empty: 0,
   });
 });

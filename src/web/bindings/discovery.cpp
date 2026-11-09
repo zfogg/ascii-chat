@@ -42,6 +42,9 @@ public:
   bool valid() const {
     return session_ != nullptr;
   }
+  int error() const {
+    return session_ ? 0 : static_cast<int>(ERROR_INVALID_STATE);
+  }
   uintptr_t callbackToken() const {
     return reinterpret_cast<uintptr_t>(session_);
   }
@@ -144,6 +147,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
   emscripten::class_<DiscoveryBinding>("DiscoveryBinding")
       .constructor<>()
       .function("valid", &DiscoveryBinding::valid)
+      .function("error", &DiscoveryBinding::error)
       .function("callbackToken", &DiscoveryBinding::callbackToken)
       .function("close", &DiscoveryBinding::close)
       .function("process", &DiscoveryBinding::process)
