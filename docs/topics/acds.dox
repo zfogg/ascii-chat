@@ -7,6 +7,16 @@
  */
 
 /**
+ * @defgroup acds_client ACDS Client
+ * @ingroup module_acds
+ * @brief Client-side session discovery, authentication, and signaling API.
+ *
+ * This is the client half of ACDS: it connects to the discovery service,
+ * resolves a session string, joins the session, and carries the metadata needed
+ * to move on to the media connection.
+ */
+
+/**
  * @defgroup acds_server ACDS Server
  * @ingroup module_acds
  * @brief 🌐 Discovery server TCP connection manager

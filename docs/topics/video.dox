@@ -58,7 +58,47 @@
  * - Automatic scaling to maintain proper aspect ratio
  * - Prevents stretched/squished video
  *
+ * **Face tracking and stabilization**:
+ * - The optional face-follow path detects faces on a small working image instead
+ *   of spending detector time on the full camera frame.
+ * - The tracker keeps a normalized crop around the selected face and eases
+ *   toward its next position. Short detection gaps therefore do not make the
+ *   picture jump back and forth.
+ * - The renderer has a separate temporal history per stream. It remembers
+ *   recent samples, glyphs, and colors so tiny changes do not cause visible
+ *   character shimmer.
+ *
  * @section img2ascii_rendering Rendering Pipeline
+
+ * @subsection img2ascii_pipeline_follow 0. Optional face-follow preprocessing
+ *
+ * Face following happens before scaling and ASCII conversion. Detection returns
+ * normalized rectangles in the original, unmirrored image. The state machine
+ * accepts a confident detection, chooses an anchor, and moves the crop toward
+ * that anchor over time. If a face disappears briefly, the last useful crop is
+ * retained; after enough misses the view relaxes back to the full frame.
+ *
+ * The detector works on a bounded 320x240 BGR image and writes its temporary
+ * results into the caller-provided buffer. That keeps the expensive detector
+ * predictable while the final crop still uses the source frame's resolution.
+ *
+ * @code{.c}
+ * face_follow_state_t follow;
+ * face_follow_init(&follow);
+ *
+ * face_follow_detection_t faces[FACE_FOLLOW_MAX_DETECTIONS];
+ * size_t face_count = 0;
+ * face_follow_detect(detector_results, bgr_320x240, 320, 240,
+ *                    faces, FACE_FOLLOW_MAX_DETECTIONS, &face_count);
+ * face_follow_observe(&follow, faces, face_count, monotonic_seconds);
+ * face_follow_tick(&follow, monotonic_seconds, true);
+ *
+ * // follow.crop is now the smoothed normalized crop for this frame.
+ * @endcode
+
+ * Face following is a composition aid, not a promise that a face is always
+ * visible. A frame with no usable detection remains a valid frame; disabling
+ * the feature simply lets the crop return to the full image.
  *
  * @subsection img2ascii_pipeline_scale 1. Image Scaling
  *
@@ -106,6 +146,49 @@
  * - Palette example: " .:-=+*#%@" (10 characters, dark to bright)
  * - Mapping: luminance / (256 / palette_length)
  * - SIMD: Lookup table with SSSE3 shuffle instruction
+
+ * There are two useful ways to choose a glyph. The traditional luminance
+ * renderer measures brightness and indexes a 256-entry luminance palette. It
+ * is fast, predictable, and works with any complete UTF-8 palette. The glyph
+ * matcher instead evaluates the visual coverage of candidate glyphs and picks
+ * the glyph whose rendered shape best matches the source cell. It can preserve
+ * edges and texture better, but it needs a supported glyph palette and more
+ * work per cell.
+
+ * @code{.c}
+ * // Brightness-only rendering: stable and broadly compatible.
+ * char *frame = ascii_render(image, palette, ASCII_COLOR_TRUE,
+ *                            true, false, &simd_ops);
+ *
+ * // Shape-aware rendering: compare glyph coverage, then add color if desired.
+ * if (ascii_glyph_palette_supported(palette)) {
+ *   frame = ascii_render_glyph_match_mode(image, ASCII_COLOR_TRUE,
+ *                                         &simd_ops, palette, true);
+ * }
+ * @endcode
+
+ * In practice, use luminance rendering for a conventional terminal palette or
+ * when throughput matters most. Use glyph matching for a deliberately chosen
+ * glyph set where the shape of the characters is part of the look. Both paths
+ * produce the same terminal-cell contract and can use the same temporal
+ * stabilization history.
+
+ * @subsection img2ascii_pipeline_stabilization 3a. Temporal stabilization
+ *
+ * Stabilization is deliberately local to a renderer-owned stream. It compares
+ * the current candidate with the previous cell history and only changes glyph
+ * or color when the improvement is worth the visible movement. A viewport or
+ * rendering contract change resets that history so old frames cannot leak into
+ * a new layout.
+ *
+ * @code{.c}
+ * ascii_stabilizer_t history = {0};
+ * ascii_stabilizer_prepare(&history, image->width, image->height, render_config);
+ * ascii_stabilizer_set_target(&history);
+ * char *stable = ascii_render(image, palette, ASCII_COLOR_TRUE,
+ *                              true, false, &simd_ops);
+ * ascii_stabilizer_reset(&history);
+ * @endcode
  *
  * Half-block rendering uses special logic:
  * - Combines two vertically adjacent pixels into one character

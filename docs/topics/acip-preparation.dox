@@ -1,65 +1,117 @@
 /**
- * @page md_docs_2acip-preparation ACIP packet preparation validation
+ * @page md_docs_2acip-preparation ACIP packet preparation
  * @ingroup module_network
+ * @ingroup acip
  *
- * Migrated from docs/acip-preparation.md into the rendered Doxygen topic set.
+ * # ACIP packet preparation
  *
- * # ACIP packet preparation validation
+ * Sending a packet sounds simple until the same payload has to work over a
+ * synchronous socket, an asynchronous queue, WebSockets, and WebRTC. The
+ * preparation layer is the small piece that makes those paths agree on what
+ * is being sent. It inspects the ACIP header, applies the negotiated security
+ * policy, and hands the transport the buffers it should actually transmit.
  *
- * The shared planner borrows the caller's vectors. Plaintext TCP keeps vectored delivery;
- * no payload is copied or allocated by preparation. Ciphertext is written into storage
- * owned by each transport, which retains its existing delivery/queue lifetime. WebRTC
- * also uses the shared encrypted envelope after its per-peer negotiation.
+ * The important rule is ownership. A plaintext packet can keep borrowing the
+ * caller's `iovec` storage. An encrypted packet cannot: its ciphertext belongs
+ * to the transport's queued send operation and must stay alive until that
+ * operation releases it. WebRTC uses the same encrypted ACIP envelope after
+ * peer negotiation; DTLS remains transport security, not a replacement for
+ * the ACIP policy.
  *
- * ## Reproducing the measurements
+ * ## What preparation does
  *
- * Build `bench-acip-prepare` and run `build/bin/bench-acip-prepare`. The fixture compares
- * reproductions of the previous preparation algorithms with the shared implementation,
- * using actual encryption on 64 KiB packets, 2,000 iterations per sample, three samples,
- * and alternating before/after order. Allocation and explicit copy counts cover
- * preparation only, excluding encryption internals and transport queue copies. Reported
- * throughput is median preparation throughput, not network or presentation throughput.
+ * Preparation reads enough of the header to decide whether the packet is
+ * eligible for the current connection. It then chooses one of three outcomes:
  *
- * Windows x64, Clang, CMake Dev build, October 18, 2026:
+ * 1. borrow plaintext vectors without copying their payload;
+ * 2. seal an encrypted packet into transport-owned storage; or
+ * 3. reject the packet before it reaches a queue or socket.
  *
- * | Path                 | Allocations before/after | Explicit copy bytes before/after | MiB/s before/after |
- * | -------------------- | ------------------------ | -------------------------------- | ------------------ |
- * | Sync TCP contiguous  | 1 / 1                    | 22 / 44                          | 637.04 / 617.27    |
- * | Sync TCP vectors     | 2 / 2                    | 65,558 / 65,580                  | 619.14 / 616.54    |
- * | Async TCP contiguous | 2 / 1                    | 65,536 / 22                      | 632.68 / 631.33    |
- * | Async TCP vectors    | 2 / 2                    | 65,536 / 65,558                  | 568.24 / 619.89    |
- * | WebSocket contiguous | 2 / 1                    | 65,598 / 44                      | 621.12 / 598.70    |
+ * The caller does not need to know whether the transport is TCP, WebSocket, or
+ * WebRTC. The caller supplies packet fragments and the negotiated policy; the
+ * prepared result carries the lifetime and output contract.
  *
- * The additional 22-byte header read centralizes policy inspection. Plaintext paths
- * retain zero allocations and zero payload copies; the planner reads the header.
- * Timing varies across samples, so these measurements do not establish a network
- * throughput improvement. They demonstrate preserved vector behavior and reduced
- * allocation/copy work on contiguous encrypted async TCP and WebSocket paths.
+ * @code{.c}
+ * acip_packet_plan_t plan = {0};
+ * asciichat_error_t err = acip_packet_plan(crypto, buffers, buffer_count, &plan);
+ * if (err != ASCIICHAT_OK) {
+ *   // Nothing was encrypted or queued.
+ *   return err;
+ * }
  *
- * ## Coverage
+ * if (plan.encrypt) {
+ *   size_t wire_length = 0;
+ *   err = acip_packet_encrypt(crypto, &plan, control_domain,
+ *                             ciphertext, ciphertext_capacity,
+ *                             &wire_header, &wire_length);
+ *   if (err != ASCIICHAT_OK) {
+ *     return err;
+ *   }
+ *   // Submit ciphertext and keep it alive until the async send consumes it.
+ * } else {
+ *   // Submit the borrowed buffers while they remain immutable and alive.
+ * }
+ * @endcode
  *
- * - `test-acip-prepare`: borrowed plaintext vectors, handshake exceptions, identical
- *   contiguous/vector ciphertext, decryption, bounds, allocation/crypto failures,
- *   synchronous and asynchronous TCP, and continued delivery after local send rejection.
- * - `uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/acip --acip-websocket-probe build/bin/test-acip-prepare`:
- *   real WebSocket binary-frame round trip using the shared envelope.
- * - `test-webrtc-security`: real libdatachannel peers, 64 KiB round trips, nonce
- *   advancement, default/encrypted/password/identity/auth-only modes, and rejected
- *   credentials before application admission.
- * - `uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py build/bin/ascii-chat`: 15 real CLI
- *   TCP/WS/WSS policy cases with rendered frames and rejected credentials.
- * - `uv run --project tests/ascii_chat_tests --frozen python tests/integration/webrtc_security.py build/bin/ascii-chat`: local ACDS,
- *   CLI host and participant, negotiation through the production peer manager, and
- *   received/rendered video in six default/password/mutual-key security modes.
- *   Observed receive/render rates were 57.9-58.0 fps with a 40x12 terminal.
- * - From `web/web`, `vp exec playwright test --config tests/e2e/peer-security.config.ts`:
- *   real browser DataChannels and compiled C/WASM peer crypto, chunked round trips,
- *   policy parity, wrong credentials, and plaintext rejection on encrypted sessions.
+ * The plan is intentionally a borrowing description, not an owning packet.
+ * Synchronous callers may use the original buffers directly. Asynchronous
+ * callers must arrange for the queue to retain or copy them before returning;
+ * encrypted callers must also keep their ciphertext storage alive until the
+ * transport has consumed it.
  *
- * WebRTC's native DTLS remains enabled in every mode. ACIP encryption is additional:
- * secure transports default to DTLS/TLS alone, `--encrypt` enables ACIP encryption,
- * passwords enable it by default, and `--no-encrypt` allows authentication without
- * ACIP payload encryption. Media credentials belong to each peer, separately from
- * ACDS signaling credentials. Existing peers without ACIP negotiation must upgrade
- * both endpoints for this WebRTC protocol change.
+ * ## Why the header is inspected first
+ *
+ * The preparation path must not encrypt or allocate blindly. Header validation
+ * catches impossible lengths, unsupported packet families, and packets that
+ * violate the connection's state before expensive work begins. That is also
+ * why a plaintext path still reads the header: policy and bounds are shared by
+ * every transport.
+ *
+ * In the encrypted path, the existing ACIP nonce and authenticated ciphertext
+ * are wrapped in the negotiated record format. The transport sees one prepared
+ * envelope; application code never assembles a second, transport-specific
+ * crypto format.
+ *
+ * ## Testing the contract
+ *
+ * The focused unit test covers borrowed vectors, handshake exceptions,
+ * contiguous and fragmented ciphertext, decryption, bounds, allocation and
+ * crypto failures, synchronous and asynchronous TCP, and queue rejection.
+ * Run it from the build directory:
+ *
+ * @code{.sh}
+ * cmake --build build --target test-acip-prepare
+ * ctest --test-dir build -R test-acip-prepare --output-on-failure
+ * @endcode
+ *
+ * The integration tests then exercise the same contract through real binary
+ * WebSocket frames, WebRTC peers, TCP/WS/WSS policy combinations, and browser
+ * DataChannels. A successful test means more than “the bytes arrived”: it
+ * means the packet was admitted under the same security and ownership rules
+ * on both sides.
+ *
+ * @code{.sh}
+ * uv run --project tests/ascii_chat_tests --frozen \
+ *   python -m pytest tests/python/integration/acip \
+ *   --acip-websocket-probe build/bin/test-acip-prepare
+ *
+ * uv run --project tests/ascii_chat_tests --frozen \
+ *   python tests/integration/crypto_policy.py build/bin/ascii-chat
+ * @endcode
+ *
+ * ## Reading the benchmark numbers
+ *
+ * The benchmark measures preparation, not network throughput. It counts
+ * allocations and explicit payload copies around 64 KiB packets, using real
+ * encryption where the path requires it. A lower copy count is useful, but it
+ * is not permission to trade away ownership correctness or validation.
+ *
+ * The most meaningful result from the October 2026 Windows/Clang run was that
+ * contiguous encrypted asynchronous TCP and WebSocket preparation avoided the
+ * old full-payload copy while plaintext vectors stayed borrowed. Results vary
+ * by compiler, CPU, queue pressure, and packet shape, so rerun the benchmark
+ * when changing the preparation contract.
+ *
+ * @see @ref acip "ACIP"
+ * @see @ref topic_network "Network I/O"
  */
