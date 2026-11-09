@@ -614,6 +614,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(server_key, OPTIONS_VALUE_STRING, "server-key"),
     FIELD(client_keys, OPTIONS_VALUE_STRING, "client-keys"),
     FIELD(discovery_server, OPTIONS_VALUE_STRING, "discovery-server"),
+    FIELD(discovery_service_url, OPTIONS_VALUE_STRING, "discovery-service-url"),
     FIELD(discovery_service_key, OPTIONS_VALUE_STRING, "discovery-service-key"),
     FIELD(discovery_database_path, OPTIONS_VALUE_STRING, "discovery-database-path"),
     FIELD(log_file, OPTIONS_VALUE_STRING, "log-file"),

@@ -108,10 +108,10 @@ static void test_transactions(void) {
   cr_assert_eq(
       options_apply_json("{\"render_font_size\":8.5,\"audio_fft_size\":2048,\"webcam_index\":1,"
                          "\"microphone_channels\":2,\"microphone_channel\":0,\"webrtc_ice_timeout\":15000,"
-                         "\"webrtc_reconnect_attempts\":5}",
+                         "\"webrtc_reconnect_attempts\":5,\"discovery_service_url\":\"wss://example.test\"}",
                          strlen("{\"render_font_size\":8.5,\"audio_fft_size\":2048,\"webcam_index\":1,"
                                 "\"microphone_channels\":2,\"microphone_channel\":0,\"webrtc_ice_timeout\":15000,"
-                                "\"webrtc_reconnect_attempts\":5}"),
+                                "\"webrtc_reconnect_attempts\":5,\"discovery_service_url\":\"wss://example.test\"}"),
                          OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
       ASCIICHAT_OK);
   cr_assert_eq(GET_OPTION(render_font_size), 8.5);
@@ -121,6 +121,7 @@ static void test_transactions(void) {
   cr_assert_eq(GET_OPTION(microphone_channel), 0);
   cr_assert_eq(GET_OPTION(webrtc_ice_timeout_ms), 15000);
   cr_assert_eq(GET_OPTION(webrtc_reconnect_attempts), 5);
+  cr_assert_str_eq(GET_OPTION(discovery_service_url), "wss://example.test");
   CLEAR_ERRNO();
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);
