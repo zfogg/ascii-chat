@@ -214,11 +214,11 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
                                  (!needs_output || ios_audio_device_supports_output(input->device));
   const BOOL output_supports_io = output && (!needs_input || ios_audio_device_supports_input(output->device)) &&
                                   (!needs_output || ios_audio_device_supports_output(output->device));
-  opened->device_index = selected_supports_io      ? g_ios_selected_device
-                         : input_supports_io        ? input->device
-                         : output_supports_io       ? output->device
-                         : needs_input              ? Pa_GetDefaultInputDevice()
-                                                    : Pa_GetDefaultOutputDevice();
+  opened->device_index = selected_supports_io ? g_ios_selected_device
+                         : input_supports_io  ? input->device
+                         : output_supports_io ? output->device
+                         : needs_input        ? Pa_GetDefaultInputDevice()
+                                              : Pa_GetDefaultOutputDevice();
   if (opened->device_index < 0 || opened->device_index >= g_ios_device_count) {
     SAFE_FREE(opened);
     return paInvalidDevice;
