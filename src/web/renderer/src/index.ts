@@ -1,7 +1,7 @@
 import type {
   MainModule as GeneratedModule,
   MirrorFrameBinding as FrameBinding,
-  TerminalRendererBinding as RasterBinding,
+  AsciiRendererBinding as RasterBinding,
   TestPatternBinding as PatternBinding,
 } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
 import {
@@ -60,7 +60,7 @@ export type RendererModule = Pick<
   | "readOptions"
   | "sessionRenderResetStabilizer"
   | "MirrorFrameBinding"
-  | "TerminalRendererBinding"
+  | "AsciiRendererBinding"
   | "TestPatternBinding"
 > & { RendererSessionBinding?: new () => SessionBinding };
 export interface RendererInit {
@@ -139,7 +139,6 @@ export class AsciiRenderer {
   private disposed = false;
   private raster: RasterBinding | undefined;
   private rasterKey = "";
-  private rasterPixels: Uint8ClampedArray<ArrayBuffer> | undefined;
   private pattern: PatternBinding | undefined;
   private patternKey = "";
   private constructor(
@@ -238,7 +237,7 @@ export class AsciiRenderer {
     const key = `${columns}:${rows}:${fontSize}:${matrix}`;
     if (this.rasterKey !== key || !this.raster) {
       this.raster?.delete();
-      this.raster = new this.module.TerminalRendererBinding(
+      this.raster = new this.module.AsciiRendererBinding(
         columns,
         rows,
         fontSize,
@@ -246,19 +245,15 @@ export class AsciiRenderer {
         0,
       );
       this.rasterKey = key;
-      this.rasterPixels = undefined;
     }
     const raster = this.raster;
-    const width = raster.width(),
-      height = raster.height();
-    const pixels = (this.rasterPixels ??= new Uint8ClampedArray(
-      width * height * 4,
-    ));
-    AsciiRenderer.rasterize(
+    const dimensions = raster.dimensions();
+    const width = dimensions.width,
+      height = dimensions.height;
+    const pixels = AsciiRenderer.rasterize(
       raster,
       "\x1b[H" + text,
       Number(values["zalgo"] ?? 0),
-      pixels,
     );
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
@@ -272,20 +267,13 @@ export class AsciiRenderer {
     raster: RasterBinding,
     text: string,
     zalgo = 0,
-    pixels = new Uint8ClampedArray(raster.width() * raster.height() * 4),
   ): Uint8ClampedArray<ArrayBuffer> {
-    if (
-      !raster.valid() ||
-      raster.setZalgo(zalgo) !== 0 ||
-      raster.feed(text) !== 0
-    )
+    if (!raster.valid())
       throw new Error(`Rasterization failed (${raster.error()})`);
-    if (
-      pixels.length !== raster.width() * raster.height() * 4 ||
-      !raster.copyPixels(pixels)
-    )
-      throw new Error("Cannot copy raster pixels");
-    return pixels;
+    const rendered = raster.render(text, zalgo);
+    if (rendered === undefined || rendered === null)
+      throw new Error(`Rasterization failed (${raster.error()})`);
+    return rendered as Uint8ClampedArray<ArrayBuffer>;
   }
 
   /** Produce the project's animated RGBA test pattern. */

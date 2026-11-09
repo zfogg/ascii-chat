@@ -15,7 +15,7 @@ import {
 } from "react";
 import type { AsciiRendererHandle } from "./types";
 import type { MirrorModule } from "../../wasm/mirror";
-import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
+import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 import { startGridStabilityProbe } from "./gridStabilityProbe";
 
@@ -26,7 +26,7 @@ interface UseAsciiRendererHandleParams {
   matrixMode?: boolean;
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
-  rendererPtrRef: RefObject<TerminalRendererBinding | null>;
+  rendererPtrRef: RefObject<AsciiRendererBinding | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   showFps: boolean;
@@ -68,7 +68,7 @@ export function useAsciiRendererHandle({
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const firstRenderDoneRef = useRef(false);
   const presentedRasterRef = useRef<{
-    renderer: TerminalRendererBinding | null;
+    renderer: AsciiRendererBinding | null;
     width: number;
     height: number;
   }>({ renderer: null, width: 0, height: 0 });
@@ -119,7 +119,7 @@ export function useAsciiRendererHandle({
 
   const uiRef = useRef<SessionUiBinding | null>(null);
   const uiModuleRef = useRef<MirrorModule | null>(null);
-  const uiRendererRef = useRef<TerminalRendererBinding | null>(null);
+  const uiRendererRef = useRef<AsciiRendererBinding | null>(null);
   const uiProps = useRef({ uiLoading, uiMessage, onUiAction });
   useLayoutEffect(() => {
     uiProps.current = { uiLoading, uiMessage, onUiAction };
@@ -229,31 +229,26 @@ export function useAsciiRendererHandle({
           throw new Error("[AsciiRenderer] Renderer or canvas is unavailable");
         const w = canvas.width,
           h = canvas.height;
+        const rendererDimensions = renderer.dimensions();
         if (
           w <= 0 ||
           h <= 0 ||
-          renderer.width() !== w ||
-          renderer.height() !== h
+          rendererDimensions.width !== w ||
+          rendererDimensions.height !== h
         )
           throw new Error(
             `[AsciiRenderer] Invalid framebuffer dimensions ${w}x${h}`,
           );
-        let imageData = imageDataRef.current;
-        if (!imageData || imageData.width !== w || imageData.height !== h) {
-          imageData = new ImageData(w, h);
-          imageDataRef.current = imageData;
-        }
-        AsciiRenderer.rasterize(
+        const pixels = AsciiRenderer.rasterize(
           renderer,
           ansiString,
           Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
-          imageData.data,
         );
         lastFrameChangedRef.current = ansiString !== lastContentRef.current;
         lastContentRef.current = ansiString;
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("[AsciiRenderer] Canvas context not found");
-        ctx.putImageData(imageData, 0, 0);
+        ctx.putImageData(new ImageData(pixels, w, h), 0, 0);
         presentedRasterRef.current = { renderer, width: w, height: h };
         if (
           new URLSearchParams(window.location.search).get("verifyGrid") === "1"

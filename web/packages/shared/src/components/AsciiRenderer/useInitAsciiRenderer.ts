@@ -3,7 +3,7 @@ import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 
 import { browserRasterFontSize } from "./rasterConfig";
-import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
+import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
 
 const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
 type RendererConfig = { cols: number; rows: number; matrix: boolean };
@@ -11,7 +11,7 @@ type RendererConfig = { cols: number; rows: number; matrix: boolean };
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
-  rendererPtrRef: RefObject<TerminalRendererBinding | null>;
+  rendererPtrRef: RefObject<AsciiRendererBinding | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   setUpdateDimensions: (fn: (cols: number, rows: number) => void) => void;
   triggerRendererRecreate: () => void;
@@ -34,7 +34,7 @@ export function useInitAsciiRenderer({
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
-  const rendererPtrRef = useRef<TerminalRendererBinding | null>(null);
+  const rendererPtrRef = useRef<AsciiRendererBinding | null>(null);
   const updateDimensionsRef = useRef<
     ((cols: number, rows: number) => void) | null
   >(null);
@@ -70,7 +70,7 @@ export function useInitAsciiRenderer({
   const callRendererCreate = useCallback((config: RendererConfig) => {
     const module = moduleRef.current;
     if (!module) throw new Error("WASM renderer module is unavailable");
-    const renderer = new module.TerminalRendererBinding(
+    const renderer = new module.AsciiRendererBinding(
       config.cols,
       config.rows,
       browserRasterFontSize(config.matrix),
@@ -99,7 +99,8 @@ export function useInitAsciiRenderer({
           matrix: isMatrixMode,
         });
         try {
-          cell = { width: probe.width(), height: probe.height() };
+          const dimensions = probe.dimensions();
+          cell = { width: dimensions.width, height: dimensions.height };
           if (cell.width <= 0 || cell.height <= 0)
             throw new Error("Renderer font has invalid cell dimensions");
           cellMetricsRef.current.set(metricKey, cell);
@@ -137,10 +138,10 @@ export function useInitAsciiRenderer({
     const renderer = rendererPtrRef.current;
     if (!renderer) throw new Error("WASM renderer is unavailable");
     return {
-      cols: renderer.cols(),
-      rows: renderer.rows(),
-      pixelWidth: renderer.width(),
-      pixelHeight: renderer.height(),
+      cols: renderer.dimensions().cols,
+      rows: renderer.dimensions().rows,
+      pixelWidth: renderer.dimensions().width,
+      pixelHeight: renderer.dimensions().height,
     };
   }, []);
   // Handle container resize by recreating renderer and updating canvas

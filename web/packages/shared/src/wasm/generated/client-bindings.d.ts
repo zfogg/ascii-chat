@@ -303,16 +303,11 @@ export interface SessionUiBinding extends ClassHandle {
 
 type RasterPixels = Uint8ClampedArray;
 
-export interface TerminalRendererBinding extends ClassHandle {
+export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
-  cols(): number;
-  rows(): number;
-  width(): number;
-  height(): number;
-  setZalgo(_0: number): number;
-  feed(_0: EmbindString): number;
-  copyPixels(_0: RasterPixels): boolean;
+  dimensions(): { cols: number; rows: number; width: number; height: number };
+  render(_0: EmbindString, _1: number): RasterPixels | null;
 }
 
 type FacePixels = Uint8ClampedArray;
@@ -505,14 +500,14 @@ interface EmbindModule {
   };
   sessionRenderCleanup(): void;
   mirror_cleanup(): void;
-  TerminalRendererBinding: {
+  AsciiRendererBinding: {
     new (
       _0: number,
       _1: number,
       _2: number,
       _3: boolean,
       _4: number,
-    ): TerminalRendererBinding;
+    ): AsciiRendererBinding;
   };
   faceReset(): void;
   faceDetect(_0: FacePixels, _1: number, _2: number, _3: number): number;
