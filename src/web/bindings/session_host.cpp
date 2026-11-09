@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
-#include <emscripten.h>
 #include "protocol_bytes.h"
+#include "byte_arrays.h"
 extern "C" {
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -12,12 +12,11 @@ extern "C" {
 #include <cstdint>
 #include <vector>
 
-EM_JS(void, browser_host_send, (uint32_t client, const uint8_t *data, size_t length), {
-  if (Module.hostPacketCallback)
-    Module.hostPacketCallback(client, HEAPU8.slice(data, data + length));
-});
-
 class BrowserHostBinding;
+struct HostPacket {
+  uint32_t client;
+  std::vector<uint8_t> bytes;
+};
 struct HostTransportContext {
   BrowserHostBinding *owner = nullptr;
   uint32_t id = 0;
@@ -36,6 +35,7 @@ public:
   void close() {
     session_host_destroy(host_);
     host_ = nullptr;
+    packets_.clear();
     for (auto &client : clients_) {
       client.owner = nullptr;
       client.id = 0;
@@ -48,6 +48,7 @@ public:
   int render() { return host_ ? static_cast<int>(session_host_render_video(host_)) : invalidState(); }
   int renderAudio() { return host_ ? static_cast<int>(session_host_render_audio(host_)) : invalidState(); }
   int receive(uint32_t id, uint32_t type, ProtocolBytes packet);
+  emscripten::val drainPackets();
 
 private:
   session_host_t *host_ = nullptr;
@@ -60,13 +61,15 @@ private:
     if (host_) session_host_render_audio(host_);
   }
   void send(uint32_t id, const void *data, size_t length) {
-    browser_host_send(id, static_cast<const uint8_t *>(data), length);
+    packets_.push_back({id, std::vector<uint8_t>(static_cast<const uint8_t *>(data),
+                                                  static_cast<const uint8_t *>(data) + length)});
   }
   static asciichat_error_t sendPacket(acip_transport_t *transport, const void *data, size_t length);
   static bool connected(acip_transport_t *transport);
   static socket_t noSocket(acip_transport_t *transport);
   static acip_transport_type_t type(acip_transport_t *transport);
   static const acip_transport_methods_t methods;
+  std::vector<HostPacket> packets_;
 };
 
 asciichat_error_t BrowserHostBinding::sendPacket(acip_transport_t *transport, const void *data, size_t length) {
@@ -127,6 +130,17 @@ int BrowserHostBinding::receive(uint32_t id, uint32_t typeValue, ProtocolBytes p
   if (length) emscripten::val(emscripten::typed_memory_view(length, input.data())).call<void>("set", packet);
   return static_cast<int>(session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
 }
+emscripten::val BrowserHostBinding::drainPackets() {
+  emscripten::val result = emscripten::val::array();
+  for (const auto &packet : packets_) {
+    emscripten::val output = emscripten::val::object();
+    output.set("id", packet.client);
+    output.set("bytes", binding_copy_output(packet.bytes.data(), packet.bytes.size()));
+    result.call<void>("push", output);
+  }
+  packets_.clear();
+  return result;
+}
 
 EMSCRIPTEN_BINDINGS(ascii_chat_session_host) {
   emscripten::class_<BrowserHostBinding>("BrowserHostBinding")
@@ -139,5 +153,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_session_host) {
       .function("setLocalClient", &BrowserHostBinding::setLocalClient)
       .function("render", &BrowserHostBinding::render)
       .function("renderAudio", &BrowserHostBinding::renderAudio)
+      .function("drainPackets", &BrowserHostBinding::drainPackets)
       .function("receive", &BrowserHostBinding::receive);
 }

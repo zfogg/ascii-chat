@@ -43,7 +43,6 @@ export async function readCryptoKeyFile(file: File): Promise<string> {
 }
 
 type ClientModule = ClientWasmBindings & {
-  hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
   discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
 };
 /** Publish the complete pending C error stack and throw at the JS boundary. */

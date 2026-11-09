@@ -6645,8 +6645,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3035260: () => Module.getRandomValue(),
-    3035296: () => {
+    3035130: () => Module.getRandomValue(),
+    3035166: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6685,13 +6685,6 @@ async function ClientModule(moduleArg = {}) {
       type,
       (growMemViews(), HEAPU8).slice(data, data + length),
     );
-  }
-  function browser_host_send(client, data, length) {
-    if (Module.hostPacketCallback)
-      Module.hostPacketCallback(
-        client,
-        (growMemViews(), HEAPU8).slice(data, data + length),
-      );
   }
   var ___getTypeName = makeInvalidEarlyAccess("___getTypeName");
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
@@ -6984,7 +6977,6 @@ async function ClientModule(moduleArg = {}) {
       _mmap_js: __mmap_js,
       _munmap_js: __munmap_js,
       _tzset_js: __tzset_js,
-      browser_host_send,
       clock_time_get: _clock_time_get,
       discovery_send,
       emscripten_asm_const_int: _emscripten_asm_const_int,

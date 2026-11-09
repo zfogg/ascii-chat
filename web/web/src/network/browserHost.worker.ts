@@ -7,7 +7,6 @@ const post = self.postMessage as unknown as (
   message: unknown,
   transfer?: Transferable[],
 ) => void;
-let module: NonNullable<ReturnType<typeof getClientModule>>;
 let host: BrowserHostBinding;
 const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
@@ -85,12 +84,29 @@ function receivePacket(id: number, type: number, bytes: Uint8Array) {
   if (host.receive(client, type, bytes))
     throw new Error("C host rejected packet.");
 }
+function drainHostPackets() {
+  for (const packet of host.drainPackets()) {
+    if (
+      pendingBatches >= 2 &&
+      new DataView(
+        packet.bytes.buffer,
+        packet.bytes.byteOffset,
+        packet.bytes.byteLength,
+      ).getUint16(8) === PacketType.AUDIO_OPUS_BATCH
+    )
+      continue;
+    const entry = [...clients].find(([, value]) => value === packet.id);
+    const id = entry?.[0] ?? admittingClient;
+    if (id !== null && id !== undefined)
+      packets.push({ id, bytes: packet.bytes });
+  }
+}
 function render() {
   try {
     if (pendingBatches < 2) {
       const start = performance.now();
-      if (host.render())
-        throw new Error("C host could not render video.");
+      if (host.render()) throw new Error("C host could not render video.");
+      drainHostPackets();
       const duration = performance.now() - start;
       totalMs += duration;
       maxMs = Math.max(maxMs, duration);
@@ -135,8 +151,6 @@ function render() {
     fail(error);
   }
 }
-// C emits SERVER_STATE synchronously while attaching the new transport.
-// Preserve its logical recipient before the C id is returned and registered.
 let admittingClient: number | null = null;
 let queue = Promise.resolve();
 self.onmessage = (event) => {
@@ -147,24 +161,9 @@ self.onmessage = (event) => {
         await initClientWasm();
         const clientModule = getClientModule();
         if (!clientModule) throw new Error("Client WASM module is unavailable");
-        module = clientModule;
-        host = new module.BrowserHostBinding();
+        host = new clientModule.BrowserHostBinding();
         if (!host.valid())
           throw new Error("Could not initialize C host worker.");
-        module.hostPacketCallback = (actual, bytes) => {
-          if (
-            pendingBatches >= 2 &&
-            new DataView(
-              bytes.buffer,
-              bytes.byteOffset,
-              bytes.byteLength,
-            ).getUint16(8) === PacketType.AUDIO_OPUS_BATCH
-          )
-            return;
-          const entry = [...clients].find(([, value]) => value === actual);
-          const id = entry?.[0] ?? admittingClient;
-          if (id !== null) packets.push({ id, bytes });
-        };
         post({ kind: "ready" });
         nextFrameAt = performance.now();
         render();
@@ -172,6 +171,7 @@ self.onmessage = (event) => {
           try {
             if (host.renderAudio())
               throw new Error("C host could not mix audio.");
+            drainHostPackets();
             if (packets.length) {
               pendingBatches++;
               post(

@@ -480,6 +480,7 @@ export interface BrowserHostBinding extends ClassHandle {
   setLocalClient(_0: number): number;
   render(): number;
   renderAudio(): number;
+  drainPackets(): any;
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
 

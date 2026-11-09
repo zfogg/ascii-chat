@@ -1,15 +1,15 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
 const wasm = vi.hoisted(() => ({
-  hostPacketCallback: undefined as
-    | undefined
-    | ((id: number, bytes: Uint8Array) => void),
   BrowserHostBinding: class {
-    constructor() { wasm.host = this; }
+    constructor() {
+      wasm.host = this;
+    }
     valid = vi.fn(() => true);
     addClient = vi.fn(() => 1);
     setLocalClient = vi.fn(() => 0);
     render = vi.fn(() => 0);
     renderAudio = vi.fn(() => 0);
+    drainPackets = vi.fn(() => [] as { id: number; bytes: Uint8Array }[]);
     receive = vi.fn(() => 0);
   },
   host: undefined as any,
@@ -47,7 +47,7 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   await send({ kind: "init" });
   const host = wasm.host;
   host.render.mockImplementation(() => {
-    wasm.hostPacketCallback?.(1, new Uint8Array([1]));
+    host.drainPackets.mockReturnValue([{ id: 1, bytes: new Uint8Array([1]) }]);
     return 0;
   });
   await send({ kind: "add", id: 1, local: true });
@@ -91,7 +91,7 @@ it("delivers synchronous admission readiness to the logical client before C id r
   const host = wasm.host;
   host.addClient.mockImplementation(() => {
     // session_host_set_client_transport sends SERVER_STATE before returning.
-    wasm.hostPacketCallback?.(41, readiness);
+    host.drainPackets.mockReturnValueOnce([{ id: 41, bytes: readiness }]);
     return 41;
   });
   await send({ kind: "add", id: 91 });
@@ -101,7 +101,7 @@ it("delivers synchronous admission readiness to the logical client before C id r
     .flatMap(([message]) => message.packets);
   expect(packets).toEqual([{ id: 91, bytes: readiness }]);
   // Outside admission, unregistered C recipients must still be discarded.
-  wasm.hostPacketCallback?.(999, readiness);
+  host.drainPackets.mockReturnValue([{ id: 999, bytes: readiness }]);
   await send({ kind: "presented" });
   await vi.advanceTimersByTimeAsync(20);
   expect(

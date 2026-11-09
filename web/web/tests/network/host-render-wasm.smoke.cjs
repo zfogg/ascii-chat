@@ -128,9 +128,13 @@ const path = require("node:path");
       }
       let host = new m.BrowserHostBinding();
       if (!host.valid()) throw new Error("host create failed");
+      let hostPacketHandler = () => {};
+      const drainHost = () => {
+        for (const packet of host.drainPackets())
+          hostPacketHandler(packet.id, packet.bytes);
+      };
       const ids = [host.addClient(), host.addClient()];
-      if (host.setLocalClient(ids[0]))
-        throw new Error("local target failed");
+      if (host.setLocalClient(ids[0])) throw new Error("local target failed");
       const send = (id, type, bytes) => {
         const result = host.receive(id, type, bytes);
         if (result) throw new Error(`receive ${type}: ${result}`);
@@ -282,7 +286,7 @@ const path = require("node:path");
         }
       };
       const output = [];
-      m.hostPacketCallback = (id, bytes) => {
+      hostPacketHandler = (id, bytes) => {
         if (
           new DataView(bytes.buffer, bytes.byteOffset).getUint16(8) === 3000
         ) {
@@ -295,6 +299,7 @@ const path = require("node:path");
         }
       };
       if (host.render()) throw new Error("render failed");
+      drainHost();
       const first = output.splice(0);
       const patch = (id, values) => {
         const json = new TextEncoder().encode(JSON.stringify(values));
@@ -310,6 +315,7 @@ const path = require("node:path");
       patch(ids[1], { color_mode: 3 });
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (host.render()) throw new Error("updated render failed");
+      drainHost();
       const updated = output.splice(0);
       patch(ids[0], {
         renderer: 1,
@@ -323,8 +329,8 @@ const path = require("node:path");
         palette_explicit: true,
       });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (host.render())
-        throw new Error("per-viewer renderer failed");
+      if (host.render()) throw new Error("per-viewer renderer failed");
+      drainHost();
       const distinct = output.splice(0);
       const glyphFrame = distinct.find((frame) => frame.id === ids[0]);
       const luminanceFrame = distinct.find((frame) => frame.id === ids[1]);
@@ -339,8 +345,8 @@ const path = require("node:path");
         throw new Error("Per-viewer renderer palettes were not respected");
       patch(ids[1], { color_mode: 0, render_mode: 2 });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (host.render())
-        throw new Error("monochrome half-block render failed");
+      if (host.render()) throw new Error("monochrome half-block render failed");
+      drainHost();
       const halfBlock = output.splice(0).find((frame) => frame.id === ids[1]);
       if (!halfBlock || !/[░▒▓█]/u.test(halfBlock.text))
         throw new Error("Missing real monochrome half-block shade output");
@@ -356,8 +362,8 @@ const path = require("node:path");
         for (let i = 24; i < image.length; i += 3) image.fill(value, i, i + 3);
         send(ids[0], 3001, image);
         await new Promise((resolve) => setTimeout(resolve, 20));
-        if (host.render())
-          throw new Error("stabilization render failed");
+        if (host.render()) throw new Error("stabilization render failed");
+        drainHost();
         return output.splice(0).map((frame) => ({
           id: frame.id,
           red: Number(frame.text.match(/\x1b\[38;2;(\d+);/)?.[1]),
@@ -396,7 +402,7 @@ const path = require("node:path");
       let ownEnergy = 0;
       let audioEnergy = 0,
         audioSamples = 0;
-      m.hostPacketCallback = (id, bytes) => {
+      hostPacketHandler = (id, bytes) => {
         const view = new DataView(
           bytes.buffer,
           bytes.byteOffset,
@@ -438,8 +444,8 @@ const path = require("node:path");
           batch.set(encoded, 18);
           sourcePackets.push(batch.slice());
           send(ids[0], 4001, batch);
-          if (host.renderAudio())
-            throw new Error("Host audio tick failed");
+          if (host.renderAudio()) throw new Error("Host audio tick failed");
+          drainHost();
         }
         codec.delete();
         codec = new m.OpusCodecBinding(48000, 1, 24000, 1000);
@@ -466,7 +472,7 @@ const path = require("node:path");
         ids[0] = host.addClient();
         ids[1] = host.addClient();
         const concurrent = [];
-        m.hostPacketCallback = (id, bytes) => {
+        hostPacketHandler = (id, bytes) => {
           if (
             id === ids[1] &&
             new DataView(bytes.buffer, bytes.byteOffset).getUint16(8) === 4001
@@ -478,6 +484,7 @@ const path = require("node:path");
           send(ids[1], 4001, ownPackets[frame].subarray(22));
           if (host.renderAudio())
             throw new Error("concurrent audio tick failed");
+          drainHost();
         }
         if (
           concurrent.length !== listenerPackets.length ||

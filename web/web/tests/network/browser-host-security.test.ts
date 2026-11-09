@@ -8,7 +8,7 @@ const harness = vi.hoisted(() => ({
   disconnected: vi.fn(),
   module: {
     ClientSessionBinding: { errorAction: () => 1 },
-    hostPacketCallback: undefined as
+    runtimePacketCallback: undefined as
       | undefined
       | ((id: number, bytes: Uint8Array) => void),
   },
@@ -55,7 +55,7 @@ vi.mock("../../src/wasm/client", async (original) => ({
 vi.mock("../../src/network/BrowserHostRuntime", () => ({
   BrowserHostRuntime: class {
     constructor(callback: (id: number, bytes: Uint8Array) => void) {
-      harness.module.hostPacketCallback = callback;
+      harness.module.runtimePacketCallback = callback;
     }
     async start() {}
     addClient() {
@@ -106,15 +106,15 @@ describe("browser host peer isolation", () => {
     try {
       if (congested) {
         new DataView(bytes.buffer).setUint16(8, PacketType.IMAGE_FRAME, false);
-        harness.module.hostPacketCallback!(2, bytes);
+        harness.module.runtimePacketCallback!(2, bytes);
         await Promise.resolve();
         expect(peers.has("bad")).toBe(true);
         expect(bad.crypto.sendPacket).not.toHaveBeenCalled();
         new DataView(bytes.buffer).setUint16(8, PacketType.PING, false);
       }
-      harness.module.hostPacketCallback!(2, bytes);
+      harness.module.runtimePacketCallback!(2, bytes);
       await Promise.resolve();
-      harness.module.hostPacketCallback!(3, bytes);
+      harness.module.runtimePacketCallback!(3, bytes);
       await Promise.resolve();
       expect(peers.has("bad")).toBe(false);
       expect(bad.crypto.close).toHaveBeenCalledOnce();
