@@ -76,7 +76,7 @@ static client_state_t *client_state(browser_transport_t *transport) {
   return transport ? browser_transport_client_state(transport) : NULL;
 }
 
-asciichat_error_t client_settings_receive(browser_transport_t *transport, const void *payload, size_t length) {
+asciichat_error_t browser_client_settings_receive(browser_transport_t *transport, const void *payload, size_t length) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Browser client transport is not initialized");
@@ -100,7 +100,7 @@ asciichat_error_t client_settings_receive(browser_transport_t *transport, const 
   return result;
 }
 
-char *client_settings_values(browser_transport_t *transport) {
+char *browser_client_settings_values(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state) {
     SET_ERRNO(ERROR_INVALID_STATE, "Browser client transport is not initialized");
@@ -152,7 +152,7 @@ static int apply_client_crypto_options(browser_transport_t *transport) {
 }
 
 /** Configure browser-provided authentication material for the next handshake. */
-int client_configure_crypto_options(browser_transport_t *transport, const char *password, const uint8_t *identity_secret_key,
+int browser_client_configure_crypto_options(browser_transport_t *transport, const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key) {
   client_state_t *state = client_state(transport);
   if (!state || !state->initialized) {
@@ -197,7 +197,7 @@ int client_configure_crypto_options(browser_transport_t *transport, const char *
 }
 
 /** Parse an OpenSSH Ed25519 private-key file through the shared SSH parser. */
-int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
+int browser_client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
   if (!key_path || !secret_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH private key input or output");
     return -1;
@@ -221,7 +221,7 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
 }
 
 /** Parse an OpenSSH Ed25519 public-key line through the shared SSH parser. */
-int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
+int browser_client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
   if (!key_line || !public_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH public key input or output");
     return -1;
@@ -230,7 +230,7 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
 }
 
 /** Parse an armored OpenPGP Ed25519 public key through the shared C parser. */
-int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
+int browser_client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
   if (!armored_key || !public_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP public key input or output");
     return -1;
@@ -239,7 +239,7 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
 }
 
 /** Parse a binary OpenPGP Ed25519 public-key packet stream. */
-int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
+int browser_client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
   if (!key_data || key_data_len == 0 || !public_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP public key input or output");
     return -1;
@@ -248,7 +248,7 @@ int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_
 }
 
 /** Parse an unencrypted armored OpenPGP Ed25519 private key through the shared C parser. */
-int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
+int browser_client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
   if (!armored_key || !secret_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP private key input or output");
     return -1;
@@ -279,7 +279,7 @@ cleanup:
 }
 
 /** Parse an unencrypted binary OpenPGP Ed25519 secret-key packet stream. */
-int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
+int browser_client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
   if (!key_data || key_data_len == 0 || !secret_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP private key input or output");
     return -1;
@@ -310,7 +310,7 @@ cleanup:
 }
 
 /** Copy the most recent C crypto error into a caller-provided buffer. */
-int client_get_crypto_error_message(char *output, size_t output_size) {
+int browser_client_get_crypto_error_message(char *output, size_t output_size) {
   if (!output || output_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid crypto error output buffer");
     return -1;
@@ -330,7 +330,7 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
  * Initialize client mode with native defaults.
  * @return 0 on success, -1 on error
  */
-int client_init(browser_transport_t *transport) {
+int browser_client_init(browser_transport_t *transport) {
   if (!transport)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize client without a browser transport");
   client_state_t *state = client_state(transport);
@@ -377,7 +377,7 @@ int client_init(browser_transport_t *transport) {
   return 0;
 }
 
-void client_cleanup(browser_transport_t *transport) {
+void browser_client_cleanup(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state)
     return;
@@ -409,7 +409,7 @@ void client_cleanup(browser_transport_t *transport) {
  * Generate client keypair for handshake
  * @return 0 on success, -1 on error
  */
-int client_generate_keypair(browser_transport_t *transport) {
+int browser_client_generate_keypair(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
@@ -445,7 +445,7 @@ int client_generate_keypair(browser_transport_t *transport) {
  * @param server_port Server port number
  * @return 0 on success, -1 on error
  */
-int client_set_server_address(browser_transport_t *transport, const char *server_host, int server_port) {
+int browser_client_set_server_address(browser_transport_t *transport, const char *server_host, int server_port) {
   client_state_t *state = client_state(transport);
   if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
@@ -464,7 +464,7 @@ int client_set_server_address(browser_transport_t *transport, const char *server
   return 0;
 }
 
-const uint8_t *client_public_key_bytes(browser_transport_t *transport) {
+const uint8_t *browser_client_public_key_bytes(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state || state->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not initialized");
@@ -486,7 +486,7 @@ const uint8_t *client_public_key_bytes(browser_transport_t *transport) {
  * @param out_len Output parameter for ciphertext length
  * @return 0 on success, -1 on error
  */
-int client_encrypt_packet(browser_transport_t *transport, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
+int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                           size_t *out_len) {
   client_state_t *state = client_state(transport);
   if (!state || !state->handshake_complete) {
@@ -528,7 +528,7 @@ int client_encrypt_packet(browser_transport_t *transport, const uint8_t *plainte
  * @param out_len Output parameter for plaintext length
  * @return 0 on success, -1 on error
  */
-int client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
+int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len) {
   client_state_t *state = client_state(transport);
   if (!state || !state->handshake_complete) {
@@ -564,18 +564,18 @@ int client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphert
  * Get current connection state
  * @return Connection state enum value
  */
-int client_get_connection_state(const browser_transport_t *transport) {
+int browser_client_get_connection_state(const browser_transport_t *transport) {
   return transport ? (int)browser_transport_state(transport) : BROWSER_TRANSPORT_DISCONNECTED;
 }
 
-asciichat_error_t client_acds_handshake_begin(browser_transport_t *transport, uint8_t mode) {
+asciichat_error_t browser_client_acds_handshake_begin(browser_transport_t *transport, uint8_t mode) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
   state->crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
   return acds_handshake_begin(browser_transport_base(transport), mode);
 }
-asciichat_error_t client_acds_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
+asciichat_error_t browser_client_acds_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
@@ -595,7 +595,7 @@ asciichat_error_t client_acds_handshake_receive(browser_transport_t *transport, 
 }
 
 /** Resolve browser inputs through the same policy as native and mobile clients. */
-int client_resolve_crypto_policy(browser_transport_t *transport, bool secure, int encryption) {
+int browser_client_resolve_crypto_policy(browser_transport_t *transport, bool secure, int encryption) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
@@ -614,7 +614,7 @@ int client_resolve_crypto_policy(browser_transport_t *transport, bool secure, in
   return mode;
 }
 
-asciichat_error_t client_handshake_begin(browser_transport_t *transport) {
+asciichat_error_t browser_client_handshake_begin(browser_transport_t *transport) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
@@ -624,7 +624,7 @@ asciichat_error_t client_handshake_begin(browser_transport_t *transport) {
   return acds_handshake_begin(browser_transport_base(transport), state->crypto_mode);
 }
 
-asciichat_error_t client_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
+asciichat_error_t browser_client_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
@@ -664,12 +664,12 @@ asciichat_error_t client_handshake_receive(browser_transport_t *transport, uint3
             ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode))
       return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
   }
-  return client_acds_handshake_receive(transport, type, payload, length);
+  return browser_client_acds_handshake_receive(transport, type, payload, length);
 }
 
 /* Browser transport marshals framing, then invokes the SAME network content
  * contract as native before any terminal parser or recording receives bytes. */
-asciichat_error_t client_validate_frame(browser_transport_t *transport, const char *text, size_t length, uint32_t width, uint32_t height,
+asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, const char *text, size_t length, uint32_t width, uint32_t height,
                                         uint32_t checksum, uint32_t flags, const void *metadata,
                                         size_t metadata_length) {
   client_state_t *state = client_state(transport);
@@ -699,7 +699,7 @@ asciichat_error_t client_validate_frame(browser_transport_t *transport, const ch
   return session_frame_validate_contract(text, length, width, height, contract ? &settings : NULL, effects);
 }
 
-asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
+asciichat_error_t browser_client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
                                            size_t output_length) {
   if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length ||
       output_length > FRAME_RENDER_MAX_BYTES)

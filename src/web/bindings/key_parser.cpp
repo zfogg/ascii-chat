@@ -44,18 +44,18 @@ public:
   int code = -1;
   switch (kind) {
   case 0:
-    code = client_parse_ssh_private_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = browser_client_parse_ssh_private_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   case 1:
-    code = client_parse_ssh_public_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = browser_client_parse_ssh_public_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   case 2:
-    code = binary ? client_parse_gpg_private_key_binary(bytes.data(), length, output)
-                  : client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = binary ? browser_client_parse_gpg_private_key_binary(bytes.data(), length, output)
+                  : browser_client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   case 3:
-    code = binary ? client_parse_gpg_public_key_binary(bytes.data(), length, output)
-                  : client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = binary ? browser_client_parse_gpg_public_key_binary(bytes.data(), length, output)
+                  : browser_client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   default:
     code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid key parser kind: %d", kind);
@@ -92,7 +92,7 @@ public:
 
   static std::string error() {
   char buffer[1024] = {0};
-  const int status = client_get_crypto_error_message(buffer, sizeof(buffer));
+  const int status = browser_client_get_crypto_error_message(buffer, sizeof(buffer));
   std::string result = status == 0 ? buffer : "Invalid SSH key";
   sodium_memzero(buffer, sizeof(buffer));
   return result;

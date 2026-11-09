@@ -28,7 +28,7 @@ public:
   explicit ClientSessionBinding(OptionsPatch options) {
     transport_.reset(browser_transport_create());
     if (transport_) {
-      result_ = client_init(transport_.get());
+      result_ = browser_client_init(transport_.get());
       if (!result_)
         result_ = initial_options(options);
       else
@@ -37,7 +37,7 @@ public:
       result_ = SET_ERRNO(ERROR_MEMORY, "Browser transport allocation failed");
     }
     if (result_ && transport_)
-      client_cleanup(transport_.get());
+      browser_client_cleanup(transport_.get());
     if (!result_) {
       owned_ = true;
     }
@@ -119,8 +119,8 @@ public:
   }
   emscripten::val settingsReceive(ClientBytes payload) {
     auto input = binding_copy_input(payload);
-    const int code = client_settings_receive(transport_.get(), input.data(), input.size());
-    char *json = code == 0 ? client_settings_values(transport_.get()) : nullptr;
+    const int code = browser_client_settings_receive(transport_.get(), input.data(), input.size());
+    char *json = code == 0 ? browser_client_settings_values(transport_.get()) : nullptr;
     emscripten::val response = emscripten::val::object();
     response.set("code", code);
     response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
@@ -129,7 +129,7 @@ public:
     return response;
   }
   emscripten::val settingsValues() const {
-    char *json = client_settings_values(transport_.get());
+    char *json = browser_client_settings_values(transport_.get());
     emscripten::val response = emscripten::val::object();
     response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
     if (json)
@@ -153,10 +153,10 @@ public:
     auto metadata = binding_copy_input(contract);
     std::vector<uint8_t> decoded(compressed ? original_size : 0);
     const uint8_t *text = compressed ? decoded.data() : input.data();
-    int code = compressed ? client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
+    int code = compressed ? browser_client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
     const bool decode_failed = code != 0;
     if (!code)
-      code = client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size, width, height,
+      code = browser_client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size, width, height,
                                    checksum, flags, metadata.empty() ? nullptr : metadata.data(), metadata.size());
     response.set("code", code);
     response.set("decodeFailed", decode_failed);
@@ -166,7 +166,7 @@ public:
   void close() {
     if (!owned_)
       return;
-    client_cleanup(transport_.get());
+    browser_client_cleanup(transport_.get());
     owned_ = false;
   }
   emscripten::val process(emscripten::val event) {
@@ -176,8 +176,8 @@ public:
     if (type == "begin-handshake") {
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       const int code = discovery
-                           ? static_cast<int>(client_acds_handshake_begin(transport_.get(), event["mode"].as<uint8_t>()))
-                           : static_cast<int>(client_handshake_begin(transport_.get()));
+                           ? static_cast<int>(browser_client_acds_handshake_begin(transport_.get(), event["mode"].as<uint8_t>()))
+                           : static_cast<int>(browser_client_handshake_begin(transport_.get()));
       return result(code);
     }
     if (type == "configure-crypto") {
@@ -187,7 +187,7 @@ public:
       int code;
       if ((secret.empty() || secret.size() == 64) && (key.empty() || key.size() == 32)) {
         pass.push_back(0);
-        code = client_configure_crypto_options(
+        code = browser_client_configure_crypto_options(
             transport_.get(),
             pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
             secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
@@ -217,16 +217,16 @@ public:
     if (type == "state" || type == "snapshot") {
       emscripten::val response = result(0);
       if (type == "snapshot") {
-        response.set("ready", client_get_connection_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
+        response.set("ready", browser_client_get_connection_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
         response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
         response.set("writable", browser_transport_writable(transport_.get(), 0));
       }
       return response;
     }
     if (type == "generate-keypair") {
-      const int code = client_generate_keypair(transport_.get());
+      const int code = browser_client_generate_keypair(transport_.get());
       emscripten::val response = result(code);
-      const uint8_t *key = client_public_key_bytes(transport_.get());
+      const uint8_t *key = browser_client_public_key_bytes(transport_.get());
       if (!code && key) {
         std::array<char, 65> hex{};
         sodium_bin2hex(hex.data(), hex.size(), key, 32);
@@ -235,7 +235,7 @@ public:
       return response;
     }
     if (type == "resolve-crypto-policy") {
-      const int mode = client_resolve_crypto_policy(transport_.get(), event["wss"].as<bool>(), event["encryption"].as<int>());
+      const int mode = browser_client_resolve_crypto_policy(transport_.get(), event["wss"].as<bool>(), event["encryption"].as<int>());
       emscripten::val response = result(mode < 0 ? SET_ERRNO(ERROR_INVALID_PARAM, "Invalid crypto policy") : 0);
       response.set("mode", mode);
       return response;
@@ -264,9 +264,9 @@ public:
       const size_t payload_size = bytes.size() > sizeof(packet_header_t) ? bytes.size() - sizeof(packet_header_t) : 0;
       const int code = validation
                            ? validation
-                           : (discovery ? client_acds_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
+                           : (discovery ? browser_client_acds_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
                                                                           payload, payload_size)
-                                        : client_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
+                                        : browser_client_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
                                                                     payload, payload_size));
       if (!bytes.empty())
         sodium_memzero(bytes.data(), bytes.size());
@@ -294,8 +294,8 @@ public:
       std::vector<uint8_t> output(input.size() + (encrypt ? 72 : 0));
       size_t length = 0;
       const int code = encrypt
-                           ? client_encrypt_packet(transport_.get(), input.data(), input.size(), output.data(), output.size(), &length)
-                           : client_decrypt_packet(transport_.get(), input.data(), input.size(), output.data(), output.size(), &length);
+                           ? browser_client_encrypt_packet(transport_.get(), input.data(), input.size(), output.data(), output.size(), &length)
+                           : browser_client_decrypt_packet(transport_.get(), input.data(), input.size(), output.data(), output.size(), &length);
       emscripten::val response = result(code);
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       if (!input.empty())
@@ -332,7 +332,7 @@ public:
       const int port = event["port"].as<int>();
       if (host.empty() || port <= 0 || port > 65535)
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client server address or port"));
-      return result(client_set_server_address(transport_.get(), host.c_str(), port));
+      return result(browser_client_set_server_address(transport_.get(), host.c_str(), port));
     }
     if (type == "quic-init")
       return result(browser_transport_security_init(transport_.get()));
@@ -433,7 +433,7 @@ private:
     emscripten::val response = emscripten::val::object();
     response.set("ok", code == 0);
     response.set("code", code);
-    response.set("state", client_get_connection_state(transport_.get()));
+    response.set("state", browser_client_get_connection_state(transport_.get()));
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
