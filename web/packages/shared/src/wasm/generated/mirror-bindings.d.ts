@@ -355,6 +355,9 @@ type RgbaBytes = Uint8Array | Uint8ClampedArray;
 type VisualizationSamples = Float32Array;
 
 export interface MirrorFrameBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  close(): void;
   reset(): void;
   convert(
     _0: RgbaBytes,

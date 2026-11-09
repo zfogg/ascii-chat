@@ -180,6 +180,30 @@ test("session UI binding close is idempotent and clears ownership", async ({ pag
   expect(result.after.frame).toBeUndefined();
 });
 
+test("mirror frame binding owns and safely releases render state", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const frame = new (getClientWasmModule()!).MirrorFrameBinding();
+    const before = { valid: frame.valid(), error: frame.error() };
+    frame.close();
+    frame.close();
+    const after = {
+      valid: frame.valid(),
+      error: frame.error(),
+      audio: frame.renderAudio(40, 12, 0),
+    };
+    frame.delete();
+    return { before, after };
+  });
+  expect(result.before).toEqual({ valid: true, error: 0 });
+  expect(result.after.valid).toBe(false);
+  expect(result.after.error).not.toBe(0);
+  expect(result.after.audio).toBeUndefined();
+});
+
 test("key parsing preserves unrelated errors and returns only its own frames", async ({
   page,
 }) => {

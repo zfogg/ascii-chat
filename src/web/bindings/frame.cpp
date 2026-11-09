@@ -18,14 +18,22 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 class MirrorFrameBinding {
 public:
   MirrorFrameBinding() : context_(mirror_render_context_create()) {}
-  ~MirrorFrameBinding() { mirror_render_context_destroy(context_); }
+  ~MirrorFrameBinding() { close(); }
   MirrorFrameBinding(const MirrorFrameBinding &) = delete;
   MirrorFrameBinding &operator=(const MirrorFrameBinding &) = delete;
+  bool valid() const { return context_ != nullptr; }
+  int error() const { return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE); }
+  void close() {
+    mirror_render_context_destroy(context_);
+    context_ = nullptr;
+  }
   static int transformRequired() { return browser_capture_transform_required(); }
   void reset() {
+    if (!context_) return;
     mirror_render_context_reset(context_);
   }
   std::optional<std::string> convert(RgbaBytes rgba, int width, int height, bool contain) {
+    if (!context_) return std::nullopt;
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mirror image: %dx%d, %zu bytes", width, height, length);
@@ -44,6 +52,7 @@ public:
     return result;
   }
   int transform(RgbaBytes rgba, int width, int height) {
+    if (!context_) return error();
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capture image: %dx%d, %zu bytes", width, height, length);
@@ -58,6 +67,10 @@ public:
     return result;
   }
   void submitAudio(VisualizationSamples samples, int source) {
+    if (!context_) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Mirror frame binding is closed");
+      return;
+    }
     if (source != 0 && source != 1) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization source: %d", source);
       return;
@@ -77,6 +90,7 @@ public:
     }
   }
   std::optional<std::string> renderAudio(unsigned width, unsigned height, int source) {
+    if (!context_) return std::nullopt;
     if (!width || !height || (source != 0 && source != 1)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization dimensions or source");
       return std::nullopt;
@@ -102,6 +116,9 @@ EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
   emscripten::register_type<VisualizationSamples>("VisualizationSamples", "Float32Array");
   emscripten::class_<MirrorFrameBinding>("MirrorFrameBinding")
       .constructor<>()
+      .function("valid", &MirrorFrameBinding::valid)
+      .function("error", &MirrorFrameBinding::error)
+      .function("close", &MirrorFrameBinding::close)
       .function("reset", &MirrorFrameBinding::reset)
       .function("convert", &MirrorFrameBinding::convert)
       .function("transform", &MirrorFrameBinding::transform)
