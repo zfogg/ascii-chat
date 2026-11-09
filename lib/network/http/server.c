@@ -49,6 +49,8 @@ struct http_response {
   char *body;
   size_t body_length;
   bool finished;
+  bool deferred;
+  bool retained;
 };
 struct http_client {
   uv_tcp_t tcp;
@@ -244,6 +246,33 @@ asciichat_error_t http_response_set_status(http_response_t *r, unsigned s) {
   r->status = s;
   return ASCIICHAT_OK;
 }
+asciichat_error_t http_response_retain(http_response_t *r, http_response_t **retained) {
+  if (!r || !retained || r->finished || r->retained)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response cannot be retained");
+  http_response_t *copy = SAFE_CALLOC(1, sizeof(*copy), http_response_t *);
+  if (!copy)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot retain HTTP response");
+  copy->stream = r->stream;
+  copy->client = r->client;
+  copy->http2_stream_id = r->http2_stream_id;
+  copy->status = r->status;
+  copy->header_count = r->header_count;
+  memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
+  copy->retained = true;
+  r->deferred = true;
+  r->retained = true;
+  *retained = copy;
+  return ASCIICHAT_OK;
+}
+void http_response_release(http_response_t **response) {
+  if (!response || !*response)
+    return;
+  if ((*response)->retained) {
+    SAFE_FREE((*response)->body);
+    SAFE_FREE(*response);
+  }
+  *response = NULL;
+}
 asciichat_error_t http_response_set_header(http_response_t *r, const char *n, const char *v) {
   if (!r || !n || !v || r->header_count >= HTTP_HEADER_CAPACITY)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP response header");
@@ -350,7 +379,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   http_response_t response = {
       .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
-  if (!response.finished)
+  if (!response.finished && !response.deferred)
     return http_response_finish(&response);
   (void)connection;
   return ASCIICHAT_OK;
@@ -413,7 +442,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   c->server->config.on_request(&r, &resp, c->server->config.user_data);
-  if (!resp.finished)
+  if (!resp.finished && !resp.deferred)
     http_response_finish(&resp);
   SAFE_FREE(resp.body);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);

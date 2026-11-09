@@ -79,6 +79,10 @@ bool http_request_is_cancelled(const http_request_t *request);
 asciichat_error_t http_request_cancel(http_request_t *request);
 
 asciichat_error_t http_response_set_status(http_response_t *response, unsigned status);
+/** Retain a response for completion after the request callback returns. */
+asciichat_error_t http_response_retain(http_response_t *response, http_response_t **retained);
+/** Release a response retained with http_response_retain(). */
+void http_response_release(http_response_t **response);
 asciichat_error_t http_response_set_header(http_response_t *response, const char *name, const char *value);
 asciichat_error_t http_response_write(http_response_t *response, const void *data, size_t length);
 asciichat_error_t http_response_finish(http_response_t *response);
