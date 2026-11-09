@@ -31,19 +31,6 @@ if(NPROC EQUAL 0)
     set(NPROC 1)
 endif()
 
-# Initialize the pinned submodule if a Git checkout did not populate it. A
-# source archive without Git metadata must supply the dependency itself.
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/inc/bearssl.h")
-    find_library(_BEARSSL_RETRY_SYSTEM_LIB NAMES bearssl libbearssl bearssls)
-    find_path(_BEARSSL_RETRY_SYSTEM_INC NAMES bearssl.h)
-    if(PLATFORM_IOS OR USE_MUSL OR NOT (_BEARSSL_RETRY_SYSTEM_LIB AND _BEARSSL_RETRY_SYSTEM_INC))
-        include(${CMAKE_SOURCE_DIR}/cmake/utils/Retry.cmake)
-        find_package(Git REQUIRED)
-        asciichat_command_with_retry("BearSSL submodule initialization"
-            "${GIT_EXECUTABLE}" -C "${CMAKE_SOURCE_DIR}" submodule update --init --checkout -- deps/ascii-chat-deps/bearssl)
-    endif()
-endif()
-
 # Handle iOS builds - BearSSL is built from source
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source (iOS cross-compile)...")

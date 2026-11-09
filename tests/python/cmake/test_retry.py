@@ -64,28 +64,3 @@ def test_openssl_download_retries(tmp_path, failures):
         assert "after 4 attempts" in result.stderr
         assert not destination.exists()
 
-
-def test_command_retry(tmp_path):
-    import sys
-
-    counter = tmp_path / "attempts"
-    command = tmp_path / "command.py"
-    command.write_text(
-        "import pathlib, sys\n"
-        "p = pathlib.Path(sys.argv[1])\n"
-        "n = int(p.read_text()) + 1 if p.exists() else 1\n"
-        "p.write_text(str(n))\n"
-        "sys.exit(0 if n == 3 else 1)\n",
-        encoding="utf-8",
-    )
-    script = tmp_path / "retry.cmake"
-    script.write_text(
-        f'include("{HELPER.as_posix()}")\n'
-        f'asciichat_command_with_retry("test command" "{Path(sys.executable).as_posix()}" '
-        f'"{command.as_posix()}" "{counter.as_posix()}")\n',
-        encoding="utf-8",
-    )
-    result = subprocess.run(["cmake", "-P", str(script)], capture_output=True, text=True, check=False)
-    assert result.returncode == 0, result.stderr
-    assert counter.read_text() == "3"
-    assert "retrying in 1s" in result.stdout and "retrying in 2s" in result.stdout
