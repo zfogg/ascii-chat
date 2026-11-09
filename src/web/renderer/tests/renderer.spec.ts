@@ -209,7 +209,7 @@ test("Embind session owns native initialization and cleanup", async ({
     const second = duplicate.valid();
     const error = duplicate.error();
     duplicate.delete();
-    const stillActive = owner.valid() && module.readOptions() !== null;
+    const stillActive = owner.valid() && module.OptionsBinding.read() !== null;
     owner.delete();
     const replacement = new module.RendererSessionBinding();
     const restarted = replacement.valid();
@@ -248,23 +248,23 @@ test("object options patches commit atomically and respect revisions", async ({
     });
     const session = new module.RendererSessionBinding();
     try {
-      const before = module.readOptions();
-      const rejected = module.patchOptions(
+      const before = module.OptionsBinding.read();
+      const rejected = module.OptionsBinding.patch(
         { width: 45, height: 0 },
         before.revision,
       );
-      const afterRejected = module.readOptions();
-      const committed = module.patchOptions(
+      const afterRejected = module.OptionsBinding.read();
+      const committed = module.OptionsBinding.patch(
         { width: 45, height: 22 },
         before.revision,
       );
-      const afterCommit = module.readOptions();
-      const stale = module.patchOptions(
+      const afterCommit = module.OptionsBinding.read();
+      const stale = module.OptionsBinding.patch(
         { width: 46, height: 23 },
         before.revision,
       );
-      const afterStale = module.readOptions();
-      const badInput = module.patchOptions("not an object", -1);
+      const afterStale = module.OptionsBinding.read();
+      const badInput = module.OptionsBinding.patch("not an object", -1);
       return {
         before,
         rejected,

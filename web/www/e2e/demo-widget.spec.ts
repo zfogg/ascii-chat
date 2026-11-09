@@ -158,7 +158,7 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
     const module = m.getMirrorModule();
     if (
       !module ||
-      module.patchOptions(
+      module.OptionsBinding.patch(
         {
           width: 80,
           height: 40,
