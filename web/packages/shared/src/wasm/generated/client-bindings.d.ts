@@ -301,13 +301,11 @@ export interface SessionUiBinding extends ClassHandle {
   tick(_0: number): string | undefined;
 }
 
-type RasterPixels = Uint8ClampedArray;
-
 export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
-  dimensions(): { cols: number; rows: number; width: number; height: number };
-  render(_0: EmbindString, _1: number): RasterPixels | null;
+  dimensions(): any;
+  render(_0: EmbindString, _1: number): any;
 }
 
 type FacePixels = Uint8ClampedArray;
@@ -359,13 +357,13 @@ export interface PeerCryptoBinding extends ClassHandle {
   valid(): boolean;
   ready(): boolean;
   error(): string;
-  process(_0: Record<string, unknown>): Record<string, unknown>;
+  process(_0: any): any;
 }
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
-  process(_0: Record<string, unknown>): Record<string, unknown>;
+  process(_0: any): any;
 }
 
 type QuicControlResult = {
@@ -406,8 +404,6 @@ export interface AVStateBinding extends ClassHandle {
 
 type ClientBytes = Uint8Array;
 
-type ClientPacketResult = { code: number; bytes: Uint8Array };
-
 type ClientFrameResult = {
   code: number;
   decodeFailed: boolean;
@@ -447,7 +443,7 @@ type OptionalHandoffBytes = Uint8Array | null;
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
   callbackToken(): number;
-  process(_0: Record<string, unknown>): Record<string, unknown>;
+  process(_0: any): any;
 }
 
 export interface HostPacketBinding extends ClassHandle {

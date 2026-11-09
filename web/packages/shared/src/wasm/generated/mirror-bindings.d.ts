@@ -301,13 +301,11 @@ export interface SessionUiBinding extends ClassHandle {
   tick(_0: number): string | undefined;
 }
 
-type RasterPixels = Uint8ClampedArray;
-
 export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
-  dimensions(): { cols: number; rows: number; width: number; height: number };
-  render(_0: EmbindString, _1: number): RasterPixels | null;
+  dimensions(): any;
+  render(_0: EmbindString, _1: number): any;
 }
 
 type FacePixels = Uint8ClampedArray;
