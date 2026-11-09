@@ -799,33 +799,43 @@ export class PeerCryptoSession {
 
   beginQuic(): void {
     this.independentChannels = true;
-    const result = this.getBinding().beginQuic();
+    const result = this.getBinding().process({ type: "quic-begin" })[
+      "code"
+    ] as number;
     if (result) throwWasmError(result, "Cannot start peer QUIC handshake");
   }
 
   initQuic(): void {
-    const result = this.getBinding().initQuic();
+    const result = this.getBinding().process({ type: "quic-init" })[
+      "code"
+    ] as number;
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
   }
 
   get quicEpoch() {
-    return this.binding?.quicEpoch() ?? -1;
+    return (
+      (this.binding?.process({ type: "quic-epoch" })["epoch"] as
+        | number
+        | undefined) ?? -1
+    );
   }
 
   tickQuic() {
     const binding = this.getBinding();
-    const status = binding.tickQuic();
+    const response = binding.process({ type: "quic-tick" }) as {
+      code: number;
+      quicOutputs?: Array<{ flow: number; packet: Uint8Array | null }>;
+    };
+    const status = response.code;
     if (status) throwWasmError(status, "QUIC rekey failed");
     const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
-    for (let i = 0; i <= 16; ++i) {
-      const output = binding.takeQuicOutput();
-      if (output.code) throwWasmError(output.code, "QUIC rekey output failed");
-      if (!output.packet) return packets;
+    for (const output of response.quicOutputs ?? []) {
+      if (!output.packet) continue;
       if (output.flow < 0 || output.flow > 2)
         throw new Error("Invalid QUIC rekey flow");
       packets.push({ flow: output.flow as 0 | 1 | 2, packet: output.packet });
     }
-    throw new Error("QUIC rekey output exceeded its bound");
+    return packets;
   }
 
   quicPacket(
@@ -834,12 +844,13 @@ export class PeerCryptoSession {
     delivery: 0 | 1,
     packet: Uint8Array,
   ) {
-    const result = this.getBinding().quicPacket(
-      operation === "seal",
+    const result = this.getBinding().process({
+      type: "quic-packet",
+      seal: operation === "seal",
       flow,
       delivery,
       packet,
-    );
+    }) as { code: number; packet: Uint8Array; sequence: bigint };
     if (result.code) {
       if (operation === "open" && delivery === 1)
         throw new Error(`QUIC packet ${operation} failed (${result.code})`);
@@ -868,26 +879,36 @@ export class PeerCryptoSession {
       }, 100);
     }
     if (this.binding) {
-      const result = this.binding.tick();
+      const result = this.binding.process({ type: "tick" })["code"] as number;
       if (result) throwWasmError(result, "Peer rekey failed");
     }
     while (this.binding) {
-      const packet = this.binding.takeOutput();
-      if (!packet) break;
-      this.send(packet);
+      const packets = this.binding.process({ type: "tick" })[
+        "outputs"
+      ] as Uint8Array[];
+      for (const packet of packets) this.send(packet);
+      if (!packets.length) break;
     }
   }
 
   private input(packet: Uint8Array, receive: boolean): void {
     const binding = this.getBinding();
-    const result = receive ? binding.receive(packet) : binding.send(packet);
-    if (result !== 0) throwWasmError(result, binding.error());
+    const result = binding.process({
+      type: receive ? "receive" : "send",
+      packet,
+    });
+    const code = result["code"] as number;
+    if (code !== 0) throwWasmError(code, binding.error());
     this.flush();
   }
 
   receive(packet: Uint8Array): Uint8Array | null {
     this.input(packet, true);
-    return this.binding?.received() ?? null;
+    return (
+      (this.binding?.process({ type: "tick" })[
+        "received"
+      ] as Uint8Array | null) ?? null
+    );
   }
 
   sendPacket(packet: Uint8Array): void {

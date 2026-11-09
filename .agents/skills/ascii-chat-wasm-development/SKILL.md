@@ -128,8 +128,7 @@ stub with the same signature and explicit browser semantics.
 
 The WASM CMake source list intentionally omits terminal `main.c` and blocking
 session screen loops. JavaScript owns the browser render/event loop and calls
-functions such as mirror conversion, client ticks, packet processing, and
-renderer feed operations. Never make a browser callback allocate, log heavily,
+coarse session events, frame operations, and renderer frames. Never make a browser callback allocate, log heavily,
 block, or wait for a native terminal condition.
 
 ## Why web.ascii-chat.com is possible
@@ -165,8 +164,8 @@ current binding families are:
   `complete`, `current`, `active`, `beginStop`, `finishStop`) for lifecycle
   synchronization.
 - `client_frames.cpp`: `validateFrame` for incoming frame validation.
-- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `enter`,
-  `receive`, `leave`, `snapshot`) plus `handoffEncode`/`handoffDecode`.
+- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `process`)
+  plus `handoffEncode`/`handoffDecode`.
 - `face.cpp`: `faceReset`, `faceDetect`, and `faceTick`.
 - `frame.cpp`: stabilizer/capture helpers plus `MirrorFrameBinding`
   (`convert`, `transform`, `submitAudio`, `renderAudio`).
@@ -174,19 +173,22 @@ current binding families are:
   `errorSnapshot`, `errorFrame`, and dismissal).
 - `mirror_session.cpp`: `initMirror`, `sessionRenderCleanup`, and
   `mirror_cleanup`.
-- `networking.cpp`: client initialization/cleanup, keypair/public-key and
-  connection-state APIs, crypto policy/handshake, server addressing, and QUIC
-  init/tick/epoch/output/packet APIs, plus `ClientSessionBinding`.
-- `peer_crypto.cpp`: `configureCrypto` and `PeerCryptoBinding` for session
-  crypto, reliable send/receive/tick, QUIC lifecycle/output, and received data.
-- `protocol.cpp`: handshake, packet crypto, JSON packet parsing, and packet
-  serialization helpers.
+- `networking.cpp`: client initialization/cleanup and the
+  `ClientSessionBinding.process(event)` session boundary for handshake,
+  packet, crypto-policy, addressing, and QUIC events.
+- `peer_crypto.cpp`: `configureCrypto` and `PeerCryptoBinding.process(event)`
+  for session crypto, reliable send/receive/tick, QUIC lifecycle/output, and
+  packet sealing/opening.
+- The old granular `protocol.cpp` binding was removed. Packet parsing,
+  serialization, handshake, and crypto are reached through the client session
+  event API and its TypeScript domain helpers.
 - `session_host.cpp`: browser host lifecycle/render/audio plus
   `HostPacketBinding.receive`.
 - `session_ui.cpp`: UI FPS/volume and `SessionUiBinding` for resize, loading,
   logs, media, key, tick, clear, and redraw.
-- `terminal_renderer.cpp`: `TerminalRendererBinding` (`valid`, `error`,
-  `cols`, `rows`, `width`, `height`, `setZalgo`, `feed`, `copyPixels`).
+- `terminal_renderer.cpp`: `AsciiRendererBinding` (`valid`, `error`,
+  `dimensions`, `render`). It accepts a complete text frame and reuses its
+  C++-held output buffer where possible.
 - `test_pattern.cpp`: `TestPatternBinding` (`valid`, `render`).
 
 Generated declarations in `web/packages/shared/src/wasm/generated/` are useful

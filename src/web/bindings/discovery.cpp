@@ -50,6 +50,18 @@ public:
   uintptr_t callbackToken() const {
     return reinterpret_cast<uintptr_t>(session_);
   }
+  emscripten::val process(emscripten::val event) {
+    const std::string type = event["type"].as<std::string>();
+    if (type == "enter")
+      return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), event["password"]));
+    if (type == "receive")
+      return result(receive(event["packetType"].as<unsigned>(), event["packet"]));
+    if (type == "leave")
+      return result(leave());
+    if (type == "snapshot")
+      return snapshot();
+    return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown discovery event"));
+  }
   int enter(bool create, const std::string &name, ProtocolBytes password) {
     auto secret = protocol_input(password, true);
     int result = acds_protocol_enter(session_, create, name.c_str(), reinterpret_cast<const char *>(secret.data()));
@@ -89,6 +101,12 @@ public:
     result.set("name", std::string(session_->name));
     result.set("joined", member);
     return DiscoverySnapshotValue(result);
+  }
+
+  static emscripten::val result(int code) {
+    emscripten::val output = emscripten::val::object();
+    output.set("code", code);
+    return output;
   }
 
 private:
@@ -146,10 +164,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
       .constructor<>()
       .function("valid", &DiscoveryBinding::valid)
       .function("callbackToken", &DiscoveryBinding::callbackToken)
-      .function("enter", &DiscoveryBinding::enter)
-      .function("receive", &DiscoveryBinding::receive)
-      .function("leave", &DiscoveryBinding::leave)
-      .function("snapshot", &DiscoveryBinding::snapshot);
+      .function("process", &DiscoveryBinding::process);
   emscripten::function("handoffEncode", &handoff_encode);
   emscripten::function("handoffDecode", &handoff_decode);
 }

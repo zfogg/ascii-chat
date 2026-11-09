@@ -70,56 +70,65 @@ public:
   std::string error() const {
     return peer_crypto_error();
   }
-  int send(PeerBytes packet) {
-    return input(packet, false);
-  }
-  int receive(PeerBytes packet) {
-    return input(packet, true);
-  }
-  int tick() {
-    return peer_crypto_tick(peer_.get());
-  }
-  int beginQuic() {
-    return network_peer_quic_begin(peer_.get());
-  }
-  int initQuic() {
-    return network_peer_quic_init(peer_.get());
-  }
-  int tickQuic() {
-    return network_peer_quic_tick(peer_.get());
-  }
-  double quicEpoch() {
-    return network_peer_quic_epoch(peer_.get());
-  }
-
-  NullablePeerBytes takeOutput() {
-    const void *data = peer_crypto_output_data(peer_.get());
-    if (!data)
-      return NullablePeerBytes(emscripten::val::null());
-    emscripten::val output = binding_copy_output(data, peer_crypto_output_size(peer_.get()));
-    peer_crypto_output_pop(peer_.get());
-    return NullablePeerBytes(output);
-  }
-  NullablePeerBytes received() {
-    const void *data = peer_crypto_received_data(peer_.get());
-    const size_t length = peer_crypto_received_size(peer_.get());
-    return NullablePeerBytes(data && length ? binding_copy_output(data, length) : emscripten::val::null());
-  }
-  QuicControlResult takeQuicOutput() {
-    return network_peer_quic_output(peer_.get());
-  }
-  QuicPacketResult quicPacket(bool seal, unsigned flow, unsigned delivery, PeerBytes packet) {
-    return network_peer_quic_packet(peer_.get(), seal, flow, delivery, packet);
+  emscripten::val process(emscripten::val event) {
+    emscripten::val result = emscripten::val::object();
+    result.set("code", 0);
+    const std::string type = event["type"].as<std::string>();
+    if (type == "send" || type == "receive") {
+      auto bytes = binding_copy_input(event["packet"]);
+      const int code = input_bytes(bytes, type == "receive");
+      result.set("code", code);
+      if (!bytes.empty()) sodium_memzero(bytes.data(), bytes.size());
+    } else if (type == "tick") {
+      result.set("code", peer_crypto_tick(peer_.get()));
+    } else if (type == "quic-begin") {
+      result.set("code", network_peer_quic_begin(peer_.get()));
+    } else if (type == "quic-init") {
+      result.set("code", network_peer_quic_init(peer_.get()));
+    } else if (type == "quic-tick") {
+      result.set("code", network_peer_quic_tick(peer_.get()));
+      result.set("epoch", network_peer_quic_epoch(peer_.get()));
+      emscripten::val quic_outputs = emscripten::val::array();
+      for (unsigned i = 0; i < 16; ++i) {
+        auto output = network_peer_quic_output(peer_.get());
+        if (output["packet"].isNull()) break;
+        quic_outputs.call<void>("push", output);
+      }
+      result.set("quicOutputs", quic_outputs);
+    } else if (type == "quic-epoch") {
+      result.set("epoch", network_peer_quic_epoch(peer_.get()));
+    } else if (type == "quic-packet") {
+      auto packet = binding_copy_input(event["packet"]);
+      const bool seal = event["seal"].as<bool>();
+      auto packet_result = network_peer_quic_packet(peer_.get(), seal, event["flow"].as<unsigned>(),
+                                                    event["delivery"].as<unsigned>(), event["packet"]);
+      emscripten::val packet_value = packet_result;
+      result.set("code", packet_value["code"]);
+      result.set("packet", packet_value["packet"]);
+      result.set("sequence", packet_value["sequence"]);
+      if (!packet.empty()) sodium_memzero(packet.data(), packet.size());
+    } else {
+      result.set("code", SET_ERRNO(ERROR_INVALID_PARAM, "Unknown peer crypto event"));
+    }
+    emscripten::val outputs = emscripten::val::array();
+    for (unsigned i = 0; i < 16; ++i) {
+      const void *data = peer_crypto_output_data(peer_.get());
+      if (!data) break;
+      outputs.call<void>("push", binding_copy_output(data, peer_crypto_output_size(peer_.get())));
+      peer_crypto_output_pop(peer_.get());
+    }
+    result.set("outputs", outputs);
+    const void *received = peer_crypto_received_data(peer_.get());
+    const size_t received_size = peer_crypto_received_size(peer_.get());
+    result.set("received", received && received_size ? binding_copy_output(received, received_size)
+                                                       : emscripten::val::null());
+    return result;
   }
 
 private:
-  int input(PeerBytes packet, bool receive) {
-    auto bytes = binding_copy_input(packet);
-    int result = receive ? peer_crypto_receive(peer_.get(), bytes.data(), bytes.size())
-                         : peer_crypto_send(peer_.get(), bytes.data(), bytes.size());
-    if (!bytes.empty())
-      sodium_memzero(bytes.data(), bytes.size());
-    return result;
+  int input_bytes(const std::vector<uint8_t> &bytes, bool receive) {
+    return receive ? peer_crypto_receive(peer_.get(), bytes.data(), bytes.size())
+                   : peer_crypto_send(peer_.get(), bytes.data(), bytes.size());
   }
   std::unique_ptr<browser_peer_crypto_t, decltype(&peer_crypto_destroy)> peer_{nullptr, &peer_crypto_destroy};
 };
@@ -133,15 +142,5 @@ EMSCRIPTEN_BINDINGS(ascii_chat_peer_crypto) {
       .function("valid", &PeerCryptoBinding::valid)
       .function("ready", &PeerCryptoBinding::ready)
       .function("error", &PeerCryptoBinding::error)
-      .function("send", &PeerCryptoBinding::send)
-      .function("receive", &PeerCryptoBinding::receive)
-      .function("tick", &PeerCryptoBinding::tick)
-      .function("beginQuic", &PeerCryptoBinding::beginQuic)
-      .function("initQuic", &PeerCryptoBinding::initQuic)
-      .function("tickQuic", &PeerCryptoBinding::tickQuic)
-      .function("quicEpoch", &PeerCryptoBinding::quicEpoch)
-      .function("takeOutput", &PeerCryptoBinding::takeOutput)
-      .function("received", &PeerCryptoBinding::received)
-      .function("takeQuicOutput", &PeerCryptoBinding::takeQuicOutput)
-      .function("quicPacket", &PeerCryptoBinding::quicPacket);
+      .function("process", &PeerCryptoBinding::process);
 }

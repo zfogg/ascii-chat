@@ -26,7 +26,9 @@ export class DiscoveryProtocol {
     module.discoverySend = this.forward;
   }
   private finish(result: number): DiscoverySnapshot {
-    const snapshot = this.getBinding().snapshot();
+    const snapshot = this.getBinding().process({
+      type: "snapshot",
+    }) as unknown as DiscoverySnapshot;
     if (result) {
       this.outgoing = [];
       throw snapshot.terminal
@@ -43,13 +45,26 @@ export class DiscoveryProtocol {
   enter(create: boolean, name: string, password: string): DiscoverySnapshot {
     const secret = new TextEncoder().encode(password);
     try {
-      return this.finish(this.getBinding().enter(create, name, secret));
+      return this.finish(
+        this.getBinding().process({
+          type: "enter",
+          create,
+          name,
+          password: secret,
+        })["code"] as number,
+      );
     } finally {
       secret.fill(0);
     }
   }
   receive(type: number, payload: Uint8Array): DiscoverySnapshot {
-    return this.finish(this.getBinding().receive(type, payload));
+    return this.finish(
+      this.getBinding().process({
+        type: "receive",
+        packetType: type,
+        packet: payload,
+      })["code"] as number,
+    );
   }
   private getBinding(): DiscoveryBinding {
     if (!this.binding) throw new Error("Discovery session is closed");
@@ -59,7 +74,7 @@ export class DiscoveryProtocol {
     if (!this.binding) return;
     const binding = this.binding;
     try {
-      this.finish(binding.leave());
+      this.finish(binding.process({ type: "leave" })["code"] as number);
     } finally {
       binding.delete();
       this.binding = null;

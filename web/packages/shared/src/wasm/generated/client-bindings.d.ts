@@ -359,22 +359,7 @@ export interface PeerCryptoBinding extends ClassHandle {
   valid(): boolean;
   ready(): boolean;
   error(): string;
-  send(_0: PeerBytes): number;
-  receive(_0: PeerBytes): number;
-  tick(): number;
-  beginQuic(): number;
-  initQuic(): number;
-  tickQuic(): number;
-  quicEpoch(): number;
-  takeOutput(): NullablePeerBytes;
-  received(): NullablePeerBytes;
-  takeQuicOutput(): QuicControlResult;
-  quicPacket(
-    _0: boolean,
-    _1: number,
-    _2: number,
-    _3: PeerBytes,
-  ): QuicPacketResult;
+  process(_0: Record<string, unknown>): Record<string, unknown>;
 }
 
 export interface ClientSessionBinding extends ClassHandle {
@@ -458,10 +443,7 @@ type OptionalHandoffBytes = Uint8Array | null;
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
   callbackToken(): number;
-  enter(_0: boolean, _1: EmbindString, _2: ProtocolBytes): number;
-  receive(_0: number, _1: ProtocolBytes): number;
-  leave(): number;
-  snapshot(): DiscoverySnapshotValue;
+  process(_0: Record<string, unknown>): Record<string, unknown>;
 }
 
 export interface HostPacketBinding extends ClassHandle {
