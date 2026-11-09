@@ -162,13 +162,22 @@ test("session UI binding close is idempotent and clears ownership", async ({ pag
     const before = { valid: ui.valid(), error: ui.error() };
     ui.close();
     ui.close();
-    const after = { valid: ui.valid(), error: ui.error() };
+    const after = {
+      valid: ui.valid(),
+      error: ui.error(),
+      key: ui.key(13),
+      media: ui.media("late input"),
+      frame: ui.tick(0),
+    };
     ui.delete();
     return { before, after };
   });
   expect(result.before).toEqual({ valid: true, error: 0 });
   expect(result.after.valid).toBe(false);
   expect(result.after.error).not.toBe(0);
+  expect(result.after.key).not.toBe(0);
+  expect(result.after.media).not.toBe(0);
+  expect(result.after.frame).toBeUndefined();
 });
 
 test("key parsing preserves unrelated errors and returns only its own frames", async ({

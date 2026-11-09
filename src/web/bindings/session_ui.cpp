@@ -46,18 +46,28 @@ public:
     session_ = nullptr;
   }
   void resize(int cols, int rows) {
+    if (!session_)
+      return;
     ui_session_resize(session_, cols, rows);
   }
   void loading(bool loading, const std::string &message) {
+    if (!session_)
+      return;
     ui_session_loading(session_, loading, message.c_str());
   }
   void log(const std::string &message) {
+    if (!session_)
+      return;
     ui_session_log(session_, message.c_str());
   }
   int media(const std::string &text) {
+    if (!session_)
+      return error();
     return ui_session_media(session_, text.data(), text.size());
   }
   int key(int key) {
+    if (!session_)
+      return error();
     ui_session_t *previous = active_session;
     active_session = session_;
     int result = ui_session_input(session_, static_cast<keyboard_key_t>(key));
@@ -65,6 +75,8 @@ public:
     return result;
   }
   std::optional<std::string> tick(double milliseconds) {
+    if (!session_)
+      return std::nullopt;
     ui_session_t *previous = active_session;
     active_session = session_;
     const char *frame = ui_session_tick(session_, static_cast<uint64_t>(milliseconds * 1000000));
@@ -72,9 +84,13 @@ public:
     return frame ? std::optional<std::string>(frame) : std::nullopt;
   }
   void clear() {
+    if (!session_)
+      return;
     ui_session_clear(session_);
   }
   void redraw() {
+    if (!session_)
+      return;
     ui_session_redraw(session_);
   }
 
