@@ -389,6 +389,8 @@ test("client session exposes lifecycle snapshots and transport events", async ({
         code: drained.code,
         epoch: drained.epoch,
         outputs: drained.outputs.length,
+        queuedBytes: drained.queuedBytes,
+        writable: drained.writable,
       },
       batch: batch.map((entry: { state: number; ready?: boolean }) => ({
         state: entry.state,
@@ -404,7 +406,13 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     connected: 3,
     ready: true,
     writable: true,
-    drained: { code: expect.any(Number), epoch: -1, outputs: 0 },
+    drained: {
+      code: expect.any(Number),
+      epoch: -1,
+      outputs: 0,
+      queuedBytes: 0,
+      writable: true,
+    },
     batch: [
       { state: 1, ready: false },
       { state: 3, ready: false },

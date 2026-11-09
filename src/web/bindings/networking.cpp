@@ -335,6 +335,8 @@ public:
     if (!response["code"].as<int>() && output_code)
       response.set("code", output_code);
     response.set("epoch", browser_security_epoch(client_security_context(transport_.get())));
+    response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
+    response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
   emscripten::val processBatch(emscripten::val events) {
