@@ -112,7 +112,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   argv[argc++] = width;
   argv[argc++] = height;
 #ifdef ASCIICHAT_IOS_SIMULATOR
-  argv[argc++] = simulator_audio;
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT)
+    argv[argc++] = simulator_audio;
   if (mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
     argv[argc++] = simulator_discovery_service;
     argv[argc++] = simulator_discovery_port;
