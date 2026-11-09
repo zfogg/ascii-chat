@@ -21,6 +21,10 @@ static NSLock *g_ios_device_lock;
 static id g_ios_route_observer;
 static int g_ios_selected_device = -1;
 
+static BOOL ios_audio_device_supports_input(PaDeviceIndex index) {
+  return index >= 0 && index < g_ios_device_count && g_ios_devices[index].info.maxInputChannels > 0;
+}
+
 static void ios_audio_refresh_devices(void) {
   AVAudioSession *session = AVAudioSession.sharedInstance;
   [session setCategory:AVAudioSessionCategoryPlayAndRecord
@@ -196,10 +200,9 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->sample_rate = sample_rate;
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
-  opened->device_index = g_ios_selected_device >= 0 ? g_ios_selected_device
-                         : input                    ? input->device
-                         : output                   ? output->device
-                                                    : 0;
+  opened->device_index = ios_audio_device_supports_input(g_ios_selected_device)    ? g_ios_selected_device
+                         : input && ios_audio_device_supports_input(input->device) ? input->device
+                                                                                   : Pa_GetDefaultInputDevice();
   if (opened->device_index < 0 || opened->device_index >= g_ios_device_count) {
     SAFE_FREE(opened);
     return paInvalidDevice;
