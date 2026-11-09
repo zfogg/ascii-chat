@@ -396,6 +396,18 @@ struct ContentView: View {
     @State private var audioDevices: [String] = []
     @State private var selectedAudioDevice: Int32 = 0
     @State private var commandLine = ""
+    @State private var showSettings = false
+
+    private func applySettings(_ values: [String: Any]) {
+        guard JSONSerialization.isValidJSONObject(values),
+              let data = try? JSONSerialization.data(withJSONObject: values),
+              let json = String(data: data, encoding: .utf8) else { return }
+        UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
+        json.withCString { pointer in
+            _ = asciichat_ios_options_set_pending_json(pointer, json.utf8.count)
+            _ = asciichat_ios_options_apply_json(pointer, json.utf8.count)
+        }
+    }
 
     private func startSelectedSession() {
         let screen = UIScreen.main
@@ -556,6 +568,10 @@ struct ContentView: View {
         }
         .ignoresSafeArea()
         .onAppear {
+            if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
+               let json = String(data: data, encoding: .utf8) {
+                json.withCString { pointer in _ = asciichat_ios_options_set_pending_json(pointer, json.utf8.count) }
+            }
             if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") && !didStart {
                 selectedMode = .mirror
                 // Let the Metal view complete its first layout pass so the C
@@ -607,6 +623,21 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .onReceive(NotificationCenter.default.publisher(for: .iosStopSession)) { _ in
             stopSelectedSession()
+        }
+        .overlay(alignment: .topLeading) {
+            Button { showSettings = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(IOSTheme.websiteCyan.opacity(0.9))
+                    .frame(width: 56, height: 56)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Settings")
+            .padding(.top, 8)
+            .padding(.leading, 8)
+        }
+        .sheet(isPresented: $showSettings) {
+            IOSSettingsView(onClose: { showSettings = false }, applyJSON: applySettings)
         }
     }
 }
