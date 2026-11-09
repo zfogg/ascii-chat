@@ -1199,12 +1199,6 @@ struct ContentView: View {
             applySettings(simulatorOverrides)
         }
         #endif
-        // Apply persisted options before the native entry point reads GET_OPTION.
-        // This keeps the camera's auto-FPS decision stable for the whole session.
-        if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
-           let json = String(data: data, encoding: .utf8) {
-            json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
-        }
         let persistedValues = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
         let launchAddress = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-address=") })
@@ -1424,10 +1418,6 @@ struct ContentView: View {
         }
         .ignoresSafeArea()
         .onAppear {
-            if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
-               let json = String(data: data, encoding: .utf8) {
-                json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
-            }
             if ProcessInfo.processInfo.arguments.contains("--auto-open-settings") {
                 showSettings = true
             }
