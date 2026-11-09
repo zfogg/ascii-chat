@@ -7,6 +7,7 @@ typedef enum {
 } asciichat_ios_mode_t;
 
 int asciichat_ios_main(asciichat_ios_mode_t mode);
+void asciichat_ios_set_session_string(const char *session_string);
 int asciichat_ios_mode_available(asciichat_ios_mode_t mode);
 const char *asciichat_ios_mode_name(asciichat_ios_mode_t mode);
 int asciichat_ios_is_running(void);

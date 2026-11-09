@@ -12,6 +12,15 @@ extern int asciichat_main(int argc, char **argv);
 
 static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
+static char g_ios_session_string[128];
+
+void asciichat_ios_set_session_string(const char *session_string) {
+  if (!session_string) {
+    g_ios_session_string[0] = '\0';
+    return;
+  }
+  snprintf(g_ios_session_string, sizeof(g_ios_session_string), "%s", session_string);
+}
 
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
   os_log(OS_LOG_DEFAULT, "iOS native session starting mode=%d", mode);
@@ -46,7 +55,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
                                                            : mirror;
   /* Synthetic frames are a simulator mirror aid; network clients must use
    * their negotiated remote media instead. */
-  char *argv[] = {program, mode_name, splash, color, fps, width, height, NULL, NULL};
+  char *argv[] = {program, mode_name, splash, color, fps, width, height, NULL, NULL, NULL};
   int argc = 7;
 #ifdef ASCIICHAT_IOS_SIMULATOR
   if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
@@ -54,6 +63,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
     argc = 8;
   }
 #endif
+  if (mode == ASCIICHAT_IOS_MODE_DISCOVERY && g_ios_session_string[0] != '\0') {
+    argv[argc++] = g_ios_session_string;
+  }
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);

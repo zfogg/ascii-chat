@@ -25,6 +25,9 @@ private func asciichat_ios_test_frame(
 @_silgen_name("asciichat_ios_main")
 private func asciichat_ios_main(_ mode: Int32) -> Int32
 
+@_silgen_name("asciichat_ios_set_session_string")
+private func asciichat_ios_set_session_string(_ sessionString: UnsafePointer<CChar>?)
+
 @_silgen_name("asciichat_ios_mode_available")
 private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
 
@@ -398,6 +401,7 @@ private struct IOSSettingsView: View {
     @State private var address = "localhost"
     @State private var port = "27224"
     @State private var discoveryServiceURL = ""
+    @State private var sessionString = ""
     @State private var webcamIndex = "0"
     @State private var microphoneIndex = "0"
     @State private var speakersIndex = "0"
@@ -419,6 +423,7 @@ private struct IOSSettingsView: View {
         if let value = values["render_mode"] as? String { renderMode = value }
         if let value = values["color_mode"] as? String { colorMode = value }
         if let value = values["audio_enabled"] as? Bool { audioEnabled = value }
+        if let value = values["session_string"] as? String { sessionString = value }
     }
 
     var body: some View {
@@ -475,6 +480,8 @@ private struct IOSSettingsView: View {
                     TextField("Port", text: $port).keyboardType(.numberPad)
                     TextField("Discovery service URL", text: $discoveryServiceURL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    TextField("Discovery session string (optional)", text: $sessionString)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 Section("Advanced") {
                     NavigationLink("All ascii-chat options") {
@@ -488,6 +495,7 @@ private struct IOSSettingsView: View {
                                    "stabilize": stabilize, "audio_enabled": audioEnabled,
                                    "address": address, "port": Int(port) ?? 27224,
                                    "discovery_service_url": discoveryServiceURL,
+                                   "session_string": sessionString,
                                    "webcam_index": Int(webcamIndex) ?? 0,
                                    "microphone_index": Int(microphoneIndex) ?? 0,
                                    "speakers_index": Int(speakersIndex) ?? 0,
@@ -792,6 +800,9 @@ struct ContentView: View {
             json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
         }
         sessionModel.start(mode: selectedMode)
+        let sessionString = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["session_string"] as? String ?? ""
+        sessionString.withCString { asciichat_ios_set_session_string($0) }
         NotificationCenter.default.post(name: .iosSessionStarted, object: nil)
         launchMessage = "Starting \(selectedMode.title.lowercased())…"
         didStart = true
