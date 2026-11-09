@@ -426,6 +426,7 @@ private struct IOSSettingsView: View {
     @State private var microphoneIndex = "0"
     @State private var speakersIndex = "0"
     @State private var microphoneVolume = 1.0
+    @State private var microphoneSensitivity = 1.0
     @State private var speakersVolume = 1.0
     @State private var compressionLevel = 6.0
     @State private var reconnectAttempts = 3.0
@@ -461,6 +462,7 @@ private struct IOSSettingsView: View {
         if let value = values["microphone_index"] as? NSNumber { microphoneIndex = value.stringValue }
         if let value = values["speakers_index"] as? NSNumber { speakersIndex = value.stringValue }
         if let value = values["microphone_volume"] as? NSNumber { microphoneVolume = value.doubleValue }
+        if let value = values["microphone_sensitivity"] as? NSNumber { microphoneSensitivity = value.doubleValue }
         if let value = values["session_string"] as? String { sessionString = value }
         if let value = values["speakers_volume"] as? NSNumber { speakersVolume = value.doubleValue }
         if let value = values["compression_level"] as? NSNumber { compressionLevel = value.doubleValue }
@@ -547,6 +549,13 @@ private struct IOSSettingsView: View {
                             }
                     }
                     VStack(alignment: .leading) {
+                        Text("Microphone sensitivity: \(microphoneSensitivity, specifier: "%.2f")")
+                        Slider(value: $microphoneSensitivity, in: 0...2, step: 0.05)
+                            .onChange(of: microphoneSensitivity) { _, value in
+                                applyJSON(["microphone_sensitivity": value])
+                            }
+                    }
+                    VStack(alignment: .leading) {
                         Text("Speaker volume: \(speakersVolume, specifier: "%.2f")")
                         Slider(value: $speakersVolume, in: 0...1, step: 0.05)
                             .onChange(of: speakersVolume) { _, value in
@@ -624,6 +633,7 @@ private struct IOSSettingsView: View {
                                    "microphone_index": Int(microphoneIndex) ?? 0,
                                    "speakers_index": Int(speakersIndex) ?? 0,
                                    "microphone_volume": microphoneVolume,
+                                   "microphone_sensitivity": microphoneSensitivity,
                                    "speakers_volume": speakersVolume,
                                    "compression_level": Int(compressionLevel),
                                    "reconnect_attempts": Int(reconnectAttempts),
