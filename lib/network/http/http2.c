@@ -6,7 +6,6 @@
 #include <nghttp2/nghttp2.h>
 #include <string.h>
 
-#define HTTP2_MAX_BODY (1024u * 1024u)
 #define HTTP2_MAX_TEXT 8192u
 #define HTTP2_MAX_HEADERS 64u
 
@@ -34,6 +33,7 @@ struct http2_connection {
   nghttp2_session *session;
   http2_request_fn on_request;
   void *user_data;
+  size_t max_body_length;
   const uint8_t *output;
   size_t output_length;
 };
@@ -99,7 +99,9 @@ static int on_data(nghttp2_session *session, uint8_t flags, int32_t stream_id, c
   (void)flags;
   (void)user_data;
   request_state_t *request = get_request(session, stream_id);
-  if (!request || length > HTTP2_MAX_BODY - request->body_length)
+  http2_connection_t *connection = user_data;
+  if (!request || request->body_length > connection->max_body_length ||
+      length > connection->max_body_length - request->body_length)
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   if (request->body_capacity < request->body_length + length) {
     size_t capacity = request->body_capacity ? request->body_capacity * 2 : 1024;
@@ -176,8 +178,9 @@ static ssize_t read_response(nghttp2_session *session, uint8_t *buffer, size_t l
   return (ssize_t)copied;
 }
 
-asciichat_error_t http2_connection_create(http2_connection_t **out, http2_request_fn on_request, void *user_data) {
-  if (!out || !on_request)
+asciichat_error_t http2_connection_create(http2_connection_t **out, http2_request_fn on_request, void *user_data,
+                                          size_t max_body_length) {
+  if (!out || !on_request || max_body_length == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/2 request callback");
   http2_connection_t *connection = SAFE_CALLOC(1, sizeof(*connection), http2_connection_t *);
   nghttp2_session_callbacks *callbacks = NULL;
@@ -198,6 +201,7 @@ asciichat_error_t http2_connection_create(http2_connection_t **out, http2_reques
   nghttp2_session_callbacks_del(callbacks);
   connection->on_request = on_request;
   connection->user_data = user_data;
+  connection->max_body_length = max_body_length;
   *out = connection;
   return ASCIICHAT_OK;
 }
@@ -230,7 +234,8 @@ asciichat_error_t http2_connection_next_output(http2_connection_t *connection, c
 asciichat_error_t http2_connection_submit_response(http2_connection_t *connection, int32_t stream_id, unsigned status,
                                                    const http_header_t *headers, size_t header_count, const void *body,
                                                    size_t body_length) {
-  if (!connection || status < 100 || status > 599 || body_length > HTTP2_MAX_BODY || (!body && body_length))
+  if (!connection || status < 100 || status > 599 || body_length > connection->max_body_length ||
+      (!body && body_length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response");
   if (header_count > HTTP2_MAX_HEADERS || (header_count && !headers))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response headers");

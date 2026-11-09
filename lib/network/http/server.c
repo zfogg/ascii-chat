@@ -4,6 +4,7 @@
 #include "http2.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/string.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/util/time.h>
@@ -126,7 +127,7 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
     char *next = strstr(scan, "\r\n");
     if (!next)
       return false;
-    if (_strnicmp(scan, "Content-Length:", 15) == 0)
+    if (platform_strncasecmp(scan, "Content-Length:", 15) == 0)
       body = (size_t)strtoull(scan + 15, NULL, 10);
     scan = next + 2;
   }
@@ -370,9 +371,17 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   if (!server || !method || !path || (header_count && !headers) || (!body && body_length) || !submit ||
       body_length > server->config.max_request_body_bytes)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 request");
+  char path_copy[2048];
+  if (strlen(path) >= sizeof(path_copy))
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "HTTP/3 request path is too long");
+  platform_strncpy(path_copy, sizeof(path_copy), path, sizeof(path_copy) - 1);
+  char *query = strchr(path_copy, '?');
+  if (query)
+    *query++ = 0;
   http_request_t request = {0};
   request.info = (http_request_info_t){.method = method,
-                                       .path = path,
+                                       .path = path_copy,
+                                       .query = query,
                                        .protocol = HTTP_PROTOCOL_3,
                                        .headers = headers,
                                        .header_count = header_count,
@@ -493,7 +502,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   if (!c->http2_mode && c->server->config.enable_http2 && c->length >= sizeof(h2_preface) - 1 &&
       memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
     c->http2_mode = true;
-    if (http2_connection_create(&c->http2, http2_request_cb, c) != ASCIICHAT_OK ||
+    if (http2_connection_create(&c->http2, http2_request_cb, c, c->server->config.max_request_body_bytes) !=
+            ASCIICHAT_OK ||
         http2_connection_receive(c->http2, c->buffer + sizeof(h2_preface) - 1, c->length - (sizeof(h2_preface) - 1)) !=
             ASCIICHAT_OK) {
       client_close(c);
