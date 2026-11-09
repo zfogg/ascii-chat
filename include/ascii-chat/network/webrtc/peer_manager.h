@@ -64,7 +64,9 @@ typedef enum {
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer
  *
- * Delivered only by dispatch_ready on the thread that created the manager.
+ * Delivered by dispatch_ready; the pending transport is removed under the
+ * manager mutex before the callback runs, so event-loop dispatch is safe from
+ * the server's transport thread.
  * The callback must not destroy the manager.
  * The callback receives ownership of the transport and must either:
  * - Use it for ACIP communication
