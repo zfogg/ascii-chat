@@ -588,7 +588,7 @@ private struct IOSSettingsView: View {
                 }
                 Section("Advanced") {
                     NavigationLink("All ascii-chat options") {
-                        IOSAllOptionsView(applyJSON: applyJSON)
+                        IOSAllOptionsView(applyJSON: applyJSON, renderFontSizeChanged: renderFontSizeChanged)
                     }
                 }
                 Section {
@@ -629,6 +629,7 @@ private struct IOSSettingsView: View {
 
 private struct IOSAllOptionsView: View {
     let applyJSON: ([String: Any]) -> Void
+    let renderFontSizeChanged: (Double) -> Void
     @State private var values: [String: Any] = [:]
     @State private var changed = false
 
@@ -647,11 +648,19 @@ private struct IOSAllOptionsView: View {
             ForEach(values.keys.sorted(), id: \.self) { key in
                 if let value = values[key] as? Bool {
                     Toggle(key.replacingOccurrences(of: "_", with: " ").capitalized,
-                           isOn: Binding(get: { value }, set: { values[key] = $0; changed = true }))
+                           isOn: Binding(get: { value }, set: {
+                               values[key] = $0
+                               changed = true
+                               applyJSON([key: $0])
+                           }))
                 } else if let value = values[key] as? String,
                           let choices = Self.enumValues(for: key) {
                     Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
-                           selection: Binding(get: { value }, set: { values[key] = $0; changed = true })) {
+                           selection: Binding(get: { value }, set: {
+                               values[key] = $0
+                               changed = true
+                               applyJSON([key: $0])
+                           })) {
                         ForEach(choices, id: \.self, content: Text.init)
                     }
                 } else if let number = values[key] as? NSNumber,
@@ -659,7 +668,12 @@ private struct IOSAllOptionsView: View {
                     Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
                            selection: Binding(
                                get: { String((values[key] as? NSNumber)?.intValue ?? number.intValue) },
-                               set: { values[key] = Int($0) ?? number.intValue; changed = true })) {
+                               set: {
+                                   let next = Int($0) ?? number.intValue
+                                   values[key] = next
+                                   changed = true
+                                   applyJSON([key: next])
+                               })) {
                         ForEach(choices, id: \.self, content: Text.init)
                     }
                 } else if let number = values[key] as? NSNumber,
@@ -672,7 +686,14 @@ private struct IOSAllOptionsView: View {
                             .font(.caption.monospacedDigit())
                         Slider(value: Binding(
                             get: { (values[key] as? NSNumber)?.doubleValue ?? number.doubleValue },
-                            set: { values[key] = $0; changed = true }),
+                            set: {
+                                values[key] = $0
+                                changed = true
+                                applyJSON([key: $0])
+                                if key == "render_font_size" {
+                                    renderFontSizeChanged($0)
+                                }
+                            }),
                                in: range.lowerBound...range.upperBound, step: range.step)
                     }
                 } else {
