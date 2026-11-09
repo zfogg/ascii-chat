@@ -73,5 +73,7 @@
 	<string>ascii-chat uses the camera for video chat.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ascii-chat uses the microphone for video chat audio.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ascii-chat uses your local network to connect to video chat peers and discovery services.</string>
 </dict>
 </plist>
