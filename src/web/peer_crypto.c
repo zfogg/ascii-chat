@@ -148,11 +148,13 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
   }
   peer->transport.methods = &peer_methods;
   peer->transport.impl_data = peer;
-  if (acip_security_start(&peer->security, &peer->transport) != ASCIICHAT_OK) {
-    peer_crypto_destroy(peer);
-    return NULL;
-  }
   return peer;
+}
+
+asciichat_error_t peer_crypto_start(browser_peer_crypto_t *peer) {
+  if (!peer)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");
+  return acip_security_start(&peer->security, &peer->transport);
 }
 
 bool peer_crypto_ready(browser_peer_crypto_t *peer) {

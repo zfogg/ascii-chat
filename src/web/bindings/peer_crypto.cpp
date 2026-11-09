@@ -75,7 +75,9 @@ public:
     emscripten::val result = emscripten::val::object();
     result.set("code", 0);
     const std::string type = event["type"].as<std::string>();
-    if (type == "send" || type == "receive") {
+    if (type == "start") {
+      result.set("code", static_cast<int>(peer_crypto_start(peer_.get())));
+    } else if (type == "send" || type == "receive") {
       auto bytes = binding_copy_input(event["packet"]);
       const int code = input_bytes(bytes, type == "receive");
       result.set("code", code);

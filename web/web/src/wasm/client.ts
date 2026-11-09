@@ -792,6 +792,17 @@ export class PeerCryptoSession {
           binding.delete();
           throwWasmError(-1, message);
         }
+        const startedResult = binding.process({ type: "start" }) as {
+          code: number;
+          outputs?: Uint8Array[];
+        };
+        for (const packet of startedResult.outputs ?? []) send(packet);
+        const started = startedResult.code;
+        if (started) {
+          const message = binding.error();
+          binding.delete();
+          throwWasmError(started, message);
+        }
         return new PeerCryptoSession(binding, send);
       },
     );

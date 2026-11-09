@@ -15,6 +15,7 @@ extern "C" {
 
 browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
                                           const uint8_t *expected_key);
+asciichat_error_t peer_crypto_start(browser_peer_crypto_t *peer);
 void peer_crypto_destroy(browser_peer_crypto_t *peer);
 bool peer_crypto_ready(browser_peer_crypto_t *peer);
 const char *peer_crypto_error(void);
