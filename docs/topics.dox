@@ -166,6 +166,7 @@
  * - @ref md_docs_2ci "Continuous integration"
  * - @ref md_docs_2windows-build-performance "Windows build performance"
  * - @ref md_docs_2test-patterns "Shared native and browser test patterns"
+ * - @ref md_docs_2wasm-interop "Browser WASM bindings and standalone renderer"
  * - @ref md_docs_2acip-preparation "ACIP packet preparation validation"
  * - @ref md_docs_2discovery-key-sets "Discovery session authentication keys"
  * - @ref md_docs_2host-designation "Discovery host designation"

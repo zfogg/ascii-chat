@@ -1,14 +1,15 @@
+#include "capture.h"
 #include <emscripten.h>
 #include <stdint.h>
 #include <ascii-chat/options/options.h>
 
 /* Uploads carry pixels, not remote flip preferences. Resolve orientation from
  * the same C option store used by local rendering, before any upload codec. */
-EMSCRIPTEN_KEEPALIVE int wasm_capture_transform_required(void) {
+int browser_capture_transform_required(void) {
   return GET_OPTION(flip_x) || GET_OPTION(flip_y);
 }
 
-EMSCRIPTEN_KEEPALIVE int wasm_capture_transform_rgba(uint8_t *pixels, int width, int height) {
+int browser_capture_transform_rgba(uint8_t *pixels, int width, int height) {
   if (!pixels || width <= 0 || height <= 0 || (size_t)width > SIZE_MAX / (size_t)height / 4)
     return -1;
   bool flip_x = GET_OPTION(flip_x), flip_y = GET_OPTION(flip_y);

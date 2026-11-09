@@ -1,7 +1,9 @@
 import {
   getMirrorModule,
   runtimeOptions,
-  isOptionsInitialized,
+  paletteTypes,
+  RenderMode,
+  TextRenderer,
   isWasmReady,
   type RuntimeOptionsStore,
   type RuntimeValues,
@@ -37,7 +39,7 @@ export function applyMirrorWasmSettings(
   settings: BinarySettingsConfig,
   mediaInput?: boolean,
 ): boolean {
-  if (!isWasmReady() || !isOptionsInitialized()) return false;
+  if (!isWasmReady()) return false;
   const module = getMirrorModule();
   if (!module) return false;
   const store = runtimeOptions(module);
@@ -45,23 +47,18 @@ export function applyMirrorWasmSettings(
   const enabled = settings.animationEnabled ?? settings.matrixRain ?? false;
   const visualization =
     enabled && (animation === "waveform" || animation === "fft");
-  const palettes = {
-    standard: 1,
-    blocks: 2,
-    digital: 3,
-    minimal: 4,
-    cool: 5,
-    custom: 6,
-  };
   const values: RuntimeValues = {
     color_mode: mapColorModeToWasm(settings.colorMode),
     color_filter: mapColorFilterToWasm(
       visualization ? "none" : settings.colorFilter,
     ),
-    render_mode: settings.renderMode ?? 0,
-    renderer: settings.renderer === "glyph" ? 1 : 0,
+    render_mode: settings.renderMode ?? RenderMode.Foreground,
+    renderer:
+      settings.renderer === "glyph"
+        ? TextRenderer.Glyph
+        : TextRenderer.Luminance,
     stabilize: settings.stabilize ?? false,
-    palette_type: palettes[settings.palette],
+    palette_type: paletteTypes[settings.palette],
     palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,
     palette_explicit:
       (settings.paletteExplicit ?? false) || settings.palette !== "standard",
@@ -93,7 +90,7 @@ export function applyMirrorWasmSettings(
 }
 
 export function setMirrorWasmDimensions(cols: number, rows: number): boolean {
-  if (!isWasmReady() || !isOptionsInitialized()) return false;
+  if (!isWasmReady()) return false;
   const module = getMirrorModule();
   if (!module) return false;
   runtimeOptions(module).applyPatch({ width: cols, height: rows });

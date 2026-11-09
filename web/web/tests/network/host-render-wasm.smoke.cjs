@@ -72,68 +72,37 @@ const path = require("node:path");
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
       const args = "client --width 40 --height 12 --log-level fatal";
-      const ptr = m._malloc(args.length + 1);
-      m.stringToUTF8(args, ptr, args.length + 1);
-      if (m._client_init_with_args(ptr)) throw new Error("client init failed");
-      m._free(ptr);
-      // Measuring an old Matrix renderer must not reset newer C preferences.
-      const selection = '{"waveform":true}';
-      const selectionPtr = m._malloc(selection.length + 1);
-      m.stringToUTF8(selection, selectionPtr, selection.length + 1);
-      if (m._wasm_options_patch(selectionPtr, -1))
+      if (m.initClient(args)) throw new Error("client init failed");
+      const selection = { waveform: true };
+      if (m.patchOptions(selection, -1))
         throw new Error("waveform selection failed");
-      m._free(selectionPtr);
-      const revision = m._wasm_options_revision();
-      const normalFont = m._get_font_default_ptr(1);
-      const matrixFont = m._get_font_default_ptr(2);
-      if (
-        !normalFont ||
-        !matrixFont ||
-        normalFont === matrixFont ||
-        !m._get_font_default_size(1) ||
-        !m._get_font_default_size(2) ||
-        m._get_font_default_ptr(0) !== normalFont ||
-        m._wasm_options_revision() !== revision
-      )
-        throw new Error("font selection changed engine preferences");
+      const revision = m.browser_options_revision();
+      const normalProbe = new m.TerminalRendererBinding(1, 1, 24, false, 1);
+      const matrixProbe = new m.TerminalRendererBinding(1, 1, 24, true, 2);
+      try {
+        if (
+          !normalProbe.valid() ||
+          !matrixProbe.valid() ||
+          m.browser_options_revision() !== revision
+        )
+          throw new Error("font selection changed engine preferences");
+      } finally {
+        normalProbe.delete();
+        matrixProbe.delete();
+      }
       // The bundled font omits Braille; all eight positions must still render.
-      const brailleConfig = m._malloc(m._wasm_renderer_config_size());
-      const brailleOut = m._malloc(4);
-      if (
-        m._wasm_renderer_config_write(
-          brailleConfig,
-          1,
-          1,
-          24,
-          0,
-          normalFont,
-          m._get_font_default_size(1),
-          0,
-        ) ||
-        m._term_renderer_create(brailleConfig, brailleOut)
-      )
+      const brailleRenderer = new m.TerminalRendererBinding(1, 1, 24, false, 1);
+      if (!brailleRenderer.valid())
         throw new Error("Braille terminal creation failed");
-      const brailleRenderer = new DataView(
-        m.HEAPU8.buffer,
-        brailleOut,
-        4,
-      ).getUint32(0, true);
       const pixelsFor = (text) => {
-        const bytes = new TextEncoder().encode("\x1b[H" + text);
-        const input = m._malloc(bytes.length);
-        m.HEAPU8.set(bytes, input);
-        const error = m._term_renderer_feed(
-          brailleRenderer,
-          input,
-          bytes.length,
+        if (brailleRenderer.feed("\x1b[H" + text))
+          throw new Error("Braille terminal feed failed");
+        const pixels = new Uint8ClampedArray(
+          brailleRenderer.width() * brailleRenderer.height() * 4,
         );
-        m._free(input);
-        if (error) throw new Error("Braille terminal feed failed");
-        const size =
-          m._term_renderer_pitch(brailleRenderer) *
-          m._term_renderer_height_px(brailleRenderer);
-        const pixels = m._term_renderer_pixels(brailleRenderer);
-        return Array.from(m.HEAPU8.subarray(pixels, pixels + size));
+        if (!brailleRenderer.copyPixels(pixels))
+          throw new Error("Braille copy failed");
+        return Array.from(pixels);
       };
       try {
         const blank = pixelsFor(" ");
@@ -163,19 +132,15 @@ const path = require("node:path");
         }
         pixelsFor("A");
       } finally {
-        m._term_renderer_destroy(brailleRenderer);
-        m._free(brailleConfig);
-        m._free(brailleOut);
+        brailleRenderer.delete();
       }
-      if (m._browser_host_create()) throw new Error("host create failed");
-      const ids = [m._browser_host_add_client(), m._browser_host_add_client()];
-      if (m._browser_host_set_local_client(ids[0]))
+      if (m.browser_host_create()) throw new Error("host create failed");
+      const ids = [m.browser_host_add_client(), m.browser_host_add_client()];
+      if (m.browser_host_set_local_client(ids[0]))
         throw new Error("local target failed");
+      const hostInput = new m.HostPacketBinding();
       const send = (id, type, bytes) => {
-        const p = m._malloc(bytes.length || 1);
-        m.HEAPU8.set(bytes, p);
-        const result = m._browser_host_receive(id, type, p, bytes.length);
-        m._free(p);
+        const result = hostInput.receive(id, type, bytes);
         if (result) throw new Error(`receive ${type}: ${result}`);
       };
       const caps = (color, custom) => {
@@ -212,25 +177,15 @@ const path = require("node:path");
         flags,
         metadata = new Uint8Array(),
       ) => {
-        const text = m._malloc(bytes.length || 1),
-          contract = m._malloc(metadata.length || 1);
-        try {
-          m.HEAPU8.set(bytes, text);
-          m.HEAPU8.set(metadata, contract);
-          return m._client_validate_frame(
-            text,
-            bytes.length,
-            width,
-            height,
-            crc,
-            flags,
-            contract,
-            metadata.length,
-          );
-        } finally {
-          m._free(text);
-          m._free(contract);
-        }
+        return m.validateFrame(
+          bytes,
+          width,
+          height,
+          crc,
+          flags,
+          metadata,
+          bytes.length,
+        ).code;
       };
       for (const fixture of fixtures) {
         const result = verify(
@@ -265,112 +220,63 @@ const path = require("node:path");
           offset + 20 + view.getUint32(offset + 16),
         );
         offset += metadata.length;
-        const encoded = payload.subarray(offset),
-          input = m._malloc(encoded.length),
-          output = m._malloc(original);
-        try {
-          m.HEAPU8.set(encoded, input);
-          if (flags & 2) {
-            if (
-              m._client_decode_frame_data(
-                input,
-                encoded.length,
-                output,
-                original,
-              )
-            )
-              throw new Error("C zstd failed");
-            const oversized = m._malloc(original + 1);
-            try {
-              if (
-                !m._client_decode_frame_data(
-                  input,
-                  encoded.length,
-                  oversized,
-                  original + 1,
-                )
-              )
-                throw new Error("Short zstd output accepted");
-            } finally {
-              m._free(oversized);
-            }
-          } else m.HEAPU8.set(encoded, output);
-          const bytes = m.HEAPU8.slice(output, output + original);
-          if (
-            verify(
-              bytes,
-              view.getUint32(0),
-              view.getUint32(4),
-              view.getUint32(16),
-              flags,
-              metadata,
-            )
+        const encoded = payload.subarray(offset);
+        const decoded = m.validateFrame(
+          encoded,
+          view.getUint32(0),
+          view.getUint32(4),
+          view.getUint32(16),
+          flags,
+          metadata,
+          original,
+        );
+        if (decoded.code)
+          throw new Error("Real host frame rejected: " + decoded.code);
+        if (
+          flags & 2 &&
+          !m.validateFrame(
+            encoded,
+            view.getUint32(0),
+            view.getUint32(4),
+            view.getUint32(16),
+            flags,
+            metadata,
+            original + 1,
+          ).decodeFailed
+        )
+          throw new Error("Short zstd output accepted");
+        const bytes = decoded.bytes;
+        const wrongPalette = metadata.slice();
+        wrongPalette.fill(33, 20);
+        if (
+          new DataView(metadata.buffer, metadata.byteOffset).getUint32(8) !==
+            2 &&
+          !verify(
+            bytes,
+            view.getUint32(0),
+            view.getUint32(4),
+            view.getUint32(16),
+            flags & ~2,
+            wrongPalette,
           )
-            throw new Error("Real host frame rejected");
-          const wrongPalette = metadata.slice();
-          wrongPalette.fill(33, 20); // Same exact-length contract, truly off-palette for X/Y/Z frames.
-          if (
-            new DataView(metadata.buffer, metadata.byteOffset).getUint32(8) !==
-              2 &&
-            !verify(
-              bytes,
-              view.getUint32(0),
-              view.getUint32(4),
-              view.getUint32(16),
-              flags,
-              wrongPalette,
-            )
-          )
-            throw new Error("Off-palette real frame accepted");
-          return new TextDecoder().decode(bytes);
-        } finally {
-          m._free(input);
-          m._free(output);
-        }
+        )
+          throw new Error("Off-palette real frame accepted");
+        return new TextDecoder().decode(bytes);
       };
       let rendered = false;
       const paint = (text) => {
-        const config = m._malloc(m._wasm_renderer_config_size()),
-          out = m._malloc(4),
-          bytes = new TextEncoder().encode(text),
-          input = m._malloc(bytes.length);
-        let renderer = 0;
+        const renderer = new m.TerminalRendererBinding(40, 12, 12, false, 0);
         try {
-          if (
-            m._wasm_renderer_config_write(
-              config,
-              40,
-              12,
-              12,
-              0,
-              m._get_font_default_ptr(0),
-              m._get_font_default_size(0),
-              0,
-            )
-          )
-            throw new Error("C terminal configuration failed");
-          if (m._term_renderer_create(config, out))
-            throw new Error("C terminal create failed");
-          renderer = new DataView(m.HEAPU8.buffer, out, 4).getUint32(0, true);
-          m.HEAPU8.set(bytes, input);
-          if (m._term_renderer_feed(renderer, input, bytes.length))
-            throw new Error("C terminal feed failed");
+          if (!renderer.valid() || renderer.feed(text))
+            throw new Error("C terminal render failed");
           const canvas = document.getElementById("frame");
-          canvas.width = m._term_renderer_width_px(renderer);
-          canvas.height = m._term_renderer_height_px(renderer);
+          canvas.width = renderer.width();
+          canvas.height = renderer.height();
           const pixels = new Uint8ClampedArray(
-              canvas.width * canvas.height * 4,
-            ),
-            source = m._term_renderer_pixels(renderer),
-            pitch = m._term_renderer_pitch(renderer);
-          for (let row = 0; row < canvas.height; row++)
-            pixels.set(
-              m.HEAPU8.subarray(
-                source + row * pitch,
-                source + row * pitch + canvas.width * 4,
-              ),
-              row * canvas.width * 4,
-            );
+            canvas.width * canvas.height * 4,
+          );
+          if (!renderer.copyPixels(pixels))
+            throw new Error("C terminal copy failed");
           if (!pixels.some((value, i) => i % 4 !== 3 && value > 0))
             throw new Error("No visible pixels from real frame");
           canvas
@@ -383,10 +289,7 @@ const path = require("node:path");
           document.getElementById("result").textContent +=
             "; " + rejected + " malformed frames rejected; live output below";
         } finally {
-          if (renderer) m._term_renderer_destroy(renderer);
-          m._free(config);
-          m._free(out);
-          m._free(input);
+          renderer.delete();
         }
       };
       const output = [];
@@ -402,7 +305,7 @@ const path = require("node:path");
           }
         }
       };
-      if (m._browser_host_render()) throw new Error("render failed");
+      if (m.browser_host_render()) throw new Error("render failed");
       const first = output.splice(0);
       const patch = (id, values) => {
         const json = new TextEncoder().encode(JSON.stringify(values));
@@ -417,7 +320,7 @@ const path = require("node:path");
       patch(ids[0], { color_mode: 0, palette_custom: "ZZ" });
       patch(ids[1], { color_mode: 3 });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m._browser_host_render()) throw new Error("updated render failed");
+      if (m.browser_host_render()) throw new Error("updated render failed");
       const updated = output.splice(0);
       patch(ids[0], {
         renderer: 1,
@@ -431,7 +334,7 @@ const path = require("node:path");
         palette_explicit: true,
       });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m._browser_host_render())
+      if (m.browser_host_render())
         throw new Error("per-viewer renderer failed");
       const distinct = output.splice(0);
       const glyphFrame = distinct.find((frame) => frame.id === ids[0]);
@@ -447,19 +350,57 @@ const path = require("node:path");
         throw new Error("Per-viewer renderer palettes were not respected");
       patch(ids[1], { color_mode: 0, render_mode: 2 });
       await new Promise((resolve) => setTimeout(resolve, 20));
-      if (m._browser_host_render())
+      if (m.browser_host_render())
         throw new Error("monochrome half-block render failed");
       const halfBlock = output.splice(0).find((frame) => frame.id === ids[1]);
       if (!halfBlock || !/[░▒▓█]/u.test(halfBlock.text))
         throw new Error("Missing real monochrome half-block shade output");
-      if (
-        m._client_opus_encoder_init(48000, 1, 24000) ||
-        m._client_opus_decoder_init(48000, 1)
-      )
+      for (const id of ids)
+        patch(id, {
+          color_mode: 3,
+          color_filter: 0,
+          render_mode: 0,
+          renderer: 0,
+          stabilize: true,
+        });
+      const stabilizedFrame = async (value) => {
+        for (let i = 24; i < image.length; i += 3) image.fill(value, i, i + 3);
+        send(ids[0], 3001, image);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        if (m.browser_host_render())
+          throw new Error("stabilization render failed");
+        return output.splice(0).map((frame) => ({
+          id: frame.id,
+          red: Number(frame.text.match(/\x1b\[38;2;(\d+);/)?.[1]),
+        }));
+      };
+      const baseline = await stabilizedFrame(100);
+      const smoothed = await stabilizedFrame(104);
+      for (const id of ids) {
+        const first = baseline.find((frame) => frame.id === id)?.red;
+        const second = smoothed.find((frame) => frame.id === id)?.red;
+        if (
+          first !== 100 ||
+          !Number.isFinite(second) ||
+          second < 100 ||
+          second >= 104
+        )
+          throw new Error(
+            `Stabilization failed for viewer ${id}: ${first}, ${second}`,
+          );
+      }
+      send(ids[0], 5006, new Uint8Array());
+      send(ids[0], 5005, new Uint8Array());
+      const restarted = await stabilizedFrame(104);
+      for (const id of ids)
+        if (restarted.find((frame) => frame.id === id)?.red !== 104)
+          throw new Error(
+            `Stabilizer history survived source restart for viewer ${id}`,
+          );
+      let codec = new m.OpusCodecBinding(48000, 1, 24000, 1000);
+      if (!codec.valid())
         throw new Error("Could not initialize test audio codecs");
-      const pcm = m._malloc(1920),
-        encoded = m._malloc(1000),
-        decoded = m._malloc(1920);
+      const pcm = new Int16Array(960);
       const ownPackets = [];
       const sourcePackets = [];
       const listenerPackets = [];
@@ -480,39 +421,40 @@ const path = require("node:path");
         if (id !== ids[1]) return;
         listenerPackets.push(bytes.slice(22));
         const length = view.getUint16(22 + 16);
-        m.HEAPU8.set(bytes.subarray(22 + 18, 22 + 18 + length), encoded);
-        const count = m._client_opus_decode(encoded, length, decoded, 960, 0);
-        if (count !== 960)
+        const decoded = codec.decode(
+          bytes.subarray(22 + 18, 22 + 18 + length),
+          960,
+        );
+        if (!decoded || decoded.length !== 960)
           throw new Error("Mixed Opus did not decode to 20 ms");
-        for (let i = 0; i < count; i++) {
-          const value = m.HEAP16[(decoded >> 1) + i];
-          audioEnergy += value * value;
-        }
+        for (const value of decoded) audioEnergy += value * value;
+        const count = decoded.length;
         audioSamples += count;
       };
       try {
         for (let frame = 0; frame < 12; frame++) {
           for (let i = 0; i < 960; i++)
-            m.HEAP16[(pcm >> 1) + i] = Math.round(
+            pcm[i] = Math.round(
               8000 * Math.sin((2 * Math.PI * 440 * (frame * 960 + i)) / 48000),
             );
-          const length = m._client_opus_encode(pcm, 960, encoded, 1000);
-          if (length <= 0) throw new Error("Test Opus encoding failed");
-          const batch = new Uint8Array(18 + length),
+          const encoded = codec.encode(pcm);
+          if (!encoded || !encoded.length)
+            throw new Error("Test Opus encoding failed");
+          const batch = new Uint8Array(18 + encoded.length),
             view = new DataView(batch.buffer);
           view.setUint32(0, 48000);
           view.setUint32(4, 20);
           view.setUint32(8, 1);
-          view.setUint16(16, length);
-          batch.set(m.HEAPU8.slice(encoded, encoded + length), 18);
+          view.setUint16(16, encoded.length);
+          batch.set(encoded, 18);
           sourcePackets.push(batch.slice());
           send(ids[0], 4001, batch);
-          if (m._browser_host_render_audio())
+          if (m.browser_host_render_audio())
             throw new Error("Host audio tick failed");
         }
-        m._client_opus_decoder_cleanup();
-        if (m._client_opus_decoder_init(48000, 1))
-          throw new Error("self decoder init failed");
+        codec.delete();
+        codec = new m.OpusCodecBinding(48000, 1, 24000, 1000);
+        if (!codec.valid()) throw new Error("self decoder init failed");
         for (const bytes of ownPackets) {
           const view = new DataView(
             bytes.buffer,
@@ -520,22 +462,19 @@ const path = require("node:path");
             bytes.byteLength,
           );
           const length = view.getUint16(38);
-          m.HEAPU8.set(bytes.subarray(40, 40 + length), encoded);
-          const count = m._client_opus_decode(encoded, length, decoded, 960, 0);
-          if (count !== 960) throw new Error("self mix did not decode");
-          for (let i = 0; i < count; i++) {
-            const sample = m.HEAP16[(decoded >> 1) + i];
-            ownEnergy += sample * sample;
-          }
+          const decoded = codec.decode(bytes.subarray(40, 40 + length), 960);
+          if (!decoded || decoded.length !== 960)
+            throw new Error("self mix did not decode");
+          for (const sample of decoded) ownEnergy += sample * sample;
         }
         if (ownPackets.length !== 12 || Math.sqrt(ownEnergy / (12 * 960)) > 50)
           throw new Error("sender hears its own microphone");
         // A second, independent (silent) input stream must not contaminate
         // the first stream's decoder or the listener's predictive encoder.
-        m._browser_host_destroy();
-        if (m._browser_host_create()) throw new Error("second host failed");
-        ids[0] = m._browser_host_add_client();
-        ids[1] = m._browser_host_add_client();
+        m.browser_host_destroy();
+        if (m.browser_host_create()) throw new Error("second host failed");
+        ids[0] = m.browser_host_add_client();
+        ids[1] = m.browser_host_add_client();
         const concurrent = [];
         m.hostPacketCallback = (id, bytes) => {
           if (
@@ -547,7 +486,7 @@ const path = require("node:path");
         for (let frame = 0; frame < sourcePackets.length; frame++) {
           send(ids[0], 4001, sourcePackets[frame]);
           send(ids[1], 4001, ownPackets[frame].subarray(22));
-          if (m._browser_host_render_audio())
+          if (m.browser_host_render_audio())
             throw new Error("concurrent audio tick failed");
         }
         if (
@@ -562,12 +501,9 @@ const path = require("node:path");
             "independent Opus stream contaminated listener output",
           );
       } finally {
-        m._free(pcm);
-        m._free(encoded);
-        m._free(decoded);
-        m._client_opus_encoder_cleanup();
-        m._client_opus_decoder_cleanup();
-        m._browser_host_destroy();
+        codec.delete();
+        hostInput.delete();
+        m.browser_host_destroy();
       }
       // A frame may carry an older palette, but may not contradict its acknowledged revision.
       const acknowledged = new TextEncoder().encode(
@@ -584,14 +520,8 @@ const path = require("node:path");
       ackView.setUint32(0, 1);
       ackView.setUint32(12, 90);
       ack.set(acknowledged, 20);
-      const ackPtr = m._malloc(ack.length);
-      m.HEAPU8.set(ack, ackPtr);
-      try {
-        const ackResult = m._client_settings_receive(ackPtr, ack.length);
-        if (ackResult) throw new Error("settings ACK failed: " + ackResult);
-      } finally {
-        m._free(ackPtr);
-      }
+      const ackResult = m.receiveSettings(ack).code;
+      if (ackResult) throw new Error("settings ACK failed: " + ackResult);
       const paletteContract = new Uint8Array(21);
       const paletteView = new DataView(paletteContract.buffer);
       paletteView.setUint32(0, 1);
@@ -629,32 +559,28 @@ const path = require("node:path");
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
       const mirrorArgs = "mirror --width 40 --height 12 --log-level fatal";
-      const argsPointer = mirror._malloc(mirrorArgs.length + 1);
-      mirror.stringToUTF8(mirrorArgs, argsPointer, mirrorArgs.length + 1);
-      if (mirror._mirror_init_with_args(argsPointer))
-        throw new Error("mirror init failed");
-      mirror._free(argsPointer);
+      if (mirror.initMirror(mirrorArgs)) throw new Error("mirror init failed");
       const rgba = new Uint8Array(8 * 4 * 4);
-      for (let i = 0; i < rgba.length; i += 4) rgba.set([120, 80, 40, 255], i);
-      const rgbaPointer = mirror._malloc(rgba.length);
-      mirror.HEAPU8.set(rgba, rgbaPointer);
+      for (let i = 0; i < rgba.length; i += 4) {
+        rgba[i] = 180;
+        rgba[i + 1] = 30;
+        rgba[i + 2] = 80;
+        rgba[i + 3] = 255;
+      }
+      const mirrorFrame = new mirror.MirrorFrameBinding();
       let mirrorFrames = 0;
       try {
         for (const palette of ["XX", "界é"])
           for (let mode = 0; mode <= 2; ++mode)
             for (let color = 0; color <= 3; ++color) {
-              const json = JSON.stringify({
+              const json = {
                 palette_custom: palette,
                 render_mode: mode,
                 color_mode: color,
-              });
-              const size = new TextEncoder().encode(json).length + 1;
-              const patchPointer = mirror._malloc(size);
-              mirror.stringToUTF8(json, patchPointer, size);
-              const patched = mirror._wasm_options_patch(patchPointer, -1);
-              mirror._free(patchPointer);
+              };
+              const patched = mirror.patchOptions(json, -1);
               if (patched) throw new Error("mirror settings failed");
-              const output = mirror._mirror_convert_frame(rgbaPointer, 8, 4, 0);
+              const output = mirrorFrame.convert(rgba, 8, 4, false);
               if (!output)
                 throw new Error(
                   "Mirror validator rejected mode " +
@@ -664,39 +590,28 @@ const path = require("node:path");
                     " palette " +
                     palette,
                 );
-              try {
-                const bytes = new TextEncoder().encode(
-                  mirror.UTF8ToString(output),
-                );
-                let checksum = 0xffffffff;
-                for (const byte of bytes) {
-                  checksum ^= byte;
-                  for (let bit = 0; bit < 8; ++bit)
-                    checksum =
-                      (checksum >>> 1) ^ (checksum & 1 ? 0x82f63b78 : 0);
-                }
-                if (verify(bytes, 40, 12, ~checksum >>> 0, 0))
-                  throw new Error("Malformed accepted mirror output");
-                mirrorFrames++;
-              } finally {
-                mirror._mirror_free_string(output);
+              const bytes = new TextEncoder().encode(output);
+              let checksum = 0xffffffff;
+              for (const byte of bytes) {
+                checksum ^= byte;
+                for (let bit = 0; bit < 8; ++bit)
+                  checksum = (checksum >>> 1) ^ (checksum & 1 ? 0x82f63b78 : 0);
               }
+              if (verify(bytes, 40, 12, ~checksum >>> 0, 0))
+                throw new Error("Malformed accepted mirror output");
+              mirrorFrames++;
             }
         for (const fft of [false, true]) {
-          const json = JSON.stringify({ fft });
-          const pointer = mirror._malloc(json.length + 1);
-          mirror.stringToUTF8(json, pointer, json.length + 1);
-          const result = mirror._wasm_options_patch(pointer, -1);
-          mirror._free(pointer);
+          const json = { fft };
+          const result = mirror.patchOptions(json, -1);
           if (result) throw new Error("mirror audio settings failed");
-          const frame = mirror._mirror_render_audio_visualization(40, 12, 0);
+          const frame = mirrorFrame.renderAudio(40, 12, 0);
           if (!frame)
             throw new Error("Mirror audio validation rejected valid output");
-          mirror._mirror_free_string(frame);
         }
       } finally {
-        mirror._free(rgbaPointer);
-        mirror._mirror_cleanup();
+        mirrorFrame.delete();
+        mirror.mirror_cleanup();
       }
       if (mirrorFrames !== 24) throw new Error("Missing mirror mode coverage");
       return {

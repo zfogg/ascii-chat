@@ -19,4 +19,4 @@
  * @param out_args_copy Output buffer for the strdup'd args_str
  * @return argc (number of arguments parsed), or -1 on allocation failure
  */
-int wasm_parse_args(const char *args_str, char **argv, int max_args, char **out_args_copy);
+int browser_parse_args(const char *args_str, char **argv, int max_args, char **out_args_copy);

@@ -56,6 +56,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "ascii-chat": path.resolve(
+        __dirname,
+        "../../src/web/renderer/src/index.ts",
+      ),
       "@ascii-chat/shared": path.resolve(__dirname, "../packages/shared/src"),
     },
     extensions: [".ts", ".tsx", ".js", ".jsx"],

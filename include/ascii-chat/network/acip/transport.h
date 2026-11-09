@@ -353,7 +353,7 @@ static inline asciichat_error_t acip_transport_close(acip_transport_t *transport
  */
 static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *transport) {
   if (!transport || !transport->methods || !transport->methods->get_type) {
-    return 0;
+    return (acip_transport_type_t)0;
   }
   return transport->methods->get_type(transport);
 }

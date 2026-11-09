@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import type { MirrorModule } from "../../packages/shared/src/wasm/mirror";
+import type {
+  MirrorFrameBinding,
+  SessionUiBinding,
+  TerminalRendererBinding,
+} from "../../packages/shared/src/wasm/generated/mirror-bindings";
 declare global {
   interface Window {
     __demoProbe: {
@@ -74,31 +79,40 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
       fits: [] as number[],
     };
     window.__demoProbe = probe;
-    const convert = m._mirror_convert_frame.bind(m);
-    m._mirror_convert_frame = (
-      ...args: Parameters<MirrorModule["_mirror_convert_frame"]>
-    ) => {
-      probe.fits.push(args[3] ?? 0);
-      return convert(...args);
+    const frame = (
+      m.MirrorFrameBinding as unknown as { prototype: MirrorFrameBinding }
+    ).prototype;
+    const convert = frame.convert;
+    frame.convert = function (...args) {
+      probe.fits.push(Number(args[3]));
+      return convert.call(this, ...args);
     };
-    const key = m._wasm_ui_key.bind(m),
-      loading = m._wasm_ui_loading.bind(m),
-      feed = m._term_renderer_feed;
-    m._wasm_ui_key = (...args: Parameters<MirrorModule["_wasm_ui_key"]>) => {
+    const ui = (
+      m.SessionUiBinding as unknown as { prototype: SessionUiBinding }
+    ).prototype;
+    const key = ui.key,
+      loading = ui.loading;
+    ui.key = function (...args) {
       probe.keys++;
-      return key(...args);
+      return key.call(this, ...args);
     };
-    m._wasm_ui_loading = (
-      ...args: Parameters<MirrorModule["_wasm_ui_loading"]>
-    ) => {
-      probe.splashes += Number(Boolean(args[1]));
-      return loading(...args);
+    ui.loading = function (...args) {
+      probe.splashes += Number(args[0]);
+      return loading.call(this, ...args);
     };
-    m._term_renderer_feed = (r: number, p: number, n: number) => {
+    const terminal = (
+      m.TerminalRendererBinding as unknown as {
+        prototype: TerminalRendererBinding;
+      }
+    ).prototype;
+    const feed = terminal.feed;
+    terminal.feed = function (text) {
       probe.paints++;
-      probe.frames.push(new TextDecoder().decode(m.HEAPU8.slice(p, p + n)));
+      probe.frames.push(
+        typeof text === "string" ? text : new TextDecoder().decode(text),
+      );
       if (probe.frames.length > 20) probe.frames.shift();
-      return feed(r, p, n);
+      return feed.call(this, text);
     };
   }, moduleUrl);
   await expect
@@ -140,12 +154,22 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   const fitted = await page.evaluate(async (url) => {
     const m = await import(url);
-    const options = await import(url.replace("mirror.ts", "common/options.ts"));
-    options.setDimensions(80, 40);
-    options.setRenderMode(2);
-    options.setColorMode(3);
-    options.setFlipX(false);
-    options.setFlipY(false);
+    const module = m.getMirrorModule();
+    if (
+      !module ||
+      module.patchOptions(
+        {
+          width: 80,
+          height: 40,
+          render_mode: 2,
+          color_mode: 3,
+          flip_x: false,
+          flip_y: false,
+        },
+        -1,
+      )
+    )
+      throw new Error("Cannot update demo options");
     const rgba = new Uint8Array(8 * 4 * 4);
     for (let y = 0; y < 4; y++)
       for (let x = 0; x < 8; x++) {

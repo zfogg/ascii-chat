@@ -1,10 +1,10 @@
 // TypeScript wrapper for Client WASM module
 // Provides type-safe interface to libasciichat client mode
 
-import type { Palette } from "../components";
 import type {
-  RuntimeOptionsModule,
   RuntimeValues,
+  ClientWasmBindings,
+  PeerCryptoBinding,
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
 import {
@@ -42,290 +42,29 @@ export async function readCryptoKeyFile(file: File): Promise<string> {
   return `${BINARY_OPENPGP_KEY_PREFIX}${btoa(binary)}`;
 }
 
-// Type for WASM exports exposed to window.asciiChatWasm
-interface AsciiChatWasmExports {
-  _wasmModule?: ClientModule;
-  get_help_text?(mode: number, option_name: number): number;
-}
-
-// Type definition for the Emscripten module
-interface ClientModuleExports {
-  _network_error_action(code: number): number;
-  _wasm_error_snapshot(): number;
-  _wasm_error_code(index: number): number;
-  _wasm_error_message(index: number): number;
-  _wasm_error_file(index: number): number;
-  _wasm_error_full_file(index: number): number;
-  _wasm_error_function(index: number): number;
-  _wasm_error_line(index: number): number;
-  _wasm_error_dismiss(): void;
-  _client_decode_frame_data(
-    encoded: number,
-    encodedLength: number,
-    output: number,
-    outputLength: number,
-  ): number;
-  _client_validate_frame(
-    text: number,
-    length: number,
-    width: number,
-    height: number,
-    checksum: number,
-    flags: number,
-    metadata: number,
-    metadataLength: number,
-  ): number;
-  _peer_crypto_create(
-    server: number,
-    encryption: number,
-    password: number,
-    identity: number,
-    expected: number,
-  ): number;
-  _peer_crypto_destroy(peer: number): void;
-  _peer_crypto_ready(peer: number): number;
-  _peer_crypto_quic_begin(peer: number): number;
-  _peer_crypto_tick(peer: number): number;
-  _peer_crypto_error(): number;
-  _peer_crypto_send(peer: number, data: number, length: number): number;
-  _peer_crypto_receive(peer: number, data: number, length: number): number;
-  _peer_crypto_output_data(peer: number): number;
-  _peer_crypto_output_size(peer: number): number;
-  _peer_crypto_output_pop(peer: number): void;
-  _peer_crypto_received_data(peer: number): number;
-  _peer_crypto_received_size(peer: number): number;
-  _session_av_state_create(): number;
-  _session_av_state_destroy(handle: number): void;
-  _session_av_state_generation(handle: number): number;
-  _session_av_state_begin(handle: number): number;
-  _session_av_state_complete(handle: number, generation: number): number;
-  _session_av_state_is_current(handle: number, generation: number): number;
-  _session_av_state_is_active(handle: number): number;
-  _session_av_state_begin_stop(handle: number): void;
-  _session_av_state_finish_stop(handle: number): void;
-  _client_init_with_args(args_string: number): number;
-  _client_cleanup(): void;
-  _client_configure_crypto_options(
-    password: number,
-    identity_secret_key: number,
-    expected_server_public_key: number,
-  ): number;
-  _client_parse_ssh_private_key(path: number, output: number): number;
-  _client_parse_ssh_public_key(line: number, output: number): number;
-  _client_generate_keypair(): number;
-  _client_set_server_address(server_host: number, server_port: number): number;
-  _client_get_public_key_hex(): number;
-  _client_handle_crypto_parameters(
-    packet_ptr: number,
-    packet_len: number,
-  ): number;
-  _client_handle_key_exchange_init(
-    packet_ptr: number,
-    packet_len: number,
-  ): number;
-  _client_handle_auth_challenge(packet_ptr: number, packet_len: number): number;
-  _client_handle_handshake_complete(
-    packet_ptr: number,
-    packet_len: number,
-  ): number;
-  _client_encrypt_packet(
-    pt_ptr: number,
-    pt_len: number,
-    ct_ptr: number,
-    ct_size: number,
-    out_len_ptr: number,
-  ): number;
-  _client_decrypt_packet(
-    ct_ptr: number,
-    ct_len: number,
-    pt_ptr: number,
-    pt_size: number,
-    out_len_ptr: number,
-  ): number;
-  _client_security_context(): number;
-  _peer_security_context(peer: number): number;
-  _browser_security_tick(context: number): number;
-  _browser_security_epoch(context: number): number;
-  _browser_security_output(
-    context: number,
-    output: number,
-    capacity: number,
-    length: number,
-    flow: number,
-  ): number;
-  _browser_security_init(context: number): number;
-  _browser_security_packet(
-    context: number,
-    seal: number,
-    flow: number,
-    delivery: number,
-    input: number,
-    inputLength: number,
-    output: number,
-    capacity: number,
-    length: number,
-    sequence: number,
-  ): number;
-  _client_parse_packet(pkt_ptr: number, len: number): number;
-  _client_serialize_packet(
-    type: number,
-    payload_ptr: number,
-    payload_len: number,
-    client_id: number,
-    output_ptr: number,
-    out_len_ptr: number,
-  ): number;
-  _client_send_video_frame(
-    rgba_ptr: number,
-    width: number,
-    height: number,
-  ): number;
-  _client_get_connection_state(): number;
-  _client_set_color_mode(mode: number): number;
-  _client_get_color_mode(): number;
-  _client_set_color_filter(filter: number): number;
-  _client_get_color_filter(): number;
-  _client_set_palette(palette_ptr: number): number;
-  _client_get_palette(): number;
-  _client_set_palette_chars(chars_ptr: number): number;
-  _client_get_palette_chars(): number;
-  _client_set_matrix_rain(enabled: number): number;
-  _client_get_matrix_rain(): number;
-  _client_set_flip_x(enabled: number): number;
-  _client_get_flip_x(): number;
-  _client_set_target_fps(fps: number): number;
-  _client_get_target_fps(): number;
-  _client_set_width(width: number): number;
-  _client_get_width(): number;
-  _client_set_height(height: number): number;
-  _client_get_height(): number;
-  _client_free_string(ptr: number): void;
-  _get_help_text(mode: number, option_name: number): number;
-  _malloc(size: number): number;
-  _free(ptr: number): void;
-}
-
-interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
-  _client_settings_receive(pointer: number, length: number): number;
-  _client_settings_values(): number;
-  _client_resolve_crypto_policy(secure: number, encryption: number): number;
-  _client_handshake_begin(): number;
-  _client_handshake_receive(
-    type: number,
-    payload: number,
-    length: number,
-  ): number;
-  HEAP16: Int16Array;
-  _client_acds_handshake_begin(encrypted: number): number;
-  _client_acds_handshake_receive(
-    type: number,
-    payload: number,
-    length: number,
-  ): number;
-  _client_opus_encoder_init(
-    sampleRate: number,
-    channels: number,
-    bitrate: number,
-  ): number;
-  _client_opus_decoder_init(sampleRate: number, channels: number): number;
-  _client_opus_encode(
-    pcm: number,
-    frameSize: number,
-    output: number,
-    maxBytes: number,
-  ): number;
-  _client_opus_decode(
-    input: number,
-    bytes: number,
-    pcm: number,
-    frameSize: number,
-    fec: number,
-  ): number;
-  _client_opus_encoder_cleanup(): void;
-  _client_opus_decoder_cleanup(): void;
+type ClientModule = ClientWasmBindings & {
   HEAPU8: Uint8Array;
-  HEAP32: Int32Array;
-  UTF8ToString(ptr: number): string;
-  stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
-  lengthBytesUTF8(str: string): number;
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
-  _client_init_with_args: ClientModuleExports["_client_init_with_args"];
-  _client_cleanup: ClientModuleExports["_client_cleanup"];
-  _client_configure_crypto_options: ClientModuleExports["_client_configure_crypto_options"];
-  _client_parse_ssh_private_key: ClientModuleExports["_client_parse_ssh_private_key"];
-  _client_parse_ssh_public_key: ClientModuleExports["_client_parse_ssh_public_key"];
-  FS: {
-    writeFile(path: string, data: string, options?: { mode?: number }): void;
-    unlink(path: string): void;
-  };
-  _client_generate_keypair: ClientModuleExports["_client_generate_keypair"];
-  _client_set_server_address: ClientModuleExports["_client_set_server_address"];
-  _client_get_public_key_hex: ClientModuleExports["_client_get_public_key_hex"];
-  _client_handle_crypto_parameters: ClientModuleExports["_client_handle_crypto_parameters"];
-  _client_handle_key_exchange_init: ClientModuleExports["_client_handle_key_exchange_init"];
-  _client_handle_auth_challenge: ClientModuleExports["_client_handle_auth_challenge"];
-  _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
-  _client_encrypt_packet: ClientModuleExports["_client_encrypt_packet"];
-  _client_decrypt_packet: ClientModuleExports["_client_decrypt_packet"];
-  _client_security_context: ClientModuleExports["_client_security_context"];
-  _peer_security_context: ClientModuleExports["_peer_security_context"];
-  _browser_security_epoch: ClientModuleExports["_browser_security_epoch"];
-  _browser_security_tick: ClientModuleExports["_browser_security_tick"];
-  _browser_security_output: ClientModuleExports["_browser_security_output"];
-  _browser_security_init: ClientModuleExports["_browser_security_init"];
-  _browser_security_packet: ClientModuleExports["_browser_security_packet"];
-  _client_parse_packet: ClientModuleExports["_client_parse_packet"];
-  _client_serialize_packet: ClientModuleExports["_client_serialize_packet"];
-  _client_send_video_frame: ClientModuleExports["_client_send_video_frame"];
-  _client_get_connection_state: ClientModuleExports["_client_get_connection_state"];
-  _client_set_color_mode: ClientModuleExports["_client_set_color_mode"];
-  _client_get_color_mode: ClientModuleExports["_client_get_color_mode"];
-  _client_set_color_filter: ClientModuleExports["_client_set_color_filter"];
-  _client_get_color_filter: ClientModuleExports["_client_get_color_filter"];
-  _client_set_palette: ClientModuleExports["_client_set_palette"];
-  _client_get_palette: ClientModuleExports["_client_get_palette"];
-  _client_set_palette_chars: ClientModuleExports["_client_set_palette_chars"];
-  _client_get_palette_chars: ClientModuleExports["_client_get_palette_chars"];
-  _client_set_matrix_rain: ClientModuleExports["_client_set_matrix_rain"];
-  _client_get_matrix_rain: ClientModuleExports["_client_get_matrix_rain"];
-  _client_set_flip_x: ClientModuleExports["_client_set_flip_x"];
-  _client_get_flip_x: ClientModuleExports["_client_get_flip_x"];
-  _client_set_target_fps: ClientModuleExports["_client_set_target_fps"];
-  _client_get_target_fps: ClientModuleExports["_client_get_target_fps"];
-  _client_set_width: ClientModuleExports["_client_set_width"];
-  _client_get_width: ClientModuleExports["_client_get_width"];
-  _client_set_height: ClientModuleExports["_client_set_height"];
-  _client_get_height: ClientModuleExports["_client_get_height"];
-  _client_free_string: ClientModuleExports["_client_free_string"];
-  _get_help_text: ClientModuleExports["_get_help_text"];
-  _malloc: ClientModuleExports["_malloc"];
-  _free: ClientModuleExports["_free"];
-}
-
+  hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
+  discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
+};
 /** Publish the complete pending C error stack and throw at the JS boundary. */
 export function throwWasmError(result: number, fallback: string): never {
   const module = wasmModule;
   const frames: BrowserErrorFrame[] = [];
   if (module) {
-    const total = module._wasm_error_snapshot();
+    const total = module.errorSnapshot();
     const count = Math.min(total, 64);
     for (let index = 0; index < count; index++) {
-      frames.push({
-        code: module._wasm_error_code(index),
-        message:
-          module.UTF8ToString(module._wasm_error_message(index)) || fallback,
-        file: module.UTF8ToString(module._wasm_error_file(index)),
-        fullFile: module.UTF8ToString(module._wasm_error_full_file(index)),
-        function: module.UTF8ToString(module._wasm_error_function(index)),
-        line: module._wasm_error_line(index),
-      });
+      const frame = module.errorFrame(index);
+      frames.push({ ...frame, message: frame.message || fallback });
     }
   }
   publishBrowserError({
     source: "C/WASM",
     title: `${fallback} (${result})`,
     frames: frames.length ? frames : [{ code: result, message: fallback }],
-    dismiss: () => module?._wasm_error_dismiss(),
+    dismiss: () => module?.browser_error_dismiss(),
   });
   const error = new Error(`${fallback} (${result})`);
   Object.defineProperty(error, "asciichatWasmReported", { value: true });
@@ -348,22 +87,11 @@ export interface ClientCryptoOptions {
 /** Commit the peer's effective settings in C before notifying browser observers. */
 export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
   if (!wasmModule) throw new Error("Client engine is unavailable");
-  const pointer = wasmModule._malloc(payload.length);
-  if (!pointer) throw new Error("Cannot allocate remote settings");
-  try {
-    wasmModule.HEAPU8.set(payload, pointer);
-    const result = wasmModule._client_settings_receive(pointer, payload.length);
-    if (result) throwWasmError(result, "Invalid remote settings");
-    const values = wasmModule._client_settings_values();
-    if (!values) throw new Error("Cannot read effective remote settings");
-    try {
-      return JSON.parse(wasmModule.UTF8ToString(values)) as RuntimeValues;
-    } finally {
-      wasmModule._wasm_options_release(values);
-    }
-  } finally {
-    wasmModule._free(pointer);
-  }
+  const result = wasmModule.receiveSettings(payload);
+  if (result.code) throwWasmError(result.code, "Invalid remote settings");
+  if (result.json === null)
+    throw new Error("Cannot read effective remote settings");
+  return JSON.parse(result.json) as RuntimeValues;
 }
 
 // Enums matching libasciichat definitions
@@ -373,30 +101,6 @@ export enum ConnectionState {
   HANDSHAKE = 2,
   CONNECTED = 3,
   ERROR = 4,
-}
-
-export enum ColorMode {
-  AUTO = -1,
-  NONE = 0,
-  COLOR_16 = 1,
-  COLOR_256 = 2,
-  TRUECOLOR = 3,
-}
-
-export enum ColorFilter {
-  NONE = 0,
-  BLACK = 1,
-  WHITE = 2,
-  GREEN = 3,
-  MAGENTA = 4,
-  FUCHSIA = 5,
-  ORANGE = 6,
-  TEAL = 7,
-  CYAN = 8,
-  PINK = 9,
-  RED = 10,
-  YELLOW = 11,
-  RAINBOW = 12,
 }
 
 export enum PacketType {
@@ -508,23 +212,9 @@ const pendingKeyParserRequests = new Map<
   { resolve: (result: Uint8Array) => void; reject: (error: Error) => void }
 >();
 let clientInitialized = false;
+let clientSession: InstanceType<ClientModule["ClientSessionBinding"]> | null =
+  null;
 let clientInitialization: Promise<void> | null = null;
-
-/**
- * Read a little-endian int32 from WASM memory via HEAPU8.
- * Emscripten's updateMemoryViews() updates Module.HEAPU8 on memory growth
- * but does NOT update Module.HEAP32. Using HEAPU8 avoids stale typed array
- * views after WASM memory growth (which detaches the old ArrayBuffer).
- */
-function readI32(ptr: number): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const h = wasmModule.HEAPU8;
-  const b0 = h[ptr] ?? 0;
-  const b1 = h[ptr + 1] ?? 0;
-  const b2 = h[ptr + 2] ?? 0;
-  const b3 = h[ptr + 3] ?? 0;
-  return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
-}
 
 export interface ClientInitOptions {
   width?: number;
@@ -558,71 +248,57 @@ export async function ensureWasmModuleLoaded(): Promise<void> {
   }
 }
 
-/** Set browser authentication and identity-verification inputs for the next handshake. */
-export async function configureClientCrypto(
+/** Parse credentials in the isolated worker and wipe temporary byte arrays. */
+async function withClientCredentials<T>(
   options: ClientCryptoOptions,
-  configure?: (password: number, identity: number, expected: number) => number,
-): Promise<void> {
+  apply: (
+    module: ClientModule,
+    password: Uint8Array,
+    identity: Uint8Array,
+    expected: Uint8Array,
+  ) => T,
+): Promise<T> {
   if (!wasmModule || !clientInitialized)
     throw new Error("Initialize the WASM client before configuring crypto");
-
-  let identitySecretKey: Uint8Array | undefined;
-  let expectedServerPublicKey: Uint8Array | undefined;
-  let passwordPtr = 0;
-  let identityPtr = 0;
-  let expectedServerPtr = 0;
-  let passwordBytes = 0;
+  const module = wasmModule;
+  const password = new TextEncoder().encode(options.password ?? "");
+  let identity: Uint8Array | undefined;
+  let expected: Uint8Array | undefined;
   try {
-    identitySecretKey = options.identityPrivateKeyText
+    identity = options.identityPrivateKeyText
       ? await validateSshPrivateKey(options.identityPrivateKeyText)
       : undefined;
-    expectedServerPublicKey = options.expectedServerPublicKeyText
+    expected = options.expectedServerPublicKeyText
       ? await validateSshPublicKey(options.expectedServerPublicKeyText)
       : undefined;
-    if (options.password) {
-      const size = wasmModule.lengthBytesUTF8(options.password) + 1;
-      passwordBytes = size;
-      passwordPtr = wasmModule._malloc(size);
-      if (!passwordPtr)
-        throw new Error("Unable to allocate the crypto password");
-      wasmModule.stringToUTF8(options.password, passwordPtr, size);
-    }
-    if (identitySecretKey) {
-      identityPtr = wasmModule._malloc(identitySecretKey.length);
-      if (!identityPtr) throw new Error("Unable to allocate the identity key");
-      wasmModule.HEAPU8.set(identitySecretKey, identityPtr);
-    }
-    if (expectedServerPublicKey) {
-      expectedServerPtr = wasmModule._malloc(expectedServerPublicKey.length);
-      if (!expectedServerPtr)
-        throw new Error("Unable to allocate the verification key");
-      wasmModule.HEAPU8.set(expectedServerPublicKey, expectedServerPtr);
-    }
-    const result = (configure ?? wasmModule._client_configure_crypto_options)(
-      passwordPtr,
-      identityPtr,
-      expectedServerPtr,
+    if (wasmModule !== module || !clientInitialized)
+      throw new Error("WASM client was closed while configuring crypto");
+    return apply(
+      module,
+      password,
+      identity ?? new Uint8Array(),
+      expected ?? new Uint8Array(),
     );
-    if (result !== 0)
-      throwWasmError(result, "WASM rejected the configured crypto settings");
   } finally {
-    if (passwordPtr) {
-      wasmModule.HEAPU8.fill(0, passwordPtr, passwordPtr + passwordBytes);
-      wasmModule._free(passwordPtr);
-    }
-    if (identityPtr) {
-      wasmModule.HEAPU8.fill(0, identityPtr, identityPtr + 64);
-      wasmModule._free(identityPtr);
-    }
-    if (expectedServerPtr) {
-      wasmModule.HEAPU8.fill(0, expectedServerPtr, expectedServerPtr + 32);
-      wasmModule._free(expectedServerPtr);
-    }
-    identitySecretKey?.fill(0);
-    expectedServerPublicKey?.fill(0);
+    password.fill(0);
+    identity?.fill(0);
+    expected?.fill(0);
   }
 }
 
+/** Set browser authentication and identity-verification inputs for the next handshake. */
+export async function configureClientCrypto(
+  options: ClientCryptoOptions,
+): Promise<void> {
+  await withClientCredentials(
+    options,
+    (module, password, identity, expected) => {
+      const result = module.configureCrypto(password, identity, expected);
+      if (result !== 0)
+        throwWasmError(result, "WASM rejected the configured crypto settings");
+    },
+  );
+}
 /** Validate an OpenSSH or unencrypted OpenPGP Ed25519 private key with the shared C parsers. */
 export async function validateSshPrivateKey(
   contents: string,
@@ -729,14 +405,6 @@ async function loadWasmModule(): Promise<void> {
     throw new Error("Failed to load WASM module");
   }
 
-  // Expose WASM module to window for help text access
-  const globalWindow = globalThis as typeof globalThis & {
-    asciiChatWasm: AsciiChatWasmExports;
-  };
-  globalWindow.asciiChatWasm = {
-    _wasmModule: wasmModule,
-    get_help_text: wasmModule._get_help_text.bind(wasmModule),
-  };
   console.log("[WASM] Module loaded and help text available");
 }
 
@@ -803,27 +471,14 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
     .join(" ");
   console.log("[Client WASM] Initializing with args:", argsString);
 
-  // Allocate string in WASM memory
-  const strLen = wasmModule.lengthBytesUTF8(argsString) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for args string");
+  const session = new wasmModule.ClientSessionBinding(argsString);
+  if (!session.valid()) {
+    const result = session.error();
+    session.delete();
+    throwWasmError(result, "Failed to initialize client WASM module");
   }
-
-  try {
-    wasmModule.stringToUTF8(argsString, strPtr, strLen);
-
-    console.log("[Client WASM] Calling _client_init_with_args...");
-    const result = wasmModule._client_init_with_args(strPtr);
-    console.log("[Client WASM] _client_init_with_args returned:", result);
-    if (result !== 0) {
-      throwWasmError(result, "Failed to initialize client WASM module");
-    }
-    clientInitialized = true;
-    console.log("[Client WASM] Initialization complete!");
-  } finally {
-    wasmModule._free(strPtr);
-  }
+  clientSession = session;
+  clientInitialized = true;
 }
 
 /**
@@ -833,8 +488,8 @@ export function cleanupClientWasm(): void {
   console.log("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
     if (clientInitialized) {
-      console.log("[cleanupClientWasm] Calling _client_cleanup()...");
-      wasmModule._client_cleanup();
+      clientSession?.delete();
+      clientSession = null;
       clientInitialized = false;
     }
     // Keep the Emscripten module and its shared memory/pthread pool alive.
@@ -858,19 +513,16 @@ export async function generateKeypair(): Promise<string> {
   }
 
   console.log("[Client WASM] Generating keypair...");
-  const result = wasmModule._client_generate_keypair();
+  const result = wasmModule.client_generate_keypair();
   if (result !== 0) {
     throwWasmError(result, "Failed to generate keypair");
   }
 
   // Get the public key as hex string
-  const pubkeyPtr = wasmModule._client_get_public_key_hex();
-  if (!pubkeyPtr) {
+  const publicKeyHex = wasmModule.clientPublicKey();
+  if (publicKeyHex === undefined) {
     throw new Error("Failed to retrieve public key");
   }
-
-  const publicKeyHex = wasmModule.UTF8ToString(pubkeyPtr);
-  wasmModule._client_free_string(pubkeyPtr);
 
   console.log(
     `[Client WASM] Keypair generated, pubkey=${publicKeyHex.substring(0, 16)}...`,
@@ -892,156 +544,32 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
     `[Client WASM] Setting server address: ${serverHost}:${serverPort}`,
   );
 
-  // Allocate string for server host
-  const hostLen = wasmModule.lengthBytesUTF8(serverHost) + 1;
-  const hostPtr = wasmModule._malloc(hostLen);
-  if (!hostPtr) {
-    throw new Error("Failed to allocate memory for server host");
-  }
-
-  try {
-    wasmModule.stringToUTF8(serverHost, hostPtr, hostLen);
-    const result = wasmModule._client_set_server_address(hostPtr, serverPort);
-    if (result !== 0) {
-      throwWasmError(result, "Failed to set server address");
-    }
-  } finally {
-    wasmModule._free(hostPtr);
-  }
+  const result = wasmModule.setServerAddress(serverHost, serverPort);
+  if (result !== 0) throwWasmError(result, "Failed to set server address");
 }
 
-/**
- * Handle CRYPTO_PARAMETERS packet from server
- * Negotiates key sizes before KEY_EXCHANGE_INIT
- */
+function handleHandshake(
+  stage: number,
+  rawPacket: Uint8Array,
+  description: string,
+): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const result = wasmModule.handleHandshake(stage, rawPacket);
+  if (result !== 0) throwWasmError(result, `Failed to handle ${description}`);
+}
+
 export function handleCryptoParameters(rawPacket: Uint8Array): void {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  console.log(
-    `[WASM] handleCryptoParameters: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
-  );
-
-  // Allocate memory for packet
-  const packetPtr = wasmModule._malloc(rawPacket.length);
-  try {
-    // Copy packet to WASM memory
-    wasmModule.HEAPU8.set(rawPacket, packetPtr);
-
-    // Call WASM handler
-    const result = wasmModule._client_handle_crypto_parameters(
-      packetPtr,
-      rawPacket.length,
-    );
-    console.log(
-      `[WASM] handleCryptoParameters: Result=${result}, state after=${getConnectionState()}`,
-    );
-    if (result !== 0) {
-      throwWasmError(result, "Failed to handle CRYPTO_PARAMETERS");
-    }
-  } finally {
-    wasmModule._free(packetPtr);
-  }
+  handleHandshake(0, rawPacket, "CRYPTO_PARAMETERS");
 }
-
-/**
- * Handle CRYPTO_KEY_EXCHANGE_INIT packet from server
- * This triggers the transport-abstracted crypto handshake flow
- */
 export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  console.log(
-    `[WASM] handleKeyExchangeInit: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
-  );
-
-  // Allocate memory for packet
-  const packetPtr = wasmModule._malloc(rawPacket.length);
-  try {
-    // Copy packet to WASM memory
-    wasmModule.HEAPU8.set(rawPacket, packetPtr);
-
-    // Call WASM handshake callback
-    const result = wasmModule._client_handle_key_exchange_init(
-      packetPtr,
-      rawPacket.length,
-    );
-    console.log(
-      `[WASM] handleKeyExchangeInit: Result=${result}, state after=${getConnectionState()}`,
-    );
-    if (result !== 0) {
-      throwWasmError(result, "Failed to handle KEY_EXCHANGE_INIT");
-    }
-  } finally {
-    wasmModule._free(packetPtr);
-  }
+  handleHandshake(1, rawPacket, "KEY_EXCHANGE_INIT");
 }
-
-/**
- * Handle CRYPTO_AUTH_CHALLENGE packet from server
- */
 export function handleAuthChallenge(rawPacket: Uint8Array): void {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  console.log(
-    `[WASM] handleAuthChallenge: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
-  );
-
-  const packetPtr = wasmModule._malloc(rawPacket.length);
-  try {
-    wasmModule.HEAPU8.set(rawPacket, packetPtr);
-
-    const result = wasmModule._client_handle_auth_challenge(
-      packetPtr,
-      rawPacket.length,
-    );
-    console.log(
-      `[WASM] handleAuthChallenge: Result=${result}, state after=${getConnectionState()}`,
-    );
-    if (result !== 0) {
-      throwWasmError(result, "Failed to handle AUTH_CHALLENGE");
-    }
-  } finally {
-    wasmModule._free(packetPtr);
-  }
+  handleHandshake(2, rawPacket, "AUTH_CHALLENGE");
 }
-
-/**
- * Handle CRYPTO_HANDSHAKE_COMPLETE packet from server
- */
 export function handleHandshakeComplete(rawPacket: Uint8Array): void {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  console.log(
-    `[WASM] handleHandshakeComplete: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
-  );
-
-  const packetPtr = wasmModule._malloc(rawPacket.length);
-  try {
-    wasmModule.HEAPU8.set(rawPacket, packetPtr);
-
-    const result = wasmModule._client_handle_handshake_complete(
-      packetPtr,
-      rawPacket.length,
-    );
-    console.log(
-      `[WASM] handleHandshakeComplete: Result=${result}, state after=${getConnectionState()}`,
-    );
-    if (result !== 0) {
-      throwWasmError(result, "Failed to handle HANDSHAKE_COMPLETE");
-    }
-  } finally {
-    wasmModule._free(packetPtr);
-  }
+  handleHandshake(3, rawPacket, "HANDSHAKE_COMPLETE");
 }
-
 /**
  * Register callback for WASM to send packets back to JavaScript
  * This is called by crypto handshake callbacks when they need to send responses
@@ -1057,172 +585,53 @@ export function registerSendPacketCallback(
   wasmModule.sendPacketCallback = callback;
 }
 
-/**
- * Encrypt a packet
- */
+/** Encrypt a complete packet or decrypt an encrypted payload. */
+function cryptPacket(encrypt: boolean, packet: Uint8Array): Uint8Array {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const result = wasmModule.cryptPacket(encrypt, packet);
+  if (result.code)
+    throwWasmError(
+      result.code,
+      encrypt ? "Encryption failed" : "Decryption failed",
+    );
+  return result.bytes;
+}
 export function encryptPacket(plaintext: Uint8Array): Uint8Array {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  // Allocate buffers
-  const ptPtr = wasmModule._malloc(plaintext.length);
-  const ctPtr = wasmModule._malloc(plaintext.length + 72); // Authenticated record metadata, nonce, and MAC.
-  const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
-
-  if (!ptPtr || !ctPtr || !outLenPtr) {
-    if (ptPtr) wasmModule._free(ptPtr);
-    if (ctPtr) wasmModule._free(ctPtr);
-    if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error("Failed to allocate memory for encryption");
-  }
-
-  try {
-    // Copy plaintext to WASM memory
-    wasmModule.HEAPU8.set(plaintext, ptPtr);
-
-    // Call encryption
-    // C signature: client_encrypt_packet(plaintext, plaintext_len, ciphertext, ciphertext_size, out_len)
-    const result = wasmModule._client_encrypt_packet(
-      ptPtr,
-      plaintext.length,
-      ctPtr,
-      plaintext.length + 72,
-      outLenPtr,
-    );
-
-    if (result !== 0) {
-      throwWasmError(result, "Encryption failed");
-    }
-
-    // Read output length
-    const outLen = readI32(outLenPtr);
-
-    // Copy ciphertext from WASM memory
-    const ciphertext = new Uint8Array(outLen);
-    ciphertext.set(wasmModule.HEAPU8.subarray(ctPtr, ctPtr + outLen));
-
-    return ciphertext;
-  } finally {
-    wasmModule._free(ptPtr);
-    wasmModule._free(ctPtr);
-    wasmModule._free(outLenPtr);
-  }
+  return cryptPacket(true, plaintext);
 }
-
-/**
- * Decrypt a packet
- */
 export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  // Allocate buffers
-  const ctPtr = wasmModule._malloc(ciphertext.length);
-  const ptPtr = wasmModule._malloc(ciphertext.length); // Plaintext will be smaller
-  const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
-
-  if (!ctPtr || !ptPtr || !outLenPtr) {
-    if (ctPtr) wasmModule._free(ctPtr);
-    if (ptPtr) wasmModule._free(ptPtr);
-    if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error("Failed to allocate memory for decryption");
-  }
-
-  try {
-    // Copy ciphertext to WASM memory
-    wasmModule.HEAPU8.set(ciphertext, ctPtr);
-
-    // Call decryption
-    // C signature: client_decrypt_packet(ciphertext, ciphertext_len, plaintext, plaintext_size, out_len)
-    const result = wasmModule._client_decrypt_packet(
-      ctPtr,
-      ciphertext.length,
-      ptPtr,
-      ciphertext.length,
-      outLenPtr,
-    );
-
-    if (result !== 0) {
-      throwWasmError(result, "Decryption failed");
-    }
-
-    // Read output length
-    const outLen = readI32(outLenPtr);
-
-    // Copy plaintext from WASM memory
-    const plaintext = new Uint8Array(outLen);
-    plaintext.set(wasmModule.HEAPU8.subarray(ptPtr, ptPtr + outLen));
-
-    return plaintext;
-  } finally {
-    wasmModule._free(ctPtr);
-    wasmModule._free(ptPtr);
-    wasmModule._free(outLenPtr);
-  }
+  return cryptPacket(false, ciphertext);
 }
-
 /** Initialize per-connection QUIC security after the authenticated handshake. */
 export function initPacketSecurity(): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule._browser_security_init(
-    wasmModule._client_security_context(),
-  );
+  const result = wasmModule.clientQuicInit();
   if (result !== 0)
     throwWasmError(result, "QUIC security initialization failed");
 }
 
-export function getSecurityEpoch(peer = 0): number {
-  if (!wasmModule) return -1;
-  const context = peer
-    ? wasmModule._peer_security_context(peer)
-    : wasmModule._client_security_context();
-  return wasmModule._browser_security_epoch(context);
+export function getSecurityEpoch(): number {
+  return wasmModule?.clientQuicEpoch() ?? -1;
 }
 
 /** Runs the shared C rekey coordinator and drains its bounded reliable output. */
-export function tickPacketSecurity(
-  peer = 0,
-): { flow: 0 | 1 | 2; packet: Uint8Array }[] {
+export function tickPacketSecurity(): {
+  flow: 0 | 1 | 2;
+  packet: Uint8Array;
+}[] {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const context = peer
-    ? wasmModule._peer_security_context(peer)
-    : wasmModule._client_security_context();
-  const result = wasmModule._browser_security_tick(context);
+  const result = wasmModule.clientQuicTick();
   if (result) throwWasmError(result, "QUIC rekey failed");
-  const output = wasmModule._malloc(256);
-  const length = wasmModule._malloc(4);
-  const flow = wasmModule._malloc(4);
-  try {
-    if (!output || !length || !flow)
-      throw new Error("Cannot allocate QUIC rekey output");
-    const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
-    for (let i = 0; i <= 16; ++i) {
-      const status = wasmModule._browser_security_output(
-        context,
-        output,
-        256,
-        length,
-        flow,
-      );
-      if (status) throwWasmError(status, "QUIC rekey output failed");
-      const size = readI32(length);
-      if (!size) return packets;
-      const packetFlow = readI32(flow);
-      if (packetFlow < 0 || packetFlow > 2)
-        throw new Error("Invalid QUIC rekey flow");
-      packets.push({
-        flow: packetFlow as 0 | 1 | 2,
-        packet: wasmModule.HEAPU8.slice(output, output + size),
-      });
-    }
-    throw new Error("QUIC rekey output exceeded its bound");
-  } finally {
-    if (output) wasmModule._free(output);
-    if (length) wasmModule._free(length);
-    if (flow) wasmModule._free(flow);
+  const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
+  for (let i = 0; i <= 16; ++i) {
+    const output = wasmModule.clientQuicOutput();
+    if (output.code) throwWasmError(output.code, "QUIC rekey output failed");
+    if (!output.packet) return packets;
+    if (output.flow < 0 || output.flow > 2)
+      throw new Error("Invalid QUIC rekey flow");
+    packets.push({ flow: output.flow as 0 | 1 | 2, packet: output.packet });
   }
+  throw new Error("QUIC rekey output exceeded its bound");
 }
 
 /** Authenticate a complete packet and its QUIC flow and delivery metadata. */
@@ -1232,180 +641,40 @@ export function processSecurePacket(
   delivery: 0 | 1,
   packet: Uint8Array,
   quietFailure = false,
-  peer = 0,
 ): { packet: Uint8Array; sequence: bigint } {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const capacity = packet.length + (operation === "seal" ? 94 : 0);
-  const input = wasmModule._malloc(packet.length);
-  const output = wasmModule._malloc(capacity);
-  const length = wasmModule._malloc(4);
-  const sequence = wasmModule._malloc(8);
-  if (!input || !output || !length || !sequence) {
-    if (input) wasmModule._free(input);
-    if (output) wasmModule._free(output);
-    if (length) wasmModule._free(length);
-    if (sequence) wasmModule._free(sequence);
-    throw new Error("Failed to allocate QUIC security buffers");
+  const result = wasmModule.clientQuicPacket(
+    operation === "seal",
+    flow,
+    delivery,
+    packet,
+  );
+  if (result.code !== 0) {
+    if (quietFailure && operation === "open" && delivery === 1)
+      throw new Error(`QUIC packet ${operation} failed (${result.code})`);
+    throwWasmError(result.code, `QUIC packet ${operation} failed`);
   }
-  try {
-    wasmModule.HEAPU8.set(packet, input);
-    const context = peer
-      ? wasmModule._peer_security_context(peer)
-      : wasmModule._client_security_context();
-    const result = wasmModule._browser_security_packet(
-      context,
-      operation === "seal" ? 1 : 0,
-      flow,
-      delivery,
-      input,
-      packet.length,
-      output,
-      capacity,
-      length,
-      sequence,
-    );
-    if (result !== 0) {
-      if (quietFailure && operation === "open" && delivery === 1)
-        throw new Error(`QUIC packet ${operation} failed (${result})`);
-      throwWasmError(result, `QUIC packet ${operation} failed`);
-    }
-    const data = wasmModule.HEAPU8.slice(output, output + readI32(length));
-    const sequenceNumber =
-      operation === "open"
-        ? new DataView(wasmModule.HEAPU8.buffer).getBigUint64(sequence, true)
-        : 0n;
-    return { packet: data, sequence: sequenceNumber };
-  } finally {
-    wasmModule._free(input);
-    wasmModule._free(output);
-    wasmModule._free(length);
-    wasmModule._free(sequence);
-  }
+  return { packet: result.packet, sequence: result.sequence };
 }
-
-/**
- * Parse a raw packet and extract metadata
- */
+/** Parse a validated packet and copy its metadata into JavaScript. */
 export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  const pktPtr = wasmModule._malloc(rawPacket.length);
-  if (!pktPtr) {
-    throw new Error("Failed to allocate memory for packet");
-  }
-
-  try {
-    // Copy packet to WASM memory
-    wasmModule.HEAPU8.set(rawPacket, pktPtr);
-
-    // Call parse function
-    const jsonPtr = wasmModule._client_parse_packet(pktPtr, rawPacket.length);
-    if (!jsonPtr) {
-      throw new Error("Failed to parse packet");
-    }
-
-    // Read JSON string
-    const jsonStr = wasmModule.UTF8ToString(jsonPtr);
-    wasmModule._client_free_string(jsonPtr);
-
-    // Parse JSON
-    const parsed = JSON.parse(jsonStr) as ParsedPacket;
-
-    return parsed;
-  } finally {
-    wasmModule._free(pktPtr);
-  }
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const json = wasmModule.parsePacketJson(rawPacket);
+  if (json === undefined) throw new Error("Failed to parse packet");
+  return JSON.parse(json) as ParsedPacket;
 }
 
-/**
- * Serialize a packet structure to raw bytes
- */
+/** Serialize a packet to a JavaScript-owned array. */
 export function serializePacket(
   packetType: number,
   payload: Uint8Array,
   clientId: number,
 ): Uint8Array {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  const payloadPtr =
-    payload.length > 0 ? wasmModule._malloc(payload.length) : 0;
-  const outputPtr = wasmModule._malloc(payload.length + 256); // Room for header
-  const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
-
-  if (!outputPtr || !outLenPtr || (payload.length > 0 && !payloadPtr)) {
-    if (payloadPtr) wasmModule._free(payloadPtr);
-    if (outputPtr) wasmModule._free(outputPtr);
-    if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error("Failed to allocate memory for serialization");
-  }
-
-  try {
-    // Copy payload to WASM memory
-    if (payload.length > 0 && payloadPtr) {
-      wasmModule.HEAPU8.set(payload, payloadPtr);
-    }
-
-    // Call serialization
-    const result = wasmModule._client_serialize_packet(
-      packetType,
-      payloadPtr,
-      payload.length,
-      clientId,
-      outputPtr,
-      outLenPtr,
-    );
-
-    if (result !== 0) {
-      throwWasmError(result, "Serialization failed");
-    }
-
-    // Read output length
-    const outLen = readI32(outLenPtr);
-
-    // Copy serialized packet from WASM memory
-    const packet = new Uint8Array(outLen);
-    packet.set(wasmModule.HEAPU8.subarray(outputPtr, outputPtr + outLen));
-
-    return packet;
-  } finally {
-    if (payloadPtr) wasmModule._free(payloadPtr);
-    wasmModule._free(outputPtr);
-    wasmModule._free(outLenPtr);
-  }
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const result = wasmModule.serializePacket(packetType, payload, clientId);
+  if (result.code) throwWasmError(result.code, "Serialization failed");
+  return result.bytes;
 }
-
-/**
- * Send a video frame (placeholder for now)
- */
-export async function sendVideoFrame(
-  rgbaData: Uint8Array,
-  width: number,
-  height: number,
-): Promise<void> {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  const dataPtr = wasmModule._malloc(rgbaData.length);
-  if (!dataPtr) {
-    throw new Error("Failed to allocate memory for video frame");
-  }
-
-  try {
-    wasmModule.HEAPU8.set(rgbaData, dataPtr);
-    const result = wasmModule._client_send_video_frame(dataPtr, width, height);
-    if (result !== 0) {
-      throwWasmError(result, "Failed to send video frame");
-    }
-  } finally {
-    wasmModule._free(dataPtr);
-  }
-}
-
 /**
  * Get current connection state
  */
@@ -1413,200 +682,7 @@ export function getConnectionState(): ConnectionState {
   if (!wasmModule) {
     throw new Error("WASM module not initialized");
   }
-  return wasmModule._client_get_connection_state();
-}
-
-/**
- * Set color mode
- */
-export function setColorMode(mode: ColorMode): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_color_mode(mode);
-  if (result !== 0) throwWasmError(result, `Invalid color mode: ${mode}`);
-}
-
-/**
- * Get current color mode
- */
-export function getColorMode(): ColorMode {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_color_mode();
-}
-
-/**
- * Set color filter
- */
-export function setColorFilter(filter: ColorFilter): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_color_filter(filter);
-  if (result !== 0) throwWasmError(result, `Invalid color filter: ${filter}`);
-}
-
-/**
- * Get current color filter
- */
-export function getColorFilter(): ColorFilter {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_color_filter();
-}
-
-/**
- * Set palette
- */
-export function setPalette(palette: Palette): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const strLen = wasmModule.lengthBytesUTF8(palette) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for palette string");
-  }
-
-  try {
-    wasmModule.stringToUTF8(palette, strPtr, strLen);
-    const result = wasmModule._client_set_palette(strPtr);
-    if (result !== 0) {
-      throwWasmError(result, `Failed to set palette: ${palette}`);
-    }
-  } finally {
-    wasmModule._free(strPtr);
-  }
-}
-
-/**
- * Get current palette
- */
-export function getPalette(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const ptr = wasmModule._client_get_palette();
-  if (!ptr) return "";
-  return wasmModule.UTF8ToString(ptr);
-}
-
-/**
- * Set custom palette characters
- */
-export function setPaletteChars(chars: string): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const strLen = wasmModule.lengthBytesUTF8(chars) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for palette chars");
-  }
-
-  try {
-    wasmModule.stringToUTF8(chars, strPtr, strLen);
-    const result = wasmModule._client_set_palette_chars(strPtr);
-    if (result !== 0) {
-      throwWasmError(result, `Failed to set palette chars: ${chars}`);
-    }
-  } finally {
-    wasmModule._free(strPtr);
-  }
-}
-
-/**
- * Get current custom palette characters
- */
-export function getPaletteChars(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const ptr = wasmModule._client_get_palette_chars();
-  if (!ptr) return "";
-  return wasmModule.UTF8ToString(ptr);
-}
-
-/**
- * Set Matrix rain effect
- */
-export function setMatrixRain(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_matrix_rain(enabled ? 1 : 0);
-  if (result !== 0)
-    throwWasmError(result, `Failed to set matrix rain: ${enabled}`);
-}
-
-/**
- * Get current matrix rain state
- */
-export function getMatrixRain(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_matrix_rain() !== 0;
-}
-
-/**
- * Set flip X (horizontal flip)
- */
-export function setFlipX(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_flip_x(enabled ? 1 : 0);
-  if (result !== 0) throwWasmError(result, `Failed to set flip X: ${enabled}`);
-}
-
-/**
- * Get current flip X state
- */
-export function getFlipX(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_flip_x() !== 0;
-}
-
-/**
- * Set target FPS
- */
-export function setTargetFps(fps: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_target_fps(fps);
-  if (result !== 0) throwWasmError(result, `Invalid target FPS: ${fps}`);
-}
-
-/**
- * Get current target FPS
- */
-export function getTargetFps(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_target_fps();
-}
-
-/**
- * Set ASCII width (columns)
- */
-export function setWidth(width: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_width(width);
-  if (result !== 0) throwWasmError(result, `Invalid width: ${width}`);
-}
-
-/**
- * Get current ASCII width
- */
-export function getWidth(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_width();
-}
-
-/**
- * Set ASCII height (rows)
- */
-export function setHeight(height: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule._client_set_height(height);
-  if (result !== 0) throwWasmError(result, `Invalid height: ${height}`);
-}
-
-/**
- * Get current ASCII height
- */
-export function getHeight(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_height();
+  return wasmModule.client_get_connection_state();
 }
 
 /**
@@ -1629,8 +705,8 @@ export function resolveCryptoPolicy(
   encryption?: boolean,
 ): number {
   if (!wasmModule) throw new Error("WASM client is not initialized");
-  const mode = wasmModule._client_resolve_crypto_policy(
-    new URL(serverUrl).protocol === "wss:" ? 1 : 0,
+  const mode = wasmModule.client_resolve_crypto_policy(
+    new URL(serverUrl).protocol === "wss:",
     encryption === undefined ? -1 : encryption ? 1 : 0,
   );
   if (mode < 0) throw new Error("Invalid crypto policy");
@@ -1642,9 +718,14 @@ export class PeerCryptoSession {
   private securityTimer: ReturnType<typeof setInterval> | null = null;
   private independentChannels = false;
   private constructor(
-    private handle: number,
+    private binding: PeerCryptoBinding | null,
     private send: (packet: Uint8Array) => void,
   ) {}
+
+  private getBinding(): PeerCryptoBinding {
+    if (!this.binding) throw new Error("Peer crypto session is closed");
+    return this.binding;
+  }
 
   static async create(
     options: ClientCryptoOptions,
@@ -1652,7 +733,6 @@ export class PeerCryptoSession {
     server: boolean,
     send: (packet: Uint8Array) => void,
   ): Promise<PeerCryptoSession> {
-    let handle = 0;
     const credentials = { ...options };
     if (server) {
       delete credentials.expectedServerPublicKeyText;
@@ -1660,41 +740,55 @@ export class PeerCryptoSession {
         credentials.expectedServerPublicKeyText =
           options.allowedClientPublicKeyText;
     }
-    await configureClientCrypto(credentials, (password, identity, expected) => {
-      handle = wasmModule!._peer_crypto_create(
-        server ? 1 : 0,
-        encryption === undefined ? -1 : encryption ? 1 : 0,
-        password,
-        identity,
-        expected,
-      );
-      return handle ? 0 : -1;
-    });
-    return new PeerCryptoSession(handle, send);
+    return withClientCredentials(
+      credentials,
+      (module, password, identity, expected) => {
+        const binding = new module.PeerCryptoBinding(
+          server,
+          encryption === undefined ? -1 : encryption ? 1 : 0,
+          password,
+          identity,
+          expected,
+        );
+        if (!binding.valid()) {
+          const message = binding.error();
+          binding.delete();
+          throwWasmError(-1, message);
+        }
+        return new PeerCryptoSession(binding, send);
+      },
+    );
   }
 
   beginQuic(): void {
-    if (!this.handle) throw new Error("Peer crypto session is closed");
     this.independentChannels = true;
-    const result = wasmModule!._peer_crypto_quic_begin(this.handle);
+    const result = this.getBinding().beginQuic();
     if (result) throwWasmError(result, "Cannot start peer QUIC handshake");
   }
 
   initQuic(): void {
-    if (!this.handle) throw new Error("Peer crypto session is closed");
-    const result = wasmModule!._browser_security_init(
-      wasmModule!._peer_security_context(this.handle),
-    );
+    const result = this.getBinding().initQuic();
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
   }
 
   get quicEpoch() {
-    return this.handle ? getSecurityEpoch(this.handle) : -1;
+    return this.binding?.quicEpoch() ?? -1;
   }
 
   tickQuic() {
-    if (!this.handle) throw new Error("Peer crypto session is closed");
-    return tickPacketSecurity(this.handle);
+    const binding = this.getBinding();
+    const status = binding.tickQuic();
+    if (status) throwWasmError(status, "QUIC rekey failed");
+    const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
+    for (let i = 0; i <= 16; ++i) {
+      const output = binding.takeQuicOutput();
+      if (output.code) throwWasmError(output.code, "QUIC rekey output failed");
+      if (!output.packet) return packets;
+      if (output.flow < 0 || output.flow > 2)
+        throw new Error("Invalid QUIC rekey flow");
+      packets.push({ flow: output.flow as 0 | 1 | 2, packet: output.packet });
+    }
+    throw new Error("QUIC rekey output exceeded its bound");
   }
 
   quicPacket(
@@ -1703,19 +797,22 @@ export class PeerCryptoSession {
     delivery: 0 | 1,
     packet: Uint8Array,
   ) {
-    if (!this.handle) throw new Error("Peer crypto session is closed");
-    return processSecurePacket(
-      operation,
+    const result = this.getBinding().quicPacket(
+      operation === "seal",
       flow,
       delivery,
       packet,
-      delivery === 1,
-      this.handle,
     );
+    if (result.code) {
+      if (operation === "open" && delivery === 1)
+        throw new Error(`QUIC packet ${operation} failed (${result.code})`);
+      throwWasmError(result.code, `QUIC packet ${operation} failed`);
+    }
+    return { packet: result.packet, sequence: result.sequence };
   }
 
   get ready(): boolean {
-    return !!this.handle && !!wasmModule!._peer_crypto_ready(this.handle);
+    return this.binding?.ready() ?? false;
   }
 
   flush(): void {
@@ -1733,47 +830,27 @@ export class PeerCryptoSession {
         }
       }, 100);
     }
-    if (this.handle) {
-      const result = wasmModule!._peer_crypto_tick(this.handle);
+    if (this.binding) {
+      const result = this.binding.tick();
       if (result) throwWasmError(result, "Peer rekey failed");
     }
-    while (this.handle) {
-      const pointer = wasmModule!._peer_crypto_output_data(this.handle);
-      if (!pointer) break;
-      const length = wasmModule!._peer_crypto_output_size(this.handle);
-      const packet = wasmModule!.HEAPU8.slice(pointer, pointer + length);
-      wasmModule!._peer_crypto_output_pop(this.handle);
+    while (this.binding) {
+      const packet = this.binding.takeOutput();
+      if (!packet) break;
       this.send(packet);
     }
   }
 
   private input(packet: Uint8Array, receive: boolean): void {
-    if (!this.handle) throw new Error("Peer crypto session is closed");
-    const pointer = wasmModule!._malloc(packet.length);
-    if (!pointer) throw new Error("Cannot allocate peer crypto packet");
-    try {
-      wasmModule!.HEAPU8.set(packet, pointer);
-      const result = receive
-        ? wasmModule!._peer_crypto_receive(this.handle, pointer, packet.length)
-        : wasmModule!._peer_crypto_send(this.handle, pointer, packet.length);
-      if (result !== 0)
-        throwWasmError(
-          result,
-          wasmModule!.UTF8ToString(wasmModule!._peer_crypto_error()),
-        );
-    } finally {
-      wasmModule!._free(pointer);
-    }
+    const binding = this.getBinding();
+    const result = receive ? binding.receive(packet) : binding.send(packet);
+    if (result !== 0) throwWasmError(result, binding.error());
     this.flush();
   }
 
   receive(packet: Uint8Array): Uint8Array | null {
     this.input(packet, true);
-    const pointer = wasmModule!._peer_crypto_received_data(this.handle);
-    const length = wasmModule!._peer_crypto_received_size(this.handle);
-    return pointer && length
-      ? wasmModule!.HEAPU8.slice(pointer, pointer + length)
-      : null;
+    return this.binding?.received() ?? null;
   }
 
   sendPacket(packet: Uint8Array): void {
@@ -1783,8 +860,8 @@ export class PeerCryptoSession {
   close(): void {
     if (this.securityTimer) clearInterval(this.securityTimer);
     this.securityTimer = null;
-    if (this.handle) wasmModule!._peer_crypto_destroy(this.handle);
-    this.handle = 0;
+    this.binding?.delete();
+    this.binding = null;
   }
 }
 
@@ -1811,43 +888,21 @@ export function validateReceivedFrame(
   if (!compressed && bytes.length !== originalSize)
     throw new Error("Uncompressed frame size mismatch");
   if (!wasmModule) throw new Error("Client frame validator is unavailable");
-  const text = wasmModule._malloc(bytes.length);
-  const output = compressed ? wasmModule._malloc(originalSize) : text;
-  const contract = metadata.length ? wasmModule._malloc(metadata.length) : 0;
-  if (!text || !output || (metadata.length && !contract)) {
-    if (text) wasmModule._free(text);
-    if (output && output !== text) wasmModule._free(output);
-    if (contract) wasmModule._free(contract);
-    throw new Error("Cannot allocate received frame validation buffer");
-  }
-  try {
-    wasmModule.HEAPU8.set(bytes, text);
-    if (contract) wasmModule.HEAPU8.set(metadata, contract);
-    const decodeResult = compressed
-      ? wasmModule._client_decode_frame_data(
-          text,
-          bytes.length,
-          output,
-          originalSize,
-        )
-      : 0;
-    if (decodeResult !== 0)
-      throwWasmError(decodeResult, "Decompressed ASCII frame size mismatch");
-    const result = wasmModule._client_validate_frame(
-      output,
-      originalSize,
-      width,
-      height,
-      checksum,
-      flags,
-      contract,
-      metadata.length,
+  const result = wasmModule.validateFrame(
+    bytes,
+    width,
+    height,
+    checksum,
+    flags,
+    metadata,
+    originalSize,
+  );
+  if (result.code !== 0)
+    throwWasmError(
+      result.code,
+      result.decodeFailed
+        ? "Decompressed ASCII frame size mismatch"
+        : "Invalid received rendered frame",
     );
-    if (result !== 0) throwWasmError(result, "Invalid received rendered frame");
-    return wasmModule.HEAPU8.slice(output, output + originalSize);
-  } finally {
-    wasmModule._free(text);
-    if (output !== text) wasmModule._free(output);
-    if (contract) wasmModule._free(contract);
-  }
+  return result.bytes;
 }

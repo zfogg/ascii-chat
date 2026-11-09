@@ -273,6 +273,7 @@
  * - [Audio channels](md_docs_2audio-channels.html)
  * - [Audio reliability and validation](md_docs_2audio-reliability.html)
  * - [FFTW spectral audio processing](md_docs_2audio-spectral.html)
+ * - [Browser WASM bindings and standalone renderer](md_docs_2wasm-interop.html)
  * - [Face Follow](md_docs_2face-follow.html)
  *
  * @subsection authored_tooling Tooling

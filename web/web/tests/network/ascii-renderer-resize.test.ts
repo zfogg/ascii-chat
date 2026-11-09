@@ -5,25 +5,26 @@ import type { AsciiRendererHandle } from "../../../packages/shared/src/component
 
 // C presentation behavior is exercised against real WASM in session-ui.spec.ts.
 // This test isolates canvas sizing and resize debounce.
-vi.mock("../../../packages/shared/src/wasm/sessionUi", () => ({
-  SessionUi: class {
-    frame: string | null = null;
-    constructor(readonly module: unknown) {}
-    resize() {}
-    loading() {}
-    log() {}
-    redraw() {}
-    destroy() {}
-    media(text: string) {
-      this.frame = text;
-    }
-    tick() {
-      const frame = this.frame;
-      this.frame = null;
-      return frame;
-    }
-  },
-}));
+class TestSessionUi {
+  frame: string | undefined;
+  valid() {
+    return true;
+  }
+  resize() {}
+  loading() {}
+  log() {}
+  redraw() {}
+  delete() {}
+  media(text: string) {
+    this.frame = text;
+    return 0;
+  }
+  tick() {
+    const frame = this.frame;
+    this.frame = undefined;
+    return frame;
+  }
+}
 
 vi.mock(
   "../../../packages/shared/src/components/AsciiRenderer/RasterWorker",
@@ -84,19 +85,19 @@ it.each([false, true])(
       ref,
       clientLikeKind: "mirror",
       workerRendering,
-      moduleRef: {
+      moduleRef: { current: { SessionUiBinding: TestSessionUi } },
+      setupDoneRef: { current: true },
+      rendererPtrRef: {
         current: {
-          HEAPU8: new Uint8Array(4096),
-          _malloc: () => 1,
-          _free: vi.fn(),
-          _term_renderer_set_zalgo: vi.fn(() => 0),
-          _term_renderer_feed: feed,
-          _term_renderer_pixels: () => 1,
-          _term_renderer_pitch: () => 40,
+          valid: () => true,
+          error: () => 0,
+          setZalgo: vi.fn(() => 0),
+          feed,
+          width: () => 10,
+          height: () => 10,
+          copyPixels: () => true,
         },
       },
-      setupDoneRef: { current: true },
-      rendererPtrRef: { current: 1 },
       canvasRef: {
         current: {
           width: 10,
@@ -109,7 +110,10 @@ it.each([false, true])(
       onFpsChange: fps,
       onDimensionsChange: undefined,
     } as unknown as Parameters<typeof useAsciiRendererHandle>[0];
-    const { result } = renderHook(() => useAsciiRendererHandle(params));
+    const deleteUi = vi.spyOn(TestSessionUi.prototype, "delete");
+    const { result, unmount } = renderHook(() =>
+      useAsciiRendererHandle(params),
+    );
     const handle = result.current;
     handle.updateDimensions(80, 24);
     expect(ref.current!.writeFrame("old", { cols: 80, rows: 24 })).toBe(true);
@@ -173,5 +177,42 @@ it.each([false, true])(
       expect(log).toHaveBeenCalled();
       log.mockRestore();
     }
+    unmount();
+    expect(deleteUi).toHaveBeenCalledOnce();
+    deleteUi.mockRestore();
   },
 );
+
+it("releases an invalid UI binding immediately", () => {
+  vi.useFakeTimers();
+  const dispose = vi.fn();
+  const ref = { current: null as AsciiRendererHandle | null };
+  const params = {
+    ref,
+    clientLikeKind: "mirror",
+    moduleRef: {
+      current: {
+        SessionUiBinding: class {
+          valid() {
+            return false;
+          }
+          delete = dispose;
+        },
+      },
+    },
+    setupDoneRef: { current: true },
+    rendererPtrRef: { current: null },
+    canvasRef: { current: null },
+    resizeTimeoutRef: { current: null },
+    showFps: false,
+    onFpsChange: undefined,
+    onDimensionsChange: undefined,
+  } as unknown as Parameters<typeof useAsciiRendererHandle>[0];
+  const { unmount } = renderHook(() => useAsciiRendererHandle(params));
+  expect(() => ref.current!.writeFrame("frame")).toThrow(
+    "Cannot create session UI",
+  );
+  expect(dispose).toHaveBeenCalledOnce();
+  unmount();
+  expect(dispose).toHaveBeenCalledOnce();
+});

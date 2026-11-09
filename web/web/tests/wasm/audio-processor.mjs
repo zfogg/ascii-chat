@@ -24,10 +24,9 @@ try {
       const module = await create({
         locateFile: (file) => new URL(`/wasm/${file}`, location.origin).href,
       });
-      const processor = module._wasm_audio_processor_create(48000, false);
-      if (!processor)
+      const processor = new module.AudioProcessorBinding(48000, false, 960, 1);
+      if (!processor.valid())
         throw new Error("Shared audio processor initialization failed");
-      const scratch = module._malloc(960 * 4);
       try {
         const blocks = [128, 960, 13, 1, 127];
         let position = 0,
@@ -38,21 +37,16 @@ try {
             blocks[block++ % blocks.length],
             input.length - position,
           );
-          module.HEAPF32.set(
+          const samples = Float32Array.from(
             input.slice(position, position + count),
-            scratch / 4,
           );
-          if (
-            module._wasm_audio_processor_process(processor, scratch, count) !==
-            0
-          )
+          const output = new Float32Array(count);
+          if (processor.process(samples, output) !== 0)
             throw new Error("Shared WASM processing failed");
           for (let i = 0; i < count; ++i)
             maxError = Math.max(
               maxError,
-              Math.abs(
-                module.HEAPF32[scratch / 4 + i] - expected[position + i],
-              ),
+              Math.abs(output[i] - expected[position + i]),
             );
           position += count;
         }
@@ -60,8 +54,7 @@ try {
           throw new Error(`Native/WASM PCM mismatch: ${maxError}`);
         return { samples: position, maxAbsoluteError: maxError };
       } finally {
-        module._wasm_audio_processor_destroy(processor);
-        module._free(scratch);
+        processor.delete();
       }
     },
     { input: floats("input.f32"), expected: floats("native.f32") },

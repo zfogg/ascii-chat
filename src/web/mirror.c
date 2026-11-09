@@ -1,3 +1,5 @@
+#include "common/font.h"
+#include "mirror.h"
 /**
  * @file mirror_wasm.c
  * @brief WASM entry point for ascii-chat mirror mode
@@ -49,7 +51,6 @@ static ascii_stabilizer_t g_stabilizer;
  * @param args_json JSON array of argument strings, e.g. ["mirror", "--width", "80", "--height", "40"]
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int mirror_init_with_args(const char *args_json) {
   // Initialize platform layer
   asciichat_error_t err = platform_init();
@@ -60,7 +61,7 @@ int mirror_init_with_args(const char *args_json) {
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
+  int argc = browser_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
   if (argc < 0) {
     return -1;
   }
@@ -87,19 +88,23 @@ int mirror_init_with_args(const char *args_json) {
   return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE
-void mirror_reset_stabilizer(void) {
+void session_render_reset_stabilizer(void) {
   ascii_stabilizer_reset(&g_stabilizer);
 }
 
-EMSCRIPTEN_KEEPALIVE
-void mirror_cleanup(void) {
-  ascii_stabilizer_reset(&g_stabilizer);
-  errno_destroy();
+void session_render_cleanup(void) {
+  session_render_reset_stabilizer();
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;
   }
+  g_last_rain_update_time = 0.0;
+  g_frame_count = 0;
+}
+
+void mirror_cleanup(void) {
+  session_render_cleanup();
+  errno_destroy();
   options_state_destroy();
   buffer_system_cleanup();
   platform_destroy();
@@ -109,7 +114,6 @@ void mirror_cleanup(void) {
 // Frame Conversion API
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, int contain) {
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
     return NULL;
@@ -312,7 +316,6 @@ validate_output:
   return ascii_output;
 }
 
-EMSCRIPTEN_KEEPALIVE
 void mirror_submit_audio_samples(const float *samples, int count, int source) {
   if (!samples || count <= 0 || count > 8192)
     return;
@@ -321,7 +324,6 @@ void mirror_submit_audio_samples(const float *samples, int count, int source) {
                              samples, (size_t)count);
 }
 
-EMSCRIPTEN_KEEPALIVE
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
   audio_visualization_source_t audio_source =
       source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
@@ -338,33 +340,6 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
   return text;
 }
 
-EMSCRIPTEN_KEEPALIVE
 void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
-
-#ifndef BUILD_WASM_CLIENT
-// Embedded font data (defined in generated/data/fonts/default.c and matrix.c)
-extern const unsigned char g_font_default[];
-extern const size_t g_font_default_size;
-extern const unsigned char g_font_matrix_resurrected[];
-extern const size_t g_font_matrix_resurrected_size;
-
-/**
- * Get the pointer to the embedded default font data
- * @return Pointer to font data
- */
-EMSCRIPTEN_KEEPALIVE
-const unsigned char *get_font_default_ptr(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return matrix ? g_font_matrix_resurrected : g_font_default;
-}
-
-/** Selection 0 follows settings, 1 selects the default font, 2 selects Matrix. */
-EMSCRIPTEN_KEEPALIVE
-unsigned int get_font_default_size(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
-}
-
-#endif

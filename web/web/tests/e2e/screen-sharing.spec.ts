@@ -532,7 +532,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
     timeout: 20000,
   });
   const proof = await page.evaluate(async (url) => {
-    const { getMirrorModule } = await import(url);
+    const { getMirrorModule, transformCaptureRgba } = await import(url);
     const { runtimeOptions } = await import(
       url.replace("mirror.ts", "common/runtimeOptions.ts")
     );
@@ -564,7 +564,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module._wasm_capture_transform_required(),
+        required: module.browser_capture_transform_required(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -573,9 +573,28 @@ test("C resolves source orientation and transforms upload pixels once while pres
     return {
       original: Array.from(original),
       results,
-      invalid: module._wasm_capture_transform_rgba(0, 2, 2),
+      fractionalRejected: (() => {
+        try {
+          transformCaptureRgba(new Uint8ClampedArray(16), 2.5, 2);
+          return false;
+        } catch (error) {
+          return (
+            error instanceof Error &&
+            error.message === "Invalid capture dimensions"
+          );
+        }
+      })(),
+      invalid: (() => {
+        const frame = new module.MirrorFrameBinding();
+        try {
+          return frame.transform(new Uint8Array(0), 2, 2);
+        } finally {
+          frame.delete();
+        }
+      })(),
     };
   }, moduleUrl);
+  expect(proof.fractionalRejected).toBe(true);
   const reversedRows = [
     20, 0, 0, 255, 10, 0, 0, 255, 40, 0, 0, 255, 30, 0, 0, 255,
   ];
@@ -598,7 +617,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
         JSON.stringify(result.local) === JSON.stringify(proof.original),
     ),
   ).toBe(true);
-  expect(proof.invalid).toBe(-1);
+  expect(proof.invalid).toBe(86);
 });
 
 test("Mirror visualizes captured audio in waveform and FFT while its enabled speakers remain silent", async ({

@@ -51,6 +51,8 @@ const uint8_t *term_renderer_pixels(terminal_renderer_t *r);
 int term_renderer_width_px(terminal_renderer_t *r);
 int term_renderer_height_px(terminal_renderer_t *r);
 int term_renderer_pitch(terminal_renderer_t *r);
+int term_renderer_get_cols(terminal_renderer_t *r);
+int term_renderer_get_rows(terminal_renderer_t *r);
 void term_renderer_destroy(terminal_renderer_t *r);
 
 // ── Render-file orchestrator ──────────────────────────────────────────────

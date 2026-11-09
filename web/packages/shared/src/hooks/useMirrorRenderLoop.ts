@@ -10,7 +10,8 @@ import {
 import {
   isWasmReady,
   convertFrameToAscii,
-  resetMirrorStabilizer,
+  resetRenderStabilizer,
+  cleanupRenderSession,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
   renderAudioVisualizationFrame,
@@ -77,7 +78,7 @@ export function useMirrorRenderLoop({
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
   useLayoutEffect(() => {
-    resetMirrorStabilizer();
+    cleanupRenderSession();
   }, [mediaRevision]);
   // A media element may be connected to only one Web Audio source. Retain its
   // graph across resize, render-mode changes and media/webcam toggles.
@@ -437,7 +438,7 @@ export function useMirrorRenderLoop({
     const captureCameraTrack = () => {
       const track = cameraStream?.getVideoTracks()[0];
       if (track === cameraTrack) return;
-      resetMirrorStabilizer();
+      resetRenderStabilizer();
       cameraTrack = track;
       void trackReader?.cancel().catch(() => {});
       trackReader = null;
@@ -556,6 +557,7 @@ export function useMirrorRenderLoop({
       if (videoHandle) clockVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
+      cleanupRenderSession();
     };
   }, [
     externalAudio,
