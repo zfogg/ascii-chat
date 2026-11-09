@@ -11,6 +11,7 @@ private extension Notification.Name {
     static let iosStopSession = Notification.Name("ascii-chat.ios.stop-session")
     static let iosSessionStarted = Notification.Name("ascii-chat.ios.session-started")
     static let iosSessionEnded = Notification.Name("ascii-chat.ios.session-ended")
+    static let iosRenderFontSizeChanged = Notification.Name("ascii-chat.ios.render-font-size-changed")
 }
 
 @_silgen_name("asciichat_ios_test_frame")
@@ -188,6 +189,8 @@ private final class CRenderView: MTKView {
         enableSetNeedsDisplay = false
         isPaused = true
         configureMetalPipeline(device: metalDevice)
+        NotificationCenter.default.addObserver(self, selector: #selector(renderFontSizeChanged),
+                                               name: .iosRenderFontSizeChanged, object: nil)
     }
 
     required init(coder: NSCoder) {
@@ -200,6 +203,18 @@ private final class CRenderView: MTKView {
         enableSetNeedsDisplay = false
         isPaused = true
         configureMetalPipeline(device: metalDevice)
+        NotificationCenter.default.addObserver(self, selector: #selector(renderFontSizeChanged),
+                                               name: .iosRenderFontSizeChanged, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        displayLink?.invalidate()
+    }
+
+    @objc private func renderFontSizeChanged() {
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     private func configureMetalPipeline(device: MTLDevice?) {
@@ -252,7 +267,7 @@ private final class CRenderView: MTKView {
         let pixelHeight = max(1, Int(ceil(bounds.height)))
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
-        let fontSizePt = 6.0
+        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
         // The terminal renderer uses a cell height of approximately twice its
         // glyph advance. Choose rows from the drawable aspect ratio so the C
         // bitmap is scaled uniformly by Metal instead of squeezing glyphs.
@@ -429,6 +444,7 @@ private struct IOSSettingsView: View {
                             .onChange(of: renderFontSize) { _, value in
                                 applyJSON(["render_font_size": value])
                                 renderFontSizeChanged(value)
+                                NotificationCenter.default.post(name: .iosRenderFontSizeChanged, object: nil)
                             }
                     }
                 }
