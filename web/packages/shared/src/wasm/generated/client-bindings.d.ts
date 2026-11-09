@@ -392,6 +392,7 @@ export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
   protocolInfo(): any;
   error(): number;
+  snapshot(): any;
   settingsReceive(_0: ClientBytes): any;
   settingsValues(): any;
   validateFrame(

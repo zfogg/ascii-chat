@@ -117,6 +117,15 @@ public:
   int error() const {
     return result_;
   }
+  emscripten::val snapshot() const {
+    if (!owned_)
+      return result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized"));
+    emscripten::val response = result(0);
+    response.set("ready", browser_client_get_connection_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
+    response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
+    response.set("writable", browser_transport_writable(transport_.get(), 0));
+    return response;
+  }
   emscripten::val settingsReceive(ClientBytes payload) {
     auto input = binding_copy_input(payload);
     const int code = browser_client_settings_receive(transport_.get(), input.data(), input.size());
@@ -214,15 +223,10 @@ public:
       browser_transport_set_state(transport_.get(), BROWSER_TRANSPORT_DISCONNECTED);
       return result(0);
     }
-    if (type == "state" || type == "snapshot") {
-      emscripten::val response = result(0);
-      if (type == "snapshot") {
-        response.set("ready", browser_client_get_connection_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
-        response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
-        response.set("writable", browser_transport_writable(transport_.get(), 0));
-      }
-      return response;
-    }
+    if (type == "snapshot")
+      return snapshot();
+    if (type == "state")
+      return result(0);
     if (type == "generate-keypair") {
       const int code = browser_client_generate_keypair(transport_.get());
       emscripten::val response = result(code);
@@ -483,6 +487,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("valid", &ClientSessionBinding::valid)
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
+      .function("snapshot", &ClientSessionBinding::snapshot)
       .function("settingsReceive", &ClientSessionBinding::settingsReceive)
       .function("settingsValues", &ClientSessionBinding::settingsValues)
       .function("validateFrame", &ClientSessionBinding::validateFrame)
