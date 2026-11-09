@@ -225,7 +225,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     #brew install yyjson
 
     for attempt in 1 2 3; do
-      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash; then
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash -s -- bun-v1.3.9; then
         break
       fi
       if [ "$attempt" -eq 3 ]; then
@@ -394,7 +394,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libvterm-devel freetype-devel fontconfig-devel libicu-devel
 
     for attempt in 1 2 3; do
-      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash; then
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash -s -- bun-v1.3.9; then
         break
       fi
       if [ "$attempt" -eq 3 ]; then
