@@ -790,7 +790,7 @@ private struct IOSAllOptionsView: View {
                         ForEach(choices, id: \.self, content: Text.init)
                     }
                 } else if let number = values[key] as? NSNumber,
-                          let choices = Self.enumValues(for: key) {
+                          let choices = Self.integerEnumValues(for: key) {
                     Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
                            selection: Binding(
                                get: { String((values[key] as? NSNumber)?.intValue ?? number.intValue) },
@@ -800,7 +800,9 @@ private struct IOSAllOptionsView: View {
                                    changed = true
                                    applyJSON([key: next])
                                })) {
-                        ForEach(choices, id: \.self, content: Text.init)
+                               ForEach(choices, id: \.value) { choice in
+                                   Text(choice.label).tag(String(choice.value))
+                               }
                     }
                 } else if let number = values[key] as? NSNumber,
                           let range = Self.sliderRange(for: key) {
@@ -902,6 +904,29 @@ private struct IOSAllOptionsView: View {
         case "log_level": return ["DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"]
         case "render_theme": return ["none", "dark", "light"]
         default: return nil
+        }
+    }
+
+    private static func integerEnumValues(for key: String) -> [(label: String, value: Int)]? {
+        switch key {
+        case "color_mode":
+            return [("Auto", -1), ("None", 0), ("16 colors", 1), ("256 colors", 2), ("Truecolor", 3)]
+        case "color_filter":
+            return ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"].enumerated().map {
+                (label: $0.element.capitalized, value: $0.offset)
+            }
+        case "render_mode":
+            return [("Foreground", 0), ("Background", 1), ("Half-block", 2)]
+        case "palette", "palette_type":
+            return ["standard", "blocks", "digital", "minimal", "cool", "custom"].enumerated().map {
+                (label: $0.element.capitalized, value: $0.offset)
+            }
+        case "renderer":
+            return [("Luminance", 0), ("Glyph", 1)]
+        case "audio_fft_size":
+            return [("512", 512), ("1024", 1024), ("2048", 2048)]
+        default:
+            return nil
         }
     }
 }
