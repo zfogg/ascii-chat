@@ -20,6 +20,8 @@ grep -q 'configuredDisplayFPS' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/Asc
 grep -q 'iosRenderFPSChanged' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
 grep -q 'CAFrameRateRange(minimum: 1, maximum: 120' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
 grep -q 'ios_render_bridge_flush' "$(cd "$(dirname "$0")/../.." && pwd)/lib/platform/ios/render_bridge.c"
+grep -q 'g_pending_frame_capacity' "$(cd "$(dirname "$0")/../.." && pwd)/lib/platform/ios/render_bridge.c"
+grep -q 'SAFE_REALLOC(g_pending_frame' "$(cd "$(dirname "$0")/../.." && pwd)/lib/platform/ios/render_bridge.c"
 grep -q -- '--fps=0' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/main.c"
 grep -q 'ASCIICHAT_IOS_SIMULATOR' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/CMakeLists.txt"
 grep -q 'kCVPixelFormatType_32BGRA' "$(cd "$(dirname "$0")/../.." && pwd)/lib/video/webcam/macos/webcam_avfoundation.m"
