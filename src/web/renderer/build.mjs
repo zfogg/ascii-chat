@@ -1,4 +1,4 @@
-import { copyFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { protocolVersion } from "../../../scripts/wasm-protocol-version.mjs";
@@ -14,6 +14,11 @@ const build = resolve(
 const dest = new URL("./dist/", import.meta.url);
 for (const file of ["renderer.js", "renderer.wasm", "renderer-bindings.d.ts"]) {
   await copyFile(resolve(build, file), new URL(file, dest));
+}
+const rendererSource = await readFile(new URL("renderer.js", dest), "utf8");
+for (const binding of ["AsciiRendererBinding", "FaceFollowBinding"]) {
+  if (!rendererSource.includes(binding))
+    throw new Error(`Renderer artifact does not export ${binding}`);
 }
 await copyFile(
   new URL("../../../LICENSE.txt", import.meta.url),
