@@ -166,6 +166,33 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   }
   for (std::size_t i = 1; i < args.size();) {
     const auto &value = args[i];
+    const auto musl_target = [&]() {
+      const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE");
+      return target && target->find("-musl") != std::string::npos;
+    };
+    const auto is_host_libc_include = [&](const std::string &path) {
+      if (!musl_target())
+        return false;
+      return path == "/usr/include" ||
+             (path.rfind("/usr/include/", 0) == 0 && path.find("linux-musl") == std::string::npos);
+    };
+    if ((value == "-I" || value == "-isystem" || value == "-idirafter") && i + 1 < args.size() &&
+        is_host_libc_include(args[i + 1])) {
+      i += 2;
+      continue;
+    }
+    std::size_t joined_include_prefix = 0;
+    if (value.rfind("-isystem", 0) == 0)
+      joined_include_prefix = 8;
+    else if (value.rfind("-idirafter", 0) == 0)
+      joined_include_prefix = 10;
+    else if (value.rfind("-I", 0) == 0)
+      joined_include_prefix = 2;
+    if (joined_include_prefix != 0 && value.size() > joined_include_prefix &&
+        is_host_libc_include(value.substr(joined_include_prefix))) {
+      ++i;
+      continue;
+    }
     if (value == "-Xclang" && i + 3 < args.size() && args[i + 1] == "-include-pch" && args[i + 2] == "-Xclang") {
       i += 4;
       continue;
