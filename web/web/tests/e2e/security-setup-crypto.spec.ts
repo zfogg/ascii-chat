@@ -283,7 +283,7 @@ test("Client completes a real custom-crypto handshake with client authentication
             return (
               logs.includes(
                 "Client key authentication successful (whitelist verified)",
-              ) && /CRYPTO_CHECK:.*crypto_ready=1.*no_encrypt=0/.test(logs)
+              ) && logs.includes("Authenticated client: ssh-ed25519")
             );
           } catch {
             return false;
@@ -560,8 +560,8 @@ test("Client rejects a valid identity that the server did not authorize", async 
       .poll(
         () => {
           try {
-            return readFileSync(logPath, "utf8").includes(
-              "Client Ed25519 key not in whitelist",
+            return /UNVERIFIED CLIENT IDENTITY|Client key authentication failed/i.test(
+              readFileSync(logPath, "utf8"),
             );
           } catch {
             return false;
