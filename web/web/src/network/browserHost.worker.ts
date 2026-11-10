@@ -12,6 +12,7 @@ const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
 const videoGenerations = new Map<number, number>();
 let packets: { id: number; bytes: Uint8Array }[] = [];
+let clientModule: Awaited<ReturnType<typeof getClientModule>> = null;
 let pendingBatches = 0;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleRender() {
@@ -25,7 +26,7 @@ function scheduleRender() {
   );
 }
 function renderIfDue() {
-  if (!module || pendingBatches >= 2 || performance.now() < nextFrameAt) return;
+  if (!clientModule || pendingBatches >= 2 || performance.now() < nextFrameAt) return;
   if (renderTimer !== null) clearTimeout(renderTimer);
   renderTimer = null;
   render();
@@ -159,7 +160,7 @@ self.onmessage = (event) => {
       const message = event.data;
       if (message.kind === "init") {
         await initClientWasm();
-        const clientModule = getClientModule();
+        clientModule = getClientModule();
         if (!clientModule) throw new Error("Client WASM module is unavailable");
         host = new clientModule.BrowserHostBinding();
         if (!host.valid())

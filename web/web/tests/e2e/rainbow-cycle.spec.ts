@@ -82,7 +82,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
     await page.goto(MIRROR_TEST_URL);
 
     // Wait for the page to load
-    await expect(page.locator("text=ASCII Mirror")).toBeVisible({
+    await expect(page.getByText("Mirror mode", { exact: false })).toBeVisible({
       timeout: 5000,
     });
 
