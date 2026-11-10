@@ -33,14 +33,14 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
   `build/defer_transformed/` are build artifacts and must not be edited.
 - The standalone [defer tool](https://github.com/zfogg/defer) is maintained
   separately. The current CMake integration builds the in-tree host tool by
-  default; `ASCIICHAT_DEFER_NATIVE_BINARY` selects an existing host executable.
+  default and can select an existing host executable.
   Use a release containing the target-triple and musl header fixes when testing
   cross-compilation. For tool behavior and diagnostics, consult the standalone
   [documentation](https://zfogg.github.io/defer/) and this repository's defer
   topic; do not edit generated transformed sources.
 - C header support uses per-translation-unit overlays. CMake automatically
-  detects defer in project headers; register external header roots with
-  `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` or set `ASCIICHAT_DEFER_HEADER_OVERLAYS=ON`.
+  detects defer in project headers; consult the defer topic for configuration
+  when wrappers are declared outside the project.
   The initial activation processes all eligible C and Objective-C files and disables target
   precompiled headers. C++11 and later use native scope guards, including in
   header functions. Objective-C and Objective-C++ require a zero-cost exception
