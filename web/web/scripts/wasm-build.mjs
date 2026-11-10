@@ -54,6 +54,15 @@ function copyArtifact(source, destination) {
   }
   copyFileSync(source, destination);
 }
+function normalizeClientDeclarations(path) {
+  let source = readFileSync(path, "utf8").replaceAll("\r\n", "\n");
+  source = source.replace(
+    "export type ClientBytes = Uint8Array;",
+    "export type ClientBytes = Uint8Array;\nexport type PacketTypes = Readonly<Record<string, number>>;",
+  );
+  source = source.replace("  packetTypes(): any;", "  packetTypes(): PacketTypes;");
+  writeFileSync(path, source);
+}
 function sourceHash() {
   const digest = createHash("sha256");
   const walk = (directory) => {
@@ -146,6 +155,7 @@ if (
   mkdirSync(typeOutput, { recursive: true });
   for (const file of types)
     copyArtifact(resolve(source, file), resolve(typeOutput, file));
+  normalizeClientDeclarations(resolve(typeOutput, "client-bindings.d.ts"));
   validateArtifactExports(
     "mirror",
     resolve(output, "mirror.js"),
