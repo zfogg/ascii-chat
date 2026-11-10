@@ -44,6 +44,19 @@ static bool is_hardware_encoder(const AVCodec *codec) {
          strstr(codec->name, "_mf") != NULL;
 }
 
+static const AVCodec *video_encoder_find_codec(video_codec_t codec_type) {
+  const AVCodec *codec = avcodec_find_encoder_by_name(codec_type == VIDEO_CODEC_H264 ? "libx264" : "libx265");
+  if (!codec)
+    codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
+  return is_hardware_encoder(codec) ? NULL : codec;
+}
+
+bool video_encoder_is_available(video_codec_t codec) {
+  if (codec != VIDEO_CODEC_H265 && codec != VIDEO_CODEC_H264)
+    return false;
+  return video_encoder_find_codec(codec) != NULL;
+}
+
 /**
  * @brief h265 encoder is intentionally a small, concrete record. Fields such as `codec_ctx`, `codec`, `frame`, `packet`
  * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
@@ -97,11 +110,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
 
   defer_named(cleanup, h265_encoder_destroy(enc));
 
-  const AVCodec *codec = avcodec_find_encoder_by_name(codec_type == VIDEO_CODEC_H264 ? "libx264" : "libx265");
-  if (!codec)
-    codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
-  if (is_hardware_encoder(codec))
-    codec = NULL;
+  const AVCodec *codec = video_encoder_find_codec(codec_type);
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "%s encoder not found", codec_type == VIDEO_CODEC_H264 ? "H.264" : "HEVC");
     return NULL;

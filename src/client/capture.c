@@ -188,6 +188,10 @@ static void *webcam_capture_thread_func(void *arg) {
   video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
                                  : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264
                                                                     : VIDEO_CODEC_H265;
+  if (automatic_codec) {
+    while (selected_codec != VIDEO_CODEC_RGBA && !video_encoder_is_available(selected_codec))
+      selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
+  }
   // Each connection starts at the requested codec with a fresh bitstream.
   h265_encoder_destroy(connection->video_encoder);
   connection->video_encoder = NULL;
