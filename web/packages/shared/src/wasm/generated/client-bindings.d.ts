@@ -387,10 +387,11 @@ export interface BrowserSessionBinding extends ClassHandle {
 }
 
 export type ClientBytes = Uint8Array;
+export type PacketTypes = Readonly<Record<string, number>>;
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
-  packetTypes(): any;
+  packetTypes(): PacketTypes;
   protocolInfo(): any;
   error(): number;
   close(): void;
