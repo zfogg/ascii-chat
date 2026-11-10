@@ -269,6 +269,43 @@ asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result
   return ASCIICHAT_OK;
 }
 
+static char *http_renderer_render_image(const image_t *image, const http_render_request_t *request) {
+  size_t width = request->options.width > 0 ? (size_t)request->options.width : 80;
+  size_t height = request->options.height > 0 ? (size_t)request->options.height
+                                               : (size_t)((double)width * image->h / image->w / 2.0);
+  if (!height) height = 1;
+  image_t *scaled = image_new(width, height);
+  if (!scaled) return NULL;
+  image_resize(image, scaled);
+  const char *palette = request->options.palette_chars[0] ? request->options.palette_chars : NULL;
+  if (!palette && request->options.palette[0]) {
+    const struct { const char *name; palette_type_t type; } palettes[] = {
+      {"standard", PALETTE_STANDARD}, {"blocks", PALETTE_BLOCKS}, {"digital", PALETTE_DIGITAL},
+      {"minimal", PALETTE_MINIMAL}, {"cool", PALETTE_COOL}
+    };
+    for (size_t i = 0; i < sizeof(palettes) / sizeof(palettes[0]); ++i)
+      if (!strcmp(request->options.palette, palettes[i].name)) { palette = get_builtin_palette(palettes[i].type)->chars; break; }
+    if (!palette) palette = request->options.palette;
+  }
+  if (!palette) palette = DEFAULT_ASCII_PALETTE;
+  char *ascii;
+  if (!strcmp(request->options.render_theme, "braille")) ascii = NULL;
+  else if (!strcmp(request->options.render_theme, "block") || !strcmp(request->options.render_theme, "half-block")) {
+    ascii_color_t color = request->options.color_mode == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE :
+                          request->options.color_mode == TERM_COLOR_256 ? ASCII_COLOR_256 :
+                          request->options.color_mode == TERM_COLOR_16 ? ASCII_COLOR_16 : ASCII_COLOR_NONE;
+    ascii = ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
+  } else if (request->options.color_mode == TERM_COLOR_TRUECOLOR)
+    ascii = image_print_color_simd(scaled, false, false, palette);
+  else if (request->options.color_mode == TERM_COLOR_256)
+    ascii = ascii_render(scaled, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
+  else if (request->options.color_mode == TERM_COLOR_16)
+    ascii = ascii_render(scaled, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
+  else ascii = image_print(scaled, palette);
+  image_destroy(scaled);
+  return ascii;
+}
+
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
                                             http_render_result_t *result, atomic_t *cancelled) {
   if (!path || !request || !result)
@@ -314,64 +351,35 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     ffmpeg_decoder_destroy(decoder);
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded image dimensions exceed the configured limit");
   }
-  size_t width = request->options.width > 0 ? (size_t)request->options.width : 80;
-  size_t height = request->options.height > 0 ? (size_t)request->options.height
-                                               : (size_t)((double)width * image->h / image->w / 2.0);
-  if (!height)
-    height = 1;
-  image_t *scaled = image_new(width, height);
-  if (!scaled) {
-    ffmpeg_decoder_destroy(decoder);
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP render image");
-  }
-  image_resize(image, scaled);
-  const char *palette = request->options.palette_chars[0] ? request->options.palette_chars : NULL;
-  if (!palette && request->options.palette[0]) {
-    const struct { const char *name; palette_type_t type; } palettes[] = {
-      {"standard", PALETTE_STANDARD}, {"blocks", PALETTE_BLOCKS}, {"digital", PALETTE_DIGITAL},
-      {"minimal", PALETTE_MINIMAL}, {"cool", PALETTE_COOL}
-    };
-    for (size_t i = 0; i < sizeof(palettes) / sizeof(palettes[0]); ++i)
-      if (!strcmp(request->options.palette, palettes[i].name)) { palette = get_builtin_palette(palettes[i].type)->chars; break; }
-    if (!palette) palette = request->options.palette;
-  }
-  if (!palette) palette = DEFAULT_ASCII_PALETTE;
-  char *ascii;
-  if (!strcmp(request->options.render_theme, "braille")) {
-    image_destroy(scaled); ffmpeg_decoder_destroy(decoder);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Braille rendering is not supported by the API renderer");
-  } else if (!strcmp(request->options.render_theme, "block") || !strcmp(request->options.render_theme, "half-block")) {
-    ascii_color_t color = request->options.color_mode == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE :
-                          request->options.color_mode == TERM_COLOR_256 ? ASCII_COLOR_256 :
-                          request->options.color_mode == TERM_COLOR_16 ? ASCII_COLOR_16 : ASCII_COLOR_NONE;
-    ascii = ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
-  } else if (request->options.color_mode == TERM_COLOR_TRUECOLOR) {
-    ascii = image_print_color_simd(scaled, false, false, palette);
-  } else if (request->options.color_mode == TERM_COLOR_256) {
-    ascii = ascii_render(scaled, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
-  } else if (request->options.color_mode == TERM_COLOR_16) {
-    ascii = ascii_render(scaled, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
-  } else {
-    ascii = image_print(scaled, palette);
-  }
-  image_destroy(scaled);
-  ffmpeg_decoder_destroy(decoder);
-  if (!ascii)
-    return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert image to ASCII");
-  size_t length = strlen(ascii);
+  size_t total = 0;
   size_t limit = request->max_output_bytes ? request->max_output_bytes : 8u * 1024u * 1024u;
-  if (length > limit) {
+  for (;;) {
+    if (image->w > 8192 || image->h > 8192) { image_destroy(image); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded image dimensions exceed the configured limit"); }
+    char *ascii = http_renderer_render_image(image, request);
+    image_destroy(image);
+    if (!ascii) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert image to ASCII"); }
+    size_t length = strlen(ascii);
+    if (length > limit - (total > limit ? limit : total)) { free(ascii); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered output exceeds the configured limit"); }
+    if (http_render_result_add_text_frame(result, ascii, length, (time_get_ns() - started) / 1000000) != ASCIICHAT_OK) {
+      free(ascii); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Cannot store rendered frame");
+    }
+    if (!result->ascii) { result->ascii = SAFE_MALLOC(length + 1, char *); SAFE_MEMCPY(result->ascii, length + 1, ascii, length + 1); result->ascii_length = length; }
+    total += length;
     free(ascii);
-    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered output exceeds the configured limit");
+    if (result->frame_count >= HTTP_RENDERER_MAX_FRAMES) break;
+    if (cancelled && atomic_load_bool(cancelled)) { result->cancelled = true; ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled"); }
+    asciichat_error_context_t failure = {0};
+    image = NULL;
+    ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
+    if (status == FFMPEG_FRAME_EOF) break;
+    if (status == FFMPEG_FRAME_FAILED) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_MEDIA_INIT, "Video frame decoding failed"); }
+    while (status == FFMPEG_FRAME_WAITING) {
+      if (time_get_ns() >= deadline) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out"); }
+      platform_sleep_ms(1); status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
+    }
+    if (!image) break;
   }
-  result->ascii = SAFE_MALLOC(length + 1, char *);
-  SAFE_MEMCPY(result->ascii, length + 1, ascii, length + 1);
-  result->ascii_length = length;
-  if (http_render_result_add_text_frame(result, result->ascii, length, 0) != ASCIICHAT_OK) {
-    http_render_result_destroy(result);
-    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Cannot store rendered frame");
-  }
+  ffmpeg_decoder_destroy(decoder);
   result->elapsed_ms = (time_get_ns() - started) / 1000000;
-  free(ascii);
-  return ASCIICHAT_OK;
+  return result->frame_count ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEDIA_INIT, "Renderer returned no frames");
 }
