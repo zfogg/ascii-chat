@@ -30,22 +30,6 @@ static const unsigned char *api_find_bytes(const unsigned char *data, size_t len
   return NULL;
 }
 
-typedef struct {
-  const char *path;
-  const http_render_request_t *request;
-  http_render_result_t *result;
-  asciichat_error_t error;
-} api_render_job_context_t;
-
-static void api_render_job(void *context, atomic_t *cancelled) {
-  api_render_job_context_t *job = context;
-  if (atomic_load_bool(cancelled)) {
-    job->error = SET_ERRNO(ERROR_CANCELLED, "HTTP render cancelled");
-    return;
-  }
-  job->error = http_renderer_render_file(job->path, job->request, job->result);
-}
-
 static void api_request(http_request_t *request, http_response_t *response, void *user_data) {
   (void)user_data;
   const http_request_info_t *info = http_request_info(request);
@@ -157,13 +141,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
   http_render_result_t result;
-  api_render_job_context_t job_context = {.path = path, .request = &render_request, .result = &result};
-  http_renderer_job_t render_job = {0};
-  asciichat_error_t err = http_renderer_job_start(&render_job, "api-render", api_render_job, &job_context);
-  if (err == ASCIICHAT_OK) {
-    http_renderer_job_join(&render_job);
-    err = job_context.error;
-  }
+  asciichat_error_t err = http_renderer_render_file(path, &render_request, &result);
   platform_delete_temp_file(path);
   if (err != ASCIICHAT_OK) {
     api_finish(response, 422);
