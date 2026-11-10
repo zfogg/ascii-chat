@@ -1,5 +1,7 @@
 #pragma once
 
+#include <libplatform/terminal.h>
+
 /**
  * @file platform/terminal.h
  * @brief 🖥️ Cross-platform terminal interface for ascii-chat
@@ -604,19 +606,6 @@ asciichat_error_t terminal_clear_scrollback(int fd);
  *
  * @ingroup platform_terminal
  */
-typedef enum {
-  /** @brief Auto-detect color support from terminal capabilities */
-  TERM_COLOR_AUTO = -1,
-  /** @brief No color support (monochrome terminal) */
-  TERM_COLOR_NONE = 0,
-  /** @brief 16-color support (standard ANSI colors) */
-  TERM_COLOR_16 = 1,
-  /** @brief 256-color support (extended ANSI palette) */
-  TERM_COLOR_256 = 2,
-  /** @brief 24-bit truecolor support (RGB colors) */
-  TERM_COLOR_TRUECOLOR = 3
-} terminal_color_mode_t;
-
 /**
  * @brief Monochromatic color filter enumeration
  *
@@ -688,15 +677,6 @@ typedef enum {
  *
  * @ingroup platform_terminal
  */
-typedef enum {
-  /** @brief Foreground colors only (text color) */
-  RENDER_MODE_FOREGROUND = 0,
-  /** @brief Background colors (block colors) */
-  RENDER_MODE_BACKGROUND = 1,
-  /** @brief Unicode half-block characters (mixed foreground/background) */
-  RENDER_MODE_HALF_BLOCK = 2
-} render_mode_t;
-
 /**
  * @brief Complete terminal capabilities structure
  *
