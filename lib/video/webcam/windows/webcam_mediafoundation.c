@@ -299,7 +299,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
         bool within_budget = pixels <= 640 * 480;
         bool best_within_budget = (bestSize >> 32) * (UINT32)bestSize <= 640 * 480;
         if (!bestType || (within_budget && !best_within_budget) ||
-             (within_budget == best_within_budget &&
+            (within_budget == best_within_budget &&
              (candidate > best || (candidate == best && distance < bestDistance)))) {
           if (bestType)
             IMFMediaType_Release(bestType);

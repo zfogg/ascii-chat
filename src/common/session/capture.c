@@ -1005,8 +1005,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       unsigned int observed_fps = (unsigned int)(ctx->observed_rate_frames / elapsed + 0.5);
       if (observed_fps > 0) {
         log_info("Webcam OS delivery: %.3f FPS over %.2f seconds (%llu frames)",
-                 (double)ctx->observed_rate_frames / elapsed, elapsed,
-                 (unsigned long long)ctx->observed_rate_frames);
+                 (double)ctx->observed_rate_frames / elapsed, elapsed, (unsigned long long)ctx->observed_rate_frames);
         ui_controller_set_effective_fps(observed_fps);
       }
       ctx->observed_rate_start_ns = frame_available_time_ns;
