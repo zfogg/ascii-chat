@@ -208,7 +208,7 @@ export class ClientConnection {
         framerate: 30,
         latencyMode: "realtime",
         hevc: { format: "annexb" },
-      });
+      } as VideoEncoderConfig & { hevc: { format: "annexb" } });
       return support.supported === true;
     } catch {
       return false;
