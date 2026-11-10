@@ -102,6 +102,7 @@ struct http_response {
   http3_submit_response_fn http3_submit;
   void *http3_context;
 };
+
 struct http_server_client {
   uv_tcp_t tcp;
   http_server_t *server;
@@ -838,7 +839,8 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   ASCII_OTEL_ATTR_STRING("http.route", request.info.path);
   ASCII_OTEL_ATTR_STRING("http.protocol", "3");
   ASCII_OTEL_ATTR_STRING("http.backend", "quic-ngtcp2-nghttp3");
-  server->config.on_request(&request, &response, server->config.user_data);
+  if (http_server_authorize(&server->config.basic_auth, &request.info, &response))
+    server->config.on_request(&request, &response, server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
     ASCII_OTEL_ATTR_INT("http.status", response.status);
@@ -947,7 +949,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                               .max_body_length = http_max_response_body(client->server),
                               .inflight_accounted = true,
                               .status = 200};
-  client->server->config.on_request(&request, &response, client->server->config.user_data);
+  if (http_server_authorize(&client->server->config.basic_auth, &request.info, &response))
+    client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
     ASCII_OTEL_ATTR_INT("http.status", response.status);
@@ -1107,7 +1110,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   ASCII_OTEL_ATTR_STRING("http.backend", "libuv");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
-  c->server->config.on_request(&r, &resp, c->server->config.user_data);
+  if (http_server_authorize(&c->server->config.basic_auth, &r.info, &resp))
+    c->server->config.on_request(&r, &resp, c->server->config.user_data);
   if (!resp.finished && !resp.deferred)
     http_response_finish(&resp);
   ASCII_OTEL_ATTR_INT("http.status", resp.status);
@@ -1207,6 +1211,9 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
+  if (cfg->basic_auth.enabled && (!cfg->basic_auth.username || !cfg->basic_auth.password ||
+                                  !cfg->basic_auth.username[0] || !cfg->basic_auth.password[0]))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Basic authentication requires non-empty credentials");
   if ((cfg->enable_http3 && !cfg->http3_endpoint) || ((cfg->tls_cert_path == NULL) != (cfg->tls_key_path == NULL)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS requires certificate and key");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
