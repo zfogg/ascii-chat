@@ -177,6 +177,22 @@
  * batch mode supports `--dependency-stamps --incremental` with either form;
  * changing one file's arguments invalidates that file's cached transformation.
  *
+ * For a single source, either implementation automatically reads redirected
+ * stdin and writes validated transformed bytes to stdout when no input/output
+ * paths or other modes are specified:
+ * @code{.sh}
+ * defer-tool --filename path/to/input.c -- -std=c17 -Iinclude < input.c > output.c
+ * # Equivalent positional form:
+ * defer-tool --filename path/to/input.c - - -- -std=c17 -Iinclude < input.c > output.c
+ * @endcode
+ * `--filename` is required for stdin input. It determines the input language,
+ * source locations, and relative include lookup. It is a
+ * virtual path and is not read or overwritten. A compilation database may be
+ * used instead of explicit flags when it has an entry for that path. Diagnostics
+ * go to stderr and invalid input produces no transformed output. This mode
+ * handles one translation unit and does not support header overlays, dependency
+ * files, or batch options. The ascii-chat CMake build always uses batch mode.
+ *
  * To inspect an exit without writing a generated file, pass its source line and
  * the C compilation arguments to either implementation:
  * @code{.sh}

@@ -56,14 +56,16 @@ def main() -> int:
         name = cmake_literal(f"ascii-defer-{batch_id}")
         rules.append(f"""add_custom_command(
     OUTPUT {outputs} {stamps} {overlays}
-    COMMAND ${{ASCIICHAT_DEFER_PYTHON_COMMAND}} "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
+    COMMAND ${{ASCIICHAT_DEFER_PYTHON_COMMAND}} "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/defer.py"
         --batch {cmake_literal(manifest.as_posix())} --libclang "${{ASCIICHAT_LIBCLANG_PATH}}"
         --compilation-database "${{CMAKE_BINARY_DIR}}" --depfile {cmake_literal(depfile.as_posix())} --dependency-stamps {overlay_argument}
     DEPENDS {sources} {cmake_literal(manifest.as_posix())}
-        "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
-        "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/pyproject.toml"
-        "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/uv.lock"
-        "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/vendor/clang/cindex.py"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/defer.py"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/analysis.py"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/manifest.py"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/pyproject.toml"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/uv.lock"
+        "${{ASCIICHAT_DEFER_SOURCE_ROOT}}/src/tooling/defer/vendor/clang/cindex.py"
         "${{CMAKE_BINARY_DIR}}/compile_commands.json"
     DEPFILE {cmake_literal(depfile.as_posix())}
     COMMENT "Transforming defer source batch" VERBATIM)

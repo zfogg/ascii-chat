@@ -1,5 +1,6 @@
 #include "clang_support.h"
 #include "driver.h"
+#include "manifest.h"
 #include "plan.h"
 #include "text.h"
 #include "transform.h"
@@ -18,6 +19,7 @@
 #include <algorithm>
 #include <exception>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -27,7 +29,14 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace {
 llvm::cl::opt<bool> scan_only("scan", llvm::cl::desc("List source files containing possible defer calls"));
@@ -53,6 +62,7 @@ llvm::cl::opt<bool>
 llvm::cl::opt<std::string>
     batch("batch",
           llvm::cl::desc("Transform manifest source/output pairs with optional per-file JSON argument arrays"));
+llvm::cl::opt<std::string> stream_filename("filename", llvm::cl::desc("Required virtual input path for stdin"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
 llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libclang shared library"));
@@ -272,8 +282,38 @@ bool cached_dependencies(const std::filesystem::path &source, const std::filesys
 
 int main(int argc, char **argv) {
   llvm::InitLLVM initializer(argc, argv);
-  llvm::cl::ParseCommandLineOptions(argc, argv, "ascii-chat defer source transformer\n");
+  llvm::cl::ParseCommandLineOptions(
+      argc, argv,
+      "ascii-chat defer source transformer\n"
+      "With redirected stdin and no input/output paths, transform one source to stdout.\n");
   try {
+    const bool dash_stream = sources.size() >= 2 && sources[0] == "-" && sources[1] == "-";
+    unsigned separator = static_cast<unsigned>(argc);
+    for (int i = 1; i < argc; ++i)
+      if (std::string_view(argv[i]) == "--") {
+        separator = static_cast<unsigned>(i);
+        break;
+      }
+    bool only_compiler_arguments = true;
+    for (std::size_t i = 0; i < sources.size(); ++i)
+      if (sources.getPosition(static_cast<unsigned>(i)) < separator)
+        only_compiler_arguments = false;
+#ifdef _WIN32
+    const bool stdin_redirected = _isatty(_fileno(stdin)) == 0;
+#else
+    const bool stdin_redirected = isatty(fileno(stdin)) == 0;
+#endif
+    const bool automatic_stream = stdin_redirected && only_compiler_arguments && batch.empty() && !scan_only &&
+                                  plan_records.empty() && explain_location.empty() && show_location.empty();
+    const bool stream = dash_stream || automatic_stream;
+    if (stream && (scan_only || !plan_records.empty() || !batch.empty() || !depfile.empty() || dependency_stamps ||
+                   incremental || !shared_cache.empty() || !header_overlay.empty() || header_overlays ||
+                   !explain_location.empty() || !show_location.empty() || jobs.getNumOccurrences()))
+      throw std::runtime_error("stdin mode cannot be combined with batch, scan, planning, inspection, or output files");
+    if (!stream && stream_filename.getNumOccurrences())
+      throw std::runtime_error("--filename requires stdin mode");
+    if (stream && (!stream_filename.getNumOccurrences() || stream_filename.empty()))
+      throw std::runtime_error("stdin mode requires a nonempty --filename");
     if (scan_only) {
       if (!scan_input.empty()) {
         std::istringstream lines(defer_tool::read_file(std::filesystem::u8path(scan_input.getValue())));
@@ -312,6 +352,25 @@ int main(int argc, char **argv) {
     const auto depfile_path = depfile.empty() ? std::filesystem::path{}
                                               : std::filesystem::absolute(std::filesystem::u8path(depfile.getValue()));
     defer_tool::ClangIndex index;
+    if (stream) {
+      options.clang_arguments.assign(sources.begin() + (dash_stream ? 2 : 0), sources.end());
+      if (!options.compilation_database.empty() && !options.clang_arguments.empty())
+        throw std::runtime_error("explicit arguments cannot be combined with --compilation-database");
+#ifdef _WIN32
+      if (_setmode(_fileno(stdin), _O_BINARY) == -1 || _setmode(_fileno(stdout), _O_BINARY) == -1)
+        throw std::runtime_error("cannot set standard streams to binary mode");
+#endif
+      std::string content{std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>()};
+      if (std::cin.bad())
+        throw std::runtime_error("failed to read stdin");
+      const auto result = defer_tool::transform_content(index, std::filesystem::u8path(stream_filename.getValue()), {},
+                                                        std::move(content), options);
+      std::cout.write(result.contents.data(), static_cast<std::streamsize>(result.contents.size()));
+      std::cout.flush();
+      if (!std::cout)
+        throw std::runtime_error("failed to write stdout");
+      return 0;
+    }
     if (!explain_location.empty() || !show_location.empty()) {
       if ((!explain_location.empty() && !show_location.empty()) || !batch.empty() || !depfile.empty() ||
           !options.header_overlay.empty() || header_overlays)
@@ -337,41 +396,11 @@ int main(int argc, char **argv) {
         throw std::runtime_error("--header-overlay currently accepts one source at a time");
       if (!sources.empty())
         throw std::runtime_error("batch mode does not accept positional source files");
-      auto manifest = defer_tool::read_file(std::filesystem::absolute(std::filesystem::u8path(batch.getValue())));
-      std::istringstream lines(manifest);
-      std::string line;
-      while (std::getline(lines, line)) {
-        if (!line.empty() && line.back() == '\r')
-          line.pop_back();
-        auto separator = line.find('\t');
-        const auto third = separator == std::string::npos ? std::string::npos : line.find('\t', separator + 1);
-        if (separator == std::string::npos || separator == 0 ||
-            (third != std::string::npos && line.find('\t', third + 1) != std::string::npos))
-          throw std::runtime_error("invalid source/output batch record");
-        const auto output_text = line.substr(separator + 1, third == std::string::npos ? third : third - separator - 1);
-        if (output_text.empty())
-          throw std::runtime_error("invalid source/output batch record");
-        inputs.emplace_back(std::filesystem::u8path(line.substr(0, separator)), std::filesystem::u8path(output_text));
-        std::vector<std::string> arguments;
-        if (third != std::string::npos) {
-          if (!options.compilation_database.empty())
-            throw std::runtime_error("per-file arguments cannot be combined with --compilation-database");
-          auto parsed = llvm::json::parse(line.substr(third + 1));
-          if (!parsed) {
-            llvm::consumeError(parsed.takeError());
-            throw std::runtime_error("batch arguments must be a JSON array of strings");
-          }
-          const auto *array = parsed->getAsArray();
-          if (!array)
-            throw std::runtime_error("batch arguments must be a JSON array of strings");
-          for (const auto &item : *array) {
-            const auto value = item.getAsString();
-            if (!value || value->contains('\0'))
-              throw std::runtime_error("batch arguments must be a JSON array of strings without NUL bytes");
-            arguments.push_back(value->str());
-          }
-        }
-        per_file_arguments.push_back(std::move(arguments));
+      const auto contents = defer_tool::read_file(std::filesystem::absolute(std::filesystem::u8path(batch.getValue())));
+      const auto manifest = defer_tool::Manifest::parse(contents, !options.compilation_database.empty());
+      for (const auto &record : manifest.records()) {
+        inputs.emplace_back(record.source, record.output);
+        per_file_arguments.push_back(record.arguments);
       }
     } else {
       if (header_overlays)
