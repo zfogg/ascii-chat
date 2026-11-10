@@ -19,7 +19,7 @@ fi
 # Check C formatting and web projects in parallel
 clang_pid=
 if printf "%s\n" "$all_staged" | grep -Eq '\.(c|h|cpp|hpp|m|mm)$'; then
-  zsh scripts/clang-format-and-add.zsh &
+  bash scripts/clang-format-and-add.sh &
   clang_pid=$!
 fi
 web_pid=
