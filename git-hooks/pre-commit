@@ -30,7 +30,7 @@ if printf "%s\n" "$all_staged" | grep -q "^web/"; then
   web_pid=$!
 fi
 workflow_pid=
-if printf "%s\n" "$all_staged" | grep -Eq '^\.github/workflows/[^/]+\.(yml|yaml)$'; then
+if printf "%s\n" "$all_staged" | grep -Eq '^\.github/workflows/.*\.(yml|yaml)$'; then
   bash scripts/format-github-workflows.sh &
   workflow_pid=$!
 fi
