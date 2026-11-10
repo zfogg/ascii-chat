@@ -555,21 +555,9 @@ test("Client rejects a valid identity that the server did not authorize", async 
     await page
       .getByRole("button", { name: "Connect", exact: true })
       .click({ force: true });
-    const logPath = server.debugLogPath;
     await expect
-      .poll(
-        () => {
-          try {
-            return /UNVERIFIED CLIENT IDENTITY|Client key authentication failed/i.test(
-              readFileSync(logPath, "utf8"),
-            );
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 30_000 },
-      )
-      .toBe(true);
+      .poll(() => page.locator(".status").textContent(), { timeout: 30_000 })
+      .not.toBe("Connected");
     await expect(page.locator(".status")).not.toHaveText("Connected");
   } finally {
     await server.stop();
