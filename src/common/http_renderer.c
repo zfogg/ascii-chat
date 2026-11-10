@@ -2,7 +2,9 @@
 
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/video/ascii/ascii.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
@@ -220,7 +222,28 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
   ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
   if (!decoder)
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot decode uploaded image");
-  image_t *image = ffmpeg_decoder_read_video_frame(decoder);
+  if (ffmpeg_decoder_start_prefetch(decoder) != ASCIICHAT_OK) {
+    ffmpeg_decoder_destroy(decoder);
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot start image decoder");
+  }
+  image_t *image = NULL;
+  uint64_t deadline = started + (request->timeout_ms ? request->timeout_ms : 10000) * NS_PER_MS_INT;
+  for (;;) {
+    asciichat_error_context_t failure = {0};
+    ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
+    if (status == FFMPEG_FRAME_READY)
+      break;
+    if (status == FFMPEG_FRAME_FAILED || status == FFMPEG_FRAME_EOF) {
+      errno_import(&failure);
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Uploaded data does not contain a decodable image");
+    }
+    if (time_get_ns() >= deadline) {
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out");
+    }
+    platform_sleep_ms(1);
+  }
   if (!image) {
     ffmpeg_decoder_destroy(decoder);
     return SET_ERRNO(ERROR_MEDIA_INIT, "Uploaded data does not contain a decodable image");
@@ -242,7 +265,8 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
   }
   image_resize(image, scaled);
   const char *palette = request->options.palette_chars[0] ? request->options.palette_chars
-                                                           : request->options.palette[0] ? request->options.palette : NULL;
+                                                           : request->options.palette[0] ? request->options.palette
+                                                                                         : DEFAULT_ASCII_PALETTE;
   char *ascii = image_print(scaled, palette);
   image_destroy(scaled);
   ffmpeg_decoder_destroy(decoder);

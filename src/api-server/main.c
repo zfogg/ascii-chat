@@ -154,6 +154,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   }
   platform_delete_temp_file(path);
   if (err != ASCIICHAT_OK) {
+    log_warn("API render failed: %s", asciichat_error_string(err));
     if (render_job)
       http_renderer_reap(server->renderer, false);
     unsigned status = err == ERROR_BUFFER_FULL ? 503 : err == ERROR_BUFFER_OVERFLOW ? 413 : 422;
