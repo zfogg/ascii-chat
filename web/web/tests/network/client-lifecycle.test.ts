@@ -196,7 +196,7 @@ describe("client startup ownership", () => {
     );
     expect(receiveEvents).toHaveLength(1);
     expect(
-      harness.events.some((event) => event["type"] === "receive-transport-packet"),
+      harness.events.some((event) => event["type"] === "receive-packet"),
     ).toBe(false);
     expect(
       harness.events.some((event) => event["type"] === "send-packet"),
