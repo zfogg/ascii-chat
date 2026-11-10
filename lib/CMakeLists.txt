@@ -12,7 +12,7 @@ set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 include(FetchContent)
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG fd04805
+    GIT_TAG 6e9e5a7
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(libplatform)
@@ -968,6 +968,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
+    target_link_libraries(ascii-chat-shared PRIVATE libplatform::libplatform)
     target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
@@ -1600,6 +1601,7 @@ endif()
 
 # List of OBJECT library targets to archive
 set(STATIC_LIB_MODULES
+    libplatform-objects
     ascii-chat-util
     ascii-chat-data-structures
     ascii-chat-platform
