@@ -369,6 +369,14 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
         },
       )
       .toBeGreaterThan(60);
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__clientFrameMetrics?.received ?? 0),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(30);
+    // Let the relay and browser decoder settle before the measured windows.
+    await page.waitForTimeout(2_000);
 
     const samples: Array<{
       frameFps: number;
