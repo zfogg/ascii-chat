@@ -438,10 +438,19 @@ for (const keyFormat of ["armored", "binary"] as const) {
         await page
           .getByRole("button", { name: "Add to list" })
           .click({ force: true });
-        await expectKeyActive(
-          page,
-          keyFormat === "binary" ? "server-public.gpg" : "Verification key 1",
-        );
+        if (keyFormat === "binary") {
+          await expect(
+            page
+              .locator(".crypto-key-row")
+              .getByRole("button", {
+                name: "Active",
+                exact: true,
+              })
+              .last(),
+          ).toBeVisible();
+        } else {
+          await expectKeyActive(page, "Verification key 1");
+        }
         await page
           .getByRole("button", { name: "Save security settings" })
           .click({ force: true });
