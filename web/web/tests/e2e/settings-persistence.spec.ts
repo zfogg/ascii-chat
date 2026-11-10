@@ -31,7 +31,7 @@ test("render settings survive reload and a copied URL in a fresh context", async
     await copied.goto(savedUrl);
     const restored = await colorControl(copied);
     await expect(restored).toHaveValue("none");
-    await restored.selectOption("truecolor");
+    await restored.selectOption("truecolor", { force: true });
     await expect
       .poll(() => new URL(copied.url()).searchParams.has("colorMode"))
       .toBe(false);

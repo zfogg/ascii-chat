@@ -17,9 +17,6 @@ import { expectMeaningful60Fps } from "./server-fixture";
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 30000;
 
-// ANSI escape character
-const ESC = String.fromCharCode(0x1b);
-
 // Hue sectors of the color wheel (0-360 degrees)
 const HUE_SECTORS = [
   { name: "red", min: 0, max: 30 },
@@ -147,7 +144,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
         }
 
         // Find first truecolor ANSI code: ESC[38;2;R;G;Bm
-        const ansiRegex = /\x1b\[38;2;(\d+);(\d+);(\d+)m/;
+        const ansiRegex = new RegExp(
+          `${String.fromCharCode(0x1b)}\\[38;2;(\\d+);(\\d+);(\\d+)m`,
+        );
         const match = frame.match(ansiRegex);
         if (!match) {
           console.log(
@@ -158,7 +157,10 @@ test.describe("Rainbow Color Filter Cycling", () => {
 
         // Also extract first 5 distinct colors to see variety
         const allColors: string[] = [];
-        const re = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`, "g");
+        const re = new RegExp(
+          `${String.fromCharCode(0x1b)}\\[38;2;(\\d+);(\\d+);(\\d+)m`,
+          "g",
+        );
         let m;
         const seen = new Set<string>();
         while ((m = re.exec(frame)) !== null && allColors.length < 5) {
