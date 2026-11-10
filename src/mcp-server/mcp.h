@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/network/http/server/server.h>
+#include "../common/http_renderer.h"
 #include <yyjson.h>
 #include <string.h>
 
@@ -88,9 +89,7 @@ typedef struct mcp_job {
   mcp_render_request_t request;
   mcp_tool_t tool;
   gotel_context_t telemetry_parent;
-  asciichat_thread_t thread;
-  atomic_t cancelled;
-  atomic_t done;
+  http_renderer_job_t renderer_job;
   bool started;
   void *connection;
   char session_id[MCP_SESSION_ID_LENGTH + 1];
@@ -120,7 +119,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *doc, const mcp_policy_t *policy
 asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool, yyjson_val *arguments,
                                     mcp_render_request_t *out);
 void mcp_request_destroy(mcp_render_request_t *request);
-void mcp_render_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result);
+void http_renderer_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result);
 yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id,
                              bool *pending);
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);

@@ -109,7 +109,7 @@ static void tick(uv_timer_t *timer) {
     }
   }
 }
-void mcp_render_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render_result_t *result) {
+void http_renderer_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render_result_t *result) {
   memset(result, 0, sizeof(*result));
   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r->timeout_ms};
   result->text = SAFE_CALLOC(MCP_MAX_OUTPUT + 1, 1, char *);

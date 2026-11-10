@@ -113,7 +113,7 @@ static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments)
   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), "result", result);
   return d;
 }
-static void *run_job(void *arg) {
+static void run_job(void *arg, atomic_t *cancelled) {
   mcp_job_t *job = arg;
   ASCII_OTEL_SCOPE_PARENT(MCP_RENDER, &job->telemetry_parent);
   static const char *const tools[] = {"render_file", "render_url", "render_webcam", "render_visualization"};
@@ -123,17 +123,17 @@ static void *run_job(void *arg) {
   mcp_render_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  mcp_render_execute(&job->request, &job->cancelled, &result);
+  http_renderer_execute(&job->request, cancelled, &result);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_MCP_RENDER, time_get_ns() - render_started);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_OUTPUT_BYTES, result.length);
   ASCII_OTEL_ATTR_INT("mcp.output.bytes", (int64_t)result.length);
   if (result.error[0]) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDER_FAILURES, 1);
-    const char *failure = result.timed_out ? "timeout" : atomic_load_bool(&job->cancelled) ? "cancelled" : "render";
+    const char *failure = result.timed_out ? "timeout" : atomic_load_bool(cancelled) ? "cancelled" : "render";
     ASCII_OTEL_ATTR_STRING("error.type", failure);
     if (result.timed_out)
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_TIMEOUTS, 1);
-    else if (atomic_load_bool(&job->cancelled))
+    else if (atomic_load_bool(cancelled))
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_CANCELLED, 1);
     SET_ERRNO(ERROR_FILE_OPERATION, "MCP render failed: %s", result.error);
     log_error("MCP render failed: %s", result.error);
@@ -149,17 +149,15 @@ static void *run_job(void *arg) {
     yyjson_mut_doc_free(job->response);
     job->response = NULL;
   }
-  atomic_store_bool(&job->done, true);
   if (job->server->policy.hosted)
     mcp_http_wake(job->server);
-  return NULL;
 }
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->started || (!all && (!atomic_load_bool(&j->done) || (s->policy.hosted && j->connection))))
+    if (!j->renderer_job.started || (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
       continue;
-    thread_join(&j->thread, NULL);
+    http_renderer_job_join(&j->renderer_job);
     yyjson_doc_free(j->message);
     if (j->response)
       yyjson_mut_doc_free(j->response);
@@ -206,7 +204,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
             (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
              ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
-          atomic_store_bool(&s->jobs[i].cancelled, true);
+          http_renderer_job_cancel(&s->jobs[i].renderer_job);
     }
     return NULL;
   }
@@ -305,8 +303,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   j->connection = connection;
   if (session_id)
     SAFE_STRNCPY(j->session_id, session_id, sizeof(j->session_id));
-  j->started = true;
-  if (acthread_create(&j->thread, "mcp-render", run_job, j)) {
+  if (http_renderer_job_start(&j->renderer_job, "mcp-render", run_job, j) != ASCIICHAT_OK) {
     mcp_request_destroy(&j->request);
     yyjson_doc_free(j->message);
     memset(j, 0, sizeof(*j));

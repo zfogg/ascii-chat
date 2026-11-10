@@ -1,7 +1,9 @@
 #pragma once
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -46,8 +48,26 @@ typedef struct {
   bool cancelled;
 } http_render_result_t;
 
+typedef void (*http_renderer_job_fn)(void *context, atomic_t *cancelled);
+
+typedef struct {
+  asciichat_thread_t thread;
+  atomic_t cancelled;
+  atomic_t done;
+  http_renderer_job_fn execute;
+  void *context;
+  bool started;
+} http_renderer_job_t;
+
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
                                             http_render_result_t *result);
+
+asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name,
+                                          http_renderer_job_fn execute, void *context);
+void http_renderer_job_cancel(http_renderer_job_t *job);
+bool http_renderer_job_is_done(const http_renderer_job_t *job);
+void http_renderer_job_join(http_renderer_job_t *job);
+void http_renderer_job_reset(http_renderer_job_t *job);

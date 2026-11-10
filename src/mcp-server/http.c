@@ -45,7 +45,7 @@ static void shared_http_wakeup(void *user_data) {
   mcp_server_t *s = user_data;
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->started || !j->connection || !atomic_load_bool(&j->done))
+    if (!j->renderer_job.started || !j->connection || !http_renderer_job_is_done(&j->renderer_job))
       continue;
     http_response_t *response = j->connection;
     if (http_response_is_cancelled(response)) {
@@ -271,7 +271,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
   }
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
     if (s->jobs[i].started)
-      atomic_store_bool(&s->jobs[i].cancelled, true);
+      http_renderer_job_cancel(&s->jobs[i].renderer_job);
   http_server_stop(s->shared_http);
   http_server_destroy(&s->shared_http);
   nat_upnp_close(&mapping);

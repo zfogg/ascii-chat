@@ -5,6 +5,51 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
+
+static void *http_renderer_job_main(void *argument) {
+  http_renderer_job_t *job = argument;
+  job->execute(job->context, &job->cancelled);
+  atomic_store_bool(&job->done, true);
+  return NULL;
+}
+
+asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name,
+                                          http_renderer_job_fn execute, void *context) {
+  if (!job || !execute || job->started)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Renderer job is already active");
+  memset(job, 0, sizeof(*job));
+  job->execute = execute;
+  job->context = context;
+  atomic_store_bool(&job->cancelled, false);
+  atomic_store_bool(&job->done, false);
+  if (acthread_create(&job->thread, name ? name : "http-render", http_renderer_job_main, job))
+    return SET_ERRNO(ERROR_THREAD, "Cannot start renderer job");
+  job->started = true;
+  return ASCIICHAT_OK;
+}
+
+void http_renderer_job_cancel(http_renderer_job_t *job) {
+  if (job && job->started)
+    atomic_store_bool(&job->cancelled, true);
+}
+
+bool http_renderer_job_is_done(const http_renderer_job_t *job) {
+  return job && job->started && atomic_load_bool((atomic_t *)&job->done);
+}
+
+void http_renderer_job_join(http_renderer_job_t *job) {
+  if (job && job->started) {
+    thread_join(&job->thread, NULL);
+    job->started = false;
+  }
+}
+
+void http_renderer_job_reset(http_renderer_job_t *job) {
+  if (job) {
+    http_renderer_job_join(job);
+    memset(job, 0, sizeof(*job));
+  }
+}
 #include <stdlib.h>
 
 void http_render_request_init(http_render_request_t *request) {

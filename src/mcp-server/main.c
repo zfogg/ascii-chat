@@ -107,7 +107,7 @@ int mcp_server_main(void) {
   stats_runtime_set_provider(NULL, NULL);
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
     if (s->jobs[i].started)
-      atomic_store_bool(&s->jobs[i].cancelled, true);
+      http_renderer_job_cancel(&s->jobs[i].renderer_job);
   mcp_jobs_reap(s, true);
   mcp_stdio_release();
   mutex_destroy(&s->output_mutex);
