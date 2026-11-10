@@ -5941,8 +5941,8 @@ async function MirrorModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1742368: () => Module.getRandomValue(),
-    1742404: () => {
+    1743920: () => Module.getRandomValue(),
+    1743956: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
