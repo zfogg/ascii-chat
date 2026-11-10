@@ -25,7 +25,7 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer_process.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c

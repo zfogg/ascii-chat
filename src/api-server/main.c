@@ -157,14 +157,21 @@ static void api_request(http_request_t *request, http_response_t *response, void
 
 int api_server_main(void) {
   http_server_t *server = NULL;
+  const char *tls_cert = GET_OPTION(tls_cert);
+  const char *tls_key = GET_OPTION(tls_key);
+  const char *tls_password = GET_OPTION(tls_key_password);
+  if (!tls_cert || !*tls_cert) tls_cert = NULL;
+  if (!tls_key || !*tls_key) tls_key = NULL;
+  if (!tls_password || !*tls_password) tls_password = NULL;
   http_server_config_t config = {.bind_address = GET_OPTION(address),
                                  .port = (uint16_t)GET_OPTION(port),
                                  .enable_http1 = true,
                                  .enable_http2 = true,
-                                 .enable_http3 = true,
-                                 .tls_cert_path = GET_OPTION(tls_cert),
-                                 .tls_key_path = GET_OPTION(tls_key),
-                                 .tls_key_password = GET_OPTION(tls_key_password),
+                                 /* HTTP/3 is enabled when the shared QUIC endpoint is attached. */
+                                 .enable_http3 = false,
+                                 .tls_cert_path = tls_cert,
+                                 .tls_key_path = tls_key,
+                                 .tls_key_password = tls_password,
                                  .max_connections = (size_t)GET_OPTION(max_clients),
                                  .max_request_body_bytes = 10u * 1024u * 1024u,
                                  .max_response_body_bytes = 8u * 1024u * 1024u,
@@ -172,10 +179,13 @@ int api_server_main(void) {
   if (!config.max_connections)
     config.max_connections = 1;
   asciichat_error_t err = http_server_init(&server, &config);
-  if (err != ASCIICHAT_OK)
+  if (err != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("API HTTP server initialization failed");
     return err;
+  }
   err = http_server_start(server);
   if (err != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("API HTTP server start failed");
     http_server_destroy(&server);
     return err;
   }

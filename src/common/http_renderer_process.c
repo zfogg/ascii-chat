@@ -2,7 +2,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MCP_RENDER_ENV_CAPACITY 16
 
-#include "mcp.h"
+#include "../mcp-server/mcp.h"
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <uv.h>
