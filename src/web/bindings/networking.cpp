@@ -232,6 +232,8 @@ public:
     }
     if (type == "snapshot")
       return snapshot();
+    if (type == "drain-outputs")
+      return drainOutputs();
     if (type == "state")
       return result(0);
     if (type == "generate-keypair") {
@@ -496,10 +498,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("valid", &ClientSessionBinding::valid)
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
-      .function("snapshot", &ClientSessionBinding::snapshot)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process)
-      .function("processBatch", &ClientSessionBinding::processBatch)
-      .function("drainOutputs", &ClientSessionBinding::drainOutputs);
+      .function("processBatch", &ClientSessionBinding::processBatch);
 
 }

@@ -598,18 +598,18 @@ export function processClientEvents(
   return clientSession.processBatch(events) as ClientEventResult[];
 }
 
-/** Drain pending native transport output without synthesizing a browser event. */
+/** Drain pending native transport output through the session event ABI. */
 export function drainClientOutputs(): ClientEventResult {
   if (!clientSession || !clientInitialized)
     throw new Error("WASM client session is not initialized");
-  return clientSession.drainOutputs() as ClientEventResult;
+  return clientSession.process({ type: "drain-outputs" }) as ClientEventResult;
 }
 
-/** Read native session state without manufacturing a browser event. */
+/** Read native session state through the session event ABI. */
 export function snapshotClientSession(): ClientEventResult {
   if (!clientSession || !clientInitialized)
     throw new Error("WASM client session is not initialized");
-  return clientSession.snapshot() as ClientEventResult;
+  return clientSession.process({ type: "snapshot" }) as ClientEventResult;
 }
 
 function checkClientEvent(

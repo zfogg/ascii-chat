@@ -392,11 +392,9 @@ export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
   protocolInfo(): any;
   error(): number;
-  snapshot(): any;
   close(): void;
   process(_0: any): any;
   processBatch(_0: any): any;
-  drainOutputs(): any;
 }
 
 type KeyInput = Uint8Array;

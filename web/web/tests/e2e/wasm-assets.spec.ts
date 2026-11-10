@@ -478,7 +478,7 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     const opening = session.process({ type: "transport-open" });
     const connected = session.process({ type: "transport-connected" });
     const ready = session.process({ type: "snapshot" });
-    const drained = session.drainOutputs();
+    const drained = session.process({ type: "drain-outputs" });
     const batch = session.processBatch([
       { type: "transport-open" },
       { type: "transport-connected" },
