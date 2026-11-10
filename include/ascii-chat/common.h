@@ -133,7 +133,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 
 /* Include platform system header for platform_print_backtrace */
-#include "platform/system.h" // IWYU pragma: keep
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
