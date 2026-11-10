@@ -408,8 +408,8 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   options_snapshot_t initial_settings;
   if (options_read_snapshot(&initial_settings) != ASCIICHAT_OK)
     return client_startup_peer_error(connection, ERROR_CONFIG);
-  asciichat_error_t settings_result = acip_settings_send(
-      server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
+  asciichat_error_t settings_result =
+      acip_settings_send(server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
   if (settings_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send initial rendering settings");
     return client_startup_peer_error(connection, settings_result);
