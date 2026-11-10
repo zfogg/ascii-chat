@@ -733,6 +733,10 @@ runs:
           # Keep in sync with vcpkg.json builtin-baseline
           git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 checkout 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
+          # Materialize all blobs now so CMake cannot trigger a delayed
+          # promisor fetch while resolving manifest port versions.
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --no-filter origin
+          if ($LASTEXITCODE -ne 0) { throw "Could not materialize the vcpkg checkout" }
           Pop-Location
         }
 
