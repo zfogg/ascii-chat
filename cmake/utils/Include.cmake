@@ -65,6 +65,12 @@ function(configure_include_directories)
             # musl target must not inherit that path: clang would then select
             # glibc headers before the target's musl headers.
             foreach(DEP IN LISTS ASCIICHAT_CORE_DEPS)
+                set(_dep_include_var "${DEP}_INCLUDE_DIRS")
+                if(DEFINED ${_dep_include_var} AND NOT "${${_dep_include_var}}" STREQUAL "")
+                    set(_dep_includes ${${_dep_include_var}})
+                    list(FILTER _dep_includes EXCLUDE REGEX "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                    set(${_dep_include_var} "${_dep_includes}" PARENT_SCOPE)
+                endif()
                 if(TARGET PkgConfig::${DEP})
                     get_target_property(_pkg_includes PkgConfig::${DEP} INTERFACE_INCLUDE_DIRECTORIES)
                     if(_pkg_includes)
