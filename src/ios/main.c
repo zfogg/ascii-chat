@@ -134,6 +134,10 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char client[] = "client";
   static char splash[] = "--splash-screen=false";
   static char color[] = "--color-mode=truecolor";
+  /* The iOS render bridge is a truecolor display even though it is not a
+   * POSIX TTY. Keep the shared client capability negotiation from treating
+   * the native surface as monochrome. */
+  static char color_enabled[] = "--color=true";
   // Zero lets a real camera keep its negotiated delivery rate. Synthetic
   // sources select the 60 FPS default in the shared capture pipeline.
   static char fps[] = "--fps=0";
@@ -161,6 +165,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
    * their negotiated remote media instead. */
   char *argv[] = {program, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
   int argc = 1;
+  /* --color is a binary-level option and must precede the mode token. */
+  argv[argc++] = color_enabled;
   /* Discovery is the binary's default session-string mode. Its positional
    * session must precede options, while client and mirror retain their mode
    * token and accept positional values after the shared options. */
