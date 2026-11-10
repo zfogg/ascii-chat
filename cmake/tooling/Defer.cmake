@@ -237,6 +237,7 @@ function(ascii_defer_finish_batches)
             add_custom_command(OUTPUT ${_outputs} ${_stamps} ${_overlays}
                 COMMAND ${CMAKE_COMMAND} -E env
                     "ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
+                    "DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
                     "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
                     --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}" --dependency-stamps --incremental
                     ${_extra_arguments}

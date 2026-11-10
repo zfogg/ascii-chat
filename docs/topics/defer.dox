@@ -94,6 +94,10 @@
  * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
  * cannot be found automatically. A cross build builds a separate host tool;
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
+ * It can also point to a `defer-tool` release from
+ * https://github.com/zfogg/defer; the marker header supports both that tool
+ * and the in-tree implementation. Use a binary for the build host, including
+ * when cross-compiling.
  * The native tool transforms batch files concurrently using available CPU
  * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
  * During incremental native builds, the batch reuses transformations whose

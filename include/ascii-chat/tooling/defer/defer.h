@@ -49,19 +49,25 @@ template <typename F> guard<F> make_guard(F action) {
   auto ASCII_DEFER_JOIN(__ascii_defer_guard_, __COUNTER__) = ::ascii_defer_detail::make_guard([&]() { __VA_ARGS__; })
 #define defer_named(name, ...) auto name = ::ascii_defer_detail::make_guard([&]() { __VA_ARGS__; })
 #define defer_cancel(name) (name).cancel()
-#elif defined(ASCIICHAT_DEFER_PARSING) && !defined(__cplusplus)
+#elif (defined(ASCIICHAT_DEFER_PARSING) || defined(DEFER_PARSING)) && !defined(__cplusplus)
+#if defined(DEFER_PARSING)
+void __defer_marker(void);
+#define ASCII_DEFER_MARKER __defer_marker
+#else
 void __ascii_defer_marker(void);
+#define ASCII_DEFER_MARKER __ascii_defer_marker
+#endif
 #define defer(...)                                                                                                     \
   do {                                                                                                                 \
-    __ascii_defer_marker();                                                                                            \
+    ASCII_DEFER_MARKER();                                                                                              \
   } while (0)
 #define defer_named(name, ...)                                                                                         \
   do {                                                                                                                 \
-    __ascii_defer_marker();                                                                                            \
+    ASCII_DEFER_MARKER();                                                                                              \
   } while (0)
 #define defer_cancel(name)                                                                                             \
   do {                                                                                                                 \
-    __ascii_defer_marker();                                                                                            \
+    ASCII_DEFER_MARKER();                                                                                              \
   } while (0)
 #elif defined(__OBJC__)
 #ifdef __cplusplus
