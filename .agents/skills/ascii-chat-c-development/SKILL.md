@@ -32,6 +32,13 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 - Include `<ascii-chat/tooling/defer/defer.h>` where defer is used. CMake
   transforms C and Objective-C sources and supported header function bodies before compilation; generated files under
   `build/defer_transformed/` are build artifacts and must not be edited.
+- The standalone [defer tool](https://github.com/zfogg/defer) is maintained
+  separately. The current CMake integration builds the in-tree host tool by
+  default; `ASCIICHAT_DEFER_NATIVE_BINARY` selects an existing host executable.
+  Use a release containing the target-triple and musl header fixes when testing
+  cross-compilation. For tool behavior and diagnostics, consult the standalone
+  [documentation](https://zfogg.github.io/defer/) and this repository's defer
+  topic; do not edit generated transformed sources.
 - C header support uses per-translation-unit overlays. CMake automatically
   detects defer in project headers; register external header roots with
   `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` or set `ASCIICHAT_DEFER_HEADER_OVERLAYS=ON`.
