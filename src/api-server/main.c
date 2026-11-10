@@ -98,24 +98,53 @@ static void api_write_result(http_response_t *response, const char *format, cons
     }
     (void)http_response_write(response, "--ascii-chat-frame--\r\n", 22);
   } else if (!strcmp(format, "json")) {
-    size_t cap = result->ascii_length * 6 + result->frame_count * 64 + 64;
-    char *json = SAFE_MALLOC(cap, char *);
-    size_t out = (size_t)safe_snprintf(json, cap, "{\"frames\":[");
+    size_t cap = 64;
     for (size_t frame_index = 0; frame_index < result->frame_count; ++frame_index) {
       const http_render_frame_t *frame = &result->frames[frame_index];
-      if (frame_index) out += (size_t)safe_snprintf(json + out, cap - out, ",");
-      out += (size_t)safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"",
-                                   (unsigned long long)frame->timestamp_ms);
+      // Every byte may expand to a six-byte JSON escape (for example, "\u001f").
+      if (cap > SIZE_MAX - 96 || frame->text_length > (SIZE_MAX - cap - 96) / 6) {
+        (void)http_response_set_status(response, 500);
+        return;
+      }
+      cap += frame->text_length * 6 + 96;
+    }
+    char *json = SAFE_MALLOC(cap, char *);
+    int written = safe_snprintf(json, cap, "{\"frames\":[");
+    if (written < 0) {
+      SAFE_FREE(json);
+      (void)http_response_set_status(response, 500);
+      return;
+    }
+    size_t out = (size_t)written;
+    for (size_t frame_index = 0; frame_index < result->frame_count; ++frame_index) {
+      const http_render_frame_t *frame = &result->frames[frame_index];
+      if (frame_index) {
+        written = safe_snprintf(json + out, cap - out, ",");
+        if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+        out += (size_t)written;
+      }
+      written = safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"",
+                              (unsigned long long)frame->timestamp_ms);
+      if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+      out += (size_t)written;
       for (size_t i = 0; i < frame->text_length && out + 8 < cap; ++i) {
         unsigned char c = (unsigned char)frame->text[i];
         if (c == '"' || c == '\\') { json[out++] = '\\'; json[out++] = (char)c; }
         else if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
-        else if (c < 0x20) out += (size_t)safe_snprintf(json + out, cap - out, "\\u%04x", c);
+        else if (c < 0x20) {
+          written = safe_snprintf(json + out, cap - out, "\\u%04x", c);
+          if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+          out += (size_t)written;
+        }
         else json[out++] = (char)c;
       }
-      out += (size_t)safe_snprintf(json + out, cap - out, "\"}");
+      written = safe_snprintf(json + out, cap - out, "\"}");
+      if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+      out += (size_t)written;
     }
-    out += (size_t)safe_snprintf(json + out, cap - out, "]}");
+    written = safe_snprintf(json + out, cap - out, "]}");
+    if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+    out += (size_t)written;
     (void)http_response_set_header(response, "Content-Type", "application/json");
     (void)http_response_write(response, json, out);
     SAFE_FREE(json);
