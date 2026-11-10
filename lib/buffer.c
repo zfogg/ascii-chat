@@ -36,6 +36,9 @@ typedef struct buffer_header {
   size_t length;
   size_t charge;
   size_t alignment;
+  // This counter is touched for every video frame. Keep it as a raw C11
+  // atomic: the debug-tracked atomic_t wrapper records timestamps on every
+  // operation and can reduce live rendering to single-digit FPS.
   _Atomic(size_t) references;
   uint64_t returned_at;
   unsigned bin;
