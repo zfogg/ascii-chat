@@ -117,7 +117,15 @@ private:
   }
   static emscripten::val result(int code) {
     emscripten::val output = emscripten::val::object();
+    output.set("ok", code == 0);
     output.set("code", code);
+    if (code) {
+      asciichat_error_context_t context{};
+      const bool has_context = errno_has(&context);
+      output.set("message", has_context && context.context_message[0]
+                                ? std::string(context.context_message)
+                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+    }
     return output;
   }
   std::vector<uint8_t> session_;
@@ -240,6 +248,13 @@ public:
     emscripten::val output = emscripten::val::object();
     output.set("ok", code == 0);
     output.set("code", code);
+    if (code) {
+      asciichat_error_context_t context{};
+      const bool has_context = errno_has(&context);
+      output.set("message", has_context && context.context_message[0]
+                                ? std::string(context.context_message)
+                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+    }
     return output;
   }
 
