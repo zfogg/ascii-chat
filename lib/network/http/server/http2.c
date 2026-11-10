@@ -1,6 +1,5 @@
 #include "http2.h"
 
-#if __has_include(<nghttp2/nghttp2.h>)
 
 #include <ascii-chat/common.h>
 #include <nghttp2/nghttp2.h>
@@ -317,4 +316,3 @@ asciichat_error_t http2_connection_submit_response(http2_connection_t *connectio
   }
   return ASCIICHAT_OK;
 }
-#endif

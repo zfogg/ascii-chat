@@ -1,5 +1,5 @@
 #include "http3.h"
-#include "../http/server_internal.h"
+#include "../http/server/server_internal.h"
 
 #include <ascii-chat/common.h>
 #include <string.h>
@@ -18,7 +18,7 @@ typedef struct http3_stream_state http3_stream_state_t;
  * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
  * storage before freeing the record.
  */
-struct acip_http3_server {
+struct quic_http3_server {
   nghttp3_conn *http;
   int64_t control, request;
   char origin[H3_MAX_ORIGIN], path[H3_MAX_PATH];
@@ -44,7 +44,7 @@ struct acip_http3_server {
 };
 
 struct http3_stream_state {
-  acip_http3_server_t *owner;
+  quic_http3_server_t *owner;
   int64_t stream_id;
   bool headers_done, responded, malformed;
   bool method, scheme, authority, protocol, request_path, request_origin;
@@ -76,7 +76,7 @@ static uint8_t *put_varint(uint8_t *p, uint64_t value) {
   return p + length;
 }
 
-static void make_settings(acip_http3_server_t *server) {
+static void make_settings(quic_http3_server_t *server) {
   uint8_t body[H3_SETTINGS_BUFFER];
   uint8_t *p = body;
   /* QPACK is static-only. Advertise HTTP datagrams, extended CONNECT, and
@@ -111,7 +111,7 @@ static nghttp3_ssize read_response_body(nghttp3_conn *conn, int64_t stream_id, n
                                         uint32_t *flags, void *context, void *stream_context) {
   (void)conn;
   (void)stream_id;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   size_t remaining = H3_FIELD(server, state, response_length) - H3_FIELD(server, state, response_offset);
   if (!count || !remaining)
@@ -127,7 +127,7 @@ static nghttp3_ssize read_response_body(nghttp3_conn *conn, int64_t stream_id, n
 
 static asciichat_error_t http3_submit_response(void *context, unsigned status, const http_header_t *headers,
                                                size_t header_count, const void *body, size_t body_length) {
-  acip_http3_server_t *server = ((http3_stream_state_t *)context)->owner;
+  quic_http3_server_t *server = ((http3_stream_state_t *)context)->owner;
   http3_stream_state_t *state = context;
   if (!server || (state ? state->stream_id < 0 : server->request < 0) || status < 100 || status > 599 ||
       header_count > H3_MAX_HEADERS || body_length > http_server_max_response_body(server->http_server) ||
@@ -164,7 +164,7 @@ static asciichat_error_t http3_submit_response(void *context, unsigned status, c
   return ASCIICHAT_OK;
 }
 
-static int maybe_respond(acip_http3_server_t *server) {
+static int maybe_respond(quic_http3_server_t *server) {
   if (!server->headers_done || !server->settings_received || server->responded)
     return 0;
   bool webtransport_connect = server->http_server && strcmp(server->method_text, "CONNECT") == 0 && server->protocol;
@@ -188,7 +188,7 @@ static int maybe_respond(acip_http3_server_t *server) {
   return 0;
 }
 
-static int dispatch_generic_request(acip_http3_server_t *server, http3_stream_state_t *state) {
+static int dispatch_generic_request(quic_http3_server_t *server, http3_stream_state_t *state) {
   if (!state || !server->http_server || !state->headers_done || !server->settings_received ||
       !state->request_end_stream || state->responded)
     return 0;
@@ -204,7 +204,7 @@ static int receive_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *da
                         void *stream_context) {
   (void)conn;
   (void)stream_context;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   if (!server->http_server)
     return 0;
@@ -238,7 +238,7 @@ static int receive_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *da
 static int end_stream(nghttp3_conn *conn, int64_t stream_id, void *context, void *stream_context) {
   (void)conn;
   (void)stream_context;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   if (!server->http_server)
     return 0;
@@ -251,7 +251,7 @@ static int end_stream(nghttp3_conn *conn, int64_t stream_id, void *context, void
 static int begin_headers(nghttp3_conn *conn, int64_t stream_id, void *context, void *stream_context) {
   (void)conn;
   (void)stream_context;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   if (stream_id < 0 || (stream_id & 3) != 0)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   if (!server->http_server)
@@ -281,7 +281,7 @@ static int receive_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, 
   (void)token;
   (void)flags;
   (void)stream_context;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   if (server->http_server && !state)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
@@ -361,7 +361,7 @@ static int receive_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, 
 static int end_headers(nghttp3_conn *conn, int64_t stream_id, int fin, void *context, void *stream_context) {
   (void)conn;
   (void)stream_context;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   if (stream_id != (state ? state->stream_id : server->request) || H3_FIELD(server, state, headers_done))
     return NGHTTP3_ERR_CALLBACK_FAILURE;
@@ -374,7 +374,7 @@ static int end_headers(nghttp3_conn *conn, int64_t stream_id, int fin, void *con
 
 static int receive_settings(nghttp3_conn *conn, const nghttp3_proto_settings *settings, void *context) {
   (void)conn;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   if (!server->http_server && !settings->h3_datagram)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   server->settings_received = true;
@@ -387,7 +387,7 @@ static int close_stream(nghttp3_conn *conn, int64_t stream_id, uint64_t app_erro
                         void *stream_context) {
   (void)conn;
   (void)app_error_code;
-  acip_http3_server_t *server = context;
+  quic_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
   if (!server || !state || state->stream_id != stream_id)
     return 0;
@@ -403,20 +403,20 @@ static int close_stream(nghttp3_conn *conn, int64_t stream_id, uint64_t app_erro
   return 0;
 }
 
-asciichat_error_t acip_http3_server_create(const char *origin, const char *path, int64_t control, int64_t encoder,
+asciichat_error_t quic_http3_server_create(const char *origin, const char *path, int64_t control, int64_t encoder,
                                            int64_t decoder, http_server_t *http_server, const char *peer_address,
-                                           acip_http3_server_t **out) {
+                                           quic_http3_server_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/3 server output");
   *out = NULL;
   if ((!http_server && (!origin || !path)) ||
-      (origin && strnlen(origin, sizeof(((acip_http3_server_t *)0)->origin)) >= H3_MAX_ORIGIN) ||
-      (path && strnlen(path, sizeof(((acip_http3_server_t *)0)->path)) >= H3_MAX_PATH) ||
+      (origin && strnlen(origin, sizeof(((quic_http3_server_t *)0)->origin)) >= H3_MAX_ORIGIN) ||
+      (path && strnlen(path, sizeof(((quic_http3_server_t *)0)->path)) >= H3_MAX_PATH) ||
       (!http_server && (strncmp(origin, "https://", sizeof("https://") - 1) || path[0] != '/')) || control < 0 ||
       encoder < 0 || decoder < 0 || control == encoder || control == decoder || encoder == decoder ||
       (control & 3) != 3 || (encoder & 3) != 3 || (decoder & 3) != 3)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 WebTransport configuration");
-  acip_http3_server_t *server = SAFE_CALLOC(1, sizeof(*server), acip_http3_server_t *);
+  quic_http3_server_t *server = SAFE_CALLOC(1, sizeof(*server), quic_http3_server_t *);
   if (!server)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/3 server");
   if (origin)
@@ -449,7 +449,7 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
   if (!result)
     result = nghttp3_conn_bind_qpack_streams(server->http, encoder, decoder);
   if (result) {
-    acip_http3_server_destroy(&server);
+    quic_http3_server_destroy(&server);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot initialize HTTP/3: %s", nghttp3_strerror(result));
   }
   nghttp3_conn_set_max_client_streams_bidi(server->http, 128);
@@ -457,7 +457,7 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_http3_server_read(acip_http3_server_t *server, int64_t stream_id, const uint8_t *data,
+asciichat_error_t quic_http3_server_read(quic_http3_server_t *server, int64_t stream_id, const uint8_t *data,
                                          size_t length, bool fin, uint64_t now_ns, size_t *consumed) {
   if (!server || !consumed || (!data && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 input");
@@ -469,7 +469,7 @@ asciichat_error_t acip_http3_server_read(acip_http3_server_t *server, int64_t st
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_http3_server_write(acip_http3_server_t *server, int64_t *stream_id, bool *fin,
+asciichat_error_t quic_http3_server_write(quic_http3_server_t *server, int64_t *stream_id, bool *fin,
                                           nghttp3_vec *vectors, size_t capacity, size_t *count) {
   if (!server || !stream_id || !fin || !vectors || !capacity || !count)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 output");
@@ -517,7 +517,7 @@ asciichat_error_t acip_http3_server_write(acip_http3_server_t *server, int64_t *
   }
 }
 
-asciichat_error_t acip_http3_server_wrote(acip_http3_server_t *server, int64_t stream_id, size_t length) {
+asciichat_error_t quic_http3_server_wrote(quic_http3_server_t *server, int64_t stream_id, size_t length) {
   if (!server || !server->pending || stream_id != server->pending_stream || length > server->pending_bytes)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 submitted output");
   if (stream_id == server->control) {
@@ -532,7 +532,7 @@ asciichat_error_t acip_http3_server_wrote(acip_http3_server_t *server, int64_t s
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_http3_server_ack(acip_http3_server_t *server, int64_t stream_id, uint64_t length) {
+asciichat_error_t quic_http3_server_ack(quic_http3_server_t *server, int64_t stream_id, uint64_t length) {
   if (!server)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 server");
   if (stream_id == server->control) {
@@ -546,7 +546,7 @@ asciichat_error_t acip_http3_server_ack(acip_http3_server_t *server, int64_t str
                 : ASCIICHAT_OK;
 }
 
-bool acip_http3_server_accepted(const acip_http3_server_t *server, int64_t *session_id) {
+bool quic_http3_server_accepted(const quic_http3_server_t *server, int64_t *session_id) {
   if (!server || !server->accepted)
     return false;
   if (session_id)
@@ -554,7 +554,7 @@ bool acip_http3_server_accepted(const acip_http3_server_t *server, int64_t *sess
   return true;
 }
 
-void acip_http3_server_destroy(acip_http3_server_t **server) {
+void quic_http3_server_destroy(quic_http3_server_t **server) {
   if (!server || !*server)
     return;
   http_server_invalidate_http3_context((*server)->http_server, *server);

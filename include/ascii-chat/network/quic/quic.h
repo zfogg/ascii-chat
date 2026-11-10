@@ -7,7 +7,7 @@
  * connections are consumed by the configured http_server and are never
  * exposed as ACIP transports. A listener negotiates the selected ALPN on one
  * UDP socket and requires the platform socket subsystem to be initialized. */
-typedef struct acip_quic_endpoint acip_quic_endpoint_t;
+typedef struct quic_endpoint quic_endpoint_t;
 typedef struct http_server http_server_t;
 
 typedef struct {
@@ -24,17 +24,17 @@ typedef struct {
   bool enable_http3;            /**< Enable generic HTTP/3 request streams on this endpoint. */
   /** Optional shared HTTP handler for generic HTTP/3 requests on this endpoint. */
   http_server_t *http_server;
-} acip_quic_config_t;
+} quic_config_t;
 
 /** Attach the shared HTTP handler before accepting new HTTP/3 streams. */
-asciichat_error_t quic_endpoint_set_http_server(acip_quic_endpoint_t *endpoint, http_server_t *server);
+asciichat_error_t quic_endpoint_set_http_server(quic_endpoint_t *endpoint, http_server_t *server);
 
 /** Bind a concrete IPv4 or IPv6 local address and start the endpoint worker.
  * Configuration strings are consumed during this call. The caller retains
  * address storage. A listener requires a matching certificate and key. */
 asciichat_error_t quic_endpoint_open(const struct sockaddr *bind_address, socklen_t bind_length, bool listener,
-                                     const acip_quic_config_t *config, acip_quic_endpoint_t **out);
-asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct sockaddr_storage *address,
+                                     const quic_config_t *config, quic_endpoint_t **out);
+asciichat_error_t quic_endpoint_address(quic_endpoint_t *endpoint, struct sockaddr_storage *address,
                                         socklen_t *length);
 
 /** Start a client connection to a resolved address. server_name is used for
@@ -42,11 +42,11 @@ asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct s
  * The returned transport is owned by the caller and is initially
  * negotiating TLS. Check capabilities for TLS readiness before ACIP handshake.
  * No application media is enabled until ACIP authentication and readiness. */
-asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length,
+asciichat_error_t quic_connect(quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length,
                                const char *server_name, acip_transport_t **out);
 /** Nonblocking accept. Returns ERROR_NETWORK_TIMEOUT when none is available.
  * A returned transport is owned and may still be negotiating TLS. */
-asciichat_error_t quic_accept(acip_quic_endpoint_t *endpoint, acip_transport_t **out);
+asciichat_error_t quic_accept(quic_endpoint_t *endpoint, acip_transport_t **out);
 /** Copy the current peer address. It may change after a validated migration. */
 asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
                                               socklen_t *length);
@@ -62,13 +62,13 @@ asciichat_error_t quic_transport_allow_media(acip_transport_t *transport);
 
 /** Stop all users, then release through the endpoint, or destroy the transport
  * directly using acip_transport_destroy. The endpoint must outlive it. */
-asciichat_error_t quic_release(acip_quic_endpoint_t *endpoint, acip_transport_t **transport);
+asciichat_error_t quic_release(quic_endpoint_t *endpoint, acip_transport_t **transport);
 /** Stop and join the worker and interrupt remaining transports. Unclaimed
  * accepts are discarded. Claimed transports must still be destroyed. */
-asciichat_error_t quic_endpoint_stop(acip_quic_endpoint_t *endpoint);
+asciichat_error_t quic_endpoint_stop(quic_endpoint_t *endpoint);
 /** Stop must succeed and all claimed transports must be destroyed first.
  * Lifecycle calls and destruction must not run concurrently with other calls. */
-asciichat_error_t quic_endpoint_destroy(acip_quic_endpoint_t **endpoint);
+asciichat_error_t quic_endpoint_destroy(quic_endpoint_t **endpoint);
 
 /** Move a single-connection client endpoint to a new concrete local address.
  * Port zero requests a new ephemeral port. TLS, ACIP keys, and stream state
@@ -78,5 +78,5 @@ asciichat_error_t quic_endpoint_destroy(acip_quic_endpoint_t **endpoint);
  * and restarts the worker to avoid closing a socket under its readiness wait.
  * A rejected migration retains the original socket and live connection.
  * The new address must have the same family as the existing remote address. */
-asciichat_error_t quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const struct sockaddr *local_address,
+asciichat_error_t quic_endpoint_migrate(quic_endpoint_t *endpoint, const struct sockaddr *local_address,
                                         socklen_t length);

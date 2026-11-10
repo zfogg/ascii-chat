@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/network/http/server.h>
-#include "../../../lib/network/http/server_internal.h"
+#include <ascii-chat/network/http/server/server.h>
+#include "../../../lib/network/http/server/server_internal.h"
 #include <string.h>
 
 static bool saw_request;

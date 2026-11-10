@@ -1,5 +1,5 @@
-#include <ascii-chat/network/http/server.h>
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/http/server/server.h>
+#include <ascii-chat/network/quic/quic.h>
 #include "server_internal.h"
 #include "http2.h"
 #include <ascii-chat/common.h>
@@ -32,10 +32,10 @@ static const char *http_protocol_name(http_protocol_t protocol) {
   }
 }
 
-typedef struct http_client http_client_t;
+typedef struct http_server_client http_server_client_t;
 static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
                                           void *user_data);
-static asciichat_error_t http2_flush(http_client_t *client);
+static asciichat_error_t http2_flush(http_server_client_t *client);
 
 struct http_server {
   http_server_config_t config;
@@ -49,7 +49,7 @@ struct http_server {
   asciichat_thread_t thread;
   size_t connections;
   atomic_t inflight_requests;
-  http_client_t *clients;
+  http_server_client_t *clients;
   rate_limiter_t *rate_limiter;
   rate_limit_config_t request_rate_limit;
   mutex_t response_mutex;
@@ -66,7 +66,7 @@ struct http_request {
 };
 struct http_response {
   uv_stream_t *stream;
-  http_client_t *client;
+  http_server_client_t *client;
   int32_t http2_stream_id;
   http_protocol_t protocol;
   unsigned status;
@@ -85,14 +85,14 @@ struct http_response {
   http3_submit_response_fn http3_submit;
   void *http3_context;
 };
-struct http_client {
+struct http_server_client {
   uv_tcp_t tcp;
   http_server_t *server;
   char *buffer;
   size_t capacity;
   size_t length;
-  http_client_t *next;
-  http_client_t *previous;
+  http_server_client_t *next;
+  http_server_client_t *previous;
   http2_connection_t *http2;
   bool http2_mode;
   bool admitted;
@@ -151,7 +151,7 @@ static void http_request_release(http_server_t *server) {
 }
 
 static void client_freed(uv_handle_t *handle) {
-  http_client_t *c = handle->data;
+  http_server_client_t *c = handle->data;
   mutex_lock(&c->server->response_mutex);
   for (http_response_t *response = c->server->retained_responses; response; response = response->next_retained) {
     if (response->client == c && !response->cancelled) {
@@ -176,11 +176,11 @@ static void client_freed(uv_handle_t *handle) {
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
 }
-static void client_close(http_client_t *c) {
+static void client_close(http_server_client_t *c) {
   if (!uv_is_closing((uv_handle_t *)&c->tcp))
     uv_close((uv_handle_t *)&c->tcp, client_freed);
 }
-static void client_peer_address(http_client_t *c) {
+static void client_peer_address(http_server_client_t *c) {
   struct sockaddr_storage address;
   int length = sizeof(address);
   if (uv_tcp_getpeername(&c->tcp, (struct sockaddr *)&address, &length) != 0) {
@@ -199,7 +199,7 @@ static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
   b->base = SAFE_MALLOC(n, char *);
   b->len = (unsigned)n;
 }
-static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_length) {
+static bool decode_chunked_body(http_server_client_t *c, size_t offset, size_t *body_length) {
   size_t limit = c->server->config.max_request_body_bytes;
   if (!c->chunked_initialized) {
     c->chunked_initialized = true;
@@ -294,7 +294,7 @@ invalid:
   c->chunked_initialized = false;
   return false;
 }
-static bool parse_request(http_client_t *c, http_request_t *r) {
+static bool parse_request(http_server_client_t *c, http_request_t *r) {
   char *end = strstr(c->buffer, "\r\n\r\n");
   if (!end)
     return false;
@@ -390,7 +390,7 @@ typedef struct {
   char *bytes;
   size_t length;
   uv_stream_t *stream;
-  http_client_t *client;
+  http_server_client_t *client;
   bool close_on_done;
 } http_write_t;
 
@@ -406,7 +406,7 @@ static void write_done(uv_write_t *req, int status) {
   SAFE_FREE(req);
   (void)status;
 }
-static asciichat_error_t http2_flush(http_client_t *client) {
+static asciichat_error_t http2_flush(http_server_client_t *client) {
   const uint8_t *data = NULL;
   size_t length = 0;
   asciichat_error_t result = http2_connection_next_output(client->http2, &data, &length);
@@ -528,8 +528,16 @@ void http_response_release(http_response_t **response) {
   *response = NULL;
 }
 asciichat_error_t http_response_set_header(http_response_t *r, const char *n, const char *v) {
-  if (!r || !n || !v || r->header_count >= HTTP_HEADER_CAPACITY)
+  if (!r || !n || !v)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP response header");
+  for (size_t i = 0; i < r->header_count; ++i) {
+    if (platform_strcasecmp(r->headers[i].name, n) == 0) {
+      r->headers[i] = (http_header_t){n, v};
+      return ASCIICHAT_OK;
+    }
+  }
+  if (r->header_count >= HTTP_HEADER_CAPACITY)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP response header limit exceeded");
   r->headers[r->header_count++] = (http_header_t){n, v};
   return ASCIICHAT_OK;
 }
@@ -733,7 +741,7 @@ asciichat_error_t http_request_cancel(http_request_t *r) {
 }
 static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
                                           void *user_data) {
-  http_client_t *client = user_data;
+  http_server_client_t *client = user_data;
   uint64_t request_start = time_get_ns();
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
@@ -817,7 +825,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
  * complete HTTP/1.x or HTTP/2 requests while enforcing the receive bound.
  */
 static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
-  http_client_t *c = s->data;
+  http_server_client_t *c = s->data;
   char *base = (char *)b->base;
   if (n <= 0) {
     SAFE_FREE(base);
@@ -945,7 +953,7 @@ static void connection_cb(uv_stream_t *l, int status) {
   if (status < 0)
     return;
   http_server_t *s = l->data;
-  http_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_client_t *);
+  http_server_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_server_client_t *);
   if (!c)
     return;
   c->server = s;
@@ -989,7 +997,7 @@ static void stop_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (!uv_is_closing((uv_handle_t *)&s->listener))
     uv_close((uv_handle_t *)&s->listener, NULL);
-  for (http_client_t *c = s->clients; c; c = c->next)
+  for (http_server_client_t *c = s->clients; c; c = c->next)
     client_close(c);
   uv_close((uv_handle_t *)async, NULL);
   if (!uv_is_closing((uv_handle_t *)&s->wake_async))
@@ -1061,7 +1069,7 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (!s || s->running)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is already running");
   if (s->config.enable_http3 &&
-      quic_endpoint_set_http_server((acip_quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
+      quic_endpoint_set_http_server((quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
   bool tcp_enabled = s->config.enable_http1 || s->config.enable_http2;
   if (tcp_enabled && !s->adopted_socket) {

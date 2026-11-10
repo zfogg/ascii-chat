@@ -39,7 +39,7 @@ static void test_datagrams(void) {
   for (uint16_t i = 0; i < 4; ++i)
     CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 7, packet, sizeof(packet), 100, i, fragments[i],
                                       sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
-  acip_quic_datagram_reader_t reader = {0};
+  quic_datagram_reader_t reader = {0};
   acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
   uint8_t *output = NULL;
   size_t output_size = 0;
@@ -55,10 +55,10 @@ static void test_datagrams(void) {
   CHECK(memcmp(output, packet, sizeof(packet)) == 0 && reader.bytes == 0);
   buffer_release(output);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20, &flow, &output, &output_size) == ASCIICHAT_OK);
-  fragments[0][ACIP_QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
+  fragments[0][QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 21, &flow, &output, &output_size) ==
         ERROR_NETWORK_PROTOCOL);
-  fragments[0][ACIP_QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
+  fragments[0][QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
   CHECK(quic_datagram_read(&reader, fragments[1], sizes[1] - 1, 22, &flow, &output, &output_size) ==
         ERROR_NETWORK_PROTOCOL);
   fragments[1][26] = 1;
@@ -74,21 +74,21 @@ static void test_datagrams(void) {
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 19, &flow, &output, &output_size) ==
         ERROR_INVALID_PARAM);
   CHECK(reader.bytes > 0);
-  quic_datagram_expire(&reader, 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS);
+  quic_datagram_expire(&reader, 20 + QUIC_DATAGRAM_EXPIRY_NS);
   CHECK(reader.bytes == 0);
   for (uint64_t id = 1; id <= 4; ++id) {
     CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, id, packet, sizeof(packet), 100, 0, fragments[0],
                                       sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-    CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+    CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
                                   &output_size) == ASCIICHAT_OK);
   }
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 5, packet, sizeof(packet), 100, 0, fragments[0],
                                     sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
                                 &output_size) == ERROR_BUFFER_FULL);
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 5, packet, sizeof(packet), 100, 0, fragments[0],
                                     sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
                                 &output_size) == ASCIICHAT_OK);
   quic_datagram_reset(&reader);
   CHECK(reader.bytes == 0);
@@ -128,7 +128,7 @@ int main(void) {
     memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE, packet, sizeof(packet));
     memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE + sizeof(packet), packet, sizeof(packet));
     for (size_t split = 1; split <= sizeof(wire); ++split) {
-      acip_quic_stream_reader_t reader = {0};
+      quic_stream_reader_t reader = {0};
       capture_t state = {.expected = (acip_traffic_class_t)traffic, .packet = packet, .size = sizeof(packet)};
       for (size_t offset = 0; offset < sizeof(wire);) {
         size_t count = sizeof(wire) - offset < split ? sizeof(wire) - offset : split;
@@ -149,7 +149,7 @@ int main(void) {
   CHECK(quic_stream_preamble((acip_traffic_class_t)99, preamble) == ERROR_INVALID_PARAM);
   capture_t state = {.expected = ACIP_TRAFFIC_VISUAL, .packet = packet, .size = sizeof(packet)};
   {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     packet_header_t empty = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
     uint8_t control_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
     CHECK(quic_stream_preamble(ACIP_TRAFFIC_CONTROL, control_preamble) == ASCIICHAT_OK);
@@ -162,7 +162,7 @@ int main(void) {
     quic_stream_reset(&reader);
   }
   for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     uint8_t wrong_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
     CHECK(quic_stream_preamble((acip_traffic_class_t)traffic, wrong_preamble) == ASCIICHAT_OK);
     header.type = HOST_TO_NET_U16(traffic == ACIP_TRAFFIC_VISUAL ? PACKET_TYPE_PING : PACKET_TYPE_IMAGE_FRAME);
@@ -175,7 +175,7 @@ int main(void) {
   header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
   memcpy(packet, &header, sizeof(header));
   for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     uint8_t encrypted_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
     capture_t encrypted_state = {.expected = (acip_traffic_class_t)traffic, .packet = packet, .size = sizeof(packet)};
     CHECK(quic_stream_preamble((acip_traffic_class_t)traffic, encrypted_preamble) == ASCIICHAT_OK);
@@ -188,7 +188,7 @@ int main(void) {
   header.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME);
   memcpy(packet, &header, sizeof(header));
   for (size_t i = 0; i < sizeof(preamble); ++i) {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     uint8_t invalid[sizeof(preamble)];
     memcpy(invalid, preamble, sizeof(invalid));
     invalid[i] = i == 5 ? 99 : (uint8_t)(invalid[i] ^ 0xff);
@@ -198,27 +198,27 @@ int main(void) {
   }
 
   for (size_t length = 0; length < sizeof(preamble); ++length) {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     CHECK(quic_stream_read(&reader, preamble, length, capture, &state) == ASCIICHAT_OK);
     CHECK(quic_stream_finish(&reader) == ERROR_NETWORK_PROTOCOL);
     quic_stream_reset(&reader);
   }
   for (size_t length = 1; length < sizeof(packet); ++length) {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     CHECK(quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, packet, length, capture, &state) == ASCIICHAT_OK);
     CHECK(quic_stream_finish(&reader) == ERROR_NETWORK_PROTOCOL);
     quic_stream_reset(&reader);
   }
   {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     reader.packets.max_payload = sizeof(payload) - 1;
     CHECK(quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, packet, sizeof(packet), capture, &state) == ERROR_NETWORK_PROTOCOL);
     quic_stream_reset(&reader);
   }
   {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     uint8_t corrupt[sizeof(packet)];
     memcpy(corrupt, packet, sizeof(corrupt));
     corrupt[sizeof(corrupt) - 1] ^= 1;
@@ -227,7 +227,7 @@ int main(void) {
     quic_stream_reset(&reader);
   }
   {
-    acip_quic_stream_reader_t reader = {0};
+    quic_stream_reader_t reader = {0};
     state.reject = true;
     CHECK(quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, packet, sizeof(packet), capture, &state) == ERROR_BUFFER_FULL);

@@ -2,8 +2,8 @@
 # Note: Source file properties (C++ language, mdns warnings) set in root CMakeLists.txt
 
 set(NETWORK_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/http/server.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/http/http2.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http2.c
     # Core network files
     ${CMAKE_CURRENT_SOURCE_DIR}/network.c
     ${CMAKE_CURRENT_SOURCE_DIR}/frame_validator.c
@@ -14,7 +14,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/decoder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/client/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/tailscale.c
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c

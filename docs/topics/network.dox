@@ -21,12 +21,12 @@
  * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
  * - `include/ascii-chat/network/negotiation.h` — connection establishment
  * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
- * - `include/ascii-chat/network/http/server.h` — backend-neutral HTTP server contract
+ * - `include/ascii-chat/network/http/server/server.h` — backend-neutral HTTP server contract
 
  * @section network_http_layer Shared HTTP services
  *
  * HTTP-only services use `http_server_t` and the request/response types in
- * `network/http/server.h`.  The native listener is a bounded libuv service
+ * `network/http/server/server.h`.  The native listener is a bounded libuv service
  * accepting HTTP/1.0, HTTP/1.1, and prior-knowledge HTTP/2 over TCP.  It owns sockets
  * and event-loop callbacks, while handlers own routing and application
  * behavior.  The public contract intentionally does not expose libuv,

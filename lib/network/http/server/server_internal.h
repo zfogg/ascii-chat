@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/network/http/server.h>
+#include <ascii-chat/network/http/server/server.h>
 
 typedef asciichat_error_t (*http3_submit_response_fn)(void *context, unsigned status, const http_header_t *headers,
                                                       size_t header_count, const void *body, size_t body_length);

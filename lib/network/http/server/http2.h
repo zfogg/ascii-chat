@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/network/http/server.h>
+#include <ascii-chat/network/http/server/server.h>
 #include <stddef.h>
 #include <stdint.h>
 

@@ -9,7 +9,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/string.h>
-#include <ascii-chat/network/http/server.h>
+#include <ascii-chat/network/http/server/server.h>
 #include <yyjson.h>
 #include <string.h>
 

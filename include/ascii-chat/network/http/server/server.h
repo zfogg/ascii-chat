@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file network/http/server.h
+ * @file network/http/server/server.h
  * @brief Backend-neutral HTTP request/response contract.
  *
  * The public API deliberately contains no libuv, TLS, HTTP/2, HTTP/3, or

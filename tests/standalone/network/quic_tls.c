@@ -1,7 +1,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/acip/backpressure.h>
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/audio/limits.h>
@@ -95,7 +95,7 @@ static void write_key(const char *path, EVP_PKEY *key) {
 
 /* This uses TLS over an in-memory BIO to test certificate identity and ALPN.
  * The ngtcp2 callback configuration is checked separately below. */
-static bool handshake(acip_quic_tls_t *server, acip_quic_tls_t *client, const char *server_name, bool omit_alpn,
+static bool handshake(quic_tls_t *server, quic_tls_t *client, const char *server_name, bool omit_alpn,
                       bool omit_identity, bool change_identity_after_handshake) {
   SSL *client_ssl = SSL_new(client->ssl_ctx);
   SSL *server_ssl = SSL_new(server->ssl_ctx);
@@ -202,11 +202,11 @@ static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *n
   return false;
 }
 
-static void drive_barrier_step(acip_quic_connection_t *client, acip_quic_connection_t *server,
+static void drive_barrier_step(quic_connection_t *client, quic_connection_t *server,
                                const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t now,
                                bool *drop_client_control) {
-  acip_quic_connection_t *senders[] = {client, server};
-  acip_quic_connection_t *receivers[] = {server, client};
+  quic_connection_t *senders[] = {client, server};
+  quic_connection_t *receivers[] = {server, client};
   const ngtcp2_path *paths[] = {server_path, client_path};
   for (size_t i = 0; i < 2; ++i) {
     uint8_t packet[1452];
@@ -257,7 +257,7 @@ static void set_recovery_keyframe(uint8_t *packet, size_t length, bool keyframe)
   memcpy(packet, &header, sizeof(header));
 }
 
-static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connection_t *server,
+static void quic_media_exchange(quic_connection_t *client, quic_connection_t *server,
                                 const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
                                 bool drop_control, crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
   uint8_t *packets[6];
@@ -296,7 +296,7 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   buffer_release(reserved);
   CHECK(quic_connection_allow_media(client) == ASCIICHAT_OK);
   CHECK(quic_connection_allow_media(server) == ASCIICHAT_OK);
-  acip_quic_connection_t *peers[] = {client, server};
+  quic_connection_t *peers[] = {client, server};
   for (size_t peer = 0; peer < 2; ++peer) {
     for (size_t visual = 2; visual < 6; ++visual)
       CHECK(quic_connection_submit(peers[peer], ACIP_TRAFFIC_VISUAL, packets[visual], lengths[visual]) == ASCIICHAT_OK);
@@ -521,7 +521,7 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
     buffer_release(packets[i]);
 }
 
-static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, const char *server_name,
+static bool quic_handshake(quic_tls_t *server_tls, quic_tls_t *client_tls, const char *server_name,
                            bool drop_first_server_packet, bool drop_control, bool *dropped,
                            asciichat_error_t *failure) {
   struct sockaddr_in client_address = {
@@ -532,7 +532,7 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
                              .remote = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)}};
   ngtcp2_path server_path = {.local = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)},
                              .remote = {.addr = (struct sockaddr *)&client_address, .addrlen = sizeof(client_address)}};
-  acip_quic_connection_t *client = NULL, *server = NULL;
+  quic_connection_t *client = NULL, *server = NULL;
   server_tls->enable_datagrams = client_tls->enable_datagrams = true;
   *failure = ASCIICHAT_OK;
   *dropped = false;
@@ -625,7 +625,7 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
 }
 
 typedef struct {
-  acip_quic_connection_t *peers[2];
+  quic_connection_t *peers[2];
   unsigned accepted;
   unsigned received;
   const uint8_t *packet;
@@ -641,7 +641,7 @@ static asciichat_error_t udp_capture(acip_traffic_class_t traffic_class, const v
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t udp_accept(acip_quic_connection_t *connection, void *context) {
+static asciichat_error_t udp_accept(quic_connection_t *connection, void *context) {
   udp_test_state_t *state = context;
   if (state->accepted >= 2)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected UDP test connection");
@@ -650,19 +650,19 @@ static asciichat_error_t udp_accept(acip_quic_connection_t *connection, void *co
 }
 
 typedef struct {
-  acip_quic_connection_t *peer;
+  quic_connection_t *peer;
   media_capture_t capture;
 } udp_secure_test_state_t;
 
 typedef struct {
   mutex_t *lane;
-  acip_quic_connection_t *connection;
+  quic_connection_t *connection;
   acip_transport_t *transport;
   bool reject_once;
   unsigned rejected;
 } quic_worker_accept_test_t;
 
-static asciichat_error_t quic_worker_accept(acip_quic_connection_t *connection, void *context) {
+static asciichat_error_t quic_worker_accept(quic_connection_t *connection, void *context) {
   quic_worker_accept_test_t *state = context;
   if (state->reject_once) {
     state->reject_once = false;
@@ -677,14 +677,14 @@ static asciichat_error_t quic_worker_accept(acip_quic_connection_t *connection, 
   return result;
 }
 
-static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+static void quic_worker_accept_test(quic_tls_t *server_tls, quic_tls_t *client_tls) {
   CHECK(socket_init() == ASCIICHAT_OK);
   mutex_t client_lane, server_lane;
   CHECK(mutex_init(&client_lane, "quic_accept_client") == 0);
   CHECK(mutex_init(&server_lane, "quic_accept_server") == 0);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_worker_accept_test_t accepted = {.lane = &server_lane, .reject_once = true};
-  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  quic_udp_endpoint_t *server = NULL, *client = NULL;
   CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, quic_worker_accept,
                                  &accepted, &server) == ASCIICHAT_OK);
   CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
@@ -692,12 +692,12 @@ static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
-  acip_quic_connection_t *connection = NULL;
+  quic_connection_t *connection = NULL;
   CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, time_get_ns(),
                          &connection) == ASCIICHAT_OK);
   acip_transport_t *client_transport = NULL;
   CHECK(quic_transport_attach_serialized(connection, NULL, &client_lane, &client_transport) == ASCIICHAT_OK);
-  acip_quic_worker_t *client_worker = NULL, *server_worker = NULL;
+  quic_worker_t *client_worker = NULL, *server_worker = NULL;
   CHECK(quic_worker_start(server, &server_lane, NULL, NULL, &server_worker) == ASCIICHAT_OK);
   CHECK(quic_worker_start(client, &client_lane, NULL, NULL, &client_worker) == ASCIICHAT_OK);
   CHECK(quic_transport_set_waker(client_transport, quic_worker_wake, client_worker) == ASCIICHAT_OK);
@@ -776,14 +776,14 @@ static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t
 }
 
 typedef struct {
-  acip_quic_udp_endpoint_t *endpoint;
+  quic_udp_endpoint_t *endpoint;
   acip_transport_t *transport;
   mutex_t *lane;
-  acip_quic_connection_t *expected;
+  quic_connection_t *expected;
   atomic_t handled;
 } quic_worker_failure_test_t;
 
-static bool quic_worker_failure(acip_quic_connection_t *connection, asciichat_error_t reason, void *context) {
+static bool quic_worker_failure(quic_connection_t *connection, asciichat_error_t reason, void *context) {
   quic_worker_failure_test_t *state = context;
   if (connection != state->expected || reason != ERROR_INVALID_STATE ||
       quic_transport_fail(state->transport, reason) != ASCIICHAT_OK)
@@ -797,7 +797,7 @@ static bool quic_worker_failure(acip_quic_connection_t *connection, asciichat_er
   return true;
 }
 
-static asciichat_error_t udp_secure_accept(acip_quic_connection_t *connection, void *context) {
+static asciichat_error_t udp_secure_accept(quic_connection_t *connection, void *context) {
   udp_secure_test_state_t *state = context;
   if (state->peer)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected secure UDP test connection");
@@ -947,12 +947,12 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
 static void quic_network_server_test(const char *certificate, const char *private_key, bool datagrams) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_config_t server_config = {.certificate_file = certificate,
+  quic_config_t server_config = {.certificate_file = certificate,
                                       .private_key_file = private_key,
                                       .enable_datagrams = datagrams,
                                       .prefer_audio_datagrams = true};
-  acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
-  acip_quic_endpoint_t *server = NULL, *client = NULL;
+  quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
+  quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
         ASCIICHAT_OK);
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) ==
@@ -1025,14 +1025,14 @@ static void quic_network_server_test(const char *certificate, const char *privat
 static void quic_public_endpoint_test(const char *certificate, const char *private_key) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_config_t server_config = {.certificate_file = certificate,
+  quic_config_t server_config = {.certificate_file = certificate,
                                       .private_key_file = private_key,
                                       .enable_datagrams = true,
                                       .webtransport_origin = "https://example.test",
                                       .webtransport_path = "/acip",
                                       .accept_native = true};
-  acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
-  acip_quic_endpoint_t *server = NULL, *client = NULL;
+  quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
+  quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
         ASCIICHAT_OK);
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) ==
@@ -1248,11 +1248,11 @@ static void *quic_concurrent_send(void *arg) {
   return NULL;
 }
 
-static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, bool wrong_password) {
+static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_tls, bool wrong_password) {
   server_tls->enable_datagrams = client_tls->enable_datagrams = true;
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  quic_udp_endpoint_t *server = NULL, *client = NULL;
   mutex_t client_lane, server_lane;
   CHECK(mutex_init(&client_lane, "quic_client_lane") == 0);
   CHECK(mutex_init(&server_lane, "quic_server_lane") == 0);
@@ -1280,7 +1280,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
-  acip_quic_connection_t *client_connection = NULL;
+  quic_connection_t *client_connection = NULL;
   acip_transport_t *client_transport = NULL, *server_transport = NULL;
   uint64_t start = time_get_ns();
   CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
@@ -1297,7 +1297,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
        client_rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
-    acip_quic_connection_t *failed = NULL;
+    quic_connection_t *failed = NULL;
     mutex_lock(&client_lane);
     asciichat_error_t client_pump = quic_udp_pump(client, now, &failed);
     mutex_unlock(&client_lane);
@@ -1401,7 +1401,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     CHECK(quic_connection_allow_media(server_state.peer) == ERROR_INVALID_STATE);
   } else {
     CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
-    acip_quic_worker_t *client_worker = NULL, *server_worker = NULL;
+    quic_worker_t *client_worker = NULL, *server_worker = NULL;
     quic_worker_failure_test_t failure_state = {
         .endpoint = server, .transport = server_transport, .lane = &server_lane, .expected = server_state.peer};
     client_handshake.crypto_ctx.rekey_packet_threshold = 1;
@@ -1528,12 +1528,12 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   socket_cleanup();
 }
 
-static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+static void quic_udp_exchange(quic_tls_t *server_tls, quic_tls_t *client_tls) {
   client_tls->enable_datagrams = true;
   server_tls->enable_datagrams = false;
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  quic_udp_endpoint_t *server = NULL, *client = NULL;
   udp_test_state_t server_state = {0}, client_state = {0};
   size_t length = 0;
   uint8_t *packet = make_packet(PACKET_TYPE_CRYPTO_CAPABILITIES, 64, &length);
@@ -1546,7 +1546,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   struct sockaddr_storage server_address;
   socklen_t server_length = 0;
   CHECK(quic_udp_endpoint_address(server, &server_address, &server_length) == ASCIICHAT_OK);
-  acip_quic_connection_t *clients[2] = {NULL, NULL};
+  quic_connection_t *clients[2] = {NULL, NULL};
   uint64_t start = time_get_ns();
   for (size_t i = 0; i < 2; ++i) {
     CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&server_address, server_length, start,
@@ -1556,7 +1556,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   bool submitted = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
-    acip_quic_connection_t *failed = NULL;
+    quic_connection_t *failed = NULL;
     CHECK(quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
     CHECK(quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
     if (!submitted && server_state.accepted == 2 && quic_connection_tls_ready(clients[0]) &&
@@ -1601,7 +1601,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   start = time_get_ns();
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT && (client_state.received < 3 || server_state.received < 3)) {
     uint64_t now = time_get_ns();
-    acip_quic_connection_t *failed = NULL;
+    quic_connection_t *failed = NULL;
     CHECK(quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
     CHECK(quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
     time_sleep_ns(NS_PER_MS_INT);
@@ -1614,10 +1614,10 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   socket_cleanup();
 }
 
-static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+static void quic_udp_bad_identity(quic_tls_t *server_tls, quic_tls_t *client_tls) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  quic_udp_endpoint_t *server = NULL, *client = NULL;
   udp_test_state_t state = {0};
   CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &state,
                                  &server) == ASCIICHAT_OK);
@@ -1626,14 +1626,14 @@ static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
-  acip_quic_connection_t *connection = NULL;
+  quic_connection_t *connection = NULL;
   uint64_t start = time_get_ns();
   CHECK(quic_udp_connect(client, client_tls, "other.example", (struct sockaddr *)&address, address_length, start,
                          &connection) == ASCIICHAT_OK);
   bool rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
-    acip_quic_connection_t *failed = NULL;
+    quic_connection_t *failed = NULL;
     asciichat_error_t result = quic_udp_pump(client, now, &failed);
     if (result != ASCIICHAT_OK) {
       CHECK(result == ERROR_CRYPTO && failed == connection);
@@ -1651,7 +1651,7 @@ static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *
 }
 
 typedef struct {
-  acip_quic_udp_endpoint_t *endpoint;
+  quic_udp_endpoint_t *endpoint;
   atomic_t started;
   asciichat_error_t result;
   bool ready;
@@ -1667,7 +1667,7 @@ static void *quic_udp_wait_thread(void *arg) {
 static void quic_udp_wakeup_test(void) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_udp_endpoint_t *endpoint = NULL;
+  quic_udp_endpoint_t *endpoint = NULL;
   CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback) + 1, NULL, NULL, NULL, &endpoint) ==
             ERROR_INVALID_PARAM &&
         !endpoint);
@@ -1686,7 +1686,7 @@ static void quic_udp_wakeup_test(void) {
   CHECK(quic_udp_wake(endpoint) == ASCIICHAT_OK);
   CHECK(thread_join(&thread, NULL) == 0);
   CHECK(state.result == ASCIICHAT_OK && state.ready);
-  acip_quic_connection_t *failed = NULL;
+  quic_connection_t *failed = NULL;
   CHECK(quic_udp_pump(endpoint, time_get_ns(), &failed) == ASCIICHAT_OK && !failed);
   CHECK(quic_udp_wait(endpoint, 0, false, &ready) == ASCIICHAT_OK && !ready);
   quic_udp_endpoint_destroy(&endpoint);
@@ -1739,8 +1739,8 @@ static void quic_cli_probe(const char *certificate, const char *port_text) {
   struct sockaddr_in local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   struct sockaddr_in remote = local;
   remote.sin_port = HOST_TO_NET_U16((uint16_t)port);
-  acip_quic_config_t config = {.ca_file = certificate, .enable_datagrams = true};
-  acip_quic_endpoint_t *endpoint = NULL;
+  quic_config_t config = {.ca_file = certificate, .enable_datagrams = true};
+  quic_endpoint_t *endpoint = NULL;
   acip_transport_t *transport = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &config, &endpoint) == ASCIICHAT_OK);
   CHECK(quic_connect(endpoint, (struct sockaddr *)&remote, sizeof(remote), "localhost", &transport) == ASCIICHAT_OK);
@@ -1780,12 +1780,12 @@ static void quic_http3_probe_server(const char *certificate, const char *key, co
   struct sockaddr_in local = {.sin_family = AF_INET,
                               .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
                               .sin_port = HOST_TO_NET_U16((uint16_t)port)};
-  acip_quic_config_t config = {.certificate_file = certificate,
+  quic_config_t config = {.certificate_file = certificate,
                                .private_key_file = key,
                                .enable_datagrams = true,
                                .webtransport_origin = origin,
                                .webtransport_path = "/acip"};
-  acip_quic_endpoint_t *endpoint = NULL;
+  quic_endpoint_t *endpoint = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &config, &endpoint) == ASCIICHAT_OK);
   log_info("HTTP/3 probe server ready");
   uint64_t started = time_get_ns();
@@ -1842,7 +1842,7 @@ int main(int argc, char **argv) {
   EVP_PKEY_free(key);
   EVP_PKEY_free(other_key);
 
-  acip_quic_tls_t *server = NULL, *client = NULL, *untrusted = NULL, *wrong_alpn = NULL;
+  quic_tls_t *server = NULL, *client = NULL, *untrusted = NULL, *wrong_alpn = NULL;
   CHECK(quic_tls_server_create("acip/1", argv[1], argv[2], &server) == ASCIICHAT_OK);
   CHECK(quic_tls_client_create("acip/1", argv[1], &client) == ASCIICHAT_OK);
   CHECK(quic_tls_client_create("acip/1", argv[3], &untrusted) == ASCIICHAT_OK);
@@ -1883,14 +1883,14 @@ int main(int argc, char **argv) {
   quic_network_server_test(argv[1], argv[2], true);
   quic_network_server_test(argv[1], argv[2], false);
 
-  acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
+  quic_tls_t *invalid = (quic_tls_t *)server;
   CHECK(quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);
-  invalid = (acip_quic_tls_t *)server;
+  invalid = (quic_tls_t *)server;
   CHECK(quic_tls_client_create("acip/1", "", &invalid) == ERROR_INVALID_PARAM && !invalid);
   CHECK(quic_tls_client_create("", argv[1], &invalid) == ERROR_INVALID_PARAM && !invalid);
-  invalid = (acip_quic_tls_t *)server;
+  invalid = (quic_tls_t *)server;
   CHECK(quic_tls_server_create("acip/1", NULL, argv[2], &invalid) == ERROR_INVALID_PARAM && !invalid);
-  invalid = (acip_quic_tls_t *)server;
+  invalid = (quic_tls_t *)server;
   CHECK(quic_tls_client_create("acip/1", argv[2], &invalid) == ERROR_CRYPTO && !invalid);
 
   ngtcp2_crypto_conn_ref ref = {.get_conn = unused_connection};

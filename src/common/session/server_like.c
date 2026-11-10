@@ -19,7 +19,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/buffer.h>
@@ -41,8 +41,8 @@
  * ============================================================================ */
 
 static network_server_t *g_network_server;
-static acip_quic_endpoint_t *g_quic_endpoint;
-static acip_quic_endpoint_t *g_webtransport_endpoint;
+static quic_endpoint_t *g_quic_endpoint;
+static quic_endpoint_t *g_webtransport_endpoint;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;

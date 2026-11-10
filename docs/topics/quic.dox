@@ -28,7 +28,7 @@
  *
  * @section quic_layers Transport and security
  *
- * `include/ascii-chat/network/acip/quic.h` owns the endpoint and transport
+ * `include/ascii-chat/network/quic/quic.h` owns the endpoint and transport
  * lifecycle. The resulting `acip_transport_t` is consumed by the same
  * connection, negotiation, ACIP dispatch, and outbound scheduler used by other
  * backends. Callers must not create a second QUIC receive loop or bypass the

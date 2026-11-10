@@ -18,7 +18,7 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/url.h> // For url_parse()
-#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/network/http/client/client.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
