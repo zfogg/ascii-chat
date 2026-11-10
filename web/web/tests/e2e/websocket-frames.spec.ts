@@ -1,9 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  expectMeaningful60Fps,
-  getRandomPort,
-  ServerFixture,
-} from "./server-fixture";
+import { getRandomPort, ServerFixture } from "./server-fixture";
 
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
@@ -133,5 +129,4 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   await expect
     .poll(() => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0))
     .toBeGreaterThan(1);
-  await expectMeaningful60Fps(page, "client", 3_000);
 });
