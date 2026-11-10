@@ -34,7 +34,8 @@ asciichat_error_t http_basic_auth_parse(const char *authorization, http_basic_cr
   uint8_t decoded[sizeof(*out) + 1];
   size_t decoded_length = 0;
   if (sodium_base642bin(decoded, sizeof(decoded) - 1, encoded, encoded_length, NULL, &decoded_length, NULL,
-                        sodium_base64_VARIANT_ORIGINAL) != 0 || decoded_length == 0) {
+                        sodium_base64_VARIANT_ORIGINAL) != 0 ||
+      decoded_length == 0) {
     sodium_memzero(decoded, sizeof(decoded));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Basic authorization encoding");
   }
@@ -46,8 +47,7 @@ asciichat_error_t http_basic_auth_parse(const char *authorization, http_basic_cr
   }
 
   char *separator = memchr(decoded, ':', decoded_length);
-  if (!separator || separator == (char *)decoded ||
-      (size_t)(separator - (char *)decoded) >= sizeof(out->username) ||
+  if (!separator || separator == (char *)decoded || (size_t)(separator - (char *)decoded) >= sizeof(out->username) ||
       decoded_length - (size_t)(separator - (char *)decoded) - 1 == 0 ||
       decoded_length - (size_t)(separator - (char *)decoded) - 1 >= sizeof(out->password)) {
     sodium_memzero(decoded, sizeof(decoded));
