@@ -54,14 +54,24 @@ function(configure_include_directories)
             target_include_directories(asciichat-project-includes BEFORE INTERFACE ${MIMALLOC_INCLUDE_DIRS})
         endif()
     else()
-        # Use pkg-config flags (matches Makefile CFLAGS approach)
-        add_core_deps_compile_flags()
-
         # Don't add system include paths when using musl - musl-gcc handles this via -specs
         if(NOT USE_MUSL)
+            # Use pkg-config flags (matches Makefile CFLAGS approach)
+            add_core_deps_compile_flags()
             get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
             target_include_directories(asciichat-project-includes INTERFACE ${CORE_INCLUDE_DIRS})
         else()
+            # pkg-config commonly reports the host libc as -I/usr/include.  A
+            # musl target must not inherit that path: clang would then select
+            # glibc headers before the target's musl headers.
+            foreach(DEP IN LISTS ASCIICHAT_CORE_DEPS)
+                set(_cflags_var "${DEP}_CFLAGS_OTHER")
+                if(DEFINED ${_cflags_var} AND NOT "${${_cflags_var}}" STREQUAL "")
+                    set(_musl_cflags ${${_cflags_var}})
+                    list(FILTER _musl_cflags EXCLUDE REGEX "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)")
+                    target_compile_options(asciichat-project-options INTERFACE ${_musl_cflags})
+                endif()
+            endforeach()
             # When using musl, strip /usr/include from all include paths
             get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
             list(FILTER CORE_INCLUDE_DIRS EXCLUDE REGEX "^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
