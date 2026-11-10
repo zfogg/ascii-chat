@@ -459,8 +459,7 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
     tcp->recycled = packet->next;
   else
     packet = SAFE_CALLOC(1, sizeof(*packet), async_packet_t *);
-  if (length <= ASYNC_RECEIVE_POOL_CAPACITY && tcp->receive_free &&
-      ringbuffer_read(tcp->receive_free, &packet->data))
+  if (length <= ASYNC_RECEIVE_POOL_CAPACITY && tcp->receive_free && ringbuffer_read(tcp->receive_free, &packet->data))
     packet->pooled = true;
   else
     packet->data = buffer_alloc(NULL, length);
