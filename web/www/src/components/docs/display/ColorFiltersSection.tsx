@@ -50,6 +50,14 @@ export default function ColorFiltersSection() {
             "# No filter (DEFAULT)\nascii-chat mirror --color-filter none\n\n# Single color tints\nascii-chat mirror --color-filter green     # Classic terminal green\nascii-chat mirror --color-filter cyan      # Cool blue-green\nascii-chat mirror --color-filter fuchsia   # Vibrant pink\nascii-chat mirror --color-filter orange    # Warm amber\nascii-chat mirror --color-filter red       # Intense red\n\n# Rainbow mode - cycles through colors\nascii-chat mirror --color-filter rainbow\n\n# Via environment\nexport ASCII_CHAT_COLOR_FILTER=green"
           }
         </CodeBlock>
+        <div className="info-box-info mt-3 border-l-4 border-pink-400">
+          <p className="text-gray-300 text-sm">
+            <strong className="text-pink-300">⌨ Runtime shortcut:</strong> press{" "}
+            <code className="text-pink-300">f</code> to cycle through the
+            available color filters. The active filter also switches the output
+            to monochrome color mode.
+          </p>
+        </div>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-cyan">
             <Heading level={4} className="text-cyan-300 font-semibold mb-2">
