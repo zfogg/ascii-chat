@@ -31,7 +31,7 @@
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include "platform/api.h" // IWYU pragma: keep
+#include "os/api.h" // IWYU pragma: keep
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
