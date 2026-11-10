@@ -1,6 +1,7 @@
 """Client admission, failed handshakes, and slot reuse."""
 import socket
 import time
+import re
 
 import pytest
 from ascii_chat_tests.cli import clean_environment, run_cli
@@ -96,6 +97,31 @@ def test_default_client_server_authentication(binary, tmp_path):
         assert len(result.stdout.strip()) >= 100, text[-8000:]
         assert "Authentication failed" not in text
         assert server.process.poll() is None, server.text()[-8000:]
+
+
+def test_client_uses_glyph_renderer_for_first_server_frame(binary, tmp_path):
+    """Initial settings must arrive before STREAM_START renders a frame."""
+    tcp_port, ws_port = free_port(), free_port()
+    with running(binary, tmp_path, "glyph-server", "server",
+                 server_options(tcp_port, ws_port)) as server:
+        server.wait_for("Server accepting connections")
+        env = clean_environment()
+        env.update(CLAUDECODE="1", HOME=str(tmp_path), USERPROFILE=str(tmp_path),
+                   APPDATA=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path))
+        result = run_cli(
+            str(binary), "client", f"127.0.0.1:{tcp_port}", "--test-pattern",
+            "--audio=false", "--snapshot", "--snapshot-delay", "0",
+            "--renderer=glyph", "--width", "40", "--height", "12",
+            "--color-mode", "none", "--splash-screen=false", "--reconnect-attempts", "0",
+            env=env, cwd=tmp_path, capture_output=True, timeout=30,
+        )
+        assert result.returncode == 0, server.text()[-8000:]
+        # The glyph atlas contains printable characters outside the standard
+        # luminance palette. This observes the first frame returned by the
+        # server, not a later runtime settings update.
+        output = re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", result.stdout)
+        standard = set(b"   ...',;:clodxkO0KXNWM")
+        assert set(output) - standard, output[-4000:]
 
 
 def test_client_started_before_server_recovers_without_auth_error(binary, tmp_path):

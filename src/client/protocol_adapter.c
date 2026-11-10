@@ -377,6 +377,20 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // Reset display state for new connection
   display_reset_for_new_connection(connection);
 
+  // Start receiving before the capability/settings exchange. The server may
+  // reply to the initial settings packet immediately, and that reply must not
+  // wait for the worker that dispatches it.
+  atomic_store_bool(&connection->data_thread_exited, false);
+  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
+      ASCIICHAT_OK) {
+    log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
+    LOG_ERRNO_IF_SET("Data reception thread creation failed");
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+  }
+
+  if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
@@ -385,6 +399,20 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return client_startup_peer_error(connection, cap_result);
+  }
+
+  // Capabilities establish the viewer geometry, but renderer preferences are
+  // carried by SETTINGS_SYNC. Send them before STREAM_START so the server
+  // cannot render the first frames from its zero-initialized (luminance)
+  // fallback while the asynchronous settings update is still in flight.
+  options_snapshot_t initial_settings;
+  if (options_read_snapshot(&initial_settings) != ASCIICHAT_OK)
+    return client_startup_peer_error(connection, ERROR_CONFIG);
+  asciichat_error_t settings_result = acip_settings_send(
+      server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
+  if (settings_result != ASCIICHAT_OK) {
+    log_error("[FRAME_RECV_INIT] Failed to send initial rendering settings");
+    return client_startup_peer_error(connection, settings_result);
   }
 
   // Send STREAM_START packet with combined stream types
@@ -399,18 +427,6 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
     return client_startup_peer_error(connection, stream_result);
   }
-
-  // Every transport has completed security negotiation before protocol startup.
-  atomic_store_bool(&connection->data_thread_exited, false);
-  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
-      ASCIICHAT_OK) {
-    log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
-    LOG_ERRNO_IF_SET("Data reception thread creation failed");
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-  }
-
-  if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start webcam capture thread
   log_debug("Starting webcam capture thread...");
