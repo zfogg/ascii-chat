@@ -176,7 +176,13 @@ jobs:
       - name: Prepare Windows ARM manual artifact
         shell: bash
         run: |
-          tar -xOzf "${{ steps.tarball.outputs.tarball }}" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
+          version="${{ steps.version.outputs.version }}"
+          version="${version#v}"
+          tar -xOzf "${{ steps.tarball.outputs.tarball }}" \
+            "ascii-chat-${version}/share/man/man1/ascii-chat.1.in" |
+            sed -e "s/@PROJECT_VERSION@/${version}/g" \
+                -e "s/@PROJECT_VERSION_DATE@/$(date -u +%Y-%m-%d)/g" \
+            > "$RUNNER_TEMP/release-man1"
 
       - name: Upload Windows ARM manual artifact
         uses: actions/upload-artifact@v4
