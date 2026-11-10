@@ -26,8 +26,14 @@ web_pid=
 if printf "%s\n" "$all_staged" | grep -q "^web/"; then
   node_command=node
   if command -v node.exe >/dev/null 2>&1; then node_command=node.exe; fi
-  (cd web && "$node_command" node_modules/vite-plus/bin/vp check) &
-  web_pid=$!
+  web_files=()
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && web_files+=("${file#web/}")
+  done < <(printf "%s\n" "$all_staged" | grep -E '^web/.*\.(js|mjs|cjs|jsx|ts|mts|cts|tsx|json|jsonc|json5|css|scss|less|html|htm|yaml|yml|graphql|gql|vue|svelte|astro)$' || true)
+  if ((${#web_files[@]})); then
+    (cd web && "$node_command" node_modules/vite-plus/bin/vp fmt --check --no-error-on-unmatched-pattern -- "${web_files[@]}") &
+    web_pid=$!
+  fi
 fi
 github_yaml_pid=
 bash scripts/format-github-workflows.sh &
