@@ -42,6 +42,7 @@
 
 #include "../common.h"
 #include <libplatform/terminal.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/video/rgba/image.h>
 
 #ifdef __cplusplus
