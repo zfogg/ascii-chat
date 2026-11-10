@@ -150,14 +150,17 @@ export class ClientConnection {
       cleanupClientWasm();
       return false;
     }
+    const hevc = await this.probeHevcSupport();
+    if (this.isUserDisconnecting) {
+      cleanupClientWasm();
+      return false;
+    }
     configureBrowserCapabilities({
       webtransport: typeof WebTransport !== "undefined",
       datagrams:
         typeof WebTransport !== "undefined" &&
         "datagrams" in WebTransport.prototype,
-      hevc:
-        typeof VideoDecoder !== "undefined" &&
-        VideoDecoder.isConfigSupported !== undefined,
+      hevc,
       webrtc: typeof RTCPeerConnection !== "undefined",
     });
     const policy = processClientEvent({
@@ -188,6 +191,28 @@ export class ClientConnection {
     if (serverResult.code)
       throwWasmError(serverResult.code, "Failed to set server address");
     return true;
+  }
+
+  private async probeHevcSupport(): Promise<boolean> {
+    if (
+      typeof VideoEncoder === "undefined" ||
+      typeof VideoEncoder.isConfigSupported !== "function"
+    )
+      return false;
+    try {
+      const support = await VideoEncoder.isConfigSupported({
+        codec: "hev1.1.6.L120.B0",
+        width: 640,
+        height: 480,
+        bitrate: 1_000_000,
+        framerate: 30,
+        latencyMode: "realtime",
+        hevc: { format: "annexb" },
+      });
+      return support.supported === true;
+    } catch {
+      return false;
+    }
   }
 
   private async connectSocket(): Promise<void> {
