@@ -7,7 +7,7 @@
 
 typedef struct network_connection network_connection_t;
 typedef struct network_server network_server_t;
-typedef struct acip_quic_endpoint acip_quic_endpoint_t;
+typedef struct quic_endpoint quic_endpoint_t;
 
 typedef enum {
   NETWORK_NEGOTIATING,
@@ -43,9 +43,9 @@ typedef struct {
   size_t max_connections, max_payload;
   uint64_t handshake_timeout_ms, partial_timeout_ms, idle_timeout_ms;
   /** Optional borrowed native QUIC listener. It must outlive server shutdown. */
-  acip_quic_endpoint_t *quic_endpoint;
+  quic_endpoint_t *quic_endpoint;
   /** Optional borrowed HTTP/3 WebTransport listener. */
-  acip_quic_endpoint_t *webtransport_endpoint;
+  quic_endpoint_t *webtransport_endpoint;
 } network_server_config_t;
 
 asciichat_error_t network_server_create(const network_server_config_t *, network_server_t **);

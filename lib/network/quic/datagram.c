@@ -7,8 +7,8 @@
 #include <string.h>
 
 #define MAX_WIRE_PACKET (sizeof(packet_header_t) + CRYPTO_MAX_PLAINTEXT_SIZE + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
-#define FLOW_BUDGET (ACIP_QUIC_DATAGRAM_BUDGET / 2)
-#define FLOW_SLOTS (ACIP_QUIC_DATAGRAM_SLOTS / 2)
+#define FLOW_BUDGET (QUIC_DATAGRAM_BUDGET / 2)
+#define FLOW_SLOTS (QUIC_DATAGRAM_SLOTS / 2)
 
 static bool media_flow(acip_traffic_class_t flow) {
   return flow == ACIP_TRAFFIC_AUDIO || flow == ACIP_TRAFFIC_VISUAL;
@@ -51,11 +51,11 @@ asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id,
   if (!media_flow(flow) || !id || !packet || !length || length > MAX_WIRE_PACKET || !unit || !out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram fragment parameters");
   size_t count = (length + unit - 1) / unit;
-  if (count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS || index >= count)
+  if (count > QUIC_DATAGRAM_MAX_FRAGMENTS || index >= count)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid QUIC datagram fragment count or index");
   size_t offset = (size_t)index * unit;
   size_t part = length - offset < unit ? length - offset : unit;
-  if (capacity < ACIP_QUIC_DATAGRAM_HEADER_SIZE + part)
+  if (capacity < QUIC_DATAGRAM_HEADER_SIZE + part)
     return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC datagram output buffer is too small");
   uint8_t *wire = out;
   memcpy(wire, "ACQD", sizeof("ACQD") - 1);
@@ -68,12 +68,12 @@ asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id,
   put16(wire + 22, index);
   put16(wire + 24, (uint16_t)count);
   wire[26] = wire[27] = 0;
-  memcpy(wire + ACIP_QUIC_DATAGRAM_HEADER_SIZE, (const uint8_t *)packet + offset, part);
-  *out_length = ACIP_QUIC_DATAGRAM_HEADER_SIZE + part;
+  memcpy(wire + QUIC_DATAGRAM_HEADER_SIZE, (const uint8_t *)packet + offset, part);
+  *out_length = QUIC_DATAGRAM_HEADER_SIZE + part;
   return ASCIICHAT_OK;
 }
 
-static void clear_slot(acip_quic_datagram_reader_t *reader, acip_quic_datagram_slot_t *slot) {
+static void clear_slot(quic_datagram_reader_t *reader, quic_datagram_slot_t *slot) {
   if (!slot->data)
     return;
   reader->bytes -= slot->cost;
@@ -82,33 +82,33 @@ static void clear_slot(acip_quic_datagram_reader_t *reader, acip_quic_datagram_s
   memset(slot, 0, sizeof(*slot));
 }
 
-void quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now_ns) {
+void quic_datagram_expire(quic_datagram_reader_t *reader, uint64_t now_ns) {
   if (!reader || now_ns < reader->last_time_ns)
     return;
   reader->last_time_ns = now_ns;
-  for (size_t i = 0; i < ACIP_QUIC_DATAGRAM_SLOTS; ++i) {
-    acip_quic_datagram_slot_t *slot = &reader->slots[i];
-    if (slot->data && now_ns - slot->started_ns >= ACIP_QUIC_DATAGRAM_EXPIRY_NS)
+  for (size_t i = 0; i < QUIC_DATAGRAM_SLOTS; ++i) {
+    quic_datagram_slot_t *slot = &reader->slots[i];
+    if (slot->data && now_ns - slot->started_ns >= QUIC_DATAGRAM_EXPIRY_NS)
       clear_slot(reader, slot);
   }
 }
 
-void quic_datagram_reset(acip_quic_datagram_reader_t *reader) {
+void quic_datagram_reset(quic_datagram_reader_t *reader) {
   if (!reader)
     return;
-  for (size_t i = 0; i < ACIP_QUIC_DATAGRAM_SLOTS; ++i)
+  for (size_t i = 0; i < QUIC_DATAGRAM_SLOTS; ++i)
     clear_slot(reader, &reader->slots[i]);
   memset(reader, 0, sizeof(*reader));
 }
 
-asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
+asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length,
                                      uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out,
                                      size_t *out_length) {
   if (!out || !out_length || !flow_out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output");
   *out = NULL;
   *out_length = 0;
-  if (!reader || !data || length < ACIP_QUIC_DATAGRAM_HEADER_SIZE || now_ns < reader->last_time_ns)
+  if (!reader || !data || length < QUIC_DATAGRAM_HEADER_SIZE || now_ns < reader->last_time_ns)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram input");
   const uint8_t *wire = data;
   acip_traffic_class_t flow = (acip_traffic_class_t)wire[5];
@@ -117,18 +117,18 @@ asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const 
   uint16_t unit = get16(wire + 20), index = get16(wire + 22), count = get16(wire + 24);
   if (memcmp(wire, "ACQD", sizeof("ACQD") - 1) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] ||
       wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count ||
-      count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS || count != ((size_t)total + unit - 1) / unit || index >= count)
+      count > QUIC_DATAGRAM_MAX_FRAGMENTS || count != ((size_t)total + unit - 1) / unit || index >= count)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram envelope");
   size_t offset = (size_t)index * unit;
   size_t part = total - offset < unit ? total - offset : unit;
-  if (length != ACIP_QUIC_DATAGRAM_HEADER_SIZE + part)
+  if (length != QUIC_DATAGRAM_HEADER_SIZE + part)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram fragment size");
   quic_datagram_expire(reader, now_ns);
   size_t first = flow == ACIP_TRAFFIC_AUDIO ? 0 : FLOW_SLOTS;
-  acip_quic_datagram_slot_t *slot = NULL, *empty = NULL;
+  quic_datagram_slot_t *slot = NULL, *empty = NULL;
   size_t flow_bytes = 0;
   for (size_t i = first; i < first + FLOW_SLOTS; ++i) {
-    acip_quic_datagram_slot_t *candidate = &reader->slots[i];
+    quic_datagram_slot_t *candidate = &reader->slots[i];
     flow_bytes += candidate->cost;
     if (candidate->data && candidate->id == id)
       slot = candidate;
@@ -155,7 +155,7 @@ asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const 
       return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC datagram reassembly budget exhausted");
     }
     memset(bitmap, 0, bitmap_size);
-    *empty = (acip_quic_datagram_slot_t){.data = packet,
+    *empty = (quic_datagram_slot_t){.data = packet,
                                          .received = bitmap,
                                          .cost = cost,
                                          .id = id,
@@ -169,11 +169,11 @@ asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const 
   }
   uint8_t mask = (uint8_t)(1U << (index % 8));
   if (slot->received[index / 8] & mask) {
-    if (memcmp(slot->data + offset, wire + ACIP_QUIC_DATAGRAM_HEADER_SIZE, part))
+    if (memcmp(slot->data + offset, wire + QUIC_DATAGRAM_HEADER_SIZE, part))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Conflicting duplicate QUIC datagram fragment");
     return ASCIICHAT_OK;
   }
-  memcpy(slot->data + offset, wire + ACIP_QUIC_DATAGRAM_HEADER_SIZE, part);
+  memcpy(slot->data + offset, wire + QUIC_DATAGRAM_HEADER_SIZE, part);
   slot->received[index / 8] |= mask;
   if (++slot->received_count == slot->count) {
     *out = slot->data;

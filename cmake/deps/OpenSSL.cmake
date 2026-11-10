@@ -352,8 +352,18 @@ if(TARGET OpenSSL::Crypto)
     return()
 endif()
 
+# Native Linux uses the distribution OpenSSL installation.  HTTP/TLS must use
+# the host's OpenSSL ABI; do not silently replace it with a source-built copy
+# from the dependency cache.  The musl and iOS branches above remain separate
+# because those targets do not have a usable host OpenSSL installation.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
+    find_package(OpenSSL REQUIRED)
+    message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} found (system): ${OPENSSL_SSL_LIBRARY}")
+    return()
+endif()
+
 # =============================================================================
-# Native Linux/macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
+# Native macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
 # Source builds use a versioned cache so upgrading does not replace existing caches.
 # =============================================================================
 if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))

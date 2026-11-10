@@ -215,10 +215,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       mandoc \
       dpkg-dev rpm \
       yt-dlp \
-      libwebsockets-dev libuv1-dev libicu-dev  \
+      libwebsockets-dev libuv1-dev libicu-dev libnghttp2-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       curl unzip \
       || true
+    # Keep the shared HTTP/2 server dependency independent from the optional
+    # package set above: one unavailable package must not hide nghttp2.
+    apt-get install -y libnghttp2-dev
     #yyjson-dev \
 
     # INFO: DO THIS - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -424,7 +427,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv icu \
+      libwebsockets libuv icu nghttp2 \
       libvterm freetype2 fontconfig
 
   else

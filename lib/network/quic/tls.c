@@ -18,7 +18,7 @@ static asciichat_error_t tls_error(const char *operation) {
 static int select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length, const unsigned char *offered,
                        unsigned int offered_length, void *arg) {
   (void)ssl;
-  acip_quic_tls_t *tls = arg;
+  quic_tls_t *tls = arg;
   unsigned char *selected = NULL;
   unsigned char selected_length = 0;
   if (SSL_select_next_proto(&selected, &selected_length, tls->alpn, tls->alpn_length, offered, offered_length) !=
@@ -29,17 +29,17 @@ static int select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_l
   return SSL_TLSEXT_ERR_OK;
 }
 
-static asciichat_error_t create_context(bool server, const char *alpn, acip_quic_tls_t **out) {
+static asciichat_error_t create_context(bool server, const char *alpn, quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC TLS context or ALPN");
   *out = NULL;
   if (!alpn)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC TLS context or ALPN");
-  size_t length = strnlen(alpn, sizeof(((acip_quic_tls_t *)0)->alpn));
+  size_t length = strnlen(alpn, sizeof(((quic_tls_t *)0)->alpn));
   if (!length || length > 255)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC ALPN must contain 1 to 255 bytes");
 
-  acip_quic_tls_t *tls = SAFE_CALLOC(1, sizeof(*tls), acip_quic_tls_t *);
+  quic_tls_t *tls = SAFE_CALLOC(1, sizeof(*tls), quic_tls_t *);
   if (!tls)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC TLS context");
   tls->server = server;
@@ -65,13 +65,13 @@ static asciichat_error_t create_context(bool server, const char *alpn, acip_quic
 }
 
 asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file, const char *private_key_file,
-                                         acip_quic_tls_t **out) {
+                                         quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC server requires a certificate and private key");
   *out = NULL;
   if (!certificate_file || !*certificate_file || !private_key_file || !*private_key_file)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC server requires a certificate and private key");
-  acip_quic_tls_t *tls = NULL;
+  quic_tls_t *tls = NULL;
   asciichat_error_t result = create_context(true, alpn, &tls);
   if (result != ASCIICHAT_OK)
     return result;
@@ -87,13 +87,13 @@ asciichat_error_t quic_tls_server_create(const char *alpn, const char *certifica
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_client_create(const char *alpn, const char *ca_file, acip_quic_tls_t **out) {
+asciichat_error_t quic_tls_client_create(const char *alpn, const char *ca_file, quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client trust configuration");
   *out = NULL;
   if (ca_file && !*ca_file)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client trust configuration");
-  acip_quic_tls_t *tls = NULL;
+  quic_tls_t *tls = NULL;
   asciichat_error_t result = create_context(false, alpn, &tls);
   if (result != ASCIICHAT_OK)
     return result;
@@ -109,7 +109,7 @@ asciichat_error_t quic_tls_client_create(const char *alpn, const char *ca_file, 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl, const char *server_name) {
+asciichat_error_t quic_tls_client_configure(quic_tls_t *tls, SSL *ssl, const char *server_name) {
   if (!tls || tls->server || !ssl || SSL_get_SSL_CTX(ssl) != tls->ssl_ctx || !server_name || !*server_name)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC client requires the expected server identity");
   ERR_clear_error();
@@ -123,7 +123,7 @@ asciichat_error_t quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl, cons
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_session_create(acip_quic_tls_t *tls, const char *server_name,
+asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name,
                                           ngtcp2_crypto_conn_ref *connection, SSL **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC TLS session arguments");
@@ -158,7 +158,7 @@ asciichat_error_t quic_tls_session_create(acip_quic_tls_t *tls, const char *serv
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_verify_ready(acip_quic_tls_t *tls, SSL *ssl) {
+asciichat_error_t quic_tls_verify_ready(quic_tls_t *tls, SSL *ssl) {
   if (!tls || !ssl || SSL_get_SSL_CTX(ssl) != tls->ssl_ctx || !SSL_is_init_finished(ssl))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC TLS handshake is not complete");
   const unsigned char *selected = NULL;
@@ -199,7 +199,7 @@ void quic_tls_session_destroy(SSL **ssl) {
   }
 }
 
-void quic_tls_destroy(acip_quic_tls_t **tls) {
+void quic_tls_destroy(quic_tls_t **tls) {
   if (tls && *tls) {
     SSL_CTX_free((*tls)->ssl_ctx);
     SAFE_FREE(*tls);

@@ -6,7 +6,7 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/common/protocol_constants.h>
 #ifndef __EMSCRIPTEN__
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/quic/quic.h>
 #endif
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/handshake/client.h>

@@ -191,7 +191,7 @@ typedef struct session_host {
   /** @brief IPv4 listen socket */
   network_server_t *network_server;
   bool configured_quic_listeners;
-  acip_quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
+  quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
   asciichat_thread_t network_thread;

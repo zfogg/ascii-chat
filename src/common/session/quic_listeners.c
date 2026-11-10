@@ -4,8 +4,8 @@
 #include <ascii-chat/log/log.h>
 #include <string.h>
 
-asciichat_error_t session_quic_listeners_open(int port, acip_quic_endpoint_t **native,
-                                              acip_quic_endpoint_t **webtransport) {
+asciichat_error_t session_quic_listeners_open(int port, quic_endpoint_t **native,
+                                              quic_endpoint_t **webtransport) {
   if (!native || !webtransport || *native || *webtransport || port < 1 || port > UINT16_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session QUIC listener state");
   const char *native_address = GET_OPTION(quic_bind_address);
@@ -37,7 +37,7 @@ asciichat_error_t session_quic_listeners_open(int port, acip_quic_endpoint_t **n
   asciichat_error_t result = parse_numeric_socket_address(address, selected_port, &bind_address, &bind_length);
   if (result != ASCIICHAT_OK)
     return result;
-  acip_quic_config_t config = {.certificate_file = certificate,
+  quic_config_t config = {.certificate_file = certificate,
                                .private_key_file = key,
                                .webtransport_origin = browser ? origin : NULL,
                                .webtransport_path = browser ? path : NULL,
@@ -57,10 +57,10 @@ asciichat_error_t session_quic_listeners_open(int port, acip_quic_endpoint_t **n
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_quic_listeners_close(acip_quic_endpoint_t **native, acip_quic_endpoint_t **webtransport) {
+asciichat_error_t session_quic_listeners_close(quic_endpoint_t **native, quic_endpoint_t **webtransport) {
   if (!native || !webtransport)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing session QUIC listener outputs");
-  acip_quic_endpoint_t **endpoints[] = {webtransport, native};
+  quic_endpoint_t **endpoints[] = {webtransport, native};
   for (size_t i = 0; i < 2; ++i) {
     if (!*endpoints[i])
       continue;
