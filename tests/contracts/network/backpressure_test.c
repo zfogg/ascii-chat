@@ -478,3 +478,17 @@ Test(transport_backpressure, congestion_recovers_without_terminal_error) {
   buffer_system_cleanup();
   log_destroy();
 }
+
+Test(transport_backpressure, evicts_oldest_inactive_encoded_stream_state) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  for (uint32_t stream = 0; stream < 65; ++stream) {
+    cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, stream, 1, true), ACIP_ADMISSION_ACCEPTED);
+    await_submitted(transport, stream + 1);
+  }
+  cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, 0, 1, false), ACIP_ADMISSION_NEEDS_KEYFRAME);
+  acip_transport_destroy(transport);
+  buffer_system_cleanup();
+  log_destroy();
+}
