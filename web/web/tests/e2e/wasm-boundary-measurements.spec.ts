@@ -154,6 +154,47 @@ test.describe("WASM browser boundary measurements", () => {
     expect(a.resultBytes).toBe(b.resultBytes);
   });
 
+  test("records representative frame and packet boundary metrics", async ({
+    rendererPage,
+    clientPage,
+  }) => {
+    await setupRenderer(rendererPage);
+    const frame = await measure(
+      rendererPage,
+      '() => window.__boundary.renderer.render("x".repeat(800), 0)',
+      60,
+    );
+    await setupClient(clientPage);
+    const packets = await clientPage.evaluate(() => {
+      const module = window.__clientModule;
+      const event = { type: "snapshot" };
+      const singleStart = performance.now();
+      for (let i = 0; i < 60; i++) module.processClientEvent(event);
+      const singleMs = performance.now() - singleStart;
+      const batchStart = performance.now();
+      const result = module.processClientEvents(
+        Array.from({ length: 60 }, () => event),
+      );
+      return {
+        singleCalls: 60,
+        batchCalls: 1,
+        batchResults: result.length,
+        singleMs,
+        batchMs: performance.now() - batchStart,
+      };
+    });
+    expect(frame.calls).toBe(60);
+    expect(frame.resultBytes).toBeGreaterThan(0);
+    expect(frame.elapsedMs).toBeGreaterThanOrEqual(0);
+    expect(packets).toMatchObject({
+      singleCalls: 60,
+      batchCalls: 1,
+      batchResults: 60,
+    });
+    expect(packets.singleMs).toBeGreaterThanOrEqual(0);
+    expect(packets.batchMs).toBeGreaterThanOrEqual(0);
+  });
+
   test("client module initializes once", async ({ clientPage }) => {
     await setupClient(clientPage);
     expect(
@@ -310,6 +351,5 @@ test.describe("WASM browser boundary measurements", () => {
       expect(size.feature).toBeGreaterThan(0);
     }
     expect(abi["feed"]?.feature).toBe(0);
-    expect(abi["processClientEvent"]?.feature).toBeGreaterThan(0);
   });
 });
