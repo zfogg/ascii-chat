@@ -735,6 +735,8 @@ runs:
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
           # Materialize all blobs now so CMake cannot trigger a delayed
           # promisor fetch while resolving manifest port versions.
+          git config --unset remote.origin.promisor 2>$null
+          git config --unset remote.origin.partialclonefilter 2>$null
           git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --no-filter origin
           if ($LASTEXITCODE -ne 0) { throw "Could not materialize the vcpkg checkout" }
           Pop-Location
