@@ -1,9 +1,4 @@
-import {
-  createRenderer,
-  ColorMode,
-  RenderMode,
-  TextRenderer,
-} from "ascii-chat";
+import { createRenderer } from "ascii-chat";
 import "./style.css";
 
 const canvas = document.querySelector("#canvas");
@@ -22,10 +17,6 @@ const frameHeight = 160;
 renderer.configure({
   width,
   height,
-  color_mode: ColorMode.Truecolor,
-  render_mode: RenderMode.Foreground,
-  renderer: TextRenderer.Glyph,
-  stabilize: true,
 });
 
 function frame(time) {
