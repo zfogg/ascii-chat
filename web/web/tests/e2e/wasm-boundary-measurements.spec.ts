@@ -54,6 +54,37 @@ async function setupClient(page: import("@playwright/test").Page) {
   });
 }
 
+function masterArtifact(file: "client.js" | "client.wasm") {
+  return execFileSync("git", ["show", `master:web/web/src/wasm/dist/${file}`], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+async function setupMasterRenderer(page: import("@playwright/test").Page) {
+  const js = masterArtifact("client.js");
+  const wasm = masterArtifact("client.wasm");
+  await page.route("**/__master_wasm/**", (route) => {
+    const isWasm = route.request().url().endsWith(".wasm");
+    return route.fulfill({
+      body: isWasm ? wasm : js,
+      contentType: isWasm ? "application/wasm" : "application/javascript",
+    });
+  });
+  return page.evaluate(async () => {
+    const factory = (await import("/__master_wasm/client.js"))
+      .default as (options: Record<string, unknown>) => Promise<any>;
+    const module = await factory({
+      locateFile: (name: string) => `/__master_wasm/${name}`,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const renderer = new module.AsciiRendererBinding(40, 20, 12, false, 0);
+    if (!renderer.valid()) throw new Error(`master renderer error ${renderer.error()}`);
+    (window as unknown as { __masterBoundary: unknown }).__masterBoundary = {
+      renderer,
+    };
+  });
+}
+
 test.describe("WASM browser boundary measurements", () => {
   test.beforeEach(async ({ rendererPage }) => setupRenderer(rendererPage));
 
@@ -205,6 +236,38 @@ test.describe("WASM browser boundary measurements", () => {
     console.info("WASM boundary metrics", { frame, events });
     expect(events.singleMs).toBeGreaterThanOrEqual(0);
     expect(events.batchMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("compares the same renderer workload with the master artifact", async ({
+    rendererPage,
+  }) => {
+    test.fixme(
+      true,
+      "master's historical pthread loader cannot initialize through the isolated browser route",
+    );
+    await setupRenderer(rendererPage);
+    const current = await measure(
+      rendererPage,
+      '() => window.__boundary.renderer.render("x".repeat(800), 0)',
+      60,
+    );
+    await setupMasterRenderer(rendererPage);
+    const master = await rendererPage.evaluate(() => {
+      const renderer = (
+        window as unknown as {
+          __masterBoundary: { renderer: BoundaryRenderer };
+        }
+      ).__masterBoundary.renderer;
+      const start = performance.now();
+      let bytes = 0;
+      for (let i = 0; i < 60; i++)
+        bytes += renderer.render("x".repeat(800), 0).byteLength;
+      return { calls: 60, resultBytes: bytes, elapsedMs: performance.now() - start };
+    });
+    console.info("Master versus feature renderer metrics", { master, current });
+    expect(master.calls).toBe(current.calls);
+    expect(master.resultBytes).toBeGreaterThan(0);
+    expect(current.resultBytes).toBeGreaterThan(0);
   });
 
   test("client module initializes once", async ({ clientPage }) => {
