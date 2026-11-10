@@ -21,8 +21,8 @@
 
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
-static _Thread_local uint32_t
-    g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
+static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE]
+                                                 [IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
 static _Thread_local bool g_scratch_workspace_busy[ASCII_RENDER_WORKSPACE_POOL_SIZE];
 
 static uint32_t *acquire_scratch(uint32_t *inline_scratch, size_t bytes) {
