@@ -29,12 +29,16 @@ def test_header_discovery_skips_environments_and_tracks_new_headers(tmp_path: Pa
     external = tmp_path / ".venv"
     external.mkdir(parents=True)
     (external / "external.h").write_text("#define EXTERNAL(action) defer(action)\n", encoding="utf-8")
+    build = tmp_path / "build"
+    generated = build / "generated" / "nested"
+    generated.mkdir(parents=True)
+    (generated / "wrapper.h").write_text("#define GENERATED(action) defer(action)\n", encoding="utf-8")
     module = (ROOT / "cmake/tooling/Defer.cmake").as_posix()
     (project / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\nproject(scan LANGUAGES NONE)\n"
         'set(ASCIICHAT_DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}")\n'
         'set(ASCIICHAT_DEFER_SOURCE_DIRS tests CACHE STRING "")\n'
-        f'set(ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS "{external.as_posix()}" CACHE STRING "")\n'
+        f'set(ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS "{external.as_posix()};{build.as_posix()}" CACHE STRING "")\n'
         f'include("{module}")\nset(_batch_stage test)\n'
         "ascii_defer_scan_targets(selected)\n"
         "get_property(wrappers GLOBAL PROPERTY ASCII_DEFER_WRAPPER_NAMES)\n"
@@ -42,17 +46,15 @@ def test_header_discovery_skips_environments_and_tracks_new_headers(tmp_path: Pa
         'file(WRITE "${CMAKE_BINARY_DIR}/scan-result.txt" "${wrappers}|${overlays}")\n',
         encoding="utf-8",
     )
-    build = tmp_path / "build"
-
     def run(*args: str) -> str:
-        result = subprocess.run(args, capture_output=True, text=True, check=False)
+        result = subprocess.run(args, capture_output=True, text=True, check=False, timeout=30)
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout
 
     run(cmake, "-S", str(project), "-B", str(build), "-G", "Ninja")
     result_file = build / "scan-result.txt"
     initial = result_file.read_text(encoding="utf-8")
-    assert "FIRST" in initial and "EXTERNAL" in initial and "IGNORED" not in initial
+    assert all(name in initial for name in ("FIRST", "EXTERNAL", "GENERATED")) and "IGNORED" not in initial
     assert initial.endswith("|FALSE")
 
     new_dir = project / "tests" / "new" / "nested"

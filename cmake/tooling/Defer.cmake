@@ -286,16 +286,19 @@ endfunction()
 # Prune them while walking, including for source trees mounted from Windows.
 # Keep a configure dependency on each visited directory so new project headers
 # and newly created subdirectories are discovered on the next build.
-function(ascii_defer_collect_headers out_var directory)
+function(ascii_defer_collect_headers out_var directory is_root allow_build)
     get_filename_component(_directory "${directory}" ABSOLUTE)
     get_filename_component(_name "${_directory}" NAME)
-    if(NOT ARGN AND _name MATCHES "^(\\.git|\\.hg|\\.svn|\\.venv|venv|__pycache__|node_modules)$")
+    if(NOT is_root AND _name MATCHES "^(\\.git|\\.hg|\\.svn|\\.venv|venv|__pycache__|node_modules|CMakeFiles)$")
         set(${out_var} "" PARENT_SCOPE)
         return()
     endif()
     get_filename_component(_build "${CMAKE_BINARY_DIR}" ABSOLUTE)
     cmake_path(IS_PREFIX _build "${_directory}" NORMALIZE _inside_build)
-    if(_inside_build OR NOT IS_DIRECTORY "${_directory}")
+    if(is_root AND NOT _inside_build)
+        set(allow_build FALSE)
+    endif()
+    if((_inside_build AND NOT allow_build) OR NOT IS_DIRECTORY "${_directory}")
         set(${out_var} "" PARENT_SCOPE)
         return()
     endif()
@@ -306,9 +309,12 @@ function(ascii_defer_collect_headers out_var directory)
             # source file, which is especially costly on a Windows bind mount.
             # Directory timestamps track newly added/deleted children; existing
             # headers are tracked separately by ascii_defer_scan_targets.
-            set(_prune \( \( ! -path "${_directory}" \( -name .git -o -name .hg -o -name .svn
-                -o -name .venv -o -name venv -o -name __pycache__ -o -name node_modules \) \)
-                -o -path "${_build}" \) -prune -o)
+            set(_prune \( ! -path "${_directory}" \( -name .git -o -name .hg -o -name .svn
+                -o -name .venv -o -name venv -o -name __pycache__ -o -name node_modules -o -name CMakeFiles \) \))
+            if(NOT allow_build)
+                set(_prune \( ${_prune} -o -path "${_build}" \))
+            endif()
+            list(APPEND _prune -prune -o)
             execute_process(COMMAND "${_ascii_defer_find}" -H "${_directory}" ${_prune} -type d -print
                 OUTPUT_VARIABLE _directory_output RESULT_VARIABLE _directory_result ERROR_QUIET
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -320,6 +326,14 @@ function(ascii_defer_collect_headers out_var directory)
             if(_directory_result EQUAL 0 AND _header_result EQUAL 0)
                 string(REPLACE "\n" ";" _directories "${_directory_output}")
                 string(REPLACE "\n" ";" _headers "${_header_output}")
+                if(allow_build AND _directory STREQUAL _build)
+                    # Watching the build directory itself would reconfigure
+                    # whenever CMake rewrites build.ninja or other outputs.
+                    # Watch its immediate entries by glob and existing
+                    # subdirectories by timestamp instead.
+                    list(REMOVE_ITEM _directories "${_build}")
+                    file(GLOB _build_root_entries CONFIGURE_DEPENDS LIST_DIRECTORIES TRUE "${_build}/*")
+                endif()
                 foreach(_header IN LISTS _headers)
                     if(IS_SYMLINK "${_header}" AND IS_DIRECTORY "${_header}")
                         list(REMOVE_ITEM _headers "${_header}")
@@ -336,7 +350,7 @@ function(ascii_defer_collect_headers out_var directory)
     set(_headers "")
     foreach(_entry IN LISTS _entries)
         if(IS_DIRECTORY "${_entry}" AND NOT IS_SYMLINK "${_entry}")
-            ascii_defer_collect_headers(_nested "${_entry}")
+            ascii_defer_collect_headers(_nested "${_entry}" FALSE "${allow_build}")
             list(APPEND _headers ${_nested})
         elseif(NOT IS_DIRECTORY "${_entry}" AND _entry MATCHES "\\.(h|hpp|hh|hxx|inc|def)$")
             list(APPEND _headers "${_entry}")
@@ -351,7 +365,7 @@ function(ascii_defer_scan_targets out_var)
     # Discover wrapper names from project headers, including transitive wrappers.
     # This stays conservative: false positives merely cause a source to be parsed.
     foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
-        ascii_defer_collect_headers(_directory_headers "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}" TRUE)
+        ascii_defer_collect_headers(_directory_headers "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}" TRUE FALSE)
         list(APPEND _defer_headers ${_directory_headers})
     endforeach()
     foreach(_extra_dir IN LISTS ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS)
@@ -359,7 +373,7 @@ function(ascii_defer_scan_targets out_var)
         if(NOT IS_DIRECTORY "${_extra_dir}")
             message(FATAL_ERROR "defer wrapper header directory does not exist: ${_extra_dir}")
         endif()
-        ascii_defer_collect_headers(_extra_headers "${_extra_dir}" TRUE)
+        ascii_defer_collect_headers(_extra_headers "${_extra_dir}" TRUE TRUE)
         list(APPEND _defer_headers ${_extra_headers})
     endforeach()
     list(REMOVE_DUPLICATES _defer_headers)
