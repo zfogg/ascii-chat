@@ -274,7 +274,7 @@ test("Client completes a real custom-crypto handshake with client authentication
       timeout: 45_000,
     });
     await expectClientRendersChangingFrames(page);
-    const logPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
+    const logPath = server.debugLogPath;
     await expect
       .poll(
         () => {
@@ -453,7 +453,7 @@ for (const keyFormat of ["armored", "binary"] as const) {
           timeout: 45_000,
         });
         await expectClientRendersChangingFrames(page);
-        const serverLogPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
+        const serverLogPath = server.debugLogPath;
         await expect
           .poll(
             () => {
@@ -555,7 +555,7 @@ test("Client rejects a valid identity that the server did not authorize", async 
     await page
       .getByRole("button", { name: "Connect", exact: true })
       .click({ force: true });
-    const logPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
+    const logPath = server.debugLogPath;
     await expect
       .poll(
         () => {

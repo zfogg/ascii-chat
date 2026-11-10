@@ -210,6 +210,10 @@ export class ServerFixture {
     return this.port;
   }
 
+  get debugLogPath(): string {
+    return path.join(tmpdir(), `ascii-chat-server-${this.port}.log`);
+  }
+
   get exitCode(): number | null | undefined {
     return this.process?.exitCode;
   }
@@ -217,10 +221,7 @@ export class ServerFixture {
   get logs(): string {
     let fileLogs = "";
     try {
-      fileLogs = fs.readFileSync(
-        path.join(tmpdir(), `ascii-chat-server-${this.port}.log`),
-        "utf8",
-      );
+      fileLogs = fs.readFileSync(this.debugLogPath, "utf8");
     } catch {
       // The server may not have reached logging initialization.
     }
