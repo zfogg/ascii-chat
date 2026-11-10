@@ -382,22 +382,6 @@ public:
         sodium_memzero(bytes.data(), bytes.size());
       return code ? result(code) : drainOutputs();
     }
-    if (type == "encode-packet") {
-      const unsigned packet_type = event["packetType"].as<unsigned>();
-      const unsigned client_id = event["clientId"].isUndefined() ? 0 : event["clientId"].as<unsigned>();
-      auto input = binding_copy_input(event["payload"]);
-      std::vector<uint8_t> output(input.size() + 256);
-      size_t length = 0;
-      int code = packet_type > UINT16_MAX
-                     ? SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet type: %u", packet_type)
-                     : packet_encode(static_cast<packet_type_t>(packet_type), input.empty() ? nullptr : input.data(),
-                                     input.size(), client_id, output.data(), output.size(), &length);
-      if (code)
-        SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot serialize client packet");
-      emscripten::val response = result(code);
-      response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
-      return response;
-    }
     if (type == "secure-packet") {
       const bool encrypt = event["encrypt"].as<bool>();
       auto input = binding_copy_input(event["packet"]);

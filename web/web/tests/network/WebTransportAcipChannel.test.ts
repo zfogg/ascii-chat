@@ -30,7 +30,7 @@ const state = vi.hoisted(() => ({
           state: 1,
         };
       }
-      if (event.type === "encode-packet" || event.type === "send-packet")
+      if (event.type === "send-packet")
         return {
           code: 0,
           bytes: packet(

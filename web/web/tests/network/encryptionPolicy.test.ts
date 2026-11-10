@@ -53,17 +53,6 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
       const code = beginHandshake(event["mode"]);
       return { code, state: ConnectionState.HANDSHAKE };
     }
-    if (event["type"] === "encode-packet") {
-      const payload = event["payload"] as Uint8Array;
-      const bytes = new Uint8Array(22 + payload.length);
-      new DataView(bytes.buffer).setUint16(
-        8,
-        event["packetType"] as number,
-        false,
-      );
-      bytes.set(payload, 22);
-      return { code: 0, state: ConnectionState.CONNECTED, bytes };
-    }
     if (event["type"] === "send-packet") {
       const payload = event["payload"] as Uint8Array;
       const bytes = new Uint8Array(22 + payload.length);

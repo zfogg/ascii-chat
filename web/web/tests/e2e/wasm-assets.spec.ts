@@ -70,7 +70,7 @@ test("native packet intake returns protocol classification", async ({
     );
     await initClientWasm();
     const encoded = processClientEvent({
-      type: "encode-packet",
+      type: "send-packet",
       packetType: 5001,
       payload: new Uint8Array(),
     });
@@ -653,7 +653,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     const module = getClientWasmModule();
     const serializePacket = (packetType: number, payload: Uint8Array) => {
       const result = processClientEvent({
-        type: "encode-packet",
+        type: "send-packet",
         packetType,
         payload,
         clientId: 0,

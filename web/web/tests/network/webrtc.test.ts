@@ -15,7 +15,7 @@ import {
 vi.mock("../../src/wasm/client", async (original) => ({
   ...(await original<typeof import("../../src/wasm/client")>()),
   processClientEvent(event: Record<string, unknown>) {
-    if (event["type"] === "encode-packet" || event["type"] === "send-packet") {
+    if (event["type"] === "send-packet") {
       const payload = event["payload"] as Uint8Array;
       const bytes = new Uint8Array(22 + payload.length);
       const view = new DataView(bytes.buffer);
