@@ -272,7 +272,7 @@ async function runCryptoRenderCase(
       const acdsWsPort = ports[1]!;
       const serverTcpPort = ports[2]!;
       const serverWsPort = ports[3]!;
-      const turnPort = await unusedUdpPort();
+      let turnPort = await unusedUdpPort();
       const relayStart = 52_000 + Math.floor(Math.random() * 11_000);
       const relayEnd = relayStart + 15;
       const subnetOctet = 20 + Math.floor(Math.random() * 200);
@@ -280,39 +280,53 @@ async function runCryptoRenderCase(
       await run("docker", ["network", "create", "--subnet", subnet, network]);
       networkCreated = true;
       const turnIp = await dockerNetworkIp(network);
-      await run("docker", [
-        "run",
-        "--detach",
-        "--name",
-        container,
-        "--network",
-        network,
-        "--ip",
-        turnIp,
-        "--publish",
-        `127.0.0.1:${turnPort}:3478/udp`,
-        "--publish",
-        `127.0.0.1:${turnPort}:3478/tcp`,
-        "--publish",
-        `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
-        "coturn/coturn:latest",
-        "--listening-ip=0.0.0.0",
-        "--listening-port=3478",
-        `--relay-ip=${turnIp}`,
-        `--external-ip=127.0.0.1/${turnIp}`,
-        `--min-port=${relayStart}`,
-        `--max-port=${relayEnd}`,
-        "--user=crypto-e2e:crypto-e2e-password",
-        "--realm=ascii-chat.test",
-        "--lt-cred-mech",
-        "--allowed-peer-ip=169.254.0.0-169.254.255.255",
-        "--fingerprint",
-        "--allow-loopback-peers",
-        "--no-cli",
-        "--no-tls",
-        "--log-file=stdout",
-        "--verbose",
-      ]);
+      let started = false;
+      let lastDockerError: unknown;
+      for (let attempt = 0; attempt < 8 && !started; attempt++) {
+        try {
+          await run("docker", [
+            "run",
+            "--detach",
+            "--name",
+            container,
+            "--network",
+            network,
+            "--ip",
+            turnIp,
+            "--publish",
+            `127.0.0.1:${turnPort}:3478/udp`,
+            "--publish",
+            `127.0.0.1:${turnPort}:3478/tcp`,
+            "--publish",
+            `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
+            "coturn/coturn:latest",
+            "--listening-ip=0.0.0.0",
+            "--listening-port=3478",
+            `--relay-ip=${turnIp}`,
+            `--external-ip=127.0.0.1/${turnIp}`,
+            `--min-port=${relayStart}`,
+            `--max-port=${relayEnd}`,
+            "--user=crypto-e2e:crypto-e2e-password",
+            "--realm=ascii-chat.test",
+            "--lt-cred-mech",
+            "--allowed-peer-ip=169.254.0.0-169.254.255.255",
+            "--fingerprint",
+            "--allow-loopback-peers",
+            "--no-cli",
+            "--no-tls",
+            "--log-file=stdout",
+            "--verbose",
+          ]);
+          started = true;
+        } catch (error) {
+          lastDockerError = error;
+          await run("docker", ["rm", "--force", container]).catch(() => "");
+          if (attempt === 7) throw error;
+          turnPort = await unusedUdpPort();
+        }
+      }
+      if (!started)
+        throw lastDockerError ?? new Error("Could not start TURN container");
       turnStarted = true;
       acds = new LoggedProcess(
         [
