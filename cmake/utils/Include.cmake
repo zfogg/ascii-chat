@@ -111,8 +111,15 @@ function(configure_include_directories)
         # Put the target libc on the compiler's primary include search path.
         # This must be in CMAKE_*_FLAGS (before target-transitive includes),
         # because some imported pkg-config targets still emit -I/usr/include.
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${MUSL_INCLUDE_DIR}" CACHE STRING "C compiler flags" FORCE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${MUSL_INCLUDE_DIR}" CACHE STRING "C++ compiler flags" FORCE)
+        # Also remove host include flags inherited from the runner environment;
+        # an explicit -I/usr/include wins over the compiler's target search
+        # paths even when -nostdlibinc is active.
+        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        string(APPEND CMAKE_C_FLAGS " -I${MUSL_INCLUDE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " -I${MUSL_INCLUDE_DIR}")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags" FORCE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compiler flags" FORCE)
         # Keep the target libc ahead of any transitive pkg-config include
         # roots (some imported targets still expose /usr/include).
         target_include_directories(asciichat-project-includes BEFORE INTERFACE
