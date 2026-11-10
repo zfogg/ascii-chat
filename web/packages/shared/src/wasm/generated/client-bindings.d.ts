@@ -390,6 +390,7 @@ export type ClientBytes = Uint8Array;
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
+  packetTypes(): any;
   protocolInfo(): any;
   error(): number;
   close(): void;

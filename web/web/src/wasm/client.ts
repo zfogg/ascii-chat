@@ -127,7 +127,7 @@ export function packetTypeName(type: number): string {
 export function getPacketTypes(): Record<string, number> {
   if (!clientSession)
     throw new Error("Initialize the WASM client before reading packet types");
-  const packetTypes = clientSession.protocolInfo().packetTypes;
+  const packetTypes = clientSession.packetTypes();
   if (!packetTypes || typeof packetTypes !== "object")
     throw new Error("WASM session did not expose packet types");
   return { ...(packetTypes as Record<string, number>) };

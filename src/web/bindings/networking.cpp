@@ -117,6 +117,9 @@ public:
     info["browserCapabilities"].set("webrtc", browser_capabilities_.webrtc);
     return info;
   }
+  emscripten::val packetTypes() const {
+    return protocolInfo()["packetTypes"];
+  }
   int error() const {
     return result_;
   }
@@ -519,6 +522,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .constructor<OptionsPatch>()
       .class_function("errorAction", &ClientSessionBinding::errorAction)
       .function("valid", &ClientSessionBinding::valid)
+      .function("packetTypes", &ClientSessionBinding::packetTypes)
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
       .function("close", &ClientSessionBinding::close)
