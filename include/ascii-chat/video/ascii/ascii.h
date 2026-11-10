@@ -61,7 +61,6 @@
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
-#include <ascii-chat/platform/abstraction.h>
 #endif
 
 /* ============================================================================

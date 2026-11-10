@@ -3,7 +3,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/symbols.h>

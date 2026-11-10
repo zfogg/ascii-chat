@@ -5,7 +5,9 @@
 #define CHECK_WORKER CHECK
 #endif
 /** Native transport correctness and reproducible loopback measurements. */
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/send.h>

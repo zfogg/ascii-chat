@@ -1,7 +1,9 @@
 /* Synthetic ACIP packet delivery measurements; this does not measure acoustic
  * latency, capture devices, or rendering. All peers use password authentication
  * and application encryption, in addition to QUIC TLS or WebRTC DTLS. */
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/security.h>

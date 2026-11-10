@@ -7,7 +7,6 @@
 #ifndef ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 #define ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 
-#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>

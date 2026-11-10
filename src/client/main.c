@@ -89,7 +89,9 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/init.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/platform/symbols.h>

@@ -32,7 +32,9 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
 

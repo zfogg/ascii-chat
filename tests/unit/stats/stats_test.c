@@ -1,7 +1,9 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/stats/stats.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/thread.h>
 #include <string.h>

@@ -14,7 +14,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 typedef struct terminal_fd_reader_s {
   FILE *fp; // File pointer created from FD

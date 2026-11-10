@@ -19,7 +19,9 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 #include <conio.h>
 #include <io.h>

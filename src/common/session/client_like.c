@@ -31,7 +31,9 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/runtime.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/app_callbacks.h>

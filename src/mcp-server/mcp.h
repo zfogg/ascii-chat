@@ -6,7 +6,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/otel.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/network/http/server/server.h>

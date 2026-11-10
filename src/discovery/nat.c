@@ -18,7 +18,9 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/webrtc/stun.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>

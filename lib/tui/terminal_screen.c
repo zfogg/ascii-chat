@@ -22,7 +22,9 @@
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"
-#include "ascii-chat/platform/abstraction.h"
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include "ascii-chat/platform/keyboard.h"
 #include <libplatform/mutex.h>
 #include "ascii-chat/log/grep.h"

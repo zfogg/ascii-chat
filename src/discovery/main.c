@@ -70,7 +70,9 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/audio/audio.h>

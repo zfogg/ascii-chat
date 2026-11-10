@@ -1,6 +1,8 @@
 #include <ascii-chat/log/log.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 bool terminal_should_force_stderr(void) {
   if (!terminal_is_piped_output())

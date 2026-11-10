@@ -58,7 +58,9 @@ extern "C" {
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 
 // Include mixer.h for compressor, noise gate, and filter functions

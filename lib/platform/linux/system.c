@@ -4,7 +4,9 @@
  * @brief 🐧 Linux system utilities and backtrace symbol resolution
  */
 
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/common.h>
 #include <link.h>

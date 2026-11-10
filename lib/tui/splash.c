@@ -38,7 +38,9 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>

@@ -5,7 +5,9 @@
 
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <string.h>
 
 #define LOG_IO_BUFFER_SIZE 8192

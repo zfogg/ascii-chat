@@ -3,7 +3,9 @@
 #define UI_OUTPUT_TEXT_BUFFER_SIZE 4096
 
 #include <ascii-chat/ui/output.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>

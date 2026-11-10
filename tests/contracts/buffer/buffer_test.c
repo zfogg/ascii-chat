@@ -3,7 +3,9 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/video/rgba/image.h>

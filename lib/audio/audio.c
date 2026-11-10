@@ -26,7 +26,9 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>         // For static_mutex_t
-#include <ascii-chat/platform/abstraction.h>  // For platform_sleep_us
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>  // For platform_sleep_us
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/packet/packet.h> // For audio_batch_packet_t
 #include <ascii-chat/log/log.h>               // For log_* macros
 #include <ascii-chat/debug/named.h>

@@ -11,7 +11,9 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 

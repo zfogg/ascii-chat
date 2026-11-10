@@ -40,7 +40,9 @@
 #include "negotiate.h"
 #include "nat.h"
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>

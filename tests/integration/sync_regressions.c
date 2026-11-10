@@ -7,7 +7,9 @@
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/log/named.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <libplatform/cond.h>
 #include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/platform/rwlock.h>

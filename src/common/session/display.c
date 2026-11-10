@@ -34,7 +34,9 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>

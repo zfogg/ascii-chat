@@ -17,7 +17,9 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tui/controller.h>

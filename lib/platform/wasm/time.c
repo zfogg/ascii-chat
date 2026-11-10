@@ -4,7 +4,9 @@
  * @ingroup platform
  */
 
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <time.h>
 #include <sys/time.h>
 #include <stdint.h>

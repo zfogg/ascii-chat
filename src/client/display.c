@@ -82,7 +82,9 @@
 #include "session/keyboard_handler.h"
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/splash.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access

@@ -5,7 +5,9 @@
  */
 
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <time.h>

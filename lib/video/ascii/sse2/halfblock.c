@@ -3,7 +3,9 @@
 #define SIMD_CELL_ISA sse2
 #include "../simd/pack.c"
 #include <ascii-chat/video/ascii/render.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/sse2.h>
 char *render_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode) {
   if (width <= 0 || height <= 0)

@@ -103,7 +103,9 @@
 #include <string.h>
 #include <math.h>
 
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/thread_pool.h>
 

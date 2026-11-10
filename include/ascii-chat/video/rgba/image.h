@@ -53,7 +53,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
 
