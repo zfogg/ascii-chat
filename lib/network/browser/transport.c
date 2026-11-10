@@ -18,6 +18,8 @@ typedef struct browser_output {
 struct browser_transport {
   acip_transport_t transport;
   browser_transport_state_t state;
+  bool datagrams;
+  size_t max_datagram_payload;
   size_t queued_bytes;
   void *client_state;
   browser_output_t *output;
@@ -76,7 +78,18 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   return ASCIICHAT_OK;
 }
 
-static const acip_transport_methods_t browser_methods = {.send = browser_send, .is_connected = browser_connected};
+static asciichat_error_t browser_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
+  browser_transport_t *browser = transport ? transport->impl_data : NULL;
+  if (!browser || !out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser transport capabilities query");
+  *out = (acip_transport_capabilities_t){.independent_streams = true,
+                                         .datagrams = browser->datagrams,
+                                         .max_datagram_payload = browser->max_datagram_payload};
+  return ASCIICHAT_OK;
+}
+
+static const acip_transport_methods_t browser_methods = {
+    .send = browser_send, .is_connected = browser_connected, .get_capabilities = browser_capabilities};
 
 browser_transport_t *browser_transport_create(void) {
   browser_transport_t *browser = SAFE_CALLOC(1, sizeof(*browser), browser_transport_t *);
@@ -94,6 +107,13 @@ void browser_transport_set_connected(browser_transport_t *browser, bool connecte
 void browser_transport_set_state(browser_transport_t *browser, browser_transport_state_t state) {
   if (browser)
     browser->state = state;
+}
+
+void browser_transport_set_capabilities(browser_transport_t *browser, bool datagrams, size_t max_datagram_payload) {
+  if (!browser)
+    return;
+  browser->datagrams = datagrams && max_datagram_payload != 0;
+  browser->max_datagram_payload = browser->datagrams ? max_datagram_payload : 0;
 }
 
 size_t browser_transport_queued_bytes(const browser_transport_t *browser) {

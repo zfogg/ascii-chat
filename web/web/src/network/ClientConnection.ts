@@ -161,6 +161,7 @@ export class ClientConnection {
       datagrams:
         typeof WebTransport !== "undefined" &&
         "datagrams" in WebTransport.prototype,
+      maxDatagramPayload: 1200,
       hevc,
       webrtc: typeof RTCPeerConnection !== "undefined",
     });

@@ -20,6 +20,8 @@ browser_transport_t *browser_transport_create(void);
 void browser_transport_destroy(browser_transport_t *browser);
 /** Update the state reported by this transport and by acip_transport_is_connected(). */
 void browser_transport_set_state(browser_transport_t *browser, browser_transport_state_t state);
+/** Apply browser-negotiated delivery capabilities to the shared ACIP transport. */
+void browser_transport_set_capabilities(browser_transport_t *browser, bool datagrams, size_t max_datagram_payload);
 browser_transport_state_t browser_transport_state(const browser_transport_t *browser);
 /** Convenience for browser event bridges that only have an open/closed signal. */
 void browser_transport_set_connected(browser_transport_t *browser, bool connected);

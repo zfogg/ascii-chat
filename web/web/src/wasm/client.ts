@@ -583,6 +583,7 @@ export function processClientEvent(
 export function configureBrowserCapabilities(capabilities: {
   webtransport: boolean;
   datagrams: boolean;
+  maxDatagramPayload?: number;
   hevc: boolean;
   webrtc: boolean;
 }): ClientEventResult {

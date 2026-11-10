@@ -357,8 +357,11 @@ public:
       browser_capabilities_.webtransport =
           event["webtransport"].isUndefined() ? false : event["webtransport"].as<bool>();
       browser_capabilities_.datagrams = event["datagrams"].isUndefined() ? false : event["datagrams"].as<bool>();
+      const size_t max_datagram_payload =
+          event["maxDatagramPayload"].isUndefined() ? 0 : event["maxDatagramPayload"].as<size_t>();
       browser_capabilities_.hevc = event["hevc"].isUndefined() ? false : event["hevc"].as<bool>();
       browser_capabilities_.webrtc = event["webrtc"].isUndefined() ? false : event["webrtc"].as<bool>();
+      browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams, max_datagram_payload);
       emscripten::val response = result(0);
       response.set("capabilities", emscripten::val::object());
       response["capabilities"].set("webtransport", browser_capabilities_.webtransport);
