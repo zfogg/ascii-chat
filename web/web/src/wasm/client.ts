@@ -123,6 +123,16 @@ export function packetTypeName(type: number): string {
   return name ? String(name) : `UNKNOWN(${type})`;
 }
 
+/** Read the native packet table from the owned WASM session. */
+export function getPacketTypes(): Record<string, number> {
+  if (!clientSession)
+    throw new Error("Initialize the WASM client before reading packet types");
+  const packetTypes = clientSession.protocolInfo().packetTypes;
+  if (!packetTypes || typeof packetTypes !== "object")
+    throw new Error("WASM session did not expose packet types");
+  return { ...(packetTypes as Record<string, number>) };
+}
+
 let wasmModule: ClientModule | null = null;
 let moduleLoading: Promise<void> | null = null;
 let keyParserWorker: Worker | null = null;

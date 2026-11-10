@@ -60,6 +60,25 @@ test("client protocol metadata comes from the native session binding", async ({
   expect(info.packetTypes.SERVER_STATE).toBe(5008);
 });
 
+test("packet types are readable through the owned native session", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const packetTypes = await page.evaluate(async () => {
+    const { initClientWasm, getPacketTypes, cleanupClientWasm } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
+    await initClientWasm();
+    const value = getPacketTypes();
+    cleanupClientWasm();
+    return value;
+  });
+  expect(packetTypes.PROTOCOL_VERSION).toBe(1);
+  expect(packetTypes.IMAGE_FRAME_H265).toBe(3002);
+  expect(packetTypes.AUDIO_OPUS_BATCH).toBe(4001);
+  expect(packetTypes.SERVER_STATE).toBe(5008);
+});
+
 test("native packet intake returns protocol classification", async ({
   page,
 }) => {
