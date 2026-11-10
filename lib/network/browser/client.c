@@ -138,8 +138,9 @@ static int apply_client_crypto_options(browser_transport_t *transport) {
     ctx->client_private_key.type = KEY_TYPE_ED25519;
     memcpy(ctx->client_private_key.key.ed25519, state->client_identity_key, sizeof(state->client_identity_key));
     memcpy(ctx->client_private_key.public_key, state->client_identity_key + crypto_sign_SEEDBYTES,
-           crypto_sign_PUBLICKEYBYTES);
-    memcpy(ctx->client_public_key.key, state->client_identity_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES);
+           (size_t)crypto_sign_PUBLICKEYBYTES);
+    memcpy(ctx->client_public_key.key, state->client_identity_key + crypto_sign_SEEDBYTES,
+           (size_t)crypto_sign_PUBLICKEYBYTES);
     ctx->client_public_key.type = KEY_TYPE_ED25519;
   }
 
@@ -217,7 +218,7 @@ int browser_client_parse_ssh_private_key(const char *key_path, uint8_t *secret_k
     sodium_memzero(&key, sizeof(key));
     return -1;
   }
-  memcpy(secret_key_out, key.key.ed25519, crypto_sign_SECRETKEYBYTES);
+  memcpy(secret_key_out, key.key.ed25519, (size_t)crypto_sign_SECRETKEYBYTES);
   sodium_memzero(&key, sizeof(key));
   return 0;
 }
