@@ -13,7 +13,16 @@
 typedef enum { HTTP_RENDER_SOURCE_UPLOAD, HTTP_RENDER_SOURCE_FILE, HTTP_RENDER_SOURCE_URL,
                HTTP_RENDER_SOURCE_WEBCAM, HTTP_RENDER_SOURCE_VISUALIZATION } http_render_source_type_t;
 typedef enum { HTTP_RENDER_OUTPUT_TEXT, HTTP_RENDER_OUTPUT_JSON, HTTP_RENDER_OUTPUT_HTML,
-               HTTP_RENDER_OUTPUT_FILE } http_render_output_type_t;
+               HTTP_RENDER_OUTPUT_FILE, HTTP_RENDER_OUTPUT_FILES } http_render_output_type_t;
+
+#define HTTP_RENDERER_MAX_FRAMES 120
+
+typedef struct {
+  char *text;
+  size_t text_length;
+  char path[PLATFORM_MAX_PATH_LENGTH];
+  uint64_t timestamp_ms;
+} http_render_frame_t;
 
 typedef struct {
   http_render_source_type_t type;
@@ -44,6 +53,9 @@ typedef struct {
 typedef struct {
   char *ascii;
   size_t ascii_length;
+  http_render_frame_t *frames;
+  size_t frame_count;
+  size_t frame_capacity;
   char output_path[PLATFORM_MAX_PATH_LENGTH];
   char mime_type[128];
   uint64_t elapsed_ms;
@@ -105,6 +117,10 @@ struct http_renderer_job {
 
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
+asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text,
+                                                    size_t length, uint64_t timestamp_ms);
+asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path,
+                                                    uint64_t timestamp_ms);
 void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled,
                            http_renderer_process_result_t *result);
 

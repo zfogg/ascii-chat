@@ -221,9 +221,52 @@ void http_render_result_destroy(http_render_result_t *result) {
   if (!result)
     return;
   SAFE_FREE(result->ascii);
+  for (size_t i = 0; i < result->frame_count; ++i)
+    SAFE_FREE(result->frames[i].text);
+  SAFE_FREE(result->frames);
+  result->frame_count = 0;
+  result->frame_capacity = 0;
   result->ascii_length = 0;
   result->output_path[0] = '\0';
   result->mime_type[0] = '\0';
+}
+
+static asciichat_error_t http_render_result_reserve_frame(http_render_result_t *result) {
+  if (result->frame_count >= HTTP_RENDERER_MAX_FRAMES)
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered frame count exceeds the configured limit");
+  if (result->frame_count == result->frame_capacity) {
+    size_t capacity = result->frame_capacity ? result->frame_capacity * 2 : 4;
+    if (capacity > HTTP_RENDERER_MAX_FRAMES) capacity = HTTP_RENDERER_MAX_FRAMES;
+    result->frames = realloc(result->frames, capacity * sizeof(*result->frames));
+    if (!result->frames)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate rendered frame list");
+    memset(result->frames + result->frame_capacity, 0,
+           (capacity - result->frame_capacity) * sizeof(*result->frames));
+    result->frame_capacity = capacity;
+  }
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text,
+                                                    size_t length, uint64_t timestamp_ms) {
+  if (!result || (!text && length)) return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid text frame");
+  asciichat_error_t err = http_render_result_reserve_frame(result);
+  if (err != ASCIICHAT_OK) return err;
+  http_render_frame_t *frame = &result->frames[result->frame_count++];
+  frame->text = SAFE_MALLOC(length + 1, char *);
+  SAFE_MEMCPY(frame->text, length + 1, text, length);
+  frame->text[length] = '\0'; frame->text_length = length; frame->timestamp_ms = timestamp_ms;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path,
+                                                    uint64_t timestamp_ms) {
+  if (!result || !path || !*path) return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid file frame");
+  asciichat_error_t err = http_render_result_reserve_frame(result);
+  if (err != ASCIICHAT_OK) return err;
+  http_render_frame_t *frame = &result->frames[result->frame_count++];
+  SAFE_STRNCPY(frame->path, path, sizeof(frame->path)); frame->timestamp_ms = timestamp_ms;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
@@ -324,6 +367,10 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
   result->ascii = SAFE_MALLOC(length + 1, char *);
   SAFE_MEMCPY(result->ascii, length + 1, ascii, length + 1);
   result->ascii_length = length;
+  if (http_render_result_add_text_frame(result, result->ascii, length, 0) != ASCIICHAT_OK) {
+    http_render_result_destroy(result);
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Cannot store rendered frame");
+  }
   result->elapsed_ms = (time_get_ns() - started) / 1000000;
   free(ascii);
   return ASCIICHAT_OK;
