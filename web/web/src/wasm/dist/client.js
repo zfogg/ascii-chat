@@ -5945,8 +5945,8 @@ async function ClientModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1925056: () => Module.getRandomValue(),
-    1925092: () => {
+    1925088: () => Module.getRandomValue(),
+    1925124: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
