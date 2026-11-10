@@ -406,6 +406,9 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
   }
   clientSession = session;
   clientInitialized = true;
+  // Replace the generated development fallback with the native table as soon
+  // as the owned session exists. All runtime packet decisions then come from WASM.
+  Object.assign(PacketType, session.protocolInfo().packetTypes);
   console.log("[Client WASM] Session initialized");
 }
 
