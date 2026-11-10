@@ -11,7 +11,8 @@ def test_luminance_test_pattern_sustains_60_fps(binary, test_environment):
     height = 80
     duration = 20
     command = [
-        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern",
+        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "--renderer", "luminance",
+        "--stabilize=false",
         "--width", "240", "--height", str(height), "--splash-screen=false", "--audio=false",
         "--snapshot", "--snapshot-delay", str(duration),
     ]
