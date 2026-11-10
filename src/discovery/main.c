@@ -620,9 +620,12 @@ role_dispatch:
       if (host_capture.started && !atomic_load_bool(&host_capture.running))
         break;
 
-      // Keep discovery session responsive (NAT negotiations, migrations)
+      // Keep discovery session responsive (NAT negotiations, migrations).
+      // This runs after a captured frame and must not add a fixed delay to
+      // the media cadence; session_capture_sleep_for_fps() is the sole frame
+      // pacing point in the host loop.
       asciichat_errno_scope_t process_scope = errno_scope_begin();
-      result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+      result = discovery_session_process(g_discovery, 0);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
         log_error("Discovery session process failed %s", asciichat_error_format(NULL, result));
         break;
