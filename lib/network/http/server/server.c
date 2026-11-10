@@ -43,6 +43,7 @@ typedef struct http_write {
   bool close_on_done;
 } http_write_t;
 static void write_done(uv_write_t *req, int status);
+static void connection_cb(uv_stream_t *listener, int status);
 static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
                                           void *user_data);
 static asciichat_error_t http2_flush(http_server_client_t *client);
@@ -56,6 +57,11 @@ struct http_server {
   bool running;
   bool adopted_socket;
   bool thread_started;
+  bool foreground_running;
+  bool http3_attached;
+  bool listener_initialized;
+  bool stop_async_initialized;
+  bool wake_async_initialized;
   asciichat_thread_t thread;
   size_t connections;
   atomic_t inflight_requests;
@@ -116,6 +122,8 @@ struct http_server_client {
   uint8_t *chunk_decoded;
   char peer_address[64];
   SSL *tls;
+  size_t pending_writes;
+  bool close_after_write;
 };
 static size_t http_max_response_body(const http_server_t *server) {
   return server->config.max_response_body_bytes ? server->config.max_response_body_bytes
@@ -138,6 +146,52 @@ void http_server_invalidate_http3_context(http_server_t *server, void *context) 
   mutex_unlock(&server->response_mutex);
 }
 static void stop_async_cb(uv_async_t *async);
+static void http_server_detach_http3(http_server_t *s) {
+  if (s->http3_attached) {
+    (void)quic_endpoint_set_http_server((quic_endpoint_t *)s->config.http3_endpoint, NULL);
+    s->http3_attached = false;
+  }
+}
+static void http_server_rollback_start(http_server_t *s) {
+  http_server_detach_http3(s);
+  s->running = false;
+  if (s->stop_async_initialized)
+    stop_async_cb(&s->stop_async);
+  while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
+    ;
+}
+static asciichat_error_t http_server_start_listener(http_server_t *s) {
+  if (s->config.enable_http3) {
+    asciichat_error_t result = quic_endpoint_set_http_server((quic_endpoint_t *)s->config.http3_endpoint, s);
+    if (result != ASCIICHAT_OK)
+      return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
+    s->http3_attached = true;
+  }
+  bool tcp_enabled = s->config.enable_http1 || s->config.enable_http2;
+  if (tcp_enabled && !s->adopted_socket) {
+    const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
+    struct sockaddr_storage address;
+    int rc;
+    if (strchr(bind_address, ':')) {
+      struct sockaddr_in6 ipv6;
+      rc = uv_ip6_addr(bind_address, s->config.port, &ipv6);
+      memcpy(&address, &ipv6, sizeof(ipv6));
+    } else {
+      struct sockaddr_in ipv4;
+      rc = uv_ip4_addr(bind_address, s->config.port, &ipv4);
+      memcpy(&address, &ipv4, sizeof(ipv4));
+    }
+    if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0) {
+      http_server_rollback_start(s);
+      return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
+    }
+  }
+  if (tcp_enabled && uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0) {
+    http_server_rollback_start(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
+  }
+  return ASCIICHAT_OK;
+}
 static void wake_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (s->config.on_wakeup)
@@ -190,6 +244,28 @@ static void client_freed(uv_handle_t *handle) {
   SAFE_FREE(c);
 }
 
+static int http_select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length,
+                            const unsigned char *offered, unsigned int offered_length, void *arg) {
+  http_server_t *server = arg;
+  unsigned char protocols[sizeof("h2") + sizeof("http/1.1")];
+  unsigned int length = 0;
+  if (server->config.enable_http2) {
+    protocols[length++] = 2;
+    memcpy(protocols + length, "h2", 2);
+    length += 2;
+  }
+  if (server->config.enable_http1) {
+    protocols[length++] = 8;
+    memcpy(protocols + length, "http/1.1", 8);
+    length += 8;
+  }
+  if (!length || SSL_select_next_proto((unsigned char **)out, out_length, protocols, length, offered, offered_length) !=
+                     OPENSSL_NPN_NEGOTIATED)
+    return SSL_TLSEXT_ERR_NOACK;
+  (void)ssl;
+  return SSL_TLSEXT_ERR_OK;
+}
+
 static int tls_password_cb(char *buf, int size, int rwflag, void *userdata) {
   (void)rwflag;
   const char *password = userdata;
@@ -226,6 +302,7 @@ static bool tls_flush(http_server_client_t *c) {
       SAFE_FREE(copy); SAFE_FREE(request); SAFE_FREE(write);
       return false;
     }
+    c->pending_writes++;
   }
   return true;
 }
@@ -452,9 +529,12 @@ static bool parse_request(http_server_client_t *c, http_request_t *r) {
 
 static void write_done(uv_write_t *req, int status) {
   http_write_t *write = req->data;
-  if (write->close_on_done && !uv_is_closing((uv_handle_t *)write->stream))
+  if (write->client && write->client->pending_writes)
+    write->client->pending_writes--;
+  if ((write->close_on_done || (write->client && write->client->close_after_write && !write->client->pending_writes)) &&
+      !uv_is_closing((uv_handle_t *)write->stream))
     uv_close((uv_handle_t *)write->stream, client_freed);
-  if (!status && write->client)
+  if (!status && write->client && write->client->http2)
     (void)http2_flush(write->client);
   SAFE_FREE(write->bytes);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_SENT, write->length);
@@ -474,6 +554,7 @@ static asciichat_error_t client_write_plain(http_server_client_t *client, const 
     write->client = client; write->close_on_done = close_on_done; request->data = write;
     uv_buf_t b = uv_buf_init(copy, (unsigned)length);
     if (uv_write(request, write->stream, &b, 1, write_done) != 0) { SAFE_FREE(copy); SAFE_FREE(write); SAFE_FREE(request); return SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response"); }
+    client->pending_writes++;
     return ASCIICHAT_OK;
   }
   size_t offset = 0;
@@ -489,7 +570,7 @@ static asciichat_error_t client_write_plain(http_server_client_t *client, const 
       return SET_ERRNO(ERROR_NETWORK, "Cannot write encrypted HTTP response");
   }
   if (close_on_done)
-    client_close(client);
+    client->close_after_write = true;
   return offset == length ? ASCIICHAT_OK : SET_ERRNO(ERROR_NETWORK, "Cannot write encrypted HTTP response");
 }
 static asciichat_error_t http2_flush(http_server_client_t *client) {
@@ -1010,7 +1091,10 @@ static void connection_cb(uv_stream_t *l, int status) {
   if (!c)
     return;
   c->server = s;
-  uv_tcp_init(&s->loop, &c->tcp);
+  if (uv_tcp_init(&s->loop, &c->tcp) != 0) {
+    SAFE_FREE(c);
+    return;
+  }
   c->tcp.data = c;
   if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
     if (s->connections >= s->config.max_connections) {
@@ -1052,7 +1136,8 @@ static void connection_cb(uv_stream_t *l, int status) {
       SSL_set_accept_state(c->tls);
       if (!tls_handshake(c)) { client_close(c); return; }
     }
-    uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
+    if (uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb) != 0)
+      client_close(c);
   } else
     client_close(c);
 }
@@ -1094,20 +1179,22 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   if (cfg->tls_cert_path) {
     s->tls_context = SSL_CTX_new(TLS_server_method());
     if (!s->tls_context) {
-      SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
+      rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SAFE_FREE(s);
+      return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
     }
+    SSL_CTX_set_app_data(s->tls_context, s);
+    SSL_CTX_set_alpn_select_cb(s->tls_context, http_select_alpn, s);
     if (cfg->tls_key_password) {
       SSL_CTX_set_default_passwd_cb_userdata(s->tls_context, (void *)cfg->tls_key_password);
-    }
-    if (!s->tls_context) {
-      SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
     }
     if (cfg->tls_key_password)
       SSL_CTX_set_default_passwd_cb(s->tls_context, tls_password_cb);
     if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_cert_path) != 1 ||
         SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_key_path, SSL_FILETYPE_PEM) != 1 ||
         SSL_CTX_check_private_key(s->tls_context) != 1) {
-      SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot load HTTP TLS certificate or key");
+      SSL_CTX_free(s->tls_context); s->tls_context = NULL;
+      rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SAFE_FREE(s);
+      return SET_ERRNO(ERROR_NETWORK, "Cannot load HTTP TLS certificate or key");
     }
   }
   s->request_rate_limit.max_events =
@@ -1120,6 +1207,7 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   if (uv_loop_init(&s->loop) != 0) {
     rate_limiter_destroy(s->rate_limiter);
     mutex_destroy(&s->response_mutex);
+    SSL_CTX_free(s->tls_context);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
   }
@@ -1127,12 +1215,14 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     uv_loop_close(&s->loop); rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP listener");
   }
+  s->listener_initialized = true;
   s->listener.data = s;
   if (uv_async_init(&s->loop, &s->stop_async, stop_async_cb) != 0) {
     uv_close((uv_handle_t *)&s->listener, NULL); uv_run(&s->loop, UV_RUN_DEFAULT); uv_loop_close(&s->loop);
     rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP stop handle");
   }
+  s->stop_async_initialized = true;
   s->stop_async.data = s;
   if (uv_async_init(&s->loop, &s->wake_async, wake_async_cb) != 0) {
     uv_close((uv_handle_t *)&s->stop_async, NULL);
@@ -1141,9 +1231,11 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     uv_loop_close(&s->loop);
     mutex_destroy(&s->response_mutex);
     rate_limiter_destroy(s->rate_limiter);
+    SSL_CTX_free(s->tls_context);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP wakeup handle");
   }
+  s->wake_async_initialized = true;
   s->wake_async.data = s;
   *out = s;
   return ASCIICHAT_OK;
@@ -1156,31 +1248,12 @@ asciichat_error_t http_server_wakeup(http_server_t *s) {
 asciichat_error_t http_server_start(http_server_t *s) {
   if (!s || s->running)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is already running");
-  if (s->config.enable_http3 &&
-      quic_endpoint_set_http_server((quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
-  bool tcp_enabled = s->config.enable_http1 || s->config.enable_http2;
-  if (tcp_enabled && !s->adopted_socket) {
-    const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
-    struct sockaddr_storage address;
-    int rc;
-    if (strchr(bind_address, ':')) {
-      struct sockaddr_in6 ipv6;
-      rc = uv_ip6_addr(bind_address, s->config.port, &ipv6);
-      memcpy(&address, &ipv6, sizeof(ipv6));
-    } else {
-      struct sockaddr_in ipv4;
-      rc = uv_ip4_addr(bind_address, s->config.port, &ipv4);
-      memcpy(&address, &ipv4, sizeof(ipv4));
-    }
-    if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0)
-      return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
-  }
-  if (tcp_enabled && uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
-    return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
+  asciichat_error_t result = http_server_start_listener(s);
+  if (result != ASCIICHAT_OK)
+    return result;
   s->running = true;
   if (acthread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
-    s->running = false;
+    http_server_rollback_start(s);
     return SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
   }
   s->thread_started = true;
@@ -1195,11 +1268,17 @@ asciichat_error_t http_server_adopt_socket(http_server_t *s, intptr_t socket_han
   return ASCIICHAT_OK;
 }
 asciichat_error_t http_server_run(http_server_t *s) {
-  if (!s || !s->running)
-    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is not running");
-  if (s->thread_started)
+  if (!s || s->running || s->thread_started)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server loop is already running in its worker thread");
+  asciichat_error_t result = http_server_start_listener(s);
+  if (result != ASCIICHAT_OK)
+    return result;
+  s->running = true;
+  s->foreground_running = true;
   uv_run(&s->loop, UV_RUN_DEFAULT);
+  s->foreground_running = false;
+  s->running = false;
+  http_server_detach_http3(s);
   return ASCIICHAT_OK;
 }
 void http_server_stop(http_server_t *s) {
@@ -1210,10 +1289,14 @@ void http_server_stop(http_server_t *s) {
     uv_async_send(&s->stop_async);
     thread_join(&s->thread, NULL);
     s->thread_started = false;
+    http_server_detach_http3(s);
+  } else if (s->foreground_running) {
+    (void)uv_async_send(&s->stop_async);
   } else {
     stop_async_cb(&s->stop_async);
     while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
       ;
+    http_server_detach_http3(s);
   }
 }
 void http_server_destroy(http_server_t **p) {
@@ -1224,6 +1307,7 @@ void http_server_destroy(http_server_t **p) {
   while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
     ;
   uv_loop_close(&s->loop);
+  http_server_detach_http3(s);
   rate_limiter_destroy(s->rate_limiter);
   mutex_destroy(&s->response_mutex);
   SSL_CTX_free(s->tls_context);
