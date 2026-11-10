@@ -115,6 +115,12 @@ test("Client connection persists and renders continuous frames", async ({
   console.log("========== NAVIGATING ==========");
   const clientUrl = `http://localhost:3000/client?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(1);
 
   console.log(
     "========== WAITING 3.5 SECONDS FOR CONTINUOUS FRAMES ==========",
@@ -124,21 +130,25 @@ test("Client connection persists and renders continuous frames", async ({
   for (let i = 0; i < 7; i++) {
     await page.waitForTimeout(500);
     const terminalContent = await page.evaluate(() => {
-      // Get the actual rendered text from xterm - look in the rows/text elements
-      const rows = document.querySelectorAll(".xterm-rows");
-      if (rows.length === 0) return "[xterm not ready]";
-
-      let text = "";
-      rows.forEach((row) => {
-        const spans = row.querySelectorAll("span");
-        spans.forEach((span) => {
-          // Get text content, handling ANSI color codes
-          text += span.textContent || "";
-        });
-        text += "\n";
-      });
-
-      return text || "[no text content]";
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        "canvas.ascii-canvas",
+      );
+      if (!canvas || !canvas.width || !canvas.height) {
+        const metrics = window.__clientFrameMetrics;
+        return `frames:${metrics?.rendered ?? 0}:unique:${metrics?.uniqueRendered ?? 0}`;
+      }
+      const context = canvas.getContext("2d");
+      if (!context) return "[canvas context unavailable]";
+      const pixels = context.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      ).data;
+      let hash = 0;
+      for (let index = 0; index < pixels.length; index += 97)
+        hash = (hash * 31 + pixels[index]!) >>> 0;
+      return `${canvas.width}x${canvas.height}:${hash}`;
     });
     if (terminalContent) {
       terminalSnapshots.push(terminalContent);
@@ -248,7 +258,10 @@ test("Client connection persists and renders continuous frames", async ({
   await expectMeaningful60Fps(page, "client", 3_000);
   const renderMetrics = await page.evaluate(() => {
     const metrics = window.__clientFrameMetrics;
-    return { rendered: metrics?.rendered ?? 0, received: metrics?.received ?? 0 };
+    return {
+      rendered: metrics?.rendered ?? 0,
+      received: metrics?.received ?? 0,
+    };
   });
   console.log(
     `  - First snapshot length: ${terminalSnapshots[0]?.length || 0} chars`,
