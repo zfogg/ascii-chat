@@ -1,7 +1,7 @@
 #pragma once
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define MAX_BATCH_FRAMES 8
+#define MAX_BATCH_FRAMES 16
 
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/audio/limits.h>
@@ -45,7 +45,7 @@ typedef struct {
 /* Mutable state belongs to one attempt. Application devices and UI outlive it. */
 struct client_connection {
   network_connection_t *network;
-  acip_transport_t *transport;
+  atomic_ptr_t transport;
   // Application resources are borrowed explicitly by this connection.
   session_capture_ctx_t *capture_context;
   session_display_ctx_t *display_context;

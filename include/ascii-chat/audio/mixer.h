@@ -332,6 +332,7 @@ typedef struct {
 typedef struct {
   /** @brief Current number of active audio sources */
   int num_sources;
+  atomic_t active_sources;
   /** @brief Maximum number of sources (allocated array sizes) */
   int max_sources;
   /** @brief Sample rate in Hz (e.g., 44100) */
@@ -395,6 +396,8 @@ typedef struct {
  */
 mixer_t *mixer_create(int max_sources, int sample_rate);
 mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channels);
+/** Return the current number of registered audio sources without taking the mixer lock. */
+int mixer_source_count(const mixer_t *mixer);
 
 /**
  * @brief Destroy a mixer and free all resources

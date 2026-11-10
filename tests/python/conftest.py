@@ -6,7 +6,7 @@ import tempfile
 import uuid
 
 import pytest
-from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import clean_environment, native_test_environment
 
 
 def pytest_addoption(parser):
@@ -75,14 +75,24 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
-def native_process_policy(monkeypatch):
-    """Apply native flags/logging even to tests using raw subprocess calls."""
-    if not (os.environ.get("ASCII_CHAT_TEST_BINARY") or os.environ.get("ASCII_CHAT_BINARY")):
-        yield
-        return
+def native_process_policy(monkeypatch, tmp_path):
+    """Apply isolated environment and native policy to every child process."""
     import subprocess
-    from ascii_chat_tests.cli import _copy_log_alias, _requested_log, prepare_test_command
+    from ascii_chat_tests.cli import _copy_log_alias, _requested_log, is_test_binary, prepare_test_command
+    original_run = subprocess.run
     original_popen = subprocess.Popen
+
+    # Make inherited environments safe too. This covers tests that invoke the
+    # binary with raw subprocess APIs instead of the shared CLI helpers.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    monkeypatch.setenv("ASCII_CHAT_TEST_HOME", str(tmp_path))
+    monkeypatch.setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1")
 
     class AliasedProcess:
         def __init__(self, process, requested, command):
@@ -116,11 +126,19 @@ def native_process_policy(monkeypatch):
     def popen(command, *args, **kwargs):
         if isinstance(command, (list, tuple)):
             requested = _requested_log(command)
-            command = prepare_test_command(command)
+            if is_test_binary(command):
+                command = prepare_test_command(command)
+            kwargs["env"] = native_test_environment(tmp_path, kwargs.get("env"))
             return AliasedProcess(original_popen(command, *args, **kwargs), requested, command)
         return original_popen(command, *args, **kwargs)
 
+    def run(command, *args, **kwargs):
+        if isinstance(command, (list, tuple)):
+            kwargs["env"] = native_test_environment(tmp_path, kwargs.get("env"))
+        return original_run(command, *args, **kwargs)
+
     monkeypatch.setattr(subprocess, "Popen", popen)
+    monkeypatch.setattr(subprocess, "run", run)
     yield
 
 
@@ -153,9 +171,9 @@ def binary(request):
 @pytest.fixture
 def test_environment(tmp_path):
     env = clean_environment()
+    env = native_test_environment(tmp_path, env)
     env.update(TESTING="1", ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", ASCII_CHAT_DISABLE_FIRST_USE="1",
-               ASCII_CHAT_NO_CHECK_UPDATE="1", HOME=str(tmp_path), USERPROFILE=str(tmp_path),
-               APPDATA=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path), TERM="dumb", NO_COLOR="1")
+               ASCII_CHAT_NO_CHECK_UPDATE="1", TERM="dumb", NO_COLOR="1")
     return env
 
 

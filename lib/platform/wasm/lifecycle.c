@@ -60,7 +60,7 @@ bool lifecycle_is_initialized(const lifecycle_t *lc) {
 
   // WASM: Use non-tracking atomic load to avoid time_get_ns() which can block
   // Simply read the state value without the atomic_on_load callback
-  int state = (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&lc->state);
+  int state = atomic_load_int(&lc->state);
   bool result = state == LIFECYCLE_INITIALIZED;
 
   return result;
@@ -69,5 +69,5 @@ bool lifecycle_is_initialized(const lifecycle_t *lc) {
 bool lifecycle_is_dead(const lifecycle_t *lc) {
   if (!lc)
     return false;
-  return atomic_load((const _Atomic(uint64_t) *)&lc->state.impl) == LIFECYCLE_DEAD;
+  return atomic_load_int(&lc->state) == LIFECYCLE_DEAD;
 }

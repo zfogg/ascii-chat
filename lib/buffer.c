@@ -290,7 +290,7 @@ asciichat_error_t buffer_set_size(void *data, size_t size) {
   buffer_header_t *node = header(data);
   buffer_domain_t *domain = node->domain;
   mutex_lock(&domain->mutex);
-  if (node->references != 1) {
+  if (atomic_load(&node->references) != 1) {
     mutex_unlock(&domain->mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "Cannot resize shared buffer");
   }

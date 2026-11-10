@@ -21,7 +21,8 @@ typedef struct async_packet {
 typedef struct {
   platform_event_stream_t *stream;
   mutex_t mutex;
-  _Atomic(bool) closed;
+  mutex_t receive_mutex;
+  atomic_t closed;
   platform_event_loop_t *loop;
   asciichat_thread_t thread;
   bool thread_started;
@@ -33,9 +34,9 @@ typedef struct {
   async_packet_t *recycled;
   size_t recycled_count;
   size_t received_bytes;
-  _Atomic(size_t) received_count;
+  atomic_t received_count;
   buffer_workspace_t ciphertext;
-  _Atomic(size_t) queued_wire_bytes;
+  atomic_t queued_wire_bytes;
   bool packet_received;
   atomic_t interrupted;
   /**
@@ -49,22 +50,31 @@ typedef struct {
 
 static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
   async_tcp_t *tcp = transport->impl_data;
-  mutex_lock(&tcp->mutex);
-  if (tcp->closed || atomic_load_bool(&tcp->interrupted)) {
-    mutex_unlock(&tcp->mutex);
+  /* The ACIP outbound worker is the sole writer once the scheduler exists.
+   * Avoid reacquiring the TCP lifetime guard for every media packet; the guard
+   * remains required for direct handshake/control writes and all receive and
+   * teardown paths. */
+  bool guarded = transport->outbound == NULL;
+  if (guarded)
+    mutex_lock(&tcp->mutex);
+  if (atomic_load_bool(&tcp->closed) || atomic_load_bool(&tcp->interrupted)) {
+    if (guarded)
+      mutex_unlock(&tcp->mutex);
     return SET_ERRNO(ERROR_NETWORK, "Async transport closed");
   }
   acip_packet_plan_t plan;
   asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, buffers, count, &plan);
   if (result != ASCIICHAT_OK) {
-    mutex_unlock(&tcp->mutex);
+      if (guarded)
+        mutex_unlock(&tcp->mutex);
     return result;
   }
   if (!plan.encrypt) {
     result = platform_event_stream_write(tcp->stream, buffers, count, NULL, NULL);
   } else {
     if (buffer_workspace_reserve(&tcp->ciphertext, plan.domain, plan.ciphertext_capacity) != ASCIICHAT_OK) {
-      mutex_unlock(&tcp->mutex);
+      if (guarded)
+        mutex_unlock(&tcp->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async ciphertext");
     }
     uint8_t *ciphertext = tcp->ciphertext.data;
@@ -73,7 +83,8 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity,
                                  &outer, &length);
     if (result == ERROR_MEMORY) {
-      mutex_unlock(&tcp->mutex);
+      if (guarded)
+        mutex_unlock(&tcp->mutex);
       return result;
     }
     if (result == ASCIICHAT_OK) {
@@ -84,12 +95,13 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
   }
   if (result != ASCIICHAT_OK) {
     // Encryption sequence may already have advanced. Never continue this stream.
-    tcp->closed = true;
+    atomic_store_bool(&tcp->closed, true);
     platform_event_stream_request_close(tcp->stream, result);
     if (result != ERROR_CRYPTO)
       result = SET_ERRNO(ERROR_NETWORK, "Async packet transmission failed");
   }
-  mutex_unlock(&tcp->mutex);
+  if (guarded)
+    mutex_unlock(&tcp->mutex);
   return result;
 }
 
@@ -106,16 +118,16 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   *length = 0;
   uint64_t start = time_get_ns();
   uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
-  mutex_lock(&tcp->mutex);
-  while (!tcp->head && !tcp->closed) {
+  mutex_lock(&tcp->receive_mutex);
+  while (!tcp->head && !atomic_load_bool(&tcp->closed)) {
     if (atomic_load_bool(&tcp->interrupted)) {
       platform_event_stream_request_close(tcp->stream, ERROR_NETWORK);
-      mutex_unlock(&tcp->mutex);
+      mutex_unlock(&tcp->receive_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Async receive interrupted");
     }
     uint64_t elapsed = time_get_ns() - start;
     if (elapsed >= timeout) {
-      mutex_unlock(&tcp->mutex);
+      mutex_unlock(&tcp->receive_mutex);
       // Short receive deadlines drive polling; the enclosing operation owns its final timeout.
       bool previous = errno_notifications_suppress(true);
       asciichat_error_t result = SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Async receive deadline expired");
@@ -125,10 +137,10 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     uint64_t wait = timeout - elapsed;
     if (wait > 50 * NS_PER_MS_INT)
       wait = 50 * NS_PER_MS_INT;
-    cond_timedwait(&tcp->received, &tcp->mutex, wait);
+    cond_timedwait(&tcp->received, &tcp->receive_mutex, wait);
   }
   if (!tcp->head) {
-    mutex_unlock(&tcp->mutex);
+    mutex_unlock(&tcp->receive_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Async peer disconnected");
   }
   async_packet_t *packet = tcp->head;
@@ -136,7 +148,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   if (!tcp->head)
     tcp->tail = NULL;
   tcp->received_bytes -= packet->size;
-  --tcp->received_count;
+  atomic_fetch_sub_u64(&tcp->received_count, 1);
   packet_header_t header;
   memcpy(&header, packet->data, sizeof(header));
   packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type),
@@ -160,7 +172,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   if (result == ASCIICHAT_OK && envelope.consumed) {
     buffer_release(envelope.allocated_buffer);
     SAFE_FREE(packet);
-    mutex_unlock(&tcp->mutex);
+    mutex_unlock(&tcp->receive_mutex);
     return ERROR_NETWORK_INCOMPLETE;
   }
   if (result == ASCIICHAT_OK && tcp->recycled_count < 8 && buffer_capacity(envelope.allocated_buffer) <= 256 * 1024) {
@@ -174,7 +186,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   } else {
     SAFE_FREE(packet);
   }
-  mutex_unlock(&tcp->mutex);
+  mutex_unlock(&tcp->receive_mutex);
   if (result != ASCIICHAT_OK) {
     buffer_release(envelope.allocated_buffer);
     mutex_lock(&tcp->mutex);
@@ -190,7 +202,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
 static asciichat_error_t async_close(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
   mutex_lock(&tcp->mutex);
-  tcp->closed = true;
+  atomic_store_bool(&tcp->closed, true);
   platform_event_stream_request_close(tcp->stream, ASCIICHAT_OK);
   mutex_unlock(&tcp->mutex);
   return ASCIICHAT_OK;
@@ -199,7 +211,7 @@ static asciichat_error_t async_close(acip_transport_t *transport) {
 void acip_async_tcp_transport_detach(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
   mutex_lock(&tcp->mutex);
-  tcp->closed = true;
+  atomic_store_bool(&tcp->closed, true);
   platform_event_stream_observe_queue(tcp->stream, NULL, NULL);
   tcp->stream = NULL;
   mutex_unlock(&tcp->mutex);
@@ -207,7 +219,7 @@ void acip_async_tcp_transport_detach(acip_transport_t *transport) {
 
 static bool async_connected(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  bool connected = !tcp->closed && !atomic_load_bool(&tcp->interrupted);
+  bool connected = !atomic_load_bool(&tcp->closed) && !atomic_load_bool(&tcp->interrupted);
   return connected;
 }
 static acip_transport_type_t async_type(acip_transport_t *transport) {
@@ -220,7 +232,8 @@ static socket_t async_socket(acip_transport_t *transport) {
 }
 static bool async_pending(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  bool pending = tcp->received_count != 0 || tcp->closed || atomic_load_bool(&tcp->interrupted);
+  bool pending = atomic_load_u64(&tcp->received_count) != 0 || atomic_load_bool(&tcp->closed) ||
+                 atomic_load_bool(&tcp->interrupted);
   return pending;
 }
 static void async_destroy(acip_transport_t *transport) {
@@ -232,8 +245,6 @@ static void async_destroy(acip_transport_t *transport) {
     mutex_lock(&tcp->mutex);
     if (tcp->stream)
       platform_event_stream_request_close(tcp->stream, ASCIICHAT_OK);
-    while (tcp->stream)
-      cond_wait(&tcp->received, &tcp->mutex);
     mutex_unlock(&tcp->mutex);
   }
   if (tcp->loop) {
@@ -261,6 +272,7 @@ static void async_destroy(acip_transport_t *transport) {
     cond_destroy(&tcp->received);
   }
   buffer_workspace_destroy(&tcp->ciphertext);
+  mutex_destroy(&tcp->receive_mutex);
   mutex_destroy(&tcp->mutex);
 }
 static void async_interrupt(acip_transport_t *transport) {
@@ -291,18 +303,24 @@ bool acip_async_tcp_transport_is(const acip_transport_t *transport) {
 
 size_t acip_async_tcp_transport_queued(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  return tcp->queued_wire_bytes;
+  return (size_t)atomic_load_u64(&tcp->queued_wire_bytes);
 }
 
 static void queue_changed(void *context, size_t bytes) {
   async_tcp_t *tcp = context;
-  tcp->queued_wire_bytes = bytes;
+  atomic_store_u64(&tcp->queued_wire_bytes, bytes);
 }
 
 acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *stream, crypto_context_t *crypto) {
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   async_tcp_t *tcp = SAFE_CALLOC(1, sizeof(*tcp), async_tcp_t *);
   if (mutex_init(&tcp->mutex, "tcp_packet_io_lifetime_guard") != ASCIICHAT_OK) {
+    SAFE_FREE(tcp);
+    SAFE_FREE(transport);
+    return NULL;
+  }
+  if (mutex_init(&tcp->receive_mutex, "tcp_receive_queue") != ASCIICHAT_OK) {
+    mutex_destroy(&tcp->mutex);
     SAFE_FREE(tcp);
     SAFE_FREE(transport);
     return NULL;
@@ -322,9 +340,9 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
 
 static asciichat_error_t client_packet(const void *data, size_t length, void *arg) {
   async_tcp_t *tcp = arg;
-  mutex_lock(&tcp->mutex);
-  if (tcp->received_count >= 4096 || length > 16 * 1024 * 1024 - tcp->received_bytes) {
-    mutex_unlock(&tcp->mutex);
+  mutex_lock(&tcp->receive_mutex);
+  if (atomic_load_u64(&tcp->received_count) >= 4096 || length > 16 * 1024 * 1024 - tcp->received_bytes) {
+    mutex_unlock(&tcp->receive_mutex);
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Async client receive queue full");
   }
   async_packet_t **cached = &tcp->recycled;
@@ -342,7 +360,7 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
   packet->size = length;
   if (!packet->data) {
     SAFE_FREE(packet);
-    mutex_unlock(&tcp->mutex);
+    mutex_unlock(&tcp->receive_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async receive packet");
   }
   memcpy(packet->data, data, length);
@@ -353,11 +371,11 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
     tcp->head = packet;
   tcp->tail = packet;
   tcp->received_bytes += length;
-  ++tcp->received_count;
+  atomic_fetch_add_u64(&tcp->received_count, 1);
   tcp->packet_received = true;
   if (was_empty)
     cond_signal(&tcp->received);
-  mutex_unlock(&tcp->mutex);
+  mutex_unlock(&tcp->receive_mutex);
   return ASCIICHAT_OK;
 }
 static void client_read(platform_event_stream_t *stream, const void *data, size_t length, void *arg) {
@@ -376,12 +394,14 @@ static void client_closed(void *arg, asciichat_error_t reason) {
   (void)reason;
   async_tcp_t *tcp = arg;
   mutex_lock(&tcp->mutex);
-  tcp->closed = true;
+  atomic_store_bool(&tcp->closed, true);
   tcp->stream = NULL;
-  cond_broadcast(&tcp->received);
   platform_event_loop_t *loop = tcp->loop;
   acip_transport_t *destroy_on_close = tcp->destroy_on_close;
   mutex_unlock(&tcp->mutex);
+  mutex_lock(&tcp->receive_mutex);
+  cond_broadcast(&tcp->received);
+  mutex_unlock(&tcp->receive_mutex);
   if (loop)
     platform_event_loop_stop(loop);
   if (destroy_on_close)
@@ -440,7 +460,7 @@ acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *stream
   if (cond_init(&tcp->received, "accepted_receive") != ASCIICHAT_OK) {
     platform_event_stream_observe_queue(tcp->stream, NULL, NULL);
     tcp->stream = NULL;
-    tcp->closed = true;
+    atomic_store_bool(&tcp->closed, true);
     acip_transport_destroy(transport);
     return NULL;
   }

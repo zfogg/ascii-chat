@@ -154,7 +154,7 @@ struct session_capture_ctx {
   void *mic_audio_ctx;
 
   /** @brief Main audio context for playback (borrowed, not owned) */
-  _Atomic(void *) audio_ctx;
+  atomic_ptr_t audio_ctx;
 
   /** @brief Pause media source after first frame is read (--pause flag) */
   bool should_pause_after_first_frame;
@@ -709,7 +709,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     CLEAR_ERRNO();
     return;
   }
-  audio_context_t *audio = ctx->audio_ctx;
+  audio_context_t *audio = atomic_ptr_load(&ctx->audio_ctx);
   if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
     ascii_otel_ui_usage("media_input_prompt", "load_failed", 0);
     ctx->advance_failed |= automatic;
@@ -843,8 +843,9 @@ void session_capture_unlock_source(session_capture_ctx_t *ctx) {
 
 static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
   if (ctx->audio_update) {
-    ctx->audio_ctx = ctx->audio_update(ctx->source, ctx->audio_update_data);
-    ctx->audio_enabled = ctx->audio_ctx && ((audio_context_t *)ctx->audio_ctx)->running;
+    atomic_ptr_store(&ctx->audio_ctx, ctx->audio_update(ctx->source, ctx->audio_update_data));
+    void *audio_ctx = atomic_ptr_load(&ctx->audio_ctx);
+    ctx->audio_enabled = audio_ctx && ((audio_context_t *)audio_ctx)->running;
   }
   capture_commit_media(ctx);
   bool loading = ctx->loader_created;
@@ -884,7 +885,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       ctx->media_was_paused = media_source_is_paused(ctx->source);
       media_source_pause(ctx->source);
     }
-    audio_context_t *audio = ctx->audio_ctx;
+    audio_context_t *audio = atomic_ptr_load(&ctx->audio_ctx);
     if (audio && audio_stop_duplex(audio) == ASCIICHAT_OK) {
       if (leaving) {
         ctx->saved_audio_source = audio->capture_media_source;
@@ -1167,8 +1168,9 @@ static size_t capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size
   }
 
   // If using microphone fallback, read from mic context
-  if (ctx->mic_audio_ctx || (ctx->audio_ctx && atomic_load_bool(&ctx->non_media_active))) {
-    audio_context_t *audio_ctx = ctx->mic_audio_ctx ? ctx->mic_audio_ctx : ctx->audio_ctx;
+  void *current_audio_ctx = atomic_ptr_load(&ctx->audio_ctx);
+  if (ctx->mic_audio_ctx || (current_audio_ctx && atomic_load_bool(&ctx->non_media_active))) {
+    audio_context_t *audio_ctx = ctx->mic_audio_ctx ? ctx->mic_audio_ctx : current_audio_ctx;
     if (audio_ctx && audio_ctx->capture_buffer) {
       return audio_ring_buffer_read(audio_ctx->capture_buffer, buffer, num_samples);
     }
@@ -1203,7 +1205,7 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
     return NULL;
   }
-  return ctx->audio_ctx;
+  return atomic_ptr_load(&ctx->audio_ctx);
 }
 
 void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
@@ -1217,7 +1219,7 @@ void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_captu
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx) {
   if (ctx) {
     session_capture_lock_source(ctx);
-    ctx->audio_ctx = audio_ctx;
+    atomic_ptr_store(&ctx->audio_ctx, audio_ctx);
     session_capture_unlock_source(ctx);
   }
 }

@@ -127,6 +127,36 @@ def clean_environment():
     return {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
 
 
+def native_test_environment(directory, environment=None):
+    """Return an environment isolated from the developer's ascii-chat state."""
+    env = dict(os.environ if environment is None else environment)
+    root = str(directory)
+    env.update(
+        HOME=root,
+        USERPROFILE=root,
+        APPDATA=root,
+        LOCALAPPDATA=root,
+        XDG_CONFIG_HOME=root,
+        XDG_DATA_HOME=root,
+        XDG_CACHE_HOME=root,
+        ASCII_CHAT_TEST_HOME=root,
+        ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1",
+    )
+    return env
+
+
+def is_test_binary(command):
+    """Whether argv launches the configured ascii-chat test binary."""
+    configured = os.environ.get("ASCII_CHAT_TEST_BINARY") or os.environ.get("ASCII_CHAT_BINARY")
+    if not configured or not command:
+        return False
+    configured_path = Path(configured).resolve()
+    try:
+        return Path(str(command[0])).resolve() == configured_path
+    except (OSError, ValueError):
+        return False
+
+
 def run_cli(binary, *args, **subprocess_options):
     """Run the native binary with subprocess.run options."""
     import subprocess

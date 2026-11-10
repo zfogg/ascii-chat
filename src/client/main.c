@@ -293,21 +293,8 @@ static int initialize_client_systems(void) {
  * @return true to attempt reconnection, false to exit
  */
 static bool client_should_reconnect(asciichat_error_t last_error, int attempt_number, void *user_data) {
-  if (last_error == ERROR_CRYPTO_AUTH) {
-    /* The wire-level public mapping also uses ERROR_CRYPTO_AUTH for a
-     * transient policy rejection during the first unauthenticated startup
-     * handshake.  There is no credential to retry in this mode, so allow one
-     * fresh connection.  Credential-bearing authentication failures remain
-     * fatal and are never retried. */
-    const options_t *options = options_get();
-    bool has_auth_material = options && (options->password[0] || options->encrypt_key[0] || options->server_key[0] ||
-                                         options->client_keys[0]);
-    if (!has_auth_material && !GET_OPTION(no_auth) && attempt_number == 1)
-      return true;
-    return false;
-  }
-  if (last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION || last_error == ERROR_CONFIG ||
-      last_error == ERROR_INVALID_PASSWORD || last_error == ERROR_INVALID_SIGNATURE ||
+  if (last_error == ERROR_CRYPTO_AUTH || last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION ||
+      last_error == ERROR_CONFIG || last_error == ERROR_INVALID_PASSWORD || last_error == ERROR_INVALID_SIGNATURE ||
       last_error == ERROR_NETWORK_PROTOCOL || last_error == ERROR_INTERNAL)
     return false;
   (void)attempt_number;

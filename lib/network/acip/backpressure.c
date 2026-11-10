@@ -33,6 +33,7 @@ typedef struct outbound_packet {
 typedef struct {
   uint16_t type;
   uint32_t stream;
+  uint64_t last_used_ns;
   atomic_t needs_keyframe;
   /**
    * @brief acip outbound keeps the values that move through the subsystem: `transport`, `mutex`, `changed`, `worker`.
@@ -76,13 +77,37 @@ static size_t backend_bytes(acip_outbound_t *out) {
 static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint32_t id) {
   size_t stream_count = (size_t)atomic_load_u64(&out->stream_count);
   for (size_t i = 0; i < stream_count; ++i)
-    if (out->streams[i].type == type && out->streams[i].stream == id)
+    if (out->streams[i].type == type && out->streams[i].stream == id) {
+      out->streams[i].last_used_ns = time_get_ns();
       return &out->streams[i];
-  if (stream_count == OUTBOUND_MAX_STREAMS)
-    return NULL;
+    }
+  if (stream_count == OUTBOUND_MAX_STREAMS) {
+    size_t victim = OUTBOUND_MAX_STREAMS;
+    for (size_t i = 0; i < stream_count; ++i) {
+      bool pending = false;
+      for (outbound_packet_t *p = out->head; p; p = p->next)
+        if (p->encoded && p->type == out->streams[i].type && p->stream == out->streams[i].stream) {
+          pending = true;
+          break;
+        }
+      if (!pending && (victim == OUTBOUND_MAX_STREAMS ||
+                       out->streams[i].last_used_ns < out->streams[victim].last_used_ns))
+        victim = i;
+    }
+    if (victim == OUTBOUND_MAX_STREAMS) {
+      log_warn("Outbound stream state limit reached (%u); all stream slots are active", OUTBOUND_MAX_STREAMS);
+      return NULL;
+    }
+    log_warn("Evicting inactive outbound stream state for type %u stream %u", out->streams[victim].type,
+             out->streams[victim].stream);
+    outbound_stream_t *stream = &out->streams[victim];
+    *stream = (outbound_stream_t){.type = type, .stream = id, .last_used_ns = time_get_ns()};
+    atomic_store_bool(&stream->needs_keyframe, true);
+    return stream;
+  }
   size_t index = stream_count;
   outbound_stream_t *stream = &out->streams[index];
-  *stream = (outbound_stream_t){.type = type, .stream = id};
+  *stream = (outbound_stream_t){.type = type, .stream = id, .last_used_ns = time_get_ns()};
   atomic_store_bool(&stream->needs_keyframe, true);
   // Publish immutable identity only after initialization. The keyframe bit is
   // atomic so the capture worker can query it without locking the packet queue.
@@ -280,7 +305,11 @@ static void *outbound_worker(void *arg) {
     /* Admitted reliable traffic expires by closing the connection, never by
      * silently removing an audio or control packet. */
     uint64_t deadline = p->audio ? 5 * NS_PER_SEC_INT : 10 * NS_PER_SEC_INT;
-    if (!p->video && p->options.delivery == ACIP_DELIVERY_RELIABLE && now - p->created > deadline) {
+    /* Reliable expiry is terminal for control traffic only. Video and audio
+     * are media queues and are governed by their media admission/expiry
+     * policy; they must not tear down the peer merely because a slow backend
+     * delayed submission. */
+    if (!p->video && !p->audio && p->options.delivery == ACIP_DELIVERY_RELIABLE && now - p->created > deadline) {
       asciichat_errno_scope_t scope = errno_scope_begin();
       asciichat_error_context_t cause;
       SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Outbound reliable packet expired before submission");
@@ -686,9 +715,15 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
     mutex_unlock(&out->mutex);
     return true;
   }
+  mutex_lock(&out->mutex);
   size_t count = (size_t)atomic_load_u64(&out->stream_count);
   for (size_t i = 0; i < count; ++i)
     if (out->streams[i].type == type && out->streams[i].stream == id)
-      return atomic_load_bool(&out->streams[i].needs_keyframe);
+      {
+        bool needs_keyframe = atomic_load_bool(&out->streams[i].needs_keyframe);
+        mutex_unlock(&out->mutex);
+        return needs_keyframe;
+      }
+  mutex_unlock(&out->mutex);
   return true;
 }

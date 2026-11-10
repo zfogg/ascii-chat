@@ -273,7 +273,6 @@ void *client_video_render_thread(void *arg) {
   bool should_continue = true;
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     ASCII_OTEL_SCOPE(SERVER_VIDEO);
-    START_TIMER("render_iteration");
     log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %s", thread_client_id);
 
     // Check for immediate shutdown
@@ -298,11 +297,9 @@ void *client_video_render_thread(void *arg) {
     // Processing consumes part of the frame interval. Sleep only until the
     // scheduled deadline, and skip missed deadlines without a catch-up burst.
     uint64_t iter_start_ns = time_get_ns();
-    START_TIMER("render_frame_sleep");
     if (iter_start_ns < next_frame_ns) {
       platform_sleep_ns(next_frame_ns - iter_start_ns);
     }
-    STOP_TIMER_AND_LOG(dev, 0, "render_frame_sleep", "frame deadline sleep completed");
     uint64_t after_sleep_ns = time_get_ns();
     uint64_t elapsed_intervals =
         after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
@@ -384,11 +381,9 @@ void *client_video_render_thread(void *arg) {
     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
 
     uint64_t frame_create_start_ns = time_get_ns();
-    START_TIMER("render_create_frame");
     acip_render_settings_t frame_rendering = {0};
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count, &frame_rendering);
-    STOP_TIMER_AND_LOG(dev, 0, "render_create_frame", "create_mixed_ascii_frame completed");
     uint64_t frame_create_end_ns = time_get_ns();
     if (sources_count > 0) {
       stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT,
@@ -643,18 +638,29 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
+    // There is no mixed audio to send when this is the only registered
+    // source. Avoid entering the mixer just to discover that exclusion; this
+    // is the common single-client server case.
+    if (mixer_source_count(g_audio_mixer) <= 1) {
+      audio_deadline += 20 * NS_PER_MS_INT;
+      uint64_t idle_now = time_get_ns();
+      if (audio_deadline > idle_now)
+        platform_sleep_ns(audio_deadline - idle_now);
+      else
+        audio_deadline = idle_now;
+      continue;
+    }
+
     const char *client_id_snapshot = client->client_id;
     if (!atomic_load_bool(&client->active))
       break;
 
     // Create mix excluding THIS client's audio using snapshot data
-    START_TIMER("mix_%s", client_id_snapshot);
 
-    // ADAPTIVE READING: Read more samples when we're behind to catch up
-    // Normal: 480 samples per 10ms iteration
-    // When behind: read up to OPUS_FRAME_SAMPLES samples to catch up faster
-    // Check source buffer levels to decide
-    int samples_to_read = 480 * AUDIO_CHANNELS; // Default: 10ms worth
+    // Mix one complete Opus frame per iteration. This keeps the source lock at
+    // the packet cadence instead of reacquiring it twice for every 20 ms of
+    // audio, while preserving the exact frame boundary required by the codec.
+    int samples_to_read = OPUS_FRAME_SAMPLES * AUDIO_CHANNELS;
 
     int samples_mixed = 0;
     uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
@@ -662,14 +668,11 @@ void *client_audio_render_thread(void *arg) {
     samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - stats_mix_start);
 
-    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%s", "Mixer for client %s: took",
-                             client_id_snapshot);
 
     log_debug_every(LOG_RATE_SLOW, "Audio render for client %s: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
-    START_TIMER("accum_%s", client_id_snapshot);
 
     int space_available = (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
@@ -682,21 +685,16 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated += samples_to_copy;
     }
 
-    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "accum_%s", "Accumulate for client %s: took",
-                             client_id_snapshot);
 
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
       // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
       uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
-      START_TIMER("opus_encode_%s", client_id_snapshot);
 
       int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS,
                                         opus_buffer, sizeof(opus_buffer));
 
-      STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%s",
-                               "Opus encode for client %s: took", client_id_snapshot);
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
@@ -785,12 +783,7 @@ void *client_audio_render_thread(void *arg) {
           memcpy(ptr, opus_buffer, (size_t)opus_size);
 
           // Queue the properly formatted packet
-          START_TIMER("audio_queue_%s", client_id_snapshot);
-
           asciichat_error_t result = server_send_audio(client, packet_buffer, total_packet_size);
-
-          STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
-                                   "Audio queue for client %s: took", client_id_snapshot);
 
           if (result != ASCIICHAT_OK) {
             log_debug_every(US_PER_SEC_INT, "Failed to queue Opus audio for client %s", client_id_snapshot);
@@ -806,10 +799,10 @@ void *client_audio_render_thread(void *arg) {
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
     }
 
-    // Audio mixing rate limiting using adaptive sleep system
-    // Target: 10ms intervals (100 FPS) for 480 samples @ 48kHz
+    // Audio mixing rate limiting using adaptive sleep system.
+    // One complete Opus frame is mixed per 20 ms iteration.
     // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
-    audio_deadline += 10 * NS_PER_MS_INT;
+    audio_deadline += 20 * NS_PER_MS_INT;
     uint64_t now = time_get_ns();
     if (audio_deadline > now)
       platform_sleep_ns(audio_deadline - now);

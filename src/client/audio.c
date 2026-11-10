@@ -317,7 +317,8 @@ asciichat_error_t audio_sender_init(client_connection_t *connection) {
   lifecycle_init(&connection->audio_send_queue_lc, "audio_queue");
   if (client_connection_checkpoint("audio-queue") != ASCIICHAT_OK)
     return ERROR_THREAD;
-  if (connection->transport && connection->transport->outbound) {
+  acip_transport_t *transport = atomic_ptr_load(&connection->transport);
+  if (transport && transport->outbound) {
     // Admission copies bounded audio into the transport queue without socket I/O.
     connection->audio_send_direct = true;
     atomic_store_bool(&connection->audio_sender_exited, true);
@@ -535,7 +536,7 @@ static void *audio_capture_thread_func(void *arg) {
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
+#define BATCH_TIMEOUT_NS (320LL * NS_PER_MS_INT) // Flush at most sixteen 20 ms Opus frames (bounded 320 ms latency)
   uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
   int batch_frame_count = 0;
@@ -739,7 +740,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Queue batch for async sending (non-blocking - sender thread handles network I/O)
-      if (batch_frame_count >= 2 ||
+      if (batch_frame_count >= MAX_BATCH_FRAMES ||
           (batch_frame_count > 0 && time_get_ns() - batch_start_time_ns >= BATCH_TIMEOUT_NS)) {
         batch_send_count++;
 
