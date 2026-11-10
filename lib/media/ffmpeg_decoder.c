@@ -16,6 +16,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <libplatform/system.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
