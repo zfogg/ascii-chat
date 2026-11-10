@@ -6,7 +6,7 @@ import {
 } from "ascii-chat";
 import "./style.css";
 
-const canvas = document.querySelector("#canvas");
+const output = document.querySelector("#output");
 const status = document.querySelector("#status");
 let renderer;
 try {
@@ -25,16 +25,16 @@ const height = 48;
 renderer.configure({
   width,
   height,
-  color_mode: ColorMode.Truecolor,
-  render_mode: RenderMode.HalfBlock,
-  renderer: TextRenderer.Glyph,
+  color_mode: ColorMode.None,
+  render_mode: RenderMode.Foreground,
+  renderer: TextRenderer.Luminance,
   stabilize: true,
 });
 
 function frame(time) {
   const rgba = renderer.testPattern(320, 240, 1, time);
   const art = renderer.render(rgba, 320, 240);
-  renderer.draw(canvas, art, width, height);
+  output.textContent = art.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
   status.textContent = `Live WASM render · ${Math.round(time / 1000)}s`;
   requestAnimationFrame(frame);
 }
