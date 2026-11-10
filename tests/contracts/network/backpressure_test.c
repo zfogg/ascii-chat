@@ -426,6 +426,9 @@ Test(transport_backpressure, asynchronous_media_failure_reaches_next_producer) {
     cr_assert(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
+  acip_outbound_stats_t failed_stats;
+  cr_assert_eq(acip_outbound_snapshot(transport, &failed_stats), ASCIICHAT_OK);
+  cr_assert_eq(failed_stats.application_bytes, 0);
   failing_producer_t later = {.transport = transport};
   submit_control(&later);
   cr_assert_eq(later.result, ERROR_NOT_SUPPORTED);
