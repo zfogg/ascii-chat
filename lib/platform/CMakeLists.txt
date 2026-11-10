@@ -36,7 +36,6 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/string.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/question.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/mmap.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/windows/symbols.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/getopt.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/pipe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/memory.c
@@ -62,7 +61,6 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/string.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/question.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/mmap.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/posix/symbols.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/pipe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/memory.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/process.c
