@@ -126,25 +126,6 @@ public:
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
-  emscripten::val settingsReceive(ClientBytes payload) {
-    auto input = binding_copy_input(payload);
-    const int code = browser_client_settings_receive(transport_.get(), input.data(), input.size());
-    char *json = code == 0 ? browser_client_settings_values(transport_.get()) : nullptr;
-    emscripten::val response = emscripten::val::object();
-    response.set("code", code);
-    response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
-    if (json)
-      SAFE_FREE(json);
-    return response;
-  }
-  emscripten::val settingsValues() const {
-    char *json = browser_client_settings_values(transport_.get());
-    emscripten::val response = emscripten::val::object();
-    response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
-    if (json)
-      SAFE_FREE(json);
-    return response;
-  }
   emscripten::val validateFrame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
                                 unsigned flags, ClientBytes contract, unsigned original_size) {
     const size_t input_size = encoded["length"].as<size_t>();
@@ -182,6 +163,24 @@ public:
     if (!owned_)
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized"));
     const std::string type = event["type"].as<std::string>();
+    if (type == "settings-receive") {
+      auto input = binding_copy_input(event["payload"]);
+      const int code = browser_client_settings_receive(transport_.get(), input.data(), input.size());
+      emscripten::val response = result(code);
+      char *json = code == 0 ? browser_client_settings_values(transport_.get()) : nullptr;
+      response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
+      if (json)
+        SAFE_FREE(json);
+      return response;
+    }
+    if (type == "settings-values") {
+      emscripten::val response = result(0);
+      char *json = browser_client_settings_values(transport_.get());
+      response.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
+      if (json)
+        SAFE_FREE(json);
+      return response;
+    }
     if (type == "begin-handshake") {
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       const int code = discovery
@@ -490,8 +489,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
       .function("snapshot", &ClientSessionBinding::snapshot)
-      .function("settingsReceive", &ClientSessionBinding::settingsReceive)
-      .function("settingsValues", &ClientSessionBinding::settingsValues)
       .function("validateFrame", &ClientSessionBinding::validateFrame)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process)

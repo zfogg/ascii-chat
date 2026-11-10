@@ -393,8 +393,6 @@ export interface ClientSessionBinding extends ClassHandle {
   protocolInfo(): any;
   error(): number;
   snapshot(): any;
-  settingsReceive(_0: ClientBytes): any;
-  settingsValues(): any;
   validateFrame(
     _0: ClientBytes,
     _1: number,
@@ -565,6 +563,7 @@ interface EmbindModule {
   };
   ClientSessionBinding: {
     new (_0: OptionsPatch): ClientSessionBinding;
+    errorAction(_0: number): number;
   };
   KeyParserBinding: {
     parse(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
