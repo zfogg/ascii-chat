@@ -51,31 +51,27 @@ typedef struct {
 
 static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
   async_tcp_t *tcp = transport->impl_data;
-  /* The ACIP outbound worker is the sole writer once the scheduler exists.
-   * Avoid reacquiring the TCP lifetime guard for every media packet; the guard
-   * remains required for direct handshake/control writes and all receive and
-   * teardown paths. */
-  bool guarded = transport->outbound == NULL;
-  if (guarded)
-    mutex_lock(&tcp->mutex);
-  if (atomic_load_bool(&tcp->closed) || atomic_load_bool(&tcp->interrupted)) {
-    if (guarded)
-      mutex_unlock(&tcp->mutex);
+  /* The outbound worker is the sole writer, but the close callback can clear
+   * tcp->stream and destroy its event stream concurrently. Keep the lifetime
+   * guard through the write so the stream cannot disappear between the state
+   * check and platform_event_stream_write(). */
+  mutex_lock(&tcp->mutex);
+  platform_event_stream_t *stream = tcp->stream;
+  if (!stream || atomic_load_bool(&tcp->closed) || atomic_load_bool(&tcp->interrupted)) {
+    mutex_unlock(&tcp->mutex);
     return SET_ERRNO(ERROR_NETWORK, "Async transport closed");
   }
   acip_packet_plan_t plan;
   asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, buffers, count, &plan);
   if (result != ASCIICHAT_OK) {
-    if (guarded)
-      mutex_unlock(&tcp->mutex);
+    mutex_unlock(&tcp->mutex);
     return result;
   }
   if (!plan.encrypt) {
-    result = platform_event_stream_write(tcp->stream, buffers, count, NULL, NULL);
+    result = platform_event_stream_write(stream, buffers, count, NULL, NULL);
   } else {
     if (buffer_workspace_reserve(&tcp->ciphertext, plan.domain, plan.ciphertext_capacity) != ASCIICHAT_OK) {
-      if (guarded)
-        mutex_unlock(&tcp->mutex);
+      mutex_unlock(&tcp->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async ciphertext");
     }
     uint8_t *ciphertext = tcp->ciphertext.data;
@@ -84,14 +80,13 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity,
                                  &outer, &length);
     if (result == ERROR_MEMORY) {
-      if (guarded)
-        mutex_unlock(&tcp->mutex);
+      mutex_unlock(&tcp->mutex);
       return result;
     }
     if (result == ASCIICHAT_OK) {
       socket_buffer_t wire[] = {{&outer, sizeof(outer)}, {ciphertext, length}};
       // The event stream copies the vectors before returning.
-      result = platform_event_stream_write(tcp->stream, wire, 2, NULL, NULL);
+      result = platform_event_stream_write(stream, wire, 2, NULL, NULL);
     }
   }
   if (result != ASCIICHAT_OK) {
@@ -101,8 +96,7 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     if (result != ERROR_CRYPTO)
       result = SET_ERRNO(ERROR_NETWORK, "Async packet transmission failed");
   }
-  if (guarded)
-    mutex_unlock(&tcp->mutex);
+  mutex_unlock(&tcp->mutex);
   return result;
 }
 
