@@ -72,6 +72,48 @@ static void run_block_throw(void) {
   block();
 }
 
+static void run_cleanup_throw(void) {
+  defer(sequence = sequence * 10 + 1);
+  defer({
+    sequence = sequence * 10 + 2;
+    @throw make_exception();
+  });
+}
+
+static void run_caught_inside_scope(void) {
+  defer(sequence = sequence * 10 + 1);
+  @try {
+    @throw make_exception();
+  } @catch (id exception) {
+    (void)exception;
+    sequence = 2;
+  }
+  sequence = sequence * 10 + 3;
+}
+
+static void run_cancel_then_throw(void) {
+  defer(sequence = sequence * 10 + 1);
+  defer_named(canceled, sequence = sequence * 10 + 2);
+  defer_cancel(canceled);
+  @throw make_exception();
+}
+
+#define CLEAN_AT_EXIT(x) defer(sequence = sequence * 10 + (x))
+static void run_wrapped(void) {
+  int value = 3;
+  CLEAN_AT_EXIT(value);
+  value = 4;
+}
+
+static void run_block_capture(void) {
+  __block int value = 3;
+  void (^block)(void) = ^{
+    defer(sequence = sequence * 10 + value);
+    value = 4;
+  };
+  block();
+}
+
 static void run_loop(void) {
   for (int i = 0; i < 3; ++i) {
     defer(sequence = sequence * 10 + i + 1);
@@ -147,6 +189,36 @@ int main(void) {
     }
     if (sequence != 21)
       return 10;
+    sequence = 0;
+    @try {
+      run_cleanup_throw();
+      return 13;
+    } @catch (id exception) {
+      (void)exception;
+    }
+    if (sequence != 21)
+      return 14;
+    sequence = 0;
+    run_caught_inside_scope();
+    if (sequence != 231)
+      return 15;
+    sequence = 0;
+    @try {
+      run_cancel_then_throw();
+      return 16;
+    } @catch (id exception) {
+      (void)exception;
+    }
+    if (sequence != 1)
+      return 17;
+    sequence = 0;
+    run_wrapped();
+    if (sequence != 4)
+      return 18;
+    sequence = 0;
+    run_block_capture();
+    if (sequence != 4)
+      return 19;
 #ifndef ASCIICHAT_TEST_GNUSTEP_OBJC
     sequence = 0;
     run_fast_enumeration();

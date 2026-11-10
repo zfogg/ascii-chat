@@ -16,6 +16,9 @@
  * cleanup must not throw because the guard destructor is `noexcept`.
  * Both backends accept C++ source files and preserve them for native C++
  * compilation. C++ scopes follow the language's normal object lifetime rules.
+ * On Windows, including the defer header makes Clang reject Microsoft-extension
+ * goto jumps that bypass a local variable's initialization, because bypassing
+ * a defer guard would leave its cleanup state uninitialized.
  * Objective-C (`.m`) is transformed using `@try`/`@finally`, so registered
  * actions also run while Objective-C exceptions unwind. This works in C
  * functions, Objective-C methods, and block literals.

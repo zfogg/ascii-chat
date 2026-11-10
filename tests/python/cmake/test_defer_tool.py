@@ -515,6 +515,111 @@ def test_cpp_defer_in_included_header(tmp_path: Path, extension: str) -> None:
     assert subprocess.run([str(executable)], check=False).returncode == 0
 
 
+@pytest.mark.parametrize("extension", ["cpp", "hpp"])
+@pytest.mark.parametrize("case", ["order", "loops", "cancel", "return", "exception", "template"])
+def test_cpp_defer_behavior_matrix(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str, case: str
+) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    cases = {
+        "order": 'int f() { defer(trace=trace*10+1); defer(trace=trace*10+2); '
+                 '{ defer(trace=trace*10+3); } return trace; } '
+                 'int main() { return f()!=3 || trace!=321; }',
+        "loops": 'int main() { for(int i=0;i<3;++i) { defer(trace=trace*10+i+1); '
+                 'if(i==0) continue; if(i==1) break; } return trace!=12; }',
+        "cancel": 'int main() { { defer_named(a,trace=trace*10+1); '
+                  'defer_named(b,trace=trace*10+2); defer_cancel(a); defer_cancel(a); } '
+                  'return trace!=2; }',
+        "return": 'int f() { int value=4; defer(value=9); return value++; } '
+                  'int main() { return f()!=4; }',
+        "exception": 'int main() { try { defer(trace=trace*10+1); '
+                     '{ defer(trace=trace*10+2); throw 7; } } catch(int n) { '
+                     'if(n!=7) return 1; } return trace!=21; }',
+        "template": 'template <typename T> T f(T n) { defer(trace=trace*10+n); return n; } '
+                    'int main() { if(f<int>(2)!=2 || f<long>(3)!=3) return 1; return trace!=23; }',
+    }
+    source = tmp_path / f"input.{extension}"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nstatic int trace;\n' + cases[case] + '\n', encoding="utf-8")
+    output = tmp_path / f"output.{extension}"
+    flags = ["-x", "c++", "-std=c++11", "-I", str(ROOT / "include")]
+    result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", *flags],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([compiler, *flags, str(output), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, f"{case}: exit {result.returncode}: {result.stderr}"
+
+
+@pytest.mark.parametrize("body", [
+    'defer(no_such_function());',
+    'defer_cancel(missing);',
+    'defer_named(handle, (void)0); defer_named(handle, (void)0);',
+    'goto label; defer((void)0); label:;',
+])
+@pytest.mark.parametrize("extension", ["cpp", "hpp"])
+def test_cpp_tool_rejects_invalid_scope(
+    tmp_path: Path, transform_environment: dict[str, str], body: str, extension: str
+) -> None:
+    source, output = tmp_path / f"input.{extension}", tmp_path / f"output.{extension}"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nvoid f() { ' + body + ' }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-x", "c++", "-std=c++11", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert not output.exists()
+
+
+def test_cpp_compiler_rejects_goto_past_guard(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    source = tmp_path / "source.cpp"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'void f() { goto end; defer((void)0); end:; }\n', encoding="utf-8")
+    result = subprocess.run([compiler, "-std=c++11", "-fsyntax-only", "-I", str(ROOT / "include"), str(source)],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode != 0
+    assert "goto" in result.stderr
+
+
+def test_cpp_header_across_translation_units(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    header = tmp_path / "input.hpp"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'template<class T> inline T clean(T &v, bool fail) { '
+        'defer(v = v*10+1); { defer_named(skip, v = 99); defer_cancel(skip); '
+        'defer(v = v*10+2); if(fail) throw 7; } return v; }\n', encoding="utf-8"
+    )
+    output = tmp_path / "output.hpp"
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(header), str(output), "--", "-x", "c++", "-std=c++11", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    (tmp_path / "a.cpp").write_text('#include "output.hpp"\nint a() { int v=0; int r=clean(v,false); return r==2 && v==21; }\n', encoding="utf-8")
+    (tmp_path / "b.cpp").write_text('#include "output.hpp"\nint b() { long v=0; try { clean(v,true); } '
+                                      'catch(int n) { return n==7 && v==21; } return 0; }\n', encoding="utf-8")
+    (tmp_path / "main.cpp").write_text('int a(); int b(); int main() { return !a() || !b(); }\n', encoding="utf-8")
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [compiler, "-std=c++11", "-I", str(ROOT / "include"), str(tmp_path / "a.cpp"), str(tmp_path / "b.cpp"),
+         str(tmp_path / "main.cpp"), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
+
+
 @pytest.mark.parametrize("extension", ["h", "hpp"])
 def test_c_header_as_direct_tool_input(
     tmp_path: Path, transform_environment: dict[str, str], extension: str
@@ -1179,6 +1284,29 @@ def test_objc_goto_into_protected_region_fails_closed(tmp_path: Path, transform_
     assert result.returncode != 0
     assert "generated Objective-C is invalid" in result.stderr
     assert not output.exists()
+
+
+@pytest.mark.parametrize("body", [
+    'defer(no_such_function());',
+    'defer_cancel(missing);',
+    'defer_named(handle, (void)0); defer_named(handle, (void)0);',
+    'defer({ return; });',
+    'defer({ defer((void)0); });',
+    'again: defer((void)0); goto again;',
+])
+def test_objc_invalid_cleanup_preserves_existing_output(
+    tmp_path: Path, transform_environment: dict[str, str], body: str
+) -> None:
+    source, output = tmp_path / "source.m", tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { ' + body + ' }\n', encoding="utf-8")
+    output.write_text('existing output\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert output.read_text(encoding="utf-8") == 'existing output\n'
 
 
 def test_objc_fast_enumeration_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:

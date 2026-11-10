@@ -11,6 +11,11 @@
 #pragma once
 
 #if defined(__cplusplus) && (!defined(__OBJC__) || (defined(OBJC_ZEROCOST_EXCEPTIONS) && OBJC_ZEROCOST_EXCEPTIONS))
+#if defined(_WIN32) && defined(__clang__)
+// Clang otherwise accepts jumps that bypass a guard's initialization as a
+// Microsoft extension, leaving its destructor to read an uninitialized guard.
+#pragma clang diagnostic error "-Wmicrosoft-goto"
+#endif
 extern "C++" {
 namespace ascii_defer_detail {
 template <typename F> class guard {
