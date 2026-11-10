@@ -29,6 +29,14 @@ static void *http_renderer_job_main(void *argument) {
   else
     job->execute(job->context, &job->cancelled);
   atomic_store_bool(&job->done, true);
+  if (job->renderer) {
+    if (job->result.error == ASCIICHAT_OK) {
+      if (job->renderer->config.on_complete)
+        job->renderer->config.on_complete(job, &job->result, job->renderer->config.user_data);
+    } else if (job->renderer->config.on_error) {
+      job->renderer->config.on_error(job, job->result.error, job->renderer->config.user_data);
+    }
+  }
   return NULL;
 }
 
@@ -88,12 +96,6 @@ static void *http_renderer_service_main(void *argument) {
     error = http_renderer_render_file(job->request.source.path, &job->request, &job->result, &job->cancelled);
   }
   job->result.error = error;
-  if (error == ASCIICHAT_OK) {
-    if (renderer->config.on_complete)
-      renderer->config.on_complete(job, &job->result, renderer->config.user_data);
-  } else if (renderer->config.on_error) {
-    renderer->config.on_error(job, error, renderer->config.user_data);
-  }
   return NULL;
 }
 

@@ -95,6 +95,7 @@ struct http_renderer_job {
   http_renderer_job_fn execute;
   void *context;
   bool started;
+  void *user_data;
   http_renderer_t *renderer;
   http_render_request_t request;
   http_render_result_t result;
