@@ -128,11 +128,6 @@ static void packet_free(acip_outbound_t *out, outbound_packet_t *packet) {
   SAFE_FREE(packet);
 }
 
-static void packet_dispose_after_send(outbound_packet_t *packet) {
-  buffer_release(packet->data);
-  SAFE_FREE(packet);
-}
-
 static bool same_stream(const outbound_packet_t *a, const outbound_packet_t *b) {
   return a->type == b->type && a->stream == b->stream;
 }
@@ -382,8 +377,8 @@ static void *outbound_worker(void *arg) {
       if (result != ASCIICHAT_OK && !datagram_drop)
         outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
       cond_broadcast(&out->changed);
+      packet_free(out, p);
       mutex_unlock(&out->mutex);
-      packet_dispose_after_send(p);
       if (result != ASCIICHAT_OK && !datagram_drop)
         break;
       continue;
