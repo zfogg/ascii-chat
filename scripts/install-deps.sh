@@ -11,6 +11,24 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+
+# This script is commonly invoked as `sudo ./scripts/install-deps.sh`. Keep
+# repository and user-owned dependency operations under the invoking user's
+# identity; only the platform package-manager operations should run as root.
+run_as_user() {
+  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] && command -v sudo >/dev/null 2>&1; then
+    sudo -H -u "$SUDO_USER" -- "$@"
+  else
+    "$@"
+  fi
+}
+
+run_git_as_user() {
+  run_as_user git -C "$PROJECT_ROOT" "$@"
+}
+
 # Parse arguments
 DANGEROUSLY_DELETE_CONFLICTS=false
 for arg in "$@"; do
@@ -34,7 +52,7 @@ echo "=== ascii-chat Dependency Installer ==="
 echo ""
 
 echo "Getting submodules..."
-if ! git submodule update --recursive --init --depth 1; then
+if ! run_git_as_user submodule update --recursive --init --depth 1; then
   echo "WARNING: git submodule update failed with exit code $?, continuing anyway"
 fi
 
@@ -54,20 +72,13 @@ echo "Detected platform: $PLATFORM"
 echo ""
 
 run_uv() {
-  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
-    sudo -H -u "$SUDO_USER" -- "$(command -v uv)" "$@"
-  else
-    uv "$@"
-  fi
+  run_as_user "$(command -v uv)" "$@"
 }
 
 sync_python_tooling() {
-  local script_dir project_root
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  project_root="$(cd "${script_dir}/.." && pwd -P)"
   command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
-  run_uv sync --project "${project_root}/src/tooling/defer" --frozen --managed-python
-  run_uv sync --project "${project_root}/tests/ascii_chat_tests" --frozen --managed-python
+  run_uv sync --project "${PROJECT_ROOT}/src/tooling/defer" --frozen --managed-python
+  run_uv sync --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python
 }
 
 verify_llvm_for_defer() {
@@ -518,9 +529,9 @@ if [ -z "$go_switch" ] || { [ "$go_automatic" = 0 ] &&
     go_bin=$(go env GOPATH)
     go_bin="${go_bin%%:*}/bin"
   fi
-  mkdir -p "$go_bin"
-  GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
-  "$go_bin/go${go_tool_version}" download
+  run_as_user mkdir -p "$go_bin"
+  run_as_user env GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
+  run_as_user "$go_bin/go${go_tool_version}" download
 fi
 echo ""
 echo "Dependencies installed successfully!"
@@ -535,17 +546,17 @@ if ! command -v vp >/dev/null 2>&1; then
   export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
 fi
 if command -v vp >/dev/null 2>&1; then
-  (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
-  (cd "$(dirname "$0")/../web" && vp install --ignore-scripts)
+  run_as_user bash -c 'cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT"
+  run_as_user bash -c 'cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT/web"
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
 
 if command -v corepack >/dev/null 2>&1; then
-  corepack enable
+  run_as_user corepack enable
 fi
 if command -v pnpm >/dev/null 2>&1; then
-  pnpm install --frozen-lockfile
+  run_as_user bash -c 'cd "$1" && pnpm install --frozen-lockfile' bash "$PROJECT_ROOT"
 else
   echo >&2 "pnpm is unavailable after dependency setup"
   exit 1
