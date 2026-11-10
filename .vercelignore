@@ -18,7 +18,6 @@
 *.so
 
 # Dependencies
-/deps/
 /.deps-cache/
 
 # Tests
