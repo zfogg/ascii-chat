@@ -170,7 +170,7 @@ export class SocketBridge {
 
     // Handle race condition: onopen might fire before we set the handler
     // Check readyState after setting up handlers and manually fire if already open
-    if (this.ws.readyState === WebSocket.OPEN) {
+    if (socket.readyState === WebSocket.OPEN && this.ws === socket) {
       console.log(
         "[SocketBridge] WebSocket already OPEN, firing handleOpen immediately",
       );
