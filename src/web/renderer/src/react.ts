@@ -2,19 +2,19 @@
 export {
   AsciiCanvas,
   AsciiCanvas as AsciiRenderer,
-} from "./AsciiRenderer/index";
+} from "@ascii-chat/shared/components/AsciiRenderer/index";
 export type {
   AsciiRendererHandle,
   AsciiRendererProps,
   SessionUiEvent,
-} from "./AsciiRenderer/types";
-export { useAsciiRendererHandle } from "./AsciiRenderer/useAsciiRendererHandle";
-export { useInitAsciiRenderer } from "./AsciiRenderer/useInitAsciiRenderer";
-export { browserKeyCode } from "./AsciiRenderer/keyboard";
-export { browserRasterFontSize } from "./AsciiRenderer/rasterConfig";
-export { RasterWorker } from "./AsciiRenderer/RasterWorker";
+} from "@ascii-chat/shared/components/AsciiRenderer/types";
+export { useAsciiRendererHandle } from "@ascii-chat/shared/components/AsciiRenderer/useAsciiRendererHandle";
+export { useInitAsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer/useInitAsciiRenderer";
+export { browserKeyCode } from "@ascii-chat/shared/components/AsciiRenderer/keyboard";
+export { browserRasterFontSize } from "@ascii-chat/shared/components/AsciiRenderer/rasterConfig";
+export { RasterWorker } from "@ascii-chat/shared/components/AsciiRenderer/RasterWorker";
 export type {
   RasterRequest,
   RasterResult,
   RasterWorkerRequest,
-} from "./AsciiRenderer/RasterWorker";
+} from "@ascii-chat/shared/components/AsciiRenderer/RasterWorker";

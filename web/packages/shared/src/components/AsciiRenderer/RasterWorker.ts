@@ -1,4 +1,4 @@
-import type { ClientLikeKind } from "@ascii-chat/shared/wasm";
+import type { ClientLikeKind } from "../../wasm/assetUrl";
 
 export interface RasterRequest {
   text: string;

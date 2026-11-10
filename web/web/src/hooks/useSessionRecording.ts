@@ -5,7 +5,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { AsciiRendererHandle } from "ascii-chat/react";
+import type { AsciiRendererHandle } from "@ascii-chat/shared/components/AsciiRenderer";
 import type { AudioPipeline } from "../audio/AudioPipeline";
 import {
   LocalRecording,

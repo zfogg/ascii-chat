@@ -1,9 +1,9 @@
 import { useLayoutEffect } from "react";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
-import { getMirrorModule, type MirrorModule } from "@ascii-chat/shared/wasm";
+import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 
 import { browserRasterFontSize } from "./rasterConfig";
-import type { AsciiRendererBinding } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
+import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
 
 const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
 type RendererConfig = { cols: number; rows: number; matrix: boolean };

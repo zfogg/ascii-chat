@@ -14,3 +14,8 @@ export { Link } from "./Link";
 export { NotFound } from "./NotFound";
 export { PreCode } from "./PreCode";
 export { UsageExamplesSection } from "./UsageExamplesSection";
+export { AsciiCanvas } from "./AsciiRenderer";
+export type {
+  AsciiRendererHandle,
+  AsciiRendererProps,
+} from "./AsciiRenderer/types";

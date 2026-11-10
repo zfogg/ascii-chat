@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
 import { cleanup, renderHook } from "@testing-library/react";
-import { useAsciiRendererHandle } from "../../../../src/web/renderer/src/AsciiRenderer/useAsciiRendererHandle";
-import type { AsciiRendererHandle } from "../../../../src/web/renderer/src/AsciiRenderer/types";
+import { useAsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle";
+import type { AsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/types";
 
 // C presentation behavior is exercised against real WASM in session-ui.spec.ts.
 // This test isolates canvas sizing and resize debounce.
@@ -28,7 +28,7 @@ class TestSessionUi {
 }
 
 vi.mock(
-  "../../../../src/web/renderer/src/AsciiRenderer/RasterWorker",
+  "../../../packages/shared/src/components/AsciiRenderer/RasterWorker",
   () => ({
     RasterWorker: class {
       previous = "";
