@@ -282,19 +282,76 @@ function(ascii_defer_finish_batches)
     include("${_plan}")
 endfunction()
 
+# GLOB_RECURSE enters virtual environments before it can filter the results.
+# Prune them while walking, including for source trees mounted from Windows.
+# Keep a configure dependency on each visited directory so new project headers
+# and newly created subdirectories are discovered on the next build.
+function(ascii_defer_collect_headers out_var directory)
+    get_filename_component(_directory "${directory}" ABSOLUTE)
+    get_filename_component(_name "${_directory}" NAME)
+    if(NOT ARGN AND _name MATCHES "^(\\.git|\\.hg|\\.svn|\\.venv|venv|__pycache__|node_modules)$")
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+    get_filename_component(_build "${CMAKE_BINARY_DIR}" ABSOLUTE)
+    cmake_path(IS_PREFIX _build "${_directory}" NORMALIZE _inside_build)
+    if(_inside_build OR NOT IS_DIRECTORY "${_directory}")
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+    if(UNIX)
+        find_program(_ascii_defer_find NAMES find)
+        if(_ascii_defer_find)
+            # One native traversal avoids a CMake IS_DIRECTORY stat for every
+            # source file, which is especially costly on a Windows bind mount.
+            # Directory timestamps track newly added/deleted children; existing
+            # headers are tracked separately by ascii_defer_scan_targets.
+            set(_prune \( \( ! -path "${_directory}" \( -name .git -o -name .hg -o -name .svn
+                -o -name .venv -o -name venv -o -name __pycache__ -o -name node_modules \) \)
+                -o -path "${_build}" \) -prune -o)
+            execute_process(COMMAND "${_ascii_defer_find}" -H "${_directory}" ${_prune} -type d -print
+                OUTPUT_VARIABLE _directory_output RESULT_VARIABLE _directory_result ERROR_QUIET
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            execute_process(COMMAND "${_ascii_defer_find}" -H "${_directory}" ${_prune}
+                \( -type f -o -type l \) \( -name "*.h" -o -name "*.hpp" -o -name "*.hh"
+                -o -name "*.hxx" -o -name "*.inc" -o -name "*.def" \) -print
+                OUTPUT_VARIABLE _header_output RESULT_VARIABLE _header_result ERROR_QUIET
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            if(_directory_result EQUAL 0 AND _header_result EQUAL 0)
+                string(REPLACE "\n" ";" _directories "${_directory_output}")
+                string(REPLACE "\n" ";" _headers "${_header_output}")
+                foreach(_header IN LISTS _headers)
+                    if(IS_SYMLINK "${_header}" AND IS_DIRECTORY "${_header}")
+                        list(REMOVE_ITEM _headers "${_header}")
+                    endif()
+                endforeach()
+                set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                    ${_directories})
+                set(${out_var} "${_headers}" PARENT_SCOPE)
+                return()
+            endif()
+        endif()
+    endif()
+    file(GLOB _entries CONFIGURE_DEPENDS LIST_DIRECTORIES TRUE "${_directory}/*")
+    set(_headers "")
+    foreach(_entry IN LISTS _entries)
+        if(IS_DIRECTORY "${_entry}" AND NOT IS_SYMLINK "${_entry}")
+            ascii_defer_collect_headers(_nested "${_entry}")
+            list(APPEND _headers ${_nested})
+        elseif(NOT IS_DIRECTORY "${_entry}" AND _entry MATCHES "\\.(h|hpp|hh|hxx|inc|def)$")
+            list(APPEND _headers "${_entry}")
+        endif()
+    endforeach()
+    set(${out_var} "${_headers}" PARENT_SCOPE)
+endfunction()
+
 function(ascii_defer_scan_targets out_var)
     get_property(_defer_wrappers GLOBAL PROPERTY ASCII_DEFER_WRAPPER_NAMES)
     if(NOT _defer_wrappers)
     # Discover wrapper names from project headers, including transitive wrappers.
     # This stays conservative: false positives merely cause a source to be parsed.
     foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
-        file(GLOB_RECURSE _directory_headers CONFIGURE_DEPENDS
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.h"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hpp"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hh"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hxx"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.inc"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.def")
+        ascii_defer_collect_headers(_directory_headers "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}" TRUE)
         list(APPEND _defer_headers ${_directory_headers})
     endforeach()
     foreach(_extra_dir IN LISTS ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS)
@@ -302,9 +359,7 @@ function(ascii_defer_scan_targets out_var)
         if(NOT IS_DIRECTORY "${_extra_dir}")
             message(FATAL_ERROR "defer wrapper header directory does not exist: ${_extra_dir}")
         endif()
-        file(GLOB_RECURSE _extra_headers CONFIGURE_DEPENDS
-            "${_extra_dir}/*.h" "${_extra_dir}/*.hpp" "${_extra_dir}/*.hh" "${_extra_dir}/*.hxx"
-            "${_extra_dir}/*.inc" "${_extra_dir}/*.def")
+        ascii_defer_collect_headers(_extra_headers "${_extra_dir}" TRUE)
         list(APPEND _defer_headers ${_extra_headers})
     endforeach()
     list(REMOVE_DUPLICATES _defer_headers)

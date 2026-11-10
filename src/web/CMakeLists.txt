@@ -743,6 +743,10 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         message(FATAL_ERROR
             "The parent CMake project must provide ASCIICHAT_DEFER_SOURCE_ROOT and ASCIICHAT_DEFER_NATIVE_BINARY")
     endif()
+    # Browser targets use application sources; test-only headers do not need
+    # to be walked on a Windows-mounted checkout during WASM configuration.
+    set(ASCIICHAT_DEFER_SOURCE_DIRS "include;lib;src" CACHE STRING
+        "Repository-relative directories eligible for defer scanning and transformation")
     include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
     ascii_defer_prepare_native()
     set(_batch_stage web)

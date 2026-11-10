@@ -134,8 +134,11 @@
  * unit Clang VFS overlays. `ASCIICHAT_DEFER_HEADER_OVERLAYS=AUTO` detects
  * defer in project headers; `ON` forces this path and `OFF` disables it.
  * Add external header roots to `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS`, or use
- * `ON` when headers are outside the scanned roots. The first activation
- * analyzes all eligible project C and Objective-C sources and disables target precompiled
+ * `ON` when headers are outside the scanned roots. Header discovery skips
+ * nested virtual environments, `node_modules`, VCS
+ * metadata, and the current build directory; explicitly listed wrapper roots
+ * can point inside those directories when their headers are needed. The first
+ * activation analyzes all eligible project C and Objective-C sources and disables target precompiled
  * headers; later builds use native per-file incremental caching. The shared
  * cache is not used while header overlays are active. Multiple active
  * instantiations of the same header function in one translation unit are
