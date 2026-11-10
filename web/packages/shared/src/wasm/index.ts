@@ -5,6 +5,8 @@ export {
 } from "./assetUrl";
 export type { WasmCapabilityManifest } from "./assetUrl";
 export type { ClientLikeKind } from "./assetUrl";
+export { PacketType } from "./protocol";
+export type { PacketType as PacketTypeValue } from "./protocol";
 export {
   initMirrorWasm,
   adoptMirrorWasmModule,

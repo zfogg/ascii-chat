@@ -7,6 +7,7 @@ import type {
   BrowserSessionBinding,
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
+import { PacketType } from "@ascii-chat/shared/wasm";
 import {
   publishBrowserError,
   type BrowserErrorFrame,
@@ -107,114 +108,19 @@ export enum ConnectionState {
   ERROR = 4,
 }
 
-export enum PacketType {
-  // Protocol negotiation
-  PROTOCOL_VERSION = 1,
-
-  // Crypto handshake (unencrypted)
-  CRYPTO_CLIENT_HELLO = 1000,
-  CRYPTO_CAPABILITIES = 1100,
-  CRYPTO_PARAMETERS = 1101,
-  CRYPTO_KEY_EXCHANGE_INIT = 1102,
-  CRYPTO_KEY_EXCHANGE_RESP = 1103,
-  CRYPTO_AUTH_CHALLENGE = 1104,
-  CRYPTO_AUTH_RESPONSE = 1105,
-  CRYPTO_AUTH_FAILED = 1106,
-  CRYPTO_SERVER_AUTH_RESP = 1107,
-  CRYPTO_HANDSHAKE_COMPLETE = 1108,
-  CRYPTO_NO_ENCRYPTION = 1109,
-  QUIC_READY = 1110,
-  QUIC_KEYFRAME_REQUEST = 1111,
-  CRYPTO_EPOCH_MARKER = 1112,
-  CRYPTO_REKEY_NEEDED = 1113,
-  CRYPTO_EPOCH_ACK = 1114,
-
-  // Encrypted session data
-  ENCRYPTED = 1200,
-
-  // Rekeying
-  CRYPTO_REKEY_REQUEST = 1201,
-  CRYPTO_REKEY_RESPONSE = 1202,
-  CRYPTO_REKEY_COMPLETE = 1203,
-
-  // Messages
-  SIZE_MESSAGE = 2000,
-  AUDIO_MESSAGE = 2001,
-  TEXT_MESSAGE = 2002,
-  ERROR_MESSAGE = 2003,
-  REMOTE_LOG = 2004,
-
-  // Video
-  ASCII_FRAME = 3000,
-  IMAGE_FRAME = 3001,
-  IMAGE_FRAME_H264 = 3003, // H.264/AVC encoded video frames
-  IMAGE_FRAME_H265 = 3002, // H.265/HEVC encoded video frames
-
-  // Audio
-  AUDIO_BATCH = 4000,
-  AUDIO_OPUS_BATCH = 4001,
-
-  // Control
-  CLIENT_CAPABILITIES = 5000,
-  PING = 5001,
-  PONG = 5002,
-  CLIENT_JOIN = 5003,
-  CLIENT_LEAVE = 5004,
-  STREAM_START = 5005,
-  STREAM_STOP = 5006,
-  CLEAR_CONSOLE = 5007,
-  SERVER_STATE = 5008,
-}
+/* PacketType is generated from the native packet enum and re-exported for legacy callers. */
+/* The import remains the single authoritative value; this export preserves the old module path. */
+export { PacketType } from "@ascii-chat/shared/wasm";
 
 /**
  * Get human-readable name for a packet type number.
  * Works for both known and unknown packet types.
  */
 export function packetTypeName(type: number): string {
-  const names: Record<number, string> = {
-    [PacketType.PROTOCOL_VERSION]: "PROTOCOL_VERSION",
-    [PacketType.CRYPTO_CLIENT_HELLO]: "CRYPTO_CLIENT_HELLO",
-    [PacketType.CRYPTO_CAPABILITIES]: "CRYPTO_CAPABILITIES",
-    [PacketType.CRYPTO_PARAMETERS]: "CRYPTO_PARAMETERS",
-    [PacketType.CRYPTO_KEY_EXCHANGE_INIT]: "CRYPTO_KEY_EXCHANGE_INIT",
-    [PacketType.CRYPTO_KEY_EXCHANGE_RESP]: "CRYPTO_KEY_EXCHANGE_RESP",
-    [PacketType.CRYPTO_AUTH_CHALLENGE]: "CRYPTO_AUTH_CHALLENGE",
-    [PacketType.CRYPTO_AUTH_RESPONSE]: "CRYPTO_AUTH_RESPONSE",
-    [PacketType.CRYPTO_AUTH_FAILED]: "CRYPTO_AUTH_FAILED",
-    [PacketType.CRYPTO_SERVER_AUTH_RESP]: "CRYPTO_SERVER_AUTH_RESP",
-    [PacketType.CRYPTO_HANDSHAKE_COMPLETE]: "CRYPTO_HANDSHAKE_COMPLETE",
-    [PacketType.CRYPTO_NO_ENCRYPTION]: "CRYPTO_NO_ENCRYPTION",
-    [PacketType.QUIC_READY]: "QUIC_READY",
-    [PacketType.QUIC_KEYFRAME_REQUEST]: "QUIC_KEYFRAME_REQUEST",
-    [PacketType.CRYPTO_EPOCH_MARKER]: "CRYPTO_EPOCH_MARKER",
-    [PacketType.CRYPTO_REKEY_NEEDED]: "CRYPTO_REKEY_NEEDED",
-    [PacketType.CRYPTO_EPOCH_ACK]: "CRYPTO_EPOCH_ACK",
-    [PacketType.ENCRYPTED]: "ENCRYPTED",
-    [PacketType.CRYPTO_REKEY_REQUEST]: "CRYPTO_REKEY_REQUEST",
-    [PacketType.CRYPTO_REKEY_RESPONSE]: "CRYPTO_REKEY_RESPONSE",
-    [PacketType.CRYPTO_REKEY_COMPLETE]: "CRYPTO_REKEY_COMPLETE",
-    [PacketType.SIZE_MESSAGE]: "SIZE_MESSAGE",
-    [PacketType.AUDIO_MESSAGE]: "AUDIO_MESSAGE",
-    [PacketType.TEXT_MESSAGE]: "TEXT_MESSAGE",
-    [PacketType.ERROR_MESSAGE]: "ERROR_MESSAGE",
-    [PacketType.REMOTE_LOG]: "REMOTE_LOG",
-    [PacketType.ASCII_FRAME]: "ASCII_FRAME",
-    [PacketType.IMAGE_FRAME]: "IMAGE_FRAME",
-    [PacketType.IMAGE_FRAME_H265]: "IMAGE_FRAME_H265",
-    [PacketType.IMAGE_FRAME_H264]: "IMAGE_FRAME_H264",
-    [PacketType.AUDIO_BATCH]: "AUDIO_BATCH",
-    [PacketType.AUDIO_OPUS_BATCH]: "AUDIO_OPUS_BATCH",
-    [PacketType.CLIENT_CAPABILITIES]: "CLIENT_CAPABILITIES",
-    [PacketType.PING]: "PING",
-    [PacketType.PONG]: "PONG",
-    [PacketType.CLIENT_JOIN]: "CLIENT_JOIN",
-    [PacketType.CLIENT_LEAVE]: "CLIENT_LEAVE",
-    [PacketType.STREAM_START]: "STREAM_START",
-    [PacketType.STREAM_STOP]: "STREAM_STOP",
-    [PacketType.CLEAR_CONSOLE]: "CLEAR_CONSOLE",
-    [PacketType.SERVER_STATE]: "SERVER_STATE",
-  };
-  return names[type] || `UNKNOWN(${type})`;
+  const name = Object.entries(PacketType).find(
+    ([, value]) => value === type,
+  )?.[0];
+  return name ? String(name) : `UNKNOWN(${type})`;
 }
 
 let wasmModule: ClientModule | null = null;

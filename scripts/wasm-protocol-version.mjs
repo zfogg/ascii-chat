@@ -17,3 +17,17 @@ export const protocolVersion = ["MAJOR", "MINOR", "PATCH"]
     return match[1];
   })
   .join(".");
+
+const packetHeader = readFileSync(
+  new URL("../include/ascii-chat/network/packet/packet.h", import.meta.url),
+  "utf8",
+);
+
+/** Packet numbers are generated from the native enum. */
+export const packetTypes = Object.fromEntries(
+  [
+    ...packetHeader.matchAll(
+      /^\s*PACKET_TYPE_([A-Z0-9_]+)\s*=\s*(\d+)\s*,?\s*$/gm,
+    ),
+  ].map(([, name, value]) => [name, Number(value)]),
+);
