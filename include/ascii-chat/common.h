@@ -468,6 +468,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
 /* Platform-safe strerror */
 #include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */
