@@ -4,7 +4,7 @@ import { createSocket } from "node:dgram";
 import { createServer } from "node:net";
 import { createServer as createVite, type ViteDevServer } from "vite";
 import { X509Certificate, createHash } from "node:crypto";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 async function port(): Promise<number> {
@@ -143,9 +143,14 @@ for (const { browserQuic, automaticHost } of [
     page.on("pageerror", (error) => browserLog.push(error.message));
     const root = info.outputPath("mixed-discovery");
     mkdirSync(root, { recursive: true });
-    const binary =
-      process.env["ASCII_CHAT_TEST_BINARY"] ||
-      resolve("../../build/bin/ascii-chat.exe");
+    const configuredBinary = process.env["ASCII_CHAT_TEST_BINARY"];
+    const binary = configuredBinary
+      ? resolve(configuredBinary)
+      : ([
+          resolve("../../build/bin/ascii-chat.exe"),
+          resolve("../../build/native-quic-check/bin/ascii-chat.exe"),
+        ].find((candidate) => existsSync(candidate)) ??
+        resolve("../../build/bin/ascii-chat.exe"));
     const certificate = resolve(root, "cert.pem"),
       key = resolve(root, "key.pem"),
       identity = resolve(root, "host-id");
