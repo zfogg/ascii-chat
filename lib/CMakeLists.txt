@@ -9,13 +9,8 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
-include(FetchContent)
-FetchContent_Declare(libplatform
-    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG v0.1.0
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(libplatform)
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
+                 ${CMAKE_BINARY_DIR}/deps/libplatform)
 
 set(CORE_SRCS
     ${LIB_DIR}/media/input.c
