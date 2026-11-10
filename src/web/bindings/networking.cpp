@@ -260,18 +260,9 @@ public:
     if (type == "receive-handshake-packet") {
       auto bytes = binding_copy_input(event["payload"]);
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
-      packet_header_t header{};
-      const int validation = bytes.size() < sizeof(packet_header_t)
-                                 ? SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake packet is shorter than its header")
-                                 : packet_validate(bytes.data(), bytes.size(), 0, &header);
-      const void *payload = bytes.size() > sizeof(packet_header_t) ? bytes.data() + sizeof(packet_header_t) : nullptr;
-      const size_t payload_size = bytes.size() > sizeof(packet_header_t) ? bytes.size() - sizeof(packet_header_t) : 0;
-      const int code = validation
-                           ? validation
-                           : (discovery ? browser_client_acds_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
-                                                                          payload, payload_size)
-                                        : browser_client_handshake_receive(transport_.get(), NET_TO_HOST_U16(header.type),
-                                                                    payload, payload_size));
+      const packet_type_t packet_type = static_cast<packet_type_t>(event["packetType"].as<unsigned>());
+      const int code = discovery ? browser_client_acds_handshake_receive(transport_.get(), packet_type, bytes.data(), bytes.size())
+                                 : browser_client_handshake_receive(transport_.get(), packet_type, bytes.data(), bytes.size());
       if (!bytes.empty())
         sodium_memzero(bytes.data(), bytes.size());
       return code ? result(code) : drainOutputs();

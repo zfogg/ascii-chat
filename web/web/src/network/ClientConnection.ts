@@ -379,13 +379,15 @@ export class ClientConnection {
 
       if (this.transportState !== ConnectionState.CONNECTED) {
         const handshake = processClientEvent({
-          type: "receive-handshake",
+          type: "receive-handshake-packet",
           discovery: Boolean(this.options.discoveryHandshake),
           packetType: parsed.type,
           payload,
         });
         if (handshake.code)
-          throw new Error(`Handshake rejected (${handshake.code})`);
+          throw new Error(
+            `Handshake rejected (${handshake.code}): ${handshake.message ?? "unknown error"}`,
+          );
         for (const { packet } of handshake.outputs ?? [])
           this.socket?.send(packet);
         const next = handshake.state;

@@ -637,7 +637,7 @@ asciichat_error_t browser_client_handshake_receive(browser_transport_t *transpor
     if (!payload || length != sizeof(protocol_version_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
     const protocol_version_packet_t *version = payload;
-    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != state->crypto_mode)
+    if (NET_TO_HOST_U16(version->protocol_version) != PROTOCOL_VERSION_MAJOR || version->supports_encryption != state->crypto_mode)
       return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
     state->version_received = true;
     if (state->crypto_mode == ACIP_CRYPTO_NONE) {

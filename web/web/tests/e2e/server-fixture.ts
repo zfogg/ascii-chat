@@ -62,7 +62,7 @@ export class ServerFixture {
         tmpdir(),
         `ascii-chat-server-${this.port}.log`,
       );
-      let logLevel = "info";
+      let logLevel = this.env["ASCII_CHAT_TEST_LOG_LEVEL"] ?? "info";
       const modeArgs: string[] = [];
       for (let index = 0; index < this.serverArgs.length; index++) {
         const arg = this.serverArgs[index]!;
