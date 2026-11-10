@@ -113,11 +113,11 @@ function(configure_include_directories)
             endforeach()
             # When using musl, strip /usr/include from all include paths
             get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
-            list(FILTER CORE_INCLUDE_DIRS EXCLUDE REGEX "^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+            list(FILTER CORE_INCLUDE_DIRS EXCLUDE REGEX "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
 
             # Strip /usr/include from BearSSL as well
             if(BEARSSL_INCLUDE_DIRS)
-                list(FILTER BEARSSL_INCLUDE_DIRS EXCLUDE REGEX "^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                list(FILTER BEARSSL_INCLUDE_DIRS EXCLUDE REGEX "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
             endif()
 
             # Add the musl-built library include paths
