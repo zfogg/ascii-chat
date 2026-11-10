@@ -3,9 +3,25 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 declare global {
+  type BoundaryRenderer = {
+    dimensions(): { cols: number; rows: number; width: number; height: number };
+    render(text: string, zalgo: number): Uint8ClampedArray;
+    valid(): boolean;
+    error(): number;
+  };
+  type BoundaryClientModule = {
+    getClientWasmModule(): {
+      ClientSessionBinding: new (options: object) => {
+        process(event: object): { code: number };
+        processBatch(events: object[]): unknown[];
+        close(): void;
+        delete(): void;
+      };
+    };
+  };
   interface Window {
-    __boundary: { renderer: any; wasm: any };
-    __clientModule: any;
+    __boundary: { renderer: BoundaryRenderer; wasm: unknown };
+    __clientModule: BoundaryClientModule;
   }
 }
 
@@ -88,7 +104,9 @@ test.describe("WASM browser boundary measurements", () => {
       ).resultBytes,
     ).toBeGreaterThan(0);
   });
-  test("renderer zalgo mode returns an owned snapshot", async ({ rendererPage }) => {
+  test("renderer zalgo mode returns an owned snapshot", async ({
+    rendererPage,
+  }) => {
     expect(
       (
         await measure(
@@ -126,7 +144,7 @@ test.describe("WASM browser boundary measurements", () => {
   test("client module initializes once", async ({ clientPage }) => {
     await setupClient(clientPage);
     expect(
-      await clientPage.evaluate(() => Boolean((window as any).__clientModule)),
+      await clientPage.evaluate(() => Boolean(window.__clientModule)),
     ).toBe(true);
   });
   test("client module exposes the coarse session boundary", async ({
@@ -136,7 +154,7 @@ test.describe("WASM browser boundary measurements", () => {
     expect(
       await clientPage.evaluate(
         () =>
-          typeof (window as any).__clientModule.getClientWasmModule()
+          typeof window.__clientModule.getClientWasmModule()
             .ClientSessionBinding.prototype.process,
       ),
     ).toBe("function");
@@ -146,7 +164,7 @@ test.describe("WASM browser boundary measurements", () => {
   }) => {
     await setupClient(clientPage);
     const result = await clientPage.evaluate(async () => {
-      const module = (window as any).__clientModule;
+      const module = window.__clientModule;
       const wasm = module.getClientWasmModule();
       const session = new wasm.ClientSessionBinding({});
       const event = { type: "snapshot" };
@@ -203,28 +221,42 @@ test.describe("WASM browser boundary measurements", () => {
     );
     const main = readFileSync(mainManifest, "utf8");
     const feature = readFileSync(featureManifest, "utf8");
-    const files = ["client.js", "client.wasm", "mirror.js", "mirror.wasm"] as const;
+    const files = [
+      "client.js",
+      "client.wasm",
+      "mirror.js",
+      "mirror.wasm",
+    ] as const;
     const sizes = Object.fromEntries(
       files.map((file) => [
         file,
         {
-          main: readFileSync(resolve(mainRoot!, "web/web/src/wasm/dist", file)).byteLength,
-          feature: readFileSync(resolve(process.cwd(), "src/wasm/dist", file)).byteLength,
+          main: readFileSync(resolve(mainRoot!, "web/web/src/wasm/dist", file))
+            .byteLength,
+          feature: readFileSync(resolve(process.cwd(), "src/wasm/dist", file))
+            .byteLength,
         },
       ]),
     );
     expect({
-      manifest: { main: Buffer.byteLength(main), feature: Buffer.byteLength(feature) },
+      manifest: {
+        main: Buffer.byteLength(main),
+        feature: Buffer.byteLength(feature),
+      },
       sizes,
     }).toEqual({
       manifest: { main: expect.any(Number), feature: expect.any(Number) },
       sizes: Object.fromEntries(
-        files.map((file) => [file, { main: expect.any(Number), feature: expect.any(Number) }]),
+        files.map((file) => [
+          file,
+          { main: expect.any(Number), feature: expect.any(Number) },
+        ]),
       ),
     });
     for (const file of files) {
-      expect(sizes[file].main).toBeGreaterThan(0);
-      expect(sizes[file].feature).toBeGreaterThan(0);
+      const size = sizes[file]!;
+      expect(size.main).toBeGreaterThan(0);
+      expect(size.feature).toBeGreaterThan(0);
     }
   });
 });

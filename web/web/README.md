@@ -183,11 +183,11 @@ ctest --test-dir build/web -R '^wasm-dependencies$' --output-on-failure
 ```
 
 For a separate, clean dependency build, use the same test as a standalone
-project with the repository's Emscripten toolchain file (CMake 3.28 or newer).
+project with the repository's Emscripten toolchain file (CMake 3.30 or newer).
 There is no need to invoke `emcmake` or `emmake` from the shell:
 
 ```bash
-cmake -S tests/wasm/dependencies -B build/wasm-dependencies -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake
+cmake -S tests/wasm/dependencies -B build/wasm-dependencies -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/Emscripten.cmake"
 cmake --build build/wasm-dependencies --parallel
 ctest --test-dir build/wasm-dependencies --output-on-failure
 ```

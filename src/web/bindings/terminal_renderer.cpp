@@ -36,17 +36,18 @@ public:
     return render_error_ ? render_error_ : result_;
   }
   void close() {
-    if (!renderer_) return;
+    if (!renderer_)
+      return;
     term_renderer_destroy(renderer_);
     renderer_ = nullptr;
     output_ = emscripten::val::undefined();
   }
   emscripten::val dimensions() const {
     emscripten::val result = emscripten::val::object();
-    result.set("cols", term_renderer_get_cols(renderer_));
-    result.set("rows", term_renderer_get_rows(renderer_));
-    result.set("width", term_renderer_width_px(renderer_));
-    result.set("height", term_renderer_height_px(renderer_));
+    result.set("cols", renderer_ ? term_renderer_get_cols(renderer_) : 0);
+    result.set("rows", renderer_ ? term_renderer_get_rows(renderer_) : 0);
+    result.set("width", renderer_ ? term_renderer_width_px(renderer_) : 0);
+    result.set("height", renderer_ ? term_renderer_height_px(renderer_) : 0);
     return result;
   }
   emscripten::val render(const std::string &text, int zalgo) {

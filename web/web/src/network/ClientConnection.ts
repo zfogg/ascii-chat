@@ -381,8 +381,7 @@ export class ClientConnection {
         const handshake = processClientEvent({
           type: "receive-handshake-packet",
           discovery: Boolean(this.options.discoveryHandshake),
-          packetType: parsed.type,
-          payload,
+          payload: rawPacket,
         });
         if (handshake.code)
           throw new Error(

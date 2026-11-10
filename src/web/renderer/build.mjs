@@ -24,7 +24,7 @@ await writeFile(
     {
       module: "renderer",
       protocolVersion: "1",
-      codecs: ["raw", "h264", "hevc"],
+      codecs: ["raw"],
       transports: [],
       rendererModes: ["luminance", "glyph"],
       features: {

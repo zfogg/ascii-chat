@@ -26,7 +26,8 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
-let mirrorSession: InstanceType<MirrorModule["MirrorSessionBinding"]> | null = null;
+let mirrorSession: InstanceType<MirrorModule["MirrorSessionBinding"]> | null =
+  null;
 let renderer: AsciiRenderer | null = null;
 
 function releaseFrameBinding(): void {
@@ -104,8 +105,13 @@ export async function initMirrorWasm(
   }
 
   try {
-    mirrorSession = new wasmModule.MirrorSessionBinding(options?.initialOptions ?? {});
-    if (!mirrorSession.valid()) throw new Error(`Failed to initialize mirror C code: ${mirrorSession.error()}`);
+    mirrorSession = new wasmModule.MirrorSessionBinding(
+      options?.initialOptions ?? {},
+    );
+    if (!mirrorSession.valid())
+      throw new Error(
+        `Failed to initialize mirror C code: ${mirrorSession.error()}`,
+      );
 
     resetRuntimeOptions(wasmModule);
   } catch (err) {
@@ -132,7 +138,10 @@ export function cleanupMirrorWasm(): void {
 }
 
 export function resetRenderStabilizer(): void {
-  renderer?.reset();
+  if (wasmModule) {
+    renderer ??= AsciiRenderer.fromModule(wasmModule);
+    renderer.reset();
+  }
 }
 
 /** Release per-session rendering state while keeping the shared module alive. */

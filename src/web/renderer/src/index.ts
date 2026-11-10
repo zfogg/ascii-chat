@@ -58,7 +58,8 @@ export type RendererModule = Pick<
   | "MirrorFrameBinding"
   | "AsciiRendererBinding"
   | "TestPatternBinding"
-> & OptionsBindings & { RendererSessionBinding?: new () => SessionBinding };
+> &
+  OptionsBindings & { RendererSessionBinding?: new () => SessionBinding };
 export interface RendererInit {
   locateFile?: (path: string, prefix: string) => string;
   pthreadPoolSize?: number;
@@ -74,6 +75,7 @@ export interface RenderLoopOptions {
   fps?: number;
   getFrame: (timeMs: number) => RenderLoopFrame | null | undefined;
   onFrame?: (text: string, frame: RenderLoopFrame, timeMs: number) => void;
+  onError?: (error: unknown) => void;
 }
 export interface RenderLoopHandle {
   readonly running: boolean;
@@ -270,14 +272,20 @@ export class AsciiRenderer {
       if (timeMs - last >= interval) {
         const frame = options.getFrame(timeMs);
         if (frame) {
-          const text = this.render(
-            frame.pixels,
-            frame.width,
-            frame.height,
-            frame.contain ?? false,
-          );
-          last = timeMs;
-          options.onFrame?.(text, frame, timeMs);
+          try {
+            const text = this.render(
+              frame.pixels,
+              frame.width,
+              frame.height,
+              frame.contain ?? false,
+            );
+            last = interval > 0 ? last + interval : timeMs;
+            options.onFrame?.(text, frame, timeMs);
+          } catch (error) {
+            active = false;
+            options.onError?.(error);
+            return;
+          }
         }
       }
       handle = requestAnimationFrame(tick);

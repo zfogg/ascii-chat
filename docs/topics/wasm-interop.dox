@@ -35,7 +35,7 @@
  * Client bindings are grouped by responsibility: `networking.cpp` owns connection
  * setup, handshake, packet conversion, and QUIC transport operations; `common/opts.cpp`
  * handles settings conversion; `client_frames.cpp` validates and sends frames.
- * `discovery.cpp` binds discovery and handoff, `session_host.cpp` binds the shared
+ * `discovery.cpp` binds discovery while `networking.cpp` binds handoff, `session_host.cpp` binds the shared
  * session host, and `av_state.cpp` owns asynchronous media lifecycle state. Their
  * bindings call their native APIs directly. Common byte
  * copies are shared, and these file boundaries do not change the JavaScript API.

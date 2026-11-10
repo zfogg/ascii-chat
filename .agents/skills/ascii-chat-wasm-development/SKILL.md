@@ -182,8 +182,10 @@ current binding families are:
   packet, crypto-policy, addressing, and QUIC events.
   `ClientSessionBinding.protocolInfo()` is the native source for stable
   protocol version, connection-state, and crypto-mode metadata.
-- `browser_session.cpp`: `configureCrypto` and `BrowserSessionBinding.process(event)`
-  for the browser transport-backed session. It reuses the shared ACIP security,
+- `browser_session.cpp`: the `BrowserSessionBinding` constructor accepts the
+  session credentials, and `BrowserSessionBinding.process(event)` drives the
+  browser transport-backed session. Client credentials use the client session's
+  `configure-crypto` event. The binding reuses the shared ACIP security,
   handshake, packet, and QUIC code for reliable send/receive/tick, lifecycle,
   and packet sealing/opening.
 - The old granular `protocol.cpp` binding was removed. Packet parsing,

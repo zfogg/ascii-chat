@@ -28,9 +28,9 @@ public:
       construction_error_ = "Invalid peer identity or verification key length";
     } else {
       pass.push_back(0);
-      session_.reset(browser_session_create(server, encryption,
-                                     pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-                                     secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
+      session_.reset(
+          browser_session_create(server, encryption, pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
+                                 secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
     }
     if (!pass.empty())
       sodium_memzero(pass.data(), pass.size());
@@ -80,7 +80,8 @@ public:
       auto bytes = binding_copy_input(event["packet"]);
       const int code = input_bytes(bytes, type == "receive");
       result.set("code", code);
-      if (!bytes.empty()) sodium_memzero(bytes.data(), bytes.size());
+      if (!bytes.empty())
+        sodium_memzero(bytes.data(), bytes.size());
     } else if (type == "tick") {
       result.set("code", static_cast<int>(browser_session_tick(session_.get())));
     } else if (type == "quic-begin") {
@@ -88,21 +89,23 @@ public:
     } else if (type == "quic-init") {
       result.set("code", static_cast<int>(browser_session_security_init(session_.get())));
     } else if (type == "quic-tick") {
-      result.set("code", static_cast<int>(browser_session_security_tick(session_.get())));
+      int code = static_cast<int>(browser_session_security_tick(session_.get()));
       result.set("epoch", browser_session_security_epoch(session_.get()));
       emscripten::val quic_outputs = emscripten::val::array();
       for (unsigned i = 0; i < 16; ++i) {
         uint8_t data[256];
         size_t length = 0;
         uint32_t flow = 0;
-        const int code = browser_session_security_output(session_.get(), data, sizeof(data), &length, &flow);
-        if (code || !length) break;
+        code = browser_session_security_output(session_.get(), data, sizeof(data), &length, &flow);
+        if (code || !length)
+          break;
         emscripten::val output = emscripten::val::object();
         output.set("code", code);
         output.set("flow", flow);
         output.set("packet", binding_copy_output(data, length));
         quic_outputs.call<void>("push", output);
       }
+      result.set("code", code);
       result.set("quicOutputs", quic_outputs);
     } else if (type == "quic-epoch") {
       result.set("epoch", browser_session_security_epoch(session_.get()));
@@ -118,32 +121,35 @@ public:
       result.set("code", code);
       result.set("packet", binding_copy_output(output.data(), code ? 0 : length));
       result.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
-      if (!packet.empty()) sodium_memzero(packet.data(), packet.size());
-      if (!output.empty()) sodium_memzero(output.data(), output.size());
+      if (!packet.empty())
+        sodium_memzero(packet.data(), packet.size());
+      if (!output.empty())
+        sodium_memzero(output.data(), output.size());
     } else {
-        result.set("code", SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser session event"));
+      result.set("code", SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser session event"));
     }
     const int code = result["code"].as<int>();
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
       result.set("message", has_context && context.context_message[0]
-                                 ? std::string(context.context_message)
-                                 : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+                                ? std::string(context.context_message)
+                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
       result.set("retryable", network_error_action(static_cast<asciichat_error_t>(code)) == NETWORK_ERROR_RETRY);
     }
     emscripten::val outputs = emscripten::val::array();
     for (unsigned i = 0; i < 16; ++i) {
       const void *data = browser_session_output_data(session_.get());
-      if (!data) break;
+      if (!data)
+        break;
       outputs.call<void>("push", binding_copy_output(data, browser_session_output_size(session_.get())));
       browser_session_output_pop(session_.get());
     }
     result.set("outputs", outputs);
     const void *received = browser_session_received_data(session_.get());
     const size_t received_size = browser_session_received_size(session_.get());
-    result.set("received", received && received_size ? binding_copy_output(received, received_size)
-                                                       : emscripten::val::null());
+    result.set("received",
+               received && received_size ? binding_copy_output(received, received_size) : emscripten::val::null());
     result.set("queuedBytes", browser_session_queued_bytes(session_.get()));
     result.set("writable", browser_session_writable(session_.get(), 0));
     result.set("ok", result["code"].as<int>() == 0);
@@ -155,7 +161,8 @@ public:
     const unsigned count = events["length"].as<unsigned>();
     if (count > 128) {
       emscripten::val error = emscripten::val::object();
-      error.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
+      error.set("code",
+                static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
       error.set("ok", false);
       error.set("message", "Browser session event batch exceeds 128 events");
       error.set("retryable", false);
