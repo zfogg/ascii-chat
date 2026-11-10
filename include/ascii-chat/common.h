@@ -132,7 +132,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  *   FATAL(ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
  */
 
-/* Include platform system header for platform_print_backtrace */
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds

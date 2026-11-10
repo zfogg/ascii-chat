@@ -21,7 +21,7 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
-#include "ascii-chat/platform/system.h"
+#include <libplatform/system.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
