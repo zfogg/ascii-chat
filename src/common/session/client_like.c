@@ -414,6 +414,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
   }
 
   state->capture_config.target_fps = client_like_select_capture_fps(state);
+  ui_controller_set_effective_fps(state->capture_config.target_fps);
 
   // Apply initial seek if specified
   state->capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);

@@ -6,6 +6,7 @@
 
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/ui/output.h>
 #include <string.h>
 
@@ -26,6 +27,7 @@
  */
 struct fps_counter_s {
   bool visible;
+  unsigned int effective_fps;
   int last_fps;
   bool measuring;
   bool written;
@@ -52,6 +54,7 @@ fps_counter_t *fps_counter_create(void) {
   }
 
   counter->last_fps = -1;
+  counter->effective_fps = 60;
   counter->report_start = time_get_ns();
 
   // Initialize circular buffer pointers
@@ -148,6 +151,13 @@ bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
   return changed;
 }
 
+void fps_counter_set_effective_fps(fps_counter_t *counter, unsigned int fps) {
+  if (counter) {
+    counter->effective_fps = fps > 0 ? fps : 60;
+    counter->last_fps = -1;
+  }
+}
+
 void fps_counter_frame_begin(fps_counter_t *counter, bool measure) {
   if (!counter)
     return;
@@ -202,9 +212,11 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
   if (redrawn && value == 0 && counter->last_fps > 0)
     value = counter->last_fps;
-  if (counter->visible && columns >= 7 && (redrawn || value != counter->last_fps)) {
+  if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
-    if (ui_output_printf(fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", columns - 6, value) == ASCIICHAT_OK)
+    const char *style = terminal_has_dark_background() ? "\033[97;40m" : "\033[30;47m";
+    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 8, style, value,
+                         counter->effective_fps) == ASCIICHAT_OK)
       counter->last_fps = value;
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {

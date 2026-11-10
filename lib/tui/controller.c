@@ -319,13 +319,17 @@ static uint64_t g_media_frame_id;
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
+static _Thread_local fps_counter_t *g_fps;
 
 void ui_controller_frame_acquired_at(uint64_t started_ns) {
   g_acquisition_started_ns = started_ns;
 }
+
+void ui_controller_set_effective_fps(unsigned int fps) {
+  fps_counter_set_effective_fps(g_fps, fps);
+}
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
-static _Thread_local fps_counter_t *g_fps;
 static _Thread_local bool g_help_sync_open;
 static _Thread_local bool g_stats_media, g_stats_failed;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;

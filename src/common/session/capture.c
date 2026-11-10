@@ -390,7 +390,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
-  if (config->type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0) {
+  if (config->type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0 && !GET_OPTION(waveform) && !GET_OPTION(fft)) {
     double source_fps = media_source_get_video_fps(ctx->source);
     if (source_fps >= 0.5 && source_fps <= 1000.0) {
       ctx->target_fps = (uint32_t)(source_fps + 0.5);
