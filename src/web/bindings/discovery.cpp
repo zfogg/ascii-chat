@@ -71,7 +71,7 @@ private:
     const unsigned sequence = ++sequence_;
     const auto first = encode(HANDOFF_SAMPLE_START, 0, sequence);
     const auto second = encode(HANDOFF_SAMPLE_DATA, 0, sequence);
-    std::vector<uint8_t> probe(CONSENSUS_HANDOFF_HEADER + 65536);
+    std::vector<uint8_t> probe(CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES);
     memcpy(probe.data(), second.data(), second.size());
     emscripten::val outputs = emscripten::val::array();
     outputs.call<void>("push", binding_copy_output(first.data(), first.size()));
