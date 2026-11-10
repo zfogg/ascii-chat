@@ -392,8 +392,9 @@ public:
       }
       if (operation != "seal" && operation != "open")
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown QUIC operation: %s", operation.c_str()));
-      if (event["packet"].isUndefined() || event["packet"].isNull())
-        return result(SET_ERRNO(ERROR_INVALID_PARAM, "QUIC packet is required"));
+      if (event["packet"].isUndefined() || event["packet"].isNull() || event["flow"].isUndefined() ||
+          event["delivery"].isUndefined())
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "QUIC packet, flow, and delivery are required"));
       auto input = binding_copy_input(event["packet"]);
       const bool seal = operation == "seal";
       std::vector<uint8_t> output(input.size() + (seal ? 94 : 0));

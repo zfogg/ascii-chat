@@ -207,6 +207,19 @@ test("binding failures record actionable C errors", async ({ page }) => {
   expect(errors[4]?.message).toMatch(/packet/i);
 });
 
+test("malformed QUIC events return structured errors", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, processClientEvent } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
+    await initClientWasm();
+    return processClientEvent({ type: "quic-event", operation: "seal" });
+  });
+  expect(result.code).not.toBe(0);
+  expect(result.message).toMatch(/packet|flow|delivery/i);
+});
+
 test("browser session close makes later processing safe and structured", async ({
   page,
 }) => {
