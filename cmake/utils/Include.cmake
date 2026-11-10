@@ -155,3 +155,31 @@ function(configure_include_directories)
     # use a normal include path before those roots, not a trailing SYSTEM path.
     target_include_directories(asciichat-project-includes BEFORE INTERFACE ${FFMPEG_INCLUDE_DIRS})
 endfunction()
+
+# Dependency variables are also consumed directly by lib/CMakeLists.txt after
+# configure_include_directories() returns.  Perform one final property-level
+# cleanup after all native targets have been declared so late target-specific
+# pkg-config paths cannot reintroduce the host glibc headers into musl builds.
+function(asciichat_sanitize_musl_include_properties)
+    if(NOT USE_MUSL)
+        return()
+    endif()
+
+    get_directory_property(_asciichat_directory_includes INCLUDE_DIRECTORIES)
+    list(FILTER _asciichat_directory_includes EXCLUDE REGEX
+        "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+    set_property(DIRECTORY PROPERTY INCLUDE_DIRECTORIES "${_asciichat_directory_includes}")
+
+    get_property(_asciichat_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_asciichat_target IN LISTS _asciichat_targets)
+        foreach(_asciichat_property IN ITEMS INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES)
+            get_target_property(_asciichat_includes "${_asciichat_target}" "${_asciichat_property}")
+            if(_asciichat_includes AND NOT _asciichat_includes STREQUAL "_asciichat_includes-NOTFOUND")
+                list(FILTER _asciichat_includes EXCLUDE REGEX
+                    "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                set_property(TARGET "${_asciichat_target}" PROPERTY
+                    "${_asciichat_property}" "${_asciichat_includes}")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
