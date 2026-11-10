@@ -4,7 +4,7 @@ set -euo pipefail
 
 mapfile -t files < <(
   git diff --cached --name-only --diff-filter=ACM |
-    grep -E '^\.github/workflows/.*\.(yml|yaml)$' || true
+    grep -E '^\.github/(workflows|actions)/.*\.(yml|yaml)$' || true
 )
 
 if ((${#files[@]})); then
