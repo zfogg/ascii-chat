@@ -52,6 +52,8 @@ static const mode_string_mapping_t mode_registry[] = {
     {MODE_MIRROR, "mirror", "Local webcam preview (no networking)"},
     {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery server (ACDS)"},
     {MODE_DISCOVERY_SERVICE, "acds", "Alias for discovery-service"},
+    {MODE_MCP_SERVER, "mcp-server", "MCP rendering server"},
+    {MODE_API_SERVER, "api-server", "HTTP image-to-ASCII API"},
     {MODE_INVALID, NULL, NULL} // Terminator
 };
 

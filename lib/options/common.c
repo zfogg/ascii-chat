@@ -104,6 +104,9 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smcp-server", first ? "" : ", ");
     first = false;
   }
+  if (mode_bitmask & OPTION_MODE_API_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sapi-server", first ? "" : ", ");
+  }
 
   // Fallback if no modes matched
   if (buffer[0] == '\0') {
