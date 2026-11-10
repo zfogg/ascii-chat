@@ -2,7 +2,7 @@
 
 #include <ascii-chat/network/acip/transport.h>
 
-/** QUIC endpoint for native ACIP and optional HTTP/3/WebTransport. Native
+/** QUIC endpoint for native ACIP and HTTP/3/WebTransport. Native
  * ACIP transports are returned by quic_accept(); generic HTTP/3 request
  * connections are consumed by the configured http_server and are never
  * exposed as ACIP transports. A listener negotiates the selected ALPN on one

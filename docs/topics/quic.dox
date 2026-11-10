@@ -69,7 +69,7 @@
  *
  * @section quic_webtransport WebTransport
  *
- * The optional HTTP/3 listener shares the QUIC UDP endpoint. ALPN selects raw
+ * The HTTP/3 listener shares the QUIC UDP endpoint. ALPN selects raw
  * `acip/1` or `h3`; WebTransport validates the configured HTTPS origin and
  * `/acip` path before mapping streams and HTTP datagrams into ACIP flows. ACDS
  * may advertise a native QUIC port and a public WebTransport URL independently.
