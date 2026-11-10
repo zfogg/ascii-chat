@@ -27,6 +27,10 @@ def _wait_for_rendered_rows(service, minimum=12, timeout=20):
     raise AssertionError(f"{service.log.name} did not render {minimum} ASCII rows")
 
 
+def _native_render_count(service):
+    return service.text().count("[FRAMES_RENDERED_TOTAL]")
+
+
 def test_discovery_session_is_owned_by_discovery_mode(binary, tmp_path):
     identity = tmp_path / "identity"
     identity.write_bytes(bytes.fromhex(
@@ -54,7 +58,8 @@ def test_discovery_session_is_owned_by_discovery_mode(binary, tmp_path):
             "--splash-screen=false", "--webrtc-skip-stun", "--webrtc-disable-turn", "--fps", "60",
         ]
         # No explicit mode means discovery mode. It creates the share code.
-        host = Service(binary, tmp_path, "host", "--test-pattern", common + ["--port", str(host_port)], env)
+        host = Service(binary, tmp_path, "host", "--test-pattern", common + ["--port", str(host_port)], env,
+                       log_level="dev")
         services.append(host)
         host.wait_for("Session created:", timeout=25)
         host.wait_for("Using user-specified FPS: 60")
@@ -70,17 +75,14 @@ def test_discovery_session_is_owned_by_discovery_mode(binary, tmp_path):
         _wait_for_rendered_rows(host)
         _wait_for_rendered_rows(client)
 
-        # The synthetic source is explicitly requested at 60 FPS. Count
-        # complete terminal frames on both peers over a five-second window;
-        # Captured Windows terminal output adds overhead, so use a conservative
-        # sustained floor while rejecting a stalled/very slow stream.
-        host_before = len(_rendered_rows(host)) // 12
-        client_before = len(_rendered_rows(client)) // 12
+        # The synthetic source is explicitly requested at 60 FPS. Count the
+        # host's native renderer submissions over a five-second window. This
+        # catches fixed delays in the discovery host loop that would cap the
+        # renderer near 34 FPS while still allowing normal scheduling jitter.
+        host_before = _native_render_count(host)
         time.sleep(5)
-        host_fps = (len(_rendered_rows(host)) // 12 - host_before) / 5
-        client_fps = (len(_rendered_rows(client)) // 12 - client_before) / 5
-        assert host_fps >= 25, f"discovery host rendered only {host_fps:.1f} FPS"
-        assert client_fps >= 25, f"discovery client rendered only {client_fps:.1f} FPS"
+        host_fps = (_native_render_count(host) - host_before) / 5
+        assert host_fps >= 50, f"discovery host rendered only {host_fps:.1f} FPS"
     finally:
         failures = []
         for service in reversed(services):
