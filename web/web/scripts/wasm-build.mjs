@@ -24,6 +24,27 @@ const typeOutput = resolve(repo, "web/packages/shared/src/wasm/generated");
 const types = ["mirror-bindings.d.ts", "client-bindings.d.ts"];
 const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const requiredExports = {
+  mirror: [
+    "AsciiRendererBinding",
+    "MirrorFrameBinding",
+    "AudioProcessorBinding",
+  ],
+  client: [
+    "ClientSessionBinding",
+    "BrowserSessionBinding",
+    "DiscoveryBinding",
+    "HandoffBinding",
+    "AudioSessionBinding",
+  ],
+};
+function validateArtifactExports(kind, artifact) {
+  const source = readFileSync(artifact, "utf8");
+  for (const name of requiredExports[kind]) {
+    if (!source.includes(name))
+      throw new Error(`WASM ${kind} artifact does not export ${name}`);
+  }
+}
 function copyArtifact(source, destination) {
   if (source.endsWith(".js") || source.endsWith(".d.ts")) {
     writeFileSync(
@@ -126,6 +147,8 @@ if (
   mkdirSync(typeOutput, { recursive: true });
   for (const file of types)
     copyArtifact(resolve(source, file), resolve(typeOutput, file));
+  validateArtifactExports("mirror", resolve(output, "mirror.js"));
+  validateArtifactExports("client", resolve(output, "client.js"));
   // Normalize generated glue and declarations before recording their hashes.
   execFileSync(
     process.execPath,
