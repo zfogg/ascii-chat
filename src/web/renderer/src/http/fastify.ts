@@ -1,5 +1,5 @@
-import type { FastifyReply } from "fastify";
 import { getRendererWasm } from "./node.js";
+import type { FastifyReply } from "fastify";
 
 type FastifyRequestHandler = (request: unknown, reply: FastifyReply) => unknown;
 

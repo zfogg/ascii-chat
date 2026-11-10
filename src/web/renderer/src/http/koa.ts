@@ -1,5 +1,5 @@
-import type { Context } from "koa";
 import { getRendererWasm } from "./node.js";
+import type { Context } from "koa";
 
 export async function setRendererWasm(ctx: Context): Promise<void> {
   const { body, headers } = await getRendererWasm();

@@ -1,5 +1,5 @@
-import type { Response } from "express";
 import { getRendererWasm } from "./node.js";
+import type { Response } from "express";
 
 type ExpressRequestHandler = (request: unknown, response: Response) => unknown;
 
