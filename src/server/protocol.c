@@ -1595,7 +1595,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     mutex_unlock(&client->client_state_mutex);
     return;
   }
-    client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS;
+  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS;
   asciichat_error_t result = acip_render_settings_capabilities(&client->render_settings, &packet);
   if (result == ASCIICHAT_OK) {
     publish_render_settings(client);
