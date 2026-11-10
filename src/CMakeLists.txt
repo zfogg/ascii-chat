@@ -29,6 +29,8 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
+    # Shared render-over-HTTP request/result ownership
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
