@@ -9,6 +9,14 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
+include(FetchContent)
+FetchContent_Declare(libplatform
+    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
+    GIT_TAG 625b2c0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(libplatform)
+
 set(CORE_SRCS
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
@@ -402,6 +410,7 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
+target_link_libraries(ascii-chat-platform PRIVATE libplatform::libplatform)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-platform PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
