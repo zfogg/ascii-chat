@@ -225,6 +225,7 @@ static void initialize_default_render_capabilities(client_info_t *client) {
   client->terminal_caps.color_level = TERM_COLOR_NONE;
   client->terminal_caps.color_count = 2;
   client->terminal_caps.render_mode = RENDER_MODE_FOREGROUND;
+  client->terminal_caps.text_renderer = ASCII_RENDERER_DEFAULT;
   client->terminal_caps.palette_type = PALETTE_STANDARD;
   client->terminal_caps.desired_fps = VIDEO_RENDER_FPS;
   client->terminal_caps.wants_padding = false;

@@ -169,8 +169,14 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
     result = SET_ERRNO(ERROR_INVALID_STATE, "Remote settings changed; refresh and retry");
   else if (json_length) {
     result = options_prepare_json(current, json, json_length, candidate, true);
-    if (result == ASCIICHAT_OK)
+    if (result == ASCIICHAT_OK) {
+      // AUTO is a local option sentinel and is not valid in the negotiated
+      // render state. Keep legacy settings updates from invalidating a live
+      // session when they serialize the raw AUTO option.
+      if (candidate->color_mode == TERM_COLOR_AUTO)
+        candidate->color_mode = TERM_COLOR_TRUECOLOR;
       result = prepare_for_viewer(state, candidate);
+    }
   }
   header.status = result;
   header.revision = state->revision;
