@@ -15,11 +15,15 @@ struct browser_session {
   browser_transport_t *browser;
   void *received;
   size_t received_length;
+  asciichat_error_context_t error;
 };
 
-const char *browser_session_error(void) {
-  static asciichat_error_context_t error;
-  return HAS_ERRNO(&error) ? error.context_message : "Peer security operation failed";
+const char *browser_session_error(browser_session_t *peer) {
+  if (!peer)
+    return "Browser session is closed";
+  if (HAS_ERRNO(&peer->error))
+    return peer->error.context_message;
+  return "Peer security operation failed";
 }
 
 void browser_session_output_pop(browser_session_t *peer) {

@@ -48,7 +48,7 @@ public:
     return session_ && browser_session_ready(session_.get());
   }
   std::string error() const {
-    return browser_session_error();
+    return browser_session_error(session_.get());
   }
   void close() {
     session_.reset();

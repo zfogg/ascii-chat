@@ -20,7 +20,7 @@ void browser_session_destroy(browser_session_t *peer);
 bool browser_session_ready(browser_session_t *peer);
 size_t browser_session_queued_bytes(const browser_session_t *peer);
 bool browser_session_writable(const browser_session_t *peer, size_t additional_bytes);
-const char *browser_session_error(void);
+const char *browser_session_error(browser_session_t *peer);
 asciichat_error_t browser_session_send(browser_session_t *peer, const void *data, size_t length);
 asciichat_error_t browser_session_receive(browser_session_t *peer, const void *data, size_t length);
 const void *browser_session_output_data(browser_session_t *peer);
