@@ -92,7 +92,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
     await expect(stopButton.or(startButton)).toBeVisible({ timeout: 15000 });
 
     if (await startButton.isVisible()) {
-      await startButton.click();
+      await startButton.click({ force: true });
       await page.waitForTimeout(500);
     }
 
