@@ -8,11 +8,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.media, pytest.mark.performanc
 
 
 def test_luminance_test_pattern_sustains_60_fps(binary, test_environment):
-    height = 40
+    height = 80
     duration = 20
     command = [
         str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern",
-        "--width", "80", "--height", str(height), "--splash-screen=false", "--audio=false",
+        "--width", "240", "--height", str(height), "--splash-screen=false", "--audio=false",
         "--snapshot", "--snapshot-delay", str(duration),
     ]
     for run in range(1, 6):
