@@ -105,7 +105,7 @@ static void dispose(buffer_domain_t *domain, buffer_header_t *node) {
   domain->stats.reserved_bytes -= node->charge;
   atomic_fetch_sub_u64(&process_bytes, node->charge);
   void *allocation = node->allocation;
-  SAFE_FREE(allocation);
+  ALLOC_FREE_INTERNAL(allocation);
 }
 
 static void trim_locked(buffer_domain_t *domain, bool all) {
@@ -240,7 +240,7 @@ asciichat_error_t buffer_acquire(buffer_domain_t *domain, size_t size, size_t al
       mutex_unlock(&domain->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Buffer budget exhausted requesting %zu bytes", size);
     }
-    node = ALLOC_MALLOC(charge);
+    node = ALLOC_MALLOC_INTERNAL(charge);
     if (!node) {
       atomic_fetch_sub_u64(&process_bytes, charge);
       domain->stats.failures++;

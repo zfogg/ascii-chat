@@ -254,6 +254,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define ALLOC_FREE(ptr) free(ptr)
 #endif
 
+/* Buffer domains maintain their own ownership and byte accounting. Their
+ * backing slabs deliberately bypass debug-memory's global allocation list so
+ * the media pool does not serialize every packet on the diagnostic mutex. */
+#define ALLOC_MALLOC_INTERNAL(size) malloc(size)
+#define ALLOC_FREE_INTERNAL(ptr) free(ptr)
+
 /**
  * @name Memory Debugging Macros
  * @ingroup common
