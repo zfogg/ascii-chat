@@ -98,7 +98,10 @@ export interface HostPacket { id: number; bytes: Uint8Array; }
   if (!source.includes("export type WasmRecord ="))
     source = source.replace(marker, `${marker}${types}`);
   const opaque = ["a", "ny"].join("");
-  source = source.replaceAll(`dimensions(): ${opaque};`, "dimensions(): RendererDimensions;");
+  source = source.replaceAll(
+    `dimensions(): ${opaque};`,
+    "dimensions(): RendererDimensions;",
+  );
   source = source.replaceAll(
     `processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): ${opaque};`,
     "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;",
@@ -111,23 +114,38 @@ export interface HostPacket { id: number; bytes: Uint8Array; }
     `processBatch(_0: ${opaque}, _1: ${opaque}): number;`,
     "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;",
   );
-  source = source.replaceAll(`process(_0: ${opaque}): ${opaque};`, "process(_0: SessionEvent): SessionResult;");
+  source = source.replaceAll(
+    `process(_0: ${opaque}): ${opaque};`,
+    "process(_0: SessionEvent): SessionResult;",
+  );
   source = source.replaceAll(
     `processBatch(_0: ${opaque}): ${opaque};`,
     "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;",
   );
-  source = source.replaceAll(`protocolInfo(): ${opaque};`, "protocolInfo(): ProtocolInfo;");
+  source = source.replaceAll(
+    `protocolInfo(): ${opaque};`,
+    "protocolInfo(): ProtocolInfo;",
+  );
   source = source.replaceAll(
     `render(_0: EmbindString, _1: number): ${opaque};`,
     "render(_0: EmbindString, _1: number): Uint8ClampedArray;",
   );
-  source = source.replaceAll(`drainOutputs(): ${opaque};`, "drainOutputs(): PacketOutputList;");
-  source = source.replaceAll(`drainPackets(): ${opaque};`, "drainPackets(): PacketOutputList;");
+  source = source.replaceAll(
+    `drainOutputs(): ${opaque};`,
+    "drainOutputs(): PacketOutputList;",
+  );
+  source = source.replaceAll(
+    `drainPackets(): ${opaque};`,
+    "drainPackets(): PacketOutputList;",
+  );
   source = source.replaceAll(
     "drainPackets(): PacketOutputList;",
     "drainPackets(): ReadonlyArray<HostPacket>;",
   );
-  source = source.replace(`  packetTypes(): ${opaque};`, "  packetTypes(): PacketTypes;");
+  source = source.replace(
+    `  packetTypes(): ${opaque};`,
+    "  packetTypes(): PacketTypes;",
+  );
   if (kind === "client" && !source.includes("export type PacketTypes ="))
     source = source.replace(
       "export type ClientBytes = Uint8Array;",
