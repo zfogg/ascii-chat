@@ -27,7 +27,8 @@ if(NOT EMSCRIPTEN)
         # Consumers compile sources that include <uv.h>; propagate the musl
         # and kernel header roots through the static target.
         target_include_directories(uv_a SYSTEM PUBLIC
-            "${MUSL_INCLUDE_DIR}" "${KERNEL_HEADERS_DIR}")
+            "$<BUILD_INTERFACE:${MUSL_INCLUDE_DIR}>"
+            "$<BUILD_INTERFACE:${KERNEL_HEADERS_DIR}>")
         set(ASCIICHAT_LIBUV_TARGET uv_a)
     else()
         find_package(PkgConfig REQUIRED)
