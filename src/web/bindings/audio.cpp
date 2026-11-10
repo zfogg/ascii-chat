@@ -1,4 +1,5 @@
 #include <emscripten/bind.h>
+#include "byte_arrays.h"
 extern "C" {
 #include <ascii-chat/audio/processor.h>
 #include <ascii-chat/network/browser/client.h>
