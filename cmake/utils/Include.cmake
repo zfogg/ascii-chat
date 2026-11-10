@@ -18,6 +18,13 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 
 function(configure_include_directories)
+    set(_asciichat_sqlite_include_dirs ${SQLITE3_INCLUDE_DIRS})
+    if(USE_MUSL)
+        # FindSQLite3 may report the host pkg-config include root.  Do not
+        # let that root reintroduce glibc ahead of the musl headers.
+        list(FILTER _asciichat_sqlite_include_dirs EXCLUDE REGEX
+            "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+    endif()
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
     # instrumented include directories later during ascii_panic_finalize().
     # Note: All installable dependencies are in deps/ascii-chat-deps/
@@ -26,7 +33,7 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/include  # Public API headers
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
-        ${SQLITE3_INCLUDE_DIRS}     # Public discovery/database declarations
+        ${_asciichat_sqlite_include_dirs} # Public discovery/database declarations
     )
     # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
     if(WIN32)
