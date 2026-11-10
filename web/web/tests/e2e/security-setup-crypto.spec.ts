@@ -310,10 +310,19 @@ for (const keyFormat of ["armored", "binary"] as const) {
     const clientKeyPath = join(keyDir, `client-secret.${keyExtension}`);
     const clientPublicKeyPath = join(keyDir, `client-public.${keyExtension}`);
     const serverKeyPath = join(keyDir, `server-secret.${keyExtension}`);
+    // The Git-for-Windows GPG binary uses MSYS paths. Passing a native
+    // Windows path makes it prefix the current working directory instead of
+    // opening the temporary keyring.
+    const gpgHome = keyDir
+      .replace(
+        /^([A-Za-z]):[\\/]/,
+        (_, drive: string) => `/${drive.toLowerCase()}/`,
+      )
+      .replaceAll("\\", "/");
     const gpgArgs = [
       "--batch",
       "--homedir",
-      keyDir,
+      gpgHome,
       "--pinentry-mode",
       "loopback",
       "--passphrase",
