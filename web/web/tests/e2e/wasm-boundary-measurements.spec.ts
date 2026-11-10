@@ -261,17 +261,45 @@ test.describe("WASM browser boundary measurements", () => {
         },
       ]),
     );
+    const countMarker = (bytes: Buffer, marker: string) =>
+      bytes.toString("latin1").split(marker).length - 1;
+    const baselineBytes = Object.fromEntries(
+      files.map((file) => [file, readBaseline(file)]),
+    ) as Record<(typeof files)[number], Buffer>;
+    const featureBytes = Object.fromEntries(
+      files.map((file) => [
+        file,
+        readFileSync(resolve(process.cwd(), "src/wasm/dist", file)),
+      ]),
+    ) as Record<(typeof files)[number], Buffer>;
+    const abiMarkers = ["feed", "processClientEvent", "ClientSessionBinding"];
+    const abi = Object.fromEntries(
+      abiMarkers.map((marker) => [
+        marker,
+        {
+          main: countMarker(baselineBytes["client.js"]!, marker),
+          feature: countMarker(featureBytes["client.js"]!, marker),
+        },
+      ]),
+    );
     expect({
       manifest: {
         main: Buffer.byteLength(main),
         feature: Buffer.byteLength(feature),
       },
       sizes,
+      abi,
     }).toEqual({
       manifest: { main: expect.any(Number), feature: expect.any(Number) },
       sizes: Object.fromEntries(
         files.map((file) => [
           file,
+          { main: expect.any(Number), feature: expect.any(Number) },
+        ]),
+      ),
+      abi: Object.fromEntries(
+        abiMarkers.map((marker) => [
+          marker,
           { main: expect.any(Number), feature: expect.any(Number) },
         ]),
       ),
@@ -281,5 +309,7 @@ test.describe("WASM browser boundary measurements", () => {
       expect(size.main).toBeGreaterThan(0);
       expect(size.feature).toBeGreaterThan(0);
     }
+    expect(abi["feed"]?.feature).toBe(0);
+    expect(abi["processClientEvent"]?.feature).toBeGreaterThan(0);
   });
 });
