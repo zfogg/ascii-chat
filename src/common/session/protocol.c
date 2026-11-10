@@ -302,9 +302,10 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   // capability.  A remote peer must receive a concrete color level; this can
   // otherwise make the server reject the complete capabilities packet. The
   // browser/native renderer contract supports truecolor as the safe default.
-  if (caps.color_level == TERM_COLOR_AUTO) {
+  terminal_color_mode_t normalized_color = acip_render_settings_normalize_color_mode(caps.color_level);
+  if (normalized_color != caps.color_level) {
     log_debug("Terminal color detection returned AUTO; advertising truecolor");
-    caps.color_level = TERM_COLOR_TRUECOLOR;
+    caps.color_level = normalized_color;
     caps.color_count = 16777216;
     caps.capabilities |= TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE;
   }

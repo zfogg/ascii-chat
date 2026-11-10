@@ -23,6 +23,10 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   values->matrix_rain = (state->caps.capabilities & TERM_CAP_MATRIX_RAIN) != 0;
 }
 
+terminal_color_mode_t acip_render_settings_normalize_color_mode(terminal_color_mode_t mode) {
+  return mode == TERM_COLOR_AUTO ? TERM_COLOR_TRUECOLOR : mode;
+}
+
 asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate, const options_t *values) {
   if (!candidate || !values || values->width < 1 || values->width > 4096 || values->height < 1 ||
       values->height > 4096 || (uint64_t)values->width * values->height > 1048576 || values->fps < 0 ||
@@ -102,8 +106,7 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   // AUTO is a local option sentinel, but older/native/browser senders may
   // still advertise it. Resolve it at the shared wire boundary so the peer
   // cannot reject an otherwise valid capabilities packet.
-  if (values->color_mode == TERM_COLOR_AUTO)
-    values->color_mode = TERM_COLOR_TRUECOLOR;
+  values->color_mode = acip_render_settings_normalize_color_mode(values->color_mode);
   if (values->palette_type == PALETTE_UNSET)
     values->palette_type = PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, packet->palette_custom, sizeof(values->palette_custom));
@@ -173,8 +176,7 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
       // AUTO is a local option sentinel and is not valid in the negotiated
       // render state. Keep legacy settings updates from invalidating a live
       // session when they serialize the raw AUTO option.
-      if (candidate->color_mode == TERM_COLOR_AUTO)
-        candidate->color_mode = TERM_COLOR_TRUECOLOR;
+      candidate->color_mode = acip_render_settings_normalize_color_mode(candidate->color_mode);
       result = prepare_for_viewer(state, candidate);
     }
   }
