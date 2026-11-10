@@ -59,3 +59,31 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
     executable = build / "src" / ("ascii-chat-probe.exe" if os.name == "nt" else "ascii-chat-probe")
     assert run(str(executable)).stdout.strip() == "cleaned"
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build)).stdout
+
+
+def test_external_defer_emscripten_compile_database(tmp_path: Path) -> None:
+    cmake = shutil.which("cmake")
+    binary = os.environ.get("DEFER_TEST_BINARY")
+    toolchain = os.environ.get("EMSCRIPTEN_TOOLCHAIN_FILE")
+    if not cmake or not shutil.which("ninja") or not binary or not toolchain:
+        pytest.skip("CMake, Ninja, DEFER_TEST_BINARY and EMSCRIPTEN_TOOLCHAIN_FILE are required")
+    project = tmp_path / "project"
+    project.mkdir()
+    shutil.copy2(ROOT / "include" / "ascii-chat" / "tooling" / "defer" / "defer.h", project / "defer.h")
+    (project / "probe.c").write_text(
+        '#include "defer.h"\n#include <emscripten/emscripten.h>\n'
+        '#ifndef __EMSCRIPTEN__\n#error wrong target\n#endif\n'
+        'int probe(void) { int result = 0; defer(result++); return result; }\n', encoding="utf-8"
+    )
+    module = (ROOT / "deps" / "defer" / "Defer.cmake").as_posix()
+    (project / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.30)\nproject(probe C)\nset(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
+        f'include("{module}")\nadd_library(probe STATIC probe.c)\n'
+        'target_compile_options(probe PRIVATE -sASSERTIONS=1)\ndefer_target(probe)\n', encoding="utf-8"
+    )
+    build = tmp_path / "build"
+    for args in ([cmake, "-S", str(project), "-B", str(build), "-G", "Ninja",
+                  f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", f"-DDEFER_NATIVE_BINARY={binary}"],
+                 [cmake, "--build", str(build)]):
+        result = subprocess.run(args, capture_output=True, text=True, check=False, timeout=180)
+        assert result.returncode == 0, result.stdout + result.stderr
