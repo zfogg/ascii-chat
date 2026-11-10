@@ -134,3 +134,4 @@ asciichat_error_t mcp_download_finalize(const mcp_policy_t *policy, yyjson_mut_d
   yyjson_mut_obj_add_strcpy(doc, item, "text", description);
   return ASCIICHAT_OK;
 }
+

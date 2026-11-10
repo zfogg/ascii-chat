@@ -26,7 +26,7 @@ yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), "error", e);
   return d;
 }
-static yyjson_mut_doc *tool_result(yyjson_val *id, const mcp_render_result_t *r) {
+static yyjson_mut_doc *tool_result(yyjson_val *id, const http_renderer_process_result_t *r) {
   yyjson_mut_doc *d = envelope(id);
   yyjson_mut_val *root = yyjson_mut_doc_get_root(d), *result = yyjson_mut_obj(d), *content = yyjson_mut_arr(d),
                  *item = yyjson_mut_obj(d);
@@ -120,10 +120,10 @@ static void run_job(void *arg, atomic_t *cancelled) {
   ASCII_OTEL_ATTR_STRING("mcp.tool", tools[job->tool]);
   ASCII_OTEL_ATTR_STRING("mcp.transport", job->server->policy.hosted ? "http" : "stdio");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDERS, 1);
-  mcp_render_result_t result;
+  http_renderer_process_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  http_renderer_execute(&job->request, cancelled, &result);
+  http_renderer_process(&job->request, cancelled, &result);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_MCP_RENDER, time_get_ns() - render_started);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_OUTPUT_BYTES, result.length);
   ASCII_OTEL_ATTR_INT("mcp.output.bytes", (int64_t)result.length);
@@ -287,7 +287,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
     ASCII_OTEL_ATTR_STRING("error.type", "invalid_arguments");
     asciichat_error_context_t ctx;
-    mcp_render_result_t fail = {0};
+    http_renderer_process_result_t fail = {0};
     SAFE_STRNCPY(fail.error, HAS_ERRNO(&ctx) ? ctx.context_message : "Invalid render request", sizeof(fail.error));
     mcp_request_destroy(&j->request);
     return tool_result(id, &fail);
@@ -312,3 +312,4 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   *pending = true;
   return NULL;
 }
+

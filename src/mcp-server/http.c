@@ -278,3 +278,4 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
   mcp_jobs_reap(s, true);
   return ASCIICHAT_OK;
 }
+

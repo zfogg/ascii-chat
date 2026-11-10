@@ -50,33 +50,6 @@ typedef struct {
  * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
  * allocation, lock, thread, or callback context recorded in those fields.
  */
-typedef struct {
-  char **argv;
-  size_t argc;
-  char upload_dir[PLATFORM_MAX_PATH_LENGTH];
-  char stage_dir[PLATFORM_MAX_PATH_LENGTH];
-  char stage_file[PLATFORM_MAX_PATH_LENGTH];
-  char output_path[PLATFORM_MAX_PATH_LENGTH];
-  unsigned timeout_ms;
-  bool capture_webcam;
-  /**
-   */
-} mcp_render_request_t;
-
-typedef struct {
-  char *text;
-  size_t length;
-  char error[MCP_SERVER_MCP_ERROR_BUFFER_SIZE];
-  uint64_t elapsed_ms;
-  bool timed_out;
-  char output_path[PLATFORM_MAX_PATH_LENGTH];
-  /**
-   * @brief mcp render request is intentionally a small, concrete record. Fields such as `argv`, `argc`, `timeout_ms`,
-   * `capture_webcam` give callers the identity and current value they need. It is normally borrowed from, or owned by,
-   * the surrounding subsystem—not independently managed.
-   */
-} mcp_render_result_t;
-
 /**
  * @brief For mcp render result, this is the live record that ties `text`, `length`, `elapsed_ms`, `timed_out` together.
  * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
@@ -86,7 +59,7 @@ typedef struct mcp_job {
   struct mcp_server *server;
   yyjson_doc *message;
   yyjson_mut_doc *response;
-  mcp_render_request_t request;
+  http_renderer_process_request_t request;
   mcp_tool_t tool;
   gotel_context_t telemetry_parent;
   http_renderer_job_t renderer_job;
@@ -117,9 +90,8 @@ asciichat_error_t mcp_stdio_reserve(void);
 void mcp_stdio_release(void);
 yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *doc, const mcp_policy_t *policy);
 asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool, yyjson_val *arguments,
-                                    mcp_render_request_t *out);
-void mcp_request_destroy(mcp_render_request_t *request);
-void http_renderer_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result);
+                                    http_renderer_process_request_t *out);
+void mcp_request_destroy(http_renderer_process_request_t *request);
 yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id,
                              bool *pending);
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);

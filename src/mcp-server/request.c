@@ -265,14 +265,14 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   }
   return tools;
 }
-static asciichat_error_t arg(mcp_render_request_t *r, const char *value) {
+static asciichat_error_t arg(http_renderer_process_request_t *r, const char *value) {
   if (r->argc >= MCP_REQUEST_ARGV_CAPACITY - MCP_REQUEST_RESERVED_ARGS || strlen(value) > MCP_MAX_INPUT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Too many or oversized options");
   r->argv[r->argc++] = platform_strdup(value);
   r->argv[r->argc] = NULL;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t option(mcp_render_request_t *r, const char *name, const char *value) {
+static asciichat_error_t option(http_renderer_process_request_t *r, const char *name, const char *value) {
   size_t n = strlen(name) + strlen(value) + 4;
   char *s = SAFE_MALLOC(n, char *);
   SAFE_SNPRINTF(s, n, "--%s=%s", name, value);
@@ -308,7 +308,7 @@ static asciichat_error_t check_fields(yyjson_val *obj, const char *const *allowe
   }
   return ASCIICHAT_OK;
 }
-static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_render_request_t *r) {
+static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_renderer_process_request_t *r) {
   yyjson_val *path = mcp_get(a, "path"), *data = mcp_get(a, "data_base64"), *mime = mcp_get(a, "mime_type");
   if ((path != NULL) == (data != NULL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Provide exactly one of path or data_base64");
@@ -350,7 +350,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write uploaded media");
   return option(r, "file", file);
 }
-static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_render_request_t *r) {
+static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, http_renderer_process_request_t *r) {
   if (!yyjson_is_str(v) || !*yyjson_get_str(v) || yyjson_get_len(v) > 4000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
@@ -360,7 +360,7 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_re
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }
-static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r) {
+static asciichat_error_t stage_output(const char *path, http_renderer_process_request_t *r) {
   if (!path || !*path || strlen(path) > 3500 || !strcmp(path, "-") || strchr(path, '\n'))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output_path");
   uv_fs_t fs;
@@ -406,7 +406,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
   SAFE_SNPRINTF(r->stage_file, sizeof(r->stage_file), "%s/render%s", r->stage_dir, ext);
   return option(r, "render-file", r->stage_file);
 }
-asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, mcp_render_request_t *r) {
+asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, http_renderer_process_request_t *r) {
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
@@ -636,7 +636,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   }
   return ASCIICHAT_OK;
 }
-void mcp_request_destroy(mcp_render_request_t *r) {
+void mcp_request_destroy(http_renderer_process_request_t *r) {
   for (size_t i = 0; i < r->argc; ++i)
     SAFE_FREE(r->argv[i]);
   SAFE_FREE(r->argv);
@@ -650,3 +650,4 @@ void mcp_request_destroy(mcp_render_request_t *r) {
   }
   memset(r, 0, sizeof(*r));
 }
+

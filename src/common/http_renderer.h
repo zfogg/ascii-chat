@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define HTTP_RENDERER_MAX_OUTPUT (8u * 1024u * 1024u)
+
 typedef enum { HTTP_RENDER_SOURCE_UPLOAD, HTTP_RENDER_SOURCE_FILE, HTTP_RENDER_SOURCE_URL,
                HTTP_RENDER_SOURCE_WEBCAM, HTTP_RENDER_SOURCE_VISUALIZATION } http_render_source_type_t;
 typedef enum { HTTP_RENDER_OUTPUT_TEXT, HTTP_RENDER_OUTPUT_JSON, HTTP_RENDER_OUTPUT_HTML,
@@ -48,6 +50,26 @@ typedef struct {
   bool cancelled;
 } http_render_result_t;
 
+typedef struct {
+  char **argv;
+  size_t argc;
+  char upload_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_file[PLATFORM_MAX_PATH_LENGTH];
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
+  unsigned timeout_ms;
+  bool capture_webcam;
+} http_renderer_process_request_t;
+
+typedef struct {
+  char *text;
+  size_t length;
+  char error[2048];
+  uint64_t elapsed_ms;
+  bool timed_out;
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
+} http_renderer_process_result_t;
+
 typedef void (*http_renderer_job_fn)(void *context, atomic_t *cancelled);
 
 typedef struct {
@@ -61,6 +83,8 @@ typedef struct {
 
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
+void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled,
+                           http_renderer_process_result_t *result);
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
                                             http_render_result_t *result);
