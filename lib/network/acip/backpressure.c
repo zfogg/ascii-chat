@@ -310,6 +310,7 @@ static void *outbound_worker(void *arg) {
       outbound_record_failure_and_fail_pending(out, security_result, NULL, NULL);
       break;
     }
+    now = time_get_ns();
     p = out->head;
     if (!p)
       continue;
