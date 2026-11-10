@@ -47,3 +47,6 @@ typedef struct {
 
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
+
+asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
+                                            http_render_result_t *result);
