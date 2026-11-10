@@ -117,6 +117,9 @@ void ui_status_display(const ui_status_t *status) {
   }
 
   // Use terminal_screen abstraction for rendering
+  ui_status_t rendered = *status;
+  if (!rendered.detail)
+    rendered.detail = "? Keyboard shortcuts";
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
@@ -124,7 +127,7 @@ void ui_status_display(const ui_status_t *status) {
       .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = ui_status_render_header,
-      .user_data = (void *)status,
+      .user_data = &rendered,
       .show_logs = true,
   };
 
@@ -164,6 +167,9 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   }
 
   // Use terminal_screen abstraction for rendering
+  ui_status_t rendered = *status;
+  if (!rendered.detail)
+    rendered.detail = "? Keyboard shortcuts";
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = output_fd,
@@ -171,7 +177,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
       .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = ui_status_render_header,
-      .user_data = (void *)status,
+      .user_data = &rendered,
       .show_logs = true,
   };
 

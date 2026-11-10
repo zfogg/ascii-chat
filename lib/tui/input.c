@@ -332,10 +332,14 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
   if (server && current == UI_SCREEN_LOGS) {
     if (ui_session_logs_key(key))
       return KEY_NONE;
-    if (key == KEY_ESCAPE) {
+    if (key == KEY_ESCAPE || key == 'q') {
       ui_controller_hide_logs();
       return KEY_NONE;
     }
+  }
+  if (server && (key == 'Q' || key == KEY_SHIFT_ESCAPE)) {
+    platform_force_exit(1);
+    return KEY_NONE;
   }
   if (server && (key == 'q' || key == 3)) {
     shutdown_request();

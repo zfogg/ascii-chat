@@ -56,9 +56,6 @@ static bool g_owns_log_buffer;
 
 /* Offset is expressed in rendered terminal rows from the live tail. */
 static size_t g_log_scroll_rows;
-static uint64_t g_log_hold_started_ns;
-static uint64_t g_log_hold_last_ns;
-static int g_log_hold_direction;
 static bool g_log_help;
 static bool g_log_help_too_small;
 static uint64_t g_log_last_tail_sequence;
@@ -93,9 +90,6 @@ static bool terminal_screen_logs_mutex_init(void) {
 
 static void terminal_screen_logs_reset_locked(void) {
   g_log_scroll_rows = 0;
-  g_log_hold_started_ns = 0;
-  g_log_hold_last_ns = 0;
-  g_log_hold_direction = 0;
   g_log_help = false;
   g_log_help_too_small = false;
   g_log_last_tail_sequence = 0;
@@ -157,6 +151,28 @@ uint64_t terminal_screen_logs_last_tail_sequence(void) {
   return sequence;
 }
 
+static size_t terminal_screen_log_step_locked(int width) {
+  if (!g_session_log_buffer)
+    return 1;
+  session_log_entry_t *entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(*entries), session_log_entry_t *);
+  if (!entries)
+    return 1;
+  size_t count = session_log_buffer_get_recent(g_session_log_buffer, entries, SESSION_LOG_BUFFER_SIZE);
+  size_t offset = g_log_scroll_rows;
+  size_t step = 1;
+  for (size_t index = count; index; --index) {
+    int height = display_height(entries[index - 1].message, width);
+    size_t rows = (size_t)(height > 0 ? height : 1);
+    if (offset < rows) {
+      step = rows;
+      break;
+    }
+    offset -= rows;
+  }
+  SAFE_FREE(entries);
+  return step;
+}
+
 bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size) {
   if (!terminal_screen_logs_mutex_init())
     return false;
@@ -185,7 +201,23 @@ bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size) {
     direction = 1;
   else if (key == KEY_DOWN || key == 'j')
     direction = -1;
-  else if (key == KEY_LEFT || key == 21)
+  else if (key == KEY_PAGEUP)
+    direction = 1000000;
+  else if (key == KEY_PAGEDOWN)
+    direction = -1000000;
+  else if (key == KEY_HOME) {
+    g_log_scroll_rows = SIZE_MAX;
+    g_log_help_too_small = false;
+    mutex_unlock(&g_log_viewer_mutex);
+    ui_controller_redraw();
+    return true;
+  } else if (key == KEY_END) {
+    g_log_scroll_rows = 0;
+    g_log_help_too_small = false;
+    mutex_unlock(&g_log_viewer_mutex);
+    ui_controller_redraw();
+    return true;
+  } else if (key == KEY_LEFT || key == 21)
     direction = 1000000;
   else if (key == KEY_RIGHT || key == 4)
     direction = -1000000;
@@ -196,22 +228,14 @@ bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size) {
   }
 
   ascii_otel_ui_usage("logs", direction > 0 ? "scroll_older" : "scroll_newer", 0);
-  uint64_t now = time_get_ns();
   size_t step = 1;
   if (direction == 1 || direction == -1) {
-    if (g_log_hold_direction != direction || now - g_log_hold_last_ns > 250 * NS_PER_MS_INT)
-      g_log_hold_started_ns = now;
-    uint64_t held_ms = (now - g_log_hold_started_ns) / NS_PER_MS_INT;
-    /* A gentle quadratic curve: single taps stay precise, held keys travel. */
-    step += (size_t)((held_ms * held_ms) / 180000);
-    if (step > 64)
-      step = 64;
+    /* Arrow keys move by one complete log entry, including wrapped rows. */
+    step = terminal_screen_log_step_locked(size.cols);
   } else {
     int rows = size.rows;
     step = (size_t)(rows > 6 ? (rows - 5) / 2 : 1);
   }
-  g_log_hold_direction = direction;
-  g_log_hold_last_ns = now;
   if (direction > 0) {
     if (SIZE_MAX - g_log_scroll_rows < step)
       g_log_scroll_rows = SIZE_MAX;
