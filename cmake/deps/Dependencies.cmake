@@ -157,6 +157,9 @@ if(NOT EMSCRIPTEN)
     endif()
     target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
     set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING "Use ascii-chat's SQLite3 dependency" FORCE)
+    # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
+    # gotel defaults to C++27, which current release compilers do not support.
+    set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
     set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(BUILD_SHARED_LIBS OFF)
@@ -165,6 +168,10 @@ if(NOT EMSCRIPTEN)
     endif()
     add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                      ${CMAKE_BINARY_DIR}/gotel)
+    if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
+        target_include_directories(gotel_cxx SYSTEM PRIVATE
+                                   "${ALPINE_LIBCXX_INCLUDE_DIR}")
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         # These dependencies use the standard C runtime APIs and compile with
         # upstream warning settings; keep their diagnostics scoped to them.

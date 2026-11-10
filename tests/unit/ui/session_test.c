@@ -169,6 +169,10 @@ Test(session_ui, log_history_returns_latest_entries_after_wrap) {
 Test(session_ui, media_toggle_action_and_shared_help) {
   double volume = 1.0;
   cr_assert_eq(ui_session_key((keyboard_key_t)'[', &volume), UI_ACTION_TOGGLE_MEDIA);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'q', &volume), UI_ACTION_QUIT);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'Q', &volume), UI_ACTION_FORCE_QUIT);
+  cr_assert_eq(ui_session_key(KEY_ESCAPE, &volume), UI_ACTION_CLOSE);
+  cr_assert_eq(ui_session_key(KEY_SHIFT_ESCAPE, &volume), UI_ACTION_FORCE_QUIT);
   terminal_size_t minimum;
   char *help = ui_session_help_render((terminal_size_t){.rows = 60, .cols = 160}, true, false, &minimum);
   cr_assert_not_null(help);

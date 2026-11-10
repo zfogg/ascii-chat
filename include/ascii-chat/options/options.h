@@ -958,6 +958,7 @@ typedef enum {
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
 typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+#define ASCII_RENDERER_DEFAULT ASCII_RENDERER_GLYPH
 
 /**
  * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
@@ -1128,6 +1129,7 @@ typedef struct options_state {
   // Image Options
   // ============================================================================
   bool stabilize;                                    ///< Reduce frame-to-frame character flicker
+  bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
   ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto

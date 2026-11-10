@@ -137,8 +137,6 @@ static asciichat_error_t client_prepare(network_connection_t *network, const con
   server_connection_set_ip(connection, endpoint->host);
   server_connection_set_port(connection, endpoint->port);
   asciichat_error_t result = client_crypto_init(connection, password);
-  if (result == ASCIICHAT_OK && !GET_OPTION(no_auth))
-    connection->crypto_mode |= ACIP_CRYPTO_AUTH;
   return result;
 }
 

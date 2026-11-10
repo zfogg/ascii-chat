@@ -19,6 +19,7 @@ import {
   defaultBrowserSettings,
   colorModeValues,
   colorFilterValues,
+  TextRenderer,
   initMirrorWasm,
   cleanupMirrorWasm,
   convertFrameToAscii,
@@ -85,6 +86,12 @@ function applyDemoOption(
       settings.colorFilter ??
       colorFilterValues[defaultBrowserSettings.colorFilter],
     render_mode: settings.renderMode ?? defaultBrowserSettings.renderMode,
+    renderer:
+      settings.renderer ??
+      (defaultBrowserSettings.renderer === "glyph"
+        ? TextRenderer.Glyph
+        : TextRenderer.Luminance),
+    stabilize: settings.stabilize ?? defaultBrowserSettings.stabilize,
     palette_type:
       settings.paletteChars !== undefined
         ? paletteTypes.custom

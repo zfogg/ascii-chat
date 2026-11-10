@@ -799,8 +799,9 @@ static void cond_deadlock_check_snapshot(const cond_deadlock_snapshot_t *cond, c
   }
 
   // Skip deadlock checks for thread pool work queues - it's normal for worker threads
-  // to wait idly when there's no work to process
-  if (name && strstr(name, "task_available") != NULL) {
+  // to wait idly when there's no work to process. Older registrations used
+  // task_available; current pools register work_available.
+  if (name && (strstr(name, "task_available") != NULL || strstr(name, "work_available") != NULL)) {
     return;
   }
 
@@ -911,7 +912,7 @@ void debug_sync_check_cond_deadlocks(void) {
       const cond_deadlock_snapshot_t *state = &batch.entries[i].state;
       const char *name = batch.entries[i].name;
       cond_deadlock_check_snapshot(state, name);
-      if (state->waiting_count && !strstr(name, "task_available")) {
+      if (state->waiting_count && !strstr(name, "task_available") && !strstr(name, "work_available")) {
         uint64_t due = state->last_wait_time_ns + COND_DEADLOCK_THRESHOLD_NS;
         // A recent signal already rules out this wait. Repeated warnings for
         // an actually stuck condition retain their existing 500 ms cadence.

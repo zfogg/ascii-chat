@@ -18,8 +18,15 @@
 #include <string.h>
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
+#include <ascii-chat/buffer.h>
 
 static _Thread_local outbuf_t *g_output_target;
+
+static uint32_t *acquire_scratch(uint32_t *inline_scratch, size_t bytes) {
+  if (bytes <= ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES * sizeof(uint32_t))
+    return inline_scratch;
+  return buffer_alloc(NULL, bytes);
+}
 static _Thread_local ascii_stabilizer_t *g_stabilizer_target;
 
 ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state) {
@@ -275,7 +282,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette) {
   ASCII_OTEL_SCOPE(ASCII_FRAME_INIT);
-  outbuf_t *target = ascii_render_set_output_target(NULL);
+  outbuf_t *target = g_output_target;
   memset(frame, 0, sizeof(*frame));
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image or palette");
@@ -297,7 +304,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     frame->stabilizer = g_stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
-  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
+  if (!frame->scratch)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ASCII scratch workspace");
   frame->packed = frame->scratch;
   frame->index = frame->packed + frame->width;
   frame->glyph = frame->index + frame->width;
@@ -376,7 +385,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
   if (frame->scratch != frame->inline_scratch)
-    SAFE_FREE(frame->scratch);
+    buffer_release(frame->scratch);
   ob_term(&frame->output);
   if (frame->output_target)
     *frame->output_target = frame->output;
@@ -386,7 +395,7 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
 asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
                                         ascii_color_t mode) {
   ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
-  outbuf_t *target = ascii_render_set_output_target(NULL);
+  outbuf_t *target = g_output_target;
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;
   if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE ||
@@ -406,7 +415,9 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width &&
       g_stabilizer_target->height == (size_t)height)
     frame->stabilizer = g_stabilizer_target;
-  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
+  if (!frame->scratch)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ASCII scratch workspace");
   frame->packed = frame->scratch;
   frame->index = frame->packed + width;
   frame->glyph = frame->index + width;

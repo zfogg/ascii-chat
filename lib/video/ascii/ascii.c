@@ -2,6 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 
 #include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/buffer.h>
 /**
  * @file video/ascii.c
  * @ingroup video
@@ -78,7 +79,12 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
   }
 
   // Horizontal source coordinates are identical for every destination row.
-  int *source_columns = SAFE_MALLOC((size_t)dest->w * sizeof(*source_columns), int *);
+  size_t columns_bytes = (size_t)dest->w * sizeof(int);
+  int *source_columns = buffer_alloc(NULL, columns_bytes);
+  if (!source_columns) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to acquire ASCII resize workspace");
+    return;
+  }
   for (int x = 0; x < dest->w; ++x)
     source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
   int previous_source_y = -1;
@@ -95,7 +101,7 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
       dest_row[x] = source_row[source_columns[x]];
     }
   }
-  SAFE_FREE(source_columns);
+  buffer_release(source_columns);
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.

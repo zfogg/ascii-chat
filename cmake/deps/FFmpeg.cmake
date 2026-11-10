@@ -169,7 +169,9 @@ if(USE_MUSL)
     add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
     set_target_properties(asciichat-ffmpeg PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES}")
+        # FFmpeg's static archives have mutual dependencies.  A rescan group
+        # is required for the musl release link to resolve all av* symbols.
+        INTERFACE_LINK_LIBRARIES "-Wl,--start-group;${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES};-Wl,--end-group")
     add_dependencies(asciichat-ffmpeg ffmpeg-musl)
     set(FFMPEG_LIBRARIES asciichat-ffmpeg)
     set(FFMPEG_FOUND TRUE)

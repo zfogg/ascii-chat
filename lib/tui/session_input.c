@@ -104,6 +104,10 @@ static asciichat_error_t toggle_mute(double *saved_volume) {
 
 ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
   switch ((int)key) {
+  case 'q':
+    return UI_ACTION_QUIT;
+  case 'Q':
+    return UI_ACTION_FORCE_QUIT;
   case KEY_QUESTION:
     return UI_ACTION_HELP;
   case '[':
@@ -112,6 +116,8 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     return UI_ACTION_LOGS;
   case KEY_ESCAPE:
     return UI_ACTION_CLOSE;
+  case KEY_SHIFT_ESCAPE:
+    return UI_ACTION_FORCE_QUIT;
   case KEY_LEFT:
     return UI_ACTION_SEEK_BACK;
   case KEY_RIGHT:
