@@ -58,7 +58,6 @@ function sourceHash() {
     }
   };
   for (const directory of [
-    "deps/libfacedetection",
     "src/web",
     "src/common/session",
     "lib",
