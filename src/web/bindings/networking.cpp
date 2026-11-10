@@ -285,6 +285,8 @@ public:
       return response;
     }
     if (type == "receive-transport-packet") {
+      if (event["packet"].isUndefined() || event["packet"].isNull())
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "Transport packet is required"));
       auto input = binding_copy_input(event["packet"]);
       packet_header_t header{};
       int code = input.size() < sizeof(packet_header_t)
@@ -298,7 +300,7 @@ public:
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       const packet_type_t outer_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
       const size_t header_size = sizeof(packet_header_t);
-      if (!browser_client_ready(transport_.get())) {
+      if (!browser_client_ready(transport_.get()) && packet_is_handshake_type(outer_type)) {
         code = discovery ? browser_client_acds_handshake_receive(transport_.get(), outer_type,
                                                                  input.data() + header_size, input.size() - header_size)
                          : browser_client_handshake_receive(transport_.get(), outer_type, input.data() + header_size,
