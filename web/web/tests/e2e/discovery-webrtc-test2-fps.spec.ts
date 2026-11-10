@@ -384,6 +384,7 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       repaintFps: number;
     }> = [];
     let previous = await page.evaluate(() => ({
+      receivedFrames: window.__clientFrameMetrics?.received ?? 0,
       uniqueFrames: window.__clientFrameMetrics?.uniqueRendered ?? 0,
       repaints: window.__clientFrameMetrics?.rendered ?? 0,
       time: performance.now(),
@@ -391,13 +392,15 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
     for (let index = 0; index < 10; index++) {
       await page.waitForTimeout(1_000);
       const current = await page.evaluate(() => ({
+        receivedFrames: window.__clientFrameMetrics?.received ?? 0,
         uniqueFrames: window.__clientFrameMetrics?.uniqueRendered ?? 0,
         repaints: window.__clientFrameMetrics?.rendered ?? 0,
         time: performance.now(),
-        ui: document.body.innerText.match(/FPS:\s*(\d+)\s*\/\s*60/),
       }));
       samples.push({
-        frameFps: Number(current.ui?.[1] ?? 0),
+        frameFps:
+          ((current.receivedFrames - previous.receivedFrames) * 1000) /
+          (current.time - previous.time),
         uniqueArtFps:
           ((current.uniqueFrames - previous.uniqueFrames) * 1000) /
           (current.time - previous.time),
@@ -414,7 +417,7 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
     console.log(
       `[discovery-webrtc-test2-fps] canvas=${Math.round(bounds!.width)}x${Math.round(bounds!.height)} ` +
         `60fps windows=${nearSixtyWindows}/10; 55+fps windows=${goodWindows}/10; ` +
-        `received/unique-art/repaint=${samples.map(({ frameFps, uniqueArtFps, repaintFps }) => `${frameFps}/${uniqueArtFps.toFixed(0)}/${repaintFps.toFixed(0)}`).join(",")}`,
+        `received/unique-art/repaint=${samples.map(({ frameFps, uniqueArtFps, repaintFps }) => `${frameFps.toFixed(0)}/${uniqueArtFps.toFixed(0)}/${repaintFps.toFixed(0)}`).join(",")}`,
     );
     console.log(
       `[discovery-webrtc-test2-fps] page=${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 240)} ` +
