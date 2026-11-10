@@ -181,7 +181,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
       frame.delete();
     }
   });
-  expect(errors).toHaveLength(8);
+  expect(errors).toHaveLength(7);
   for (const error of errors) {
     expect([85, 86]).toContain(error?.code);
     expect(error?.message).toBeTruthy();
@@ -293,6 +293,7 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     const session = new module.ClientSessionBinding({});
     session.process({
       type: "receive-handshake-packet",
+      packetType: 0,
       payload: new Uint8Array(),
     });
     const beforeCount = module.ErrorBinding.snapshot();

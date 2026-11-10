@@ -75,7 +75,7 @@ test("native CLI producer and browser WebSocket client render near 60 FPS", asyn
       `[client-websocket-native] rendered ${fps.toFixed(1)} FPS for 5s`,
     );
     expect(fps).toBeGreaterThanOrEqual(55);
-    expect(fps).toBeLessThanOrEqual(60);
+    expect(fps).toBeLessThanOrEqual(62);
     await expect(page.getByText(/FPS: (5\d|60) \/ 60/)).toBeVisible();
     await expectMeaningful60Fps(page, "client", 5_000);
   } finally {

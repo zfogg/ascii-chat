@@ -6,6 +6,29 @@ test("real browser upload reduces load on collapse and recovers with fresh decod
 }, testInfo) => {
   test.setTimeout(60000);
   await page.goto("/tests/network/crypto-policy.html");
+  const h264Supported = await page.evaluate(async () => {
+    if (typeof VideoEncoder === "undefined") return false;
+    try {
+      const result = await VideoEncoder.isConfigSupported({
+        codec: "avc1.42E01F",
+        width: 640,
+        height: 360,
+        framerate: 30,
+        bitrate: 3_000_000,
+        latencyMode: "realtime",
+        hardwareAcceleration: "prefer-hardware",
+        avc: { format: "annexb" },
+      });
+      return (
+        result.supported === true &&
+        (result.config as VideoEncoderConfig & { avc?: { format?: string } })
+          .avc?.format === "annexb"
+      );
+    } catch {
+      return false;
+    }
+  });
+  test.skip(!h264Supported, "H.264 WebCodecs is unsupported in this browser");
   const result = await page.evaluate(async () => {
     const encoderUrl = "/src/network/VideoUploadEncoder.ts";
     const queueUrl = "/src/network/OutboundQueue.ts";
