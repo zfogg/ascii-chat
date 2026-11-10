@@ -36,10 +36,7 @@ typedef struct buffer_header {
   size_t length;
   size_t charge;
   size_t alignment;
-  // This counter is touched for every video frame. Keep it as a raw C11
-  // atomic: the debug-tracked atomic_t wrapper records timestamps on every
-  // operation and can reduce live rendering to single-digit FPS.
-  _Atomic(size_t) references;
+  atomic_t references;
   uint64_t returned_at;
   unsigned bin;
 } buffer_header_t;
@@ -105,7 +102,7 @@ static void dispose(buffer_domain_t *domain, buffer_header_t *node) {
   domain->stats.reserved_bytes -= node->charge;
   atomic_fetch_sub_u64(&process_bytes, node->charge);
   void *allocation = node->allocation;
-  ALLOC_FREE_INTERNAL(allocation);
+  SAFE_FREE(allocation);
 }
 
 static void trim_locked(buffer_domain_t *domain, bool all) {
@@ -240,7 +237,7 @@ asciichat_error_t buffer_acquire(buffer_domain_t *domain, size_t size, size_t al
       mutex_unlock(&domain->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Buffer budget exhausted requesting %zu bytes", size);
     }
-    node = ALLOC_MALLOC_INTERNAL(charge);
+    node = ALLOC_MALLOC(charge);
     if (!node) {
       atomic_fetch_sub_u64(&process_bytes, charge);
       domain->stats.failures++;
@@ -262,7 +259,7 @@ asciichat_error_t buffer_acquire(buffer_domain_t *domain, size_t size, size_t al
   }
   node->next = NULL;
   BUFFER_UNPOISON(node->data, node->capacity);
-  node->references = 1;
+  atomic_store_u64(&node->references, 1);
   node->length = size;
   domain->stats.outstanding++;
   domain->stats.live_bytes += node->charge;
@@ -293,7 +290,7 @@ asciichat_error_t buffer_set_size(void *data, size_t size) {
   buffer_header_t *node = header(data);
   buffer_domain_t *domain = node->domain;
   mutex_lock(&domain->mutex);
-  if (atomic_load(&node->references) != 1) {
+  if (atomic_load_u64(&node->references) != 1) {
     mutex_unlock(&domain->mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "Cannot resize shared buffer");
   }
@@ -308,9 +305,9 @@ const void *buffer_share(const void *data) {
   if (!data)
     return NULL;
   buffer_header_t *node = header(data);
-  size_t references = atomic_load(&node->references);
+  uint64_t references = atomic_load_u64(&node->references);
   while (references && references != SIZE_MAX) {
-    if (atomic_compare_exchange_weak(&node->references, &references, references + 1))
+    if (atomic_cas_u64(&node->references, &references, references + 1))
       return data;
   }
   SET_ERRNO(ERROR_INVALID_STATE, "Invalid buffer reference count");
@@ -318,7 +315,7 @@ const void *buffer_share(const void *data) {
 }
 
 bool buffer_is_unique(const void *data) {
-  return data && atomic_load(&header(data)->references) == 1;
+  return data && atomic_load_u64(&header(data)->references) == 1;
 }
 
 void buffer_unref(const void *data) {
@@ -326,8 +323,8 @@ void buffer_unref(const void *data) {
     return;
   buffer_header_t *node = header(data);
   buffer_domain_t *domain = node->domain;
-  size_t references = atomic_load(&node->references);
-  while (references && !atomic_compare_exchange_weak(&node->references, &references, references - 1)) {
+  uint64_t references = atomic_load_u64(&node->references);
+  while (references && !atomic_cas_u64(&node->references, &references, references - 1)) {
   }
   if (!references) {
     SET_ERRNO(ERROR_INVALID_STATE, "Buffer has already been released");

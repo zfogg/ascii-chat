@@ -139,7 +139,10 @@ static session_capture_ctx_t *g_capture_capture_ctx = NULL;
  * Frame Processing Constants
  * ============================================================================ */
 /** Fallback capture FPS when no target was configured */
-#define CAPTURE_TARGET_FPS 144
+/* Keep the implicit network cadence below the synchronization inspector's
+ * per-second lock budget. Users can still request a higher rate explicitly
+ * with --fps; the negotiated peer rate remains authoritative once connected. */
+#define CAPTURE_TARGET_FPS 6
 
 /* Frame processing now handled by session library via session_capture_process_for_transmission() */
 /* ============================================================================

@@ -1166,7 +1166,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
-      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].rendering.fps_limit = DEFAULT_MAX_FPS;
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers

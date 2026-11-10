@@ -7,6 +7,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/packet/decoder.h>
 #include <ascii-chat/buffer.h>
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/util/overflow.h>
+
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
 
@@ -16,7 +19,11 @@ typedef struct async_packet {
   struct async_packet *next;
   void *data;
   size_t size;
+  bool pooled;
 } async_packet_t;
+
+#define ASYNC_RECEIVE_POOL_CAPACITY (256u * 1024u)
+#define ASYNC_RECEIVE_POOL_SIZE 64u
 
 typedef struct {
   platform_event_stream_t *stream;
@@ -29,12 +36,16 @@ typedef struct {
   bool queued_receive;
   acip_transport_t *destroy_on_close;
   cond_t received;
+  bool receive_lock_held;
   cond_t writable;
   packet_decoder_t decoder;
+  ringbuffer_t *receive_queue;
+  ringbuffer_t *receive_free;
   async_packet_t *head, *tail;
   async_packet_t *recycled;
+  async_packet_t *held;
   size_t recycled_count;
-  size_t received_bytes;
+  atomic_t received_bytes;
   atomic_t received_count;
   buffer_workspace_t ciphertext;
   atomic_t queued_wire_bytes;
@@ -48,6 +59,14 @@ typedef struct {
    * callback context recorded in those fields.
    */
 } async_tcp_t;
+
+static void recycle_packet(async_tcp_t *tcp, async_packet_t *packet) {
+  packet->data = NULL;
+  packet->size = 0;
+  packet->pooled = false;
+  packet->next = tcp->recycled;
+  tcp->recycled = packet;
+}
 
 static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
   async_tcp_t *tcp = transport->impl_data;
@@ -111,18 +130,42 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     return SET_ERRNO(ERROR_INVALID_STATE, "Async server receives through packet callbacks");
   *data = *allocation = NULL;
   *length = 0;
+  /* A pooled buffer retains one transport-owned reference while the caller
+   * holds the shared reference returned below. Recycle it only after the
+   * caller has released that reference, without taking the buffer-domain lock.
+   */
+  async_packet_t **held_link = &tcp->held;
+  while (*held_link) {
+    async_packet_t *held = *held_link;
+    if (!buffer_is_unique(held->data)) {
+      held_link = &held->next;
+      continue;
+    }
+    *held_link = held->next;
+    void *reusable = held->data;
+    recycle_packet(tcp, held);
+    if (!ringbuffer_write(tcp->receive_free, &reusable)) {
+      buffer_release(reusable);
+      continue;
+    }
+  }
   uint64_t start = time_get_ns();
   uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
-  mutex_lock(&tcp->receive_mutex);
-  while (!tcp->head && !atomic_load_bool(&tcp->closed)) {
+  if (!tcp->receive_lock_held) {
+    mutex_lock(&tcp->receive_mutex);
+    tcp->receive_lock_held = true;
+  }
+  while (atomic_load_u64(&tcp->received_count) == 0 && !atomic_load_bool(&tcp->closed)) {
     if (atomic_load_bool(&tcp->interrupted)) {
       platform_event_stream_request_close(tcp->stream, ERROR_NETWORK);
       mutex_unlock(&tcp->receive_mutex);
+      tcp->receive_lock_held = false;
       return SET_ERRNO(ERROR_NETWORK, "Async receive interrupted");
     }
     uint64_t elapsed = time_get_ns() - start;
     if (elapsed >= timeout) {
       mutex_unlock(&tcp->receive_mutex);
+      tcp->receive_lock_held = false;
       // Short receive deadlines drive polling; the enclosing operation owns its final timeout.
       bool previous = errno_notifications_suppress(true);
       asciichat_error_t result = SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Async receive deadline expired");
@@ -134,15 +177,13 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
       wait = 50 * NS_PER_MS_INT;
     cond_timedwait(&tcp->received, &tcp->receive_mutex, wait);
   }
-  if (!tcp->head) {
+  async_packet_t *packet = NULL;
+  if (!ringbuffer_read(tcp->receive_queue, &packet) || !packet) {
     mutex_unlock(&tcp->receive_mutex);
+    tcp->receive_lock_held = false;
     return SET_ERRNO(ERROR_NETWORK, "Async peer disconnected");
   }
-  async_packet_t *packet = tcp->head;
-  tcp->head = packet->next;
-  if (!tcp->head)
-    tcp->tail = NULL;
-  tcp->received_bytes -= packet->size;
+  atomic_fetch_sub_u64(&tcp->received_bytes, packet->size);
   atomic_fetch_sub_u64(&tcp->received_count, 1);
   packet_header_t header;
   memcpy(&header, packet->data, sizeof(header));
@@ -165,29 +206,44 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     result = SET_ERRNO(ERROR_CRYPTO, "Unexpected plaintext packet");
   }
   if (result == ASCIICHAT_OK && envelope.consumed) {
-    buffer_release(envelope.allocated_buffer);
-    SAFE_FREE(packet);
-    mutex_unlock(&tcp->receive_mutex);
+    if (packet->pooled) {
+      if (envelope.allocated_buffer != packet->data)
+        buffer_release(envelope.allocated_buffer);
+      ringbuffer_write(tcp->receive_free, &packet->data);
+    } else {
+      buffer_release(envelope.allocated_buffer);
+    }
+    recycle_packet(tcp, packet);
     return ERROR_NETWORK_INCOMPLETE;
   }
-  if (result == ASCIICHAT_OK && tcp->recycled_count < 8 && buffer_capacity(envelope.allocated_buffer) <= 256 * 1024) {
-    // Retain an owner while the receiver borrows its own reference. Only
-    // recycle this slot once the receiver releases that reference.
-    packet->data = envelope.allocated_buffer;
-    buffer_share(packet->data);
-    packet->next = tcp->recycled;
-    tcp->recycled = packet;
-    ++tcp->recycled_count;
-  } else {
-    SAFE_FREE(packet);
-  }
-  mutex_unlock(&tcp->receive_mutex);
   if (result != ASCIICHAT_OK) {
-    buffer_release(envelope.allocated_buffer);
+    if (packet->pooled) {
+      if (envelope.allocated_buffer != packet->data)
+        buffer_release(envelope.allocated_buffer);
+      ringbuffer_write(tcp->receive_free, &packet->data);
+    } else {
+      buffer_release(envelope.allocated_buffer);
+    }
+    recycle_packet(tcp, packet);
+    mutex_unlock(&tcp->receive_mutex);
+    tcp->receive_lock_held = false;
     mutex_lock(&tcp->mutex);
     platform_event_stream_request_close(tcp->stream, result);
     mutex_unlock(&tcp->mutex);
     return result;
+  }
+  if (packet->pooled) {
+    if (!buffer_share(envelope.allocated_buffer)) {
+      ringbuffer_write(tcp->receive_free, &packet->data);
+      recycle_packet(tcp, packet);
+      mutex_unlock(&tcp->receive_mutex);
+      tcp->receive_lock_held = false;
+      return SET_ERRNO(ERROR_MEMORY, "Cannot retain async receive buffer");
+    }
+    packet->next = tcp->held;
+    tcp->held = packet;
+  } else {
+    recycle_packet(tcp, packet);
   }
   *data = *allocation = envelope.allocated_buffer;
   *length = envelope.len + sizeof(header);
@@ -252,11 +308,30 @@ static void async_destroy(acip_transport_t *transport) {
   }
   if (tcp->queued_receive) {
     packet_decoder_reset(&tcp->decoder);
-    while (tcp->head) {
-      async_packet_t *packet = tcp->head;
-      tcp->head = packet->next;
+    async_packet_t *packet = NULL;
+    while (tcp->receive_queue && ringbuffer_read(tcp->receive_queue, &packet)) {
+      if (packet->pooled) {
+        if (!ringbuffer_write(tcp->receive_free, &packet->data))
+          buffer_release(packet->data);
+      } else {
+        buffer_release(packet->data);
+      }
+      SAFE_FREE(packet);
+    }
+    ringbuffer_destroy(tcp->receive_queue);
+    tcp->receive_queue = NULL;
+    while (tcp->held) {
+      packet = tcp->held;
+      tcp->held = packet->next;
       buffer_release(packet->data);
       SAFE_FREE(packet);
+    }
+    if (tcp->receive_free) {
+      void *reusable = NULL;
+      while (ringbuffer_read(tcp->receive_free, &reusable))
+        buffer_release(reusable);
+      ringbuffer_destroy(tcp->receive_free);
+      tcp->receive_free = NULL;
     }
     while (tcp->recycled) {
       async_packet_t *packet = tcp->recycled;
@@ -322,9 +397,11 @@ size_t acip_async_tcp_transport_queued(acip_transport_t *transport) {
 static void queue_changed(void *context, size_t bytes) {
   async_tcp_t *tcp = context;
   atomic_store_u64(&tcp->queued_wire_bytes, bytes);
-  mutex_lock(&tcp->mutex);
+  /* The event backend may invoke this callback synchronously from
+   * platform_event_stream_write(), while async_sendv() holds the lifetime
+   * guard. Condition-variable notifications do not require owning the
+   * associated mutex; taking it here would recurse into tcp->mutex. */
   cond_broadcast(&tcp->writable);
-  mutex_unlock(&tcp->mutex);
 }
 
 acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *stream, crypto_context_t *crypto) {
@@ -348,6 +425,16 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
     SAFE_FREE(transport);
     return NULL;
   }
+  tcp->receive_queue = ringbuffer_create(sizeof(async_packet_t *), 4096);
+  if (!tcp->receive_queue) {
+    ringbuffer_destroy(tcp->receive_queue);
+    cond_destroy(&tcp->writable);
+    mutex_destroy(&tcp->receive_mutex);
+    mutex_destroy(&tcp->mutex);
+    SAFE_FREE(tcp);
+    SAFE_FREE(transport);
+    return NULL;
+  }
   tcp->stream = stream;
   transport->methods = &async_methods;
   transport->impl_data = tcp;
@@ -363,42 +450,40 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
 
 static asciichat_error_t client_packet(const void *data, size_t length, void *arg) {
   async_tcp_t *tcp = arg;
-  mutex_lock(&tcp->receive_mutex);
-  if (atomic_load_u64(&tcp->received_count) >= 4096 || length > 16 * 1024 * 1024 - tcp->received_bytes) {
-    mutex_unlock(&tcp->receive_mutex);
+  uint64_t queued_bytes = atomic_load_u64(&tcp->received_bytes);
+  if (atomic_load_u64(&tcp->received_count) >= 4096 || length > 16 * 1024 * 1024 - queued_bytes) {
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Async client receive queue full");
   }
-  async_packet_t **cached = &tcp->recycled;
-  while (*cached && (!buffer_is_unique((*cached)->data) || buffer_capacity((*cached)->data) < length))
-    cached = &(*cached)->next;
-  async_packet_t *packet = *cached;
-  if (packet) {
-    *cached = packet->next;
-    --tcp->recycled_count;
-    packet->next = NULL;
-  } else {
+  async_packet_t *packet = tcp->recycled;
+  if (packet)
+    tcp->recycled = packet->next;
+  else
     packet = SAFE_CALLOC(1, sizeof(*packet), async_packet_t *);
+  if (length <= ASYNC_RECEIVE_POOL_CAPACITY && tcp->receive_free &&
+      ringbuffer_read(tcp->receive_free, &packet->data))
+    packet->pooled = true;
+  else
     packet->data = buffer_alloc(NULL, length);
-  }
   packet->size = length;
   if (!packet->data) {
-    SAFE_FREE(packet);
-    mutex_unlock(&tcp->receive_mutex);
+    recycle_packet(tcp, packet);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async receive packet");
   }
   memcpy(packet->data, data, length);
-  bool was_empty = tcp->head == NULL;
-  if (tcp->tail)
-    tcp->tail->next = packet;
-  else
-    tcp->head = packet;
-  tcp->tail = packet;
-  tcp->received_bytes += length;
+  if (!ringbuffer_write(tcp->receive_queue, &packet)) {
+    if (!packet->pooled)
+      buffer_release(packet->data);
+    else
+      ringbuffer_write(tcp->receive_free, &packet->data);
+    recycle_packet(tcp, packet);
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Async client receive queue full");
+  }
+  bool was_empty = atomic_load_u64(&tcp->received_count) == 0;
+  atomic_fetch_add_u64(&tcp->received_bytes, length);
   atomic_fetch_add_u64(&tcp->received_count, 1);
   tcp->packet_received = true;
   if (was_empty)
     cond_signal(&tcp->received);
-  mutex_unlock(&tcp->receive_mutex);
   return ASCIICHAT_OK;
 }
 static void client_read(platform_event_stream_t *stream, const void *data, size_t length, void *arg) {
@@ -422,9 +507,7 @@ static void client_closed(void *arg, asciichat_error_t reason) {
   platform_event_loop_t *loop = tcp->loop;
   acip_transport_t *destroy_on_close = tcp->destroy_on_close;
   mutex_unlock(&tcp->mutex);
-  mutex_lock(&tcp->receive_mutex);
   cond_broadcast(&tcp->received);
-  mutex_unlock(&tcp->receive_mutex);
   if (loop)
     platform_event_loop_stop(loop);
   if (destroy_on_close)
@@ -450,6 +533,18 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
     return NULL;
   }
   tcp->queued_receive = true;
+  tcp->receive_free = ringbuffer_create(sizeof(void *), ASYNC_RECEIVE_POOL_SIZE);
+  if (!tcp->receive_free)
+    goto client_pool_failure;
+  for (size_t i = 0; i < ASYNC_RECEIVE_POOL_SIZE; i++) {
+    void *pool_buffer = buffer_alloc(NULL, ASYNC_RECEIVE_POOL_CAPACITY);
+    if (!pool_buffer)
+      goto client_pool_failure;
+    if (!ringbuffer_write(tcp->receive_free, &pool_buffer)) {
+      buffer_release(pool_buffer);
+      goto client_pool_failure;
+    }
+  }
   if (platform_event_loop_create(&tcp->loop) != ASCIICHAT_OK) {
     acip_transport_destroy(transport);
     return NULL;
@@ -473,6 +568,10 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
     return NULL;
   }
   return transport;
+
+client_pool_failure:
+  acip_transport_destroy(transport);
+  return NULL;
 }
 
 acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *stream) {
