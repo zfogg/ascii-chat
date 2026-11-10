@@ -20,6 +20,18 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 function(configure_include_directories)
     set(_asciichat_sqlite_include_dirs ${SQLITE3_INCLUDE_DIRS})
     if(USE_MUSL)
+        # Dependency modules add their include variables at different points
+        # in configuration, so sanitize all of them before subdirectories add
+        # their private include paths to concrete targets.
+        get_cmake_property(_asciichat_include_variables VARIABLES)
+        foreach(_asciichat_include_variable IN LISTS _asciichat_include_variables)
+            if(_asciichat_include_variable MATCHES "_INCLUDE_DIRS$")
+                set(_asciichat_include_values ${${_asciichat_include_variable}})
+                list(FILTER _asciichat_include_values EXCLUDE REGEX
+                    "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                set(${_asciichat_include_variable} "${_asciichat_include_values}")
+            endif()
+        endforeach()
         # FindSQLite3 may report the host pkg-config include root.  Do not
         # let that root reintroduce glibc ahead of the musl headers.
         list(FILTER _asciichat_sqlite_include_dirs EXCLUDE REGEX
