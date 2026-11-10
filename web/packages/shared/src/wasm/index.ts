@@ -46,6 +46,7 @@ export type {
   OpusCodecBinding,
   BrowserSessionBinding,
   DiscoveryBinding,
+  HandoffBinding,
   BrowserHostBinding,
   AVStateBinding,
 } from "./generated/client-bindings";
