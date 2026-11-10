@@ -17,7 +17,7 @@
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render.h>

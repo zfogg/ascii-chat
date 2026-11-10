@@ -23,7 +23,7 @@
 #include <math.h>
 
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/common.h>
@@ -133,7 +133,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // Only apply terminal control sequences if:
   // 1. reset_terminal is true (caller wants terminal reset)
   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
-  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
+  if (reset_terminal && terminal_should_use_control_sequences(fd, GET_OPTION(snapshot_mode))) {
     ui_controller_redraw();
 
     // Disable echo using platform abstraction
@@ -539,7 +539,7 @@ asciichat_error_t ascii_write(const char *frame) {
     return ERROR_INVALID_PARAM;
   }
 
-  if (!terminal_should_use_control_sequences(STDOUT_FILENO))
+  if (!terminal_should_use_control_sequences(STDOUT_FILENO, GET_OPTION(snapshot_mode)))
     return ui_controller_write(STDOUT_FILENO, frame, strlen(frame));
   size_t len = strlen(frame);
   char *output = SAFE_MALLOC(len + 3, char *);
@@ -563,7 +563,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
   // Only restore terminal state if:
   // 1. reset_terminal is true (caller wants terminal restore)
   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
-  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
+  if (reset_terminal && terminal_should_use_control_sequences(fd, GET_OPTION(snapshot_mode))) {
     // Show cursor using platform abstraction
     if (ui_controller_write(fd, "\033[?25h", 6) != ASCIICHAT_OK) {
       log_warn("Failed to show cursor");
@@ -919,7 +919,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   }
 
   terminal_color_mode_t color_level = caps->color_level;
-  render_mode_t render_mode = caps->render_mode;
+  terminal_render_mode_t render_mode = caps->render_mode;
 
   // Half-block mode: dispatch to halfblock renderers by color depth
   if (render_mode == RENDER_MODE_HALF_BLOCK) {

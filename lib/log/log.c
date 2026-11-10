@@ -38,12 +38,14 @@
 #include <ctype.h>
 
 #include <ascii-chat/log/log.h>
+
+int terminal_choose_log_fd(int level);
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
@@ -941,7 +943,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
   // Captured session logs still need formatting, but detecting the console
   // again would block their producer behind the presentation worker's writes.
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting)
     atomic_store(&g_terminal_log_colors, use_colors);
 
@@ -1254,7 +1256,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       // Choose output stream using unified routing logic
       int fd = terminal_choose_log_fd(level);
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-      bool use_colors = terminal_should_color_output(fd);
+      bool use_colors = terminal_should_color_output(fd, options_terminal_settings());
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
@@ -1413,7 +1415,7 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
 
   bool presenting = ui_controller_is_presenting();
   int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting) {
     atomic_store(&g_terminal_log_colors, use_colors);
   }
@@ -1577,7 +1579,7 @@ void log_plain_msg(const char *fmt, ...) {
     FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
 
     // Apply colorization for TTY output
-    if (terminal_should_color_output(fd)) {
+    if (terminal_should_color_output(fd, options_terminal_settings())) {
       const char *colorized_msg = colorize_log_message(log_buffer);
       log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", colorized_msg);
     } else {
@@ -1883,7 +1885,7 @@ void log_redetect_terminal_capabilities(void) {
   // Once we have reliable detection, never re-detect to keep colors consistent
   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
     g_log.terminal_caps_detecting = true;
-    g_log.terminal_caps = detect_terminal_capabilities();
+    g_log.terminal_caps = detect_terminal_capabilities(options_terminal_settings());
     g_log.terminal_caps_detecting = false;
     g_log.terminal_caps_initialized = true;
 

@@ -55,7 +55,7 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 // Keep dependency structures at their normal alignment; only image types are packed.
 #ifdef _WIN32

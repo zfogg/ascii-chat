@@ -28,7 +28,7 @@
 
 bool platform_is_interactive(void) {
   // Use centralized function that checks TTY status, snapshot mode, and automation
-  return terminal_can_prompt_user();
+  return terminal_can_prompt_user(!GET_OPTION(snapshot_mode));
 }
 
 int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {

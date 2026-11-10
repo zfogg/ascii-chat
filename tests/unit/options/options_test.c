@@ -17,7 +17,7 @@
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
 #include <ascii-chat/options/actions.h> // For deferred action tests
 #include <ascii-chat/tests/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/tests/logging.h>
 

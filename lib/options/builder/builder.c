@@ -20,7 +20,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/layout.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/string.h>
@@ -30,7 +30,7 @@
 #include <stdarg.h>
 
 // Use platform utilities
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 // Error strings are released with SAFE_FREE, including static mimalloc builds.
 static asciichat_error_t builder_format_error(char **output, const char *format, ...) {
   *output = NULL;

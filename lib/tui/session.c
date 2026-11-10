@@ -215,7 +215,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       bool colors = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-                    (mode != TERM_COLOR_AUTO || detect_terminal_capabilities().color_level != TERM_COLOR_NONE);
+                    (mode != TERM_COLOR_AUTO || detect_terminal_capabilities(options_terminal_settings()).color_level != TERM_COLOR_NONE);
       frame_buffer_printf(s->frame, "\033[%d;1H", top + 2);
       invitation_render_logo(s->frame, s->size.cols, (int)(s->splash.animation.seconds * 60), colors, false);
     }

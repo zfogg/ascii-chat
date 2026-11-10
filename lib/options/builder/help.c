@@ -23,7 +23,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/layout.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/log/log.h>

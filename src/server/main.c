@@ -107,7 +107,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -1400,7 +1400,7 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
     // Explicit opt-in to public IP disclosure
     // Only prompt if running interactively (can prompt user)
     // When non-interactive (automated/scripted), treat explicit flag as confirmation
-    bool is_interactive = terminal_can_prompt_user();
+    bool is_interactive = terminal_can_prompt_user(!GET_OPTION(snapshot_mode));
 
     if (is_interactive) {
       if (!ui_notice_confirm_kind(UI_PROMPT_IP_DISCLOSURE, UI_NOTICE_DANGER,

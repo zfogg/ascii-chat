@@ -71,7 +71,7 @@
 #include <ascii-chat/video/h265/encoder.h>
 
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>

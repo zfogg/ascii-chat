@@ -56,7 +56,7 @@
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>

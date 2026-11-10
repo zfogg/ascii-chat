@@ -15,6 +15,7 @@ target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
 
 set(CORE_SRCS
+    ${LIB_DIR}/log/terminal.c
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c

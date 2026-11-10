@@ -483,11 +483,11 @@ static void sync_separator(int columns, int *measure) {
 
 void ui_sync_render(terminal_size_t size) {
   colored_string_set_output_fd(ui_sync_output_fd() >= 0 ? ui_sync_output_fd() : STDOUT_FILENO);
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   g_sync_use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
                      (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
-  g_sync_use_utf8 = terminal_should_use_utf8();
+  g_sync_use_utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
   sync_row_t rows[SYNC_ROW_CAPACITY];

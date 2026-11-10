@@ -36,7 +36,7 @@
 #include <ascii-chat/debug/atomic.h>        // For debug_atomic_shutdown()
 #include <ascii-chat/debug/memory.h>        // For debug memory reporting
 #include <ascii-chat/platform/symbols.h>    // For symbols cache init
-#include <ascii-chat/platform/terminal.h>   // For terminal_screen_cleanup
+#include <libplatform/terminal.h>   // For terminal_screen_cleanup
 #include <ascii-chat/platform/keyboard.h>   // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>

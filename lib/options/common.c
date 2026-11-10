@@ -20,7 +20,7 @@
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/builder.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/stat.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/password.h>

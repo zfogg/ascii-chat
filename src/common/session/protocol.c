@@ -14,7 +14,7 @@
 #include <string.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
 
@@ -84,7 +84,7 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
       // not a bound on their explicitly configured or default output size.
       terminal_size_t viewport =
           (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
-      uint32_t width = terminal_get_effective_width(), height = terminal_get_effective_height();
+      uint32_t width = terminal_get_effective_width(GET_OPTION(width), 80), height = terminal_get_effective_height(GET_OPTION(height), 24);
       if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) ||
           (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width ||
           header->height > height) {
@@ -281,7 +281,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
 
   // Build terminal capabilities packet locally
   // Detect terminal capabilities automatically
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   // Set wants_padding based on snapshot mode and TTY status
   // Disable padding when:
@@ -296,7 +296,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
             caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
 
   // Apply user's color mode override
-  caps = apply_color_mode_override(caps);
+  caps = apply_color_mode_override(caps, options_terminal_settings());
 
   // TERM_COLOR_AUTO is an option/configuration sentinel, not a wire-level
   // capability.  A remote peer must receive a concrete color level; this can
@@ -396,7 +396,7 @@ asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, 
     return ASCIICHAT_OK;
   }
   if (snapshot->values.color_mode == TERM_COLOR_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
+    terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
     snapshot->values.color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   }
   result = send(&snapshot->values, (uint32_t)snapshot->revision, context);

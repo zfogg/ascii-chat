@@ -147,7 +147,7 @@ const registry_entry_t g_display_entries[] = {
      OPTION_TYPE_CALLBACK,
      offsetof(options_t, render_mode),
      &default_render_mode_value,
-     sizeof(render_mode_t),
+     sizeof(terminal_render_mode_t),
      "Render mode of text for your client to display. Values: foreground, background, half-block. Press 'r' during "
      "rendering to cycle.",
      "DISPLAY",

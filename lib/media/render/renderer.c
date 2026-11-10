@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>

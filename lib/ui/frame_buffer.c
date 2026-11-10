@@ -242,7 +242,7 @@ static void render_rule(frame_buffer_t *buf, int width, const char *color, bool 
 }
 
 void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
-  render_rule(buf, cols - 1, color, terminal_should_use_utf8());
+  render_rule(buf, cols - 1, color, terminal_should_use_utf8(GET_OPTION(force_utf8)));
 }
 
 void frame_buffer_render_divider(frame_buffer_t *buf, int width, bool use_utf8, bool use_colors) {

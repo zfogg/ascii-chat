@@ -56,6 +56,7 @@ typedef struct color_scheme_t color_scheme_t;
 struct session_log_buffer; /* Opaque - full definition in session/session_log_buffer.h */
 typedef struct session_log_buffer session_log_buffer_t;
 
+
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
 

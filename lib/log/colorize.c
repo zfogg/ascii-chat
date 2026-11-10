@@ -19,7 +19,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ctype.h>
 #include <string.h>
@@ -536,7 +536,7 @@ static void append_colored_token(char *output, size_t capacity, size_t *position
 const char *colorize_log_message(const char *message) {
   if (!message)
     return message;
-  return colorize_log_message_with_color(message, terminal_should_color_output(STDOUT_FILENO));
+  return colorize_log_message_with_color(message, terminal_should_color_output(STDOUT_FILENO, options_terminal_settings()));
 }
 
 const char *colorize_log_message_with_color(const char *message, bool enabled) {

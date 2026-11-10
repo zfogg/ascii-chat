@@ -273,7 +273,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     return;
   }
 
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd);
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd, options_terminal_settings());
   errno_tui_row_t *rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*rows), errno_tui_row_t *);
   errno_tui_row_t *current_rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*current_rows), errno_tui_row_t *);
   if (!rows || !current_rows) {

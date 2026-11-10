@@ -35,7 +35,7 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -285,7 +285,7 @@ static void splash_help(terminal_size_t size, const void *snapshot) {
 static void *splash_monitor_thread(void *arg) {
   (void)arg;
   bool keyboard_enabled = terminal_is_interactive();
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
   splash_header_ctx_t previous = {0};
   bool published = false;
   while (!atomic_load_bool(&g_splash_state.should_stop) && !shutdown_is_requested()) {

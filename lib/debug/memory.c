@@ -48,7 +48,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/util/format.h>

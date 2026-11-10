@@ -36,7 +36,7 @@
 #include <ascii-chat/tui/splash.h>
 #include "session/display.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -146,7 +146,7 @@ static bool update_select_key(int key, int count) {
 static void render_update_dialog(terminal_size_t size, const update_check_result_t *result, bool startup,
                                  bool checking) {
   bool available = !checking && result->update_available;
-  bool unicode = terminal_should_use_utf8();
+  bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
   log_color_t cyan = LOG_COLOR_DEBUG;
   log_color_t muted = LOG_COLOR_GREY;
   log_color_t green = LOG_COLOR_INFO;
@@ -284,7 +284,7 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
 }
 
 bool update_banner_show_prompt(session_display_ctx_t *ctx) {
-  if (!ctx || !terminal_can_prompt_user())
+  if (!ctx || !terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
     return false;
   update_check_result_t result;
   mutex_lock(&g_update_result_mutex);
@@ -548,7 +548,7 @@ static void *update_check_thread_func(void *arg) {
   // the first frame. Notify interactively once its result is available.
   if (!force && err == ASCIICHAT_OK && result.update_available && !splash_should_display(true) &&
       (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT) &&
-      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() && terminal_can_prompt_user() &&
+      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() && terminal_can_prompt_user(!GET_OPTION(snapshot_mode)) &&
       !update_check_is_dismissed(&result)) {
     bool expected = false;
     if (atomic_compare_exchange_strong(&g_update_overlay, &expected, true)) {

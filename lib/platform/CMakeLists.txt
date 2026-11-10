@@ -12,8 +12,6 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rwlock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cond.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/terminal_format.c
     ${CMAKE_CURRENT_SOURCE_DIR}/libplatform_backtrace_adapter.c
 )
 
@@ -26,7 +24,6 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/mutex.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/rwlock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/cond.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/windows/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keyboard.c
         ${CMAKE_CURRENT_SOURCE_DIR}/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/clipboard.c
@@ -55,7 +52,6 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/mutex.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/rwlock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/cond.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/posix/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/keyboard.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/socket.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/string.c

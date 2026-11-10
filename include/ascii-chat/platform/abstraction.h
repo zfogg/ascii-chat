@@ -227,7 +227,9 @@
 #endif
 
 #include "../platform/socket.h"
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
+
+bool terminal_should_force_stderr(void);
 #include "../platform/system.h"
 #include "../platform/string.h"
 #include "../platform/memory.h"

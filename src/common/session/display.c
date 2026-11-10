@@ -33,7 +33,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -223,7 +223,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_CREATE);
   if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
                                 (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
-                                 !detect_terminal_capabilities().utf8_support))) {
+                                 !detect_terminal_capabilities(options_terminal_settings()).utf8_support))) {
     SET_ERRNO(ERROR_USAGE, "--zalgo requires UTF-8 terminal output (on Windows, run chcp 65001 first)");
     return NULL;
   }
@@ -297,7 +297,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   setvbuf(stdout, NULL, _IONBF, 0);
 
   // Detect terminal capabilities
-  ctx->caps = detect_terminal_capabilities();
+    ctx->caps = detect_terminal_capabilities(options_terminal_settings());
 
   // Set wants_padding based on terminal output mode
   // Enable padding for all rendering modes (including snapshot) to center output
@@ -323,7 +323,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   }
 
   // Apply command-line overrides
-  ctx->caps = apply_color_mode_override(ctx->caps);
+  ctx->caps = apply_color_mode_override(ctx->caps, options_terminal_settings());
 
   // Initialize palette
   int palette_result = initialize_client_palette(config->palette_type, config->custom_palette, ctx->palette_chars,
@@ -359,8 +359,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize digital rain effect if enabled
   if (GET_OPTION(matrix_rain)) {
     // Get terminal dimensions for grid size
-    unsigned short int width_us = terminal_get_effective_width();
-    unsigned short int height_us = terminal_get_effective_height();
+    unsigned short int width_us = terminal_get_effective_width(GET_OPTION(width), 80);
+    unsigned short int height_us = terminal_get_effective_height(GET_OPTION(height), 24);
 
     int width = (int)width_us;
     int height = (int)height_us;
@@ -609,7 +609,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   unsigned short int height = values->height;
   bool stretch = values->stretch;
   terminal_capabilities_t caps_copy = ctx->caps;
-  caps_copy.render_mode = (render_mode_t)values->render_mode;
+  caps_copy.render_mode = (terminal_render_mode_t)values->render_mode;
   caps_copy.text_renderer = values->renderer;
   caps_copy.stabilize = values->stabilize;
   caps_copy.palette_explicit = values->palette_explicit;
@@ -638,8 +638,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
   if (matrix_rain_enabled && !ctx->digital_rain) {
     // Initialize digital rain if it's now enabled but wasn't before
-    unsigned short int width_us = terminal_get_effective_width();
-    unsigned short int height_us = terminal_get_effective_height();
+    unsigned short int width_us = terminal_get_effective_width(GET_OPTION(width), 80);
+    unsigned short int height_us = terminal_get_effective_height(GET_OPTION(height), 24);
     int width_for_rain = (int)width_us;
     int height_for_rain = (int)height_us;
     ctx->digital_rain = digital_rain_init(width_for_rain, height_for_rain);
@@ -863,8 +863,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
  * ============================================================================ */
 
 static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
-  unsigned int width = terminal_get_effective_width();
-  unsigned int height = terminal_get_effective_height();
+  unsigned int width = terminal_get_effective_width(GET_OPTION(width), 80);
+  unsigned int height = terminal_get_effective_height(GET_OPTION(height), 24);
   bool use_color = ctx->caps.color_level == TERM_COLOR_TRUECOLOR && GET_OPTION(color) != COLOR_SETTING_FALSE;
   int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER
                                                                             : AUDIO_VISUALIZATION_COLOR_DARKER;

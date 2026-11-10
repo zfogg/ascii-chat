@@ -4,7 +4,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
 #include <ctype.h>

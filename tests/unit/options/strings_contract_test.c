@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/strings.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <string.h>
 

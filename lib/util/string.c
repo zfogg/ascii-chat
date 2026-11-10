@@ -8,7 +8,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -299,7 +299,7 @@ const char *colored_string(log_color_t color, const char *text) {
   }
   // Priority 2: If --color NOT explicitly passed, use terminal detection
   else if (!g_color_flag_passed) {
-    use_colors = terminal_should_color_output(g_colored_string_fd);
+    use_colors = terminal_should_color_output(g_colored_string_fd, options_terminal_settings());
   }
   // Priority 3: If --color=false was explicitly passed, disable colors
   // (use_colors stays false)

@@ -32,7 +32,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/platform/thread.h>
             <ascii-chat/platform/string.h>
             <ascii-chat/platform/socket.h>
-            <ascii-chat/platform/terminal.h>
+            <libplatform/terminal.h>
 
             <ascii-chat/log/log.h>
             <ascii-chat/options/options.h>

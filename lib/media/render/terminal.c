@@ -22,7 +22,7 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/uthash.h>

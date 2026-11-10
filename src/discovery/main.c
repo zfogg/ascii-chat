@@ -61,7 +61,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 #include <stdio.h>
 

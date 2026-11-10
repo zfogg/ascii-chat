@@ -403,7 +403,7 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
   if (values->fps == 0)
     values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
+    terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   }
   acip_render_settings_t prepared = {0};

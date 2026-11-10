@@ -41,7 +41,7 @@
 #define COLORSCHEME_SGR_BUFFER_SIZE 32
 
 #include "../common.h"
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/rgba/image.h>
 
 #ifdef __cplusplus

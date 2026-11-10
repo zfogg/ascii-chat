@@ -14,7 +14,7 @@
 #include "terminal.h"
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>

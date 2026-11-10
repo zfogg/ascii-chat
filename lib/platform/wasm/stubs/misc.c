@@ -31,7 +31,8 @@ tty_info_t get_current_tty(void) {
   return tty;
 }
 
-terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps, terminal_options_t options) {
+  (void)options;
   return caps;
 }
 

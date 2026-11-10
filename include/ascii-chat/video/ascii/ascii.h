@@ -162,7 +162,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 
 // Capability-aware ASCII conversion using terminal detection
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /**
  * @brief Convert image to ASCII art with terminal capability awareness

@@ -167,16 +167,16 @@ static _Thread_local terminal_capabilities_t g_volume_caps;
 static _Thread_local terminal_color_mode_t g_volume_color_mode;
 static _Thread_local color_setting_t g_volume_color_setting;
 static _Thread_local utf8_setting_t g_volume_utf8_setting;
-static _Thread_local render_mode_t g_volume_render_mode;
+static _Thread_local terminal_render_mode_t g_volume_render_mode;
 
 static terminal_capabilities_t volume_capabilities(void) {
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   color_setting_t color = GET_OPTION(color);
   utf8_setting_t utf8 = GET_OPTION(force_utf8);
-  render_mode_t render = GET_OPTION(render_mode);
+  terminal_render_mode_t render = GET_OPTION(render_mode);
   if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
       utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
-    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities());
+  g_volume_caps = apply_color_mode_override(detect_terminal_capabilities(options_terminal_settings()), options_terminal_settings());
     g_volume_color_mode = mode;
     g_volume_color_setting = color;
     g_volume_utf8_setting = utf8;
@@ -207,7 +207,7 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   int col = size.cols - 5;
   terminal_capabilities_t caps = volume_capabilities();
   bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  bool utf8 = terminal_should_use_utf8();
+  bool utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   frame_buffer_append(buffer, "\0337\033[0m", 6);
   for (int row = 0; row < height; ++row) {
     int level = height - row;
@@ -772,9 +772,9 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     char count[32] = "";
     if (errors > 1)
       snprintf(count, sizeof(count), "(%zu) ", errors);
-    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8() ? "•" : "*",
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*",
              count, (int)latest.code, asciichat_error_string(latest.code));
-  } else if (terminal_should_use_utf8()) {
+  } else if (terminal_should_use_utf8(GET_OPTION(force_utf8))) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);
     if (phase != UI_TITLE_IDLE || activity != UI_TITLE_ACTIVITY_IDLE || screen >= UI_SCREEN_LOGS ||

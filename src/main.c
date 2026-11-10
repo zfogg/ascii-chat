@@ -83,7 +83,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
@@ -609,8 +609,8 @@ int main(int argc, char *argv[]) {
   // Detect terminal capabilities early so colored help output works
   // Logging will be initialized by asciichat_shared_init() before options_init()
   log_redetect_terminal_capabilities();
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
+  caps = apply_color_mode_override(caps, options_terminal_settings());
 
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY

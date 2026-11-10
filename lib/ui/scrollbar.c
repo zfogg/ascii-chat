@@ -3,7 +3,7 @@
 #define UI_SCROLLBAR_CELL_BUFFER_SIZE 128
 
 #include <ascii-chat/ui/scrollbar.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
 
@@ -30,7 +30,7 @@ void ui_scrollbar_cell(char *out, size_t cap, size_t row, size_t height, size_t 
   }
   ui_scrollbar_geometry_t g = ui_scrollbar_measure(total, visible, offset, height);
   bool thumb = g.visible && row >= g.start && row - g.start < g.length;
-  const char *glyph = !g.visible ? " " : terminal_should_use_utf8() ? (thumb ? "█" : "│") : (thumb ? "#" : "|");
+  const char *glyph = !g.visible ? " " : terminal_should_use_utf8(GET_OPTION(force_utf8)) ? (thumb ? "█" : "│") : (thumb ? "#" : "|");
   snprintf(out, cap, "%s", colored_string(thumb ? LOG_COLOR_DEBUG : LOG_COLOR_GREY, glyph));
 }
 

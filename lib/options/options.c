@@ -78,7 +78,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/systemd.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>

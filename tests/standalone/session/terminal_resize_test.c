@@ -1,5 +1,5 @@
 /* Exercise resize polling against a private Windows console screen buffer. */
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <windows.h>

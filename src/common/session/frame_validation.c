@@ -220,7 +220,7 @@ asciichat_error_t frame_render_contract_decode(const void *wire, size_t availabl
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame contract schema/mode/effects/palette length");
   memset(settings, 0, sizeof(*settings));
   settings->revision = fields[1];
-  settings->caps.render_mode = (render_mode_t)fields[2];
+  settings->caps.render_mode = (terminal_render_mode_t)fields[2];
   settings->palette_length = fields[4];
   memcpy(settings->palette, (const uint8_t *)wire + FRAME_RENDER_CONTRACT_HEADER, fields[4]);
   if (memchr(settings->palette, 0, fields[4]))

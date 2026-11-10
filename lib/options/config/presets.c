@@ -17,7 +17,7 @@
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/registry.h>
