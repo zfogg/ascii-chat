@@ -714,7 +714,7 @@ export class BrowserSession {
   }
 
   initQuic(): void {
-    const result = this.getBinding().process({ type: "quic-init" })[
+    const result = this.getBinding().process({ type: "quic-event", operation: "init" })[
       "code"
     ] as number;
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
@@ -722,7 +722,7 @@ export class BrowserSession {
 
   get quicEpoch() {
     return (
-      (this.binding?.process({ type: "quic-epoch" })["epoch"] as
+      (this.binding?.process({ type: "quic-event", operation: "state" })["epoch"] as
         | number
         | undefined) ?? -1
     );
@@ -730,7 +730,7 @@ export class BrowserSession {
 
   tickQuic() {
     const binding = this.getBinding();
-    const response = binding.process({ type: "quic-tick" }) as {
+      const response = binding.process({ type: "quic-event", operation: "tick" }) as {
       code: number;
       quicOutputs?: Array<{ flow: number; packet: Uint8Array | null }>;
     };
@@ -753,7 +753,8 @@ export class BrowserSession {
     packet: Uint8Array,
   ) {
     const result = this.getBinding().process({
-      type: "quic-packet",
+      type: "quic-event",
+      operation,
       seal: operation === "seal",
       flow,
       delivery,

@@ -35,7 +35,8 @@ const state = vi.hoisted(() => ({
         },
         state: 1,
       };
-    if (event.type === "quic-state") return { code: 0, epoch: 0, state: 1 };
+    if (event.type === "quic-event" && event["operation"] === "state")
+      return { code: 0, epoch: 0, state: 1 };
     return { code: 0, state: 1 };
   }),
 }));

@@ -19,9 +19,9 @@ const state = vi.hoisted(() => ({
     }) => {
       if (event.type === "resolve-crypto-policy")
         return { code: 0, mode: 1, state: 1 };
-      if (event.type === "quic-init") return { code: 0, state: 1 };
-      if (event.type === "quic-tick") return { code: 0, outputs: [], state: 1 };
-      if (event.type === "quic-packet") {
+      if (event.type === "quic-event" && event.operation === "init") return { code: 0, state: 1 };
+      if (event.type === "quic-event" && event.operation === "tick") return { code: 0, outputs: [], state: 1 };
+      if (event.type === "quic-event" && (event.operation === "seal" || event.operation === "open")) {
         const opened = event.packet!.slice(22);
         return {
           code: 0,
@@ -133,7 +133,7 @@ describe("WebTransport ACIP channel", () => {
     expect(state.process).toHaveBeenCalledWith(
         expect.objectContaining({ type: "receive-transport-packet" }),
     );
-    expect(state.process).toHaveBeenCalledWith({ type: "quic-init" });
+    expect(state.process).toHaveBeenCalledWith({ type: "quic-event", operation: "init" });
     expect(channel.isReady()).toBe(false);
     state.onPacket!({
       flow: 0,
@@ -170,7 +170,7 @@ describe("WebTransport ACIP channel", () => {
     state.onPacket!({ flow: 0, delivery: "reliable", packet: hello });
     expect(handshake).toHaveBeenCalledWith(hello);
     channel.authenticated();
-    expect(state.process).toHaveBeenCalledWith({ type: "quic-init" });
+    expect(state.process).toHaveBeenCalledWith({ type: "quic-event", operation: "init" });
     const receive = (type: number, payload: number[], flow: 0 | 1 = 0) =>
       state.onPacket!({
         flow,

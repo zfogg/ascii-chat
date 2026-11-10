@@ -374,23 +374,28 @@ public:
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client server address or port"));
       return result(browser_client_set_server_address(transport_.get(), host.c_str(), port));
     }
-    if (type == "quic-init")
-      return result(browser_transport_security_init(transport_.get()));
-    if (type == "quic-state") {
-      emscripten::val response = result(0);
-      response.set("epoch", browser_transport_security_epoch(transport_.get()));
-      return response;
-    }
-    if (type == "quic-tick") {
-      const int code = browser_transport_security_tick(transport_.get());
-      emscripten::val response = drainOutputs();
-      if (code && response["code"].as<int>() == 0)
-        response.set("code", code);
-      return response;
-    }
-    if (type == "quic-packet") {
+    if (type == "quic-event") {
+      const std::string operation = event["operation"].as<std::string>();
+      if (operation == "init")
+        return result(browser_transport_security_init(transport_.get()));
+      if (operation == "state") {
+        emscripten::val response = result(0);
+        response.set("epoch", browser_transport_security_epoch(transport_.get()));
+        return response;
+      }
+      if (operation == "tick") {
+        const int code = browser_transport_security_tick(transport_.get());
+        emscripten::val response = drainOutputs();
+        if (code && response["code"].as<int>() == 0)
+          response.set("code", code);
+        return response;
+      }
+      if (operation != "seal" && operation != "open")
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown QUIC operation: %s", operation.c_str()));
+      if (event["packet"].isUndefined() || event["packet"].isNull())
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "QUIC packet is required"));
       auto input = binding_copy_input(event["packet"]);
-      const bool seal = event["operation"].as<std::string>() == "seal";
+      const bool seal = operation == "seal";
       std::vector<uint8_t> output(input.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;

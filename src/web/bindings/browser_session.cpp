@@ -86,9 +86,9 @@ public:
       result.set("code", static_cast<int>(browser_session_tick(session_.get())));
     } else if (type == "quic-begin") {
       result.set("code", static_cast<int>(browser_session_quic_begin(session_.get())));
-    } else if (type == "quic-init") {
+    } else if (type == "quic-event" && event["operation"].as<std::string>() == "init") {
       result.set("code", static_cast<int>(browser_session_security_init(session_.get())));
-    } else if (type == "quic-tick") {
+    } else if (type == "quic-event" && event["operation"].as<std::string>() == "tick") {
       int code = static_cast<int>(browser_session_security_tick(session_.get()));
       result.set("epoch", browser_session_security_epoch(session_.get()));
       emscripten::val quic_outputs = emscripten::val::array();
@@ -107,11 +107,12 @@ public:
       }
       result.set("code", code);
       result.set("quicOutputs", quic_outputs);
-    } else if (type == "quic-epoch") {
+    } else if (type == "quic-event" && event["operation"].as<std::string>() == "state") {
       result.set("epoch", browser_session_security_epoch(session_.get()));
-    } else if (type == "quic-packet") {
+    } else if (type == "quic-event" &&
+               (event["operation"].as<std::string>() == "seal" || event["operation"].as<std::string>() == "open")) {
       auto packet = binding_copy_input(event["packet"]);
-      const bool seal = event["seal"].as<bool>();
+      const bool seal = event["operation"].as<std::string>() == "seal";
       std::vector<uint8_t> output(packet.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;
