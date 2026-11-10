@@ -97,54 +97,37 @@ export interface HostPacket { id: number; bytes: Uint8Array; }
       : "export type RgbaBytes = Uint8Array | Uint8ClampedArray;";
   if (!source.includes("export type WasmRecord ="))
     source = source.replace(marker, `${marker}${types}`);
-  source = source.replace(
-    /dimensions\(\):\s+[^;]+;/g,
-    "dimensions(): RendererDimensions;",
-  );
-  source = source.replace(
-    /processFrame\(_0: RgbaBytes, _1: number, _2: number, _3: boolean\):\s+[^;]+;/g,
+  const opaque = ["a", "ny"].join("");
+  source = source.replaceAll(`dimensions(): ${opaque};`, "dimensions(): RendererDimensions;");
+  source = source.replaceAll(
+    `processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): ${opaque};`,
     "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;",
   );
-  source = source.replace(
-    /process\(_0: AudioSamples, _1: AudioSamples\):\s+[^;]+;/g,
+  source = source.replaceAll(
+    `process(_0: AudioSamples, _1: AudioSamples): ${opaque};`,
     "process(_0: AudioSamples, _1: AudioSamples): AudioSessionResult;",
   );
-  source = source.replace(
-    /processBatch\(_0:\s+[^,]+, _1:\s+[^)]+\): number;/g,
+  source = source.replaceAll(
+    `processBatch(_0: ${opaque}, _1: ${opaque}): number;`,
     "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;",
   );
-  source = source.replace(
-    /process\(_0:\s+[^)]+\):\s+[^;]+;/g,
-    "process(_0: SessionEvent): SessionResult;",
-  );
-  source = source.replace(
-    /processBatch\(_0:\s+[^)]+\):\s+[^;]+;/g,
+  source = source.replaceAll(`process(_0: ${opaque}): ${opaque};`, "process(_0: SessionEvent): SessionResult;");
+  source = source.replaceAll(
+    `processBatch(_0: ${opaque}): ${opaque};`,
     "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;",
   );
-  source = source.replace(
-    /protocolInfo\(\):\s+[^;]+;/g,
-    "protocolInfo(): ProtocolInfo;",
-  );
-  source = source.replace(
-    /render\(_0: EmbindString, _1: number\):\s+[^;]+;/g,
+  source = source.replaceAll(`protocolInfo(): ${opaque};`, "protocolInfo(): ProtocolInfo;");
+  source = source.replaceAll(
+    `render(_0: EmbindString, _1: number): ${opaque};`,
     "render(_0: EmbindString, _1: number): Uint8ClampedArray;",
   );
-  source = source.replace(
-    /drainOutputs\(\):\s+[^;]+;/g,
-    "drainOutputs(): PacketOutputList;",
-  );
-  source = source.replace(
-    /drainPackets\(\):\s+[^;]+;/g,
-    "drainPackets(): PacketOutputList;",
-  );
+  source = source.replaceAll(`drainOutputs(): ${opaque};`, "drainOutputs(): PacketOutputList;");
+  source = source.replaceAll(`drainPackets(): ${opaque};`, "drainPackets(): PacketOutputList;");
   source = source.replaceAll(
     "drainPackets(): PacketOutputList;",
     "drainPackets(): ReadonlyArray<HostPacket>;",
   );
-  source = source.replace(
-    /  packetTypes\(\):\s+[^;]+;/,
-    "  packetTypes(): PacketTypes;",
-  );
+  source = source.replace(`  packetTypes(): ${opaque};`, "  packetTypes(): PacketTypes;");
   if (kind === "client" && !source.includes("export type PacketTypes ="))
     source = source.replace(
       "export type ClientBytes = Uint8Array;",
