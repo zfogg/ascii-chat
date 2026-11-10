@@ -28,7 +28,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
         String(tcpPort),
         "--websocket-port",
         String(wsPort),
-        "--no-status-screen",
+        "--status-screen=false",
       ],
       {
         stdio: "inherit",

@@ -81,7 +81,7 @@ public:
     } else if (type == "tick") {
       result.set("code", static_cast<int>(browser_session_tick(session_.get())));
     } else if (type == "quic-begin") {
-      result.set("code", browser_session_quic_begin(session_.get()));
+      result.set("code", static_cast<int>(browser_session_quic_begin(session_.get())));
     } else if (type == "quic-init") {
       result.set("code", static_cast<int>(browser_session_security_init(session_.get())));
     } else if (type == "quic-tick") {

@@ -36,6 +36,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         // Set headless based on environment: --headed flag or HEADED env var for real media testing
         headless: process.env.HEADED !== "true",
+        ignoreHTTPSErrors: true,
         // Grant permissions for camera/microphone access
         permissions: ["camera", "microphone"],
         // Use Playwright's fake/test webcam and microphone devices

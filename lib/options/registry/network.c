@@ -127,7 +127,7 @@ const registry_entry_t g_network_entries[] = {
      .help_text = "Enable the native QUIC listener on a concrete numeric IPv4 or IPv6 address.",
      .group = "NETWORK",
      .env_var_name = "ASCII_CHAT_QUIC_BIND_ADDRESS",
-     .mode_bitmask = OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     .mode_bitmask = OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
      .metadata = {.input_type = OPTION_INPUT_STRING}},
     {.long_name = "quic-port",
      .type = OPTION_TYPE_INT,
