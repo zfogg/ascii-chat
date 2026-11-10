@@ -41,8 +41,9 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         'int main(void) { int result = work(); return result != 7 || cleanup_count != 1 || log_count == 0; }\n',
         encoding="utf-8",
     )
+    (source_dir / "other.c").write_text("int other(void) { return 3; }\n", encoding="utf-8")
     (source_dir / "CMakeLists.txt").write_text(
-        f'add_executable(ascii-chat main.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "defer" / "cpp" / "include").as_posix()}")\n',
+        f'add_executable(ascii-chat main.c other.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "defer" / "cpp" / "include").as_posix()}")\n',
         encoding="utf-8",
     )
     (project / "CMakeLists.txt").write_text(
@@ -50,7 +51,8 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{(ROOT / "cmake" / "tooling" / "Panic.cmake").as_posix()}")\n'
         f'include("{(ROOT / "deps" / "defer" / "Defer.cmake").as_posix()}")\n'
-        'ascii_panic_prepare()\nadd_subdirectory(src)\ndefer_targets(ascii-chat)\nascii_panic_finalize()\n',
+        'ascii_panic_prepare()\nadd_subdirectory(src)\nset(DEFER_SOURCE_HOOK ascii_panic_defer_source)\n'
+        'defer_targets(ascii-chat)\nascii_panic_finalize()\n',
         encoding="utf-8",
     )
     build = project / "build"
@@ -71,6 +73,8 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
         assert run.returncode == 0, run.stderr
         assert source.read_text(encoding="utf-8") == original + suffix
+        instrumented_other = build / "panic_transformed" / "ascii-chat" / "src" / "other.c"
+        assert "asciichat_instr_log_line" in instrumented_other.read_text(encoding="utf-8")
 
     # The transformer must not silently accept unsafe control flow.
     unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); defer((void)0); }\n'
