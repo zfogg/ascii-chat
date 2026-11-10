@@ -33,7 +33,7 @@ typedef struct outbound_packet {
 typedef struct {
   uint16_t type;
   uint32_t stream;
-  _Atomic(bool) needs_keyframe;
+  atomic_t needs_keyframe;
   /**
    * @brief acip outbound keeps the values that move through the subsystem: `transport`, `mutex`, `changed`, `worker`.
    * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
@@ -59,27 +59,35 @@ struct acip_outbound {
   outbound_packet_t *recycled;
   size_t recycled_count;
   size_t count, bytes, active_bytes;
+  atomic_t completed_pending;
   outbound_stream_t streams[OUTBOUND_MAX_STREAMS];
-  _Atomic(size_t) stream_count;
-  acip_outbound_stats_t stats;
+  atomic_t stream_count;
+  atomic_t accepted, submitted, dropped, congestion, recovery_frames;
+  atomic_t peak_bytes;
 };
+
+static void stats_add(atomic_t *counter, uint64_t value) {
+  atomic_fetch_add_u64(counter, value);
+}
 
 static size_t backend_bytes(acip_outbound_t *out) {
   return out->transport->methods->queued_bytes ? out->transport->methods->queued_bytes(out->transport) : 0;
 }
 
 static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint32_t id) {
-  for (size_t i = 0; i < out->stream_count; ++i)
+  size_t stream_count = (size_t)atomic_load_u64(&out->stream_count);
+  for (size_t i = 0; i < stream_count; ++i)
     if (out->streams[i].type == type && out->streams[i].stream == id)
       return &out->streams[i];
-  if (out->stream_count == OUTBOUND_MAX_STREAMS)
+  if (stream_count == OUTBOUND_MAX_STREAMS)
     return NULL;
-  size_t index = out->stream_count;
+  size_t index = stream_count;
   outbound_stream_t *stream = &out->streams[index];
-  *stream = (outbound_stream_t){.type = type, .stream = id, .needs_keyframe = true};
+  *stream = (outbound_stream_t){.type = type, .stream = id};
+  atomic_store_bool(&stream->needs_keyframe, true);
   // Publish immutable identity only after initialization. The keyframe bit is
   // atomic so the capture worker can query it without locking the packet queue.
-  out->stream_count = index + 1;
+  atomic_store_u64(&out->stream_count, index + 1);
   return stream;
 }
 
@@ -96,6 +104,11 @@ static void packet_free(acip_outbound_t *out, outbound_packet_t *packet) {
   SAFE_FREE(packet);
 }
 
+static void packet_dispose_after_send(outbound_packet_t *packet) {
+  buffer_release(packet->data);
+  SAFE_FREE(packet);
+}
+
 static bool same_stream(const outbound_packet_t *a, const outbound_packet_t *b) {
   return a->type == b->type && a->stream == b->stream;
 }
@@ -106,7 +119,7 @@ static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video)
   if (video->encoded) {
     outbound_stream_t *stream = stream_state(out, video->type, video->stream);
     if (stream)
-      stream->needs_keyframe = true;
+      atomic_store_bool(&stream->needs_keyframe, true);
   }
   outbound_packet_t **link = &out->head;
   while (*link) {
@@ -115,7 +128,7 @@ static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video)
       *link = packet->next;
       out->bytes -= packet->cost;
       --out->count;
-      ++out->stats.dropped;
+      stats_add(&out->dropped, 1);
       ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
       packet_free(out, packet);
     } else {
@@ -157,7 +170,7 @@ static void expire_datagrams(acip_outbound_t *out, uint64_t now) {
     *link = packet->next;
     out->bytes -= packet->cost;
     --out->count;
-    ++out->stats.dropped;
+    stats_add(&out->dropped, 1);
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     packet_free(out, packet);
   }
@@ -245,15 +258,6 @@ static void *outbound_worker(void *arg) {
   acip_outbound_t *out = arg;
   mutex_lock(&out->mutex);
   while (!out->stopping && !out->failed) {
-    // Rotation uses this same serialized writer for every transport. Never
-    // call the backend while holding the plaintext admission mutex.
-    mutex_unlock(&out->mutex);
-    asciichat_error_t security_result = acip_security_flush(out->transport);
-    mutex_lock(&out->mutex);
-    if (security_result != ASCIICHAT_OK) {
-      outbound_record_failure_and_fail_pending(out, security_result, NULL, NULL);
-      break;
-    }
     uint64_t now = time_get_ns();
     expire_video(out, now);
     expire_datagrams(out, now);
@@ -262,6 +266,18 @@ static void *outbound_worker(void *arg) {
       cond_timedwait(&out->changed, &out->mutex, 100 * NS_PER_MS_INT);
       continue;
     }
+    // Rotation uses this same serialized writer for every transport. Flush
+    // only when work is queued; idle polling must not reacquire the queue lock.
+    mutex_unlock(&out->mutex);
+    asciichat_error_t security_result = acip_security_flush(out->transport);
+    mutex_lock(&out->mutex);
+    if (security_result != ASCIICHAT_OK) {
+      outbound_record_failure_and_fail_pending(out, security_result, NULL, NULL);
+      break;
+    }
+    p = out->head;
+    if (!p)
+      continue;
     /* Admitted reliable traffic expires by closing the connection, never by
      * silently removing an audio or control packet. */
     uint64_t deadline = p->audio ? 5 * NS_PER_SEC_INT : 10 * NS_PER_SEC_INT;
@@ -284,7 +300,12 @@ static void *outbound_worker(void *arg) {
       outbound_record_failure_and_fail_pending(out, capability_result, NULL, NULL);
       break;
     }
-    if (backend != 0 && !capabilities.independent_streams) {
+    /* Video must wait for opaque backends without independent streams so it
+     * cannot build an unbounded FIFO behind an already-buffered frame.
+     * Control and audio are latency-sensitive and have expiry deadlines;
+     * withholding either can make it expire behind the media backlog. The
+     * backend preserves ordering, so submit those packets and let it drain. */
+    if (backend != 0 && !capabilities.independent_streams && p->video) {
       cond_timedwait(&out->changed, &out->mutex, 2 * NS_PER_MS_INT);
       continue;
     }
@@ -311,29 +332,52 @@ static void *outbound_worker(void *arg) {
       }
     }
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
-    mutex_lock(&out->mutex);
-    out->active_bytes = 0;
-    --out->count;
     bool datagram_drop =
         p->options.delivery == ACIP_DELIVERY_DATAGRAM &&
         (result == ERROR_NETWORK_TIMEOUT || result == ERROR_BUFFER_FULL || result == ERROR_NOT_SUPPORTED);
+    if (!p->wait) {
+      if (datagram_drop) {
+        if (p->encoded) {
+          mutex_lock(&out->mutex);
+          discard_stream(out, p);
+          mutex_unlock(&out->mutex);
+        }
+        stats_add(&out->dropped, 1);
+        ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
+      }
+      if (result == ASCIICHAT_OK) {
+        stats_add(&out->submitted, 1);
+        if (p->encoded && p->keyframe)
+          stats_add(&out->recovery_frames, 1);
+      }
+      atomic_fetch_add_u64(&out->completed_pending, 1);
+      packet_dispose_after_send(p);
+      if (result != ASCIICHAT_OK && !datagram_drop) {
+        mutex_lock(&out->mutex);
+        outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
+        mutex_unlock(&out->mutex);
+        break;
+      }
+      continue;
+    }
+    mutex_lock(&out->mutex);
+    out->active_bytes = 0;
+    --out->count;
     if (datagram_drop) {
       if (p->encoded)
         discard_stream(out, p);
-      ++out->stats.dropped;
+      stats_add(&out->dropped, 1);
       ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     }
     if (result == ASCIICHAT_OK) {
-      ++out->stats.submitted;
+      stats_add(&out->submitted, 1);
       if (p->encoded && p->keyframe)
-        ++out->stats.recovery_frames;
+        stats_add(&out->recovery_frames, 1);
     }
     if (p->wait) {
       p->result = result;
       p->done = true;
       cond_broadcast(&out->changed);
-    } else {
-      packet_free(out, p);
     }
     if (result != ASCIICHAT_OK && !datagram_drop) {
       outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
@@ -474,6 +518,11 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   }
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
+  size_t completed = (size_t)atomic_exchange_u64(&out->completed_pending, 0);
+  if (completed) {
+    out->count = completed >= out->count ? 0 : out->count - completed;
+    out->active_bytes = 0;
+  }
   info.created = time_get_ns();
   info.telemetry_context = ascii_otel_context();
   if (out->stopping || out->failed) {
@@ -488,8 +537,8 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   expire_video(out, info.created);
   expire_datagrams(out, info.created);
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
-  if (info.encoded && (!stream || (stream->needs_keyframe && !info.keyframe))) {
-    ++out->stats.dropped;
+  if (info.encoded && (!stream || (atomic_load_bool(&stream->needs_keyframe) && !info.keyframe))) {
+    stats_add(&out->dropped, 1);
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     *admission = ACIP_ADMISSION_NEEDS_KEYFRAME;
     ASCII_OTEL_ATTR_STRING("network.queue.admission", "needs_keyframe");
@@ -516,7 +565,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
       pending > limit || info.cost > limit - pending) {
     if (info.encoded)
       discard_stream(out, &info);
-    ++out->stats.congestion;
+     stats_add(&out->congestion, 1);
     ASCII_OTEL_ATTR_STRING("network.queue.admission", "congested");
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_CONGESTION, 1);
     mutex_unlock(&out->mutex);
@@ -548,9 +597,11 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
       memcpy(p->data + offset, buffers[i].data, buffers[i].len);
     offset += buffers[i].len;
   }
-  /* Audio and ping/pong may bypass whole unsent video. Other controls remain
-   * FIFO barriers (stream setup/teardown and negotiation cannot be reordered). */
-  bool priority = info.audio || info.type == PACKET_TYPE_PING || info.type == PACKET_TYPE_PONG;
+  /* All non-video traffic must be ahead of pending media. Control packets are
+   * reliable barriers and must not expire behind stale frames; the scan below
+   * still preserves FIFO order among controls and keeps them behind any
+   * earlier control barrier. */
+  bool priority = !info.video;
   outbound_packet_t **link = &out->head;
   if (priority) {
     // Do not move audio or liveness traffic across an earlier protocol barrier.
@@ -565,12 +616,13 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   *link = p;
   out->bytes += info.cost;
   ++out->count;
-  ++out->stats.accepted;
+  stats_add(&out->accepted, 1);
   pending += info.cost;
-  if (pending > out->stats.peak_bytes)
-    out->stats.peak_bytes = pending;
+  uint64_t peak = atomic_load_u64(&out->peak_bytes);
+  while (pending > peak && !atomic_cas_u64(&out->peak_bytes, &peak, pending))
+    ;
   if (stream && info.keyframe)
-    stream->needs_keyframe = false;
+    atomic_store_bool(&stream->needs_keyframe, false);
   *admission = ACIP_ADMISSION_ACCEPTED;
   ASCII_OTEL_ATTR_STRING("network.queue.admission", "accepted");
   if (was_empty)
@@ -611,7 +663,12 @@ asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbo
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing outbound statistics");
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
-  *stats = out->stats;
+  stats->accepted = atomic_load_u64(&out->accepted);
+  stats->submitted = atomic_load_u64(&out->submitted);
+  stats->dropped = atomic_load_u64(&out->dropped);
+  stats->congestion = atomic_load_u64(&out->congestion);
+  stats->recovery_frames = atomic_load_u64(&out->recovery_frames);
+  stats->peak_bytes = (size_t)atomic_load_u64(&out->peak_bytes);
   stats->application_bytes = out->bytes + out->active_bytes;
   stats->backend_bytes = backend_bytes(out);
   stats->backend_reserved_bytes = transport->methods->reserved_bytes;
@@ -635,9 +692,9 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
     mutex_unlock(&out->mutex);
     return true;
   }
-  size_t count = out->stream_count;
+  size_t count = (size_t)atomic_load_u64(&out->stream_count);
   for (size_t i = 0; i < count; ++i)
     if (out->streams[i].type == type && out->streams[i].stream == id)
-      return out->streams[i].needs_keyframe;
+      return atomic_load_bool(&out->streams[i].needs_keyframe);
   return true;
 }
