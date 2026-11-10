@@ -1,7 +1,7 @@
 #include <ascii-chat/stats/stats.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdatomic.h>

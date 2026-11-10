@@ -34,8 +34,8 @@
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/debug/memory.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/mutex.h> // Must come after cond.h since cond.h includes it
+#include <libplatform/cond.h>
+#include <libplatform/mutex.h> // Must come after cond.h since cond.h includes it
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>

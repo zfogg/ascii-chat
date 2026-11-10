@@ -2,7 +2,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>

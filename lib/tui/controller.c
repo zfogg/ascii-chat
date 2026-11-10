@@ -31,7 +31,7 @@
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <stdatomic.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>

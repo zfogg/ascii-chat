@@ -7,7 +7,7 @@
 #define PLATFORM_FILESYSTEM_ERROR_MSG_BUFFER_SIZE 512
 
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/string.h>

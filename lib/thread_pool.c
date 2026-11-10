@@ -10,7 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <errno.h>

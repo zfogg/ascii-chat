@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/time.h>

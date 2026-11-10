@@ -8,7 +8,7 @@
 #include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/log/named.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>

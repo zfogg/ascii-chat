@@ -1,7 +1,7 @@
 #pragma once
 
 #include "udp.h"
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 
 /* Private endpoint worker. Run at most one worker for an endpoint. The endpoint, lane mutex, and callback context
  * remain owned by the caller and outlive the stopped worker. An accept callback

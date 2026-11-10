@@ -3,7 +3,7 @@
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>

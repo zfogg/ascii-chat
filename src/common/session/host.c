@@ -37,7 +37,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>

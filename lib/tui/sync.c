@@ -43,7 +43,7 @@
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>

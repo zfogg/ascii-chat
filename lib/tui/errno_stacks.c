@@ -27,7 +27,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>

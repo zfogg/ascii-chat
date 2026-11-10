@@ -10,7 +10,7 @@
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/util/overflow.h>
 
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/util/time.h>
 
 /**

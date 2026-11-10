@@ -45,7 +45,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
 #include <libplatform/terminal.h>

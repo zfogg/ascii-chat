@@ -44,7 +44,7 @@
 #include <string.h>
 #include <time.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/prompt.h>

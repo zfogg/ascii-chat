@@ -49,8 +49,8 @@
 #include <ascii-chat/log/websocket.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
