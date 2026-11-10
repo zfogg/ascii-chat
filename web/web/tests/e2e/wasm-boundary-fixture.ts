@@ -8,10 +8,31 @@ export type BoundaryMeasurement = {
   allResultsUnique: boolean;
 };
 
-export async function measure(page: Page, expression: string, repeats = 32) {
+export type MeasurementWorkload =
+  | "empty"
+  | "short"
+  | "long"
+  | "zalgo"
+  | "frame";
+
+export async function measure(
+  page: Page,
+  workload: MeasurementWorkload,
+  repeats = 32,
+) {
   return page.evaluate(
-    ({ expression, repeats }) => {
-      const fn = new Function(`return (${expression})`)() as () => unknown;
+    ({ workload, repeats }) => {
+      const renderer = window.__boundary.renderer;
+      const frame =
+        workload === "empty"
+          ? ""
+          : workload === "short" || workload === "zalgo"
+            ? "ascii"
+            : workload === "long"
+              ? "x".repeat(800)
+              : "frame";
+      const zalgo = workload === "zalgo" ? 1 : 0;
+      const fn = () => renderer.render(frame, zalgo);
       const warmup = fn();
       if (!(warmup instanceof Uint8ClampedArray) || warmup.length === 0)
         throw new Error("Renderer warmup returned no pixel data");
@@ -38,7 +59,7 @@ export async function measure(page: Page, expression: string, repeats = 32) {
         allResultsUnique: results.size === repeats,
       } satisfies BoundaryMeasurement;
     },
-    { expression, repeats },
+    { workload, repeats },
   );
 }
 

@@ -5,7 +5,9 @@ import processorSource from "../../../packages/shared/src/audio/visualization-wo
 describe("continuous visualization PCM", () => {
   function processor() {
     const messages: Float32Array[] = [];
-    let Processor: any;
+    let Processor: (new () => {
+      process(inputs: Float32Array[][]): boolean;
+    }) | undefined;
     runInNewContext(processorSource, {
       Float32Array,
       AudioWorkletProcessor: class {
@@ -14,10 +16,14 @@ describe("continuous visualization PCM", () => {
             messages.push(samples.slice()),
         };
       },
-      registerProcessor: (_name: string, ctor: any) => {
+      registerProcessor: (
+        _name: string,
+        ctor: new () => { process(inputs: Float32Array[][]): boolean },
+      ) => {
         Processor = ctor;
       },
     });
+    if (!Processor) throw new Error("audio processor was not registered");
     return { node: new Processor(), messages };
   }
 

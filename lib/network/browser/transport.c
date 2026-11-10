@@ -13,6 +13,8 @@ typedef struct browser_output {
   struct browser_output *next;
   void *data;
   size_t length;
+  acip_traffic_class_t traffic_class;
+  acip_delivery_t delivery;
 } browser_output_t;
 
 struct browser_transport {
@@ -21,6 +23,9 @@ struct browser_transport {
   bool datagrams;
   size_t max_datagram_payload;
   size_t queued_bytes;
+  uint64_t accepted_packets;
+  uint64_t dropped_packets;
+  uint64_t dropped_bytes;
   void *client_state;
   browser_output_t *output;
   browser_output_t *tail;
@@ -43,12 +48,17 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   if (result != ASCIICHAT_OK)
     return result;
   const size_t output_length = plan.encrypt ? sizeof(packet_header_t) + plan.ciphertext_capacity : length;
-  if (!browser_transport_writable(browser, output_length))
+  if (!browser_transport_writable(browser, output_length)) {
+    browser->dropped_packets++;
+    browser->dropped_bytes += length;
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Browser transport output queue is full");
+  }
   browser_output_t *output = SAFE_CALLOC(1, sizeof(*output), browser_output_t *);
   if (!output)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser transport output");
   output->length = output_length;
+  output->traffic_class = plan.options.traffic_class;
+  output->delivery = plan.options.delivery;
   output->data = buffer_alloc(plan.domain, output->length);
   if (!output->data) {
     SAFE_FREE(output);
@@ -75,6 +85,7 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
     browser->output = output;
   browser->tail = output;
   browser->queued_bytes += output->length;
+  browser->accepted_packets++;
   return ASCIICHAT_OK;
 }
 
@@ -263,4 +274,24 @@ const void *browser_transport_output_data(browser_transport_t *browser) {
 
 size_t browser_transport_output_size(browser_transport_t *browser) {
   return browser && browser->output ? browser->output->length : 0;
+}
+
+uint64_t browser_transport_accepted_packets(const browser_transport_t *browser) {
+  return browser ? browser->accepted_packets : 0;
+}
+
+uint64_t browser_transport_dropped_packets(const browser_transport_t *browser) {
+  return browser ? browser->dropped_packets : 0;
+}
+
+uint64_t browser_transport_dropped_bytes(const browser_transport_t *browser) {
+  return browser ? browser->dropped_bytes : 0;
+}
+
+acip_traffic_class_t browser_transport_output_traffic(const browser_transport_t *browser) {
+  return browser && browser->output ? browser->output->traffic_class : ACIP_TRAFFIC_CONTROL;
+}
+
+acip_delivery_t browser_transport_output_delivery(const browser_transport_t *browser) {
+  return browser && browser->output ? browser->output->delivery : ACIP_DELIVERY_RELIABLE;
 }

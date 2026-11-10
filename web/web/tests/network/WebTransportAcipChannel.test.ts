@@ -15,7 +15,7 @@ const state = vi.hoisted(() => ({
       type: string;
       packet?: Uint8Array;
       operation?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }) => {
       if (event.type === "resolve-crypto-policy")
         return { code: 0, mode: 1, state: 1 };

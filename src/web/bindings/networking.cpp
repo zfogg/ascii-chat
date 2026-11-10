@@ -106,6 +106,42 @@ public:
         {"STREAM_STOP", PACKET_TYPE_STREAM_STOP},
         {"CLEAR_CONSOLE", PACKET_TYPE_CLEAR_CONSOLE},
         {"SERVER_STATE", PACKET_TYPE_SERVER_STATE},
+        {"ACIP_SESSION_CREATE", PACKET_TYPE_ACIP_SESSION_CREATE},
+        {"ACIP_SESSION_CREATED", PACKET_TYPE_ACIP_SESSION_CREATED},
+        {"ACIP_SESSION_LOOKUP", PACKET_TYPE_ACIP_SESSION_LOOKUP},
+        {"ACIP_SESSION_INFO", PACKET_TYPE_ACIP_SESSION_INFO},
+        {"ACIP_SESSION_JOIN", PACKET_TYPE_ACIP_SESSION_JOIN},
+        {"ACIP_SESSION_JOINED", PACKET_TYPE_ACIP_SESSION_JOINED},
+        {"ACIP_SESSION_LEAVE", PACKET_TYPE_ACIP_SESSION_LEAVE},
+        {"ACIP_SESSION_END", PACKET_TYPE_ACIP_SESSION_END},
+        {"ACIP_SESSION_RECONNECT", PACKET_TYPE_ACIP_SESSION_RECONNECT},
+        {"ACIP_WEBRTC_SDP", PACKET_TYPE_ACIP_WEBRTC_SDP},
+        {"ACIP_WEBRTC_ICE", PACKET_TYPE_ACIP_WEBRTC_ICE},
+        {"ACIP_STRING_RESERVE", PACKET_TYPE_ACIP_STRING_RESERVE},
+        {"ACIP_STRING_RESERVED", PACKET_TYPE_ACIP_STRING_RESERVED},
+        {"ACIP_STRING_RENEW", PACKET_TYPE_ACIP_STRING_RENEW},
+        {"ACIP_STRING_RELEASE", PACKET_TYPE_ACIP_STRING_RELEASE},
+        {"ACIP_PARTICIPANT_LIST", PACKET_TYPE_ACIP_PARTICIPANT_LIST},
+        {"ACIP_RING_COLLECT", PACKET_TYPE_ACIP_RING_COLLECT},
+        {"ACIP_NETWORK_QUALITY", PACKET_TYPE_ACIP_NETWORK_QUALITY},
+        {"ACIP_HOST_ANNOUNCEMENT", PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT},
+        {"ACIP_HOST_DESIGNATED", PACKET_TYPE_ACIP_HOST_DESIGNATED},
+        {"ACIP_SETTINGS_SYNC", PACKET_TYPE_ACIP_SETTINGS_SYNC},
+        {"ACIP_SETTINGS_ACK", PACKET_TYPE_ACIP_SETTINGS_ACK},
+        {"ACIP_HOST_LOST", PACKET_TYPE_ACIP_HOST_LOST},
+        {"ACIP_FUTURE_HOST_ELECTED", PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED},
+        {"ACIP_PARTICIPANT_JOINED", PACKET_TYPE_ACIP_PARTICIPANT_JOINED},
+        {"ACIP_PARTICIPANT_LEFT", PACKET_TYPE_ACIP_PARTICIPANT_LEFT},
+        {"ACIP_BANDWIDTH_TEST", PACKET_TYPE_ACIP_BANDWIDTH_TEST},
+        {"ACIP_BANDWIDTH_RESULT", PACKET_TYPE_ACIP_BANDWIDTH_RESULT},
+        {"ACIP_BROADCAST_ACK", PACKET_TYPE_ACIP_BROADCAST_ACK},
+        {"RING_MEMBERS", PACKET_TYPE_RING_MEMBERS},
+        {"STATS_COLLECTION_START", PACKET_TYPE_STATS_COLLECTION_START},
+        {"STATS_UPDATE", PACKET_TYPE_STATS_UPDATE},
+        {"RING_ELECTION_RESULT", PACKET_TYPE_RING_ELECTION_RESULT},
+        {"STATS_ACK", PACKET_TYPE_STATS_ACK},
+        {"ACIP_DISCOVERY_PING", PACKET_TYPE_ACIP_DISCOVERY_PING},
+        {"ACIP_ERROR", PACKET_TYPE_ACIP_ERROR},
     };
     for (const auto &[name, type] : packet_types)
       info["packetTypes"].set(name, static_cast<unsigned>(type));
@@ -129,6 +165,12 @@ public:
     emscripten::val response = result(0);
     response.set("ready", browser_client_ready(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
+    response.set("acceptedPackets", emscripten::val::global("BigInt")(
+                                        std::to_string(browser_transport_accepted_packets(transport_.get()))));
+    response.set("droppedPackets", emscripten::val::global("BigInt")(
+                                       std::to_string(browser_transport_dropped_packets(transport_.get()))));
+    response.set("droppedBytes",
+                 emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
@@ -292,6 +334,7 @@ public:
       if (event["packet"].isUndefined() || event["packet"].isNull())
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Transport packet is required"));
       auto input = binding_copy_input(event["packet"]);
+      const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       packet_header_t header{};
       int code = input.size() < sizeof(packet_header_t)
                      ? SET_ERRNO(ERROR_INVALID_PARAM, "Client packet is shorter than its header")
@@ -301,7 +344,6 @@ public:
           sodium_memzero(input.data(), input.size());
         return result(code);
       }
-      const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       const packet_type_t outer_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
       const size_t header_size = sizeof(packet_header_t);
       if (!browser_client_ready(transport_.get()) && packet_is_handshake_type(outer_type)) {
@@ -432,6 +474,12 @@ public:
       response.set("code", output_code);
     response.set("epoch", browser_transport_security_epoch(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
+    response.set("acceptedPackets", emscripten::val::global("BigInt")(
+                                        std::to_string(browser_transport_accepted_packets(transport_.get()))));
+    response.set("droppedPackets", emscripten::val::global("BigInt")(
+                                       std::to_string(browser_transport_dropped_packets(transport_.get()))));
+    response.set("droppedBytes",
+                 emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
@@ -474,7 +522,8 @@ private:
     while (browser_transport_output_size(transport_.get())) {
       const size_t length = browser_transport_output_size(transport_.get());
       emscripten::val output = emscripten::val::object();
-      output.set("flow", 0);
+      output.set("flow", static_cast<unsigned>(browser_transport_output_traffic(transport_.get())));
+      output.set("delivery", static_cast<unsigned>(browser_transport_output_delivery(transport_.get())));
       output.set("packet", binding_copy_output(browser_transport_output_data(transport_.get()), length));
       outputs.call<void>("push", output);
       browser_transport_output_pop(transport_.get());

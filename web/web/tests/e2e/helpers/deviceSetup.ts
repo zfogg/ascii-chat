@@ -2,6 +2,12 @@ import { test, expect } from "@playwright/test";
 import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+type DeviceProbe = {
+  requests: MediaStreamConstraints[];
+  tracks: MediaStreamTrack[];
+  failures: unknown[];
+};
 const fixtureDirectory = mkdtempSync(
   path.join(tmpdir(), "ascii-device-audio-"),
 );
@@ -42,7 +48,10 @@ export function deviceSetupTests(site: "www" | "web") {
     await info.attach("devices.json", {
       body: JSON.stringify(
         await page.evaluate(async () => ({
-          probe: { ...(window as any).deviceProbe, tracks: undefined },
+          probe: {
+            ...(window as unknown as { deviceProbe: DeviceProbe }).deviceProbe,
+            tracks: undefined,
+          },
           devices: (await navigator.mediaDevices.enumerateDevices()).map(
             (d) => ({
               id: d.deviceId,
@@ -178,7 +187,7 @@ export function deviceSetupTests(site: "www" | "web") {
       expect(new URL(page.url()).searchParams.get("cameraId")).toBe(cameraId);
     const probe = () =>
       page.evaluate(async () => {
-        const p = (window as any).deviceProbe;
+        const p = (window as unknown as { deviceProbe: DeviceProbe }).deviceProbe;
         return {
           requests: p.requests,
           failures: p.failures,
@@ -216,7 +225,14 @@ export function deviceSetupTests(site: "www" | "web") {
     await expect
       .poll(async () =>
         (await probe()).requests.some(
-          (r: any) => r.video?.deviceId?.exact === cameraId,
+          (r: MediaStreamConstraints) => {
+            if (!r.video || typeof r.video !== "object") return false;
+            const video = r.video as MediaTrackConstraints;
+            return (
+              typeof video.deviceId === "object" &&
+              (video.deviceId as ConstrainDOMStringParameters).exact === cameraId
+            );
+          },
         ),
       )
       .toBe(true);
@@ -239,8 +255,14 @@ export function deviceSetupTests(site: "www" | "web") {
       .toBeGreaterThan(requestCount);
     await expect
       .poll(async () => {
-        const requests = (await probe()).requests.filter((r: any) => r.video);
-        return requests.at(-1)?.video?.deviceId?.exact ?? "";
+        const requests = (await probe()).requests.filter((r) => r.video);
+            const video = requests.at(-1)?.video;
+            return video && typeof video === "object"
+              ? (video as MediaTrackConstraints).deviceId &&
+                typeof (video as MediaTrackConstraints).deviceId === "object"
+                ? ((video as MediaTrackConstraints).deviceId as ConstrainDOMStringParameters).exact ?? ""
+                : ""
+              : "";
       })
       .toBe("");
     await expect(widget.locator("canvas.ascii-canvas")).toBeVisible();

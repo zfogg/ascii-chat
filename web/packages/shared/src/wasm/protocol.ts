@@ -1,5 +1,5 @@
 /** Generated from include/ascii-chat/network/packet/packet.h. Do not edit. */
-export const PacketType = {
+const packetTypeDefaults = {
   "PROTOCOL_VERSION": 1,
   "CRYPTO_CLIENT_HELLO": 1000,
   "CRYPTO_CAPABILITIES": 1100,
@@ -78,4 +78,13 @@ export const PacketType = {
   "ACIP_DISCOVERY_PING": 6190,
   "ACIP_ERROR": 6199
 } as const;
-export type PacketType = (typeof PacketType)[keyof typeof PacketType];
+export const PacketType: { [K in keyof typeof packetTypeDefaults]: number } = {
+  ...packetTypeDefaults,
+};
+export type PacketTypes = typeof PacketType;
+export type PacketType = PacketTypes[keyof PacketTypes];
+
+/** Replace generated defaults with the authoritative native WASM table. */
+export function installPacketTypes(packetTypes: Readonly<Record<string, number>>): void {
+  Object.assign(PacketType, packetTypes);
+}

@@ -79,6 +79,37 @@ test("packet types are readable through the owned native session", async ({
   expect(packetTypes.SERVER_STATE).toBe(5008);
 });
 
+test("installs the shared PacketType object from the native WASM table", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const packetTypes = await page.evaluate(async () => {
+    const {
+      initClientWasm,
+      getPacketTypes,
+      cleanupClientWasm,
+      PacketType,
+    } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
+    await initClientWasm();
+    const native = getPacketTypes();
+    const installed = {
+      PROTOCOL_VERSION: PacketType.PROTOCOL_VERSION,
+      IMAGE_FRAME_H265: PacketType.IMAGE_FRAME_H265,
+      ACIP_ERROR: PacketType.ACIP_ERROR,
+    };
+    cleanupClientWasm();
+    return { native, installed };
+  });
+
+  expect(packetTypes.installed).toEqual({
+    PROTOCOL_VERSION: packetTypes.native["PROTOCOL_VERSION"],
+    IMAGE_FRAME_H265: packetTypes.native["IMAGE_FRAME_H265"],
+    ACIP_ERROR: packetTypes.native["ACIP_ERROR"],
+  });
+});
+
 test("native packet intake returns protocol classification", async ({
   page,
 }) => {
@@ -594,6 +625,9 @@ test("client session exposes lifecycle snapshots and transport events", async ({
         epoch: drained.epoch,
         outputs: drained.outputs.length,
         queuedBytes: drained.queuedBytes,
+        acceptedPackets: drained.acceptedPackets,
+        droppedPackets: drained.droppedPackets,
+        droppedBytes: drained.droppedBytes,
         writable: drained.writable,
       },
       batch: batch.map((entry: { state: number; ready?: boolean }) => ({
@@ -617,6 +651,9 @@ test("client session exposes lifecycle snapshots and transport events", async ({
       epoch: -1,
       outputs: 0,
       queuedBytes: 0,
+      acceptedPackets: 0n,
+      droppedPackets: 0n,
+      droppedBytes: 0n,
       writable: true,
     },
     batch: [

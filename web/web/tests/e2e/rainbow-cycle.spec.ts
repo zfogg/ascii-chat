@@ -132,7 +132,11 @@ test.describe("Rainbow Color Filter Cycling", () => {
       // so the first code represents the current rainbow hue.
       const sample = await page.evaluate(() => {
         // eslint-disable-next-line
-        const w = window as any;
+        const w = window as unknown as {
+          __lastAnsiFrame: string;
+          __lastAnsiFrameCount: number;
+          __lastAnsiFrameTime: number;
+        };
         const frame = w.__lastAnsiFrame as string | undefined;
         const frameCount = w.__lastAnsiFrameCount as number | undefined;
         const frameTime = w.__lastAnsiFrameTime as number | undefined;

@@ -27,12 +27,17 @@ browser_transport_state_t browser_transport_state(const browser_transport_t *bro
 void browser_transport_set_connected(browser_transport_t *browser, bool connected);
 bool browser_transport_is_connected(browser_transport_t *browser);
 size_t browser_transport_queued_bytes(const browser_transport_t *browser);
+uint64_t browser_transport_accepted_packets(const browser_transport_t *browser);
+uint64_t browser_transport_dropped_packets(const browser_transport_t *browser);
+uint64_t browser_transport_dropped_bytes(const browser_transport_t *browser);
 bool browser_transport_writable(const browser_transport_t *browser, size_t additional_bytes);
 acip_transport_t *browser_transport_base(browser_transport_t *browser);
 void *browser_transport_client_state(browser_transport_t *browser);
 void browser_transport_set_client_state(browser_transport_t *browser, void *state);
 const void *browser_transport_output_data(browser_transport_t *browser);
 size_t browser_transport_output_size(browser_transport_t *browser);
+acip_traffic_class_t browser_transport_output_traffic(const browser_transport_t *browser);
+acip_delivery_t browser_transport_output_delivery(const browser_transport_t *browser);
 void browser_transport_output_pop(browser_transport_t *browser);
 asciichat_error_t browser_transport_security_init(browser_transport_t *browser);
 asciichat_error_t browser_transport_security_packet(browser_transport_t *browser, bool seal, uint32_t channel,

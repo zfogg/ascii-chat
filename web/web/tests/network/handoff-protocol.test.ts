@@ -67,7 +67,13 @@ it("keeps the original probe clock and sequence through slow host startup", asyn
   const joined = {
     sessionId: new Uint8Array(16),
     participantId: new Uint8Array(16),
-  } as any;
+  } as {
+    sessionId: Uint8Array;
+    participantId: Uint8Array;
+    hostId: Uint8Array;
+    turnUsername: string;
+    turnPassword: string;
+  };
   const probes: { sequence: number; at: number }[] = [];
   const send = (type: number, bytes: Uint8Array) => {
     expect(type).toBe(HANDOFF_PACKET);

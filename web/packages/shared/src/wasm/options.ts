@@ -154,7 +154,20 @@ export class Options {
   }
   patch(values: OptionValues, expectedRevision = -1): OptionsSnapshot {
     validateOptions(values);
-    const code = this.bindings.OptionsBinding.patch(values, expectedRevision);
+    // Keep the explicit palette decision last in the serialized record. Native
+    // palette and custom-character edits imply explicit selection while they
+    // are applied; the explicit flag is the caller's final decision.
+    const explicitPalette = values["palette_explicit"];
+    let patchValues: Readonly<Record<string, OptionValue>> = values;
+    if (explicitPalette !== undefined) {
+      const orderedPatch: Record<string, OptionValue> = {};
+      for (const [name, value] of Object.entries(values)) {
+        if (name !== "palette_explicit") orderedPatch[name] = value;
+      }
+      orderedPatch["palette_explicit"] = explicitPalette;
+      patchValues = orderedPatch;
+    }
+    const code = this.bindings.OptionsBinding.patch(patchValues, expectedRevision);
     if (code !== 0)
       throw new Error(
         `Settings update rejected (${code}); refresh the settings and retry.`,

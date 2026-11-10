@@ -74,11 +74,19 @@ async function setupMasterRenderer(page: import("@playwright/test").Page) {
     const moduleUrl = "/__master_wasm/client.js";
     const factory = (await import(/* @vite-ignore */ moduleUrl)).default as (
       options: Record<string, unknown>,
-    ) => Promise<any>;
-    const module = await factory({
+    ) => Promise<Record<string, unknown>>;
+    const module = (await factory({
       locateFile: (name: string) => `/__master_wasm/${name}`,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
-    });
+    })) as {
+      AsciiRendererBinding: new (
+        cols: number,
+        rows: number,
+        fontSize: number,
+        matrix: boolean,
+        zalgo: number,
+      ) => BoundaryRenderer;
+    };
     const renderer = new module.AsciiRendererBinding(40, 20, 12, false, 0);
     if (!renderer.valid())
       throw new Error(`master renderer error ${renderer.error()}`);
@@ -124,7 +132,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => window.__boundary.renderer.render("", 0)',
+          "empty",
         )
       ).resultBytes,
     ).toBeGreaterThan(0);
@@ -132,7 +140,7 @@ test.describe("WASM browser boundary measurements", () => {
   test("renderer short frame measurement", async ({ rendererPage }) => {
     const result = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("ascii", 0)',
+      "short",
     );
     expect(result.resultBytes).toBeGreaterThan(0);
     expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
@@ -142,7 +150,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => window.__boundary.renderer.render("x".repeat(800), 0)',
+          "long",
         )
       ).resultBytes,
     ).toBeGreaterThan(0);
@@ -152,7 +160,7 @@ test.describe("WASM browser boundary measurements", () => {
   }) => {
     const result = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("ascii", 1)',
+      "zalgo",
     );
     expect(result.resultBytes).toBeGreaterThan(0);
     expect(result.stableResultIdentity).toBe(false);
@@ -177,12 +185,12 @@ test.describe("WASM browser boundary measurements", () => {
   test("renderer output byte count is repeatable", async ({ rendererPage }) => {
     const a = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("frame", 0)',
+      "frame",
       8,
     );
     const b = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("frame", 0)',
+      "frame",
       8,
     );
     expect(a.resultBytes).toBe(b.resultBytes);
@@ -195,7 +203,7 @@ test.describe("WASM browser boundary measurements", () => {
     await setupRenderer(rendererPage);
     const frame = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("x".repeat(800), 0)',
+      "long",
       60,
     );
     await setupClient(clientPage);
@@ -251,7 +259,7 @@ test.describe("WASM browser boundary measurements", () => {
     await setupRenderer(rendererPage);
     const current = await measure(
       rendererPage,
-      '() => window.__boundary.renderer.render("x".repeat(800), 0)',
+      "long",
       60,
     );
     await setupMasterRenderer(rendererPage);

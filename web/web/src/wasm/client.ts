@@ -7,7 +7,7 @@ import type {
   BrowserSessionBinding,
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
-import { PacketType } from "@ascii-chat/shared/wasm";
+import { installPacketTypes, PacketType } from "@ascii-chat/shared/wasm";
 import {
   publishBrowserError,
   type BrowserErrorFrame,
@@ -406,9 +406,9 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
   }
   clientSession = session;
   clientInitialized = true;
-  // Replace the generated development fallback with the native table as soon
-  // as the owned session exists. All runtime packet decisions then come from WASM.
-  Object.assign(PacketType, session.protocolInfo().packetTypes);
+  // Install the native table once the owned session exists. All runtime packet
+  // decisions then use the same values as the C protocol implementation.
+  installPacketTypes(session.packetTypes());
   console.log("[Client WASM] Session initialized");
 }
 
@@ -467,7 +467,13 @@ export type ClientEventResult = {
   bytes?: Uint8Array;
   payload?: Uint8Array;
   packet?: ParsedPacket;
-  outputs?: { flow: 0 | 1 | 2; packet: Uint8Array }[];
+  outputs?: {
+    /** Native traffic class for ordinary transport output. */
+    flow: 0 | 1 | 2;
+    /** Native delivery mode: 0 reliable, 1 datagram. */
+    delivery?: 0 | 1;
+    packet: Uint8Array;
+  }[];
   epoch?: number;
   sequence?: bigint;
   publicKey?: string;
@@ -481,6 +487,9 @@ export type ClientEventResult = {
   };
   ready?: boolean;
   queuedBytes?: number;
+  acceptedPackets?: bigint;
+  droppedPackets?: bigint;
+  droppedBytes?: bigint;
   writable?: boolean;
   action?: {
     kind: number;

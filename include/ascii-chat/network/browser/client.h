@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/packet/packet.h>
 
 typedef struct browser_transport browser_transport_t;
 

@@ -10,7 +10,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
   // Use random port to avoid conflicts
   const wsPort = 28000 + Math.floor(Math.random() * 2000);
   const tcpPort = 26000 + Math.floor(Math.random() * 1000);
-  let serverProcess: any = null;
+  let serverProcess: { kill(): void } | null = null;
 
   const startServer = async () => {
     console.log(

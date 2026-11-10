@@ -783,6 +783,16 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
       patch->count > OPTIONS_PATCH_MAX_EDITS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid options patch");
   *candidate = *current;
+  bool palette_explicit_set = false;
+  bool palette_explicit_value = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const options_edit_t *edit = &patch->edits[i];
+    const runtime_field_t *field = find_field(edit->name);
+    if (field && !strcmp(field->name, "palette_explicit")) {
+      palette_explicit_set = true;
+      palette_explicit_value = edit->operation == OPTIONS_TOGGLE ? !current->palette_explicit : edit->value.boolean;
+    }
+  }
   for (size_t i = 0; i < patch->count; ++i) {
     if (remote_only &&
         (!options_remote_render_field(patch->edits[i].name) || patch->edits[i].operation != OPTIONS_ASSIGN))
@@ -791,16 +801,11 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
-  // Explicit selection state describes the entire patch. Palette setters
-  // infer it for convenience, but must not override an explicitly supplied
-  // value merely because another property appeared later in the object.
-  for (size_t i = 0; i < patch->count; ++i) {
-    const options_edit_t *edit = &patch->edits[i];
-    if (strcmp(edit->name, "palette_explicit") == 0) {
-      candidate->palette_explicit =
-          edit->operation == OPTIONS_TOGGLE ? !current->palette_explicit : edit->value.boolean;
-    }
-  }
+  // An explicit palette flag is authoritative for the entire patch. Palette
+  // type/custom edits may imply explicit selection while they are applied, but
+  // must not overwrite an explicit false value supplied in the same patch.
+  if (palette_explicit_set)
+    candidate->palette_explicit = palette_explicit_value;
   bool animation_changed = false;
   bool stabilize_changed = false;
   for (size_t i = 0; i < patch->count; ++i) {

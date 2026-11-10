@@ -1,4 +1,13 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
+type BrowserHostBindingMock = {
+  valid: ReturnType<typeof vi.fn>;
+  addClient: ReturnType<typeof vi.fn>;
+  setLocalClient: ReturnType<typeof vi.fn>;
+  render: ReturnType<typeof vi.fn>;
+  renderAudio: ReturnType<typeof vi.fn>;
+  drainPackets: ReturnType<typeof vi.fn>;
+  receive: ReturnType<typeof vi.fn>;
+};
 const wasm = vi.hoisted(() => ({
   BrowserHostBinding: class {
     constructor() {
@@ -12,7 +21,7 @@ const wasm = vi.hoisted(() => ({
     drainPackets = vi.fn(() => [] as { id: number; bytes: Uint8Array }[]);
     receive = vi.fn(() => 0);
   },
-  host: undefined as any,
+  host: undefined as BrowserHostBindingMock | undefined,
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},
@@ -37,15 +46,18 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
       "performance",
     ],
   });
-  const scope = { postMessage: vi.fn(), onmessage: undefined as any };
+  const scope: {
+    postMessage: ReturnType<typeof vi.fn>;
+    onmessage?: (event: { data: object }) => void;
+  } = { postMessage: vi.fn() };
   vi.stubGlobal("self", scope);
   await import("../../src/network/browserHost.worker");
   const send = async (data: object) => {
-    scope.onmessage({ data });
+    scope.onmessage!({ data });
     for (let i = 0; i < 8; i++) await Promise.resolve();
   };
   await send({ kind: "init" });
-  const host = wasm.host;
+  const host = wasm.host!;
   host.render.mockImplementation(() => {
     host.drainPackets.mockReturnValue([{ id: 1, bytes: new Uint8Array([1]) }]);
     return 0;
@@ -79,16 +91,19 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
 
 it("delivers synchronous admission readiness to the logical client before C id registration", async () => {
   vi.useFakeTimers();
-  const scope = { postMessage: vi.fn(), onmessage: undefined as any };
+  const scope: {
+    postMessage: ReturnType<typeof vi.fn>;
+    onmessage?: (event: { data: object }) => void;
+  } = { postMessage: vi.fn() };
   vi.stubGlobal("self", scope);
   await import("../../src/network/browserHost.worker");
   const readiness = new Uint8Array(22);
   const send = async (data: object) => {
-    scope.onmessage({ data });
+    scope.onmessage!({ data });
     for (let i = 0; i < 8; i++) await Promise.resolve();
   };
   await send({ kind: "init" });
-  const host = wasm.host;
+  const host = wasm.host!;
   host.addClient.mockImplementation(() => {
     // session_host_set_client_transport sends SERVER_STATE before returning.
     host.drainPackets.mockReturnValueOnce([{ id: 41, bytes: readiness }]);

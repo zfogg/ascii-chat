@@ -1,4 +1,3 @@
-const HANDOFF_FRAME_SIZE = 64;
 import { getClientModule } from "../wasm/client";
 import type { BrowserHostBinding } from "@ascii-chat/shared/wasm";
 import type { JoinedSession } from "./acdsProtocol";
@@ -7,7 +6,6 @@ export const HANDOFF_PACKET = 6090;
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
-  private generation = 0;
   private stopped = false;
   private prepared = false;
   private preparedHost: BrowserHostBinding | null = null;
@@ -52,11 +50,6 @@ export class HandoffProtocol {
   }
   receive(type: number, bytes: Uint8Array): boolean {
     if (type !== HANDOFF_PACKET) return false;
-    if (
-      bytes.length < HANDOFF_FRAME_SIZE ||
-      !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
-    )
-      return true;
     const actionResult = this.binding?.process({
       type: "receive",
       packet: bytes,
@@ -74,9 +67,10 @@ export class HandoffProtocol {
     if (actionResult.code)
       throw new Error(`Invalid handoff frame (${actionResult.code})`);
     const action = actionResult.action ?? null;
-    if (!action) throw new Error("Invalid handoff frame");
-    if (action.generation < this.generation) return true;
-    this.generation = action.generation;
+    // Native handoff state owns frame validation, session matching, and
+    // generation ordering. A valid stale/irrelevant frame is handled with no
+    // browser action required.
+    if (!action) return true;
     if (
       action.kind === 3 &&
       action.participant.every(

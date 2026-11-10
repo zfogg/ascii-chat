@@ -5,18 +5,22 @@ import { PacketType } from "../../src/wasm/client";
 afterEach(() => vi.unstubAllGlobals());
 describe("browser host worker backpressure", () => {
   function setup() {
-    const sent: any[] = [];
-    let worker: any;
+    const sent: Array<Record<string, unknown>> = [];
+    let worker!: {
+      onmessage: ((event: { data: Record<string, unknown> }) => void);
+      onerror: ((event: ErrorEvent) => void);
+      terminate: ReturnType<typeof vi.fn>;
+    };
     vi.stubGlobal(
       "Worker",
       class {
-        onmessage: any;
-        onerror: any;
+        onmessage(_event: { data: Record<string, unknown> }) {}
+        onerror(_event: ErrorEvent) {}
         constructor() {
           worker = this;
         }
         postMessage(message: unknown) {
-          sent.push(message);
+          sent.push(message as Record<string, unknown>);
         }
         terminate = vi.fn();
       },
@@ -35,13 +39,13 @@ describe("browser host worker backpressure", () => {
     expect(sent.at(-1)).toEqual({ kind: "add", id, local: true });
     for (const value of [1, 2, 3])
       runtime.receive(id, PacketType.IMAGE_FRAME, new Uint8Array([value]));
-    expect(sent.filter((m) => m.kind === "receive")).toHaveLength(1);
+    expect(sent.filter((m) => m["kind"] === "receive")).toHaveLength(1);
     worker.onmessage({ data: { kind: "received", id } });
-    expect(sent.at(-1).bytes[0]).toBe(3);
+    expect((sent.at(-1)?.["bytes"] as Uint8Array)[0]).toBe(3);
     runtime.receive(id, PacketType.IMAGE_FRAME, new Uint8Array([4]));
     runtime.removeClient(id);
     worker.onmessage({ data: { kind: "received", id } });
-    expect(sent.at(-1).kind).toBe("remove");
+    expect(sent.at(-1)?.["kind"]).toBe("remove");
     runtime.close();
     expect(worker.terminate).toHaveBeenCalledOnce();
   });
@@ -57,9 +61,9 @@ describe("browser host worker backpressure", () => {
     runtime.receiveVideoFrame(id, frames[1]!);
     runtime.receiveVideoFrame(id, frames[2]!);
     expect(frames[1]!.close).toHaveBeenCalledOnce();
-    expect(sent.filter((m) => m.kind === "video")).toHaveLength(1);
+    expect(sent.filter((m) => m["kind"] === "video")).toHaveLength(1);
     worker.onmessage({ data: { kind: "received-video", id } });
-    expect(sent.at(-1).frame).toBe(frames[2]);
+    expect(sent.at(-1)?.["frame"]).toBe(frames[2]);
     runtime.receiveVideoFrame(id, frames[3]!);
     runtime.removeClient(id);
     expect(frames[3]!.close).toHaveBeenCalledOnce();
@@ -71,7 +75,7 @@ describe("browser host worker backpressure", () => {
     const { runtime, ready, sent, worker, packet } = setup();
     await ready;
     packet.mockImplementation(() =>
-      expect(sent.at(-1).kind).not.toBe("presented"),
+      expect(sent.at(-1)?.["kind"]).not.toBe("presented"),
     );
     worker.onmessage({
       data: {
@@ -80,7 +84,7 @@ describe("browser host worker backpressure", () => {
       },
     });
     expect(packet).toHaveBeenCalledOnce();
-    expect(sent.at(-1).kind).toBe("presented");
+    expect(sent.at(-1)?.["kind"]).toBe("presented");
     runtime.close();
   });
 });
