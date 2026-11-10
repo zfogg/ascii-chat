@@ -103,7 +103,21 @@ static void api_request(http_request_t *request, http_response_t *response, void
     } else if (!strcmp(key, "format")) {
       SAFE_STRNCPY(format, value, sizeof(format));
       if (strcmp(format, "text") && strcmp(format, "json") && strcmp(format, "html")) { api_finish(response, 422); return; }
-    } else if (strcmp(key, "palette-chars") && strcmp(key, "color") && strcmp(key, "renderer")) {
+    } else if (!strcmp(key, "palette-chars")) {
+      SAFE_STRNCPY(render_request.options.palette_chars, value, sizeof(render_request.options.palette_chars));
+    } else if (!strcmp(key, "color")) {
+      if (!strcmp(value, "none")) render_request.options.color_mode = TERM_COLOR_NONE;
+      else if (!strcmp(value, "16")) render_request.options.color_mode = TERM_COLOR_16;
+      else if (!strcmp(value, "256")) render_request.options.color_mode = TERM_COLOR_256;
+      else if (!strcmp(value, "truecolor") || !strcmp(value, "24bit")) render_request.options.color_mode = TERM_COLOR_TRUECOLOR;
+      else if (!strcmp(value, "auto")) render_request.options.color_mode = TERM_COLOR_AUTO;
+      else { api_finish(response, 422); return; }
+    } else if (!strcmp(key, "renderer")) {
+      if (strcmp(value, "auto") && strcmp(value, "block") && strcmp(value, "braille") && strcmp(value, "half-block")) {
+        api_finish(response, 422); return;
+      }
+      SAFE_STRNCPY(render_request.options.render_theme, value, sizeof(render_request.options.render_theme));
+    } else {
       api_finish(response, 400); return;
     }
     p = amp ? amp + 1 : p + strlen(p);

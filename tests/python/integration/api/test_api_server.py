@@ -25,7 +25,7 @@ def test_api_server_health(binary: Path):
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     process = subprocess.Popen(
-        [str(binary), "api-server", "--address=127.0.0.1", f"--port={port}", "--no-splash-screen"],
+        [str(binary), "api-server", "--address=127.0.0.1", f"--port={port}"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -39,6 +39,14 @@ def test_api_server_health(binary: Path):
             assert error.code == 405
         else:
             raise AssertionError("GET /convert should return 405")
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/convert", data=b"not-an-image", method="POST",
+                                         headers={"Content-Type": "text/plain"})
+        try:
+            urllib.request.urlopen(request, timeout=2)
+        except urllib.error.HTTPError as error:
+            assert error.code == 415
+        else:
+            raise AssertionError("text/plain should return 415")
     finally:
         process.terminate()
         process.wait(timeout=5)

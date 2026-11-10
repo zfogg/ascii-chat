@@ -94,7 +94,9 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP render image");
   }
   image_resize(image, scaled);
-  char *ascii = image_print(scaled, request->options.palette[0] ? request->options.palette : NULL);
+  const char *palette = request->options.palette_chars[0] ? request->options.palette_chars
+                                                           : request->options.palette[0] ? request->options.palette : NULL;
+  char *ascii = image_print(scaled, palette);
   image_destroy(scaled);
   ffmpeg_decoder_destroy(decoder);
   if (!ascii)
