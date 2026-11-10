@@ -241,20 +241,13 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
 }
 
 void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
-  const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? "MCP Server"
-                     : GET_OPTION(detected_mode) == MODE_MIRROR   ? "Mirror"
-                                                                  : "Client";
   char detail[TUI_SESSION_DETAIL_BUFFER_SIZE];
   size_t offset = terminal_screen_logs_offset();
   char offset_text[TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE];
   snprintf(offset_text, sizeof(offset_text), "%zu", offset);
-  const char *escape_key = colored_string(LOG_COLOR_WARN, "Esc");
-  const char *search_key = colored_string(LOG_COLOR_WARN, "/");
-  const char *help_key = colored_string(LOG_COLOR_WARN, "?");
   const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
-  snprintf(detail, sizeof(detail), "%s: close | %s: search logs | %s: keyboard controls | %s rows from tail",
-           escape_key, search_key, help_key, colored_offset);
-  ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
+  snprintf(detail, sizeof(detail), "%s | %s rows from tail", ui_status_log_controls(), colored_offset);
+  ui_status_t status = {.mode_name = "", .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
   terminal_screen_compose(output, size, &config, s->logs);

@@ -29,6 +29,11 @@
 #include <unistd.h>
 #include <ascii-chat/atomic.h>
 
+const char *ui_status_log_controls(void) {
+  return "q / Esc: close | /: search logs | ?: keyboard controls | Up/Down: one log | PageUp/PageDown: page | "
+         "Home/End: oldest/newest";
+}
+
 void ui_status_log_init(void) {
   // Initialize the shared terminal screen log buffer
   session_log_buffer_t *buf = terminal_screen_log_init();
@@ -119,7 +124,7 @@ void ui_status_display(const ui_status_t *status) {
   // Use terminal_screen abstraction for rendering
   ui_status_t rendered = *status;
   if (!rendered.detail)
-    rendered.detail = "? Keyboard shortcuts";
+    rendered.detail = ui_status_log_controls();
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
@@ -169,7 +174,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // Use terminal_screen abstraction for rendering
   ui_status_t rendered = *status;
   if (!rendered.detail)
-    rendered.detail = "? Keyboard shortcuts";
+    rendered.detail = ui_status_log_controls();
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = output_fd,

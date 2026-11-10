@@ -313,7 +313,9 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  if (action == TUI_SHORTCUT_LOGS) {
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+  if (action == TUI_SHORTCUT_LOGS && !server) {
     ascii_otel_ui_usage("logs", "shortcut", 0);
     ui_controller_toggle_logs();
     return KEY_NONE;
@@ -327,8 +329,6 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
-                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   if (server && current == UI_SCREEN_LOGS) {
     if (ui_session_logs_key(key))
       return KEY_NONE;

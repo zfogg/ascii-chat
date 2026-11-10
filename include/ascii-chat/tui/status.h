@@ -52,6 +52,9 @@ typedef struct {
 /** The same four-line status header in every host. */
 void ui_status_render_header(frame_buffer_t *buffer, terminal_size_t size, void *status);
 
+/** Shared controls line shown by every interactive log viewer. */
+const char *ui_status_log_controls(void);
+
 /**
  * @brief Gather current status information
  *
