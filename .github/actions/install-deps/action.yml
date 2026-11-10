@@ -727,10 +727,12 @@ runs:
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
           Write-Host "Cloning vcpkg..."
-          git clone https://github.com/microsoft/vcpkg.git $vcpkgDir
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone --filter=blob:none https://github.com/microsoft/vcpkg.git $vcpkgDir
+          if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
           Push-Location $vcpkgDir
           # Keep in sync with vcpkg.json builtin-baseline
-          git checkout 530d2d2f0864684f20b32a0596459646906d35fe
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 checkout 530d2d2f0864684f20b32a0596459646906d35fe
+          if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
           Pop-Location
         }
 
