@@ -149,8 +149,11 @@ static void run_job(void *arg, atomic_t *cancelled) {
     yyjson_mut_doc_free(job->response);
     job->response = NULL;
   }
-  if (job->server->policy.hosted)
+  if (job->server->policy.hosted) {
+    // The HTTP wakeup runs on the server loop and must observe completion.
+    atomic_store_bool(&job->renderer_job.done, true);
     mcp_http_wake(job->server);
+  }
 }
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
