@@ -18,6 +18,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
@@ -431,6 +432,7 @@ static void *stats_worker(void *unused) {
   bool was_active = false;
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    platform_systemd_notify_watchdog();
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.

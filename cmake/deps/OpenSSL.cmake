@@ -10,6 +10,9 @@ set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built 
 if(NOT ASCIICHAT_OPENSSL_BUILD_JOBS MATCHES "^[1-9][0-9]*$")
     message(FATAL_ERROR "ASCIICHAT_OPENSSL_BUILD_JOBS must be a positive integer")
 endif()
+option(ASCIICHAT_USE_SYSTEM_OPENSSL
+    "Use the host OpenSSL when it provides the required QUIC-capable API"
+    ON)
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
@@ -152,6 +155,24 @@ if(PLATFORM_IOS)
     set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include")
 
     return()
+endif()
+
+# Docker and distribution development builds can use the system library when
+# it is new enough.  Release packages continue to use the pinned source build
+# unless this option is explicitly enabled.
+if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
+        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
+        return()
+    endif()
+    message(STATUS "System OpenSSL is missing or too old; using pinned source build")
 endif()
 
 # Handle musl builds - OpenSSL is built from source at configure time

@@ -42,6 +42,7 @@ struct render_file_ctx_s {
   bool live_timing;
   bool kitty;
   bool kitty_only;
+  bool discard;
   uint32_t audio_sample_rate; // 48000 Hz
   int fps;
   float *audio_read_buf; // Temporary buffer for reading audio samples
@@ -56,6 +57,12 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols,
            rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+  if (strcmp(output_path, "/dev/null") == 0) {
+    ctx->discard = true;
+    ctx->error = ASCIICHAT_OK;
+    *out = ctx;
+    return ASCIICHAT_OK;
+  }
   ctx->kitty_only = strcmp(output_path, "--kitty") == 0;
   ctx->kitty = ctx->kitty_only || GET_OPTION(render_kitty);
   if (ctx->kitty && !GET_OPTION(snapshot_mode)) {
@@ -339,6 +346,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *fr
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render context or frame");
   if (ctx->error != ASCIICHAT_OK)
     return ctx->error;
+  if (ctx->discard)
+    return ASCIICHAT_OK;
   asciichat_error_t err = render_file_write_frame_internal(ctx, frame, captured_ns);
   if (err != ASCIICHAT_OK)
     ui_controller_title_render(UI_TITLE_FAILED);
@@ -362,6 +371,10 @@ void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double act
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;
+  if (ctx->discard) {
+    SAFE_FREE(ctx);
+    return ASCIICHAT_OK;
+  }
   NAMED_UNREGISTER(ctx);
   ui_controller_title_render(ctx->error == ASCIICHAT_OK ? UI_TITLE_FINALIZING : UI_TITLE_FAILED);
   render_progress_finalize(ctx->progress);

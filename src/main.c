@@ -67,6 +67,7 @@
 // Common headers for version info and initialization
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
@@ -276,6 +277,8 @@ static void handle_sigterm(int sig) {
     size_t used = strlen(log_out);
     safe_snprintf(log_out + used, sizeof(log_out) - used, " - shutting down");
   }
+  if (sig == SIGHUP)
+    platform_systemd_notify_reloading();
   // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
   log_console(LOG_INFO, log_out);
 
@@ -713,7 +716,7 @@ int main(int argc, char *argv[]) {
   }
   generate_default_log_path(detected_mode, default_log_path, sizeof(default_log_path));
 
-  const char *log_file = default_log_path;
+  const char *log_file = platform_systemd_is_managed() ? "/dev/null" : default_log_path;
   int max_search = (mode_position > 0) ? mode_position : argc;
   for (int i = 1; i < max_search - 1; i++) {
     if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {
