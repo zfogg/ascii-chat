@@ -1,7 +1,7 @@
 /** Low-level sanitizer report sink. */
 #include <ascii-chat/log/asan.h>
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <string.h>
 
 #if defined(__has_feature)

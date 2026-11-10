@@ -3,7 +3,7 @@
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <stdatomic.h>
 #include <ascii-chat/common.h>

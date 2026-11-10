@@ -25,7 +25,7 @@
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>

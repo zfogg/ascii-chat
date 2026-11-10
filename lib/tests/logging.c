@@ -12,7 +12,7 @@
 #ifndef _WIN32
 // POSIX-only test utilities for redirecting stdout/stderr
 
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

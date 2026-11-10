@@ -18,7 +18,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/network.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>

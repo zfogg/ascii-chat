@@ -33,7 +33,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>

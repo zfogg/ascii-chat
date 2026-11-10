@@ -23,7 +23,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
