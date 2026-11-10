@@ -12,7 +12,7 @@ set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 include(FetchContent)
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 6e9e5a7
+    GIT_TAG v0.1.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(libplatform)
