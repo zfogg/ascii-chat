@@ -175,7 +175,7 @@ void http_renderer_reap(http_renderer_t *renderer, bool all) {
     http_renderer_job_t **link = &renderer->jobs;
     http_renderer_job_t *job = NULL;
     while (*link) {
-      if (all || (job->user_data == NULL && http_renderer_job_is_done(*link))) {
+      if (all || ((*link)->user_data == NULL && http_renderer_job_is_done(*link))) {
         job = *link;
         *link = job->next;
         --renderer->active_jobs;
