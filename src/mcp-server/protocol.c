@@ -312,4 +312,3 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   *pending = true;
   return NULL;
 }
-

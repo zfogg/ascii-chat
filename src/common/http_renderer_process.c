@@ -198,4 +198,3 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
     SAFE_STRNCPY(result->output_path, r->output_path, sizeof(result->output_path));
   }
 }
-

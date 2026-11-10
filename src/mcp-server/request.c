@@ -650,4 +650,3 @@ void mcp_request_destroy(http_renderer_process_request_t *r) {
   }
   memset(r, 0, sizeof(*r));
 }
-

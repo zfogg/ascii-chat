@@ -115,4 +115,3 @@ int mcp_server_main(void) {
   SAFE_FREE(s);
   return err;
 }
-
