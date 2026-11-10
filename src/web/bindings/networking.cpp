@@ -496,6 +496,10 @@ private:
   std::unique_ptr<browser_transport_t, decltype(&browser_transport_destroy)> transport_{nullptr,
                                                                                         &browser_transport_destroy};
   struct {
+    // Only datagrams affect native ACIP transport policy. WebTransport and
+    // WebRTC selection, and HEVC encoder/decoder selection, belong to the
+    // browser adapters before they call into this session. These values are
+    // retained for protocol diagnostics and are not native policy inputs.
     bool webtransport = false;
     bool datagrams = false;
     bool hevc = false;

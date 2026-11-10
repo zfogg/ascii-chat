@@ -154,7 +154,7 @@ test.describe("WASM browser boundary measurements", () => {
     expect(a.resultBytes).toBe(b.resultBytes);
   });
 
-  test("records representative frame and packet boundary metrics", async ({
+  test("records representative frame and session-event boundary metrics", async ({
     rendererPage,
     clientPage,
   }) => {
@@ -165,11 +165,20 @@ test.describe("WASM browser boundary measurements", () => {
       60,
     );
     await setupClient(clientPage);
-    const packets = await clientPage.evaluate(() => {
+    const events = await clientPage.evaluate(() => {
       const module = window.__clientModule;
-      const event = { type: "snapshot" };
+      const event = {
+        type: "send-packet",
+        packetType: 5001,
+        payload: new Uint8Array(),
+        encrypt: false,
+      };
       const singleStart = performance.now();
-      for (let i = 0; i < 60; i++) module.processClientEvent(event);
+      let singleBytes = 0;
+      for (let i = 0; i < 60; i++) {
+        singleBytes += module.processClientEvent(event).code === 0 ? 1 : 0;
+        module.processClientEvent({ type: "drain-outputs" });
+      }
       const singleMs = performance.now() - singleStart;
       const batchStart = performance.now();
       const result = module.processClientEvents(
@@ -179,6 +188,7 @@ test.describe("WASM browser boundary measurements", () => {
         singleCalls: 60,
         batchCalls: 1,
         batchResults: result.length,
+        singleBytes,
         singleMs,
         batchMs: performance.now() - batchStart,
       };
@@ -186,13 +196,15 @@ test.describe("WASM browser boundary measurements", () => {
     expect(frame.calls).toBe(60);
     expect(frame.resultBytes).toBeGreaterThan(0);
     expect(frame.elapsedMs).toBeGreaterThanOrEqual(0);
-    expect(packets).toMatchObject({
+    expect(events).toMatchObject({
       singleCalls: 60,
       batchCalls: 1,
       batchResults: 60,
+      singleBytes: 60,
     });
-    expect(packets.singleMs).toBeGreaterThanOrEqual(0);
-    expect(packets.batchMs).toBeGreaterThanOrEqual(0);
+    console.info("WASM boundary metrics", { frame, events });
+    expect(events.singleMs).toBeGreaterThanOrEqual(0);
+    expect(events.batchMs).toBeGreaterThanOrEqual(0);
   });
 
   test("client module initializes once", async ({ clientPage }) => {
