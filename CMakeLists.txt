@@ -302,6 +302,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 if(USE_MUSL)
     set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
         "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
+        "/usr/include/aarch64-linux-musl"
+        "/usr/include/arm-linux-musleabihf"
         "/usr/include/aarch64-linux-gnu"
         "/usr/include/arm-linux-gnueabihf")
 endif()
