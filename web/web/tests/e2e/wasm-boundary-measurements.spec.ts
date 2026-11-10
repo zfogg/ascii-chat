@@ -342,7 +342,9 @@ test.describe("WASM browser boundary measurements", () => {
         maxBuffer: 64 * 1024 * 1024,
       });
     };
-    const mainManifest = JSON.parse(readBaseline("manifest.json").toString("utf8")) as {
+    const mainManifest = JSON.parse(
+      readBaseline("manifest.json").toString("utf8"),
+    ) as {
       files?: Record<string, string>;
     };
     const feature = readFileSync(featureManifest, "utf8");
@@ -395,7 +397,10 @@ test.describe("WASM browser boundary measurements", () => {
       expect(mainManifest.files?.[file]).toBeTruthy();
       expect(featureManifestData.files?.[file]).toBeTruthy();
     }
-    const totalMain = files.reduce((total, file) => total + sizes[file]!.main, 0);
+    const totalMain = files.reduce(
+      (total, file) => total + sizes[file]!.main,
+      0,
+    );
     const totalFeature = files.reduce(
       (total, file) => total + sizes[file]!.feature,
       0,
@@ -405,7 +410,12 @@ test.describe("WASM browser boundary measurements", () => {
       body: JSON.stringify({ sizes, abi, totalMain, totalFeature }, null, 2),
       contentType: "application/json",
     });
-    console.info("WASM artifact measurements", { sizes, abi, totalMain, totalFeature });
+    console.info("WASM artifact measurements", {
+      sizes,
+      abi,
+      totalMain,
+      totalFeature,
+    });
     expect(abi["feed"]?.feature).toBe(0);
   });
 });
