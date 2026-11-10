@@ -18,6 +18,25 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 
 function(configure_include_directories)
+    set(_asciichat_sqlite_include_dirs ${SQLITE3_INCLUDE_DIRS})
+    if(USE_MUSL)
+        # Dependency modules add their include variables at different points
+        # in configuration, so sanitize all of them before subdirectories add
+        # their private include paths to concrete targets.
+        get_cmake_property(_asciichat_include_variables VARIABLES)
+        foreach(_asciichat_include_variable IN LISTS _asciichat_include_variables)
+            if(_asciichat_include_variable MATCHES "_INCLUDE_DIRS$")
+                set(_asciichat_include_values ${${_asciichat_include_variable}})
+                list(FILTER _asciichat_include_values EXCLUDE REGEX
+                    "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                set(${_asciichat_include_variable} "${_asciichat_include_values}")
+            endif()
+        endforeach()
+        # FindSQLite3 may report the host pkg-config include root.  Do not
+        # let that root reintroduce glibc ahead of the musl headers.
+        list(FILTER _asciichat_sqlite_include_dirs EXCLUDE REGEX
+            "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+    endif()
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
     # instrumented include directories later during ascii_panic_finalize().
     # Note: All installable dependencies are in deps/ascii-chat-deps/
@@ -27,7 +46,7 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/deps/defer/cpp/include # Standalone defer marker
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
-        ${SQLITE3_INCLUDE_DIRS}     # Public discovery/database declarations
+        ${_asciichat_sqlite_include_dirs} # Public discovery/database declarations
     )
     # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
     if(WIN32)
@@ -66,6 +85,12 @@ function(configure_include_directories)
             # musl target must not inherit that path: clang would then select
             # glibc headers before the target's musl headers.
             foreach(DEP IN LISTS ASCIICHAT_CORE_DEPS)
+                set(_dep_include_var "${DEP}_INCLUDE_DIRS")
+                if(DEFINED ${_dep_include_var} AND NOT "${${_dep_include_var}}" STREQUAL "")
+                    set(_dep_includes ${${_dep_include_var}})
+                    list(FILTER _dep_includes EXCLUDE REGEX "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+                    set(${_dep_include_var} "${_dep_includes}" PARENT_SCOPE)
+                endif()
                 if(TARGET PkgConfig::${DEP})
                     get_target_property(_pkg_includes PkgConfig::${DEP} INTERFACE_INCLUDE_DIRECTORIES)
                     if(_pkg_includes)
@@ -103,6 +128,18 @@ function(configure_include_directories)
     endif()
 
     if(USE_MUSL)
+        # Put the target libc on the compiler's primary include search path.
+        # This must be in CMAKE_*_FLAGS (before target-transitive includes),
+        # because some imported pkg-config targets still emit -I/usr/include.
+        # Also remove host include flags inherited from the runner environment;
+        # an explicit -I/usr/include wins over the compiler's target search
+        # paths even when -nostdlibinc is active.
+        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        string(APPEND CMAKE_C_FLAGS " -I${MUSL_INCLUDE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " -I${MUSL_INCLUDE_DIR}")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags" FORCE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compiler flags" FORCE)
         # Keep the target libc ahead of any transitive pkg-config include
         # roots (some imported targets still expose /usr/include).
         target_include_directories(asciichat-project-includes BEFORE INTERFACE
