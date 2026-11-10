@@ -738,6 +738,25 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         OUTPUT_VARIABLE _em_cache OUTPUT_STRIP_TRAILING_WHITESPACE
         COMMAND_ERROR_IS_FATAL ANY)
     list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${_em_cache}/sysroot/include")
+    # The defer host parses the same source set as emcc, but it does not see
+    # target include directories from CMake's compiler command lines. Pass the
+    # dependency include roots explicitly so headers such as sodium.h resolve
+    # during native parsing as they do during the WASM compile.
+    foreach(_defer_dependency_include_dir IN ITEMS
+        ${LIBSODIUM_INCLUDE_DIRS}
+        ${PCRE2_INCLUDE_DIRS}
+        ${OPUS_INCLUDE_DIRS}
+        ${ZSTD_INCLUDE_DIRS}
+        ${VTERM_INCLUDE_DIRS}
+        ${FFMPEG_INCLUDE_DIRS}
+        ${FREETYPE_INCLUDE_DIRS}
+        ${FONTCONFIG_INCLUDE_DIRS}
+        ${BEARSSL_INCLUDE_DIRS}
+        ${LIBWEBSOCKETS_INCLUDE_DIRS})
+        if(IS_DIRECTORY "${_defer_dependency_include_dir}")
+            list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${_defer_dependency_include_dir}")
+        endif()
+    endforeach()
     include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
     ascii_defer_prepare_native()
     set(_batch_stage web)

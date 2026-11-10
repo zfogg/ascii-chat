@@ -86,7 +86,7 @@ export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
     throw new Error("Client engine is unavailable");
   const result = clientSession.process({ type: "settings-receive", payload });
   if (result.code) throwWasmError(result.code, "Invalid remote settings");
-  if (result.json === null)
+  if (!result.json)
     throw new Error("Cannot read effective remote settings");
   return JSON.parse(result.json) as RuntimeValues;
 }
@@ -95,7 +95,7 @@ export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
 export function currentRemoteRenderSettings(): RuntimeValues {
   if (!clientSession) throw new Error("Client engine is unavailable");
   const json = clientSession.process({ type: "settings-values" }).json;
-  if (json === null) throw new Error("Cannot read effective remote settings");
+  if (!json) throw new Error("Cannot read effective remote settings");
   return JSON.parse(json) as RuntimeValues;
 }
 
@@ -787,12 +787,14 @@ export function validateReceivedFrame(
     contract: metadata,
     originalSize,
   });
-  if (result.code !== 0)
+  const resultCode = result.code ?? 0;
+  if (resultCode !== 0)
     throwWasmError(
-      result.code,
+      resultCode,
       result.decodeFailed
         ? "Decompressed ASCII frame size mismatch"
         : "Invalid received rendered frame",
     );
+  if (!result.bytes) throw new Error("WASM frame validator returned no bytes");
   return result.bytes;
 }

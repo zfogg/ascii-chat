@@ -54,13 +54,63 @@ function copyArtifact(source, destination) {
   }
   copyFileSync(source, destination);
 }
-function normalizeClientDeclarations(path) {
+function normalizeDeclarations(path, kind) {
   let source = readFileSync(path, "utf8").replaceAll("\r\n", "\n");
-  source = source.replace(
-    "export type ClientBytes = Uint8Array;",
-    "export type ClientBytes = Uint8Array;\nexport type PacketTypes = Readonly<Record<string, number>>;",
-  );
+  const types = `
+export type WasmRecord = Record<string, unknown>;
+export interface RendererDimensions {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+}
+export interface MirrorFrameResult extends WasmRecord {
+  ok: boolean;
+  code: number;
+  message?: string;
+  retryable?: boolean;
+  text: string | null;
+  width: number;
+  height: number;
+  changed: boolean;
+}
+export interface AudioSessionResult {
+  code?: number;
+  samples?: Float32Array;
+  payload?: Uint8Array;
+}
+export type SessionEvent = WasmRecord;
+export interface SessionResult extends WasmRecord {
+  code?: number;
+  json?: string | null;
+  packetTypes?: Readonly<Record<string, number>>;
+  bytes?: Uint8Array;
+  decodeFailed?: boolean;
+}
+export interface ProtocolInfo extends WasmRecord {
+  packetTypes: Readonly<Record<string, number>>;
+}
+export interface PacketOutput { type: number; payload: Uint8Array; }
+export type PacketOutputList = ReadonlyArray<PacketOutput>;
+export interface HostPacket { id: number; bytes: Uint8Array; }
+`;
+  const marker = kind === "client" ? "export type ClientBytes = Uint8Array;" : "export type RgbaBytes = Uint8Array | Uint8ClampedArray;";
+  if (!source.includes("export type WasmRecord ="))
+    source = source.replace(marker, `${marker}${types}`);
+  source = source.replaceAll("dimensions(): any;", "dimensions(): RendererDimensions;");
+  source = source.replaceAll("processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): any;", "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;");
+  source = source.replaceAll("process(_0: AudioSamples, _1: AudioSamples): any;", "process(_0: AudioSamples, _1: AudioSamples): AudioSessionResult;");
+  source = source.replaceAll("processBatch(_0: any, _1: any): number;", "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;");
+  source = source.replaceAll("process(_0: any): any;", "process(_0: SessionEvent): SessionResult;");
+  source = source.replaceAll("processBatch(_0: any): any;", "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;");
+  source = source.replaceAll("protocolInfo(): any;", "protocolInfo(): ProtocolInfo;");
+  source = source.replaceAll("render(_0: EmbindString, _1: number): any;", "render(_0: EmbindString, _1: number): Uint8ClampedArray;");
+  source = source.replaceAll("drainOutputs(): any;", "drainOutputs(): PacketOutputList;");
+  source = source.replaceAll("drainPackets(): any;", "drainPackets(): PacketOutputList;");
+  source = source.replaceAll("drainPackets(): PacketOutputList;", "drainPackets(): ReadonlyArray<HostPacket>;");
   source = source.replace("  packetTypes(): any;", "  packetTypes(): PacketTypes;");
+  if (kind === "client" && !source.includes("export type PacketTypes ="))
+    source = source.replace("export type ClientBytes = Uint8Array;", "export type PacketTypes = Readonly<Record<string, number>>;\nexport type ClientBytes = Uint8Array;");
   writeFileSync(path, source);
 }
 function sourceHash() {
@@ -155,7 +205,8 @@ if (
   mkdirSync(typeOutput, { recursive: true });
   for (const file of types)
     copyArtifact(resolve(source, file), resolve(typeOutput, file));
-  normalizeClientDeclarations(resolve(typeOutput, "client-bindings.d.ts"));
+  normalizeDeclarations(resolve(typeOutput, "client-bindings.d.ts"), "client");
+  normalizeDeclarations(resolve(typeOutput, "mirror-bindings.d.ts"), "mirror");
   validateArtifactExports(
     "mirror",
     resolve(output, "mirror.js"),

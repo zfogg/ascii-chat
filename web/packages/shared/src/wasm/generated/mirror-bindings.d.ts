@@ -307,8 +307,8 @@ export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
   close(): void;
-  dimensions(): any;
-  render(_0: EmbindString, _1: number): any;
+  dimensions(): RendererDimensions;
+  render(_0: EmbindString, _1: number): Uint8ClampedArray;
 }
 
 export type FacePixels = Uint8ClampedArray;
@@ -350,6 +350,48 @@ export type OptionsSnapshot = {
 export interface OptionsBinding extends ClassHandle {}
 
 export type RgbaBytes = Uint8Array | Uint8ClampedArray;
+export type WasmRecord = Record<string, unknown>;
+export interface RendererDimensions {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+}
+export interface MirrorFrameResult extends WasmRecord {
+  ok: boolean;
+  code: number;
+  message?: string;
+  retryable?: boolean;
+  text: string | null;
+  width: number;
+  height: number;
+  changed: boolean;
+}
+export interface AudioSessionResult {
+  code?: number;
+  samples?: Float32Array;
+  payload?: Uint8Array;
+}
+export type SessionEvent = WasmRecord;
+export interface SessionResult extends WasmRecord {
+  code?: number;
+  json?: string | null;
+  packetTypes?: Readonly<Record<string, number>>;
+  bytes?: Uint8Array;
+  decodeFailed?: boolean;
+}
+export interface ProtocolInfo extends WasmRecord {
+  packetTypes: Readonly<Record<string, number>>;
+}
+export interface PacketOutput {
+  type: number;
+  payload: Uint8Array;
+}
+export type PacketOutputList = ReadonlyArray<PacketOutput>;
+export interface HostPacket {
+  id: number;
+  bytes: Uint8Array;
+}
 
 export type VisualizationSamples = Float32Array;
 
@@ -364,7 +406,12 @@ export interface MirrorFrameBinding extends ClassHandle {
     _2: number,
     _3: boolean,
   ): string | undefined;
-  processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): any;
+  processFrame(
+    _0: RgbaBytes,
+    _1: number,
+    _2: number,
+    _3: boolean,
+  ): MirrorFrameResult;
   transform(_0: RgbaBytes, _1: number, _2: number): number;
   submitAudio(_0: VisualizationSamples, _1: number): void;
   renderAudio(_0: number, _1: number, _2: number): string | undefined;
