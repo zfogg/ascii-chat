@@ -103,6 +103,7 @@ test.beforeAll(async () => {
       "--discovery-service-port",
       String(acdsPort),
       "--webrtc",
+      "--discovery-expose-ip",
       "--password",
       password,
       "--stun-servers",

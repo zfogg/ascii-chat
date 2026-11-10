@@ -107,6 +107,7 @@ export class WebRTCSession implements ClientSession {
   private signalingQueue = Promise.resolve();
   private closed = false;
   private lookedUp = false;
+  private everConnected = false;
 
   /**
    * A native peer installs its DataChannel receive callback while registering
@@ -120,6 +121,7 @@ export class WebRTCSession implements ClientSession {
     this.disconnectedTimer = null;
     this.clearTimer();
     this.installPeerErrorReporter();
+    this.everConnected = true;
     this.setState(ConnectionState.CONNECTED);
     this.options.onProgress?.(
       `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
@@ -373,7 +375,8 @@ export class WebRTCSession implements ClientSession {
         this.peer.connectionState === "failed" ||
         this.peer.connectionState === "closed"
       ) {
-        this.waitForSuccessor();
+        if (this.everConnected) this.waitForSuccessor();
+        else this.fail(new Error("WebRTC peer connection failed during negotiation."));
       } else if (this.peer.connectionState === "disconnected") {
         this.options.onProgress?.("WebRTC connection interrupted");
         if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
@@ -486,10 +489,14 @@ export class WebRTCSession implements ClientSession {
       }
     };
     channel.onclose = () => {
-      if (!this.closed) this.waitForSuccessor();
+      if (this.closed) return;
+      if (this.everConnected) this.waitForSuccessor();
+      else this.fail(new Error("WebRTC data channel closed during negotiation."));
     };
     channel.onerror = () => {
-      if (!this.closed) this.waitForSuccessor();
+      if (this.closed) return;
+      if (this.everConnected) this.waitForSuccessor();
+      else this.fail(new Error("WebRTC data channel failed during negotiation."));
     };
     const offer = await this.peer.createOffer();
     await this.peer.setLocalDescription(offer);
