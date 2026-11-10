@@ -82,7 +82,22 @@ static bool api_decode_query_component(const char *src, size_t length, char *dst
 }
 
 static void api_write_result(http_response_t *response, const char *format, const http_render_result_t *result) {
-  if (!strcmp(format, "json")) {
+  if (!strcmp(format, "files")) {
+    static const char boundary[] = "ascii-chat-frame";
+    (void)http_response_set_header(response, "Content-Type", "multipart/mixed; boundary=ascii-chat-frame");
+    for (size_t i = 0; i < result->frame_count; ++i) {
+      const http_render_frame_t *frame = &result->frames[i];
+      if (!frame->text) continue;
+      char header[256];
+      int length = safe_snprintf(header, sizeof(header), "--%s\r\nContent-Type: text/plain; charset=utf-8\r\n"
+                                                   "Content-Disposition: attachment; filename=frame-%zu.txt\r\n\r\n",
+                                 boundary, i);
+      (void)http_response_write(response, header, (size_t)length);
+      (void)http_response_write(response, frame->text, frame->text_length);
+      (void)http_response_write(response, "\r\n", 2);
+    }
+    (void)http_response_write(response, "--ascii-chat-frame--\r\n", 22);
+  } else if (!strcmp(format, "json")) {
     size_t cap = result->ascii_length * 6 + 32;
     char *json = SAFE_MALLOC(cap, char *);
     size_t out = (size_t)safe_snprintf(json, cap, "{\"ascii\":\"");
@@ -245,6 +260,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   const char *query = info->query ? info->query : "";
   char format[16] = "text";
+  char output[16] = "files";
   for (const char *p = query; *p;) {
     const char *eq = strchr(p, '=');
     const char *amp = strchr(p, '&');
@@ -264,6 +280,9 @@ static void api_request(http_request_t *request, http_response_t *response, void
     } else if (!strcmp(key, "format")) {
       SAFE_STRNCPY(format, value, sizeof(format));
       if (strcmp(format, "text") && strcmp(format, "json") && strcmp(format, "html")) { api_finish(response, 422); return; }
+    } else if (!strcmp(key, "output")) {
+      SAFE_STRNCPY(output, value, sizeof(output));
+      if (strcmp(output, "text") && strcmp(output, "files")) { api_finish(response, 422); return; }
     } else if (!strcmp(key, "palette-chars")) {
       SAFE_STRNCPY(render_request.options.palette_chars, value, sizeof(render_request.options.palette_chars));
     } else if (!strcmp(key, "color")) {
@@ -298,12 +317,13 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.source.type = HTTP_RENDER_SOURCE_FILE;
   SAFE_STRNCPY(render_request.source.path, path, sizeof(render_request.source.path));
   render_request.source.body_length = length;
+  render_request.output_type = !strcmp(output, "files") ? HTTP_RENDER_OUTPUT_FILES : HTTP_RENDER_OUTPUT_TEXT;
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
   api_render_job_t *pending = SAFE_CALLOC(1, sizeof(*pending), api_render_job_t *);
   if (!pending) { platform_delete_temp_file(path); api_finish(response, 500); return; }
   pending->server = server;
-  SAFE_STRNCPY(pending->format, format, sizeof(pending->format));
+  SAFE_STRNCPY(pending->format, !strcmp(output, "files") ? "files" : format, sizeof(pending->format));
   SAFE_STRNCPY(pending->path, path, sizeof(pending->path));
   atomic_store_bool(&pending->completed, false);
   http_response_t *retained = NULL;
