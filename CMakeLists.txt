@@ -460,6 +460,16 @@ if(NOT DEFER_NATIVE_BINARY)
         endif()
         file(ARCHIVE_EXTRACT INPUT "${_defer_cache}/${_defer_archive}" DESTINATION "${_defer_cache}")
     endif()
+    # ZIP timestamps can be interpreted in the host's local time zone and
+    # land in the future. Ninja would then rerun unchanged batches until that
+    # time passes, even though the transformer preserves unchanged outputs.
+    if(EXISTS "${_defer_executable}")
+        file(TIMESTAMP "${_defer_executable}" _defer_executable_time "%s" UTC)
+        string(TIMESTAMP _defer_now "%s" UTC)
+        if(_defer_executable_time GREATER _defer_now)
+            file(TOUCH "${_defer_executable}")
+        endif()
+    endif()
     set(DEFER_NATIVE_BINARY "${_defer_executable}")
 endif()
 if(NOT EXISTS "${DEFER_NATIVE_BINARY}")
