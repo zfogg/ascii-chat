@@ -468,7 +468,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #endif
 
 /* Platform-safe strerror */
-#include "platform/abstraction.h" // IWYU pragma: keep
+#include <libplatform/system.h>
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */
