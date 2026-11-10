@@ -331,6 +331,7 @@ asciichat_enable_analyzers_for_targets()
 # runs in the same scope as source variable definitions
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt)
+asciichat_sanitize_musl_include_properties()
 
 # =============================================================================
 # Embedded Resource Generation (Man Pages, etc.)
