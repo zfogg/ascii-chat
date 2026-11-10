@@ -413,7 +413,8 @@ static asciichat_error_t stage_output(const char *path, http_renderer_process_re
   r->output_type = HTTP_RENDER_OUTPUT_FILE;
   return option(r, "render-file", r->stage_file);
 }
-asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, http_renderer_process_request_t *r) {
+asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a,
+                                    http_renderer_process_request_t *r) {
   memset(r, 0, sizeof(*r));
   r->output_type = HTTP_RENDER_OUTPUT_TEXT;
   r->options.width = 100;
@@ -423,7 +424,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
                                        "audio",        "visualization", "options",       "output_path", "timeout_ms",
-                                       "audio_device", "volume",        "output_format", "output", NULL};
+                                       "audio_device", "volume",        "output_format", "output",      NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
@@ -451,8 +452,8 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
   yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path"),
              *output_mode = mcp_get(a, "output");
-  if (output_mode && (!yyjson_is_str(output_mode) || (strcmp(yyjson_get_str(output_mode), "text") &&
-                                                       strcmp(yyjson_get_str(output_mode), "files"))))
+  if (output_mode && (!yyjson_is_str(output_mode) ||
+                      (strcmp(yyjson_get_str(output_mode), "text") && strcmp(yyjson_get_str(output_mode), "files"))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "output must be text or files");
   if (output_mode && !strcmp(yyjson_get_str(output_mode), "text") && output_value)
     return SET_ERRNO(ERROR_INVALID_PARAM, "output=text cannot be combined with output_path");
@@ -504,15 +505,23 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       err = option(r, name, buf);
       if (err)
         return err;
-      if (!strcmp(name, "width")) r->options.width = (int)n;
-      else if (!strcmp(name, "height")) r->options.height = (int)n;
+      if (!strcmp(name, "width"))
+        r->options.width = (int)n;
+      else if (!strcmp(name, "height"))
+        r->options.height = (int)n;
       else if (!strcmp(name, "color-mode")) {
-        if (!strcmp(buf, "16")) r->options.color_mode = TERM_COLOR_16;
-        else if (!strcmp(buf, "256")) r->options.color_mode = TERM_COLOR_256;
-        else if (!strcmp(buf, "truecolor") || !strcmp(buf, "24bit")) r->options.color_mode = TERM_COLOR_TRUECOLOR;
-        else r->options.color_mode = TERM_COLOR_NONE;
-      } else if (!strcmp(name, "palette")) SAFE_STRNCPY(r->options.palette, buf, sizeof(r->options.palette));
-      else if (!strcmp(name, "palette-chars")) SAFE_STRNCPY(r->options.palette_chars, buf, sizeof(r->options.palette_chars));
+        if (!strcmp(buf, "16"))
+          r->options.color_mode = TERM_COLOR_16;
+        else if (!strcmp(buf, "256"))
+          r->options.color_mode = TERM_COLOR_256;
+        else if (!strcmp(buf, "truecolor") || !strcmp(buf, "24bit"))
+          r->options.color_mode = TERM_COLOR_TRUECOLOR;
+        else
+          r->options.color_mode = TERM_COLOR_NONE;
+      } else if (!strcmp(name, "palette"))
+        SAFE_STRNCPY(r->options.palette, buf, sizeof(r->options.palette));
+      else if (!strcmp(name, "palette-chars"))
+        SAFE_STRNCPY(r->options.palette_chars, buf, sizeof(r->options.palette_chars));
     }
   bool synthetic = enabled(opts, "test-pattern"), test_audio = enabled(opts, "test-audio");
   yyjson_val *audio_device = mcp_get(a, "audio_device"), *volume = mcp_get(a, "volume");

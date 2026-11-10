@@ -43,8 +43,8 @@ static void *http_renderer_job_main(void *argument) {
   return NULL;
 }
 
-asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name,
-                                          http_renderer_job_fn execute, void *context) {
+asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute,
+                                          void *context) {
   if (!job || !execute || job->started)
     return SET_ERRNO(ERROR_INVALID_STATE, "Renderer job is already active");
   memset(job, 0, sizeof(*job));
@@ -97,8 +97,8 @@ static void *http_renderer_service_main(void *argument) {
   } else if (renderer->config.max_input_bytes && job->request.source.body_length > renderer->config.max_input_bytes) {
     error = SET_ERRNO(ERROR_BUFFER_OVERFLOW, "HTTP render input exceeds the configured limit");
   } else {
-    const char *source = job->request.source.type == HTTP_RENDER_SOURCE_URL ? job->request.source.url
-                                                                             : job->request.source.path;
+    const char *source =
+        job->request.source.type == HTTP_RENDER_SOURCE_URL ? job->request.source.url : job->request.source.path;
     error = http_renderer_render_file(source, &job->request, &job->result, &job->cancelled);
   }
   job->result.error = error;
@@ -123,8 +123,8 @@ asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request,
-                                        void *user_data, http_renderer_job_t **out_job) {
+asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request, void *user_data,
+                                       http_renderer_job_t **out_job) {
   if (!renderer || !request || !out_job)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP renderer submission");
   *out_job = NULL;
@@ -240,72 +240,94 @@ static asciichat_error_t http_render_result_reserve_frame(http_render_result_t *
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered frame count exceeds the configured limit");
   if (result->frame_count == result->frame_capacity) {
     size_t capacity = result->frame_capacity ? result->frame_capacity * 2 : 4;
-    if (capacity > HTTP_RENDERER_MAX_FRAMES) capacity = HTTP_RENDERER_MAX_FRAMES;
+    if (capacity > HTTP_RENDERER_MAX_FRAMES)
+      capacity = HTTP_RENDERER_MAX_FRAMES;
     result->frames = realloc(result->frames, capacity * sizeof(*result->frames));
     if (!result->frames)
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate rendered frame list");
-    memset(result->frames + result->frame_capacity, 0,
-           (capacity - result->frame_capacity) * sizeof(*result->frames));
+    memset(result->frames + result->frame_capacity, 0, (capacity - result->frame_capacity) * sizeof(*result->frames));
     result->frame_capacity = capacity;
   }
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text,
-                                                    size_t length, uint64_t timestamp_ms) {
-  if (!result || (!text && length)) return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid text frame");
+asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text, size_t length,
+                                                    uint64_t timestamp_ms) {
+  if (!result || (!text && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid text frame");
   asciichat_error_t err = http_render_result_reserve_frame(result);
-  if (err != ASCIICHAT_OK) return err;
+  if (err != ASCIICHAT_OK)
+    return err;
   http_render_frame_t *frame = &result->frames[result->frame_count++];
   frame->text = SAFE_MALLOC(length + 1, char *);
   SAFE_MEMCPY(frame->text, length + 1, text, length);
-  frame->text[length] = '\0'; frame->text_length = length; frame->timestamp_ms = timestamp_ms;
+  frame->text[length] = '\0';
+  frame->text_length = length;
+  frame->timestamp_ms = timestamp_ms;
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path,
                                                     uint64_t timestamp_ms) {
-  if (!result || !path || !*path) return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid file frame");
+  if (!result || !path || !*path)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid file frame");
   asciichat_error_t err = http_render_result_reserve_frame(result);
-  if (err != ASCIICHAT_OK) return err;
+  if (err != ASCIICHAT_OK)
+    return err;
   http_render_frame_t *frame = &result->frames[result->frame_count++];
-  SAFE_STRNCPY(frame->path, path, sizeof(frame->path)); frame->timestamp_ms = timestamp_ms;
+  SAFE_STRNCPY(frame->path, path, sizeof(frame->path));
+  frame->timestamp_ms = timestamp_ms;
   return ASCIICHAT_OK;
 }
 
 static char *http_renderer_render_image(const image_t *image, const http_render_request_t *request) {
   size_t width = request->options.width > 0 ? (size_t)request->options.width : 80;
   size_t height = request->options.height > 0 ? (size_t)request->options.height
-                                               : (size_t)((double)width * image->h / image->w / 2.0);
-  if (!height) height = 1;
+                                              : (size_t)((double)width * image->h / image->w / 2.0);
+  if (!height)
+    height = 1;
   image_t *scaled = image_new(width, height);
-  if (!scaled) return NULL;
+  if (!scaled)
+    return NULL;
   image_resize(image, scaled);
   const char *palette = request->options.palette_chars[0] ? request->options.palette_chars : NULL;
   if (!palette && request->options.palette[0]) {
-    const struct { const char *name; palette_type_t type; } palettes[] = {
-      {"standard", PALETTE_STANDARD}, {"blocks", PALETTE_BLOCKS}, {"digital", PALETTE_DIGITAL},
-      {"minimal", PALETTE_MINIMAL}, {"cool", PALETTE_COOL}
-    };
+    const struct {
+      const char *name;
+      palette_type_t type;
+    } palettes[] = {{"standard", PALETTE_STANDARD},
+                    {"blocks", PALETTE_BLOCKS},
+                    {"digital", PALETTE_DIGITAL},
+                    {"minimal", PALETTE_MINIMAL},
+                    {"cool", PALETTE_COOL}};
     for (size_t i = 0; i < sizeof(palettes) / sizeof(palettes[0]); ++i)
-      if (!strcmp(request->options.palette, palettes[i].name)) { palette = get_builtin_palette(palettes[i].type)->chars; break; }
-    if (!palette) palette = request->options.palette;
+      if (!strcmp(request->options.palette, palettes[i].name)) {
+        palette = get_builtin_palette(palettes[i].type)->chars;
+        break;
+      }
+    if (!palette)
+      palette = request->options.palette;
   }
-  if (!palette) palette = DEFAULT_ASCII_PALETTE;
+  if (!palette)
+    palette = DEFAULT_ASCII_PALETTE;
   char *ascii;
-  if (!strcmp(request->options.render_theme, "braille")) ascii = NULL;
+  if (!strcmp(request->options.render_theme, "braille"))
+    ascii = NULL;
   else if (!strcmp(request->options.render_theme, "block") || !strcmp(request->options.render_theme, "half-block")) {
-    ascii_color_t color = request->options.color_mode == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE :
-                          request->options.color_mode == TERM_COLOR_256 ? ASCII_COLOR_256 :
-                          request->options.color_mode == TERM_COLOR_16 ? ASCII_COLOR_16 : ASCII_COLOR_NONE;
-    ascii = ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
+    ascii_color_t color = request->options.color_mode == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE
+                          : request->options.color_mode == TERM_COLOR_256     ? ASCII_COLOR_256
+                          : request->options.color_mode == TERM_COLOR_16      ? ASCII_COLOR_16
+                                                                              : ASCII_COLOR_NONE;
+    ascii =
+        ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
   } else if (request->options.color_mode == TERM_COLOR_TRUECOLOR)
     ascii = image_print_color_simd(scaled, false, false, palette);
   else if (request->options.color_mode == TERM_COLOR_256)
     ascii = ascii_render(scaled, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
   else if (request->options.color_mode == TERM_COLOR_16)
     ascii = ascii_render(scaled, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
-  else ascii = image_print(scaled, palette);
+  else
+    ascii = image_print(scaled, palette);
   image_destroy(scaled);
   return ascii;
 }
@@ -358,30 +380,61 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
   size_t total = 0;
   size_t limit = request->max_output_bytes ? request->max_output_bytes : 8u * 1024u * 1024u;
   for (;;) {
-    if (image->w > 8192 || image->h > 8192) { image_destroy(image); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded image dimensions exceed the configured limit"); }
+    if (image->w > 8192 || image->h > 8192) {
+      image_destroy(image);
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded image dimensions exceed the configured limit");
+    }
     char *ascii = http_renderer_render_image(image, request);
     image_destroy(image);
-    if (!ascii) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert image to ASCII"); }
-    size_t length = strlen(ascii);
-    if (length > limit - (total > limit ? limit : total)) { free(ascii); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered output exceeds the configured limit"); }
-    if (http_render_result_add_text_frame(result, ascii, length, (time_get_ns() - started) / 1000000) != ASCIICHAT_OK) {
-      free(ascii); ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Cannot store rendered frame");
+    if (!ascii) {
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert image to ASCII");
     }
-    if (!result->ascii) { result->ascii = SAFE_MALLOC(length + 1, char *); SAFE_MEMCPY(result->ascii, length + 1, ascii, length + 1); result->ascii_length = length; }
+    size_t length = strlen(ascii);
+    if (length > limit - (total > limit ? limit : total)) {
+      free(ascii);
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Rendered output exceeds the configured limit");
+    }
+    if (http_render_result_add_text_frame(result, ascii, length, (time_get_ns() - started) / 1000000) != ASCIICHAT_OK) {
+      free(ascii);
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Cannot store rendered frame");
+    }
+    if (!result->ascii) {
+      result->ascii = SAFE_MALLOC(length + 1, char *);
+      SAFE_MEMCPY(result->ascii, length + 1, ascii, length + 1);
+      result->ascii_length = length;
+    }
     total += length;
     free(ascii);
-    if (result->frame_count >= HTTP_RENDERER_MAX_FRAMES) break;
-    if (cancelled && atomic_load_bool(cancelled)) { result->cancelled = true; ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled"); }
+    if (result->frame_count >= HTTP_RENDERER_MAX_FRAMES)
+      break;
+    if (cancelled && atomic_load_bool(cancelled)) {
+      result->cancelled = true;
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled");
+    }
     asciichat_error_context_t failure = {0};
     image = NULL;
     ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
-    if (status == FFMPEG_FRAME_EOF) break;
-    if (status == FFMPEG_FRAME_FAILED) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_MEDIA_INIT, "Video frame decoding failed"); }
-    while (status == FFMPEG_FRAME_WAITING) {
-      if (time_get_ns() >= deadline) { ffmpeg_decoder_destroy(decoder); return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out"); }
-      platform_sleep_ms(1); status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
+    if (status == FFMPEG_FRAME_EOF)
+      break;
+    if (status == FFMPEG_FRAME_FAILED) {
+      ffmpeg_decoder_destroy(decoder);
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Video frame decoding failed");
     }
-    if (!image) break;
+    while (status == FFMPEG_FRAME_WAITING) {
+      if (time_get_ns() >= deadline) {
+        ffmpeg_decoder_destroy(decoder);
+        return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out");
+      }
+      platform_sleep_ms(1);
+      status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
+    }
+    if (!image)
+      break;
   }
   ffmpeg_decoder_destroy(decoder);
   result->elapsed_ms = (time_get_ns() - started) / 1000000;

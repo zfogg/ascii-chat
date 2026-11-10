@@ -63,18 +63,24 @@ static bool api_decode_query_component(const char *src, size_t length, char *dst
   for (size_t i = 0; i < length; ++i) {
     unsigned char c = (unsigned char)src[i];
     if (c == '%') {
-      if (i + 2 >= length) return false;
-      int hi = (src[i + 1] >= '0' && src[i + 1] <= '9') ? src[i + 1] - '0' :
-               (src[i + 1] >= 'a' && src[i + 1] <= 'f') ? src[i + 1] - 'a' + 10 :
-               (src[i + 1] >= 'A' && src[i + 1] <= 'F') ? src[i + 1] - 'A' + 10 : -1;
-      int lo = (src[i + 2] >= '0' && src[i + 2] <= '9') ? src[i + 2] - '0' :
-               (src[i + 2] >= 'a' && src[i + 2] <= 'f') ? src[i + 2] - 'a' + 10 :
-               (src[i + 2] >= 'A' && src[i + 2] <= 'F') ? src[i + 2] - 'A' + 10 : -1;
-      if (hi < 0 || lo < 0) return false;
+      if (i + 2 >= length)
+        return false;
+      int hi = (src[i + 1] >= '0' && src[i + 1] <= '9')   ? src[i + 1] - '0'
+               : (src[i + 1] >= 'a' && src[i + 1] <= 'f') ? src[i + 1] - 'a' + 10
+               : (src[i + 1] >= 'A' && src[i + 1] <= 'F') ? src[i + 1] - 'A' + 10
+                                                          : -1;
+      int lo = (src[i + 2] >= '0' && src[i + 2] <= '9')   ? src[i + 2] - '0'
+               : (src[i + 2] >= 'a' && src[i + 2] <= 'f') ? src[i + 2] - 'a' + 10
+               : (src[i + 2] >= 'A' && src[i + 2] <= 'F') ? src[i + 2] - 'A' + 10
+                                                          : -1;
+      if (hi < 0 || lo < 0)
+        return false;
       c = (unsigned char)((hi << 4) | lo);
       i += 2;
-    } else if (c == '+') c = ' ';
-    if (!c || out + 1 >= capacity) return false;
+    } else if (c == '+')
+      c = ' ';
+    if (!c || out + 1 >= capacity)
+      return false;
     dst[out++] = (char)c;
   }
   dst[out] = 0;
@@ -87,10 +93,12 @@ static void api_write_result(http_response_t *response, const char *format, cons
     (void)http_response_set_header(response, "Content-Type", "multipart/mixed; boundary=ascii-chat-frame");
     for (size_t i = 0; i < result->frame_count; ++i) {
       const http_render_frame_t *frame = &result->frames[i];
-      if (!frame->text) continue;
+      if (!frame->text)
+        continue;
       char header[256];
-      int length = safe_snprintf(header, sizeof(header), "--%s\r\nContent-Type: text/plain; charset=utf-8\r\n"
-                                                   "Content-Disposition: attachment; filename=frame-%zu.txt\r\n\r\n",
+      int length = safe_snprintf(header, sizeof(header),
+                                 "--%s\r\nContent-Type: text/plain; charset=utf-8\r\n"
+                                 "Content-Disposition: attachment; filename=frame-%zu.txt\r\n\r\n",
                                  boundary, i);
       (void)http_response_write(response, header, (size_t)length);
       (void)http_response_write(response, frame->text, frame->text_length);
@@ -120,30 +128,54 @@ static void api_write_result(http_response_t *response, const char *format, cons
       const http_render_frame_t *frame = &result->frames[frame_index];
       if (frame_index) {
         written = safe_snprintf(json + out, cap - out, ",");
-        if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+        if (written < 0) {
+          SAFE_FREE(json);
+          (void)http_response_set_status(response, 500);
+          return;
+        }
         out += (size_t)written;
       }
       written = safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"",
                               (unsigned long long)frame->timestamp_ms);
-      if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+      if (written < 0) {
+        SAFE_FREE(json);
+        (void)http_response_set_status(response, 500);
+        return;
+      }
       out += (size_t)written;
       for (size_t i = 0; i < frame->text_length && out + 8 < cap; ++i) {
         unsigned char c = (unsigned char)frame->text[i];
-        if (c == '"' || c == '\\') { json[out++] = '\\'; json[out++] = (char)c; }
-        else if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
-        else if (c < 0x20) {
+        if (c == '"' || c == '\\') {
+          json[out++] = '\\';
+          json[out++] = (char)c;
+        } else if (c == '\n') {
+          json[out++] = '\\';
+          json[out++] = 'n';
+        } else if (c < 0x20) {
           written = safe_snprintf(json + out, cap - out, "\\u%04x", c);
-          if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+          if (written < 0) {
+            SAFE_FREE(json);
+            (void)http_response_set_status(response, 500);
+            return;
+          }
           out += (size_t)written;
-        }
-        else json[out++] = (char)c;
+        } else
+          json[out++] = (char)c;
       }
       written = safe_snprintf(json + out, cap - out, "\"}");
-      if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+      if (written < 0) {
+        SAFE_FREE(json);
+        (void)http_response_set_status(response, 500);
+        return;
+      }
       out += (size_t)written;
     }
     written = safe_snprintf(json + out, cap - out, "]}");
-    if (written < 0) { SAFE_FREE(json); (void)http_response_set_status(response, 500); return; }
+    if (written < 0) {
+      SAFE_FREE(json);
+      (void)http_response_set_status(response, 500);
+      return;
+    }
     out += (size_t)written;
     (void)http_response_set_header(response, "Content-Type", "application/json");
     (void)http_response_write(response, json, out);
@@ -152,8 +184,10 @@ static void api_write_result(http_response_t *response, const char *format, cons
     (void)http_response_set_header(response, "Content-Type", "text/html; charset=utf-8");
     (void)http_response_write(response, "<pre>", 5);
     for (size_t i = 0; i < result->ascii_length; ++i) {
-      const char *escaped = result->ascii[i] == '&' ? "&amp;" : result->ascii[i] == '<' ? "&lt;" :
-                            result->ascii[i] == '>' ? "&gt;" : NULL;
+      const char *escaped = result->ascii[i] == '&'   ? "&amp;"
+                            : result->ascii[i] == '<' ? "&lt;"
+                            : result->ascii[i] == '>' ? "&gt;"
+                                                      : NULL;
       (void)http_response_write(response, escaped ? escaped : &result->ascii[i], escaped ? strlen(escaped) : 1);
     }
     (void)http_response_write(response, "</pre>", 6);
@@ -170,7 +204,8 @@ static void api_render_complete(http_renderer_job_t *job, const http_render_resu
   if (pending) {
     atomic_store_bool(&pending->completed, true);
   }
-  if (server) (void)http_server_wakeup(server->http);
+  if (server)
+    (void)http_server_wakeup(server->http);
 }
 
 static void api_render_error(http_renderer_job_t *job, asciichat_error_t error, void *user_data) {
@@ -187,7 +222,8 @@ static void api_wakeup(void *user_data) {
       (void)http_renderer_cancel(pending->renderer_job);
       http_response_release(&pending->response);
     }
-    if (!pending->renderer_job || !atomic_load_bool(&pending->completed) || !http_renderer_job_is_done(pending->renderer_job)) {
+    if (!pending->renderer_job || !atomic_load_bool(&pending->completed) ||
+        !http_renderer_job_is_done(pending->renderer_job)) {
       link = &pending->next;
       continue;
     }
@@ -230,7 +266,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
   ASCII_OTEL_ATTR_STRING("http.request.method", info->method);
   ASCII_OTEL_ATTR_INT("http.protocol", info->protocol);
   if (!strcmp(info->method, "GET") && !strcmp(info->path, "/health")) {
-    static const char body[] = "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
+    static const char body[] =
+        "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
     (void)http_response_set_header(response, "Content-Type", "application/json");
     (void)http_response_write(response, body, sizeof(body) - 1);
     api_finish(response, 200);
@@ -240,7 +277,10 @@ static void api_request(http_request_t *request, http_response_t *response, void
     api_finish(response, 404);
     return;
   }
-  if (!strcmp(info->path, "/health")) { api_finish(response, 405); return; }
+  if (!strcmp(info->path, "/health")) {
+    api_finish(response, 405);
+    return;
+  }
   if (strcmp(info->method, "POST")) {
     api_finish(response, 405);
     return;
@@ -250,7 +290,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
     if (!platform_strcasecmp(info->headers[i].name, "content-type"))
       content_type = info->headers[i].value;
   bool multipart = content_type && !strncmp(content_type, "multipart/form-data;", 20);
-  if (!content_type || (!multipart && strncmp(content_type, "image/", 6) && strncmp(content_type, "application/octet-stream", 24))) {
+  if (!content_type ||
+      (!multipart && strncmp(content_type, "image/", 6) && strncmp(content_type, "application/octet-stream", 24))) {
     api_finish(response, 415);
     return;
   }
@@ -262,23 +303,40 @@ static void api_request(http_request_t *request, http_response_t *response, void
   }
   if (multipart) {
     const char *boundary = strstr(content_type, "boundary=");
-    if (!boundary || !boundary[9]) { api_finish(response, 400); return; }
+    if (!boundary || !boundary[9]) {
+      api_finish(response, 400);
+      return;
+    }
     boundary += 9;
     char boundary_value[256];
     size_t boundary_len = strcspn(boundary, ";\r\n");
-    if (boundary_len >= sizeof(boundary_value)) { api_finish(response, 400); return; }
-    memcpy(boundary_value, boundary, boundary_len); boundary_value[boundary_len] = 0;
+    if (boundary_len >= sizeof(boundary_value)) {
+      api_finish(response, 400);
+      return;
+    }
+    memcpy(boundary_value, boundary, boundary_len);
+    boundary_value[boundary_len] = 0;
     if (boundary_value[0] == '"') {
       size_t n = strlen(boundary_value);
-      if (n < 2 || boundary_value[n - 1] != '"') { api_finish(response, 400); return; }
-      memmove(boundary_value, boundary_value + 1, n - 2); boundary_value[n - 2] = 0;
+      if (n < 2 || boundary_value[n - 1] != '"') {
+        api_finish(response, 400);
+        return;
+      }
+      memmove(boundary_value, boundary_value + 1, n - 2);
+      boundary_value[n - 2] = 0;
     }
     boundary = boundary_value;
     char marker[256];
     int marker_len = safe_snprintf(marker, sizeof(marker), "--%s", boundary);
-    if (marker_len <= 0 || (size_t)marker_len >= sizeof(marker)) { api_finish(response, 400); return; }
+    if (marker_len <= 0 || (size_t)marker_len >= sizeof(marker)) {
+      api_finish(response, 400);
+      return;
+    }
     const unsigned char *start = api_find_bytes(body, length, "\r\n\r\n");
-    if (!start || (size_t)(start - body) >= length) { api_finish(response, 400); return; }
+    if (!start || (size_t)(start - body) >= length) {
+      api_finish(response, 400);
+      return;
+    }
     if (!api_find_bytes(body, (size_t)(start - body), "name=\"image\"")) {
       api_finish(response, 400);
       return;
@@ -286,12 +344,17 @@ static void api_request(http_request_t *request, http_response_t *response, void
     start += 4;
     const unsigned char *end = api_find_bytes(start, length - (size_t)(start - body), marker);
     if (!end || end <= start || (size_t)(end - body) > length) {
-      api_finish(response, 400); return;
+      api_finish(response, 400);
+      return;
     }
     body = start;
     length = (size_t)(end - start);
-    while (length && (body[length - 1] == '\r' || body[length - 1] == '\n')) --length;
-    if (!length) { api_finish(response, 400); return; }
+    while (length && (body[length - 1] == '\r' || body[length - 1] == '\n'))
+      --length;
+    if (!length) {
+      api_finish(response, 400);
+      return;
+    }
   }
   http_render_request_t render_request;
   http_render_request_init(&render_request);
@@ -302,41 +365,72 @@ static void api_request(http_request_t *request, http_response_t *response, void
   for (const char *p = query; *p;) {
     const char *eq = strchr(p, '=');
     const char *amp = strchr(p, '&');
-    if (!eq || (amp && eq > amp)) { api_finish(response, 400); return; }
+    if (!eq || (amp && eq > amp)) {
+      api_finish(response, 400);
+      return;
+    }
     size_t key_len = (size_t)(eq - p), value_len = (size_t)((amp ? amp : p + strlen(p)) - eq - 1);
     char key[32], value[256];
-    if (!key_len || key_len >= sizeof(key) || value_len >= sizeof(value)) { api_finish(response, 400); return; }
+    if (!key_len || key_len >= sizeof(key) || value_len >= sizeof(value)) {
+      api_finish(response, 400);
+      return;
+    }
     if (!api_decode_query_component(p, key_len, key, sizeof(key)) ||
-        !api_decode_query_component(eq + 1, value_len, value, sizeof(value))) { api_finish(response, 400); return; }
+        !api_decode_query_component(eq + 1, value_len, value, sizeof(value))) {
+      api_finish(response, 400);
+      return;
+    }
     char *endptr = NULL;
     if (!strcmp(key, "width") || !strcmp(key, "height")) {
       long n = strtol(value, &endptr, 10);
-      if (!endptr || *endptr || n < 1 || n > 3840) { api_finish(response, 422); return; }
-      if (!strcmp(key, "width")) render_request.options.width = (int)n; else render_request.options.height = (int)n;
+      if (!endptr || *endptr || n < 1 || n > 3840) {
+        api_finish(response, 422);
+        return;
+      }
+      if (!strcmp(key, "width"))
+        render_request.options.width = (int)n;
+      else
+        render_request.options.height = (int)n;
     } else if (!strcmp(key, "palette")) {
       SAFE_STRNCPY(render_request.options.palette, value, sizeof(render_request.options.palette));
     } else if (!strcmp(key, "format")) {
       SAFE_STRNCPY(format, value, sizeof(format));
-      if (strcmp(format, "text") && strcmp(format, "json") && strcmp(format, "html")) { api_finish(response, 422); return; }
+      if (strcmp(format, "text") && strcmp(format, "json") && strcmp(format, "html")) {
+        api_finish(response, 422);
+        return;
+      }
     } else if (!strcmp(key, "output")) {
       SAFE_STRNCPY(output, value, sizeof(output));
-      if (strcmp(output, "text") && strcmp(output, "files")) { api_finish(response, 422); return; }
+      if (strcmp(output, "text") && strcmp(output, "files")) {
+        api_finish(response, 422);
+        return;
+      }
     } else if (!strcmp(key, "palette-chars")) {
       SAFE_STRNCPY(render_request.options.palette_chars, value, sizeof(render_request.options.palette_chars));
     } else if (!strcmp(key, "color")) {
-      if (!strcmp(value, "none")) render_request.options.color_mode = TERM_COLOR_NONE;
-      else if (!strcmp(value, "16")) render_request.options.color_mode = TERM_COLOR_16;
-      else if (!strcmp(value, "256")) render_request.options.color_mode = TERM_COLOR_256;
-      else if (!strcmp(value, "truecolor") || !strcmp(value, "24bit")) render_request.options.color_mode = TERM_COLOR_TRUECOLOR;
-      else if (!strcmp(value, "auto")) render_request.options.color_mode = TERM_COLOR_AUTO;
-      else { api_finish(response, 422); return; }
+      if (!strcmp(value, "none"))
+        render_request.options.color_mode = TERM_COLOR_NONE;
+      else if (!strcmp(value, "16"))
+        render_request.options.color_mode = TERM_COLOR_16;
+      else if (!strcmp(value, "256"))
+        render_request.options.color_mode = TERM_COLOR_256;
+      else if (!strcmp(value, "truecolor") || !strcmp(value, "24bit"))
+        render_request.options.color_mode = TERM_COLOR_TRUECOLOR;
+      else if (!strcmp(value, "auto"))
+        render_request.options.color_mode = TERM_COLOR_AUTO;
+      else {
+        api_finish(response, 422);
+        return;
+      }
     } else if (!strcmp(key, "renderer")) {
       if (strcmp(value, "auto") && strcmp(value, "block") && strcmp(value, "braille") && strcmp(value, "half-block")) {
-        api_finish(response, 422); return;
+        api_finish(response, 422);
+        return;
       }
       SAFE_STRNCPY(render_request.options.render_theme, value, sizeof(render_request.options.render_theme));
     } else {
-      api_finish(response, 400); return;
+      api_finish(response, 400);
+      return;
     }
     p = amp ? amp + 1 : p + strlen(p);
   }
@@ -347,7 +441,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
   int fd = -1;
   if (platform_create_temp_file(path, sizeof(path), "ascii-api", &fd) != 0 ||
       platform_write(fd, body, length) != (ssize_t)length) {
-    if (fd >= 0) platform_close(fd);
+    if (fd >= 0)
+      platform_close(fd);
     api_finish(response, 500);
     return;
   }
@@ -359,7 +454,11 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
   api_render_job_t *pending = SAFE_CALLOC(1, sizeof(*pending), api_render_job_t *);
-  if (!pending) { platform_delete_temp_file(path); api_finish(response, 500); return; }
+  if (!pending) {
+    platform_delete_temp_file(path);
+    api_finish(response, 500);
+    return;
+  }
   pending->server = server;
   SAFE_STRNCPY(pending->format, !strcmp(output, "files") ? "files" : format, sizeof(pending->format));
   SAFE_STRNCPY(pending->path, path, sizeof(pending->path));
@@ -376,13 +475,17 @@ static void api_request(http_request_t *request, http_response_t *response, void
   http_renderer_job_t *render_job = NULL;
   asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, pending, &render_job);
   if (err != ASCIICHAT_OK) {
-    http_response_release(&pending->response); SAFE_FREE(pending); platform_delete_temp_file(path);
-    api_finish(response, api_render_status(err)); return;
+    http_response_release(&pending->response);
+    SAFE_FREE(pending);
+    platform_delete_temp_file(path);
+    api_finish(response, api_render_status(err));
+    return;
   }
   pending->renderer_job = render_job;
   pending->next = server->jobs;
   server->jobs = pending;
-  if (atomic_load_bool(&pending->completed)) (void)http_server_wakeup(server->http);
+  if (atomic_load_bool(&pending->completed))
+    (void)http_server_wakeup(server->http);
 }
 
 int api_server_main(void) {
@@ -393,10 +496,14 @@ int api_server_main(void) {
   const char *tls_cert = GET_OPTION(tls_cert);
   const char *tls_key = GET_OPTION(tls_key);
   const char *tls_password = GET_OPTION(tls_key_password);
-  if (!tls_cert || !*tls_cert) tls_cert = NULL;
-  if (!tls_key || !*tls_key) tls_key = NULL;
-  if (!tls_password || !*tls_password) tls_password = NULL;
-  http_server_config_t config = {.bind_address = GET_OPTION(address), .bind_address6 = GET_OPTION(address6),
+  if (!tls_cert || !*tls_cert)
+    tls_cert = NULL;
+  if (!tls_key || !*tls_key)
+    tls_key = NULL;
+  if (!tls_password || !*tls_password)
+    tls_password = NULL;
+  http_server_config_t config = {.bind_address = GET_OPTION(address),
+                                 .bind_address6 = GET_OPTION(address6),
                                  .port = (uint16_t)GET_OPTION(port),
                                  .enable_http1 = true,
                                  .enable_http2 = true,
@@ -442,8 +549,8 @@ int api_server_main(void) {
                                    .private_key_file = tls_key,
                                    .enable_http3 = true,
                                    .http_server = server};
-      err = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config,
-                               &http3_endpoint);
+      err =
+          quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config, &http3_endpoint);
       if (err == ASCIICHAT_OK && GET_OPTION(address6) && *GET_OPTION(address6)) {
         struct sockaddr_storage bind_address6;
         socklen_t bind_length6 = 0;

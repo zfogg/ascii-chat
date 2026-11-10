@@ -293,8 +293,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+  const char *const mode_names_check[] = {"server",     "client",     "mirror", "discovery-service",
+                                          "mcp-server", "api-server", NULL};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER,     MODE_CLIENT,    MODE_MIRROR, MODE_DISCOVERY_SERVICE,
                                                 MODE_MCP_SERVER, MODE_API_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
@@ -332,7 +333,8 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             bool looks_like_mode_or_session = false;
 
             // Check if it looks like a mode name
-            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", NULL};
+            const char *const mode_names[] = {"server",     "client",     "mirror", "discovery-service",
+                                              "mcp-server", "api-server", NULL};
             for (int j = 0; mode_names[j] != NULL; j++) {
               if (strcmp(next_arg, mode_names[j]) == 0) {
                 looks_like_mode_or_session = true;
@@ -406,8 +408,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", "default", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER,     MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+  const char *const mode_names[] = {"server",     "client",     "mirror",  "discovery-service",
+                                    "mcp-server", "api-server", "default", NULL};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER,     MODE_CLIENT,     MODE_MIRROR, MODE_DISCOVERY_SERVICE,
                                           MODE_MCP_SERVER, MODE_API_SERVER, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {

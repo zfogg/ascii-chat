@@ -717,8 +717,8 @@ static bool valid_path(const ngtcp2_path *path) {
 }
 
 static asciichat_error_t quic_connection_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
-                                           const ngtcp2_pkt_hd *initial, const ngtcp2_cid *original_dcid,
-                                           uint64_t now_ns, quic_connection_t **out) {
+                                                const ngtcp2_pkt_hd *initial, const ngtcp2_cid *original_dcid,
+                                                uint64_t now_ns, quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
   *out = NULL;
