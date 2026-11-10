@@ -604,6 +604,8 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }
+    if (state->capture_config.type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0)
+      ui_controller_set_effective_fps(session_capture_get_target_fps(state->capture));
   }
   return ASCIICHAT_OK;
 }

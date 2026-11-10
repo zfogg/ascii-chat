@@ -320,13 +320,16 @@ static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
 static _Thread_local fps_counter_t *g_fps;
+static atomic_t g_effective_fps = {.impl = 60};
 
 void ui_controller_frame_acquired_at(uint64_t started_ns) {
   g_acquisition_started_ns = started_ns;
 }
 
 void ui_controller_set_effective_fps(unsigned int fps) {
-  fps_counter_set_effective_fps(g_fps, fps);
+  atomic_store_int(&g_effective_fps, (int)(fps > 0 ? fps : 60));
+  if (g_fps)
+    fps_counter_set_effective_fps(g_fps, fps);
 }
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
@@ -865,6 +868,7 @@ static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
   g_fps = fps_counter_create();
+  fps_counter_set_effective_fps(g_fps, (unsigned int)atomic_load_int(&g_effective_fps));
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
