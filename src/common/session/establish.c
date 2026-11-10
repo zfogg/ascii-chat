@@ -7,6 +7,7 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/tui/splash.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -59,8 +60,13 @@ asciichat_error_t session_connection_establish(const char *name, const char *add
       log_info("QUIC timed out; trying authenticated TCP fallback on port %d", fallback_port);
       continue;
     }
-    if (!attempt.password_failure)
+    if (!attempt.password_failure) {
+      // A failed negotiation cannot produce the first frame that normally
+      // ends the splash. Release it before presenting the connection error.
+      splash_intro_done();
+      splash_wait_for_animation();
       return result;
+    }
     // Recover only the rejected negotiation; caller and cleanup errors remain pending.
     errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_DISMISSED);
     if (detach)
