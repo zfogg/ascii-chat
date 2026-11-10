@@ -47,6 +47,18 @@ def test_api_server_health(binary: Path):
             assert error.code == 415
         else:
             raise AssertionError("text/plain should return 415")
+        invalid = urllib.request.Request(
+            f"http://127.0.0.1:{port}/convert",
+            data=b"not-an-image",
+            method="POST",
+            headers={"Content-Type": "image/png"},
+        )
+        try:
+            urllib.request.urlopen(invalid, timeout=2)
+        except urllib.error.HTTPError as error:
+            assert error.code == 422
+        else:
+            raise AssertionError("undecodable image should return 422")
     finally:
         process.terminate()
         process.wait(timeout=5)
