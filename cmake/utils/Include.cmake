@@ -29,7 +29,9 @@ function(configure_include_directories)
                 set(_asciichat_include_values ${${_asciichat_include_variable}})
                 list(FILTER _asciichat_include_values EXCLUDE REGEX
                     "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
-                set(${_asciichat_include_variable} "${_asciichat_include_values}")
+                # Keep the sanitized value visible to the parent directory and
+                # to subdirectories that add these paths to concrete targets.
+                set(${_asciichat_include_variable} "${_asciichat_include_values}" PARENT_SCOPE)
             endif()
         endforeach()
         # FindSQLite3 may report the host pkg-config include root.  Do not
