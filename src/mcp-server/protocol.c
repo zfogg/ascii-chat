@@ -37,12 +37,24 @@ static yyjson_mut_doc *tool_result(yyjson_val *id, const http_renderer_process_r
   yyjson_mut_obj_add_val(d, result, "content", content);
   yyjson_mut_obj_add_bool(d, result, "isError", r->error[0] != 0);
   if (!r->error[0]) {
-    yyjson_mut_val *data = yyjson_mut_obj(d), *files = yyjson_mut_arr(d);
+    yyjson_mut_val *data = yyjson_mut_obj(d), *files = yyjson_mut_arr(d), *frames = yyjson_mut_arr(d);
     yyjson_mut_obj_add_strcpy(d, data, "ascii", r->text ? r->text : "");
     yyjson_mut_obj_add_uint(d, data, "elapsed_ms", r->elapsed_ms);
-    if (r->output_path[0])
+    if (r->text && r->text[0]) {
+      yyjson_mut_val *frame = yyjson_mut_obj(d);
+      yyjson_mut_obj_add_str(d, frame, "type", "text");
+      yyjson_mut_obj_add_strcpy(d, frame, "text", r->text);
+      yyjson_mut_arr_add_val(frames, frame);
+    }
+    if (r->output_path[0]) {
       yyjson_mut_arr_add_strcpy(d, files, r->output_path);
+      yyjson_mut_val *frame = yyjson_mut_obj(d);
+      yyjson_mut_obj_add_str(d, frame, "type", "file");
+      yyjson_mut_obj_add_strcpy(d, frame, "path", r->output_path);
+      yyjson_mut_arr_add_val(frames, frame);
+    }
     yyjson_mut_obj_add_val(d, data, "saved_files", files);
+    yyjson_mut_obj_add_val(d, data, "frames", frames);
     yyjson_mut_obj_add_val(d, result, "structuredContent", data);
   }
   yyjson_mut_obj_add_val(d, root, "result", result);
