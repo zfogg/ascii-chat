@@ -404,10 +404,12 @@ static asciichat_error_t stage_output(const char *path, http_renderer_process_re
   SAFE_STRNCPY(r->stage_dir, fs.path, sizeof(r->stage_dir));
   uv_fs_req_cleanup(&fs);
   SAFE_SNPRINTF(r->stage_file, sizeof(r->stage_file), "%s/render%s", r->stage_dir, ext);
+  r->output_type = HTTP_RENDER_OUTPUT_FILE;
   return option(r, "render-file", r->stage_file);
 }
 asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, http_renderer_process_request_t *r) {
   memset(r, 0, sizeof(*r));
+  r->output_type = HTTP_RENDER_OUTPUT_TEXT;
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",

@@ -88,6 +88,7 @@ typedef struct {
   char output_path[PLATFORM_MAX_PATH_LENGTH];
   unsigned timeout_ms;
   bool capture_webcam;
+  http_render_output_type_t output_type;
 } http_renderer_process_request_t;
 
 typedef struct {

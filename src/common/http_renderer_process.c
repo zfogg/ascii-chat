@@ -111,6 +111,10 @@ static void tick(uv_timer_t *timer) {
 }
 void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled, http_renderer_process_result_t *result) {
   memset(result, 0, sizeof(*result));
+  if (r->output_type != HTTP_RENDER_OUTPUT_TEXT && r->output_type != HTTP_RENDER_OUTPUT_FILE) {
+    SAFE_STRNCPY(result->error, "Renderer output must select text or files", sizeof(result->error));
+    return;
+  }
   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r->timeout_ms};
   result->text = SAFE_CALLOC(HTTP_RENDERER_MAX_OUTPUT + 1, 1, char *);
   if (uv_loop_init(&w.loop)) {
