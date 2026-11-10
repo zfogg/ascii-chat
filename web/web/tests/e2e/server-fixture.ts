@@ -369,6 +369,7 @@ export async function expectMeaningful60Fps(
         const win = window as Window & {
           __clientFrameMetrics?: { lastRenderedFrame?: string };
           __lastAnsiFrame?: string;
+          __lastAnsiFrameCount?: number;
         };
         return source === "client"
           ? (win.__clientFrameMetrics?.lastRenderedFrame ?? "")
@@ -478,14 +479,20 @@ export async function expectMeaningful60Fps(
           changedReceived: number;
           rendered: number;
         }> = [];
-        let previousPipeline = (() => {
+        const pipelineSnapshot = () => {
+          const win = window as Window & { __lastAnsiFrameCount?: number };
           const metrics = window.__clientFrameMetrics;
+          if (source === "mirror") {
+            const rendered = win.__lastAnsiFrameCount ?? 0;
+            return { received: rendered, changedReceived: rendered, rendered };
+          }
           return {
             received: metrics?.received ?? 0,
             changedReceived: metrics?.changedReceived ?? 0,
             rendered: metrics?.rendered ?? 0,
           };
-        })();
+        };
+        let previousPipeline = pipelineSnapshot();
         const tick = (now: number) => {
           const current = readFrame();
           if (materiallyDifferent(previous, current)) {
@@ -496,12 +503,7 @@ export async function expectMeaningful60Fps(
           if (now - bucketStartedAt >= 1_000) {
             const elapsed = now - bucketStartedAt;
             buckets.push((bucketFrames * 1_000) / elapsed);
-            const metrics = window.__clientFrameMetrics;
-            const currentPipeline = {
-              received: metrics?.received ?? 0,
-              changedReceived: metrics?.changedReceived ?? 0,
-              rendered: metrics?.rendered ?? 0,
-            };
+            const currentPipeline = pipelineSnapshot();
             pipelineFps.push({
               received:
                 ((currentPipeline.received - previousPipeline.received) *
