@@ -815,7 +815,19 @@ create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
-if(TARGET nghttp2::nghttp2)
+if(TARGET gotel::gotel)
+    # gotel's OTLP/gRPC target already carries its bundled nghttp2 archive.
+    # Linking the vcpkg archive here as well creates duplicate replacement
+    # symbols with lld on Windows. Keep the package include path for the
+    # HTTP/2 server, but let gotel provide the single linked implementation.
+    find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h)
+    if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR)
+        message(FATAL_ERROR "nghttp2 development headers are required for the shared HTTP/2 server")
+    endif()
+    set(ASCIICHAT_NGHTTP2_TARGET "")
+    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
+    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
+elseif(TARGET nghttp2::nghttp2)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2)
 elseif(TARGET nghttp2::nghttp2_static)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2_static)
