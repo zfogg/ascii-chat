@@ -72,6 +72,10 @@ static void api_request(http_request_t *request, http_response_t *response, void
     if (marker_len <= 0 || (size_t)marker_len >= sizeof(marker)) { api_finish(response, 400); return; }
     const unsigned char *start = api_find_bytes(body, length, "\r\n\r\n");
     if (!start || (size_t)(start - body) >= length) { api_finish(response, 400); return; }
+    if (!api_find_bytes(body, (size_t)(start - body), "name=\"image\"")) {
+      api_finish(response, 400);
+      return;
+    }
     start += 4;
     const unsigned char *end = api_find_bytes(start, length - (size_t)(start - body), marker);
     if (!end || end <= start || (size_t)(end - body) > length) {
