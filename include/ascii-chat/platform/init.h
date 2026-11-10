@@ -14,7 +14,8 @@
  * @date September 2025
  */
 
-#include "../platform/abstraction.h"
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
 #include "../debug/named.h"
 
 // ============================================================================

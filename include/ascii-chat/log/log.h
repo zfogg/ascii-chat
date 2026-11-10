@@ -47,7 +47,7 @@
 #include <stdint.h>
 #include <time.h>
 #include "../platform/socket.h"
-#include "../platform/system.h"
+#include <libplatform/system.h>
 
 /* Forward declarations */
 struct crypto_context_t;
