@@ -14,14 +14,17 @@
 #include <stdio.h>
 #include <stdatomic.h>
 #include <os/log.h>
+#include <string.h>
 
 extern int asciichat_main(int argc, char **argv);
 
 static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
+static char g_ios_last_error[512];
 static char g_ios_session_string[128];
 static char g_ios_server_address[256];
-static char g_ios_options_json[32768];
+#define IOS_OPTIONS_JSON_CAPACITY (128U * 1024U)
+static char g_ios_options_json[IOS_OPTIONS_JSON_CAPACITY];
 
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
@@ -110,7 +113,13 @@ void asciichat_ios_set_options_json(const char *json) {
     g_ios_options_json[0] = '\0';
     return;
   }
-  snprintf(g_ios_options_json, sizeof(g_ios_options_json), "%s", json);
+  const size_t length = strlen(json);
+  if (length >= sizeof(g_ios_options_json)) {
+    g_ios_options_json[0] = '\0';
+    os_log_error(OS_LOG_DEFAULT, "iOS options snapshot is too large (%{public}zu bytes)", length);
+    return;
+  }
+  memcpy(g_ios_options_json, json, length + 1);
 }
 
 void asciichat_ios_apply_pending_options(void) {
@@ -143,6 +152,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char fps[] = "--fps=0";
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char simulator_audio[] = "--audio=false";
+  static char simulator_test_audio[] = "--test-audio";
+  static char simulator_no_auth[] = "--no-auth";
+  static char simulator_no_encrypt[] = "--no-encrypt";
   static char simulator_discovery_service[] = "--discovery-service=127.0.0.1";
   static char simulator_discovery_port[] = "--discovery-service-port=27225";
   static char simulator_discovery_insecure[] = "--discovery-insecure=true";
@@ -159,7 +171,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char height[32];
   snprintf(width, sizeof(width), "--width=%d", render_cols);
   snprintf(height, sizeof(height), "--height=%d", render_rows);
+#ifdef ASCIICHAT_IOS_SIMULATOR
   static char test_pattern[] = "--test-pattern=1";
+#endif
   char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT ? client : mirror;
   /* Synthetic frames are a simulator mirror aid; network clients must use
    * their negotiated remote media instead. */
@@ -188,6 +202,15 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT ||
       mode == ASCIICHAT_IOS_MODE_DISCOVERY)
     argv[argc++] = simulator_audio;
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT || mode == ASCIICHAT_IOS_MODE_DISCOVERY)
+    argv[argc++] = simulator_test_audio;
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT || mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
+    /* Simulator smoke fixtures have no keychain identity or interactive TOFU
+     * prompt. Keep this deterministic while leaving device security defaults
+     * and the shared client authentication path intact. */
+    argv[argc++] = simulator_no_auth;
+    argv[argc++] = simulator_no_encrypt;
+  }
   if (mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
     argv[argc++] = simulator_discovery_service;
     argv[argc++] = simulator_discovery_port;
@@ -202,10 +225,12 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
+  g_ios_last_error[0] = '\0';
   os_log(OS_LOG_DEFAULT, "iOS native entering asciichat_main");
   for (int i = 0; i < argc; i++)
     os_log(OS_LOG_DEFAULT, "iOS argv[%d]=%{public}s", i, argv[i]);
   int result = asciichat_main(argc, argv);
+  snprintf(g_ios_last_error, sizeof(g_ios_last_error), "%s", result == 0 ? "" : asciichat_error_format(NULL, result));
   os_log(OS_LOG_DEFAULT, "iOS native session finished result=%d", result);
   atomic_store_explicit(&g_ios_last_result, result, memory_order_release);
   atomic_store_explicit(&g_ios_running, 0, memory_order_release);
@@ -235,6 +260,10 @@ int asciichat_ios_is_running(void) {
 }
 int asciichat_ios_last_result(void) {
   return atomic_load_explicit(&g_ios_last_result, memory_order_acquire);
+}
+
+const char *asciichat_ios_last_error(void) {
+  return g_ios_last_error;
 }
 
 void asciichat_ios_request_stop(void) {

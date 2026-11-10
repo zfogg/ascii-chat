@@ -20,7 +20,17 @@ static int g_ios_device_count;
 static NSLock *g_ios_device_lock;
 static id g_ios_route_observer;
 static int g_ios_selected_device = -1;
+static char g_ios_selected_uid[256];
 static unsigned g_ios_active_streams;
+
+static void ios_audio_configure_session(AVAudioSession *session) {
+  [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                  mode:AVAudioSessionModeVideoChat
+               options:AVAudioSessionCategoryOptionAllowBluetoothHFP |
+                       AVAudioSessionCategoryOptionAllowBluetoothA2DP |
+                       AVAudioSessionCategoryOptionDefaultToSpeaker
+                 error:NULL];
+}
 
 static BOOL ios_audio_device_supports_input(PaDeviceIndex index) {
   return index >= 0 && index < g_ios_device_count && g_ios_devices[index].info.maxInputChannels > 0;
@@ -32,10 +42,8 @@ static BOOL ios_audio_device_supports_output(PaDeviceIndex index) {
 
 static void ios_audio_refresh_devices(void) {
   AVAudioSession *session = AVAudioSession.sharedInstance;
-  [session setCategory:AVAudioSessionCategoryPlayAndRecord
-                  mode:AVAudioSessionModeVideoChat
-               options:AVAudioSessionCategoryOptionAllowBluetoothHFP | AVAudioSessionCategoryOptionAllowBluetoothA2DP
-                 error:NULL];
+  NSString *selected_uid = g_ios_selected_uid[0] ? [NSString stringWithUTF8String:g_ios_selected_uid] : nil;
+  ios_audio_configure_session(session);
   memset(g_ios_devices, 0, sizeof(g_ios_devices));
   g_ios_device_count = 0;
 
@@ -95,6 +103,20 @@ static void ios_audio_refresh_devices(void) {
                                   .defaultLowOutputLatency = 0.01,
                                   .defaultSampleRate = 48000.0};
   }
+
+  /* Route order changes when Bluetooth or wired devices appear. Preserve the
+   * selected PortAudio device by AVAudioSession UID across re-enumeration. */
+  g_ios_selected_device = -1;
+  if (selected_uid) {
+    for (int index = 0; index < g_ios_device_count; ++index) {
+      AVAudioSessionPortDescription *input = g_ios_devices[index].input_port;
+      AVAudioSessionPortDescription *output = g_ios_devices[index].output_port;
+      if ((input && [input.UID isEqualToString:selected_uid]) || (output && [output.UID isEqualToString:selected_uid])) {
+        g_ios_selected_device = index;
+        break;
+      }
+    }
+  }
 }
 
 struct PaStream {
@@ -123,7 +145,7 @@ int asciichat_ios_audio_authorized(void) {
 #if TARGET_OS_SIMULATOR
   return 1;
 #else
-  return [AVAudioSession.sharedInstance recordPermission] == AVAudioSessionRecordPermissionGranted;
+  return AVAudioApplication.sharedInstance.recordPermission == AVAudioApplicationRecordPermissionGranted;
 #endif
 }
 
@@ -131,7 +153,7 @@ void asciichat_ios_audio_request_access(void) {
 #if TARGET_OS_SIMULATOR
   return;
 #else
-  [AVAudioSession.sharedInstance requestRecordPermission:^(BOOL granted) {
+  [AVAudioApplication requestRecordPermissionWithCompletionHandler:^(BOOL granted) {
     (void)granted;
   }];
 #endif
@@ -145,12 +167,15 @@ PaError Pa_Initialize(void) {
     g_ios_route_observer =
         [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionRouteChangeNotification
                                                           object:AVAudioSession.sharedInstance
-                                                           queue:nil
+                                                          queue:[NSOperationQueue mainQueue]
                                                       usingBlock:^(NSNotification *note) {
                                                         (void)note;
                                                         [g_ios_device_lock lock];
                                                         ios_audio_refresh_devices();
                                                         [g_ios_device_lock unlock];
+                                                        [[NSNotificationCenter defaultCenter]
+                                                            postNotificationName:@"ascii-chat.ios.audio-devices-changed"
+                                                                            object:nil];
                                                       }];
   }
   return paNoError;
@@ -161,6 +186,7 @@ PaError Pa_Terminate(void) {
     g_ios_route_observer = nil;
   }
   g_ios_selected_device = -1;
+  g_ios_selected_uid[0] = '\0';
   g_ios_device_count = 0;
   memset(g_ios_devices, 0, sizeof(g_ios_devices));
   return paNoError;
@@ -246,15 +272,23 @@ PaError Pa_StartStream(PaStream *stream) {
   if (stream->active)
     return paNoError;
   AVAudioSession *session = [AVAudioSession sharedInstance];
-  [session setCategory:AVAudioSessionCategoryPlayAndRecord error:NULL];
-  [session setMode:AVAudioSessionModeVideoChat error:NULL];
+  ios_audio_configure_session(session);
   ios_audio_refresh_devices();
   if (stream->device_index >= 0 && stream->device_index < g_ios_device_count) {
     AVAudioSessionPortDescription *preferred = g_ios_devices[stream->device_index].input_port;
     if (preferred)
       [session setPreferredInput:preferred error:NULL];
+    AVAudioSessionPortDescription *output = g_ios_devices[stream->device_index].output_port;
+    if (output && [output.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker])
+      [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:NULL];
   }
   [session setActive:YES error:NULL];
+  /* AVAudioSession may negotiate a route-specific native rate (for example
+   * 44.1 kHz headphones or Bluetooth HFP). AVAudioEngine performs the sample
+   * conversion around the shared 48 kHz Opus pipeline; retain the negotiated
+   * value for the native source/sink formats and diagnostics. */
+  if (session.sampleRate > 0)
+    stream->sample_rate = session.sampleRate;
   stream->interruption_observer = [[NSNotificationCenter defaultCenter]
       addObserverForName:AVAudioSessionInterruptionNotification
                   object:session
@@ -405,6 +439,11 @@ int asciichat_ios_audio_select_device(int index) {
   g_ios_selected_device = index;
   AVAudioSession *session = AVAudioSession.sharedInstance;
   AVAudioSessionPortDescription *preferred = g_ios_devices[index].input_port;
+  AVAudioSessionPortDescription *selected_port = preferred ?: g_ios_devices[index].output_port;
+  if (selected_port.UID.UTF8String)
+    snprintf(g_ios_selected_uid, sizeof(g_ios_selected_uid), "%s", selected_port.UID.UTF8String);
+  else
+    g_ios_selected_uid[0] = '\0';
   if (preferred)
     [session setPreferredInput:preferred error:NULL];
   // AVAudioSession applies a preferred input to the active route. Re-activate
