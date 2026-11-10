@@ -21,7 +21,7 @@
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>       // For monotonic timing
-#include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
+#include <libplatform/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>

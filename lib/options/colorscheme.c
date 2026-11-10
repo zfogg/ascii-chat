@@ -19,7 +19,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/platform/stat.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>

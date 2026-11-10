@@ -31,7 +31,7 @@
 #include "session/display.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>

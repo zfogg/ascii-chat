@@ -28,7 +28,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/platform/init.h>
 
 #include <string.h>

@@ -145,7 +145,7 @@
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 /**
  * @brief Global server statistics structure

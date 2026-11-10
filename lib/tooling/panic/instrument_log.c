@@ -27,7 +27,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 
 #include <ctype.h>

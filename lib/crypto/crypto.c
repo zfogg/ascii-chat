@@ -24,7 +24,7 @@
 #include <inttypes.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 // Lifecycle state for libsodium initialization
 static lifecycle_t g_libsodium_lc = LIFECYCLE_INIT;

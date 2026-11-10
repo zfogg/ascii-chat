@@ -34,7 +34,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/nat/upnp.h>

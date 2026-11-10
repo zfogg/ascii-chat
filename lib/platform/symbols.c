@@ -59,7 +59,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/log/log.h>
 
 static bool ascii_case_equal(const char *left, const char *right) {

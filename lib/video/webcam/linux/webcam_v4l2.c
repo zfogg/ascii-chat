@@ -37,7 +37,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/log/io.h>

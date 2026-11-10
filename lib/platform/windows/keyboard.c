@@ -10,7 +10,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 #include <windows.h>
 #include <string.h>

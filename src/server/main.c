@@ -101,7 +101,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>

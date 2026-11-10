@@ -8,7 +8,7 @@
 #define ANSI_16_SGR_BUFFER_SIZE 16
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/video/terminal/ansi.h>

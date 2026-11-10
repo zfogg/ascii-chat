@@ -18,7 +18,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/network/connection.h>

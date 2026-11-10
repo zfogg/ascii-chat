@@ -11,7 +11,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 // utf8.h no longer needed - keyboard thread handles raw bytes
 
 #include <termios.h>

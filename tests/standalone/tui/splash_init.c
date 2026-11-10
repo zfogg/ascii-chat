@@ -1,7 +1,7 @@
 /** Force competing first callers through the production splash initialization. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <stdatomic.h>
 

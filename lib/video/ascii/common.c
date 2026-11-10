@@ -10,7 +10,7 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/cpu.h>
 #include <time.h>

@@ -19,7 +19,7 @@
 #include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
 #include <libplatform/terminal.h>
-#include "ascii-chat/util/lifecycle.h"
+#include <libplatform/lifecycle.h>
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
 #include "ascii-chat/util/flow_control.h"

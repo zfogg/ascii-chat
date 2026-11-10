@@ -88,7 +88,7 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>
 #include <ascii-chat/util/time.h> // For timing instrumentation
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 #include <ascii-chat/audio/audio.h>           // lib/audio/audio.h for PortAudio wrapper
 #include <ascii-chat/audio/client_pipeline.h> // Unified audio processing pipeline

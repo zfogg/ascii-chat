@@ -17,7 +17,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/terminal/ansi.h>

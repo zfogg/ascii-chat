@@ -14,7 +14,7 @@
 #define ASCIICHAT_VIDEO_TERMINAL_ANSI_H
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/platform/init.h>

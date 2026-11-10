@@ -52,7 +52,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/util/format.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>

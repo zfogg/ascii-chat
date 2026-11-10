@@ -15,7 +15,7 @@
 #include <ascii-chat-deps/sokol/sokol_time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <stdlib.h>

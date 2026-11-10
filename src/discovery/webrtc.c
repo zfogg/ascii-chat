@@ -14,7 +14,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/network/acip/protocol.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/send.h>
