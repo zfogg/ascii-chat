@@ -7,13 +7,19 @@ export PATH="$PWD/node_modules/.bin:$PWD/web/node_modules/.bin:$PATH"
 # Get list of staged files and export for subprocesses
 export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 
-# Format staged documentation, configuration, and web files.
-uv run --project tests/ascii_chat_tests --frozen python scripts/format-repo.py all --staged
+# Format staged documentation, configuration, and web files only when one of
+# those file classes is actually part of the commit. Avoid creating the test
+# project's Python environment for native-only commits.
+format_pid=
+if printf "%s\n" "$all_staged" | grep -Eq '^(docs/|web/)|\.(md|mdx|toml|js|mjs|cjs|jsx|ts|mts|cts|tsx|json|jsonc|json5|css|scss|less|html|htm|yaml|yml|graphql|gql|vue|svelte|astro|dox)$'; then
+  uv run --project tests/ascii_chat_tests --frozen python scripts/format-repo.py all --staged &
+  format_pid=$!
+fi
 
 # Check C formatting and web projects in parallel
 clang_pid=
 if printf "%s\n" "$all_staged" | grep -Eq '\.(c|h|cpp|hpp|m|mm)$'; then
-  zsh scripts/clang-format-and-add.zsh &
+  bash scripts/clang-format-and-add.sh &
   clang_pid=$!
 fi
 web_pid=
@@ -23,9 +29,14 @@ if printf "%s\n" "$all_staged" | grep -q "^web/"; then
   (cd web && "$node_command" node_modules/vite-plus/bin/vp check) &
   web_pid=$!
 fi
+github_yaml_pid=
+bash scripts/format-github-workflows.sh &
+github_yaml_pid=$!
 status=0
+if [ -n "$format_pid" ]; then wait "$format_pid" || status=1; fi
 if [ -n "$clang_pid" ]; then wait "$clang_pid" || status=1; fi
 if [ -n "$web_pid" ]; then wait "$web_pid" || status=1; fi
+if [ -n "$github_yaml_pid" ]; then wait "$github_yaml_pid" || status=1; fi
 if [ "$status" -ne 0 ]; then
   exit "$status"
 fi

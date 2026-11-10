@@ -52,7 +52,8 @@ public:
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Discovery session is closed"));
     const std::string type = event["type"].as<std::string>();
     if (type == "enter")
-      return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
+      return result(
+          enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
     if (type == "receive")
       return result(receive(event["packetType"].as<unsigned>(), ProtocolBytes(event["packet"])));
     if (type == "leave")

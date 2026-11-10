@@ -68,10 +68,18 @@ static std::optional<std::string> option_help(int mode, const std::string &name)
 
 class OptionsBinding {
 public:
-  static double revision() { return static_cast<double>(options_revision()); }
-  static int patch(OptionsPatch values, double expected_revision) { return patch_options(values, expected_revision); }
-  static OptionsSnapshot read() { return read_options(); }
-  static std::optional<std::string> help(int mode, const std::string &name) { return option_help(mode, name); }
+  static double revision() {
+    return static_cast<double>(options_revision());
+  }
+  static int patch(OptionsPatch values, double expected_revision) {
+    return patch_options(values, expected_revision);
+  }
+  static OptionsSnapshot read() {
+    return read_options();
+  }
+  static std::optional<std::string> help(int mode, const std::string &name) {
+    return option_help(mode, name);
+  }
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_options) {

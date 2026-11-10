@@ -23,9 +23,12 @@ public:
   bool valid() const {
     return pattern_ != nullptr;
   }
-  int error() const { return valid() ? 0 : ERROR_INIT; }
+  int error() const {
+    return valid() ? 0 : ERROR_INIT;
+  }
   void close() {
-    if (!pattern_) return;
+    if (!pattern_)
+      return;
     test_pattern_destroy(pattern_);
     pattern_ = nullptr;
   }

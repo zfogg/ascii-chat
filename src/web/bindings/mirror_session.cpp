@@ -24,11 +24,17 @@ public:
       owned_ = true;
     }
   }
-  ~MirrorSessionBinding() { close(); }
+  ~MirrorSessionBinding() {
+    close();
+  }
   MirrorSessionBinding(const MirrorSessionBinding &) = delete;
   MirrorSessionBinding &operator=(const MirrorSessionBinding &) = delete;
-  bool valid() const { return owned_; }
-  int error() const { return result_; }
+  bool valid() const {
+    return owned_;
+  }
+  int error() const {
+    return result_;
+  }
   void resetRender() {
     // Render state belongs to each MirrorFrameBinding. Session teardown only
     // owns the shared options/platform lifetime.

@@ -35,9 +35,8 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   browser_transport_t *browser = transport->impl_data;
   socket_buffer_t input = {.data = data, .len = length};
   acip_packet_plan_t plan;
-  crypto_context_t *send_crypto = transport->crypto_ctx && transport->crypto_ctx->handshake_complete
-                                      ? transport->crypto_ctx
-                                      : NULL;
+  crypto_context_t *send_crypto =
+      transport->crypto_ctx && transport->crypto_ctx->handshake_complete ? transport->crypto_ctx : NULL;
   asciichat_error_t result = acip_packet_plan(send_crypto, &input, 1, &plan);
   if (result != ASCIICHAT_OK)
     return result;
@@ -56,9 +55,8 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   if (plan.encrypt) {
     packet_header_t header;
     size_t encrypted_length = 0;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain,
-                                 (uint8_t *)output->data + sizeof(header), plan.ciphertext_capacity, &header,
-                                 &encrypted_length);
+    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header),
+                                 plan.ciphertext_capacity, &header, &encrypted_length);
     if (result != ASCIICHAT_OK) {
       buffer_release(output->data);
       SAFE_FREE(output);
@@ -103,10 +101,10 @@ size_t browser_transport_queued_bytes(const browser_transport_t *browser) {
 }
 
 bool browser_transport_writable(const browser_transport_t *browser, size_t additional_bytes) {
-  return browser && additional_bytes <= BROWSER_TRANSPORT_MAX_QUEUED_BYTES -
-                                      (browser->queued_bytes > BROWSER_TRANSPORT_MAX_QUEUED_BYTES
-                                           ? BROWSER_TRANSPORT_MAX_QUEUED_BYTES
-                                           : browser->queued_bytes);
+  return browser && additional_bytes <=
+                        BROWSER_TRANSPORT_MAX_QUEUED_BYTES - (browser->queued_bytes > BROWSER_TRANSPORT_MAX_QUEUED_BYTES
+                                                                  ? BROWSER_TRANSPORT_MAX_QUEUED_BYTES
+                                                                  : browser->queued_bytes);
 }
 
 browser_transport_state_t browser_transport_state(const browser_transport_t *browser) {
@@ -132,9 +130,9 @@ asciichat_error_t browser_transport_security_init(browser_transport_t *browser) 
 }
 
 asciichat_error_t browser_transport_security_packet(browser_transport_t *browser, bool seal, uint32_t channel,
-                                                     uint32_t delivery, const uint8_t *packet, size_t length,
-                                                     uint8_t *output, size_t capacity, size_t *out_length,
-                                                     uint64_t *sequence) {
+                                                    uint32_t delivery, const uint8_t *packet, size_t length,
+                                                    uint8_t *output, size_t capacity, size_t *out_length,
+                                                    uint64_t *sequence) {
   if (!browser || !browser->transport.crypto_ctx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Browser transport security is unavailable");
   const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
@@ -238,8 +236,6 @@ void browser_transport_set_client_state(browser_transport_t *browser, void *stat
   if (browser)
     browser->client_state = state;
 }
-
-
 
 const void *browser_transport_output_data(browser_transport_t *browser) {
   return browser && browser->output ? browser->output->data : NULL;
