@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
     "strict": true,
     "declaration": true,
@@ -10,13 +11,23 @@
     "rootDir": "../../..",
     "skipLibCheck": true,
     "paths": {
+      "ascii-chat": ["./src/index.ts"],
       "@ascii-chat/shared/wasm/options": [
         "../../../web/packages/shared/src/wasm/options.ts"
       ],
       "@ascii-chat/shared/wasm/generated/*": [
         "../../../web/packages/shared/src/wasm/generated/*"
+      ],
+      "@ascii-chat/shared/components/*": [
+        "../../../web/packages/shared/src/components/*"
       ]
     }
   },
-  "include": ["src/**/*.ts", "../../../web/packages/shared/src/wasm/options.ts"]
+  "include": [
+    "src/**/*.ts",
+    "../../../web/packages/shared/src/components/AsciiRenderer/**/*.ts",
+    "../../../web/packages/shared/src/components/AsciiRenderer/**/*.tsx",
+    "../../../web/packages/shared/src/wasm/mirror.ts",
+    "../../../web/packages/shared/src/wasm/options.ts"
+  ]
 }

@@ -59,13 +59,18 @@ export type RendererModule = Pick<
 > & { RendererSessionBinding?: new () => SessionBinding };
 export interface RendererInit {
   locateFile?: (path: string, prefix: string) => string;
+  /** Explicit URL for renderer.wasm when assets are relocated by a bundler/CDN. */
+  wasmUrl?: string | URL;
+  /** Explicit URL for the Emscripten pthread worker when it is relocated. */
+  workerUrl?: string | URL;
   pthreadPoolSize?: number;
   moduleUrl?: string | URL;
 }
 const sourceId = (source: AudioSource) => (source === "microphone" ? 0 : 1);
 
 /** Each instance creates an independent WASM module and owns all its state. */
-export class AsciiRenderer {
+/** Internal WASM-backed renderer used by the shared React canvas component. */
+export class RendererCore {
   readonly options: Options;
   private readonly frame: FrameBinding;
   private disposed = false;
@@ -81,8 +86,8 @@ export class AsciiRenderer {
     this.options = new Options(module);
     this.frame = new module.MirrorFrameBinding();
   }
-  static async create(init: RendererInit = {}): Promise<AsciiRenderer> {
-    const { moduleUrl, ...runtime } = init;
+  static async create(init: RendererInit = {}): Promise<RendererCore> {
+    const { moduleUrl, wasmUrl, workerUrl, locateFile, ...runtime } = init;
     const path =
       moduleUrl?.toString() ?? new URL("./renderer.js", import.meta.url).href;
     const factory = (await import(/* @vite-ignore */ path)).default as (
@@ -90,6 +95,15 @@ export class AsciiRenderer {
     ) => Promise<RendererModule>;
     const module = await factory({
       ...runtime,
+      locateFile: (file: string, prefix: string) => {
+        if (file.endsWith(".wasm") && wasmUrl) return wasmUrl.toString();
+        if (
+          (file.endsWith(".worker.js") || file.endsWith(".worker.mjs")) &&
+          workerUrl
+        )
+          return workerUrl.toString();
+        return locateFile?.(file, prefix) ?? prefix + file;
+      },
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0]!,
     });
     if (!module.RendererSessionBinding)
@@ -101,15 +115,15 @@ export class AsciiRenderer {
       throw new Error(`Failed to initialize ASCII renderer (${code})`);
     }
     try {
-      return new AsciiRenderer(module, session);
+      return new RendererCore(module, session);
     } catch (error) {
       session.delete();
       throw error;
     }
   }
   /** Use an already initialized client or mirror module without taking ownership of its session. */
-  static fromModule(module: RendererModule): AsciiRenderer {
-    return new AsciiRenderer(module);
+  static fromModule(module: RendererModule): RendererCore {
+    return new RendererCore(module);
   }
   configure(values: RendererOptions): void {
     this.options.patch(values);
@@ -182,7 +196,7 @@ export class AsciiRenderer {
     const pixels = (this.rasterPixels ??= new Uint8ClampedArray(
       width * height * 4,
     ));
-    AsciiRenderer.rasterize(
+    RendererCore.rasterize(
       raster,
       "\x1b[H" + text,
       Number(values["zalgo"] ?? 0),
@@ -254,4 +268,10 @@ export class AsciiRenderer {
   }
 }
 export const createRenderer = (init?: RendererInit) =>
-  AsciiRenderer.create(init);
+  RendererCore.create(init);
+
+export { AsciiCanvas } from "@ascii-chat/shared/components/AsciiRenderer";
+export type {
+  AsciiRendererHandle,
+  AsciiRendererProps,
+} from "@ascii-chat/shared/components/AsciiRenderer";
