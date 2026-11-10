@@ -101,7 +101,7 @@ def test_api_server_health(binary: Path):
         )
         with urllib.request.urlopen(multipart_request, timeout=10) as response:
             assert response.status == 200
-            assert json.loads(response.read())["ascii"]
+            assert json.loads(response.read())["frames"][0]["text"]
     finally:
         process.terminate()
         process.wait(timeout=5)

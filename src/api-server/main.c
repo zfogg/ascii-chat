@@ -98,17 +98,24 @@ static void api_write_result(http_response_t *response, const char *format, cons
     }
     (void)http_response_write(response, "--ascii-chat-frame--\r\n", 22);
   } else if (!strcmp(format, "json")) {
-    size_t cap = result->ascii_length * 6 + 32;
+    size_t cap = result->ascii_length * 6 + result->frame_count * 64 + 64;
     char *json = SAFE_MALLOC(cap, char *);
-    size_t out = (size_t)safe_snprintf(json, cap, "{\"ascii\":\"");
-    for (size_t i = 0; i < result->ascii_length && out + 8 < cap; ++i) {
-      unsigned char c = (unsigned char)result->ascii[i];
-      if (c == '"' || c == '\\') { json[out++] = '\\'; json[out++] = (char)c; }
-      else if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
-      else if (c < 0x20) out += (size_t)safe_snprintf(json + out, cap - out, "\\u%04x", c);
-      else json[out++] = (char)c;
+    size_t out = (size_t)safe_snprintf(json, cap, "{\"frames\":[");
+    for (size_t frame_index = 0; frame_index < result->frame_count; ++frame_index) {
+      const http_render_frame_t *frame = &result->frames[frame_index];
+      if (frame_index) out += (size_t)safe_snprintf(json + out, cap - out, ",");
+      out += (size_t)safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"",
+                                   (unsigned long long)frame->timestamp_ms);
+      for (size_t i = 0; i < frame->text_length && out + 8 < cap; ++i) {
+        unsigned char c = (unsigned char)frame->text[i];
+        if (c == '"' || c == '\\') { json[out++] = '\\'; json[out++] = (char)c; }
+        else if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
+        else if (c < 0x20) out += (size_t)safe_snprintf(json + out, cap - out, "\\u%04x", c);
+        else json[out++] = (char)c;
+      }
+      out += (size_t)safe_snprintf(json + out, cap - out, "\"}");
     }
-    out += (size_t)safe_snprintf(json + out, cap - out, "\"}");
+    out += (size_t)safe_snprintf(json + out, cap - out, "]}");
     (void)http_response_set_header(response, "Content-Type", "application/json");
     (void)http_response_write(response, json, out);
     SAFE_FREE(json);
