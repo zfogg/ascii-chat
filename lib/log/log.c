@@ -48,7 +48,7 @@ int terminal_choose_log_fd(int level);
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>

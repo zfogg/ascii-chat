@@ -67,7 +67,7 @@
 // Common headers for version info and initialization
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>

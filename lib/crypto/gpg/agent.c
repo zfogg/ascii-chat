@@ -15,7 +15,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/agent.h>
+#include <libplatform/agent.h>
 #include <ascii-chat/platform/pipe.h>
 
 #include <ctype.h>

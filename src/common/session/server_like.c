@@ -30,7 +30,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
