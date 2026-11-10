@@ -1,24 +1,32 @@
-import { RendererCore } from "ascii-chat";
+import { CanvasRenderer, Options } from "ascii-chat";
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
-import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
+import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
 import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
 
+let workerSession: { delete(): void } | undefined;
 async function initialize(
   clientLikeKind: ClientLikeKind,
 ): Promise<TerminalRendererModule> {
   const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
-  const initializeOptions =
-    clientLikeKind === "mirror" ? module.initMirror : module.initClient;
-  if (!initializeOptions)
+  const Session =
+    clientLikeKind === "mirror"
+      ? module.MirrorSessionBinding
+      : module.ClientSessionBinding;
+  if (!Session)
     throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
-  if (initializeOptions({}))
-    throw new Error("Cannot initialize raster worker options");
+  const session = new Session({});
+  if (!session.valid()) {
+    const code = session.error();
+    session.delete();
+    throw new Error(`Cannot initialize raster worker (${code})`);
+  }
+  workerSession = session;
   return module;
 }
 let initialized: Promise<TerminalRendererModule> | undefined;
-let renderer: TerminalRendererBinding | null = null;
+let renderer: AsciiRendererBinding | null = null;
 let signature = "";
 let queue = Promise.resolve();
 let previousText: string | null = null;
@@ -32,9 +40,8 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       const nextSignature = `${cols}:${rows}:${matrix}`;
       const changed = text !== previousText || nextSignature !== signature;
       if (signature !== nextSignature) {
-        if (module.patchOptions({ matrix_rain: matrix }, -1) !== 0)
-          throw new Error("Cannot select raster worker font");
-        const replacement = new module.TerminalRendererBinding(
+        new Options(module).patch({ matrix_rain: matrix });
+        const replacement = new module.AsciiRendererBinding(
           cols,
           rows,
           browserRasterFontSize(matrix),
@@ -51,9 +58,8 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
         signature = nextSignature;
       }
       if (!renderer) throw new Error("Raster worker renderer is unavailable");
-      const width = renderer.width();
-      const height = renderer.height();
-      const pixels = RendererCore.rasterize(renderer, text, zalgo);
+      const { width, height } = renderer.dimensions();
+      const pixels = CanvasRenderer.rasterize(renderer, text, zalgo);
       previousText = text;
       (
         self.postMessage as (message: unknown, transfer: Transferable[]) => void

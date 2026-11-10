@@ -329,13 +329,34 @@ test("connected web client shows its C network logs", async ({ page }) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
     const renderer = m.AsciiRendererBinding.prototype;
-    const feed = renderer.feed;
+    const render = renderer.render;
+    const postMessage = Worker.prototype.postMessage;
     window.__sessionUiFrames = [];
-    renderer.feed = function (this: unknown, value: string) {
+    const capture = (value: string) => {
       window.__sessionUiFrames!.push(value);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed.call(this, value);
+    };
+    renderer.render = function (this: unknown, value: string, zalgo: number) {
+      capture(value);
+      return render.call(this, value, zalgo);
+    };
+    Worker.prototype.postMessage = function (
+      message: unknown,
+      ...args: unknown[]
+    ) {
+      if (
+        message &&
+        typeof message === "object" &&
+        "text" in message &&
+        typeof message.text === "string"
+      )
+        capture(message.text);
+      return (postMessage as (...args: unknown[]) => void).call(
+        this,
+        message,
+        ...args,
+      );
     };
   }, moduleUrl);
   await canvas.focus();

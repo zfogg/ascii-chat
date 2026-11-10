@@ -1,6 +1,6 @@
 # ascii-chat renderer for JavaScript
 
-The `ascii-chat` package converts RGBA frames to ANSI ASCII art with the same
+The `ascii-chat` package exports `CanvasRenderer`, which converts RGBA frames to ANSI ASCII art with the same
 libasciichat renderer as the browser client. It also rasterizes that art to a
 canvas, renders audio waveforms and FFTs, and generates animated test patterns.
 It has no network connection to ascii-chat servers.

@@ -11,17 +11,18 @@ function engine() {
   let values = { fps: 30, flip_x: false };
   const module: RuntimeOptionsModule = {
     OptionsBinding: {
+      help: () => undefined,
       revision: () => revision,
       read: () => ({ revision, values: { ...values } }),
       patch: (patch, expected) => {
-      if (
-        (expected !== -1 && expected !== revision) ||
-        (typeof patch["fps"] === "number" && patch["fps"] < 1)
-      )
-        return 1;
-      values = { ...values, ...patch } as typeof values;
-      revision++;
-      return 0;
+        if (
+          (expected !== -1 && expected !== revision) ||
+          (typeof patch["fps"] === "number" && patch["fps"] < 1)
+        )
+          return 1;
+        values = { ...values, ...patch } as typeof values;
+        revision++;
+        return 0;
       },
     },
   };

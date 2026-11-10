@@ -5,6 +5,7 @@ export type BoundaryMeasurement = {
   calls: number;
   resultBytes: number;
   stableResultIdentity: boolean;
+  allResultsUnique: boolean;
 };
 
 export async function measure(page: Page, expression: string, repeats = 32) {
@@ -15,17 +16,22 @@ export async function measure(page: Page, expression: string, repeats = 32) {
       const start = performance.now();
       let first: unknown;
       let last: unknown;
+      let stableResultIdentity = true;
+      const results = new Set<unknown>();
       let resultBytes = 0;
       for (let i = 0; i < repeats; i++) {
         last = fn();
         first ??= last;
+        stableResultIdentity &&= first === last;
+        results.add(last);
         if (ArrayBuffer.isView(last)) resultBytes += last.byteLength;
       }
       return {
         elapsedMs: performance.now() - start,
         calls: repeats,
         resultBytes,
-        stableResultIdentity: first === last,
+        stableResultIdentity,
+        allResultsUnique: results.size === repeats,
       } satisfies BoundaryMeasurement;
     },
     { expression, repeats },

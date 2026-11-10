@@ -1,5 +1,5 @@
 import type { MainModule } from "./generated/mirror-bindings";
-import { AsciiRenderer } from "ascii-chat";
+import { CanvasRenderer } from "ascii-chat";
 import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -28,7 +28,7 @@ export type EmscriptenModuleFactory = (
 let wasmModule: MirrorModule | null = null;
 let mirrorSession: InstanceType<MirrorModule["MirrorSessionBinding"]> | null =
   null;
-let renderer: AsciiRenderer | null = null;
+let renderer: CanvasRenderer | null = null;
 
 function releaseFrameBinding(): void {
   renderer?.dispose();
@@ -139,7 +139,7 @@ export function cleanupMirrorWasm(): void {
 
 export function resetRenderStabilizer(): void {
   if (wasmModule) {
-    renderer ??= AsciiRenderer.fromModule(wasmModule);
+    renderer ??= CanvasRenderer.fromModule(wasmModule);
     renderer.reset();
   }
 }
@@ -192,7 +192,7 @@ export function convertFrameToAscii(
     );
   }
 
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   const frame = renderer.render(
     rgbaData,
     srcWidth,
@@ -216,7 +216,7 @@ export function transformCaptureRgba(
   if (!wasmModule) throw new Error("WASM module not initialized");
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
     throw new Error("Invalid capture dimensions");
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   renderer.transform(rgba, width, height);
 }
 
@@ -232,7 +232,7 @@ export function submitAudioVisualizationSamples(
   source: AudioVisualizationSource = "media",
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   renderer.submitAudio(samples, source);
 }
 
@@ -249,7 +249,7 @@ export function renderAudioVisualization(
       fft: mode === "fft",
     });
   }
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   const frame = renderer.renderAudio(width, height, source);
   return frame;
 }

@@ -23,19 +23,24 @@ test("published WASM manifest declares module capabilities", async ({
   expect(manifest.capabilities.client.codecs).toContain("hevc");
 });
 
-test("client protocol metadata comes from the native session binding", async ({ page }) => {
+test("client protocol metadata comes from the native session binding", async ({
+  page,
+}) => {
   await page.goto("/client");
   const info = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
-    const session = new (getClientWasmModule()!).ClientSessionBinding({});
+    const session = new (getClientWasmModule()!.ClientSessionBinding)({});
     const value = session.protocolInfo();
     session.close();
     session.delete();
     return value;
   });
-  expect(info.protocolVersion).toBe(1);
+  expect(info.protocolVersion).toBe(2);
+  expect(info.protocolMinorVersion).toBe(3);
+  expect(info.protocolPatchVersion).toBe(0);
   expect(info.connectionStates).toEqual([
     "disconnected",
     "connecting",
@@ -55,17 +60,24 @@ test("client protocol metadata comes from the native session binding", async ({ 
   expect(info.packetTypes.SERVER_STATE).toBe(5008);
 });
 
-test("native packet intake returns protocol classification", async ({ page }) => {
+test("native packet intake returns protocol classification", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, processClientEvent } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
-    const session = new (getClientWasmModule()!).ClientSessionBinding({});
-    const encoded = session.process({ type: "encode-packet", packetType: 5001, payload: new Uint8Array() });
-    const parsed = session.process({ type: "receive-packet", packet: encoded.bytes });
-    session.close();
-    session.delete();
+    const encoded = processClientEvent({
+      type: "encode-packet",
+      packetType: 5001,
+      payload: new Uint8Array(),
+    });
+    const parsed = processClientEvent({
+      type: "receive-packet",
+      packet: encoded.bytes,
+    });
     return parsed;
   });
   expect(result.ok).toBe(true);
@@ -73,14 +85,19 @@ test("native packet intake returns protocol classification", async ({ page }) =>
   expect(result.encrypted).toBe(false);
 });
 
-test("browser capabilities are accepted by the native session", async ({ page }) => {
+test("browser capabilities are accepted by the native session", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule, cleanupClientWasm } =
+      await import(/* @vite-ignore */ String("/src/wasm/client.ts"));
     await initClientWasm();
-    const session = new (getClientWasmModule()!).ClientSessionBinding({});
-    const value = session.process({ type: "configure-browser-capabilities",
+    const module = getClientWasmModule()!;
+    cleanupClientWasm();
+    const session = new module.ClientSessionBinding({});
+    const value = session.process({
+      type: "configure-browser-capabilities",
       webtransport: true,
       datagrams: true,
       hevc: false,
@@ -112,8 +129,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
     const frame = new m.MirrorFrameBinding();
     const processor = new m.AudioProcessorBinding(48000, true, 16);
     const renderer = new m.AsciiRendererBinding(2, 2, 12, false, 0);
-    const session = new m.ClientSessionBinding({});
-    const structuredError = session.process({ type: "unknown-event" });
+    const structuredError = processClientEvent({ type: "unknown-event" });
     if (
       structuredError.code === 0 ||
       typeof structuredError.message !== "string" ||
@@ -143,7 +159,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
           new m.FaceFollowBinding().detect(new Uint8ClampedArray(1), 1, 1, 0),
         ),
         snapshot(() =>
-          session.process({
+          processClientEvent({
             type: "receive-handshake-packet",
             payload: new Uint8Array(1),
           }),
@@ -176,7 +192,6 @@ test("binding failures record actionable C errors", async ({ page }) => {
     } finally {
       m.ErrorBinding.dismiss();
       renderer.delete();
-      session.delete();
       processor.delete();
       frame.delete();
     }
@@ -188,14 +203,23 @@ test("binding failures record actionable C errors", async ({ page }) => {
   }
 });
 
-test("browser session close makes later processing safe and structured", async ({ page }) => {
+test("browser session close makes later processing safe and structured", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
     const module = getClientWasmModule()!;
-    const session = new module.BrowserSessionBinding(false, 0, new Uint8Array(), new Uint8Array(), new Uint8Array());
+    const session = new module.BrowserSessionBinding(
+      false,
+      0,
+      new Uint8Array(),
+      new Uint8Array(),
+      new Uint8Array(),
+    );
     session.close();
     return session.process({ type: "snapshot" });
   });
@@ -206,19 +230,38 @@ test("browser session close makes later processing safe and structured", async (
   expect(result.writable).toBe(false);
 });
 
-test("browser session batches transport events with a bounded ABI", async ({ page }) => {
+test("browser session batches transport events with a bounded ABI", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
     const module = getClientWasmModule()!;
-    const session = new module.BrowserSessionBinding(false, 0, new Uint8Array(), new Uint8Array(), new Uint8Array());
-    const batch = session.processBatch([{ type: "connected" }, { type: "disconnected" }]);
-    const oversized = session.processBatch(Array.from({ length: 129 }, () => ({ type: "snapshot" })));
+    const session = new module.BrowserSessionBinding(
+      false,
+      0,
+      new Uint8Array(),
+      new Uint8Array(),
+      new Uint8Array(),
+    );
+    const batch = session.processBatch([
+      { type: "connected" },
+      { type: "disconnected" },
+    ]);
+    const oversized = session.processBatch(
+      Array.from({ length: 129 }, () => ({ type: "snapshot" })),
+    );
     session.close();
     session.delete();
-    return { length: batch.length, batchOk: batch.every((entry: { ok?: boolean }) => entry.ok), oversized: oversized[0]?.code, oversizedOk: oversized[0]?.ok };
+    return {
+      length: batch.length,
+      batchOk: batch.every((entry: { ok?: boolean }) => entry.ok),
+      oversized: oversized[0]?.code,
+      oversizedOk: oversized[0]?.ok,
+    };
   });
   expect(result.length).toBe(2);
   expect(result.batchOk).toBe(true);
@@ -226,13 +269,16 @@ test("browser session batches transport events with a bounded ABI", async ({ pag
   expect(result.oversizedOk).toBe(false);
 });
 
-test("session UI binding close is idempotent and clears ownership", async ({ page }) => {
+test("session UI binding close is idempotent and clears ownership", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
-    const ui = new (getClientWasmModule()!).SessionUiBinding(false);
+    const ui = new (getClientWasmModule()!.SessionUiBinding)(false);
     const before = { valid: ui.valid(), error: ui.error() };
     ui.close();
     ui.close();
@@ -254,13 +300,16 @@ test("session UI binding close is idempotent and clears ownership", async ({ pag
   expect(result.after.frame).toBeUndefined();
 });
 
-test("mirror frame binding owns and safely releases render state", async ({ page }) => {
+test("mirror frame binding owns and safely releases render state", async ({
+  page,
+}) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule } =
-      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     await initClientWasm();
-    const frame = new (getClientWasmModule()!).MirrorFrameBinding();
+    const frame = new (getClientWasmModule()!.MirrorFrameBinding)();
     const before = { valid: frame.valid(), error: frame.error() };
     frame.close();
     frame.close();
@@ -370,7 +419,7 @@ test("client sessions own independent state and support reinitialization", async
     const overlap = new module.ClientSessionBinding({ width: 48, height: 24 });
     const result = {
       first: first.valid(),
-    overlap: overlap.valid(),
+      overlap: overlap.valid(),
       close: typeof first.close,
       width: module.OptionsBinding.read()?.values.width,
       key: -1,
@@ -431,7 +480,9 @@ test("browser host owns packet output draining without a module callback", async
 }) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const factory = (await import("/src/wasm/dist/client.js")).default;
+    const factory = (
+      await import(/* @vite-ignore */ String("/src/wasm/dist/client.js"))
+    ).default;
     const module = await factory({
       locateFile: (name: string) => "/src/wasm/dist/" + name,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -468,7 +519,9 @@ test("client session exposes lifecycle snapshots and transport events", async ({
 }) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const factory = (await import("/src/wasm/dist/client.js")).default;
+    const factory = (
+      await import(/* @vite-ignore */ String("/src/wasm/dist/client.js"))
+    ).default;
     const module = await factory({
       locateFile: (name: string) => "/src/wasm/dist/" + name,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -520,7 +573,7 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     opening: 1,
     openingOk: true,
     connected: 3,
-    ready: true,
+    ready: false,
     writable: true,
     drained: {
       code: expect.any(Number),
@@ -532,7 +585,7 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     batch: [
       { state: 1, ready: false },
       { state: 3, ready: false },
-      { state: 3, ready: true },
+      { state: 3, ready: false },
     ],
     closedBatchCode: expect.any(Number),
     oversizedBatchCode: expect.any(Number),
@@ -551,7 +604,10 @@ test("mirror initialization applies and validates an options object", async ({
       locateFile: (name: string) => base + name,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
-    const rejectedSession = new m.MirrorSessionBinding({ width: 48, audio_source: 99 });
+    const rejectedSession = new m.MirrorSessionBinding({
+      width: 48,
+      audio_source: 99,
+    });
     const rejected = rejectedSession.error();
     rejectedSession.delete();
     const acceptedSession = new m.MirrorSessionBinding({
@@ -906,7 +962,8 @@ test("renderer copies stay valid across WASM memory growth", async ({
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
     const mirror = new m.MirrorSessionBinding({});
-    if (!mirror.valid()) throw new Error(`mirror initialization failed: ${mirror.error()}`);
+    if (!mirror.valid())
+      throw new Error(`mirror initialization failed: ${mirror.error()}`);
     const frame = new m.MirrorFrameBinding();
     const bad = frame.convert(new Uint8Array(4), 2, 2, true);
     const samples = Float32Array.from({ length: 16384 }, (_, i) =>

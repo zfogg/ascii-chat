@@ -387,7 +387,9 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/traffic.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/security.c
+    ${LIB_ROOT}/network/browser/transport.c
+    ${LIB_ROOT}/network/browser/client.c
+    ${LIB_ROOT}/network/browser/session.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)
@@ -513,8 +515,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/effects.c
     ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/settings.c
@@ -536,13 +536,10 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/client_opts.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/av_state.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/protocol.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_frames.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/discovery.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_host.cpp
     ${LIB_SRC_CLIENT_CRYPTO}

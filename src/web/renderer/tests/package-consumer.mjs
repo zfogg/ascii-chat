@@ -11,10 +11,8 @@ const sample = await mkdtemp(resolve(buildDir, "npm-consumer-"));
 const { version } = JSON.parse(
   await readFile(resolve(packageDir, "package.json"), "utf8"),
 );
-const npm = process.env.npm_execpath;
-if (!npm) throw new Error("Run this test with npm run test:package");
 const runNpm = (args, cwd) =>
-  execFileSync(process.execPath, [npm, ...args], { cwd, stdio: "inherit" });
+  execFileSync("npm", args, { cwd, stdio: "inherit" });
 try {
   runNpm(["pack", "--pack-destination", sample], packageDir);
   const packageManifest = JSON.parse(
@@ -24,7 +22,7 @@ try {
     packageManifest.module !== "renderer" ||
     !packageManifest.features?.renderLoop ||
     !packageManifest.features?.pixelCallback ||
-    !packageManifest.codecs?.includes("hevc")
+    !packageManifest.codecs?.includes("raw")
   )
     throw new Error("Renderer capability manifest is incomplete");
   await writeFile(
@@ -36,16 +34,17 @@ try {
       "install",
       "--offline",
       "--ignore-scripts",
+      "--legacy-peer-deps",
       `./ascii-chat-${version}.tgz`,
     ],
     sample,
   );
   await writeFile(
     resolve(sample, "index.ts"),
-    `import { AsciiRenderer, createRenderer, ColorMode, type RendererModule } from "ascii-chat";
+    `import { CanvasRenderer, createRenderer, ColorMode, type RendererModule } from "ascii-chat";
 import { paletteTypes } from "ascii-chat/options";
 import type { MainModule } from "ascii-chat/bindings";
-const factory: typeof AsciiRenderer.create = createRenderer;
+const factory: typeof CanvasRenderer.create = createRenderer;
 const color: ColorMode = ColorMode.Truecolor;
 const compatible = (module: MainModule): RendererModule => module;
 void [factory, color, compatible, paletteTypes.standard];

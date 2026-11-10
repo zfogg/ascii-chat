@@ -1,6 +1,7 @@
 import { copyFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { protocolVersion } from "../../../scripts/wasm-protocol-version.mjs";
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const build = resolve(
@@ -23,7 +24,7 @@ await writeFile(
   `${JSON.stringify(
     {
       module: "renderer",
-      protocolVersion: "1",
+      protocolVersion,
       codecs: ["raw"],
       transports: [],
       rendererModes: ["luminance", "glyph"],

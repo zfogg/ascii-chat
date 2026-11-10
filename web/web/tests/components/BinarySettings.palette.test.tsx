@@ -93,7 +93,7 @@ test.each([
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, renderer: "luminance" }}
       mode={mode}
       onChange={onChange}
     />,
@@ -156,7 +156,8 @@ test.each([
   fireEvent.click(screen.getByRole("checkbox", { name: "Reduce flicker" }));
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
-    stabilize: true,
+    stabilize: false,
+    stabilizeExplicit: true,
   });
 });
 

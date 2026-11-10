@@ -193,6 +193,31 @@ test("renderer render loop honors an FPS limit and pixel callback", async ({
   expect(result.text).toBe(true);
 });
 
+test("renderer render loop reports frame-source errors and stops", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { createRenderer } = await import("/index.js");
+    const renderer = await createRenderer();
+    let message = "";
+    const loop = renderer.startRenderLoop({
+      getFrame: () => {
+        throw new Error("frame source failed");
+      },
+      onError: (error: unknown) => {
+        message = (error as Error).message;
+      },
+    });
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    const running = loop.running;
+    renderer.dispose();
+    return { message, running };
+  });
+  expect(result).toEqual({ message: "frame source failed", running: false });
+});
+
 test("Embind session owns native initialization and cleanup", async ({
   page,
 }) => {

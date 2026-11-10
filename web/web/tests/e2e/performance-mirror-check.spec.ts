@@ -59,7 +59,9 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
   // may present the terminal through a canvas rather than xterm DOM rows.
   await expect(async () => {
     const hasContent = await page.evaluate(
-      () => (window.__lastAnsiFrame?.length ?? 0) > 0,
+      () =>
+        ((window as Window & { __lastAnsiFrame?: string }).__lastAnsiFrame
+          ?.length ?? 0) > 0,
     );
     expect(hasContent).toBeTruthy();
   }).toPass({ timeout: 3000 });

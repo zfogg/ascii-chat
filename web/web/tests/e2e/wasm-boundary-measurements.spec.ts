@@ -70,7 +70,15 @@ test.describe("WASM browser boundary measurements", () => {
   }) => {
     const result = await rendererPage.evaluate(() => {
       const r = window.__boundary.renderer;
-      return r.render("hello", 0) !== r.render("hello", 0);
+      const first = r.render("hello", 0);
+      const second = r.render("hello", 0);
+      return (
+        first instanceof Uint8ClampedArray &&
+        first.length > 0 &&
+        second instanceof Uint8ClampedArray &&
+        second.length > 0 &&
+        first !== second
+      );
     });
     expect(result).toBe(true);
   });
@@ -85,14 +93,12 @@ test.describe("WASM browser boundary measurements", () => {
     ).toBeGreaterThan(0);
   });
   test("renderer short frame measurement", async ({ rendererPage }) => {
-    expect(
-      (
-        await measure(
-          rendererPage,
-          '() => window.__boundary.renderer.render("ascii", 0)',
-        )
-      ).elapsedMs,
-    ).toBeGreaterThanOrEqual(0);
+    const result = await measure(
+      rendererPage,
+      '() => window.__boundary.renderer.render("ascii", 0)',
+    );
+    expect(result.resultBytes).toBeGreaterThan(0);
+    expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
   });
   test("renderer long frame measurement", async ({ rendererPage }) => {
     expect(
@@ -107,24 +113,28 @@ test.describe("WASM browser boundary measurements", () => {
   test("renderer zalgo mode returns an owned snapshot", async ({
     rendererPage,
   }) => {
-    expect(
-      (
-        await measure(
-          rendererPage,
-          '() => window.__boundary.renderer.render("ascii", 1)',
-        )
-      ).stableResultIdentity,
-    ).toBe(false);
+    const result = await measure(
+      rendererPage,
+      '() => window.__boundary.renderer.render("ascii", 1)',
+    );
+    expect(result.resultBytes).toBeGreaterThan(0);
+    expect(result.stableResultIdentity).toBe(false);
+    expect(result.allResultsUnique).toBe(true);
   });
   test("renderer dimensions remain stable across frames", async ({
     rendererPage,
   }) => {
     expect(
-      await rendererPage.evaluate(
-        () =>
-          JSON.stringify(window.__boundary.renderer.dimensions()) ===
-          JSON.stringify(window.__boundary.renderer.dimensions()),
-      ),
+      await rendererPage.evaluate(() => {
+        const renderer = window.__boundary.renderer;
+        const before = renderer.dimensions();
+        const pixels = renderer.render("frame", 0);
+        return (
+          pixels instanceof Uint8ClampedArray &&
+          pixels.length > 0 &&
+          JSON.stringify(before) === JSON.stringify(renderer.dimensions())
+        );
+      }),
     ).toBe(true);
   });
   test("renderer output byte count is repeatable", async ({ rendererPage }) => {
@@ -144,7 +154,14 @@ test.describe("WASM browser boundary measurements", () => {
   test("client module initializes once", async ({ clientPage }) => {
     await setupClient(clientPage);
     expect(
-      await clientPage.evaluate(() => Boolean(window.__clientModule)),
+      await clientPage.evaluate(async () => {
+        const module = window.__clientModule as BoundaryClientModule & {
+          initClientWasm(): Promise<void>;
+        };
+        const before = module.getClientWasmModule();
+        await module.initClientWasm();
+        return before === module.getClientWasmModule();
+      }),
     ).toBe(true);
   });
   test("client module exposes the coarse session boundary", async ({

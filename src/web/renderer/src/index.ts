@@ -84,7 +84,7 @@ export interface RenderLoopHandle {
 const sourceId = (source: AudioSource) => (source === "microphone" ? 0 : 1);
 
 /** Each instance creates an independent WASM module and owns all its state. */
-export class AsciiRenderer {
+export class CanvasRenderer {
   readonly options: Options;
   private readonly frame: FrameBinding;
   private disposed = false;
@@ -99,7 +99,7 @@ export class AsciiRenderer {
     this.options = new Options(module);
     this.frame = new module.MirrorFrameBinding();
   }
-  static async create(init: RendererInit = {}): Promise<AsciiRenderer> {
+  static async create(init: RendererInit = {}): Promise<CanvasRenderer> {
     const { moduleUrl, ...runtime } = init;
     const path =
       moduleUrl?.toString() ?? new URL("./renderer.js", import.meta.url).href;
@@ -120,7 +120,7 @@ export class AsciiRenderer {
       throw new Error(`Failed to initialize ASCII renderer (${code})`);
     }
     try {
-      return new AsciiRenderer(module, session);
+      return new CanvasRenderer(module, session);
     } catch (error) {
       session.close();
       session.delete();
@@ -128,8 +128,8 @@ export class AsciiRenderer {
     }
   }
   /** Use an already initialized client or mirror module without taking ownership of its session. */
-  static fromModule(module: RendererModule): AsciiRenderer {
-    return new AsciiRenderer(module);
+  static fromModule(module: RendererModule): CanvasRenderer {
+    return new CanvasRenderer(module);
   }
   configure(values: RendererOptions): void {
     this.options.patch(values);
@@ -199,7 +199,7 @@ export class AsciiRenderer {
     const dimensions = raster.dimensions();
     const width = dimensions.width,
       height = dimensions.height;
-    const pixels = AsciiRenderer.rasterize(
+    const pixels = CanvasRenderer.rasterize(
       raster,
       "\x1b[H" + text,
       Number(values["zalgo"] ?? 0),
@@ -270,22 +270,25 @@ export class AsciiRenderer {
     const tick = (timeMs: number) => {
       if (!active) return;
       if (timeMs - last >= interval) {
-        const frame = options.getFrame(timeMs);
-        if (frame) {
-          try {
+        try {
+          const frame = options.getFrame(timeMs);
+          if (frame) {
             const text = this.render(
               frame.pixels,
               frame.width,
               frame.height,
               frame.contain ?? false,
             );
-            last = interval > 0 ? last + interval : timeMs;
+            last =
+              Number.isFinite(last) && interval > 0
+                ? timeMs - ((timeMs - last) % interval)
+                : timeMs;
             options.onFrame?.(text, frame, timeMs);
-          } catch (error) {
-            active = false;
-            options.onError?.(error);
-            return;
           }
+        } catch (error) {
+          active = false;
+          options.onError?.(error);
+          return;
         }
       }
       handle = requestAnimationFrame(tick);
@@ -307,4 +310,4 @@ export class AsciiRenderer {
   }
 }
 export const createRenderer = (init?: RendererInit) =>
-  AsciiRenderer.create(init);
+  CanvasRenderer.create(init);

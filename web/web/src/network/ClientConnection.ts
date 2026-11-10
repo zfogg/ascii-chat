@@ -267,7 +267,7 @@ export class ClientConnection {
         return;
       try {
         const result = drainClientOutputs();
-        if (result.code) throw new Error(`QUIC rekey failed (${result.code})`);
+        if (result.code) throwWasmError(result.code, "QUIC rekey failed");
         for (const { packet } of result.outputs ?? [])
           this.socket?.send(packet);
       } catch (error) {
@@ -317,8 +317,7 @@ export class ClientConnection {
         discovery: this.options.discoveryHandshake,
         mode: this.cryptoMode,
       });
-      if (handshake.code)
-        throw new Error(`Handshake failed (${handshake.code})`);
+      if (handshake.code) throwWasmError(handshake.code, "Handshake failed");
       for (const { packet } of handshake.outputs ?? [])
         this.socket?.send(packet);
     } catch (error) {
@@ -364,8 +363,10 @@ export class ClientConnection {
         type: "receive-packet",
         packet: rawPacket,
       });
-      if (parsedResult.code || !parsedResult.packet)
-        throw new Error(`Packet parse failed (${parsedResult.code})`);
+      if (parsedResult.code)
+        throwWasmError(parsedResult.code, "Packet parse failed");
+      if (!parsedResult.packet)
+        throw new Error("Packet parse returned no packet");
       const parsed = parsedResult.packet;
 
       // Extract payload (skip header)
@@ -384,9 +385,7 @@ export class ClientConnection {
           payload: rawPacket,
         });
         if (handshake.code)
-          throw new Error(
-            `Handshake rejected (${handshake.code}): ${handshake.message ?? "unknown error"}`,
-          );
+          throwWasmError(handshake.code, "Handshake rejected");
         for (const { packet } of handshake.outputs ?? [])
           this.socket?.send(packet);
         const next = handshake.state;
@@ -425,7 +424,7 @@ export class ClientConnection {
             packet: payload,
           });
           if (decryptResult.code || !decryptResult.bytes)
-            throw new Error(`Decryption failed (${decryptResult.code})`);
+            throwWasmError(decryptResult.code, "Decryption failed");
           const plaintext = new Uint8Array(decryptResult.bytes);
           if (!plaintext.length) return;
           // console.log(
@@ -440,10 +439,10 @@ export class ClientConnection {
             type: "receive-packet",
             packet: plaintext,
           });
-          if (innerParsedResult.code || !innerParsedResult.packet)
-            throw new Error(
-              `Inner packet parse failed (${innerParsedResult.code})`,
-            );
+          if (innerParsedResult.code)
+            throwWasmError(innerParsedResult.code, "Inner packet parse failed");
+          if (!innerParsedResult.packet)
+            throw new Error("Inner packet parse returned no packet");
           const innerParsed = innerParsedResult.packet;
           // console.log(
           //   `[ClientConnection] Inner packet type: ${innerParsed.type}`,
@@ -560,7 +559,7 @@ export class ClientConnection {
       clientId: 0,
     });
     if (result.code || !result.bytes)
-      throw new Error(`Serialization failed (${result.code})`);
+      throwWasmError(result.code, "Serialization failed");
     const admission = this.outbound.submit(result.bytes);
     if (
       admission === "congested" &&
@@ -596,7 +595,7 @@ export class ClientConnection {
             clientId: 0,
           });
           if (plainResult.code || !plainResult.bytes)
-            throw new Error(`Serialization failed (${plainResult.code})`);
+            throwWasmError(plainResult.code, "Serialization failed");
           this.socket.send(plainResult.bytes);
           return;
         }
@@ -609,7 +608,7 @@ export class ClientConnection {
           clientId: 0,
         });
         if (plaintextResult.code || !plaintextResult.bytes)
-          throw new Error(`Serialization failed (${plaintextResult.code})`);
+          throwWasmError(plaintextResult.code, "Serialization failed");
         const plaintextPacket = plaintextResult.bytes;
 
         // 2. Encrypt the entire plaintext packet
@@ -619,7 +618,7 @@ export class ClientConnection {
           packet: plaintextPacket,
         });
         if (encryptResult.code || !encryptResult.bytes)
-          throw new Error(`Encryption failed (${encryptResult.code})`);
+          throwWasmError(encryptResult.code, "Encryption failed");
         const ciphertext = encryptResult.bytes;
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
@@ -630,7 +629,7 @@ export class ClientConnection {
           clientId: 0,
         });
         if (encryptedResult.code || !encryptedResult.bytes)
-          throw new Error(`Serialization failed (${encryptedResult.code})`);
+          throwWasmError(encryptedResult.code, "Serialization failed");
         const encryptedPacket = encryptedResult.bytes;
 
         this.socket.send(encryptedPacket);

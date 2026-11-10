@@ -26,7 +26,9 @@ const palettes = (page: Page) =>
 
 const effective = (page: Page) =>
   page.evaluate(async () => {
-    const { currentRemoteRenderSettings } = await import("/src/wasm/client.ts");
+    const { currentRemoteRenderSettings } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
     try {
       return currentRemoteRenderSettings();
     } catch {

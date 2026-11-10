@@ -9,6 +9,7 @@ extern "C" {
 #include "byte_arrays.h"
 #include "client_bytes.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/util/endian.h>
@@ -52,7 +53,9 @@ public:
   }
   emscripten::val protocolInfo() const {
     emscripten::val info = emscripten::val::object();
-    info.set("protocolVersion", 1);
+    info.set("protocolVersion", PROTOCOL_VERSION_MAJOR);
+    info.set("protocolMinorVersion", PROTOCOL_VERSION_MINOR);
+    info.set("protocolPatchVersion", PROTOCOL_VERSION_PATCH);
     info.set("connectionStates", emscripten::val::array());
     const char *states[] = {"disconnected", "connecting", "handshake", "connected", "error"};
     for (unsigned index = 0; index < 5; ++index)
@@ -121,7 +124,7 @@ public:
     if (!owned_)
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized"));
     emscripten::val response = result(0);
-    response.set("ready", browser_transport_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
+    response.set("ready", browser_client_ready(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
@@ -222,6 +225,7 @@ public:
       return result(code);
     }
     if (type == "transport-open") {
+      browser_client_reset_handshake(transport_.get());
       browser_transport_set_state(transport_.get(), BROWSER_TRANSPORT_CONNECTING);
       return result(0);
     }
@@ -230,6 +234,7 @@ public:
       return result(0);
     }
     if (type == "transport-closed") {
+      browser_client_reset_handshake(transport_.get());
       browser_transport_set_state(transport_.get(), BROWSER_TRANSPORT_DISCONNECTED);
       return result(0);
     }

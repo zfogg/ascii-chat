@@ -13,6 +13,7 @@ import {
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, relative } from "node:path";
 import { execFileSync } from "node:child_process";
+import { protocolVersion } from "../../../scripts/wasm-protocol-version.mjs";
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(app, "../..");
@@ -149,7 +150,7 @@ if (
         capabilities: {
           mirror: {
             module: "mirror",
-            protocolVersion: "1",
+            protocolVersion,
             codecs: ["raw", "h264", "hevc", "opus"],
             transports: ["webrtc", "webtransport", "websocket"],
             rendererModes: ["luminance", "glyph"],
@@ -157,7 +158,7 @@ if (
           },
           client: {
             module: "client",
-            protocolVersion: "1",
+            protocolVersion,
             codecs: ["raw", "h264", "hevc", "opus"],
             transports: ["webrtc", "webtransport", "websocket"],
             rendererModes: [],
