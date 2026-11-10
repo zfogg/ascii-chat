@@ -300,9 +300,8 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
      * fresh connection.  Credential-bearing authentication failures remain
      * fatal and are never retried. */
     const options_t *options = options_get();
-    bool has_auth_material = options &&
-                             (options->password[0] || options->encrypt_key[0] || options->server_key[0] ||
-                              options->client_keys[0]);
+    bool has_auth_material = options && (options->password[0] || options->encrypt_key[0] || options->server_key[0] ||
+                                         options->client_keys[0]);
     if (!has_auth_material && !GET_OPTION(no_auth) && attempt_number == 1)
       return true;
     return false;
