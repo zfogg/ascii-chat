@@ -1,4 +1,5 @@
 #pragma once
+#include <libplatform/mutex.h>
 
 /**
  * @file video_frame.h
