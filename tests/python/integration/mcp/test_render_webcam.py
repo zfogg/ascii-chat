@@ -117,6 +117,8 @@ class WebcamTests(unittest.TestCase):
                 self.rejected(self.rpc.call(arguments))
                 self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest)
 
+    @pytest.mark.hardware
+    @pytest.mark.xdist_group("hardware")
     def test_physical_camera(self):
         if self.config.device is None:
             self.skipTest("physical webcam probe requires explicit --device N")
