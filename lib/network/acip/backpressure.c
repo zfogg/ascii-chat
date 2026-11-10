@@ -605,7 +605,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
       pending > limit || info.cost > limit - pending) {
     if (info.encoded)
       discard_stream(out, &info);
-     atomic_fetch_add_u64(&out->congestion, 1);
+    atomic_fetch_add_u64(&out->congestion, 1);
     ASCII_OTEL_ATTR_STRING("network.queue.admission", "congested");
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_CONGESTION, 1);
     mutex_unlock(&out->mutex);
