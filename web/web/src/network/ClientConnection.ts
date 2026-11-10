@@ -469,10 +469,15 @@ export class ClientConnection {
         },
       );
     const result = processClientEvent({
-      type: "encode-packet",
+      // Keep packet construction inside the owned client session. The queue
+      // still admits plaintext ACIP packets so it can apply its local
+      // backpressure policy, but JavaScript does not call a standalone
+      // serializer binding anymore.
+      type: "send-packet",
       packetType,
       payload,
       clientId: 0,
+      encrypt: false,
     });
     if (result.code || !result.bytes)
       throwWasmError(result.code, "Serialization failed");
