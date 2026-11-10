@@ -106,7 +106,7 @@ static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint
   *stream = (outbound_stream_t){.type = type, .stream = id, .last_used_ns = time_get_ns()};
   atomic_store_bool(&stream->needs_keyframe, true);
   // Publish immutable identity only after initialization. The keyframe bit is
-  // atomic so the capture worker can query it without locking the packet queue.
+  // atomic because it is updated independently of the stream identity.
   atomic_store_u64(&out->stream_count, index + 1);
   return stream;
 }
