@@ -201,7 +201,10 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
       const auto end = value.find(';', start);
       const auto directory = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
       if (!directory.empty()) {
-        result.push_back("-I");
+        // Preserve system-header semantics for platform libc include roots.
+        // This matters on Debian ARM multiarch headers, which rely on
+        // include_next and feature macros from the system search order.
+        result.push_back("-isystem");
         result.push_back(directory);
       }
       if (end == std::string::npos)
