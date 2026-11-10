@@ -23,7 +23,7 @@ renderer.configure({
   width,
   height,
   color_mode: ColorMode.Truecolor,
-  render_mode: RenderMode.HalfBlock,
+  render_mode: RenderMode.Foreground,
   renderer: TextRenderer.Glyph,
   stabilize: true,
 });
