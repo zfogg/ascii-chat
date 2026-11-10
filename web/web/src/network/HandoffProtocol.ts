@@ -36,7 +36,9 @@ export class HandoffProtocol {
   private sample(): void {
     if (this.stopped) return;
     try {
-      const result = this.binding?.process({ type: "sample" }) as {
+      const binding = this.binding;
+      if (!binding) throw new Error("Handoff session is unavailable");
+      const result = binding.process({ type: "sample" }) as {
         code: number;
         outputs?: Uint8Array[];
       };
@@ -50,7 +52,9 @@ export class HandoffProtocol {
   }
   receive(type: number, bytes: Uint8Array): boolean {
     if (type !== HANDOFF_PACKET) return false;
-    const actionResult = this.binding?.process({
+    const binding = this.binding;
+    if (!binding) throw new Error("Handoff session is unavailable");
+    const actionResult = binding.process({
       type: "receive",
       packet: bytes,
     }) as {
@@ -63,7 +67,6 @@ export class HandoffProtocol {
         sequence: number;
       } | null;
     };
-    if (!actionResult) throw new Error("Handoff session is unavailable");
     if (actionResult.code)
       throw new Error(`Invalid handoff frame (${actionResult.code})`);
     const action = actionResult.action ?? null;
@@ -85,7 +88,7 @@ export class HandoffProtocol {
       this.send(
         HANDOFF_PACKET,
         (
-          this.binding?.process({
+          binding.process({
             type: "ack",
             kind: 4,
             generation: action.generation,
