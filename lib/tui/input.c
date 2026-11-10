@@ -253,7 +253,7 @@ static bool input_initialize(void) {
     lifecycle_init_commit(&g_input_lifecycle);
   }
   uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
-  while (atomic_load_u64(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING) {
+  while (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING) {
     if (time_get_ns() >= deadline) {
       SET_ERRNO(ERROR_THREAD, "Timed out waiting for terminal input initialization");
       return false;
@@ -281,7 +281,7 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
 
 void ui_input_poll_sync(void) {
 #ifndef NDEBUG
-  if (atomic_load_u64(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
+  if (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
       mutex_trylock(&g_input_mutex) != 0)
     return;
   if (g_switch_pending) {
