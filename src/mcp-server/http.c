@@ -237,6 +237,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
                                  .enable_http2 = true,
                                  .tls_certificate = s->policy.tls_cert,
                                  .tls_private_key = s->policy.tls_key,
+                                 .tls_private_key_password = s->policy.tls_password,
                                  .max_connections = s->policy.max_jobs * 4U,
                                  .max_request_body_bytes = MCP_MAX_INPUT,
                                  .max_response_body_bytes = MCP_MAX_DOWNLOAD,
