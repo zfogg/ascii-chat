@@ -303,6 +303,7 @@ if(USE_MUSL)
     set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
         "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
         "${MUSL_INCLUDE_DIR}"
+        "/usr/include/x86_64-linux-gnu"
         "/usr/include/aarch64-linux-musl"
         "/usr/include/arm-linux-musleabihf"
         "/usr/include/aarch64-linux-gnu"
