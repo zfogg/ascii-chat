@@ -85,6 +85,7 @@ if (
     );
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   if (
+    process.env.VERCEL !== "1" &&
     existsSync(resolve(repo, "src/web")) &&
     manifest.sourceHash !== sourceHash()
   ) {
