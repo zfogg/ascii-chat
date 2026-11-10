@@ -99,6 +99,11 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   values->color_filter = packet->color_filter;
   values->render_mode = NET_TO_HOST_U32(packet->render_mode);
   values->palette_type = NET_TO_HOST_U32(packet->palette_type);
+  // AUTO is a local option sentinel, but older/native/browser senders may
+  // still advertise it. Resolve it at the shared wire boundary so the peer
+  // cannot reject an otherwise valid capabilities packet.
+  if (values->color_mode == TERM_COLOR_AUTO)
+    values->color_mode = TERM_COLOR_TRUECOLOR;
   if (values->palette_type == PALETTE_UNSET)
     values->palette_type = PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, packet->palette_custom, sizeof(values->palette_custom));
