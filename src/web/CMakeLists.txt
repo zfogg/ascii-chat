@@ -65,6 +65,18 @@ endif()
 include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
+
+# defer-tool parses sources outside the compiler target and therefore does not
+# inherit target include directories. Keep the WASM libsodium headers visible
+# to that parser as well as to the actual compiler.
+if(LIBSODIUM_INCLUDE_DIRS)
+    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+if(DEFINED libsodium-wasm-src_SOURCE_DIR)
+    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+        "${libsodium-wasm-src_SOURCE_DIR}/src/libsodium/include")
+endif()
+
 include(${_cmake_dir}/deps/PCRE2.cmake)
 include(${_cmake_dir}/deps/ICU.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
