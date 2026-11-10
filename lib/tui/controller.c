@@ -868,7 +868,8 @@ static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
   g_fps = fps_counter_create();
-  fps_counter_set_effective_fps(g_fps, (unsigned int)atomic_load_int(&g_effective_fps));
+  unsigned int applied_effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+  fps_counter_set_effective_fps(g_fps, applied_effective_fps);
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
@@ -881,6 +882,11 @@ static void *presentation_main(void *unused) {
   const char *stats_page = NULL, *covered_screen = NULL;
   uint64_t stats_since = 0, covered_since = 0;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    unsigned int effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+    if (effective_fps != applied_effective_fps) {
+      fps_counter_set_effective_fps(g_fps, effective_fps);
+      applied_effective_fps = effective_fps;
+    }
     int usage_current = ui_controller_current_screen();
     usage_transition(usage_screen_name(usage_current), &usage_screen, &usage_since);
     ui_presentation_state_t usage_state = ui_controller_state();

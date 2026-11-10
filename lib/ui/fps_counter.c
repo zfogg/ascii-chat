@@ -212,10 +212,12 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
   if (redrawn && value == 0 && counter->last_fps > 0)
     value = counter->last_fps;
+  // `FPS:ddd/ddd` is ten columns wide. Start nine columns before the
+  // terminal's rightmost column so the complete overlay stays on one line.
   if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
     const char *style = terminal_has_dark_background() ? "\033[97;40m" : "\033[30;47m";
-    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 8, style, value,
+    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 9, style, value,
                          counter->effective_fps) == ASCIICHAT_OK)
       counter->last_fps = value;
   }

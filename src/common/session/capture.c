@@ -29,6 +29,7 @@
 #include "session/capture.h"
 #include "session/capture_pacing.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
@@ -128,6 +129,8 @@ struct session_capture_ctx {
 
   /** @brief Frame count for FPS calculation */
   uint64_t frame_count;
+  uint64_t observed_rate_start_ns;
+  uint64_t observed_rate_frames;
 
   /** @brief Start time for FPS calculation (nanoseconds) */
   uint64_t start_time_ns;
@@ -993,6 +996,22 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     // Track frame for FPS reporting
     fps_frame_ns(&ctx->fps_tracker, frame_available_time_ns, "frame captured");
     ctx->frame_count++;
+    if (ctx->observed_rate_start_ns == 0)
+      ctx->observed_rate_start_ns = frame_available_time_ns;
+    ctx->observed_rate_frames++;
+    if (ctx->source && media_source_uses_webcam(ctx->source) && GET_OPTION(fps) == 0 &&
+        frame_available_time_ns - ctx->observed_rate_start_ns >= NS_PER_SEC_INT) {
+      double elapsed = (double)(frame_available_time_ns - ctx->observed_rate_start_ns) / (double)NS_PER_SEC_INT;
+      unsigned int observed_fps = (unsigned int)(ctx->observed_rate_frames / elapsed + 0.5);
+      if (observed_fps > 0) {
+        log_info("Webcam OS delivery: %.3f FPS over %.2f seconds (%llu frames)",
+                 (double)ctx->observed_rate_frames / elapsed, elapsed,
+                 (unsigned long long)ctx->observed_rate_frames);
+        ui_controller_set_effective_fps(observed_fps);
+      }
+      ctx->observed_rate_start_ns = frame_available_time_ns;
+      ctx->observed_rate_frames = 0;
+    }
     atomic_fetch_add_u64(&ctx->frame_serial, 1);
 
     // Log frame-to-frame timing

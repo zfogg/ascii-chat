@@ -299,7 +299,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
         bool within_budget = pixels <= 640 * 480;
         bool best_within_budget = (bestSize >> 32) * (UINT32)bestSize <= 640 * 480;
         if (!bestType || (within_budget && !best_within_budget) ||
-            (within_budget == best_within_budget &&
+             (within_budget == best_within_budget &&
              (candidate > best || (candidate == best && distance < bestDistance)))) {
           if (bestType)
             IMFMediaType_Release(bestType);
@@ -325,7 +325,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_warn("Could not select fastest webcam mode: 0x%08x", hr);
       bestNumerator = 0;
     } else {
-      log_info("Selected webcam capture rate: %.3f FPS", (double)bestNumerator / bestDenominator);
+      log_info("Requested webcam media mode: %.3f advertised FPS", (double)bestNumerator / bestDenominator);
     }
   }
 
@@ -376,7 +376,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       UINT64 actualRate = 0;
       if (SUCCEEDED(IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_RATE, &actualRate)) && (UINT32)actualRate) {
         cam->fps = (double)(actualRate >> 32) / (UINT32)actualRate;
-        log_info("Negotiated webcam capture rate: %.3f FPS", cam->fps);
+        log_info("Webcam OS media type accepted: %.3f advertised FPS (delivery measured during capture)", cam->fps);
       }
     } else {
       // Default resolution if we can't get the actual size
