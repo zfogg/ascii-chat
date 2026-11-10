@@ -683,7 +683,8 @@ test("Discovery authenticates and verifies a real custom-crypto ACDS handshake",
             if (
               serviceLogs.includes(
                 "Crypto handshake completed for WebSocket client",
-              )
+              ) ||
+              serviceLogs.includes("Crypto handshake completed successfully")
             ) {
               handshakeOutcome = "completed";
               return "completed";
