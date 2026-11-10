@@ -48,7 +48,23 @@ typedef struct {
   uint64_t elapsed_ms;
   bool timed_out;
   bool cancelled;
+  asciichat_error_t error;
 } http_render_result_t;
+
+typedef struct http_renderer http_renderer_t;
+typedef struct http_renderer_job http_renderer_job_t;
+
+typedef struct {
+  unsigned max_jobs;
+  size_t max_input_bytes;
+  size_t max_output_bytes;
+  uint32_t timeout_ms;
+  bool restricted;
+  const char *renderer_executable;
+  void (*on_complete)(http_renderer_job_t *job, const http_render_result_t *result, void *user_data);
+  void (*on_error)(http_renderer_job_t *job, asciichat_error_t error, void *user_data);
+  void *user_data;
+} http_renderer_config_t;
 
 typedef struct {
   char **argv;
@@ -72,14 +88,18 @@ typedef struct {
 
 typedef void (*http_renderer_job_fn)(void *context, atomic_t *cancelled);
 
-typedef struct {
+struct http_renderer_job {
   asciichat_thread_t thread;
   atomic_t cancelled;
   atomic_t done;
   http_renderer_job_fn execute;
   void *context;
   bool started;
-} http_renderer_job_t;
+  http_renderer_t *renderer;
+  http_render_request_t request;
+  http_render_result_t result;
+  struct http_renderer_job *next;
+};
 
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
@@ -95,3 +115,12 @@ void http_renderer_job_cancel(http_renderer_job_t *job);
 bool http_renderer_job_is_done(const http_renderer_job_t *job);
 void http_renderer_job_join(http_renderer_job_t *job);
 void http_renderer_job_reset(http_renderer_job_t *job);
+
+asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_config_t *config);
+asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request,
+                                        http_renderer_job_t **out_job);
+asciichat_error_t http_renderer_cancel(http_renderer_job_t *job);
+void http_renderer_reap(http_renderer_t *renderer, bool all);
+void http_renderer_stop(http_renderer_t *renderer);
+void http_renderer_destroy(http_renderer_t **renderer);
+void http_renderer_job_wait(http_renderer_job_t *job);

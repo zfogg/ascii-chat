@@ -6,9 +6,22 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
+struct http_renderer {
+  http_renderer_config_t config;
+  mutex_t lock;
+  http_renderer_job_t *jobs;
+  unsigned active_jobs;
+  bool stopping;
+};
+
+static void *http_renderer_service_main(void *argument);
+
 static void *http_renderer_job_main(void *argument) {
   http_renderer_job_t *job = argument;
-  job->execute(job->context, &job->cancelled);
+  if (job->renderer)
+    (void)http_renderer_service_main(job);
+  else
+    job->execute(job->context, &job->cancelled);
   atomic_store_bool(&job->done, true);
   return NULL;
 }
@@ -49,6 +62,135 @@ void http_renderer_job_reset(http_renderer_job_t *job) {
     http_renderer_job_join(job);
     memset(job, 0, sizeof(*job));
   }
+}
+
+static void *http_renderer_service_main(void *argument) {
+  http_renderer_job_t *job = argument;
+  http_renderer_t *renderer = job->renderer;
+  asciichat_error_t error = ASCIICHAT_OK;
+  memset(&job->result, 0, sizeof(job->result));
+  job->result.mime_type[0] = '\0';
+  if (atomic_load_bool(&job->cancelled)) {
+    job->result.cancelled = true;
+    error = SET_ERRNO(ERROR_CANCELLED, "HTTP render cancelled");
+  } else if (job->request.source.type != HTTP_RENDER_SOURCE_UPLOAD &&
+             job->request.source.type != HTTP_RENDER_SOURCE_FILE) {
+    error = SET_ERRNO(ERROR_INVALID_PARAM, "HTTP renderer source is not supported");
+  } else if (renderer->config.max_input_bytes && job->request.source.body_length > renderer->config.max_input_bytes) {
+    error = SET_ERRNO(ERROR_BUFFER_OVERFLOW, "HTTP render input exceeds the configured limit");
+  } else {
+    error = http_renderer_render_file(job->request.source.path, &job->request, &job->result);
+  }
+  job->result.error = error;
+  if (error == ASCIICHAT_OK) {
+    if (renderer->config.on_complete)
+      renderer->config.on_complete(job, &job->result, renderer->config.user_data);
+  } else if (renderer->config.on_error) {
+    renderer->config.on_error(job, error, renderer->config.user_data);
+  }
+  return NULL;
+}
+
+asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_config_t *config) {
+  if (!out || !config)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP renderer configuration");
+  *out = NULL;
+  http_renderer_t *renderer = SAFE_CALLOC(1, sizeof(*renderer), http_renderer_t *);
+  renderer->config = *config;
+  if (!renderer->config.max_jobs)
+    renderer->config.max_jobs = 1;
+  if (!renderer->config.max_output_bytes)
+    renderer->config.max_output_bytes = HTTP_RENDERER_MAX_OUTPUT;
+  if (mutex_init(&renderer->lock, "http_renderer") != 0) {
+    SAFE_FREE(renderer);
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize HTTP renderer lock");
+  }
+  *out = renderer;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request,
+                                        http_renderer_job_t **out_job) {
+  if (!renderer || !request || !out_job)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP renderer submission");
+  *out_job = NULL;
+  mutex_lock(&renderer->lock);
+  if (renderer->stopping || renderer->active_jobs >= renderer->config.max_jobs) {
+    mutex_unlock(&renderer->lock);
+    return SET_ERRNO(ERROR_BUFFER_FULL, "HTTP renderer has no available job capacity");
+  }
+  http_renderer_job_t *job = SAFE_CALLOC(1, sizeof(*job), http_renderer_job_t *);
+  job->renderer = renderer;
+  job->request = *request;
+  atomic_store_bool(&job->cancelled, false);
+  atomic_store_bool(&job->done, false);
+  if (acthread_create(&job->thread, "http-render", http_renderer_job_main, job)) {
+    SAFE_FREE(job);
+    mutex_unlock(&renderer->lock);
+    return SET_ERRNO(ERROR_THREAD, "Cannot start HTTP renderer job");
+  }
+  job->started = true;
+  job->next = renderer->jobs;
+  renderer->jobs = job;
+  ++renderer->active_jobs;
+  mutex_unlock(&renderer->lock);
+  *out_job = job;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t http_renderer_cancel(http_renderer_job_t *job) {
+  if (!job || !job->renderer)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP renderer job");
+  http_renderer_job_cancel(job);
+  return ASCIICHAT_OK;
+}
+
+void http_renderer_job_wait(http_renderer_job_t *job) {
+  http_renderer_job_join(job);
+}
+
+void http_renderer_reap(http_renderer_t *renderer, bool all) {
+  if (!renderer)
+    return;
+  for (;;) {
+    mutex_lock(&renderer->lock);
+    http_renderer_job_t **link = &renderer->jobs;
+    http_renderer_job_t *job = NULL;
+    while (*link) {
+      if (all || http_renderer_job_is_done(*link)) {
+        job = *link;
+        *link = job->next;
+        --renderer->active_jobs;
+        break;
+      }
+      link = &(*link)->next;
+    }
+    mutex_unlock(&renderer->lock);
+    if (!job)
+      return;
+    http_renderer_job_join(job);
+    http_render_result_destroy(&job->result);
+    SAFE_FREE(job);
+  }
+}
+
+void http_renderer_stop(http_renderer_t *renderer) {
+  if (!renderer)
+    return;
+  mutex_lock(&renderer->lock);
+  renderer->stopping = true;
+  for (http_renderer_job_t *job = renderer->jobs; job; job = job->next)
+    http_renderer_job_cancel(job);
+  mutex_unlock(&renderer->lock);
+}
+
+void http_renderer_destroy(http_renderer_t **renderer) {
+  if (!renderer || !*renderer)
+    return;
+  http_renderer_stop(*renderer);
+  http_renderer_reap(*renderer, true);
+  mutex_destroy(&(*renderer)->lock);
+  SAFE_FREE(*renderer);
 }
 #include <stdlib.h>
 

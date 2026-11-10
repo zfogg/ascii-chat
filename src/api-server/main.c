@@ -30,8 +30,12 @@ static const unsigned char *api_find_bytes(const unsigned char *data, size_t len
   return NULL;
 }
 
+typedef struct {
+  http_renderer_t *renderer;
+} api_server_t;
+
 static void api_request(http_request_t *request, http_response_t *response, void *user_data) {
-  (void)user_data;
+  api_server_t *server = user_data;
   const http_request_info_t *info = http_request_info(request);
   if (!strcmp(info->method, "GET") && !strcmp(info->path, "/health")) {
     static const char body[] = "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
@@ -140,19 +144,26 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.source.body_length = length;
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
-  http_render_result_t result;
-  asciichat_error_t err = http_renderer_render_file(path, &render_request, &result);
+  http_renderer_job_t *render_job = NULL;
+  asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, &render_job);
+  if (err == ASCIICHAT_OK) {
+    http_renderer_job_wait(render_job);
+    err = render_job->result.error;
+  }
   platform_delete_temp_file(path);
   if (err != ASCIICHAT_OK) {
+    if (render_job)
+      http_renderer_reap(server->renderer, false);
     api_finish(response, 422);
     return;
   }
+  http_render_result_t *result = &render_job->result;
   if (!strcmp(format, "json")) {
-    size_t cap = result.ascii_length * 2 + 32;
+    size_t cap = result->ascii_length * 2 + 32;
     char *json = SAFE_MALLOC(cap, char *);
     size_t out = 0; out += (size_t)safe_snprintf(json + out, cap - out, "{\"ascii\":\"");
-    for (size_t i = 0; i < result.ascii_length && out + 8 < cap; ++i) {
-      unsigned char c = (unsigned char)result.ascii[i];
+    for (size_t i = 0; i < result->ascii_length && out + 8 < cap; ++i) {
+      unsigned char c = (unsigned char)result->ascii[i];
       if (c == '"' || c == '\\') json[out++] = '\\';
       if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; } else if (c != '\r') json[out++] = (char)c;
     }
@@ -162,21 +173,22 @@ static void api_request(http_request_t *request, http_response_t *response, void
   } else if (!strcmp(format, "html")) {
     (void)http_response_set_header(response, "Content-Type", "text/html; charset=utf-8");
     (void)http_response_write(response, "<pre>", 5);
-    for (size_t i = 0; i < result.ascii_length; ++i) {
-      const char *s = result.ascii[i] == '&' ? "&amp;" : result.ascii[i] == '<' ? "&lt;" : result.ascii[i] == '>' ? "&gt;" : NULL;
-      (void)http_response_write(response, s ? s : &result.ascii[i], s ? strlen(s) : 1);
+    for (size_t i = 0; i < result->ascii_length; ++i) {
+      const char *s = result->ascii[i] == '&' ? "&amp;" : result->ascii[i] == '<' ? "&lt;" : result->ascii[i] == '>' ? "&gt;" : NULL;
+      (void)http_response_write(response, s ? s : &result->ascii[i], s ? strlen(s) : 1);
     }
     (void)http_response_write(response, "</pre>", 6);
   } else {
     (void)http_response_set_header(response, "Content-Type", "text/plain; charset=utf-8");
-    (void)http_response_write(response, result.ascii, result.ascii_length);
+    (void)http_response_write(response, result->ascii, result->ascii_length);
   }
-  http_render_result_destroy(&result);
+  http_renderer_reap(server->renderer, false);
   api_finish(response, 200);
 }
 
 int api_server_main(void) {
   http_server_t *server = NULL;
+  api_server_t api = {0};
   quic_endpoint_t *http3_endpoint = NULL;
   const char *tls_cert = GET_OPTION(tls_cert);
   const char *tls_key = GET_OPTION(tls_key);
@@ -198,9 +210,21 @@ int api_server_main(void) {
                                  .on_request = api_request};
   if (!config.max_connections)
     config.max_connections = 1;
-  asciichat_error_t err = http_server_init(&server, &config);
+  asciichat_error_t err = ASCIICHAT_OK;
+  http_renderer_config_t renderer_config = {.max_jobs = (unsigned)config.max_connections,
+                                            .max_input_bytes = config.max_request_body_bytes,
+                                            .max_output_bytes = config.max_response_body_bytes,
+                                            .timeout_ms = 10000,
+                                            .restricted = true};
+  err = http_renderer_init(&api.renderer, &renderer_config);
+  if (err != ASCIICHAT_OK)
+    return err;
+  config.on_request = api_request;
+  config.user_data = &api;
+  err = http_server_init(&server, &config);
   if (err != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("API HTTP server initialization failed");
+    http_renderer_destroy(&api.renderer);
     return err;
   }
   if (tls_cert && tls_key) {
@@ -219,6 +243,7 @@ int api_server_main(void) {
     if (err != ASCIICHAT_OK) {
       LOG_ERRNO_IF_SET("API HTTP/3 listener initialization failed");
       http_server_destroy(&server);
+      http_renderer_destroy(&api.renderer);
       return err;
     }
   }
@@ -230,6 +255,7 @@ int api_server_main(void) {
       (void)quic_endpoint_destroy(&http3_endpoint);
     }
     http_server_destroy(&server);
+    http_renderer_destroy(&api.renderer);
     return err;
   }
   platform_systemd_notify_status("API HTTP listener started");
@@ -242,5 +268,6 @@ int api_server_main(void) {
     (void)quic_endpoint_destroy(&http3_endpoint);
   }
   http_server_destroy(&server);
+  http_renderer_destroy(&api.renderer);
   return ASCIICHAT_OK;
 }
