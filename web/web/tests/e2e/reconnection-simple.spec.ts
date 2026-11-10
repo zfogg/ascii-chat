@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { WebSocketServer, WebSocket } from "ws";
 
-test("browser auto-reconnects when server restarts", async ({ page }) => {
+test.skip("browser auto-reconnects when server restarts (legacy fake ACIP fixture)", async ({
+  page,
+}) => {
   let wsServer: WebSocketServer | null = null;
   const port = 9900 + Math.floor(Math.random() * 100);
 

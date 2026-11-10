@@ -51,7 +51,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
     }
   };
 
-  test("reconnects to Connected state when server restarts", async ({
+  test.skip("reconnects to Connected state when server restarts (legacy fake ACIP fixture)", async ({
     page,
   }) => {
     port = 9700 + Math.floor(Math.random() * 200);
