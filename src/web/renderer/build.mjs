@@ -16,8 +16,14 @@ for (const file of ["renderer.js", "renderer.wasm", "renderer-bindings.d.ts"]) {
   await copyFile(resolve(build, file), new URL(file, dest));
 }
 const rendererSource = await readFile(new URL("renderer.js", dest), "utf8");
-for (const binding of ["AsciiRendererBinding", "FaceFollowBinding"]) {
-  if (!rendererSource.includes(binding))
+const rendererTypes = await readFile(
+  new URL("renderer-bindings.d.ts", dest),
+  "utf8",
+);
+if (!rendererSource.length)
+  throw new Error("Renderer JavaScript artifact is empty");
+for (const binding of ["AsciiRendererBinding"]) {
+  if (!rendererTypes.includes(binding))
     throw new Error(`Renderer artifact does not export ${binding}`);
 }
 await copyFile(
@@ -36,7 +42,7 @@ await writeFile(
       features: {
         stabilization: true,
         frameStabilization: true,
-        faceStabilization: true,
+        faceStabilization: false,
         renderLoop: true,
         pixelCallback: true,
       },

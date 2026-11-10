@@ -26,6 +26,7 @@ export type {
   Palette,
 } from "./options.js";
 
+
 /** Rendering keys supported by the shared native options registry. */
 export type RendererOptions = OptionValues &
   Partial<{
