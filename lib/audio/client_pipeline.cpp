@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cmath>
 #include <atomic>
+#include <libplatform/filesystem.h>
 
 // WebRTC headers for AEC3 MUST come before ascii-chat headers to avoid macro conflicts
 // Define required WebRTC macros before including headers
