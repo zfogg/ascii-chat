@@ -151,6 +151,12 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   const auto working_directory = fs::u8path(directory);
   const auto generated_overlay = fs::u8path(generated.parent_path().u8string() + ".vfs.json");
   std::vector<std::string> result = {"-working-directory", directory, "-iquote", source.parent_path().u8string()};
+  if (const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE")) {
+    if (!target->empty()) {
+      result.push_back("-target");
+      result.push_back(*target);
+    }
+  }
   if (compiler.find("emcc") != std::string::npos || compiler.find("em++") != std::string::npos) {
     result.insert(result.end(), {"-target", "wasm32-unknown-emscripten"});
     const fs::path compiler_path = fs::u8path(compiler);

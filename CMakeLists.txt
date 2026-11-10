@@ -307,6 +307,7 @@ if(USE_MUSL)
         "/usr/include/arm-linux-musleabihf"
         "/usr/include/aarch64-linux-gnu"
         "/usr/include/arm-linux-gnueabihf")
+    set(ASCIICHAT_DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
