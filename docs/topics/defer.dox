@@ -125,9 +125,10 @@
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or
  * newer and LLVM 19 or newer libclang; set
- * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. Both backends
- * require a compilation database and a single-config Ninja or Unix Makefiles
- * generator. Their generated C and fail-closed behavior are checked together.
+ * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. The CMake
+ * integration for either backend requires a compilation database and a
+ * single-config Ninja or Unix Makefiles generator. Their generated C and
+ * fail-closed behavior are checked together.
  * Directly compiling an untransformed C source containing defer fails rather
  * than turning cleanup into a no-op. C header functions use per-translation-
  * unit Clang VFS overlays. `ASCIICHAT_DEFER_HEADER_OVERLAYS=AUTO` detects
@@ -153,6 +154,28 @@
  * into a generated protected region are rejected by Clang validation.
  * For C sources, panic instrumentation runs before defer transformation when
  * enabled. Objective-C sources are not instrumented by the panic tool.
+ *
+ * Both implementations can transform several files in one invocation using
+ * `--batch manifest.txt`. Each UTF-8 manifest line contains an input path and
+ * an output path separated by a tab. With `--compilation-database`, pass either
+ * the directory containing `compile_commands.json` or the file itself. The
+ * tool looks up the generated output first, then the original input; multiple
+ * matching commands are rejected because the correct configuration is unclear.
+ *
+ * Without a compilation database, add a third tab-separated field containing
+ * a JSON array of Clang arguments for that file. For example, a manifest can
+ * contain the following lines, with each `<TAB>` replaced by an actual tab:
+ * @code{.txt}
+ * src/a.c<TAB>out/a.c<TAB>["-std=c17", "-DVALUE=1", "-Iinclude"]
+ * src/b.c<TAB>out/b.c<TAB>["-std=c23", "-DVALUE=2", "-Iinclude"]
+ * @endcode
+ * The arrays contain parser arguments, not the compiler executable, input,
+ * output, or shell-quoted command. Relative paths in those arguments resolve
+ * from the tool's working directory; use `-working-directory` when needed.
+ * A two-field row without a database uses no additional arguments. Explicit
+ * per-file arguments and a compilation database cannot be combined. Native
+ * batch mode supports `--dependency-stamps --incremental` with either form;
+ * changing one file's arguments invalidates that file's cached transformation.
  *
  * To inspect an exit without writing a generated file, pass its source line and
  * the C compilation arguments to either implementation:

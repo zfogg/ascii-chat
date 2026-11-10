@@ -6,6 +6,7 @@ import json
 import os
 import random
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -424,6 +425,216 @@ def test_incremental_cache_tracks_each_compile_command(tmp_path: Path, compiler_
     assert isinstance(arguments, list)
     arguments.insert(1, "-DONLY_FIRST=1")
     assert "transformed 1 of 2" in run()
+
+
+@pytest.mark.parametrize("mode", ["per_file", "database_directory", "database_file", "database_command"])
+def test_batch_accepts_per_file_arguments_or_original_source_database(
+    tmp_path: Path, transform_environment: dict[str, str], mode: str
+) -> None:
+    root = tmp_path / "project with spaces"
+    root.mkdir()
+    include_dir = root / "include with spaces"
+    include_dir.mkdir()
+    (include_dir / "definitions.h").write_text('#define OFFSET 0\n', encoding="utf-8")
+    manifest = root / "batch.txt"
+    records, commands, outputs = [], [], []
+    for index, value in ((1, 11), (2, 22)):
+        source = root / f"source{index}.c"
+        output = root / f"generated{index}" / f"source{index}.c"
+        source.write_text('#include "definitions.h"\n#define defer(...) do {} while (0)\n'
+                          f'int f{index}(void) {{ int n=0; {{ defer(n=VALUE+OFFSET); }} return n; }}\n', encoding="utf-8")
+        flags = ["-std=c17", f"-DVALUE={value}", "-I", str(include_dir)]
+        outputs.append((output, flags))
+        records.append(f"{source}\t{output}" + ("\t" + json.dumps(flags) if mode == "per_file" else "") + "\n")
+        argv = [str(CLANG), *flags, "-c", source.name, "-o", f"source{index}.o"]
+        entry: dict[str, str | list[str]] = {"directory": str(root), "file": str(source)}
+        if mode == "database_command":
+            entry["command"] = subprocess.list2cmdline(argv) if sys.platform == "win32" else shlex.join(argv)
+        else:
+            entry["arguments"] = argv
+        commands.append(entry)
+    manifest.write_text("".join(records), encoding="utf-8")
+    command = [*tool_command(transform_environment), f"--batch={manifest}"] if mode == "per_file" else [
+        *tool_command(transform_environment), "--batch", str(manifest)
+    ]
+    if mode != "per_file":
+        database = root / "compile_commands.json"
+        database.write_text(json.dumps(commands), encoding="utf-8")
+        command += ["--compilation-database", str(database if mode == "database_file" else root)]
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    objects = []
+    for index, (output, flags) in enumerate(outputs):
+        obj = root / f"object{index}.o"
+        result = subprocess.run([str(CLANG), *flags, "-c", str(output), "-o", str(obj)],
+                                capture_output=True, text=True, env=transform_environment, check=False)
+        assert result.returncode == 0, result.stderr
+        objects.append(str(obj))
+    main = root / "main.c"
+    main.write_text('int f1(void); int f2(void); int main(void) { return f1()!=11 || f2()!=22; }\n', encoding="utf-8")
+    executable = root / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), str(main), *objects, "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("payload", ['{}', '[1]', '["bad\\u0000arg"]', 'not-json'])
+def test_batch_rejects_invalid_per_file_arguments(
+    tmp_path: Path, transform_environment: dict[str, str], payload: str
+) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text('void f(void) {}\n', encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\t{payload}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), "--batch", str(manifest)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert "JSON array of strings" in result.stderr
+    assert not output.exists()
+
+
+def test_compilation_database_prefers_generated_entry(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text('#if VALUE != 2\n#error wrong command\n#endif\nvoid f(void) {}\n', encoding="utf-8")
+    commands = [
+        {"directory": str(tmp_path), "file": str(path), "arguments": [
+            CLANG, f"-DVALUE={value}", "-c", str(path), "-o", str(tmp_path / f"{value}.o")
+        ]} for path, value in ((source, 1), (output, 2))
+    ]
+    (tmp_path / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--compilation-database", str(tmp_path), str(source), str(output)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.exists()
+
+
+def test_compilation_database_rejects_ambiguous_source_entry(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text('void f(void) {}\n', encoding="utf-8")
+    commands = [{"directory": str(tmp_path), "file": str(source), "arguments": [
+        CLANG, f"-DVALUE={value}", "-c", str(source), "-o", str(tmp_path / f"{value}.o")
+    ]} for value in (1, 2)]
+    (tmp_path / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--compilation-database", str(tmp_path), str(source), str(output)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "expected one compile command" in result.stderr
+    assert not output.exists()
+
+
+def test_compilation_database_removes_symlinked_input_argument(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source, alias, output = tmp_path / "source.c", tmp_path / "alias.c", tmp_path / "output.c"
+    source.write_text('void f(void) {}\n', encoding="utf-8")
+    try:
+        alias.symlink_to(source)
+    except OSError:
+        pytest.skip("file symlinks are not available")
+    commands = [{"directory": str(tmp_path), "file": str(source), "arguments": [
+        CLANG, "-c", str(alias), "-o", str(tmp_path / "source.o")
+    ]}]
+    (tmp_path / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--compilation-database", str(tmp_path), str(source), str(output)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.is_file()
+
+
+@pytest.mark.parametrize("batch", [False, True])
+def test_rejects_explicit_arguments_combined_with_database(
+    tmp_path: Path, transform_environment: dict[str, str], batch: bool
+) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text('void f(void) {}\n', encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f'{source}\t{output}\t["-std=c17"]\n', encoding="utf-8")
+    command = (["--batch", str(manifest)] if batch else [str(source), str(output), "--", "-std=c17"])
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--compilation-database", str(tmp_path), *command],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "cannot be combined with --compilation-database" in result.stderr
+    assert not output.exists()
+
+
+def test_incremental_batch_tracks_per_file_arguments(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary is required")
+    manifest = tmp_path / "batch.txt"
+    records = []
+    for index in (1, 2):
+        source = tmp_path / f"source{index}.c"
+        output = tmp_path / f"generated{index}" / f"source{index}.c"
+        source.write_text('#define defer(...) do {} while (0)\nvoid f(void) { defer((void)0); }\n', encoding="utf-8")
+        records.append((source, output, ["-std=c17", f"-DVALUE={index}"]))
+
+    def run() -> str:
+        manifest.write_text("".join(f"{source}\t{output}\t{json.dumps(flags)}\n" for source, output, flags in records), encoding="utf-8")
+        result = subprocess.run([binary, "--batch", str(manifest), "--dependency-stamps", "--incremental"],
+                                capture_output=True, text=True, env=compiler_environment, check=False)
+        assert result.returncode == 0, result.stderr
+        return result.stderr
+
+    assert "transformed 2 of 2" in run()
+    assert "transformed 0 of 2" in run()
+    records[0][2].append("-DCHANGED=1")
+    assert "transformed 1 of 2" in run()
+
+
+def test_per_file_batch_with_header_overlay_and_dependencies(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    header = tmp_path / "clean.h"
+    header.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'static inline void clean(int *n) { defer(*n = VALUE); }\n', encoding="utf-8")
+    source = tmp_path / "input.c"
+    source.write_text('#include "clean.h"\nint main(void) { int n=0; clean(&n); return n!=7; }\n', encoding="utf-8")
+    output = tmp_path / "generated" / "input.c"
+    manifest, depfile = tmp_path / "batch.txt", tmp_path / "batch.d"
+    flags = ["-std=c17", "-DVALUE=7", "-I", str(tmp_path), "-I", str(ROOT / "include")]
+    manifest.write_text(f"{source}\t{output}\t{json.dumps(flags)}\n", encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--batch", str(manifest), "--header-overlays", "--dependency-stamps",
+         "--depfile", str(depfile)], capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    overlay = Path(str(output.parent) + ".vfs.json")
+    stamp = Path(str(output.parent) + ".deps")
+    assert overlay.is_file() and "clean.h" in stamp.read_text(encoding="utf-8")
+    assert "clean.h" in depfile.read_text(encoding="utf-8")
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), *flags, "-ivfsoverlay", str(overlay), str(output), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_per_file_batch_honors_individual_working_directory(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    build = tmp_path / "build dir"
+    include = build / "relative include"
+    include.mkdir(parents=True)
+    (include / "settings.h").write_text('#define VALUE 7\n', encoding="utf-8")
+    source, output = tmp_path / "source.c", tmp_path / "output.c"
+    source.write_text('#include "settings.h"\n#if VALUE != 7\n#error wrong include\n#endif\nvoid f(void) {}\n', encoding="utf-8")
+    flags = ["-working-directory", str(build), "-I", "relative include"]
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\t{json.dumps(flags)}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), "--batch", str(manifest)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert output.is_file()
 
 
 def test_cpp_defer_handles_scope_exceptions_and_cancellation(tmp_path: Path) -> None:

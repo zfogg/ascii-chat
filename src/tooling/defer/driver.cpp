@@ -13,6 +13,7 @@
 #include <llvm/Support/Program.h>
 #include <llvm/Support/SHA256.h>
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <functional>
 #include <iterator>
@@ -46,6 +47,47 @@ struct CompilationDatabase {
     clang_CompilationDatabase_dispose(value);
   }
 };
+
+std::string database_path_key(const fs::path &path) {
+  auto key = fs::weakly_canonical(fs::absolute(path)).generic_u8string();
+#ifdef _WIN32
+  std::transform(key.begin(), key.end(), key.begin(),
+                 [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+#endif
+  return key;
+}
+
+std::size_t exact_command_count(const fs::path &directory, CXCompilationDatabase database, const fs::path &file) {
+  struct Entry {
+    fs::file_time_type time;
+    std::uintmax_t size;
+    std::map<std::string, std::size_t> counts;
+  };
+  static std::mutex mutex;
+  static std::map<std::string, Entry> cache;
+  std::lock_guard<std::mutex> lock(mutex);
+  const auto filename = directory / "compile_commands.json";
+  const auto key = database_path_key(filename);
+  const auto time = fs::last_write_time(filename);
+  const auto size = fs::file_size(filename);
+  auto found = cache.find(key);
+  if (found == cache.end() || found->second.time != time || found->second.size != size) {
+    Entry entry{time, size, {}};
+    auto commands = clang_CompilationDatabase_getAllCompileCommands(database);
+    if (commands) {
+      for (unsigned i = 0; i < clang_CompileCommands_getSize(commands); ++i) {
+        const auto command = clang_CompileCommands_getCommand(commands, i);
+        const auto workdir = fs::u8path(consume_string(clang_CompileCommand_getDirectory(command)));
+        const auto source = fs::u8path(consume_string(clang_CompileCommand_getFilename(command)));
+        ++entry.counts[database_path_key(workdir / source)];
+      }
+      clang_CompileCommands_dispose(commands);
+    }
+    found = cache.insert_or_assign(key, std::move(entry)).first;
+  }
+  const auto count = found->second.counts.find(database_path_key(file));
+  return count == found->second.counts.end() ? 0 : count->second;
+}
 
 std::string compiler_resource_dir(const std::string &compiler) {
   static std::map<std::string, std::string> cached;
@@ -88,11 +130,14 @@ std::string compiler_resource_dir(const std::string &compiler) {
 std::vector<std::string> compile_arguments(const fs::path &database, const fs::path &generated,
                                            const fs::path &source) {
   CompilationDatabase db(database);
-  CXCompileCommands commands = clang_CompilationDatabase_getCompileCommands(db.value, generated.u8string().c_str());
+  const auto selected = exact_command_count(database, db.value, generated) ? generated : source;
+  if (exact_command_count(database, db.value, selected) != 1)
+    throw std::runtime_error("expected one compile command for " + selected.u8string());
+  CXCompileCommands commands = clang_CompilationDatabase_getCompileCommands(db.value, selected.u8string().c_str());
   if (!commands || clang_CompileCommands_getSize(commands) != 1) {
     if (commands)
       clang_CompileCommands_dispose(commands);
-    throw std::runtime_error("expected one compile command for " + generated.u8string());
+    throw std::runtime_error("expected one compile command for " + selected.u8string());
   }
   const auto command = clang_CompileCommands_getCommand(commands, 0);
   const auto directory = consume_string(clang_CompileCommand_getDirectory(command));
@@ -123,7 +168,7 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     }
     if (value == "--" || value == "-c" || value == "-MD" || value == "-MMD" || value == "-MP" ||
         (!value.empty() && value[0] != '-' &&
-         (working_directory / fs::u8path(value)).lexically_normal() == generated)) {
+         database_path_key(working_directory / fs::u8path(value)) == database_path_key(selected))) {
       ++i;
       continue;
     }
@@ -131,8 +176,11 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     ++i;
   }
   if (std::none_of(result.begin(), result.end(), [](const auto &arg) { return arg.rfind("-resource-dir", 0) == 0; })) {
+    auto compiler_path = fs::u8path(compiler);
+    if (compiler_path.is_relative() && compiler_path.has_parent_path())
+      compiler_path = (working_directory / compiler_path).lexically_normal();
     result.push_back("-resource-dir");
-    result.push_back(compiler_resource_dir(compiler));
+    result.push_back(compiler_resource_dir(compiler_path.u8string()));
   }
   if (const auto extra = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS")) {
     const std::string &value = *extra;

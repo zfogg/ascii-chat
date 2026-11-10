@@ -8,6 +8,7 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Process.h>
+#include <llvm/Support/JSON.h>
 #include <llvm/Support/Threading.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ADT/StringExtras.h>
@@ -36,7 +37,9 @@ llvm::cl::opt<std::string> plan_stage("plan-stage", llvm::cl::desc("Build stage 
 llvm::cl::opt<std::string> plan_output("plan-output", llvm::cl::desc("Write generated CMake build rules"));
 llvm::cl::opt<std::string> build_directory("build-dir", llvm::cl::desc("Build directory for batch planning"));
 llvm::cl::list<std::string> sources(llvm::cl::Positional, llvm::cl::desc("<source files>"), llvm::cl::ZeroOrMore);
-llvm::cl::opt<std::string> compilation_database("compilation-database", llvm::cl::desc("CMake compilation database"));
+llvm::cl::opt<std::string>
+    compilation_database("compilation-database",
+                         llvm::cl::desc("Compilation database directory or compile_commands.json"));
 llvm::cl::opt<std::string> depfile("depfile", llvm::cl::desc("Write header dependencies"));
 llvm::cl::opt<bool> dependency_stamps("dependency-stamps", llvm::cl::desc("Write per-output dependency stamps"));
 llvm::cl::opt<bool> incremental("incremental", llvm::cl::desc("Reuse unchanged batch transformations"));
@@ -47,7 +50,9 @@ llvm::cl::opt<std::string> header_overlay("header-overlay",
 llvm::cl::opt<bool>
     header_overlays("header-overlays",
                     llvm::cl::desc("Write an experimental Clang header overlay for every batch source"));
-llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
+llvm::cl::opt<std::string>
+    batch("batch",
+          llvm::cl::desc("Transform manifest source/output pairs with optional per-file JSON argument arrays"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
 llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libclang shared library"));
@@ -302,6 +307,8 @@ int main(int argc, char **argv) {
     if (!compilation_database.empty())
       options.compilation_database =
           std::filesystem::absolute(std::filesystem::u8path(compilation_database.getValue()));
+    if (options.compilation_database.filename() == "compile_commands.json")
+      options.compilation_database = options.compilation_database.parent_path();
     const auto depfile_path = depfile.empty() ? std::filesystem::path{}
                                               : std::filesystem::absolute(std::filesystem::u8path(depfile.getValue()));
     defer_tool::ClangIndex index;
@@ -324,6 +331,7 @@ int main(int argc, char **argv) {
     }
     std::vector<defer_tool::FileDependencies> dependencies;
     std::vector<std::pair<std::filesystem::path, std::filesystem::path>> inputs;
+    std::vector<std::vector<std::string>> per_file_arguments;
     if (!batch.empty()) {
       if (!options.header_overlay.empty())
         throw std::runtime_error("--header-overlay currently accepts one source at a time");
@@ -336,10 +344,34 @@ int main(int argc, char **argv) {
         if (!line.empty() && line.back() == '\r')
           line.pop_back();
         auto separator = line.find('\t');
-        if (separator == std::string::npos || line.find('\t', separator + 1) != std::string::npos)
+        const auto third = separator == std::string::npos ? std::string::npos : line.find('\t', separator + 1);
+        if (separator == std::string::npos || separator == 0 ||
+            (third != std::string::npos && line.find('\t', third + 1) != std::string::npos))
           throw std::runtime_error("invalid source/output batch record");
-        inputs.emplace_back(std::filesystem::u8path(line.substr(0, separator)),
-                            std::filesystem::u8path(line.substr(separator + 1)));
+        const auto output_text = line.substr(separator + 1, third == std::string::npos ? third : third - separator - 1);
+        if (output_text.empty())
+          throw std::runtime_error("invalid source/output batch record");
+        inputs.emplace_back(std::filesystem::u8path(line.substr(0, separator)), std::filesystem::u8path(output_text));
+        std::vector<std::string> arguments;
+        if (third != std::string::npos) {
+          if (!options.compilation_database.empty())
+            throw std::runtime_error("per-file arguments cannot be combined with --compilation-database");
+          auto parsed = llvm::json::parse(line.substr(third + 1));
+          if (!parsed) {
+            llvm::consumeError(parsed.takeError());
+            throw std::runtime_error("batch arguments must be a JSON array of strings");
+          }
+          const auto *array = parsed->getAsArray();
+          if (!array)
+            throw std::runtime_error("batch arguments must be a JSON array of strings");
+          for (const auto &item : *array) {
+            const auto value = item.getAsString();
+            if (!value || value->contains('\0'))
+              throw std::runtime_error("batch arguments must be a JSON array of strings without NUL bytes");
+            arguments.push_back(value->str());
+          }
+        }
+        per_file_arguments.push_back(std::move(arguments));
       }
     } else {
       if (header_overlays)
@@ -347,7 +379,10 @@ int main(int argc, char **argv) {
       if (sources.size() < 2)
         throw std::runtime_error("expected source and output paths");
       options.clang_arguments.assign(sources.begin() + 2, sources.end());
+      if (!options.compilation_database.empty() && !options.clang_arguments.empty())
+        throw std::runtime_error("explicit arguments cannot be combined with --compilation-database");
       inputs.emplace_back(std::filesystem::u8path(sources[0]), std::filesystem::u8path(sources[1]));
+      per_file_arguments.push_back(options.clang_arguments);
     }
     if (!options.header_overlay.empty() && (!depfile_path.empty() || dependency_stamps || incremental))
       throw std::runtime_error("--header-overlay cannot yet be combined with dependency files or incremental caching");
@@ -431,8 +466,8 @@ int main(int argc, char **argv) {
     }
     if (jobs.getNumOccurrences() && jobs == 0)
       throw std::runtime_error("--jobs must be at least 1");
-    if (incremental && (batch.empty() || !dependency_stamps || options.compilation_database.empty()))
-      throw std::runtime_error("--incremental requires --batch, --dependency-stamps, and --compilation-database");
+    if (incremental && (batch.empty() || !dependency_stamps))
+      throw std::runtime_error("--incremental requires --batch and --dependency-stamps");
     if (!shared_cache.empty() && !incremental)
       throw std::runtime_error("--shared-cache requires --incremental");
     if (incremental) {
@@ -480,9 +515,16 @@ int main(int argc, char **argv) {
         contexts[i] = base_context + (options.preamble ? "preamble=1\n" : "preamble=0\n") +
                       (header_overlays ? "header-overlays=1\n" : "header-overlays=0\n");
         auto shared_context = shared_base_context + (options.preamble ? "preamble=1\n" : "preamble=0\n");
+        if (options.compilation_database.empty()) {
+          const auto cwd = "working-directory=" + std::filesystem::current_path().generic_u8string() + "\n";
+          contexts[i] += cwd;
+          shared_context += cwd;
+        }
         bool next_is_path = false;
         const auto arguments =
-            defer_tool::compilation_arguments(options.compilation_database, inputs[i].second, inputs[i].first);
+            options.compilation_database.empty()
+                ? per_file_arguments[i]
+                : defer_tool::compilation_arguments(options.compilation_database, inputs[i].second, inputs[i].first);
         file_arguments[i] = arguments;
         for (const auto &argument : arguments) {
           contexts[i] += std::to_string(argument.size()) + ":" + argument + "\n";
@@ -525,6 +567,8 @@ int main(int argc, char **argv) {
               continue;
             }
             auto file_options = options;
+            if (options.compilation_database.empty())
+              file_options.clang_arguments = per_file_arguments[i];
             if (header_overlays) {
               file_options.header_overlay = overlay_paths[i];
               for (std::size_t j = 0; j < overlay_paths.size(); ++j)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import functools
 import hashlib
 import json
 import os
@@ -863,12 +864,32 @@ class Transformer:
         return runtime_check + self.line_directive(0) + output
 
 
+@functools.lru_cache(maxsize=8)
+def compilation_database_files(directory: Path, mtime: int, size: int) -> dict[str, int]:
+    del mtime, size
+    database = cindex.CompilationDatabase.fromDirectory(str(directory))
+    commands = database.getAllCompileCommands()
+    counts: dict[str, int] = {}
+    if commands is not None:
+        for command in commands:
+            key = os.path.normcase(str((Path(command.directory) / command.filename).resolve()))
+            counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def compilation_arguments(directory: Path, generated: Path, source: Path) -> list[str]:
     """Recover the target's compile options from CMake's compilation database."""
-    database = cindex.CompilationDatabase.fromDirectory(str(directory.resolve()))
-    commands = database.getCompileCommands(str(generated.resolve()))
+    directory = directory.resolve()
+    database = cindex.CompilationDatabase.fromDirectory(str(directory))
+    metadata = (directory / "compile_commands.json").stat()
+    counts = compilation_database_files(directory, metadata.st_mtime_ns, metadata.st_size)
+    generated, source = generated.resolve(), source.resolve()
+    selected = generated if counts.get(os.path.normcase(str(generated)), 0) else source
+    if counts.get(os.path.normcase(str(selected)), 0) != 1:
+        raise TransformError(f"expected one compile command for {selected}")
+    commands = database.getCompileCommands(str(selected))
     if commands is None or len(commands) != 1:
-        raise TransformError(f"expected one compile command for {generated}")
+        raise TransformError(f"expected one compile command for {selected}")
     command = commands[0]
     arguments = list(command.arguments)
     if not arguments:
@@ -895,7 +916,7 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
             continue
         if (
             value in ("--", "-c", "-MD", "-MMD", "-MP")
-            or Path(value).resolve() == generated.resolve()
+            or Path(value).resolve() == selected
         ):
             index += 1
             continue
@@ -1080,26 +1101,46 @@ def transform_with_header_overlay(
 
 def batch_main() -> int:
     """Transform a CMake batch in one interpreter and emit one combined depfile."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--batch", type=Path, required=True)
-    parser.add_argument("--libclang", type=Path, required=True)
-    parser.add_argument("--compilation-database", type=Path, required=True)
-    parser.add_argument("--depfile", type=Path, required=True)
+    parser = argparse.ArgumentParser(
+        description="Transform a batch using per-file Clang arguments or a compilation database.",
+        epilog="Manifest rows are input<TAB>output with an optional <TAB>JSON array of per-file Clang arguments.",
+    )
+    parser.add_argument("--batch", type=Path, required=True, help="UTF-8 batch manifest")
+    parser.add_argument("--libclang", type=Path)
+    parser.add_argument("--compilation-database", type=Path, help="database directory or compile_commands.json")
+    parser.add_argument("--depfile", type=Path)
     parser.add_argument("--dependency-stamps", action="store_true")
     parser.add_argument("--header-overlays", action="store_true")
     args = parser.parse_args()
-    cindex.Config.set_library_file(str(args.libclang.resolve()))
+    if args.libclang:
+        cindex.Config.set_library_file(str(args.libclang.resolve()))
     manifest = args.batch.resolve()
-    database = args.compilation_database.resolve()
-    depfile = args.depfile.resolve()
+    database = args.compilation_database.resolve() if args.compilation_database else None
+    if database and database.name == "compile_commands.json":
+        database = database.parent
+    depfile = args.depfile.resolve() if args.depfile else None
     original_cwd = Path.cwd()
     original_argv = sys.argv
     dependencies: list[str] = []
     primary = ""
     try:
         records = [line.split("\t") for line in manifest.read_text(encoding="utf-8").splitlines()]
-        if any(len(record) != 2 for record in records):
+        if any(len(record) not in (2, 3) or not record[0] or not record[1] for record in records):
             raise TransformError("invalid source/output batch record")
+        per_file_arguments: list[list[str]] = []
+        for record in records:
+            if len(record) == 3:
+                if database:
+                    raise TransformError("per-file arguments cannot be combined with --compilation-database")
+                try:
+                    arguments = json.loads(record[2])
+                except json.JSONDecodeError as exc:
+                    raise TransformError("batch arguments must be a JSON array of strings") from exc
+                if not isinstance(arguments, list) or any(not isinstance(arg, str) or "\0" in arg for arg in arguments):
+                    raise TransformError("batch arguments must be a JSON array of strings without NUL bytes")
+                per_file_arguments.append(arguments)
+            else:
+                per_file_arguments.append([])
         sources = [Path(record[0]) for record in records]
         outputs = [Path(record[1]) for record in records]
         if any(paths_alias(output, source) for output in outputs for source in sources):
@@ -1107,43 +1148,43 @@ def batch_main() -> int:
         stamp_paths = [Path(str(output.parent) + ".deps") for output in outputs] if args.dependency_stamps else []
         if len({stamp.resolve() for stamp in stamp_paths}) != len(stamp_paths):
             raise TransformError("dependency stamp paths must be unique")
-        if any(paths_alias(stamp, depfile) for stamp in stamp_paths):
+        if depfile and any(paths_alias(stamp, depfile) for stamp in stamp_paths):
             raise TransformError("dependency stamp must not overwrite the depfile")
-        part_paths = [Path(str(output.parent) + ".depfile") for output in outputs]
+        part_paths = [Path(str(output.parent) + ".depfile") for output in outputs] if depfile else []
         overlay_paths = [Path(str(output.parent) + ".vfs.json") for output in outputs] if args.header_overlays else []
-        if any(paths_alias(part, depfile) for part in part_paths):
+        if depfile and any(paths_alias(part, depfile) for part in part_paths):
             raise TransformError("batch depfile must not overwrite a per-file depfile")
-        for candidate in [depfile, *part_paths, *stamp_paths]:
+        for candidate in [*([depfile] if depfile else []), *part_paths, *stamp_paths]:
             if any(paths_alias(candidate, protected) for protected in [*sources, *outputs]):
                 raise TransformError("depfile must not overwrite an input source or output")
-        protected = [manifest, depfile, *part_paths, *stamp_paths, *sources, *outputs]
+        protected = [manifest, *([depfile] if depfile else []), *part_paths, *stamp_paths, *sources, *outputs]
         for index, overlay in enumerate(overlay_paths):
             if any(paths_alias(overlay, path) for path in [*protected, *overlay_paths[:index]]):
                 raise TransformError("header overlay must not overwrite a batch input or output")
-        for index, (source, output) in enumerate(records):
+        for index, record in enumerate(records):
+            source, output = record[:2]
             part = Path(str(Path(output).parent) + ".depfile")
             sys.argv = [
                 original_argv[0],
-                "--compilation-database",
-                str(database),
-                "--depfile",
-                str(part),
+                *(["--compilation-database", str(database)] if database else []),
+                *(["--depfile", str(part)] if depfile else []),
                 *(["--header-overlay", str(overlay_paths[index])] if args.header_overlays else []),
                 *(["--dependency-stamp", str(Path(output).parent) + ".deps"] if args.dependency_stamps else []),
                 source,
                 output,
+                *(["--", *per_file_arguments[index]] if not database else []),
             ]
             os.chdir(original_cwd)
             current_protected = [*protected, *overlay_paths[:index], *overlay_paths[index + 1 :]] if args.header_overlays else None
             if main(current_protected) != 0:
                 return 1
-            target, inputs = part.read_text(encoding="utf-8").split(": ", 1)
-            if not primary:
-                primary = target
-            dependencies.append(inputs.strip())
-        depfile.write_text(
-            primary + ": " + " ".join(dependencies) + "\n", encoding="utf-8"
-        )
+            if depfile:
+                target, inputs = part.read_text(encoding="utf-8").split(": ", 1)
+                if not primary:
+                    primary = target
+                dependencies.append(inputs.strip())
+        if depfile:
+            depfile.write_text(primary + ": " + " ".join(dependencies) + "\n", encoding="utf-8")
         return 0
     except (TransformError, OSError) as exc:
         print(f"defer-tool: {exc}", file=sys.stderr)
@@ -1234,6 +1275,10 @@ def main(protected_paths: list[Path] | None = None) -> int:
         if args.dependency_stamp and args.depfile and paths_alias(args.dependency_stamp, args.depfile):
             raise TransformError("dependency stamp must not overwrite the depfile")
         if args.compilation_database:
+            if clang_args:
+                raise TransformError("explicit arguments cannot be combined with --compilation-database")
+            if args.compilation_database.name == "compile_commands.json":
+                args.compilation_database = args.compilation_database.parent
             clang_args = compilation_arguments(
                 args.compilation_database, args.output, args.source
             )
@@ -1316,4 +1361,4 @@ def main(protected_paths: list[Path] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(batch_main() if "--batch" in sys.argv[1:] else main())
+    raise SystemExit(batch_main() if any(arg == "--batch" or arg.startswith("--batch=") for arg in sys.argv[1:]) else main())
