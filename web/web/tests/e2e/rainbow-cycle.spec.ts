@@ -147,7 +147,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
         }
 
         // Find first truecolor ANSI code: ESC[38;2;R;G;Bm
-        const ansiRegex = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`);
+        const ansiRegex = /\x1b\[38;2;(\d+);(\d+);(\d+)m/;
         const match = frame.match(ansiRegex);
         if (!match) {
           console.log(
