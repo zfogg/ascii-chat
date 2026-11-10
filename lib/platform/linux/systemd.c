@@ -84,8 +84,7 @@ void platform_systemd_journal_log(int level, const char *message, const char *fi
   (void)file;
   (void)line;
   (void)function;
-  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "ascii-chat",
-                        NULL);
+  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "ascii-chat", NULL);
 #endif
 #else
   (void)level;
