@@ -142,14 +142,17 @@ static void run_job(void *arg, atomic_t *cancelled) {
   http_renderer_process_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT && job->request.source_path[0]) {
+  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT &&
+      (job->request.source_path[0] || job->request.source_url[0])) {
     http_render_request_t shared_request;
     http_render_request_init(&shared_request);
-    shared_request.source.type = HTTP_RENDER_SOURCE_FILE;
-    SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
+    shared_request.source.type = job->request.source_url[0] ? HTTP_RENDER_SOURCE_URL : HTTP_RENDER_SOURCE_FILE;
+    if (job->request.source_url[0]) SAFE_STRNCPY(shared_request.source.url, job->request.source_url, sizeof(shared_request.source.url));
+    else SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
     shared_request.options = job->request.options;
     http_render_result_t shared_result = {0};
-    asciichat_error_t shared_error = http_renderer_render_file(job->request.source_path, &shared_request,
+    const char *shared_source = job->request.source_url[0] ? job->request.source_url : job->request.source_path;
+    asciichat_error_t shared_error = http_renderer_render_file(shared_source, &shared_request,
                                                                &shared_result, cancelled);
     memset(&result, 0, sizeof(result));
     result.elapsed_ms = shared_result.elapsed_ms;

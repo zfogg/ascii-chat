@@ -356,6 +356,7 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, http_r
   if (!yyjson_is_str(v) || !*yyjson_get_str(v) || yyjson_get_len(v) > 4000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
+  SAFE_STRNCPY(r->source_url, url, sizeof(r->source_url));
   if (strncmp(url, "https://", sizeof("https://") - 1) && strncmp(url, "http://", sizeof("http://") - 1) &&
       (p->restricted ||
        (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))

@@ -90,12 +90,15 @@ static void *http_renderer_service_main(void *argument) {
     job->result.cancelled = true;
     error = SET_ERRNO(ERROR_CANCELLED, "HTTP render cancelled");
   } else if (job->request.source.type != HTTP_RENDER_SOURCE_UPLOAD &&
-             job->request.source.type != HTTP_RENDER_SOURCE_FILE) {
+             job->request.source.type != HTTP_RENDER_SOURCE_FILE &&
+             job->request.source.type != HTTP_RENDER_SOURCE_URL) {
     error = SET_ERRNO(ERROR_INVALID_PARAM, "HTTP renderer source is not supported");
   } else if (renderer->config.max_input_bytes && job->request.source.body_length > renderer->config.max_input_bytes) {
     error = SET_ERRNO(ERROR_BUFFER_OVERFLOW, "HTTP render input exceeds the configured limit");
   } else {
-    error = http_renderer_render_file(job->request.source.path, &job->request, &job->result, &job->cancelled);
+    const char *source = job->request.source.type == HTTP_RENDER_SOURCE_URL ? job->request.source.url
+                                                                             : job->request.source.path;
+    error = http_renderer_render_file(source, &job->request, &job->result, &job->cancelled);
   }
   job->result.error = error;
   return NULL;
