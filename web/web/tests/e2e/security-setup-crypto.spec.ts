@@ -667,7 +667,7 @@ test("Discovery authenticates and verifies a real custom-crypto ACDS handshake",
       .getByRole("button", { name: "Save security settings" })
       .click({ force: true });
     await page
-      .getByRole("button", { name: "Join session" })
+      .getByRole("button", { name: "Create session" })
       .click({ force: true });
 
     let handshakeOutcome = "pending";
