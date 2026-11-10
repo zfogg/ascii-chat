@@ -16,7 +16,7 @@ test("real browser upload reduces load on collapse and recovers with fresh decod
         framerate: 30,
         bitrate: 3_000_000,
         latencyMode: "realtime",
-        hardwareAcceleration: "prefer-hardware",
+        hardwareAcceleration: "no-preference",
         avc: { format: "annexb" },
       });
       return (
