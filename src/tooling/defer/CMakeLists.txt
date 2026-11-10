@@ -18,8 +18,8 @@ set_target_properties(ascii-defer-core PROPERTIES CXX_STANDARD 17 CXX_STANDARD_R
 ascii_configure_llvm_host_tool(ascii-defer-core)
 target_link_libraries(ascii-defer-core PUBLIC ascii-llvm-support ascii-libclang ${CMAKE_DL_LIBS})
 
-option(ASCIICHAT_DEFER_BUILD_FUZZER "Build the libFuzzer transformer target" OFF)
-if(ASCIICHAT_DEFER_BUILD_FUZZER)
+option(DEFER_BUILD_FUZZER "Build the libFuzzer transformer target" OFF)
+if(DEFER_BUILD_FUZZER)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR WIN32)
         message(FATAL_ERROR "The defer fuzzer requires Clang with libFuzzer on a Unix host")
     endif()

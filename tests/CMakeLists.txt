@@ -80,7 +80,7 @@ if(BUILD_TESTS)
     set_tests_properties(python-cmake PROPERTIES LABELS "unit;python;build")
     if(TARGET ascii-defer-native)
         set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
-            "ASCIICHAT_DEFER_TEST_BINARY=$<TARGET_FILE:ascii-defer-native>")
+            "DEFER_TEST_BINARY=$<TARGET_FILE:ascii-defer-native>")
         if(TARGET ascii-libclang)
             set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
                 "LIBCLANG_LIBRARY_FILE=$<TARGET_FILE:ascii-libclang>")

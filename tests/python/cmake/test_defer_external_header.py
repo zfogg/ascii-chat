@@ -13,7 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 
-@pytest.mark.parametrize("tool_variable", ["ASCIICHAT_DEFER_TEST_BINARY", "DEFER_EXTERNAL_TEST_BINARY"])
+@pytest.mark.parametrize("tool_variable", ["DEFER_TEST_BINARY", "DEFER_EXTERNAL_TEST_BINARY"])
 def test_project_header_is_accepted_by_defer_tool(tmp_path: Path, tool_variable: str) -> None:
     tool = os.environ.get(tool_variable)
     compiler = shutil.which("clang")

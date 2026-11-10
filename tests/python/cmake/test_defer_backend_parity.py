@@ -15,7 +15,7 @@ PYTHON_TOOL = ROOT / "src" / "tooling" / "defer" / "defer.py"
 
 @pytest.fixture
 def native_binary() -> Path:
-    name = os.environ.get("ASCIICHAT_DEFER_TEST_BINARY")
+    name = os.environ.get("DEFER_TEST_BINARY")
     if not name:
         pytest.skip("native defer binary was not supplied")
     path = Path(name)

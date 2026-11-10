@@ -98,8 +98,8 @@ int main() {
     const std::string header_text = "#if ENABLE_CLEANUP\nstatic inline void clean(int *x) { defer((*x)++); }\n#endif\n";
     const std::string main_text =
         "#include \"marker.h\"\n#define ENABLE_CLEANUP 1\n#include \"local.h\"\nvoid f(int *x) { defer((*x)++); }\n";
-    std::ofstream(marker) << "void __ascii_defer_marker(void);\n"
-                             "#define defer(...) do { __ascii_defer_marker(); } while(0)\n";
+    std::ofstream(marker) << "void __defer_marker(void);\n"
+                             "#define defer(...) do { __defer_marker(); } while(0)\n";
     std::ofstream(header, std::ios::binary) << header_text;
     std::ofstream(main_file, std::ios::binary) << main_text;
     defer_tool::ClangIndex index;

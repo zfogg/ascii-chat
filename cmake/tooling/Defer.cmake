@@ -6,15 +6,15 @@ set(_ASCII_DEFER_SCAN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/ScanDefer.cmake")
 # src/web, while its C sources and defer tooling live at the repository root.
 # Keep the source root explicit so the same transformation machinery can be
 # reused by both native and Emscripten targets.
-if(NOT DEFINED ASCIICHAT_DEFER_SOURCE_ROOT)
-    set(ASCIICHAT_DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}")
+if(NOT DEFINED DEFER_SOURCE_ROOT)
+    set(DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}")
 endif()
-set(ASCIICHAT_DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
+set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
     "Repository-relative directories eligible for defer scanning and transformation")
 
 function(ascii_defer_is_source_path out_var relative_path)
     set(_eligible FALSE)
-    foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
+    foreach(_directory IN LISTS DEFER_SOURCE_DIRS)
         if(relative_path MATCHES "^${_directory}/")
             set(_eligible TRUE)
             break()
@@ -25,36 +25,36 @@ endfunction()
 
 # Configure after targets are created so source replacement affects the actual targets.
 set(ASCIICHAT_LIBCLANG_PATH "" CACHE FILEPATH "LLVM 19 or newer libclang shared library")
-set(ASCIICHAT_DEFER_BACKEND "NATIVE" CACHE STRING "Defer transformer backend: NATIVE or PYTHON")
-set(ASCIICHAT_DEFER_SHARED_CACHE "" CACHE PATH "Optional shared native defer transformation cache")
-set(ASCIICHAT_DEFER_HEADER_OVERLAYS "AUTO" CACHE STRING "C header overlays: AUTO, ON, or OFF")
-set_property(CACHE ASCIICHAT_DEFER_HEADER_OVERLAYS PROPERTY STRINGS AUTO ON OFF)
-set_property(CACHE ASCIICHAT_DEFER_BACKEND PROPERTY STRINGS NATIVE PYTHON)
-set(ASCIICHAT_DEFER_NATIVE_BINARY "" CACHE FILEPATH "Prebuilt native defer host executable")
-set(ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS "" CACHE STRING "Additional directories containing defer wrapper macros")
+set(DEFER_BACKEND "NATIVE" CACHE STRING "Defer transformer backend: NATIVE or PYTHON")
+set(DEFER_SHARED_CACHE "" CACHE PATH "Optional shared native defer transformation cache")
+set(DEFER_HEADER_OVERLAYS "AUTO" CACHE STRING "C header overlays: AUTO, ON, or OFF")
+set_property(CACHE DEFER_HEADER_OVERLAYS PROPERTY STRINGS AUTO ON OFF)
+set_property(CACHE DEFER_BACKEND PROPERTY STRINGS NATIVE PYTHON)
+set(DEFER_NATIVE_BINARY "" CACHE FILEPATH "Prebuilt native defer host executable")
+set(DEFER_WRAPPER_HEADER_DIRS "" CACHE STRING "Additional directories containing defer wrapper macros")
 
 function(ascii_defer_prepare_native)
     if(BUILD_TESTS)
         enable_testing()
     endif()
-    if(ASCIICHAT_DEFER_NATIVE_BINARY)
-        if(NOT EXISTS "${ASCIICHAT_DEFER_NATIVE_BINARY}")
-            message(FATAL_ERROR "Native defer executable not found: ${ASCIICHAT_DEFER_NATIVE_BINARY}")
+    if(DEFER_NATIVE_BINARY)
+        if(NOT EXISTS "${DEFER_NATIVE_BINARY}")
+            message(FATAL_ERROR "Native defer executable not found: ${DEFER_NATIVE_BINARY}")
         endif()
         add_executable(ascii-defer-native IMPORTED GLOBAL)
-        set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${ASCIICHAT_DEFER_NATIVE_BINARY}")
+        set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${DEFER_NATIVE_BINARY}")
         return()
     endif()
-    set(_native_dir "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer")
+    set(_native_dir "${DEFER_SOURCE_ROOT}/src/tooling/defer")
     if(NOT CMAKE_CROSSCOMPILING)
         add_subdirectory("${_native_dir}" "${CMAKE_BINARY_DIR}/defer-host" EXCLUDE_FROM_ALL)
     else()
         # A cross-built executable cannot run on the build host. Build this
         # separate host tool during the build, not during project configuration.
         include(ExternalProject)
-        find_program(ASCIICHAT_DEFER_HOST_CXX NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-        find_program(ASCIICHAT_DEFER_HOST_NINJA NAMES ninja NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-        include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake")
+        find_program(DEFER_HOST_CXX NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        find_program(DEFER_HOST_NINJA NAMES ninja NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        include("${DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake")
         ascii_find_llvm_development()
         if(CMAKE_HOST_WIN32)
             set(_suffix ".exe")
@@ -71,17 +71,17 @@ function(ascii_defer_prepare_native)
         ExternalProject_Add(ascii-defer-host-build
             SOURCE_DIR "${_native_dir}" BINARY_DIR "${_host_build}"
             CMAKE_GENERATOR Ninja
-            CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${ASCIICHAT_DEFER_HOST_CXX}"
-                "-DCMAKE_MAKE_PROGRAM=${ASCIICHAT_DEFER_HOST_NINJA}"
+            CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${DEFER_HOST_CXX}"
+                "-DCMAKE_MAKE_PROGRAM=${DEFER_HOST_NINJA}"
                 "-DCMAKE_CXX_FLAGS:STRING=" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_TESTING=${_host_testing}"
                 "-DASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}"
-                "-DASCIICHAT_LLVM_DEVELOPMENT_MODULE=${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake"
+                "-DASCIICHAT_LLVM_DEVELOPMENT_MODULE=${DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake"
             INSTALL_COMMAND "" BUILD_ALWAYS TRUE BUILD_BYPRODUCTS "${_executable}")
         add_executable(ascii-defer-native IMPORTED GLOBAL)
         set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${_executable}")
         add_dependencies(ascii-defer-native ascii-defer-host-build)
         if(BUILD_TESTS)
-            foreach(_test text clang transform)
+            foreach(_test text clang transform scope_guard manifest)
                 add_test(NAME "ascii-defer-${_test}"
                     COMMAND "${_host_build}/ascii-defer-${_test}-test${_suffix}")
             endforeach()
@@ -113,7 +113,7 @@ function(ascii_defer_apply_target target)
             continue()
         endif()
         get_filename_component(_absolute "${_source}" ABSOLUTE BASE_DIR "${_source_dir}")
-        file(RELATIVE_PATH _relative "${ASCIICHAT_DEFER_SOURCE_ROOT}" "${_absolute}")
+        file(RELATIVE_PATH _relative "${DEFER_SOURCE_ROOT}" "${_absolute}")
         ascii_defer_is_source_path(_eligible "${_relative}")
         if(NOT _eligible OR NOT EXISTS "${_absolute}")
             list(APPEND _new_sources "${_source}")
@@ -166,7 +166,7 @@ function(ascii_defer_apply_target target)
         if(TARGET generate_version AND NOT "generate_version" IN_LIST _batch_prerequisites)
             list(APPEND _batch_prerequisites generate_version)
         endif()
-        if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
+        if(DEFER_BACKEND STREQUAL "NATIVE")
             list(SORT _batch_prerequisites)
             string(MD5 _batch_id "${_batch_stage}|${_batch_prerequisites}")
             set_property(GLOBAL APPEND PROPERTY ASCII_DEFER_BATCH_IDS "${_batch_id}")
@@ -206,7 +206,7 @@ endfunction()
 
 function(ascii_defer_finish_batches)
     get_property(_header_active GLOBAL PROPERTY ASCII_DEFER_HEADER_ACTIVE)
-    if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
+    if(DEFER_BACKEND STREQUAL "NATIVE")
         get_property(_ids GLOBAL PROPERTY ASCII_DEFER_BATCH_IDS)
         list(REMOVE_DUPLICATES _ids)
         foreach(_id IN LISTS _ids)
@@ -229,17 +229,15 @@ function(ascii_defer_finish_batches)
             file(GENERATE OUTPUT "${_manifest}" CONTENT "${_content}")
             if(_header_active)
                 set(_extra_arguments --header-overlays)
-            elseif(ASCIICHAT_DEFER_SHARED_CACHE)
-                set(_extra_arguments --shared-cache "${ASCIICHAT_DEFER_SHARED_CACHE}")
+            elseif(DEFER_SHARED_CACHE)
+                set(_extra_arguments --shared-cache "${DEFER_SHARED_CACHE}")
             else()
                 set(_extra_arguments "")
             endif()
             add_custom_command(OUTPUT ${_outputs} ${_stamps} ${_overlays}
                 COMMAND ${CMAKE_COMMAND} -E env
-                    "ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
-                    "DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
-                    "ASCIICHAT_DEFER_TARGET_TRIPLE=${ASCIICHAT_DEFER_TARGET_TRIPLE}"
-                    "DEFER_TARGET_TRIPLE=${ASCIICHAT_DEFER_TARGET_TRIPLE}"
+                    "DEFER_EXTRA_INCLUDE_DIRS=${DEFER_EXTRA_INCLUDE_DIRS}"
+                    "DEFER_TARGET_TRIPLE=${DEFER_TARGET_TRIPLE}"
                     "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
                     --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}" --dependency-stamps --incremental
                     ${_extra_arguments}
@@ -266,14 +264,14 @@ function(ascii_defer_finish_batches)
         return()
     else()
         set(_plan "${CMAKE_BINARY_DIR}/defer-plan-${_batch_stage}.cmake")
-            set(_planner "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/plan.py")
+            set(_planner "${DEFER_SOURCE_ROOT}/src/tooling/defer/plan.py")
         set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_planner}")
         if(_header_active)
             set(_planner_options --header-overlays)
         else()
             set(_planner_options "")
         endif()
-        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${_planner}"
+        execute_process(COMMAND ${DEFER_PYTHON_COMMAND} "${_planner}"
             --records "${_plan_records}" --build-dir "${CMAKE_BINARY_DIR}"
             --stage "${_batch_stage}" --output "${_plan}" ${_planner_options}
             RESULT_VARIABLE _result ERROR_VARIABLE _error ENCODING UTF-8)
@@ -289,17 +287,17 @@ function(ascii_defer_scan_targets out_var)
     if(NOT _defer_wrappers)
     # Discover wrapper names from project headers, including transitive wrappers.
     # This stays conservative: false positives merely cause a source to be parsed.
-    foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
+    foreach(_directory IN LISTS DEFER_SOURCE_DIRS)
         file(GLOB_RECURSE _directory_headers CONFIGURE_DEPENDS
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.h"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hpp"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hh"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hxx"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.inc"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.def")
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.h"
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.hpp"
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.hh"
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.hxx"
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.inc"
+            "${DEFER_SOURCE_ROOT}/${_directory}/*.def")
         list(APPEND _defer_headers ${_directory_headers})
     endforeach()
-    foreach(_extra_dir IN LISTS ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS)
+    foreach(_extra_dir IN LISTS DEFER_WRAPPER_HEADER_DIRS)
         file(TO_CMAKE_PATH "${_extra_dir}" _extra_dir)
         if(NOT IS_DIRECTORY "${_extra_dir}")
             message(FATAL_ERROR "defer wrapper header directory does not exist: ${_extra_dir}")
@@ -348,7 +346,7 @@ function(ascii_defer_scan_targets out_var)
         endforeach()
     endwhile()
     set_property(GLOBAL PROPERTY ASCII_DEFER_WRAPPER_NAMES "${_defer_wrappers}")
-    string(TOUPPER "${ASCIICHAT_DEFER_HEADER_OVERLAYS}" _header_setting)
+    string(TOUPPER "${DEFER_HEADER_OVERLAYS}" _header_setting)
     if(_header_setting MATCHES "^(ON|TRUE|YES|1)$")
         set(_header_active TRUE)
     elseif(_header_setting MATCHES "^(OFF|FALSE|NO|0)$")
@@ -367,7 +365,7 @@ function(ascii_defer_scan_targets out_var)
             endif()
         endforeach()
     else()
-        message(FATAL_ERROR "ASCIICHAT_DEFER_HEADER_OVERLAYS must be AUTO, ON, or OFF")
+        message(FATAL_ERROR "DEFER_HEADER_OVERLAYS must be AUTO, ON, or OFF")
     endif()
     set_property(GLOBAL PROPERTY ASCII_DEFER_HEADER_ACTIVE "${_header_active}")
     endif()
@@ -384,7 +382,7 @@ function(ascii_defer_scan_targets out_var)
                 continue()
             endif()
             get_filename_component(_absolute "${_source}" ABSOLUTE BASE_DIR "${_source_dir}")
-            file(RELATIVE_PATH _relative "${ASCIICHAT_DEFER_SOURCE_ROOT}" "${_absolute}")
+            file(RELATIVE_PATH _relative "${DEFER_SOURCE_ROOT}" "${_absolute}")
             ascii_defer_is_source_path(_eligible "${_relative}")
             if(_eligible AND EXISTS "${_absolute}")
                 list(APPEND _scan_files "${_absolute}")
@@ -430,7 +428,7 @@ function(ascii_defer_scan_targets out_var)
         set(${out_var} "${_scan_output}" PARENT_SCOPE)
         return()
     endif()
-    if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
+    if(DEFER_BACKEND STREQUAL "NATIVE")
         set(_defer_sources "")
         foreach(_source IN LISTS _scan_files)
             file(READ "${_source}" _contents)
@@ -445,8 +443,8 @@ function(ascii_defer_scan_targets out_var)
         set(${out_var} "${_defer_sources}" PARENT_SCOPE)
         return()
     else()
-        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py")
-        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py" "${_wrapper_file}"
+        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py")
+        execute_process(COMMAND ${DEFER_PYTHON_COMMAND} "${DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py" "${_wrapper_file}"
             ENCODING UTF-8 INPUT_FILE "${_scan_input}" OUTPUT_VARIABLE _scan_output ERROR_VARIABLE _scan_error RESULT_VARIABLE _scan_result
             OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
@@ -467,18 +465,18 @@ function(ascii_defer_prepare)
     if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
         message(FATAL_ERROR "defer requires CMAKE_EXPORT_COMPILE_COMMANDS=ON")
     endif()
-    if(NOT ASCIICHAT_DEFER_BACKEND MATCHES "^(NATIVE|PYTHON)$")
-        message(FATAL_ERROR "ASCIICHAT_DEFER_BACKEND must be NATIVE or PYTHON")
+    if(NOT DEFER_BACKEND MATCHES "^(NATIVE|PYTHON)$")
+        message(FATAL_ERROR "DEFER_BACKEND must be NATIVE or PYTHON")
     endif()
-    if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
+    if(DEFER_BACKEND STREQUAL "NATIVE")
         ascii_defer_prepare_native()
     else()
-        find_program(ASCIICHAT_DEFER_UV_EXECUTABLE NAMES uv REQUIRED)
-        set(ASCIICHAT_DEFER_PYTHON_COMMAND
-            "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${ASCIICHAT_DEFER_UV_EXECUTABLE};run;--project;${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer;--frozen;--managed-python;python"
+        find_program(DEFER_UV_EXECUTABLE NAMES uv REQUIRED)
+        set(DEFER_PYTHON_COMMAND
+            "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${DEFER_UV_EXECUTABLE};run;--project;${DEFER_SOURCE_ROOT}/src/tooling/defer;--frozen;--managed-python;python"
             CACHE INTERNAL "uv command for the Python defer backend" FORCE)
     endif()
-    if(ASCIICHAT_DEFER_BACKEND STREQUAL "PYTHON" AND NOT ASCIICHAT_LIBCLANG_PATH)
+    if(DEFER_BACKEND STREQUAL "PYTHON" AND NOT ASCIICHAT_LIBCLANG_PATH)
         get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
         get_filename_component(_compiler_real "${CMAKE_C_COMPILER}" REALPATH)
         get_filename_component(_compiler_real_dir "${_compiler_real}" DIRECTORY)
@@ -498,11 +496,11 @@ function(ascii_defer_prepare)
         endif()
         set(ASCIICHAT_LIBCLANG_PATH "${_libclang}" CACHE FILEPATH "LLVM 19 or newer libclang shared library" FORCE)
     endif()
-    if(ASCIICHAT_DEFER_BACKEND STREQUAL "PYTHON")
+    if(DEFER_BACKEND STREQUAL "PYTHON")
     execute_process(
-        COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} -c
+        COMMAND ${DEFER_PYTHON_COMMAND} -c
             "import sys; assert sys.version_info >= (3, 10), 'Python 3.10 or newer is required'; sys.path.insert(0, sys.argv[1]); from clang import cindex; cindex.Config.set_compatibility_check(False); cindex.Config.set_library_file(sys.argv[2]); print(cindex.conf.get_clang_version())"
-            "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
+            "${DEFER_SOURCE_ROOT}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
         RESULT_VARIABLE _clang_check_result OUTPUT_VARIABLE _clang_check_output ERROR_VARIABLE _clang_check_error
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -519,7 +517,7 @@ function(ascii_defer_prepare)
     get_property(_src_targets DIRECTORY "${CMAKE_SOURCE_DIR}/src" PROPERTY BUILDSYSTEM_TARGETS)
     ascii_defer_scan_targets(_defer_sources ${_root_targets} ${_src_targets})
     get_property(_header_active GLOBAL PROPERTY ASCII_DEFER_HEADER_ACTIVE)
-    if(_header_active AND ASCIICHAT_DEFER_SHARED_CACHE)
+    if(_header_active AND DEFER_SHARED_CACHE)
         message(STATUS "Shared defer cache is disabled while C header overlays are active; local incremental caching remains enabled")
     endif()
     foreach(_target IN LISTS _root_targets _src_targets)

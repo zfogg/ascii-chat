@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 @pytest.mark.parametrize("backend", ["NATIVE", "PYTHON"])
 def test_panic_and_defer_build_and_rebuild(tmp_path: Path, backend: str) -> None:
     panic = os.environ.get("ASCIICHAT_PANIC_TEST_BINARY")
-    defer = os.environ.get("ASCIICHAT_DEFER_TEST_BINARY")
+    defer = os.environ.get("DEFER_TEST_BINARY")
     cmake = shutil.which("cmake")
     clang = shutil.which("clang")
     if not panic or not defer or not cmake or not clang or not shutil.which("ninja"):
@@ -66,8 +66,8 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path, backend: str) -> None
     build = project / "build"
     configured = subprocess.run(
         [cmake, "-S", str(project), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}",
-         "-DASCIICHAT_BUILD_WITH_PANIC=ON", f"-DASCIICHAT_DEFER_BACKEND={backend}", f"-DASCIICHAT_PANIC_TOOL={panic}",
-         f"-DASCIICHAT_DEFER_NATIVE_BINARY={defer}"],
+         "-DASCIICHAT_BUILD_WITH_PANIC=ON", f"-DDEFER_BACKEND={backend}", f"-DASCIICHAT_PANIC_TOOL={panic}",
+         f"-DDEFER_NATIVE_BINARY={defer}"],
         capture_output=True, text=True, check=False,
     )
     assert configured.returncode == 0, configured.stdout + configured.stderr

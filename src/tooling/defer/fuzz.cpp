@@ -12,7 +12,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   const std::string path = "defer-fuzz-input.c";
   const std::string source =
       "#define defer(...) do {} while (0)\n" + std::string(reinterpret_cast<const char *>(data), size);
-  const std::vector<const char *> arguments = {"-std=c17", "-DASCIICHAT_DEFER_PARSING=1"};
+  const std::vector<const char *> arguments = {"-std=c17", "-DDEFER_PARSING=1"};
   try {
     defer_tool::ClangIndex index;
     CXUnsavedFile input{path.c_str(), source.data(), static_cast<unsigned long>(source.size())};

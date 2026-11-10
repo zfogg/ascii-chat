@@ -70,10 +70,10 @@ include(${_cmake_dir}/deps/Libsodium.cmake)
 # inherit target include directories. Keep the WASM libsodium headers visible
 # to that parser as well as to the actual compiler.
 if(LIBSODIUM_INCLUDE_DIRS)
-    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
+    list(APPEND DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
 endif()
 if(DEFINED libsodium-wasm-src_SOURCE_DIR)
-    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+    list(APPEND DEFER_EXTRA_INCLUDE_DIRS
         "${libsodium-wasm-src_SOURCE_DIR}/src/libsodium/include")
 endif()
 
@@ -739,11 +739,11 @@ target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${
 # parent project's defer finalization cannot see these targets. Reuse the same
 # repository-level defer module once, after all browser targets are declared.
 if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(NOT ASCIICHAT_DEFER_SOURCE_ROOT OR NOT ASCIICHAT_DEFER_NATIVE_BINARY)
+    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY)
         message(FATAL_ERROR
-            "The parent CMake project must provide ASCIICHAT_DEFER_SOURCE_ROOT and ASCIICHAT_DEFER_NATIVE_BINARY")
+            "The parent CMake project must provide DEFER_SOURCE_ROOT and DEFER_NATIVE_BINARY")
     endif()
-    include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
+    include("${DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
     ascii_defer_prepare_native()
     set(_batch_stage web)
     set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")

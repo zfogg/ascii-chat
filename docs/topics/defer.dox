@@ -48,7 +48,7 @@
  * are rejected, as are multiline invocations and arguments containing non-defer
  * macros (use a local value instead). The expanded defer must still be a direct
  * statement in a block. CMake discovers wrappers declared in project headers;
- * set `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` to a semicolon-separated list of
+ * set `DEFER_WRAPPER_HEADER_DIRS` to a semicolon-separated list of
  * additional header directories when wrappers are declared outside the project.
  *
  * Reaching a defer registers it. Actions run in reverse registration order,
@@ -93,7 +93,7 @@
  * The native tool uses LLVM support and libclang development libraries and does
  * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
  * cannot be found automatically. A cross build builds a separate host tool;
- * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
+ * `DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
  * It can also point to a `defer-tool` release from
  * https://github.com/zfogg/defer; the marker header supports both that tool
  * and the in-tree implementation. Use a binary for the build host, including
@@ -104,7 +104,7 @@
  * source, recorded included files, and build context are unchanged; it reports
  * how many files it transformed. A file is reprocessed when its own compiler
  * arguments, dependencies, libclang version, or the tool binary change.
- * `ASCIICHAT_DEFER_SHARED_CACHE` optionally sets a shared cache directory,
+ * `DEFER_SHARED_CACHE` optionally sets a shared cache directory,
  * such as `ASCIICHAT_DEPS_CACHE_ROOT/defer`. It can reuse results across build
  * directories for the same source tree, after checking dependency contents
  * and the current include graph. Files using time-dependent macros or
@@ -126,7 +126,7 @@
  * graph before compilation. Unix Makefiles use conservative reconfiguration
  * on C source changes to ensure the same correctness.
  *
- * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
+ * Set `DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or
  * newer and LLVM 19 or newer libclang; set
  * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. The CMake
@@ -135,9 +135,9 @@
  * fail-closed behavior are checked together.
  * Directly compiling an untransformed C source containing defer fails rather
  * than turning cleanup into a no-op. C header functions use per-translation-
- * unit Clang VFS overlays. `ASCIICHAT_DEFER_HEADER_OVERLAYS=AUTO` detects
+ * unit Clang VFS overlays. `DEFER_HEADER_OVERLAYS=AUTO` detects
  * defer in project headers; `ON` forces this path and `OFF` disables it.
- * Add external header roots to `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS`, or use
+ * Add external header roots to `DEFER_WRAPPER_HEADER_DIRS`, or use
  * `ON` when headers are outside the scanned roots. The first activation
  * analyzes all eligible project C and Objective-C sources and disables target precompiled
  * headers; later builds use native per-file incremental caching. The shared
@@ -212,7 +212,7 @@
  * it is not a standalone translation unit.
  *
  * For a longer randomized check on a Unix host with Clang and libFuzzer,
- * configure `src/tooling/defer` with `ASCIICHAT_DEFER_BUILD_FUZZER=ON`, build
+ * configure `src/tooling/defer` with `DEFER_BUILD_FUZZER=ON`, build
  * `ascii-defer-fuzz`, and run it with a writable copy of `tests/fuzz/defer` as
  * the corpus. Successful transformations are parsed again and must remain valid C.
  */

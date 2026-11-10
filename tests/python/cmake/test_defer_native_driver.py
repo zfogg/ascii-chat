@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 @pytest.fixture
 def native_tool() -> Path:
-    binary = os.environ.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = os.environ.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary was not supplied")
     path = Path(binary)
@@ -243,7 +243,7 @@ def test_batch_uses_extra_include_directories(native_tool: Path, tmp_path: Path)
     manifest = tmp_path / "batch.txt"
     manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
     env = os.environ.copy()
-    env["ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS"] = str(extra)
+    env["DEFER_EXTRA_INCLUDE_DIRS"] = str(extra)
     result = subprocess.run(
         [str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path)],
         capture_output=True, text=True, env=env, check=False,
@@ -332,7 +332,8 @@ def test_cmake_registers_and_runs_native_unit_tests(tmp_path: Path, cross: bool)
     for name in ("ascii-defer-text", "ascii-defer-clang", "ascii-defer-transform"):
         assert name in discovery.stdout
     targets = ["ascii-defer-host-build"] if cross else [
-        "ascii-defer-native", "ascii-defer-text-test", "ascii-defer-clang-test", "ascii-defer-transform-test"
+        "ascii-defer-native", "ascii-defer-text-test", "ascii-defer-clang-test", "ascii-defer-transform-test",
+        "ascii-defer-scope_guard-test", "ascii-defer-manifest-test",
     ]
     compiled = subprocess.run([cmake, "--build", str(build), "--target", *targets], capture_output=True, text=True, check=False)
     assert compiled.returncode == 0, compiled.stdout + compiled.stderr

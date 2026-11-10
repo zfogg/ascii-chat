@@ -788,7 +788,7 @@ class Transformer:
         marker_offsets: list[int] = []
 
         def collect_markers(cursor: cindex.Cursor) -> None:
-            if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__ascii_defer_marker":
+            if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__defer_marker":
                 if not self.in_file(cursor) and not self.allow_other_files:
                     raise TransformError("defer in included files is not supported; move the function into a C source file")
                 if self.in_file(cursor):

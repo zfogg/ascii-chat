@@ -151,7 +151,7 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   const auto working_directory = fs::u8path(directory);
   const auto generated_overlay = fs::u8path(generated.parent_path().u8string() + ".vfs.json");
   std::vector<std::string> result = {"-working-directory", directory, "-iquote", source.parent_path().u8string()};
-  if (const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE")) {
+  if (const auto target = llvm::sys::Process::GetEnv("DEFER_TARGET_TRIPLE")) {
     if (!target->empty()) {
       result.push_back("-target");
       result.push_back(*target);
@@ -203,13 +203,13 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     result.push_back("-resource-dir");
     result.push_back(resource_dir);
   }
-  if (const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE")) {
+  if (const auto target = llvm::sys::Process::GetEnv("DEFER_TARGET_TRIPLE")) {
     if (target->find("-musl") != std::string::npos) {
       result.push_back("-isystem");
       result.push_back((fs::u8path(resource_dir) / "include").u8string());
     }
   }
-  if (const auto extra = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS")) {
+  if (const auto extra = llvm::sys::Process::GetEnv("DEFER_EXTRA_INCLUDE_DIRS")) {
     const std::string &value = *extra;
     std::size_t start = 0;
     while (start <= value.size()) {
@@ -470,7 +470,7 @@ static FileDependencies transform_with_header_overlay(ClangIndex &index, const f
     std::set<std::string> marker_files;
     std::function<void(CXCursor)> collect = [&](CXCursor cursor) {
       if (clang_getCursorKind(cursor) == CXCursor_CallExpr &&
-          consume_string(clang_getCursorSpelling(cursor)) == "__ascii_defer_marker") {
+          consume_string(clang_getCursorSpelling(cursor)) == "__defer_marker") {
         CXFile file = nullptr;
         clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, nullptr, nullptr, nullptr);
         if (file) {
@@ -612,7 +612,7 @@ TransformResult transform_content(ClangIndex &index, const fs::path &source_path
   const bool objc = is_objc_source(source, arguments);
   if (objc)
     require_objc_exceptions(arguments);
-  arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+  arguments.push_back("-DDEFER_PARSING=1");
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
     raw.push_back(arg.c_str());
@@ -687,7 +687,7 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
       require_objc_exceptions(arguments);
     if (is_cpp_source(source, arguments))
       throw std::runtime_error("C++ uses native scope guards and does not require a header overlay");
-    arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+    arguments.push_back("-DDEFER_PARSING=1");
     std::vector<const char *> raw;
     for (const auto &arg : arguments)
       raw.push_back(arg.c_str());
@@ -710,7 +710,7 @@ std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigne
     require_objc_exceptions(arguments);
   if (is_cpp_source(source, arguments))
     throw std::runtime_error("C++ defer inspection is not supported; C++ uses native scope guards");
-  arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+  arguments.push_back("-DDEFER_PARSING=1");
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
     raw.push_back(arg.c_str());

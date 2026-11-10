@@ -74,16 +74,16 @@ def transform_environment(
 ) -> dict[str, str]:
     if request.param == "native":
         env = base_environment.copy()
-        if not env.get("ASCIICHAT_DEFER_TEST_BINARY"):
+        if not env.get("DEFER_TEST_BINARY"):
             pytest.skip("native defer binary was not supplied")
     else:
         env = request.getfixturevalue("compiler_environment").copy()
-        env.pop("ASCIICHAT_DEFER_TEST_BINARY", None)
+        env.pop("DEFER_TEST_BINARY", None)
     return env
 
 
 def tool_command(env: dict[str, str]) -> list[str]:
-    binary = env.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = env.get("DEFER_TEST_BINARY")
     return [binary] if binary else [sys.executable, str(TOOL)]
 
 
@@ -126,8 +126,8 @@ def test_python_batch_plan_uses_explicit_tool_source_root(tmp_path: Path) -> Non
     assert result.returncode == 0, result.stderr
     (project / "CMakeLists.txt").write_text(
         'cmake_minimum_required(VERSION 3.25)\nproject(plan_test C)\n'
-        f'set(ASCIICHAT_DEFER_SOURCE_ROOT "{ROOT.as_posix()}")\n'
-        'set(ASCIICHAT_DEFER_PYTHON_COMMAND "${CMAKE_COMMAND};-E;echo")\n'
+        f'set(DEFER_SOURCE_ROOT "{ROOT.as_posix()}")\n'
+        'set(DEFER_PYTHON_COMMAND "${CMAKE_COMMAND};-E;echo")\n'
         'set(ASCIICHAT_LIBCLANG_PATH dummy)\nadd_library(ascii-chat-probe STATIC source.c)\n'
         f'include("{plan.as_posix()}")\n', encoding="utf-8"
     )
@@ -348,7 +348,7 @@ def test_stdin_matches_file_transformation(
 
 
 def test_native_stdin_with_preamble(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary is required")
     command = [binary, "--filename", str(tmp_path / "virtual.c"), "--", "-std=c17"]
@@ -486,7 +486,7 @@ def test_batch_depfile_cannot_replace_any_source(
     )
     command = [*tool_command(transform_environment), "--batch", str(manifest),
                "--compilation-database", str(tmp_path), "--depfile", str(sources[1])]
-    if not transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"):
+    if not transform_environment.get("DEFER_TEST_BINARY"):
         command.extend(["--libclang", transform_environment["LIBCLANG_LIBRARY_FILE"]])
     result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
     assert result.returncode != 0
@@ -495,7 +495,7 @@ def test_batch_depfile_cannot_replace_any_source(
 
 
 def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environment: dict[str, str]) -> None:
-    binary = base_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = base_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary was not supplied")
     source = tmp_path / "generated.cache"
@@ -516,7 +516,7 @@ def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environmen
 def test_shared_cache_reuses_across_build_directories(
     tmp_path: Path, compiler_environment: dict[str, str], extension: str
 ) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary or CLANG is None:
         pytest.skip("native defer binary and Clang are required")
     source = tmp_path / f"source.{extension}"
@@ -592,7 +592,7 @@ def test_shared_cache_reuses_across_build_directories(
 
 
 def test_preamble_mode_matches_and_rejects_invalid_code(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary was not supplied")
     source = tmp_path / "source.c"
@@ -618,7 +618,7 @@ def test_preamble_mode_matches_and_rejects_invalid_code(tmp_path: Path, compiler
 
 
 def test_cmake_shared_cache_across_build_directories(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     cmake = shutil.which("cmake")
     clangxx = shutil.which("clang++")
     if not binary or not cmake or not clangxx or not CLANG or not shutil.which("ninja"):
@@ -648,11 +648,11 @@ def test_cmake_shared_cache_across_build_directories(tmp_path: Path, compiler_en
     )
     for name, expected in [("one", "transformed 1 of 1"), ("two", "transformed 0 of 1 files (1 restored")]:
         build = tmp_path / name
-        selected_binary = compiler_environment.get("ASCIICHAT_DEFER_SECOND_BINARY", binary) if name == "two" else binary
+        selected_binary = compiler_environment.get("DEFER_SECOND_BINARY", binary) if name == "two" else binary
         configured = subprocess.run(
             [cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
-             f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DASCIICHAT_DEFER_NATIVE_BINARY={selected_binary}",
-             f"-DASCIICHAT_DEFER_SHARED_CACHE={tmp_path / 'shared'}"],
+             f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DDEFER_NATIVE_BINARY={selected_binary}",
+             f"-DDEFER_SHARED_CACHE={tmp_path / 'shared'}"],
             capture_output=True, text=True, env=compiler_environment, check=False,
         )
         assert configured.returncode == 0, configured.stdout + configured.stderr
@@ -665,7 +665,7 @@ def test_cmake_shared_cache_across_build_directories(tmp_path: Path, compiler_en
 
 
 def test_incremental_cache_tracks_each_compile_command(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary or not CLANG:
         pytest.skip("native defer binary and Clang are required")
     commands = []
@@ -842,7 +842,7 @@ def test_rejects_explicit_arguments_combined_with_database(
 
 
 def test_incremental_batch_tracks_per_file_arguments(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary is required")
     manifest = tmp_path / "batch.txt"
@@ -1360,7 +1360,7 @@ def test_header_overlay_batch_tracks_dependencies(
 ) -> None:
     if not CLANG:
         pytest.skip("Clang is required")
-    native = bool(transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"))
+    native = bool(transform_environment.get("DEFER_TEST_BINARY"))
     header = tmp_path / "header.h"
     header.write_text(
         '#include <ascii-chat/tooling/defer/defer.h>\n'
@@ -1463,7 +1463,7 @@ def test_header_overlay_batch_cannot_replace_other_source(tmp_path: Path, transf
     manifest = tmp_path / "batch.txt"
     manifest.write_text(f"{first}\t{tmp_path / 'generated' / 'first.c'}\n{other}\t{tmp_path / 'other' / 'other.c'}\n", encoding="utf-8")
     command = [*tool_command(transform_environment), "--batch", str(manifest), "--header-overlays"]
-    if not transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"):
+    if not transform_environment.get("DEFER_TEST_BINARY"):
         command += ["--libclang", transform_environment["LIBCLANG_LIBRARY_FILE"], "--compilation-database", str(tmp_path), "--depfile", str(tmp_path / "batch.d")]
     result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
     assert result.returncode != 0
@@ -1472,7 +1472,7 @@ def test_header_overlay_batch_cannot_replace_other_source(tmp_path: Path, transf
 
 
 def test_header_overlay_native_and_python_outputs_match(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary was not supplied")
     header = tmp_path / "header.h"
@@ -1506,7 +1506,7 @@ def test_header_overlay_native_and_python_outputs_match(tmp_path: Path, compiler
 def test_cmake_experimental_header_overlays_are_incremental(
     tmp_path: Path, compiler_environment: dict[str, str], backend: str, extension: str, mode: str
 ) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     cmake = shutil.which("cmake")
     clangxx = shutil.which("clang++")
     if not binary or not cmake or not clangxx or not CLANG or not shutil.which("ninja"):
@@ -1549,9 +1549,9 @@ def test_cmake_experimental_header_overlays_are_incremental(
         return result.stdout + result.stderr
 
     run(cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
-        f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DASCIICHAT_DEFER_NATIVE_BINARY={binary}",
-        f"-DASCIICHAT_DEFER_BACKEND={backend}", f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
-        f"-DASCIICHAT_DEFER_HEADER_OVERLAYS={mode}")
+        f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DDEFER_NATIVE_BINARY={binary}",
+        f"-DDEFER_BACKEND={backend}", f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
+        f"-DDEFER_HEADER_OVERLAYS={mode}")
     first_build = run(cmake, "--build", str(build))
     if mode == "ON":
         assert "Transforming defer source batch" in first_build
@@ -1810,7 +1810,7 @@ def test_objc_fast_enumeration_cleanup(tmp_path: Path, transform_environment: di
 
 
 def test_objc_native_and_python_outputs_match(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary was not supplied")
     source = tmp_path / "source.m"
@@ -1872,7 +1872,7 @@ def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, s
 @pytest.mark.parametrize("backend", ["NATIVE", "PYTHON"])
 @pytest.mark.parametrize("header_mode", [False, True])
 def test_cmake_objc_incremental(tmp_path: Path, compiler_environment: dict[str, str], backend: str, header_mode: bool) -> None:
-    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    binary = compiler_environment.get("DEFER_TEST_BINARY")
     cmake = shutil.which("cmake")
     clangxx = shutil.which("clang++")
     if not binary or not cmake or not CLANG or not clangxx or not shutil.which("ninja"):
@@ -1912,7 +1912,7 @@ def test_cmake_objc_incremental(tmp_path: Path, compiler_environment: dict[str, 
 
     run(cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
         f"-DCMAKE_OBJC_COMPILER={CLANG}", f"-DCMAKE_CXX_COMPILER={clangxx}",
-        f"-DASCIICHAT_DEFER_NATIVE_BINARY={binary}", f"-DASCIICHAT_DEFER_BACKEND={backend}",
+        f"-DDEFER_NATIVE_BINARY={binary}", f"-DDEFER_BACKEND={backend}",
         f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}")
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
     if header_mode:
@@ -2285,7 +2285,7 @@ def test_named_defer_rejects_unsafe_handles(
 def test_cmake_scanners_find_named_defer(
     tmp_path: Path, base_environment: dict[str, str], source: str
 ) -> None:
-    native_binary = base_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    native_binary = base_environment.get("DEFER_TEST_BINARY")
     if not native_binary:
         pytest.skip("native defer binary was not supplied")
     path = tmp_path / "input.c"
@@ -2854,9 +2854,9 @@ def test_cmake_discovers_defer_and_tracks_headers(
         "Ninja",
         f"-DCMAKE_C_COMPILER={CLANG}",
         f"-DCMAKE_CXX_COMPILER={clangxx}",
-        f"-DASCIICHAT_DEFER_BACKEND={'PYTHON' if backend == 'PYTHON' else 'NATIVE'}",
+        f"-DDEFER_BACKEND={'PYTHON' if backend == 'PYTHON' else 'NATIVE'}",
         f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
-        f"-DASCIICHAT_DEFER_WRAPPER_HEADER_DIRS={external}",
+        f"-DDEFER_WRAPPER_HEADER_DIRS={external}",
     ]
     if backend == "NATIVE_CROSS":
         system = {"win32": "Windows", "darwin": "Darwin"}.get(sys.platform, "Linux")

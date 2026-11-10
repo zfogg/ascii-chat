@@ -566,7 +566,7 @@ std::string Transformer::run() {
   }
   std::vector<unsigned> marker_offsets;
   std::function<void(CXCursor)> collect_markers = [&](CXCursor cursor) {
-    if (clang_getCursorKind(cursor) == CXCursor_CallExpr && spelling(cursor) == "__ascii_defer_marker") {
+    if (clang_getCursorKind(cursor) == CXCursor_CallExpr && spelling(cursor) == "__defer_marker") {
       if (!in_file(cursor) && !allow_other_files_)
         fail("defer in included files is not supported; move the function into a C source file");
       if (in_file(cursor))

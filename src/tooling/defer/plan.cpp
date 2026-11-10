@@ -80,11 +80,11 @@ void plan_batches(const fs::path &records, const fs::path &build_path, const std
     }
     write_if_changed(manifest, content);
     rules += "add_custom_command(\n  OUTPUT" + outputs + "\n";
-    rules += "  COMMAND \"${ASCIICHAT_DEFER_NATIVE_BINARY}\" --batch " + cmake_literal(manifest.generic_u8string()) +
+    rules += "  COMMAND \"${DEFER_NATIVE_BINARY}\" --batch " + cmake_literal(manifest.generic_u8string()) +
              " --compilation-database \"${CMAKE_BINARY_DIR}\" --depfile " + cmake_literal(depfile.generic_u8string()) +
              "\n";
     rules += "  DEPENDS" + sources + " " + cmake_literal(manifest.generic_u8string()) +
-             " \"${ASCIICHAT_DEFER_NATIVE_BINARY}\" \"${CMAKE_BINARY_DIR}/compile_commands.json\"\n";
+             " \"${DEFER_NATIVE_BINARY}\" \"${CMAKE_BINARY_DIR}/compile_commands.json\"\n";
     rules += "  DEPFILE " + cmake_literal(depfile.generic_u8string()) +
              "\n  COMMENT \"Transforming defer source batch\" VERBATIM)\n";
     rules += "add_custom_target(" + name + " DEPENDS" + outputs + ")\n";

@@ -300,7 +300,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 # include propagation.  Keep the musl FFmpeg headers available to that parser
 # in the top-level scope used when the command is generated.
 if(USE_MUSL)
-    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+    set(DEFER_EXTRA_INCLUDE_DIRS
         "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
         "${MUSL_INCLUDE_DIR}"
         "/usr/include/aarch64-linux-musl"
@@ -308,13 +308,13 @@ if(USE_MUSL)
         "/usr/include/aarch64-linux-gnu"
         "/usr/include/arm-linux-gnueabihf")
     if(CMAKE_C_COMPILER_TARGET MATCHES "^x86_64-")
-        list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "/usr/include/x86_64-linux-gnu")
+        list(APPEND DEFER_EXTRA_INCLUDE_DIRS "/usr/include/x86_64-linux-gnu")
     endif()
-    set(ASCIICHAT_DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
+    set(DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
 endif()
 
 if(BUILD_WEB AND LIBSODIUM_INCLUDE_DIRS)
-    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
+    list(APPEND DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
@@ -485,8 +485,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            -DASCIICHAT_DEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}
-            -DASCIICHAT_DEFER_NATIVE_BINARY=${CMAKE_BINARY_DIR}/bin/defer-tool${CMAKE_EXECUTABLE_SUFFIX}
+            -DDEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}
+            -DDEFER_NATIVE_BINARY=${CMAKE_BINARY_DIR}/bin/defer-tool${CMAKE_EXECUTABLE_SUFFIX}
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
@@ -527,7 +527,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
   ascii_defer_prepare_tests()
   if(BUILD_TESTS AND TARGET tests AND TARGET ascii-defer-native)
     add_dependencies(tests ascii-defer-native)
-    foreach(_defer_test text clang transform)
+    foreach(_defer_test text clang transform scope_guard manifest)
       if(TARGET ascii-defer-${_defer_test}-test)
         add_dependencies(tests ascii-defer-${_defer_test}-test)
       endif()

@@ -143,7 +143,7 @@ bool restore_shared(const std::filesystem::path &root, const std::string &key, c
     if (!result.inputs.count(fs::weakly_canonical(fs::absolute(source)).u8string()))
       return false;
     auto parse_arguments = arguments;
-    parse_arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+    parse_arguments.push_back("-DDEFER_PARSING=1");
     std::vector<const char *> raw;
     for (const auto &argument : parse_arguments)
       raw.push_back(argument.c_str());
@@ -230,7 +230,7 @@ std::string cache_context(const char *program) {
 #endif
   context += defer_tool::consume_string(clang_getClangVersion()) + "\n";
   for (const char *name :
-       {"ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS", "CPATH", "C_INCLUDE_PATH", "SDKROOT", "INCLUDE", "PATH"})
+       {"DEFER_EXTRA_INCLUDE_DIRS", "CPATH", "C_INCLUDE_PATH", "SDKROOT", "INCLUDE", "PATH"})
     context += std::string(name) + "=" + llvm::sys::Process::GetEnv(name).value_or("") + "\n";
   return context;
 }
