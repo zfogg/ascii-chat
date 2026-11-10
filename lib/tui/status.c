@@ -30,8 +30,14 @@
 #include <ascii-chat/atomic.h>
 
 const char *ui_status_log_controls(void) {
-  return "q / Esc: close | /: search logs | ?: keyboard controls | Up/Down: one log | PageUp/PageDown: page | "
-         "Home/End: oldest/newest";
+  static _Thread_local char controls[512];
+  snprintf(controls, sizeof(controls),
+           "%s: close | %s: search logs | %s: keyboard controls | %s: one log | %s: page | "
+           "%s: oldest/newest",
+           colored_string(LOG_COLOR_WARN, "q / Esc"), colored_string(LOG_COLOR_WARN, "/"),
+           colored_string(LOG_COLOR_WARN, "?"), colored_string(LOG_COLOR_WARN, "Up/Down"),
+           colored_string(LOG_COLOR_WARN, "PageUp/PageDown"), colored_string(LOG_COLOR_WARN, "Home/End"));
+  return controls;
 }
 
 void ui_status_log_init(void) {
