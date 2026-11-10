@@ -154,7 +154,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
   if (err != ASCIICHAT_OK) {
     if (render_job)
       http_renderer_reap(server->renderer, false);
-    api_finish(response, 422);
+    unsigned status = err == ERROR_BUFFER_FULL ? 503 : err == ERROR_BUFFER_OVERFLOW ? 413 : 422;
+    api_finish(response, status);
     return;
   }
   http_render_result_t *result = &render_job->result;
