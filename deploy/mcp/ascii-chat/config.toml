@@ -6,9 +6,7 @@ downloads_dir = "/downloads"
 downloads_url_prefix = "https://mcp.ascii-chat.com"
 
 [network]
-# Bind only to the egress sidecar's backend address. Caddy reaches MCP through
-# this address; the listener is not exposed on every interface in the namespace.
-address = "172.30.253.10"
+address = "0.0.0.0"
 port = 27228
 max_clients = 4
 
