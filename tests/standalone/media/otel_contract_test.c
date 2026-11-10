@@ -42,7 +42,7 @@ static gotel_host_t *start(double rate) {
   CHECK(gotel_test_create(&options, &result) == OTLP_OK);
   if (capture)
     CHECK(gotel_test_capture_attach(result, capture) == OTLP_OK);
-  atomic_store(&host, result);
+  atomic_ptr_store(&host, result);
   return result;
 }
 
@@ -50,7 +50,7 @@ static void finish(gotel_host_t *h) {
   CHECK(current_scope == NULL);
   CHECK(atomic_load(&readers) == 0);
   CHECK(gotel_drain(h) == OTLP_OK);
-  atomic_store(&host, NULL);
+  atomic_ptr_store(&host, NULL);
   gotel_destroy(h);
 }
 
