@@ -716,7 +716,7 @@ static bool valid_path(const ngtcp2_path *path) {
   return path && valid_address(&path->local) && valid_address(&path->remote);
 }
 
-static asciichat_error_t connection_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
+static asciichat_error_t quic_connection_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
                                            const ngtcp2_pkt_hd *initial, const ngtcp2_cid *original_dcid,
                                            uint64_t now_ns, quic_connection_t **out) {
   if (!out)
@@ -807,7 +807,7 @@ static asciichat_error_t connection_create(quic_tls_t *tls, const char *server_n
 
 asciichat_error_t quic_connection_client_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
                                                 uint64_t now_ns, quic_connection_t **out) {
-  return connection_create(tls, server_name, path, NULL, NULL, now_ns, out);
+  return quic_connection_create(tls, server_name, path, NULL, NULL, now_ns, out);
 }
 
 asciichat_error_t quic_connection_server_create(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
@@ -821,7 +821,7 @@ asciichat_error_t quic_connection_server_create(quic_tls_t *tls, const ngtcp2_pa
   int rc = ngtcp2_accept(&header, initial, initial_length);
   if (rc != 0 || header.version != NGTCP2_PROTO_VER_V1)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid or unsupported QUIC Initial packet");
-  return connection_create(tls, NULL, path, &header, NULL, now_ns, out);
+  return quic_connection_create(tls, NULL, path, &header, NULL, now_ns, out);
 }
 
 asciichat_error_t quic_connection_server_create_validated(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
@@ -837,7 +837,7 @@ asciichat_error_t quic_connection_server_create_validated(quic_tls_t *tls, const
   int rc = ngtcp2_accept(&header, initial, initial_length);
   if (rc != 0 || header.version != NGTCP2_PROTO_VER_V1 || !header.tokenlen)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid validated QUIC Initial packet");
-  return connection_create(tls, NULL, path, &header, original_dcid, now_ns, out);
+  return quic_connection_create(tls, NULL, path, &header, original_dcid, now_ns, out);
 }
 
 static asciichat_error_t update_readiness(quic_connection_t *connection) {

@@ -155,6 +155,8 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     if (!target->empty()) {
       result.push_back("-target");
       result.push_back(*target);
+      if (target->find("-musl") != std::string::npos)
+        result.push_back("-nostdinc");
     }
   }
   if (compiler.find("emcc") != std::string::npos || compiler.find("em++") != std::string::npos) {
