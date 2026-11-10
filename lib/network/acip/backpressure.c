@@ -136,8 +136,7 @@ static bool outbound_insert_packet(acip_outbound_t *out, outbound_packet_t *pack
   outbound_packet_t **link = &out->head;
   if (priority) {
     for (outbound_packet_t **scan = &out->head; *scan; scan = &(*scan)->next)
-      if (!(*scan)->video && !(*scan)->audio && (*scan)->type != PACKET_TYPE_PING &&
-          (*scan)->type != PACKET_TYPE_PONG)
+      if (!(*scan)->video && !(*scan)->audio && (*scan)->type != PACKET_TYPE_PING && (*scan)->type != PACKET_TYPE_PONG)
         link = &(*scan)->next;
   }
   while (*link && (!priority || !(*link)->video))
