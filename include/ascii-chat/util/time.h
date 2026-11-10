@@ -80,6 +80,9 @@ using std::memory_order_relaxed;
 // ============================================================================
 
 /**
+ * @brief Configuration for adaptive sleep behavior
+ * @brief Runtime state for adaptive sleep
+ * @brief Individual timer record for a named timing operation
  * @brief Get current monotonic time in nanoseconds
  *
  * Returns high-precision monotonic time that never goes backwards.

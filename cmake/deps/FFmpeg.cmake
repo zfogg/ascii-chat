@@ -94,6 +94,8 @@ if(PLATFORM_IOS)
 
     set(FFMPEG_FOUND TRUE)
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
+    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIRS}" CACHE INTERNAL
+        "Additional include directories for defer source parsing")
 
     # iOS frameworks needed for FFmpeg
     set(FFMPEG_LIBRARIES
@@ -127,6 +129,9 @@ if(USE_MUSL)
     set(FFMPEG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/ffmpeg")
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FFMPEG_INCLUDE_DIRS}")
+    # The defer parser consumes the compilation database before target-level
+    # include propagation is available; make FFmpeg headers visible there too.
+    add_compile_options("-I${FFMPEG_INCLUDE_DIRS}")
     set(_ffmpeg_runtime "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
     set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
     set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
@@ -164,7 +169,9 @@ if(USE_MUSL)
     add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
     set_target_properties(asciichat-ffmpeg PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES}")
+        # FFmpeg's static archives have mutual dependencies.  A rescan group
+        # is required for the musl release link to resolve all av* symbols.
+        INTERFACE_LINK_LIBRARIES "-Wl,--start-group;${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES};-Wl,--end-group")
     add_dependencies(asciichat-ffmpeg ffmpeg-musl)
     set(FFMPEG_LIBRARIES asciichat-ffmpeg)
     set(FFMPEG_FOUND TRUE)

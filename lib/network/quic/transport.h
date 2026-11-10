@@ -8,7 +8,7 @@
  * must run on the same lane. recv is nonblocking and returns
  * ERROR_NETWORK_TIMEOUT when no complete packet is queued. The caller must
  * destroy the transport before destroying the connection. */
-asciichat_error_t quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach(quic_connection_t *connection, crypto_context_t *crypto,
                                         acip_transport_t **out);
 /* As above, but adapter operations lock the borrowed lane mutex. The endpoint
  * owner must hold that same mutex for every operation on the connection,
@@ -16,14 +16,14 @@ asciichat_error_t quic_transport_attach(acip_quic_connection_t *connection, cryp
  * the transport; do not call attach while already holding it. recv waits up to
  * receive_timeout_ns (one second if zero), and interrupt wakes receivers.
  * Stop and join all transport users before destroying the transport. */
-asciichat_error_t quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach_serialized(quic_connection_t *connection, crypto_context_t *crypto,
                                                    mutex_t *lane, acip_transport_t **out);
 /* For an endpoint accept callback already holding lane. The returned adapter
  * uses lane for later calls; no adapter method may be called until it is
  * released. */
-asciichat_error_t quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
-                                                mutex_t *lane, acip_transport_t **out);
-asciichat_error_t quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
+asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
+                                                acip_transport_t **out);
+asciichat_error_t quic_transport_attach_on_lane_with_waker(quic_connection_t *connection, mutex_t *lane,
                                                            void (*wake)(void *), void *context,
                                                            void (*on_destroy)(acip_transport_t *, void *),
                                                            void *destroy_context, acip_transport_t **out);
@@ -37,7 +37,7 @@ asciichat_error_t quic_transport_fail_on_lane(acip_transport_t *transport, ascii
 asciichat_error_t quic_transport_destroy_unclaimed_on_lane(acip_transport_t **transport, asciichat_error_t reason);
 asciichat_error_t quic_transport_set_waker_on_lane(acip_transport_t *transport, void (*wake)(void *), void *context);
 /* Called on the lane before a locally initiated close detaches its receiver. */
-void quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
+void quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(quic_connection_t *, void *),
                                       void *context);
 /* Configure while the transport is live. Called under the lane lock after a
  * packet is admitted; the callback must not block or reenter transport APIs.

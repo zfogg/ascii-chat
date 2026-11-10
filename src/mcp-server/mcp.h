@@ -8,6 +8,8 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/network/http/server/server.h>
 #include <yyjson.h>
 #include <string.h>
 
@@ -23,6 +25,7 @@ static inline yyjson_val *mcp_get(yyjson_val *obj, const char *name) {
 
 #define MCP_MAX_INPUT (24u * 1024u * 1024u)
 #define MCP_MAX_OUTPUT (8u * 1024u * 1024u)
+#define MCP_MAX_DOWNLOAD (64u * 1024u * 1024u)
 #define MCP_SESSION_ID_LENGTH 32
 
 typedef enum { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;
@@ -37,8 +40,15 @@ typedef struct {
   int port;
   char downloads_dir[PLATFORM_MAX_PATH_LENGTH];
   const char *downloads_url_prefix;
+  /**
+   */
 } mcp_policy_t;
 
+/**
+ * @brief When code needs to work with mcp policy, it keeps `hosted`, `restricted`, `address`, `address6` here instead
+ * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+ * allocation, lock, thread, or callback context recorded in those fields.
+ */
 typedef struct {
   char **argv;
   size_t argc;
@@ -48,6 +58,8 @@ typedef struct {
   char output_path[PLATFORM_MAX_PATH_LENGTH];
   unsigned timeout_ms;
   bool capture_webcam;
+  /**
+   */
 } mcp_render_request_t;
 
 typedef struct {
@@ -57,8 +69,18 @@ typedef struct {
   uint64_t elapsed_ms;
   bool timed_out;
   char output_path[PLATFORM_MAX_PATH_LENGTH];
+  /**
+   * @brief mcp render request is intentionally a small, concrete record. Fields such as `argv`, `argc`, `timeout_ms`,
+   * `capture_webcam` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+   * the surrounding subsystem—not independently managed.
+   */
 } mcp_render_result_t;
 
+/**
+ * @brief For mcp render result, this is the live record that ties `text`, `length`, `elapsed_ms`, `timed_out` together.
+ * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+ * freeing the record.
+ */
 typedef struct mcp_job {
   struct mcp_server *server;
   yyjson_doc *message;
@@ -74,11 +96,19 @@ typedef struct mcp_job {
   char session_id[MCP_SESSION_ID_LENGTH + 1];
 } mcp_job_t;
 
+/**
+ * @brief The useful part of mcp job is in `server`, `message`, `response`, `request`: together they describe what is
+ * pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+ * cleanup path.
+ * @brief mcp server keeps the values that move through the subsystem: `policy`, `jobs`, `output_mutex`, `shared_http`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
+ */
 typedef struct mcp_server {
   mcp_policy_t policy;
   mcp_job_t *jobs;
   mutex_t output_mutex;
-  void *http_context;
+  http_server_t *shared_http;
   atomic_t stopping;
   bool initialized;
 } mcp_server_t;

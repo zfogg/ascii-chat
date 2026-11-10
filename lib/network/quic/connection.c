@@ -1,6 +1,6 @@
 #include "connection.h"
 #include "datagram.h"
-#include "http3.h"
+#include "../http/server/http3.h"
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/crypto/session.h>
 
@@ -8,19 +8,22 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
 #include <ngtcp2/ngtcp2_crypto_ossl.h>
 #include <sodium.h>
 #include <string.h>
 
-#define ACIP_QUIC_CONNECTION_ID_LENGTH 16
-#define ACIP_QUIC_INITIAL_STREAM_WINDOW (5U * 1024U * 1024U)
-#define ACIP_QUIC_INITIAL_CONNECTION_WINDOW (16U * 1024U * 1024U)
-#define ACIP_QUIC_IDLE_TIMEOUT_NS (30ULL * 1000000000ULL)
-#define ACIP_QUIC_FLOW_COUNT 3
-#define ACIP_QUIC_DATAGRAM_FRAME_LIMIT 1400U
-#define ACIP_QUIC_DATAGRAM_OVERHEAD 128U
-#define ACIP_HTTP3_PEER_UNI_STREAMS 6U
+#define QUIC_CONNECTION_ID_LENGTH 16
+#define QUIC_INITIAL_STREAM_WINDOW (5U * 1024U * 1024U)
+#define QUIC_INITIAL_CONNECTION_WINDOW (16U * 1024U * 1024U)
+#define QUIC_IDLE_TIMEOUT_NS (30ULL * 1000000000ULL)
+#define QUIC_FLOW_COUNT 3
+#define QUIC_DATAGRAM_FRAME_LIMIT 1400U
+#define QUIC_DATAGRAM_OVERHEAD 128U
+#define QUIC_HTTP3_PEER_UNI_STREAMS 6U
 
+/**
+ */
 typedef struct send_chunk {
   struct send_chunk *next;
   uint8_t *data;
@@ -33,13 +36,29 @@ typedef struct {
   uint64_t queued_offset, acked_offset;
   send_chunk_t *head, *tail;
   bool initialized, fin_requested, fin_submitted;
+  /**
+   * @brief When code needs to work with datagram send, it keeps `next`, `data`, `length`, `cost` here instead of
+   * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   * @brief http3 receive stream is intentionally a small, concrete record. Fields such as `id`, `offset`,
+   * `prefix_used`, `prefix_length` give callers the identity and current value they need. It is normally borrowed from,
+   * or owned by, the surrounding subsystem—not independently managed.
+   * @brief When code needs to work with send chunk, it keeps `next`, `data`, `length`, `submitted` here instead of
+   * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   */
 } send_stream_t;
 
 typedef struct {
   int64_t id;
   uint64_t received_offset;
-  acip_quic_stream_reader_t reader;
+  quic_stream_reader_t reader;
   bool active, registered;
+  /**
+   * @brief send stream is intentionally a small, concrete record. Fields such as `id`, `queued_offset`, `acked_offset`,
+   * `head` give callers the identity and current value they need. It is normally borrowed from, or owned by, the
+   * surrounding subsystem—not independently managed.
+   */
 } receive_stream_t;
 
 typedef struct {
@@ -59,23 +78,28 @@ typedef struct datagram_send {
   uint16_t unit, index, count;
 } datagram_send_t;
 
-struct acip_quic_connection {
+/**
+ * @brief This is the handoff point for receive stream. Callers fill `id`, `received_offset`, `reader`, `active` before
+ * passing it on; consumers read the values during the operation and return ownership only where the member contract
+ * explicitly says they do.
+ */
+struct quic_connection {
   ngtcp2_conn *conn;
   ngtcp2_crypto_conn_ref reference;
   ngtcp2_crypto_ossl_ctx *crypto;
   SSL *ssl;
-  acip_quic_tls_t *tls;
+  quic_tls_t *tls;
   crypto_context_t *security;
-  acip_http3_server_t *http3;
+  http_server_http3_t *http3;
   ngtcp2_cid initial_dcid;
   bool has_initial_dcid;
   uint64_t last_time_ns;
-  send_stream_t sends[ACIP_QUIC_FLOW_COUNT];
-  receive_stream_t receives[ACIP_QUIC_FLOW_COUNT];
-  http3_receive_stream_t http3_receives[ACIP_HTTP3_PEER_UNI_STREAMS];
-  bool received_classes[ACIP_QUIC_FLOW_COUNT];
+  send_stream_t sends[QUIC_FLOW_COUNT];
+  receive_stream_t receives[QUIC_FLOW_COUNT];
+  http3_receive_stream_t http3_receives[QUIC_HTTP3_PEER_UNI_STREAMS];
+  bool received_classes[QUIC_FLOW_COUNT];
   size_t pending_bytes;
-  acip_quic_stream_emit_fn emit;
+  quic_stream_emit_fn emit;
   void *emit_context;
   void (*security_notify)(void *);
   void *security_notify_context;
@@ -94,24 +118,23 @@ struct acip_quic_connection {
   uint8_t *early_security_packet;
   size_t early_security_length;
   bool datagrams_enabled;
-  acip_quic_datagram_reader_t datagram_reader;
-  datagram_send_t *datagram_head[ACIP_QUIC_FLOW_COUNT], *datagram_tail[ACIP_QUIC_FLOW_COUNT];
-  uint64_t datagram_id[ACIP_QUIC_FLOW_COUNT];
+  quic_datagram_reader_t datagram_reader;
+  datagram_send_t *datagram_head[QUIC_FLOW_COUNT], *datagram_tail[QUIC_FLOW_COUNT];
+  uint64_t datagram_id[QUIC_FLOW_COUNT];
   uint64_t last_visual_sequence;
   uint16_t visual_codec;
   bool visual_waiting_keyframe, visual_keyframe_requested;
 };
 
-static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
-static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+static asciichat_error_t update_readiness(quic_connection_t *connection);
+static asciichat_error_t queue_wire_packet(quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                            const void *packet, size_t length);
-static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *connection,
-                                                    acip_traffic_class_t traffic_class, const void *packet,
-                                                    size_t length, bool internal);
+static asciichat_error_t queue_wire_packet_internal(quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                                    const void *packet, size_t length, bool internal);
 static const uint8_t quic_ready_payload[] = {'A', 'C', 'Q', 'R', 1};
 static const uint8_t quic_ack_payload[] = {'A', 'C', 'Q', 'A', 1};
 
-static asciichat_error_t queue_keyframe_request(acip_quic_connection_t *connection, uint16_t type, uint32_t id) {
+static asciichat_error_t queue_keyframe_request(quic_connection_t *connection, uint16_t type, uint32_t id) {
   uint8_t payload[6];
   uint16_t network_type = HOST_TO_NET_U16(type);
   uint32_t network_id = HOST_TO_NET_U32(id);
@@ -133,7 +156,7 @@ static asciichat_error_t queue_keyframe_request(acip_quic_connection_t *connecti
   return result;
 }
 
-static asciichat_error_t queue_security_barrier(acip_quic_connection_t *connection, const uint8_t *payload,
+static asciichat_error_t queue_security_barrier(quic_connection_t *connection, const uint8_t *payload,
                                                 size_t payload_length) {
   uint8_t marker[sizeof(packet_header_t) + sizeof(quic_ready_payload)];
   if (payload_length != sizeof(quic_ready_payload))
@@ -153,7 +176,7 @@ static asciichat_error_t queue_security_barrier(acip_quic_connection_t *connecti
   return result;
 }
 
-static asciichat_error_t open_security_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+static asciichat_error_t open_security_packet(quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                               const void *packet, size_t size) {
   uint8_t *plaintext = NULL;
   size_t plaintext_length = 0;
@@ -215,7 +238,7 @@ static bool initial_handshake_packet(packet_type_t type) {
          (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type < PACKET_TYPE_CRYPTO_NO_ENCRYPTION);
 }
 
-static void free_chunk(acip_quic_connection_t *connection, send_chunk_t *chunk) {
+static void free_chunk(quic_connection_t *connection, send_chunk_t *chunk) {
   connection->pending_bytes -= chunk->cost;
   buffer_release(chunk->data);
   SAFE_FREE(chunk);
@@ -243,7 +266,7 @@ static send_chunk_t *copy_chunk(const void *data, size_t length) {
   return chunk;
 }
 
-static void append_chunk(acip_quic_connection_t *connection, send_stream_t *stream, send_chunk_t *chunk) {
+static void append_chunk(quic_connection_t *connection, send_stream_t *stream, send_chunk_t *chunk) {
   stream->queued_offset += chunk->length;
   chunk->end_offset = stream->queued_offset;
   if (stream->tail)
@@ -258,8 +281,8 @@ static int acknowledged_stream_data(ngtcp2_conn *conn, int64_t stream_id, uint64
                                     void *user_data, void *stream_user_data) {
   (void)conn;
   (void)stream_user_data;
-  acip_quic_connection_t *connection = user_data;
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+  quic_connection_t *connection = user_data;
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
     send_stream_t *stream = &connection->sends[i];
     if (stream->id != stream_id)
       continue;
@@ -277,14 +300,22 @@ static int acknowledged_stream_data(ngtcp2_conn *conn, int64_t stream_id, uint64
     }
     return 0;
   }
-  if (connection->http3 && acip_http3_server_ack(connection->http3, stream_id, length) == ASCIICHAT_OK)
+  if (connection->http3 && http_server_http3_ack(connection->http3, stream_id, length) == ASCIICHAT_OK)
     return 0;
   return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
 typedef struct {
-  acip_quic_connection_t *connection;
+  quic_connection_t *connection;
   receive_stream_t *stream;
+  /**
+   * @brief acip quic connection is intentionally a small, concrete record. Fields such as `conn`, `reference`,
+   * `crypto`, `ssl` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+   * the surrounding subsystem—not independently managed.
+   * @brief receive context keeps the values that move through the subsystem: `connection`, `stream`. Some members are
+   * pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+   * struct copy itself.
+   */
 } receive_context_t;
 
 static asciichat_error_t register_receive_class(receive_context_t *context) {
@@ -292,7 +323,7 @@ static asciichat_error_t register_receive_class(receive_context_t *context) {
   if (stream->registered)
     return ASCIICHAT_OK;
   acip_traffic_class_t traffic_class = stream->reader.traffic_class;
-  if ((unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT || context->connection->received_classes[traffic_class])
+  if ((unsigned)traffic_class >= QUIC_FLOW_COUNT || context->connection->received_classes[traffic_class])
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Duplicate QUIC traffic stream");
   context->connection->received_classes[traffic_class] = true;
   stream->registered = true;
@@ -329,17 +360,17 @@ static asciichat_error_t emit_received_packet(acip_traffic_class_t traffic_class
   return open_security_packet(context->connection, traffic_class, packet, size);
 }
 
-static int receive_acip_stream(ngtcp2_conn *conn, acip_quic_connection_t *connection, uint32_t flags, int64_t stream_id,
+static int receive_acip_stream(ngtcp2_conn *conn, quic_connection_t *connection, uint32_t flags, int64_t stream_id,
                                uint64_t offset, const uint8_t *data, size_t length) {
   receive_stream_t *stream = NULL;
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
     if (connection->receives[i].active && connection->receives[i].id == stream_id) {
       stream = &connection->receives[i];
       break;
     }
   }
   if (!stream) {
-    for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+    for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
       if (!connection->receives[i].active) {
         stream = &connection->receives[i];
         stream->active = true;
@@ -393,11 +424,11 @@ static size_t write_quic_varint(uint8_t *out, uint64_t value) {
   return width;
 }
 
-static int receive_http3(ngtcp2_conn *conn, acip_quic_connection_t *connection, uint32_t flags, int64_t stream_id,
+static int receive_http3(ngtcp2_conn *conn, quic_connection_t *connection, uint32_t flags, int64_t stream_id,
                          const uint8_t *data, size_t length) {
   size_t consumed = 0;
   asciichat_error_t result =
-      acip_http3_server_read(connection->http3, stream_id, data, length, (flags & NGTCP2_STREAM_DATA_FLAG_FIN) != 0,
+      http_server_http3_read(connection->http3, stream_id, data, length, (flags & NGTCP2_STREAM_DATA_FLAG_FIN) != 0,
                              connection->last_time_ns, &consumed);
   if (result != ASCIICHAT_OK || ngtcp2_conn_extend_max_stream_offset(conn, stream_id, consumed) != 0) {
     connection->callback_error = result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
@@ -405,7 +436,7 @@ static int receive_http3(ngtcp2_conn *conn, acip_quic_connection_t *connection, 
   }
   ngtcp2_conn_extend_max_offset(conn, consumed);
   int64_t session_id = -1;
-  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) && acip_http3_server_accepted(connection->http3, &session_id) &&
+  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) && http_server_http3_accepted(connection->http3, &session_id) &&
       stream_id == session_id) {
     connection->callback_error = ERROR_NETWORK;
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -413,17 +444,17 @@ static int receive_http3(ngtcp2_conn *conn, acip_quic_connection_t *connection, 
   return 0;
 }
 
-static int receive_webtransport_uni(ngtcp2_conn *conn, acip_quic_connection_t *connection, uint32_t flags,
-                                    int64_t stream_id, uint64_t offset, const uint8_t *data, size_t length) {
+static int receive_webtransport_uni(ngtcp2_conn *conn, quic_connection_t *connection, uint32_t flags, int64_t stream_id,
+                                    uint64_t offset, const uint8_t *data, size_t length) {
   http3_receive_stream_t *stream = NULL;
-  for (size_t i = 0; i < ACIP_HTTP3_PEER_UNI_STREAMS; ++i) {
+  for (size_t i = 0; i < QUIC_HTTP3_PEER_UNI_STREAMS; ++i) {
     if (connection->http3_receives[i].active && connection->http3_receives[i].id == stream_id) {
       stream = &connection->http3_receives[i];
       break;
     }
   }
   if (!stream) {
-    for (size_t i = 0; i < ACIP_HTTP3_PEER_UNI_STREAMS; ++i) {
+    for (size_t i = 0; i < QUIC_HTTP3_PEER_UNI_STREAMS; ++i) {
       if (!connection->http3_receives[i].active) {
         stream = &connection->http3_receives[i];
         stream->active = true;
@@ -451,7 +482,7 @@ static int receive_webtransport_uni(ngtcp2_conn *conn, acip_quic_connection_t *c
     if (!read_quic_varint(stream->prefix + type_length, stream->prefix_used - type_length, &session, &session_length))
       continue;
     int64_t accepted = -1;
-    if (!acip_http3_server_accepted(connection->http3, &accepted) || session != (uint64_t)accepted)
+    if (!http_server_http3_accepted(connection->http3, &accepted) || session != (uint64_t)accepted)
       goto invalid;
     stream->kind = 2;
     stream->prefix_length = type_length + session_length;
@@ -487,7 +518,7 @@ invalid:
 static int receive_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id, uint64_t offset,
                                const uint8_t *data, size_t length, void *user_data, void *stream_user_data) {
   (void)stream_user_data;
-  acip_quic_connection_t *connection = user_data;
+  quic_connection_t *connection = user_data;
   asciichat_error_t readiness = update_readiness(connection);
   if (connection->webtransport) {
     if ((flags & NGTCP2_STREAM_DATA_FLAG_0RTT) || ngtcp2_conn_is_local_stream2(conn, stream_id) ||
@@ -514,7 +545,7 @@ static int reset_stream(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_siz
   (void)final_size;
   (void)app_error_code;
   (void)stream_user_data;
-  ((acip_quic_connection_t *)user_data)->callback_error = ERROR_NETWORK_PROTOCOL;
+  ((quic_connection_t *)user_data)->callback_error = ERROR_NETWORK_PROTOCOL;
   return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
@@ -524,13 +555,13 @@ static int receive_stop_sending(ngtcp2_conn *conn, int64_t stream_id, uint64_t a
   (void)stream_id;
   (void)app_error_code;
   (void)stream_user_data;
-  ((acip_quic_connection_t *)user_data)->callback_error = ERROR_NETWORK_PROTOCOL;
+  ((quic_connection_t *)user_data)->callback_error = ERROR_NETWORK_PROTOCOL;
   return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
 static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *data, size_t length, void *user_data) {
   (void)conn;
-  acip_quic_connection_t *connection = user_data;
+  quic_connection_t *connection = user_data;
   if ((flags & NGTCP2_DATAGRAM_FLAG_0RTT) || !connection->datagrams_enabled || !connection->security ||
       !connection->peer_ready_seen || !connection->emit)
     return 0;
@@ -538,7 +569,7 @@ static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *da
     int64_t session_id = -1;
     uint64_t quarter = 0;
     size_t prefix_length = 0;
-    if (!acip_http3_server_accepted(connection->http3, &session_id) ||
+    if (!http_server_http3_accepted(connection->http3, &session_id) ||
         !read_quic_varint(data, length, &quarter, &prefix_length) || quarter != (uint64_t)session_id / 4)
       return 0;
     data += prefix_length;
@@ -605,7 +636,7 @@ done:
 }
 
 static ngtcp2_conn *get_connection(ngtcp2_crypto_conn_ref *reference) {
-  return ((acip_quic_connection_t *)reference->user_data)->conn;
+  return ((quic_connection_t *)reference->user_data)->conn;
 }
 
 static void random_bytes(uint8_t *output, size_t length, const ngtcp2_rand_ctx *context) {
@@ -633,9 +664,10 @@ static int path_validation(ngtcp2_conn *conn, uint32_t flags, const ngtcp2_path 
   (void)user_data;
   if (result == NGTCP2_PATH_VALIDATION_RESULT_SUCCESS && path && path->remote.addr) {
     unsigned port = 0;
-    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= sizeof(struct sockaddr_in))
+    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in))
       port = NET_TO_HOST_U16(((const struct sockaddr_in *)path->remote.addr)->sin_port);
-    else if (path->remote.addr->sa_family == AF_INET6 && path->remote.addrlen >= sizeof(struct sockaddr_in6))
+    else if (path->remote.addr->sa_family == AF_INET6 &&
+             path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in6))
       port = NET_TO_HOST_U16(((const struct sockaddr_in6 *)path->remote.addr)->sin6_port);
     log_info("QUIC peer path validated: port=%u", port);
   }
@@ -684,9 +716,9 @@ static bool valid_path(const ngtcp2_path *path) {
   return path && valid_address(&path->local) && valid_address(&path->remote);
 }
 
-static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
+static asciichat_error_t connection_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
                                            const ngtcp2_pkt_hd *initial, const ngtcp2_cid *original_dcid,
-                                           uint64_t now_ns, acip_quic_connection_t **out) {
+                                           uint64_t now_ns, quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
   *out = NULL;
@@ -696,7 +728,7 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   if (sodium_init() < 0)
     return SET_ERRNO(ERROR_CRYPTO, "Cannot initialize QUIC random source");
 
-  acip_quic_connection_t *connection = SAFE_CALLOC(1, sizeof(*connection), acip_quic_connection_t *);
+  quic_connection_t *connection = SAFE_CALLOC(1, sizeof(*connection), quic_connection_t *);
   if (!connection)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC connection");
   connection->tls = tls;
@@ -706,18 +738,18 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
     connection->has_initial_dcid = true;
   }
   connection->last_time_ns = now_ns;
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i)
     connection->sends[i].id = -1;
   connection->reference.get_conn = get_connection;
   connection->reference.user_data = connection;
 
   ngtcp2_cid dcid = {0}, scid = {0};
-  scid.datalen = ACIP_QUIC_CONNECTION_ID_LENGTH;
+  scid.datalen = QUIC_CONNECTION_ID_LENGTH;
   randombytes_buf(scid.data, scid.datalen);
   if (initial)
     dcid = initial->scid;
   else {
-    dcid.datalen = ACIP_QUIC_CONNECTION_ID_LENGTH;
+    dcid.datalen = QUIC_CONNECTION_ID_LENGTH;
     randombytes_buf(dcid.data, dcid.datalen);
   }
   ngtcp2_settings settings;
@@ -730,13 +762,13 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   }
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
-  params.initial_max_streams_uni = tls->webtransport ? 6 : 3;
-  params.initial_max_streams_bidi = tls->webtransport ? 1 : 0;
-  params.initial_max_stream_data_bidi_local = tls->webtransport ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
-  params.initial_max_stream_data_bidi_remote = tls->webtransport ? ACIP_QUIC_INITIAL_STREAM_WINDOW : 0;
-  params.initial_max_stream_data_uni = ACIP_QUIC_INITIAL_STREAM_WINDOW;
-  params.initial_max_data = ACIP_QUIC_INITIAL_CONNECTION_WINDOW;
-  params.max_idle_timeout = ACIP_QUIC_IDLE_TIMEOUT_NS;
+  params.initial_max_streams_uni = tls->http3 ? 6 : 3;
+  params.initial_max_streams_bidi = tls->http3 ? 1 : 0;
+  params.initial_max_stream_data_bidi_local = tls->http3 ? QUIC_INITIAL_STREAM_WINDOW : 0;
+  params.initial_max_stream_data_bidi_remote = tls->http3 ? QUIC_INITIAL_STREAM_WINDOW : 0;
+  params.initial_max_stream_data_uni = QUIC_INITIAL_STREAM_WINDOW;
+  params.initial_max_data = QUIC_INITIAL_CONNECTION_WINDOW;
+  params.max_idle_timeout = QUIC_IDLE_TIMEOUT_NS;
   if (connection->datagrams_enabled)
     params.max_datagram_frame_size = 65535;
   if (initial) {
@@ -773,13 +805,13 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_client_create(acip_quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
-                                                uint64_t now_ns, acip_quic_connection_t **out) {
+asciichat_error_t quic_connection_client_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
+                                                uint64_t now_ns, quic_connection_t **out) {
   return connection_create(tls, server_name, path, NULL, NULL, now_ns, out);
 }
 
-asciichat_error_t quic_connection_server_create(acip_quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
-                                                size_t initial_length, uint64_t now_ns, acip_quic_connection_t **out) {
+asciichat_error_t quic_connection_server_create(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
+                                                size_t initial_length, uint64_t now_ns, quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
   *out = NULL;
@@ -792,10 +824,9 @@ asciichat_error_t quic_connection_server_create(acip_quic_tls_t *tls, const ngtc
   return connection_create(tls, NULL, path, &header, NULL, now_ns, out);
 }
 
-asciichat_error_t quic_connection_server_create_validated(acip_quic_tls_t *tls, const ngtcp2_path *path,
-                                                          const void *initial, size_t initial_length,
-                                                          const ngtcp2_cid *original_dcid, uint64_t now_ns,
-                                                          acip_quic_connection_t **out) {
+asciichat_error_t quic_connection_server_create_validated(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
+                                                          size_t initial_length, const ngtcp2_cid *original_dcid,
+                                                          uint64_t now_ns, quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
   *out = NULL;
@@ -809,7 +840,7 @@ asciichat_error_t quic_connection_server_create_validated(acip_quic_tls_t *tls, 
   return connection_create(tls, NULL, path, &header, original_dcid, now_ns, out);
 }
 
-static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
+static asciichat_error_t update_readiness(quic_connection_t *connection) {
   if (!connection->tls_ready && ngtcp2_conn_get_handshake_completed2(connection->conn)) {
     asciichat_error_t result = quic_tls_verify_ready(connection->tls, connection->ssl);
     if (result != ASCIICHAT_OK) {
@@ -820,11 +851,11 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
     unsigned int protocol_length = 0;
     SSL_get0_alpn_selected(connection->ssl, &protocol, &protocol_length);
     connection->webtransport =
-        connection->tls->webtransport && protocol_length == 2 && protocol && !memcmp(protocol, "h3", sizeof("h3") - 1);
+        connection->tls->http3 && protocol_length == 2 && protocol && !memcmp(protocol, "h3", sizeof("h3") - 1);
     connection->tls_ready = true;
   }
   if (connection->tls_ready && connection->webtransport && !connection->http3) {
-    int64_t control, encoder, decoder;
+    int64_t control = 0, encoder = 0, decoder = 0;
     int rc = ngtcp2_conn_open_uni_stream(connection->conn, &control, NULL);
     if (!rc)
       rc = ngtcp2_conn_open_uni_stream(connection->conn, &encoder, NULL);
@@ -834,9 +865,14 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
       connection->failed = true;
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot open HTTP/3 control streams: %s", ngtcp2_strerror(rc));
     }
+    char peer_address[64] = "unknown";
+    struct sockaddr_storage peer;
+    socklen_t peer_length = sizeof(peer);
+    if (quic_connection_peer_address(connection, &peer, &peer_length) == ASCIICHAT_OK)
+      (void)format_ip_address(peer.ss_family, (const struct sockaddr *)&peer, peer_address, sizeof(peer_address));
     asciichat_error_t result =
-        acip_http3_server_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
-                                 encoder, decoder, &connection->http3);
+        http_server_http3_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
+                                 encoder, decoder, connection->tls->http_server, peer_address, &connection->http3);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
       return result;
@@ -845,12 +881,12 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_t now_ns) {
+static asciichat_error_t update_time(quic_connection_t *connection, uint64_t now_ns) {
   if (now_ns < connection->last_time_ns || now_ns == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC monotonic time moved backwards or is invalid");
   connection->last_time_ns = now_ns;
   quic_datagram_expire(&connection->datagram_reader, now_ns);
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
     datagram_send_t **link = &connection->datagram_head[i], *tail = NULL;
     while (*link) {
       datagram_send_t *item = *link;
@@ -869,8 +905,8 @@ static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,
-                                              size_t length, bool *matches) {
+asciichat_error_t quic_connection_matches_cid(const quic_connection_t *connection, const uint8_t *cid, size_t length,
+                                              bool *matches) {
   if (!connection || !connection->conn || !cid || !matches)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC connection ID lookup");
   *matches = false;
@@ -900,8 +936,7 @@ asciichat_error_t quic_connection_matches_cid(const acip_quic_connection_t *conn
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,
-                                               void *context) {
+asciichat_error_t quic_connection_set_receiver(quic_connection_t *connection, quic_stream_emit_fn emit, void *context) {
   if (!connection || !connection->conn || connection->failed || !emit || connection->emit)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback");
   connection->emit = emit;
@@ -909,7 +944,7 @@ asciichat_error_t quic_connection_set_receiver(acip_quic_connection_t *connectio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context) {
+asciichat_error_t quic_connection_clear_receiver(quic_connection_t *connection, void *context) {
   if (!connection || !connection->emit || connection->emit_context != context)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback context");
   connection->emit = NULL;
@@ -921,22 +956,22 @@ asciichat_error_t quic_connection_clear_receiver(acip_quic_connection_t *connect
   return ASCIICHAT_OK;
 }
 
-void quic_connection_set_keyframe_notifier(acip_quic_connection_t *connection,
-                                           void (*notify)(uint16_t, uint32_t, void *), void *context) {
+void quic_connection_set_keyframe_notifier(quic_connection_t *connection, void (*notify)(uint16_t, uint32_t, void *),
+                                           void *context) {
   if (connection) {
     connection->keyframe_notify = notify;
     connection->keyframe_notify_context = notify ? context : NULL;
   }
 }
 
-void quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *), void *context) {
+void quic_connection_set_security_notifier(quic_connection_t *connection, void (*notify)(void *), void *context) {
   if (connection) {
     connection->security_notify = notify;
     connection->security_notify_context = notify ? context : NULL;
   }
 }
 
-asciichat_error_t quic_connection_allow_media(acip_quic_connection_t *connection) {
+asciichat_error_t quic_connection_allow_media(quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->security ||
       !connection->peer_security_ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC and authenticated ACIP encryption are not ready for media");
@@ -944,7 +979,7 @@ asciichat_error_t quic_connection_allow_media(acip_quic_connection_t *connection
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto) {
+asciichat_error_t quic_connection_enable_security(quic_connection_t *connection, crypto_context_t *crypto) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->emit)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC is not ready for the ACIP security transition");
   crypto->server_role = connection->tls->server;
@@ -969,39 +1004,39 @@ asciichat_error_t quic_connection_enable_security(acip_quic_connection_t *connec
   return result;
 }
 
-bool quic_connection_security_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_security_ready(const quic_connection_t *connection) {
   return connection && connection->security && connection->peer_security_ready && !connection->failed;
 }
 
-size_t quic_connection_datagram_payload(const acip_quic_connection_t *connection) {
+size_t quic_connection_datagram_payload(const quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready ||
       !connection->datagrams_enabled)
     return 0;
   const ngtcp2_transport_params *remote = ngtcp2_conn_get_remote_transport_params2(connection->conn);
-  if (!remote || remote->max_datagram_frame_size <= ACIP_QUIC_DATAGRAM_HEADER_SIZE + 9)
+  if (!remote || remote->max_datagram_frame_size <= QUIC_DATAGRAM_HEADER_SIZE + 9)
     return 0;
   size_t path = ngtcp2_conn_get_path_max_tx_udp_payload_size2(connection->conn);
-  if (path <= ACIP_QUIC_DATAGRAM_OVERHEAD + ACIP_QUIC_DATAGRAM_HEADER_SIZE)
+  if (path <= QUIC_DATAGRAM_OVERHEAD + QUIC_DATAGRAM_HEADER_SIZE)
     return 0;
-  size_t frame = path - ACIP_QUIC_DATAGRAM_OVERHEAD;
-  if (frame > ACIP_QUIC_DATAGRAM_FRAME_LIMIT)
-    frame = ACIP_QUIC_DATAGRAM_FRAME_LIMIT;
+  size_t frame = path - QUIC_DATAGRAM_OVERHEAD;
+  if (frame > QUIC_DATAGRAM_FRAME_LIMIT)
+    frame = QUIC_DATAGRAM_FRAME_LIMIT;
   if (frame > remote->max_datagram_frame_size - 9)
     frame = (size_t)(remote->max_datagram_frame_size - 9);
   if (connection->webtransport) {
     int64_t session_id = -1;
     uint8_t prefix[8];
-    if (!connection->http3 || !acip_http3_server_accepted(connection->http3, &session_id))
+    if (!connection->http3 || !http_server_http3_accepted(connection->http3, &session_id))
       return 0;
     size_t size = write_quic_varint(prefix, (uint64_t)session_id / 4);
     if (frame <= size)
       return 0;
     frame -= size;
   }
-  return frame > ACIP_QUIC_DATAGRAM_HEADER_SIZE ? frame - ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0;
+  return frame > QUIC_DATAGRAM_HEADER_SIZE ? frame - QUIC_DATAGRAM_HEADER_SIZE : 0;
 }
 
-asciichat_error_t quic_connection_validate_datagram(const acip_quic_connection_t *connection, acip_traffic_class_t flow,
+asciichat_error_t quic_connection_validate_datagram(const quic_connection_t *connection, acip_traffic_class_t flow,
                                                     uint64_t deadline_ns) {
   if (!connection || (flow != ACIP_TRAFFIC_AUDIO && flow != ACIP_TRAFFIC_VISUAL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram flow");
@@ -1014,7 +1049,7 @@ asciichat_error_t quic_connection_validate_datagram(const acip_quic_connection_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
+asciichat_error_t quic_connection_submit_datagram(quic_connection_t *connection, acip_traffic_class_t flow,
                                                   const void *packet, size_t length, uint64_t deadline_ns) {
   asciichat_error_t validation = quic_connection_validate_datagram(connection, flow, deadline_ns);
   if (validation != ASCIICHAT_OK)
@@ -1042,9 +1077,9 @@ asciichat_error_t quic_connection_submit_datagram(acip_quic_connection_t *connec
     return result;
   size_t count = (wire_length + unit - 1) / unit;
   size_t cost = buffer_capacity(wire) + sizeof(datagram_send_t);
-  if (count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS || cost > limit - connection->pending_bytes) {
+  if (count > QUIC_DATAGRAM_MAX_FRAGMENTS || cost > limit - connection->pending_bytes) {
     buffer_release(wire);
-    return SET_ERRNO(count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS ? ERROR_NETWORK_SIZE : ERROR_BUFFER_FULL,
+    return SET_ERRNO(count > QUIC_DATAGRAM_MAX_FRAGMENTS ? ERROR_NETWORK_SIZE : ERROR_BUFFER_FULL,
                      "QUIC datagram exceeds fragmentation or queue limit");
   }
   datagram_send_t *item = SAFE_CALLOC(1, sizeof(*item), datagram_send_t *);
@@ -1068,7 +1103,7 @@ asciichat_error_t quic_connection_submit_datagram(acip_quic_connection_t *connec
   return ASCIICHAT_OK;
 }
 
-static void pop_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow) {
+static void pop_datagram(quic_connection_t *connection, acip_traffic_class_t flow) {
   datagram_send_t *item = connection->datagram_head[flow];
   connection->datagram_head[flow] = item->next;
   if (!item->next)
@@ -1078,16 +1113,15 @@ static void pop_datagram(acip_quic_connection_t *connection, acip_traffic_class_
   SAFE_FREE(item);
 }
 
-static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+static asciichat_error_t queue_wire_packet(quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                            const void *packet, size_t length) {
   return queue_wire_packet_internal(connection, traffic_class, packet, length, false);
 }
 
-static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *connection,
-                                                    acip_traffic_class_t traffic_class, const void *packet,
-                                                    size_t length, bool internal) {
-  if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT ||
-      !packet || length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
+static asciichat_error_t queue_wire_packet_internal(quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                                    const void *packet, size_t length, bool internal) {
+  if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= QUIC_FLOW_COUNT || !packet ||
+      length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC outbound packet");
   if (!connection->tls_ready || (!internal && traffic_class != ACIP_TRAFFIC_CONTROL && !connection->media_allowed))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC connection is not ready for this traffic");
@@ -1106,7 +1140,7 @@ static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *conn
   if (!stream->initialized) {
     if (connection->webtransport) {
       int64_t session_id = -1;
-      if (!acip_http3_server_accepted(connection->http3, &session_id))
+      if (!http_server_http3_accepted(connection->http3, &session_id))
         return SET_ERRNO(ERROR_INVALID_STATE, "WebTransport session is not established");
       prefix_length += write_quic_varint(preamble + prefix_length, 0x54);
       prefix_length += write_quic_varint(preamble + prefix_length, (uint64_t)session_id);
@@ -1150,7 +1184,7 @@ static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *conn
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_connection_submit(quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                          const void *packet, size_t length) {
   if (connection && !connection->security && packet && length >= sizeof(packet_header_t)) {
     packet_header_t header;
@@ -1177,8 +1211,7 @@ asciichat_error_t quic_connection_submit(acip_quic_connection_t *connection, aci
         acip_security_rekey_packet(NET_TO_HOST_U16(header.type)))
       return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC readiness marker is reserved");
   }
-  if (!connection->conn || connection->failed || !connection->tls_ready ||
-      (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT ||
+  if (!connection->conn || connection->failed || !connection->tls_ready || (unsigned)traffic_class >= QUIC_FLOW_COUNT ||
       (traffic_class != ACIP_TRAFFIC_CONTROL && !connection->media_allowed))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC connection is not ready for this traffic");
   if (connection->sends[traffic_class].fin_requested)
@@ -1193,13 +1226,12 @@ asciichat_error_t quic_connection_submit(acip_quic_connection_t *connection, aci
   return result;
 }
 
-size_t quic_connection_pending_bytes(const acip_quic_connection_t *connection) {
+size_t quic_connection_pending_bytes(const quic_connection_t *connection) {
   return connection ? connection->pending_bytes : 0;
 }
 
-asciichat_error_t quic_connection_finish_stream(acip_quic_connection_t *connection,
-                                                acip_traffic_class_t traffic_class) {
-  if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
+asciichat_error_t quic_connection_finish_stream(quic_connection_t *connection, acip_traffic_class_t traffic_class) {
+  if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= QUIC_FLOW_COUNT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC traffic stream");
   send_stream_t *stream = &connection->sends[traffic_class];
   if (!stream->initialized || stream->fin_requested)
@@ -1208,17 +1240,17 @@ asciichat_error_t quic_connection_finish_stream(acip_quic_connection_t *connecti
   return ASCIICHAT_OK;
 }
 
-bool quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class) {
-  if (!connection || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
+bool quic_connection_received_fin(const quic_connection_t *connection, acip_traffic_class_t traffic_class) {
+  if (!connection || (unsigned)traffic_class >= QUIC_FLOW_COUNT)
     return false;
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i)
     if (connection->receives[i].registered && connection->receives[i].reader.traffic_class == traffic_class)
       return connection->receives[i].reader.finished;
   return false;
 }
 
-asciichat_error_t quic_connection_receive(acip_quic_connection_t *connection, const ngtcp2_path *path,
-                                          const void *packet, size_t length, uint64_t now_ns) {
+asciichat_error_t quic_connection_receive(quic_connection_t *connection, const ngtcp2_path *path, const void *packet,
+                                          size_t length, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || !valid_path(path) || !packet || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC packet input");
   asciichat_error_t result = update_time(connection, now_ns);
@@ -1238,7 +1270,7 @@ asciichat_error_t quic_connection_receive(acip_quic_connection_t *connection, co
   return update_readiness(connection);
 }
 
-static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_path *path, ngtcp2_pkt_info *info,
+static ngtcp2_ssize write_pending(quic_connection_t *connection, ngtcp2_path *path, ngtcp2_pkt_info *info,
                                   uint8_t *packet, size_t capacity, uint64_t now_ns) {
   // HTTP/3 session control precedes application traffic; blocked streams yield
   // so other flows and transport acknowledgements can still advance.
@@ -1248,7 +1280,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
     bool fin = false;
     nghttp3_vec h3vec[8];
     size_t count = 0;
-    if (acip_http3_server_write(connection->http3, &stream_id, &fin, h3vec, 8, &count) != ASCIICHAT_OK)
+    if (http_server_http3_write(connection->http3, &stream_id, &fin, h3vec, 8, &count) != ASCIICHAT_OK)
       return NGTCP2_ERR_CALLBACK_FAILURE;
     if (stream_id >= 0) {
       ngtcp2_vec vectors[8];
@@ -1259,14 +1291,14 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
           connection->conn, path, info, packet, capacity, &consumed,
           fin ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE, stream_id, vectors, count, now_ns);
       if (consumed < 0) {
-        if (acip_http3_server_wrote(connection->http3, stream_id, 0) != ASCIICHAT_OK)
+        if (http_server_http3_wrote(connection->http3, stream_id, 0) != ASCIICHAT_OK)
           return NGTCP2_ERR_CALLBACK_FAILURE;
         if (written != NGTCP2_ERR_STREAM_DATA_BLOCKED)
           return written;
         /* Other streams and QUIC acknowledgements can still make progress
          * while this HTTP/3 stream waits for flow-control credit. */
       } else {
-        if (acip_http3_server_wrote(connection->http3, stream_id, (size_t)consumed) != ASCIICHAT_OK)
+        if (http_server_http3_wrote(connection->http3, stream_id, (size_t)consumed) != ASCIICHAT_OK)
           return NGTCP2_ERR_CALLBACK_FAILURE;
         return written;
       }
@@ -1274,7 +1306,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
   }
   // Service control, audio, then visual data. Expired datagrams release their
   // entire pending packet before another fragment can be submitted.
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
     acip_traffic_class_t flow = (acip_traffic_class_t)i;
     while (connection->datagram_head[i] &&
            ((connection->datagram_head[i]->deadline_ns && connection->datagram_head[i]->deadline_ns <= now_ns) ||
@@ -1282,11 +1314,11 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
       pop_datagram(connection, flow);
     datagram_send_t *item = connection->datagram_head[i];
     if (item) {
-      uint8_t fragment[ACIP_QUIC_DATAGRAM_FRAME_LIMIT];
+      uint8_t fragment[QUIC_DATAGRAM_FRAME_LIMIT];
       size_t fragment_length = 0, prefix_length = 0;
       if (connection->webtransport) {
         int64_t session_id = -1;
-        if (!acip_http3_server_accepted(connection->http3, &session_id))
+        if (!http_server_http3_accepted(connection->http3, &session_id))
           return NGTCP2_ERR_CALLBACK_FAILURE;
         prefix_length = write_quic_varint(fragment, (uint64_t)session_id / 4);
       }
@@ -1352,16 +1384,15 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
   return ngtcp2_conn_write_pkt(connection->conn, path, info, packet, capacity, now_ns);
 }
 
-bool quic_connection_pending_packet_class(const acip_quic_connection_t *connection,
-                                          acip_traffic_class_t *traffic_class) {
+bool quic_connection_pending_packet_class(const quic_connection_t *connection, acip_traffic_class_t *traffic_class) {
   if (!connection || !connection->packet_pending || !connection->packet_has_stream_data || !traffic_class)
     return false;
   *traffic_class = connection->packet_traffic_class;
   return true;
 }
 
-asciichat_error_t quic_connection_write_close(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
-                                              void *packet, size_t capacity, size_t *length, uint64_t now_ns) {
+asciichat_error_t quic_connection_write_close(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet,
+                                              size_t capacity, size_t *length, uint64_t now_ns) {
   if (!connection || !connection->conn || !path || !packet || capacity < 1200 || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC close packet output");
   *length = 0;
@@ -1383,7 +1414,7 @@ asciichat_error_t quic_connection_write_close(acip_quic_connection_t *connection
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path, void *packet,
+asciichat_error_t quic_connection_write(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet,
                                         size_t capacity, size_t *length, uint64_t now_ns) {
   if (!length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC packet length output");
@@ -1408,7 +1439,7 @@ asciichat_error_t quic_connection_write(acip_quic_connection_t *connection, ngtc
   return update_readiness(connection);
 }
 
-asciichat_error_t quic_connection_packet_sent(acip_quic_connection_t *connection, uint64_t now_ns) {
+asciichat_error_t quic_connection_packet_sent(quic_connection_t *connection, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || !connection->packet_pending)
     return SET_ERRNO(ERROR_INVALID_STATE, "No QUIC packet awaiting transmission");
   asciichat_error_t result = update_time(connection, now_ns);
@@ -1419,24 +1450,24 @@ asciichat_error_t quic_connection_packet_sent(acip_quic_connection_t *connection
   return ASCIICHAT_OK;
 }
 
-uint64_t quic_connection_expiry(const acip_quic_connection_t *connection) {
+uint64_t quic_connection_expiry(const quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed)
     return UINT64_MAX;
   uint64_t expiry = ngtcp2_conn_get_expiry(connection->conn);
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i)
     for (const datagram_send_t *item = connection->datagram_head[i]; item; item = item->next)
       if (item->deadline_ns && item->deadline_ns < expiry)
         expiry = item->deadline_ns;
-  for (size_t i = 0; i < ACIP_QUIC_DATAGRAM_SLOTS; ++i) {
-    const acip_quic_datagram_slot_t *slot = &connection->datagram_reader.slots[i];
-    if (slot->data && slot->started_ns <= UINT64_MAX - ACIP_QUIC_DATAGRAM_EXPIRY_NS &&
-        slot->started_ns + ACIP_QUIC_DATAGRAM_EXPIRY_NS < expiry)
-      expiry = slot->started_ns + ACIP_QUIC_DATAGRAM_EXPIRY_NS;
+  for (size_t i = 0; i < QUIC_DATAGRAM_SLOTS; ++i) {
+    const quic_datagram_slot_t *slot = &connection->datagram_reader.slots[i];
+    if (slot->data && slot->started_ns <= UINT64_MAX - QUIC_DATAGRAM_EXPIRY_NS &&
+        slot->started_ns + QUIC_DATAGRAM_EXPIRY_NS < expiry)
+      expiry = slot->started_ns + QUIC_DATAGRAM_EXPIRY_NS;
   }
   return expiry;
 }
 
-asciichat_error_t quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns) {
+asciichat_error_t quic_connection_handle_expiry(quic_connection_t *connection, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC timeout state");
   asciichat_error_t result = update_time(connection, now_ns);
@@ -1450,22 +1481,23 @@ asciichat_error_t quic_connection_handle_expiry(acip_quic_connection_t *connecti
   return update_readiness(connection);
 }
 
-bool quic_connection_accept_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_accept_ready(const quic_connection_t *connection) {
   return connection && connection->tls_ready && !connection->failed &&
-         (!connection->webtransport || quic_connection_webtransport_ready(connection));
+         (!connection->webtransport || !connection->tls->webtransport ||
+          quic_connection_webtransport_ready(connection));
 }
 
-bool quic_connection_webtransport_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_webtransport_ready(const quic_connection_t *connection) {
   return connection && connection->webtransport && connection->http3 &&
-         acip_http3_server_accepted(connection->http3, NULL) && !connection->failed;
+         http_server_http3_accepted(connection->http3, NULL) && !connection->failed;
 }
 
-bool quic_connection_tls_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_tls_ready(const quic_connection_t *connection) {
   return connection && !connection->failed && connection->tls_ready;
 }
 
-asciichat_error_t quic_connection_peer_address(const acip_quic_connection_t *connection,
-                                               struct sockaddr_storage *address, socklen_t *length) {
+asciichat_error_t quic_connection_peer_address(const quic_connection_t *connection, struct sockaddr_storage *address,
+                                               socklen_t *length) {
   if (!connection || !connection->conn || connection->failed || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC peer address query");
   const ngtcp2_path *path = ngtcp2_conn_get_path2(connection->conn);
@@ -1477,15 +1509,15 @@ asciichat_error_t quic_connection_peer_address(const acip_quic_connection_t *con
   return ASCIICHAT_OK;
 }
 
-void quic_connection_destroy(acip_quic_connection_t **connection) {
+void quic_connection_destroy(quic_connection_t **connection) {
   if (!connection || !*connection)
     return;
   ngtcp2_conn_del((*connection)->conn);
   (*connection)->conn = NULL;
-  acip_http3_server_destroy(&(*connection)->http3);
+  http_server_http3_destroy(&(*connection)->http3);
   buffer_release((*connection)->early_security_packet);
   quic_datagram_reset(&(*connection)->datagram_reader);
-  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+  for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
     while ((*connection)->datagram_head[i])
       pop_datagram(*connection, (acip_traffic_class_t)i);
     send_chunk_t *chunk = (*connection)->sends[i].head;
@@ -1502,8 +1534,8 @@ void quic_connection_destroy(acip_quic_connection_t **connection) {
   SAFE_FREE(*connection);
 }
 
-asciichat_error_t quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
-                                          socklen_t length, uint64_t now_ns) {
+asciichat_error_t quic_connection_migrate(quic_connection_t *connection, const struct sockaddr *local, socklen_t length,
+                                          uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || connection->tls->server || !local ||
       (size_t)length > sizeof(ngtcp2_sockaddr_union))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client migration");

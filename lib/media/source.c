@@ -36,6 +36,7 @@
 
 /**
  * @brief Media source for video and audio capture
+ * @brief Media source for video and audio capture
  *
  * Abstracts multiple media input types (webcam, files, stdin, test patterns)
  * with unified interface for frame/audio reading.

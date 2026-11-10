@@ -3,6 +3,8 @@ import pytest
 
 from ascii_chat_tests.cli import run_cli
 from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import logs_for_test
+import os
 
 import base64
 import socket
@@ -25,6 +27,8 @@ def reject_client(binary, directory, destination, name, extra):
          "--width", "40", "--height", "12", "--splash-screen=false", "--reconnect-attempts", "0", *extra,
         cwd=directory, env=env, capture_output=True, timeout=20,
     )
+    generated = logs_for_test(os.environ.get("PYTEST_CURRENT_TEST", "").split(" ", 1)[0])
+    log = generated[-1] if generated else log
     text = log.read_text(encoding="utf-8", errors="replace")
     assert result.returncode != 0 and not result.stdout.strip(), (
         f"{name}: exit={result.returncode}, stdout={result.stdout[-3000:]!r}, "

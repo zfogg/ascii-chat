@@ -30,11 +30,12 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
                                    acip_packet_plan_t *plan);
 
 /**
- * Encrypt a successful encrypted plan into caller-owned ciphertext storage and
- * construct its wire header. The caller chooses contiguous or vectored delivery,
- * and must release storage only after delivery has consumed/copied it. This helper
- * owns and releases only its temporary gather buffer, allocated from domain.
- * Output length is zero on failure; no output may be sent on failure.
+ * @brief The useful part of acip packet plan is in `buffers`, `count`, `plaintext_size`, `ciphertext_capacity`:
+ * together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent
+ * operation and use the parent cleanup path. Encrypt a successful encrypted plan into caller-owned ciphertext storage
+ * and construct its wire header. The caller chooses contiguous or vectored delivery, and must release storage only
+ * after delivery has consumed/copied it. This helper owns and releases only its temporary gather buffer, allocated from
+ * domain. Output length is zero on failure; no output may be sent on failure.
  */
 asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain,
                                       void *ciphertext, size_t capacity, packet_header_t *header, size_t *length);

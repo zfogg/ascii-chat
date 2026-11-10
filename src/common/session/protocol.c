@@ -298,6 +298,18 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
 
+  // TERM_COLOR_AUTO is an option/configuration sentinel, not a wire-level
+  // capability.  A remote peer must receive a concrete color level; this can
+  // otherwise make the server reject the complete capabilities packet. The
+  // browser/native renderer contract supports truecolor as the safe default.
+  terminal_color_mode_t normalized_color = acip_render_settings_normalize_color_mode(caps.color_level);
+  if (normalized_color != caps.color_level) {
+    log_debug("Terminal color detection returned AUTO; advertising truecolor");
+    caps.color_level = normalized_color;
+    caps.color_count = 16777216;
+    caps.capabilities |= TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE;
+  }
+
   // Check if detection was reliable, use fallback only for auto-detection
   if (!caps.detection_reliable && opts->color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");

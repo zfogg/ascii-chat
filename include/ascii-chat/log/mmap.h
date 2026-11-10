@@ -47,6 +47,7 @@ extern "C" {
 
 /**
  * @brief Path and size limits for the memory-mapped log file
+ * @brief Path and size limits for the memory-mapped log file
  *
  * `log_path` is borrowed for initialization; `max_size` bounds the mapping and
  * falls back to the default when zero. The logging subsystem uses these values

@@ -19,6 +19,7 @@ extern "C" {
 
 /**
  * @brief File handle and sample counters needed to finalize a WAV recording
+ * @brief File handle and sample counters needed to finalize a WAV recording
  *
  * `file` is the owned output handle; `samples_written`, `sample_rate`, and
  * `channels` let close-time code calculate RIFF and data sizes after samples

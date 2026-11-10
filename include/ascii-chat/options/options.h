@@ -226,6 +226,9 @@
 #define COLOR_MODE_TRUECOLOR TERM_COLOR_TRUECOLOR ///< 24-bit truecolor mode
 
 /**
+ * @brief For options state, this is the live record that ties `detected_mode`, `mode_arg_index`, `help`, `version`
+ * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+ * storage before freeing the record.
  * @brief Color output setting (--color flag values)
  *
  * Enumeration for the --color option which controls color output behavior:
@@ -957,9 +960,9 @@ typedef enum {
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
 typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+#define ASCII_RENDERER_DEFAULT ASCII_RENDERER_GLYPH
 
 /**
- * @struct options_t
  * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
  *
  * The fields cover mode selection, terminal and media rendering, audio,
@@ -997,25 +1000,25 @@ typedef struct options_state {
 #ifndef __EMSCRIPTEN__
   bool address_explicit; ///< Native client destination overrides automatic LAN discovery
 #endif
-  char address[OPTIONS_BUFF_SIZE];            ///< Server address (client) or bind address (server)
-  char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
-  int port;                                   ///< Server port number
-  int websocket_port;                         ///< WebSocket server port (server/discovery-service only)
-  char tls_cert[OPTIONS_BUFF_SIZE]; ///< Shared TLS certificate file path for secure network listeners
-  char tls_key[OPTIONS_BUFF_SIZE];  ///< Shared TLS private key file path for secure network listeners
-  char tls_key_password[OPTIONS_BUFF_SIZE]; ///< Shared TLS private key password
-  char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
-  char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
-  char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
-  char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
-  char tls_ca_file[OPTIONS_BUFF_SIZE];                ///< Shared TLS client trust anchors; empty uses system trust.
-  bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
-  bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
-  bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
-  char webtransport_public_url[OPTIONS_BUFF_SIZE];    ///< Public HTTPS WebTransport endpoint advertised through ACDS.
-  int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
-  int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
-  int max_clients;                                    ///< Maximum concurrent clients (server only)
+  char address[OPTIONS_BUFF_SIZE];                   ///< Server address (client) or bind address (server)
+  char address6[OPTIONS_BUFF_SIZE];                  ///< IPv6 bind address (server only)
+  int port;                                          ///< Server port number
+  int websocket_port;                                ///< WebSocket server port (server/discovery-service only)
+  char tls_cert[OPTIONS_BUFF_SIZE];                  ///< Shared TLS certificate file path for secure network listeners
+  char tls_key[OPTIONS_BUFF_SIZE];                   ///< Shared TLS private key file path for secure network listeners
+  char tls_key_password[OPTIONS_BUFF_SIZE];          ///< Shared TLS private key password
+  char webtransport_bind_address[OPTIONS_BUFF_SIZE]; ///< Browser HTTP/3 listener address.
+  char webtransport_origin[OPTIONS_BUFF_SIZE];       ///< Allowed browser origin.
+  char webtransport_path[OPTIONS_BUFF_SIZE];         ///< HTTP/3 CONNECT path.
+  char quic_bind_address[OPTIONS_BUFF_SIZE];         ///< Concrete local QUIC listener address; empty disables QUIC.
+  char tls_ca_file[OPTIONS_BUFF_SIZE];               ///< Shared TLS client trust anchors; empty uses system trust.
+  bool quic_visual_datagrams;                        ///< Prefer negotiated visual datagrams.
+  bool quic_audio_datagrams;                         ///< Prefer negotiated QUIC datagrams for audio.
+  bool discovery_quic;                               ///< Use QUIC for a disclosed discovery host endpoint.
+  char webtransport_public_url[OPTIONS_BUFF_SIZE];   ///< Public HTTPS WebTransport endpoint advertised through ACDS.
+  int quic_port;                                     ///< QUIC UDP port, or zero to use the TCP server port.
+  int quic_fallback_port;                            ///< TCP fallback port, or zero to disable fallback.
+  int max_clients;                                   ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
 
@@ -1128,6 +1131,7 @@ typedef struct options_state {
   // Image Options
   // ============================================================================
   bool stabilize;                                    ///< Reduce frame-to-frame character flicker
+  bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
   ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto

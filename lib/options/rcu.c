@@ -33,6 +33,7 @@
 // ============================================================================
 
 /**
+ * @brief Deferred free list for old options structs
  * @brief Global atomic pointer to current options
  *
  * This is the heart of the RCU pattern:
@@ -189,8 +190,9 @@ static const options_t g_default_options = (options_t){
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
-    .stabilize = false,
-    .renderer = ASCII_RENDERER_LUMINANCE,
+    .stabilize = true,
+    .stabilize_explicit = false,
+    .renderer = ASCII_RENDERER_DEFAULT,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -532,6 +534,11 @@ typedef struct {
   options_value_type_t type;
   size_t offset, size;
   const char *cli;
+  /**
+   * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } runtime_field_t;
 #define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
 static const runtime_field_t runtime_fields[] = {
@@ -784,6 +791,17 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  bool animation_changed = false;
+  bool stabilize_changed = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const char *name = patch->edits[i].name;
+    animation_changed |= !strcmp(name, "matrix_rain") || !strcmp(name, "waveform") || !strcmp(name, "fft");
+    stabilize_changed |= !strcmp(name, "stabilize");
+  }
+  if (stabilize_changed)
+    candidate->stabilize_explicit = true;
+  else if (animation_changed && !candidate->stabilize_explicit)
+    candidate->stabilize = !(candidate->waveform || candidate->fft);
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
     if (error != ASCIICHAT_OK)

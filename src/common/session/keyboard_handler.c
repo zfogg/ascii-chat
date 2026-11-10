@@ -22,6 +22,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
 #include <string.h>
 #include <signal.h>
 #include <ascii-chat/tui/input.h>
@@ -70,6 +71,19 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
   }
 
   switch (action) {
+  case UI_ACTION_QUIT:
+    // Match Ctrl+C: request the normal, coordinated shutdown path. When a
+    // help overlay is active, Ctrl+C closes it instead of quitting.
+    if (display && keyboard_help_is_active(display)) {
+      keyboard_help_toggle(display);
+    } else {
+      raise(SIGINT);
+    }
+    break;
+  case UI_ACTION_FORCE_QUIT:
+    // Match a second Ctrl+C: skip cleanup and terminate immediately.
+    platform_force_exit(1);
+    break;
   // ===== HELP SCREEN TOGGLE =====
   case UI_ACTION_LOGS: {
     ui_controller_toggle_logs();
@@ -198,6 +212,12 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
 }
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  // Panic-exit bindings are global: they must bypass every modal TUI, prompt,
+  // log search, and media shortcut so they remain available during a hang.
+  if (key == 'Q' || key == KEY_SHIFT_ESCAPE) {
+    platform_force_exit(1);
+  }
+
   bool text_entry = log_search_is_entering();
   if (!text_entry && (key == '<' || key == '>')) {
     session_capture_skip_media(capture, key == '>' ? 1 : -1);

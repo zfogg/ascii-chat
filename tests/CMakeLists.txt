@@ -32,6 +32,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
+    if(UNIX AND NOT APPLE)
+        add_test(NAME systemd-units COMMAND bash ${CMAKE_SOURCE_DIR}/tests/systemd_units.sh)
+        set_tests_properties(systemd-units PROPERTIES LABELS "integration;systemd" TIMEOUT 30)
+    endif()
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     # Keep every Python CTest harness on one execution path. Coverage builds
@@ -1274,7 +1278,7 @@ if(BUILD_TESTS)
         endif()
     endforeach()
     asciichat_add_pytest(python-manual integration/manual --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-manual PROPERTIES LABELS "integration;python;manual" RUN_SERIAL TRUE)
+    set_tests_properties(python-manual PROPERTIES LABELS "integration;python;manual;hardware" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-ui-discovery integration/ui_discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-ui-discovery PROPERTIES LABELS "integration;python;terminal;network" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-mdns integration/mdns --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
@@ -1324,12 +1328,19 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
     asciichat_add_pytest(python-glyph-performance performance/glyph -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-glyph-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-fps-performance performance/fps -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-fps-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
         --ignore=${CMAKE_SOURCE_DIR}/tests/python/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery-webrtc integration/discovery/test_discovery_webrtc.py
         --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-discovery-webrtc PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-discovery-session-ownership
+        integration/discovery/test_discovery_session_ownership.py
+        --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-discovery-session-ownership PROPERTIES LABELS "integration;python;network"
+        RUN_SERIAL TRUE)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
@@ -2549,7 +2560,7 @@ endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     asciichat_add_pytest(python-mcp integration/mcp --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp")
+    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp;hardware" RUN_SERIAL TRUE)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")

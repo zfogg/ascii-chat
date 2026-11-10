@@ -18,6 +18,8 @@
 #include <ascii-chat/util/time.h>
 
 /**
+ * @brief Counters and timing aggregates for one WebSocket callback kind
+ * @brief Timing aggregates for protocol-init, teardown, writable, and receive callbacks
  * @brief Counters and timing aggregates for one WebSocket callback kind.
  *
  * Tracks invocation counts, timestamps, and durations for a single callback type.

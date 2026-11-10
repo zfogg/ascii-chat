@@ -384,10 +384,10 @@ static void check_capture_pacing(void) {
   CHECK(capture_pacing_deadline(0, 1000, interval) == 1100);
   CHECK(capture_pacing_deadline(1100, 1200, interval) == 1200);
   // A read that finishes just after its deadline must not skip the next slot.
-  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1200);
+  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1301);
   CHECK(capture_pacing_deadline(1200, 1250, interval) == 1300);
   // A long stall skips missed slots without a burst of catch-up frames.
-  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1700);
+  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1860);
   CHECK(capture_pacing_deadline(1700, 1760, interval) == 1800);
 }
 

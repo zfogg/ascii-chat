@@ -88,6 +88,10 @@
 #include <stdbool.h>
 
 /**
+ * @brief Transport method table (virtual function table)
+ * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx`
+ * before passing it on; consumers read the values during the operation and return ownership only where the member
+ * contract explicitly says they do.
  * @brief Transport type enumeration
  *
  * Identifies which transport implementation is being used.
@@ -110,8 +114,10 @@ typedef enum {
 typedef struct acip_transport acip_transport_t;
 
 /** Snapshot of negotiated transport features. Datagram payload is the maximum
- * application data in one QUIC DATAGRAM frame on the current path, including
- * any transport-specific envelope. Query again after path changes. */
+ * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`,
+ * `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the
+ * object with its parent operation and use the parent cleanup path. application data in one QUIC DATAGRAM frame on the
+ * current path, including any transport-specific envelope. Query again after path changes. */
 typedef struct {
   bool independent_streams;
   bool datagrams;
@@ -232,6 +238,8 @@ typedef struct {
 
   /** Bytes retained by this backend, including an in-progress packet. */
   size_t (*queued_bytes)(acip_transport_t *transport);
+  /** Wait until backend-owned output becomes writable or timeout expires. */
+  asciichat_error_t (*wait_writable)(acip_transport_t *transport, uint64_t timeout_ns);
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
   /** Receives plaintext packet metadata alongside borrowed packet slices. */

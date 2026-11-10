@@ -19,7 +19,8 @@ import time
 from ascii_chat_tests.terminal import Terminal
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.terminal, pytest.mark.media]
+pytestmark = [pytest.mark.integration, pytest.mark.terminal, pytest.mark.media,
+              pytest.mark.hardware, pytest.mark.xdist_group("hardware")]
 
 
 def test_mirror_lazy_audio(binary, tmp_path):

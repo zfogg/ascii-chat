@@ -86,6 +86,7 @@ const char *file_write_error_message(const char *path) {
 
 /**
  * @brief Cache entry for binary PATH lookup
+ * @brief Cache entry for binary PATH lookup
  */
 typedef struct {
   char *bin_name;

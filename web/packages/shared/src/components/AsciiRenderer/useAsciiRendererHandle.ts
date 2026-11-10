@@ -1,4 +1,4 @@
-import { AsciiRenderer } from "ascii-chat";
+import { RendererCore } from "ascii-chat";
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
 import { browserKeyCode } from "./keyboard";
@@ -15,7 +15,7 @@ import {
 } from "react";
 import type { AsciiRendererHandle } from "./types";
 import type { MirrorModule } from "../../wasm/mirror";
-import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
+import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 import { startGridStabilityProbe } from "./gridStabilityProbe";
 
@@ -26,7 +26,7 @@ interface UseAsciiRendererHandleParams {
   matrixMode?: boolean;
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
-  rendererPtrRef: RefObject<AsciiRendererBinding | null>;
+  rendererPtrRef: RefObject<TerminalRendererBinding | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   showFps: boolean;
@@ -68,7 +68,7 @@ export function useAsciiRendererHandle({
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const firstRenderDoneRef = useRef(false);
   const presentedRasterRef = useRef<{
-    renderer: AsciiRendererBinding | null;
+    renderer: TerminalRendererBinding | null;
     width: number;
     height: number;
   }>({ renderer: null, width: 0, height: 0 });
@@ -76,6 +76,7 @@ export function useAsciiRendererHandle({
   const presentedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
+  const imageDataRef = useRef<ImageData | null>(null);
   const lastFrameChangedRef = useRef(false);
   const lastContentRef = useRef("");
 
@@ -118,7 +119,7 @@ export function useAsciiRendererHandle({
 
   const uiRef = useRef<SessionUiBinding | null>(null);
   const uiModuleRef = useRef<MirrorModule | null>(null);
-  const uiRendererRef = useRef<AsciiRendererBinding | null>(null);
+  const uiRendererRef = useRef<TerminalRendererBinding | null>(null);
   const uiProps = useRef({ uiLoading, uiMessage, onUiAction });
   useLayoutEffect(() => {
     uiProps.current = { uiLoading, uiMessage, onUiAction };
@@ -127,7 +128,6 @@ export function useAsciiRendererHandle({
     const module = moduleRef.current;
     if (!module || !setupDoneRef.current) return null;
     if (uiModuleRef.current !== module || !uiRef.current) {
-      uiRef.current?.close();
       uiRef.current?.delete();
       uiRef.current = null;
       uiModuleRef.current = null;
@@ -229,26 +229,31 @@ export function useAsciiRendererHandle({
           throw new Error("[AsciiRenderer] Renderer or canvas is unavailable");
         const w = canvas.width,
           h = canvas.height;
-        const rendererDimensions = renderer.dimensions();
         if (
           w <= 0 ||
           h <= 0 ||
-          rendererDimensions.width !== w ||
-          rendererDimensions.height !== h
+          renderer.width() !== w ||
+          renderer.height() !== h
         )
           throw new Error(
             `[AsciiRenderer] Invalid framebuffer dimensions ${w}x${h}`,
           );
-        const pixels = AsciiRenderer.rasterize(
+        let imageData = imageDataRef.current;
+        if (!imageData || imageData.width !== w || imageData.height !== h) {
+          imageData = new ImageData(w, h);
+          imageDataRef.current = imageData;
+        }
+        RendererCore.rasterize(
           renderer,
           ansiString,
           Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
+          imageData.data,
         );
         lastFrameChangedRef.current = ansiString !== lastContentRef.current;
         lastContentRef.current = ansiString;
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("[AsciiRenderer] Canvas context not found");
-        ctx.putImageData(new ImageData(pixels, w, h), 0, 0);
+        ctx.putImageData(imageData, 0, 0);
         presentedRasterRef.current = { renderer, width: w, height: h };
         if (
           new URLSearchParams(window.location.search).get("verifyGrid") === "1"
@@ -301,7 +306,6 @@ export function useAsciiRendererHandle({
   }, [ensureUi, paintFrame, resizeTimeoutRef]);
   useEffect(
     () => () => {
-      uiRef.current?.close();
       uiRef.current?.delete();
       uiRef.current = null;
       uiModuleRef.current = null;

@@ -24,6 +24,7 @@
 
 /**
  * @brief Growable byte buffer for assembling one complete terminal frame
+ * @brief Growable byte buffer for assembling one complete terminal frame
  *
  * `data` owns the accumulated ANSI and text bytes, `len` is the number ready
  * to write, and `capacity` is the allocation size. Rendering code appends to

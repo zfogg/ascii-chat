@@ -1,4 +1,5 @@
 /**
+ * @brief One formatted session log line and its monotonic history sequence
  * @file platform/wasm/stubs/session_log_buffer.h
  * @brief WASM stub for session log buffer
  */

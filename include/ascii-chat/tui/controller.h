@@ -111,6 +111,8 @@ asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, ter
 
 /** Carry the acquisition start time with the next media snapshot on this producer thread. */
 void ui_controller_frame_acquired_at(uint64_t started_ns);
+/** Set the target FPS displayed by the media overlay. */
+void ui_controller_set_effective_fps(unsigned int fps);
 
 /** Start terminal interaction without publishing a background screen. */
 asciichat_error_t ui_controller_start_terminal(int fd);

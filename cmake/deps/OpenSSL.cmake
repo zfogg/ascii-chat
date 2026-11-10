@@ -10,6 +10,9 @@ set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built 
 if(NOT ASCIICHAT_OPENSSL_BUILD_JOBS MATCHES "^[1-9][0-9]*$")
     message(FATAL_ERROR "ASCIICHAT_OPENSSL_BUILD_JOBS must be a positive integer")
 endif()
+option(ASCIICHAT_USE_SYSTEM_OPENSSL
+    "Use the host OpenSSL when it provides the required QUIC-capable API"
+    ON)
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
@@ -47,7 +50,7 @@ if(PLATFORM_IOS)
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
@@ -154,6 +157,24 @@ if(PLATFORM_IOS)
     return()
 endif()
 
+# Docker and distribution development builds can use the system library when
+# it is new enough.  Release packages continue to use the pinned source build
+# unless this option is explicitly enabled.
+if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
+        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
+        return()
+    endif()
+    message(STATUS "System OpenSSL is missing or too old; using pinned source build")
+endif()
+
 # Handle musl builds - OpenSSL is built from source at configure time
 if(USE_MUSL)
     # OpenSSL MUST be built synchronously at configure time because libdatachannel's
@@ -209,7 +230,7 @@ if(USE_MUSL)
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
@@ -331,8 +352,18 @@ if(TARGET OpenSSL::Crypto)
     return()
 endif()
 
+# Native Linux uses the distribution OpenSSL installation.  HTTP/TLS must use
+# the host's OpenSSL ABI; do not silently replace it with a source-built copy
+# from the dependency cache.  The musl and iOS branches above remain separate
+# because those targets do not have a usable host OpenSSL installation.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
+    find_package(OpenSSL REQUIRED)
+    message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} found (system): ${OPENSSL_SSL_LIBRARY}")
+    return()
+endif()
+
 # =============================================================================
-# Native Linux/macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
+# Native macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
 # Source builds use a versioned cache so upgrading does not replace existing caches.
 # =============================================================================
 if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
@@ -439,7 +470,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "${OPENSSL_EXPECTED_HASH}"
                 SHOW_PROGRESS

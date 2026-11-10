@@ -59,6 +59,13 @@ export default function AnimationsEffectsSection() {
             "# Enable Matrix rain effect\nascii-chat mirror --matrix\n\n# Classic green Matrix look\nascii-chat mirror --matrix --color-filter green\n\n# Cyberpunk style\nascii-chat mirror --matrix --color-filter cyan --render-mode background\n\n# With truecolor for best quality\nascii-chat mirror --matrix --color-filter green --color-mode truecolor\n\n# Via environment\nexport ASCII_CHAT_MATRIX=true"
           }
         </CodeBlock>
+        <div className="info-box-info mt-3 border-l-4 border-lime-400">
+          <p className="text-gray-300 text-sm">
+            <strong className="text-lime-300">⌨ Runtime shortcut:</strong> press{" "}
+            <code className="text-lime-300">1</code> to toggle Matrix rain while
+            rendering.
+          </p>
+        </div>
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
             <strong>Tip:</strong> The <code>--matrix</code> effect combines well

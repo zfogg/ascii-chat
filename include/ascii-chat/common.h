@@ -253,7 +253,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define ALLOC_REALLOC(ptr, size) realloc((ptr), (size))
 #define ALLOC_FREE(ptr) free(ptr)
 #endif
-
 /**
  * @name Memory Debugging Macros
  * @ingroup common

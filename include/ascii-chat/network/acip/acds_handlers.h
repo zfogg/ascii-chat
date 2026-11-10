@@ -87,6 +87,7 @@ typedef struct {
 } acip_acds_callbacks_t;
 
 /**
+ * @brief ACDS packet handler callbacks
  * @brief Handle incoming ACDS packet with O(1) dispatch
  *
  * Dispatches packet to appropriate callback based on type.

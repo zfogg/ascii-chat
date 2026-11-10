@@ -55,6 +55,7 @@
 #include <stddef.h>
 
 /**
+ * @brief Vector type for trust anchors
  * @name Trust Anchor Management
  * @{
  */

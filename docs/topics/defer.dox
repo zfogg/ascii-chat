@@ -1,7 +1,7 @@
 /**
  * @defgroup defer Defer Statements
  * @ingroup module_development
- * @brief Block-scoped cleanup statements for C
+ * @brief Block-scoped cleanup statements for C, Objective-C, and C++
  */
 
 /**
@@ -11,6 +11,17 @@
  * Include `<ascii-chat/tooling/defer/defer.h>` and place `defer(action);` in a
  * compound statement. The action runs when execution leaves that block. A
  * block action can be written as `defer({ statements; });`.
+ * C++11 and later, including Objective-C++, use a native scope guard rather than build-time rewriting.
+ * Its cleanup runs on exception unwinding as well as normal block exit;
+ * cleanup must not throw because the guard destructor is `noexcept`.
+ * Both backends accept C++ source files and preserve them for native C++
+ * compilation. C++ scopes follow the language's normal object lifetime rules.
+ * On Windows, including the defer header makes Clang reject Microsoft-extension
+ * goto jumps that bypass a local variable's initialization, because bypassing
+ * a defer guard would leave its cleanup state uninitialized.
+ * Objective-C (`.m`) is transformed using `@try`/`@finally`, so registered
+ * actions also run while Objective-C exceptions unwind. This works in C
+ * functions, Objective-C methods, and block literals.
  *
  * @code{.c}
  * FILE *file = fopen(path, "r");
@@ -31,7 +42,7 @@
  * if (!populate(items, count)) return ERROR;
  * @endcode
  *
- * Ordinary macros may wrap `defer()` through multiple levels. The transformer
+ * In C, ordinary macros may wrap `defer()` through multiple levels. The transformer
  * expands those wrappers before analyzing cleanup. Wrapper definitions that
  * use stringification, token pasting, `__VA_OPT__`, `_Pragma`, or `__COUNTER__`
  * are rejected, as are multiline invocations and arguments containing non-defer
@@ -61,7 +72,8 @@
  *   defer_cancel(release_buffer);
  * @endcode
  *
- * Defer is supported in project `.c` files, not inline function bodies in headers.
+ * Defer is supported in project `.c` and `.m` files and supported inline
+ * function bodies in included headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
  * an if or loop body before using defer there. Put a defer inside braces under a
  * switch case; a defer directly in a switch body is rejected. Inline assembly
@@ -82,17 +94,104 @@
  * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
  * cannot be found automatically. A cross build builds a separate host tool;
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
+ * The native tool transforms batch files concurrently using available CPU
+ * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
+ * During incremental native builds, the batch reuses transformations whose
+ * source, recorded included files, and build context are unchanged; it reports
+ * how many files it transformed. A file is reprocessed when its own compiler
+ * arguments, dependencies, libclang version, or the tool binary change.
+ * `ASCIICHAT_DEFER_SHARED_CACHE` optionally sets a shared cache directory,
+ * such as `ASCIICHAT_DEPS_CACHE_ROOT/defer`. It can reuse results across build
+ * directories for the same source tree, after checking dependency contents
+ * and the current include graph. Files using time-dependent macros or
+ * `__has_include` are transformed normally instead of being shared.
+ * It is disabled by default because checking a cache can cost more than a
+ * fresh transformation. Direct tool users can
+ * select the cache with `--shared-cache` together with `--incremental`.
+ * `--preamble` enables experimental Clang preamble reuse for direct tool
+ * invocations; it is not enabled by CMake because measurements may be slower.
+ * Each generated translation unit has its own directory, and the original
+ * source directory remains on Clang's quoted-include search path. Relative
+ * includes therefore resolve from the original source tree, including nested
+ * includes; included files are tracked as build dependencies. Per-source
+ * dependency stamps cause only affected objects to rebuild when an included
+ * file changes, even if the transformed C text itself stays unchanged.
+ * With Ninja, a lightweight eligibility scan runs on each build. Editing an
+ * ordinary source does not reconfigure CMake; adding or removing its first
+ * defer call changes the source set and automatically regenerates the build
+ * graph before compilation. Unix Makefiles use conservative reconfiguration
+ * on C source changes to ensure the same correctness.
  *
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or
  * newer and LLVM 19 or newer libclang; set
- * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. Both backends
- * require a compilation database and a single-config Ninja or Unix Makefiles
- * generator. Their generated C and fail-closed behavior are checked together.
- * Directly compiling an untransformed source containing defer fails rather than
- * turning cleanup into a no-op. A `.c` file included by another source file is
- * also compiled without its own transformation; avoid defer in such files.
- * When panic instrumentation is enabled, it runs before defer transformation.
+ * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. The CMake
+ * integration for either backend requires a compilation database and a
+ * single-config Ninja or Unix Makefiles generator. Their generated C and
+ * fail-closed behavior are checked together.
+ * Directly compiling an untransformed C source containing defer fails rather
+ * than turning cleanup into a no-op. C header functions use per-translation-
+ * unit Clang VFS overlays. `ASCIICHAT_DEFER_HEADER_OVERLAYS=AUTO` detects
+ * defer in project headers; `ON` forces this path and `OFF` disables it.
+ * Add external header roots to `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS`, or use
+ * `ON` when headers are outside the scanned roots. The first activation
+ * analyzes all eligible project C and Objective-C sources and disables target precompiled
+ * headers; later builds use native per-file incremental caching. The shared
+ * cache is not used while header overlays are active. Multiple active
+ * instantiations of the same header function in one translation unit are
+ * rejected. Defer in an included C
+ * source file remains unsupported. C++ uses native scope guards directly.
+ * Objective-C and Objective-C++ require an Objective-C runtime advertising
+ * zero-cost exceptions, with exception handling enabled. CMake adds
+ * `-fobjc-exceptions` when transforming `.m` sources. Direct tool users must
+ * pass it in the actual compilation arguments and compile with the same flags.
+ * A CMake project compiling `.m` files must enable its `OBJC` language; the
+ * ascii-chat project already enables it on Apple platforms. On Linux, provide
+ * a modern GNUstep libobjc2 runtime, select it with an appropriate
+ * `-fobjc-runtime=gnustep-2.0` compiler option, and link that runtime.
+ * Apple exception unwinding has been verified; the legacy GNU Objective-C
+ * runtime does not support this contract and is rejected. Objective-C jumps
+ * into a generated protected region are rejected by Clang validation.
+ * For C sources, panic instrumentation runs before defer transformation when
+ * enabled. Objective-C sources are not instrumented by the panic tool.
+ *
+ * Both implementations can transform several files in one invocation using
+ * `--batch manifest.txt`. Each UTF-8 manifest line contains an input path and
+ * an output path separated by a tab. With `--compilation-database`, pass either
+ * the directory containing `compile_commands.json` or the file itself. The
+ * tool looks up the generated output first, then the original input; multiple
+ * matching commands are rejected because the correct configuration is unclear.
+ *
+ * Without a compilation database, add a third tab-separated field containing
+ * a JSON array of Clang arguments for that file. For example, a manifest can
+ * contain the following lines, with each `<TAB>` replaced by an actual tab:
+ * @code{.txt}
+ * src/a.c<TAB>out/a.c<TAB>["-std=c17", "-DVALUE=1", "-Iinclude"]
+ * src/b.c<TAB>out/b.c<TAB>["-std=c23", "-DVALUE=2", "-Iinclude"]
+ * @endcode
+ * The arrays contain parser arguments, not the compiler executable, input,
+ * output, or shell-quoted command. Relative paths in those arguments resolve
+ * from the tool's working directory; use `-working-directory` when needed.
+ * A two-field row without a database uses no additional arguments. Explicit
+ * per-file arguments and a compilation database cannot be combined. Native
+ * batch mode supports `--dependency-stamps --incremental` with either form;
+ * changing one file's arguments invalidates that file's cached transformation.
+ *
+ * For a single source, either implementation automatically reads redirected
+ * stdin and writes validated transformed bytes to stdout when no input/output
+ * paths or other modes are specified:
+ * @code{.sh}
+ * defer-tool --filename path/to/input.c -- -std=c17 -Iinclude < input.c > output.c
+ * # Equivalent positional form:
+ * defer-tool --filename path/to/input.c - - -- -std=c17 -Iinclude < input.c > output.c
+ * @endcode
+ * `--filename` is required for stdin input. It determines the input language,
+ * source locations, and relative include lookup. It is a
+ * virtual path and is not read or overwritten. A compilation database may be
+ * used instead of explicit flags when it has an entry for that path. Diagnostics
+ * go to stderr and invalid input produces no transformed output. This mode
+ * handles one translation unit and does not support header overlays, dependency
+ * files, or batch options. The ascii-chat CMake build always uses batch mode.
  *
  * To inspect an exit without writing a generated file, pass its source line and
  * the C compilation arguments to either implementation:

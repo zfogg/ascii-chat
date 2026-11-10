@@ -38,6 +38,7 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
 
 /**
  * @brief Lookup table for setting string-to-enum mapping
+ * @brief Lookup table for setting string-to-enum mapping
  */
 typedef struct {
   const char *match; ///< Setting string (lowercased)
@@ -1075,6 +1076,12 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
       *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
+  }
+
+  if (strcmp(arg, "/dev/null") == 0) {
+    SAFE_STRNCPY((char *)dest, arg, 255);
+    ((char *)dest)[255] = '\0';
+    return true;
   }
 
   // Validate and normalize the log file path

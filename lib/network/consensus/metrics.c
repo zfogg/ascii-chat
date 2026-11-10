@@ -16,6 +16,9 @@
 #include <stdio.h>
 
 /**
+ * @brief Growable collection of participant-quality measurements. `metrics`, `count`, and `capacity` form the
+ * pointer/length/capacity trio; the consensus owner grows and frees the array, while readers use it only during its
+ * valid snapshot window.
  * @brief Metrics collection structure for participant quality measurements
  *
  * Dynamic array storing network quality metrics for all participants

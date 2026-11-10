@@ -77,6 +77,8 @@ typedef struct {
   bool has_pending_send;             ///< True if there's an in-progress message
   atomic_t receive_callback_count;   ///< RECEIVE callbacks for this connection
   atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
+  /**
+   */
 } websocket_connection_data_t;
 
 // Forward declaration for websocket_protocols (defined later in file)
@@ -516,60 +518,10 @@ static bool websocket_serve_health(struct lws *wsi) {
   return websocket_write_json(wsi, doc, buf, sizeof(buf));
 }
 
-static bool websocket_serve_stats(struct lws *wsi) {
-  const struct lws_protocols *protocol = lws_get_protocol(wsi);
-  websocket_server_t *ws_server = protocol ? (websocket_server_t *)protocol->user : NULL;
-
-  yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-  yyjson_mut_val *root = yyjson_mut_obj(doc);
-  yyjson_mut_doc_set_root(doc, root);
-
-  if (ws_server && ws_server->user_data) {
-    acds_server_t *acds = (acds_server_t *)ws_server->user_data;
-    yyjson_mut_val *network_obj = yyjson_mut_obj(doc);
-
-    uint64_t bytes_sent = atomic_load_u64(&acds->stats.bytes_sent);
-    uint64_t bytes_received = atomic_load_u64(&acds->stats.bytes_received);
-    uint64_t packets_sent = atomic_load_u64(&acds->stats.packets_sent);
-    uint64_t packets_received = atomic_load_u64(&acds->stats.packets_received);
-    time_t start_time = acds->stats.start_time;
-
-    yyjson_mut_obj_add_uint(doc, network_obj, "bytes_sent", bytes_sent);
-    yyjson_mut_obj_add_uint(doc, network_obj, "bytes_received", bytes_received);
-    yyjson_mut_obj_add_uint(doc, network_obj, "packets_sent", packets_sent);
-    yyjson_mut_obj_add_uint(doc, network_obj, "packets_received", packets_received);
-
-    time_t now = time(NULL);
-    long uptime_seconds = now - start_time;
-    yyjson_mut_obj_add_int(doc, network_obj, "uptime_seconds", uptime_seconds);
-
-    yyjson_mut_obj_add_val(doc, root, "network", network_obj);
-
-    if (acds->db) {
-      int64_t session_count = 0;
-      int64_t unique_clients = 0;
-
-      if (database_stats_session_count(acds->db, &session_count) == ASCIICHAT_OK) {
-        yyjson_mut_obj_add_int(doc, root, "active_sessions", session_count);
-      }
-
-      if (database_stats_unique_clients(acds->db, &unique_clients) == ASCIICHAT_OK) {
-        yyjson_mut_obj_add_int(doc, root, "unique_clients", unique_clients);
-      }
-    }
-  }
-
-  unsigned char buf[LWS_PRE + 4096];
-  return websocket_write_json(wsi, doc, buf, sizeof(buf));
-}
-
 // HTTP helpers return whether libwebsockets should keep the connection open.
 static bool websocket_handle_http(struct lws *wsi, const char *path) {
   if (path && (strcmp(path, "/health") == 0 || strcmp(path, "health") == 0)) {
     return websocket_serve_health(wsi);
-  }
-  if (path && (strcmp(path, "/stats") == 0 || strcmp(path, "stats") == 0)) {
-    return websocket_serve_stats(wsi);
   }
   lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Not Found");
   return !lws_http_transaction_completed(wsi);
@@ -613,6 +565,7 @@ static asciichat_error_t websocket_request_writable_callbacks(struct lws *wsi) {
 }
 
 /**
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  * @brief libwebsockets callback for ACIP protocol
  *
  * Handles connection lifecycle events for WebSocket clients.
@@ -777,6 +730,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
   info.port = config->port;
+  info.iface = config->bind_address;
   info.protocols = websocket_protocols;
   info.mounts = &health_mount;
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type

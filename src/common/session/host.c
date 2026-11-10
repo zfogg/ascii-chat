@@ -72,6 +72,12 @@
  * ============================================================================ */
 
 /**
+ * @brief Keeps the host-side rendering history used to compare successive frames and stabilize output for connected
+ * participants. Its buffers and dimensions belong to the host render target and must be reset when the source or
+ * terminal geometry changes.
+ * @brief The useful part of session host is in `frame_workspace`, `render_histories`, `port`, `max_clients`: together
+ * they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and
+ * use the parent cleanup path.
  * @brief Host-owned live record for one connected participant.
  *
  * It ties the participant ID and network transport to rendering dimensions,
@@ -185,7 +191,7 @@ typedef struct session_host {
   /** @brief IPv4 listen socket */
   network_server_t *network_server;
   bool configured_quic_listeners;
-  acip_quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
+  quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
   asciichat_thread_t network_thread;
@@ -944,6 +950,11 @@ typedef struct {
   uint32_t client_id;
   network_negotiation_t negotiation;
   private_key_t identity;
+  /**
+   * @brief The useful part of host connection is in `client_id`, `negotiation`, `identity`: together they describe what
+   * is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+   * cleanup path.
+   */
 } host_connection_t;
 static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
   session_host_t *host = arg;
@@ -1042,7 +1053,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
       .quic_endpoint = host->quic_endpoint,
       .webtransport_endpoint = host->webtransport_endpoint,
       .port = host->port,
-      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
       .bind_ipv4 = true,
       .max_connections = host->max_clients,
       .partial_timeout_ms = 30000,
@@ -1155,7 +1166,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
-      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].rendering.fps_limit = DEFAULT_MAX_FPS;
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers

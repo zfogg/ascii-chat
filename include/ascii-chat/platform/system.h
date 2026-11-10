@@ -44,6 +44,10 @@ extern "C" {
 #endif
 
 /**
+ * @struct platform_signal_handler_t
+ * @brief Signal handler descriptor for bulk registration
+ * @struct platform_stderr_redirect_handle_t
+ * @brief Handle for temporary stderr redirection
  * @brief Signal handler function type
  * @param sig Signal number
  *
@@ -796,6 +800,8 @@ typedef struct {
 } platform_binary_match_t;
 
 /**
+ * @struct platform_binary_match_t
+ * @brief Find which binary(ies) contain a given address
  * @par Example:
  * @code{.c}
  * platform_binary_match_t matches[2];

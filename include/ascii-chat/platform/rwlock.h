@@ -36,6 +36,7 @@
 #ifdef _WIN32
 #include "windows_compat.h"
 /**
+ * @brief Read-write lock type (POSIX: pthread_rwlock_t with debug tracking)
  * @brief Read-write lock type (Windows: SRWLOCK with debug tracking)
  * @ingroup platform
  */

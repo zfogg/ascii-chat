@@ -209,10 +209,21 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
              blue);
   }
 
+  // A corrupted startup value must not turn into a black/invalid palette.
+  // Restore the canonical luminance weights instead of clamping it to +/-255.
+  const bool invalid_weight = red < min_weight || red > max_weight || green < min_weight || green > max_weight ||
+                              blue < min_weight || blue > max_weight;
+  const float effective_red = invalid_weight ? 0.2989f : red;
+  const float effective_green = invalid_weight ? 0.5866f : green;
+  const float effective_blue = invalid_weight ? 0.1145f : blue;
+
   // Clamp weights to safe range to prevent overflow
-  const float safe_red = (red < min_weight) ? min_weight : ((red > max_weight) ? max_weight : red);
-  const float safe_green = (green < min_weight) ? min_weight : ((green > max_weight) ? max_weight : green);
-  const float safe_blue = (blue < min_weight) ? min_weight : ((blue > max_weight) ? max_weight : blue);
+  const float safe_red =
+      (effective_red < min_weight) ? min_weight : ((effective_red > max_weight) ? max_weight : effective_red);
+  const float safe_green =
+      (effective_green < min_weight) ? min_weight : ((effective_green > max_weight) ? max_weight : effective_green);
+  const float safe_blue =
+      (effective_blue < min_weight) ? min_weight : ((effective_blue > max_weight) ? max_weight : effective_blue);
 
   const unsigned short max_ushort = 65535;
   const unsigned short min_ushort = 0;

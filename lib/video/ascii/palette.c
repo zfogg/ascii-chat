@@ -9,6 +9,7 @@
 #define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
 
 #include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -374,6 +375,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
 
   utf8_palette_t *palette;
   palette = SAFE_MALLOC(sizeof(utf8_palette_t), utf8_palette_t *);
+  defer_named(release_palette, SAFE_FREE(palette));
 
   // Count UTF-8 characters (not bytes)
   size_t char_count = 0;
@@ -409,18 +411,16 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   // Validate we got at least one character
   if (char_count == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Palette string contains no valid UTF-8 characters");
-    SAFE_FREE(palette);
     return NULL;
   }
 
   // Allocate character array
   palette->chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
   palette->raw_string = SAFE_MALLOC(total_bytes + 1, char *);
+  defer_named(release_chars, SAFE_FREE(palette->chars));
+  defer_named(release_raw, SAFE_FREE(palette->raw_string));
   // Explicit NULL checks to satisfy static analyzer (SAFE_MALLOC calls FATAL on failure)
   if (palette->chars == NULL || palette->raw_string == NULL) {
-    SAFE_FREE(palette->chars);
-    SAFE_FREE(palette->raw_string);
-    SAFE_FREE(palette);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate palette character array");
     return NULL;
   }
@@ -485,6 +485,9 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
     (void)setlocale(LC_CTYPE, old_locale);
   }
 
+  defer_cancel(release_raw);
+  defer_cancel(release_chars);
+  defer_cancel(release_palette);
   return palette;
 }
 

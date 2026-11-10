@@ -741,6 +741,7 @@ void acds_on_host_announcement_ex(const acip_host_announcement_t *announcement, 
 }
 
 /**
+ * @brief Background thread for periodic cleanup
  * @brief Authenticate a host-loss report and advance the measured recovery policy.
  * Session and participant IDs must match the joined signaling transport; obsolete
  * incumbent reports are ignored by consensus. The handoff mutex serializes policy updates.

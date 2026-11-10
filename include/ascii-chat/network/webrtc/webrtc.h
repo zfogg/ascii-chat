@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 /**
+ * @brief Event hooks and caller context for one WebRTC DataChannel
  * @defgroup webrtc WebRTC P2P Connections
  * @ingroup module_network
  * @brief WebRTC DataChannel transport for ACIP packets
@@ -37,6 +38,7 @@ typedef struct webrtc_peer_connection webrtc_peer_connection_t;
 typedef struct webrtc_data_channel webrtc_data_channel_t;
 
 /**
+ * @brief ICE, signaling, DataChannel, and callback settings for a WebRTC peer
  * @brief WebRTC connection state
  */
 typedef enum {

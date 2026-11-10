@@ -15,7 +15,14 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-addopts = ["--strict-markers", "--import-mode=importlib", "-n", "logical"]
+addopts = [
+  "--strict-markers",
+  "--import-mode=importlib",
+  "-n",
+  "logical",
+  "--dist",
+  "loadgroup",
+]
 markers = [
   "unit: fast isolated Python tests",
   "integration: tests exercising native executables",
@@ -23,7 +30,10 @@ markers = [
   "network: loopback networking tests",
   "native: native library checks requiring isolated interpreters",
   "media: media processing tests",
+  "performance: performance and frame-rate regression tests",
   "terminal: PTY and terminal behavior",
+  "hardware: requires exclusive access to physical audio or video devices",
+  "xdist_group(name): schedule tests sharing an external resource in one xdist group",
   "mcp: MCP protocol tests",
 ]
 

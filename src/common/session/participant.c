@@ -45,6 +45,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Client session state spanning connection, transport, media workers, and callbacks
  * @brief Client session state spanning connection, transport, media workers, and callbacks.
  *
  * The participant owns its copied address/password settings and worker handles,

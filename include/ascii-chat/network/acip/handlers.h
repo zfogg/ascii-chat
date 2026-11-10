@@ -114,6 +114,8 @@ typedef struct {
 } acip_client_callbacks_t;
 
 /**
+ * @brief Client-side packet handler callbacks
+ * @brief Server-side packet handler callbacks
  * @brief Handle incoming packet on client side
  *
  * Dispatches packet to appropriate callback based on type.

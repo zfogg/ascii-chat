@@ -171,6 +171,11 @@ typedef struct {
   size_t length, cursor;
   uint64_t deadline;
   bool active, submitted, pasted;
+  /**
+   * @brief This is the handoff point for input editor. Callers fill `length`, `cursor`, `deadline`, `active` before
+   * passing it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } input_editor_t;
 static input_editor_t g_media_editor;
 
@@ -308,7 +313,9 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  if (action == TUI_SHORTCUT_LOGS) {
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+  if (action == TUI_SHORTCUT_LOGS && !server) {
     ascii_otel_ui_usage("logs", "shortcut", 0);
     ui_controller_toggle_logs();
     return KEY_NONE;
@@ -322,15 +329,17 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
-                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   if (server && current == UI_SCREEN_LOGS) {
     if (ui_session_logs_key(key))
       return KEY_NONE;
-    if (key == KEY_ESCAPE) {
+    if (key == KEY_ESCAPE || key == 'q') {
       ui_controller_hide_logs();
       return KEY_NONE;
     }
+  }
+  if (server && (key == 'Q' || key == KEY_SHIFT_ESCAPE)) {
+    platform_force_exit(1);
+    return KEY_NONE;
   }
   if (server && (key == 'q' || key == 3)) {
     shutdown_request();

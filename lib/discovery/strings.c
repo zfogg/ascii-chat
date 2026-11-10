@@ -35,6 +35,7 @@
 // ============================================================================
 
 /**
+ * @brief One owned word in the adjective or noun validation hash table
  * @brief One owned word in the adjective or noun validation hash table.
  *
  * `word` is the hash key and heap-allocated copy; `hh` links the entry into

@@ -1,6 +1,7 @@
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 /**
  * @file network/consensus/topology.c
  * @brief Ring topology implementation
@@ -12,6 +13,7 @@
 #include <string.h>
 
 /**
+ * @brief Ring topology for consensus participants
  * @brief Ring topology for consensus participants
  *
  * Maintains a sorted list of participant IDs for ring-based consensus
@@ -48,6 +50,7 @@ asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SE
   }
 
   consensus_topology_t *topology = SAFE_MALLOC(sizeof(*topology), consensus_topology_t *);
+  defer_named(release_topology, SAFE_FREE(topology));
   memset(topology, 0, sizeof(*topology));
 
   // Copy and sort participant IDs lexicographically
@@ -59,11 +62,11 @@ asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SE
   // Find my position
   topology->my_position = find_uuid_position(topology->participant_ids, num_participants, my_id);
   if (topology->my_position < 0) {
-    SAFE_FREE(topology);
     return SET_ERRNO(ERROR_INVALID_PARAM, "My UUID not found in participant list");
   }
 
   *out_topology = topology;
+  defer_cancel(release_topology);
   return ASCIICHAT_OK;
 }
 

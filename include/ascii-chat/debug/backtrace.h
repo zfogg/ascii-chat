@@ -134,6 +134,9 @@ bool backtrace_filter_error_internal(const char *frame);
  * @param bt Backtrace structure to fill (must not be NULL)
  */
 /** Shared semantic formatting for terminal logs and TUI backtraces. No output or ownership transfer. */
+/**
+ * @brief Capture current stack into bt
+ */
 typedef struct {
   char colored[DEBUG_BACKTRACE_COLORED_BUFFER_SIZE];
   char plain[DEBUG_BACKTRACE_PLAIN_BUFFER_SIZE];

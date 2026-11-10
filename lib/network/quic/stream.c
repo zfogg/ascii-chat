@@ -18,9 +18,14 @@ asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
 }
 
 typedef struct {
-  acip_quic_stream_reader_t *reader;
-  acip_quic_stream_emit_fn emit;
+  quic_stream_reader_t *reader;
+  quic_stream_emit_fn emit;
   void *context;
+  /**
+   * @brief emit context keeps the values that move through the subsystem: `reader`, `emit`, `context`. Some members are
+   * pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+   * struct copy itself.
+   */
 } emit_context_t;
 
 static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg) {
@@ -35,8 +40,8 @@ static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg)
   return context->emit(context->reader->traffic_class, packet, size, context->context);
 }
 
-asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
-                                   acip_quic_stream_emit_fn emit, void *context) {
+asciichat_error_t quic_stream_read(quic_stream_reader_t *reader, const void *bytes, size_t length,
+                                   quic_stream_emit_fn emit, void *context) {
   if (!reader || (!bytes && length) || !emit || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream input");
   const uint8_t *input = bytes;
@@ -66,7 +71,7 @@ asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void
   return result;
 }
 
-asciichat_error_t quic_stream_finish(acip_quic_stream_reader_t *reader) {
+asciichat_error_t quic_stream_finish(quic_stream_reader_t *reader) {
   if (!reader || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream finish");
   if (reader->preamble_used != sizeof(reader->preamble) || packet_decoder_pending(&reader->packets)) {
@@ -77,7 +82,7 @@ asciichat_error_t quic_stream_finish(acip_quic_stream_reader_t *reader) {
   return ASCIICHAT_OK;
 }
 
-void quic_stream_reset(acip_quic_stream_reader_t *reader) {
+void quic_stream_reset(quic_stream_reader_t *reader) {
   if (reader) {
     packet_decoder_reset(&reader->packets);
     memset(reader, 0, sizeof(*reader));

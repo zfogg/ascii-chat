@@ -52,8 +52,10 @@ typedef enum {
 } lifecycle_sync_type_t;
 
 /**
- * Lock-free module lifecycle state machine with optional sync primitive.
- * Combines init/shutdown state with mutex or rwlock initialization.
+ * @brief When code needs to work with lifecycle, it keeps `[union].sync`, `state`, `sync_type`, `sync` here instead of
+ * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation,
+ * lock, thread, or callback context recorded in those fields. Lock-free module lifecycle state machine with optional
+ * sync primitive. Combines init/shutdown state with mutex or rwlock initialization.
  */
 typedef struct {
   atomic_t state;                  ///< lifecycle_state_t enum value

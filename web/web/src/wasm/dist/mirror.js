@@ -4640,6 +4640,13 @@ async function MirrorModule(moduleArg = {}) {
       },
     );
   };
+  var heap32VectorToArray = (count, firstElement) => {
+    var array = [];
+    for (var i = 0; i < count; i++) {
+      array.push((growMemViews(), HEAPU32)[(firstElement + i * 4) >> 2]);
+    }
+    return array;
+  };
   var runDestructors = (destructors) => {
     while (destructors.length) {
       var ptr = destructors.pop();
@@ -4795,87 +4802,6 @@ async function MirrorModule(moduleArg = {}) {
     var invokerFn = invokerFactory(...closureArgs);
     return createNamedFunction(humanName, invokerFn);
   }
-  var heap32VectorToArray = (count, firstElement) => {
-    var array = [];
-    for (var i = 0; i < count; i++) {
-      array.push((growMemViews(), HEAPU32)[(firstElement + i * 4) >> 2]);
-    }
-    return array;
-  };
-  var getFunctionName = (signature) => {
-    signature = signature.trim();
-    const argsIndex = signature.indexOf("(");
-    if (argsIndex === -1) return signature;
-    assert(
-      signature.endsWith(")"),
-      "Parentheses for argument names should match.",
-    );
-    return signature.slice(0, argsIndex);
-  };
-  var __embind_register_class_class_function = (
-    rawClassType,
-    methodName,
-    argCount,
-    rawArgTypesAddr,
-    invokerSignature,
-    rawInvoker,
-    fn,
-    isAsync,
-    isNonnullReturn,
-  ) => {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = AsciiToString(methodName);
-    methodName = getFunctionName(methodName);
-    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
-    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
-      classType = classType[0];
-      var humanName = `${classType.name}.${methodName}`;
-      function unboundTypesHandler() {
-        throwUnboundTypeError(
-          `Cannot call ${humanName} due to unbound types`,
-          rawArgTypes,
-        );
-      }
-      if (methodName.startsWith("@@")) {
-        methodName = Symbol[methodName.substring(2)];
-      }
-      var proto = classType.registeredClass.constructor;
-      if (undefined === proto[methodName]) {
-        unboundTypesHandler.argCount = argCount - 1;
-        proto[methodName] = unboundTypesHandler;
-      } else {
-        ensureOverloadTable(proto, methodName, humanName);
-        proto[methodName].overloadTable[argCount - 1] = unboundTypesHandler;
-      }
-      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
-        var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
-        var func = craftInvokerFunction(
-          humanName,
-          invokerArgsArray,
-          null,
-          rawInvoker,
-          fn,
-          isAsync,
-        );
-        if (undefined === proto[methodName].overloadTable) {
-          func.argCount = argCount - 1;
-          proto[methodName] = func;
-        } else {
-          proto[methodName].overloadTable[argCount - 1] = func;
-        }
-        if (classType.registeredClass.__derivedClasses) {
-          for (const derivedClass of classType.registeredClass
-            .__derivedClasses) {
-            if (!derivedClass.constructor.hasOwnProperty(methodName)) {
-              derivedClass.constructor[methodName] = func;
-            }
-          }
-        }
-        return [];
-      });
-      return [];
-    });
-  };
   var __embind_register_class_constructor = (
     rawClassType,
     argCount,
@@ -4920,6 +4846,16 @@ async function MirrorModule(moduleArg = {}) {
       });
       return [];
     });
+  };
+  var getFunctionName = (signature) => {
+    signature = signature.trim();
+    const argsIndex = signature.indexOf("(");
+    if (argsIndex === -1) return signature;
+    assert(
+      signature.endsWith(")"),
+      "Parentheses for argument names should match.",
+    );
+    return signature.slice(0, argsIndex);
   };
   var __embind_register_class_function = (
     rawClassType,
@@ -5071,6 +5007,47 @@ async function MirrorModule(moduleArg = {}) {
       },
       readValueFromPointer: floatReadValueFromPointer(name, size),
       destructorFunction: null,
+    });
+  };
+  var __embind_register_function = (
+    name,
+    argCount,
+    rawArgTypesAddr,
+    signature,
+    rawInvoker,
+    fn,
+    isAsync,
+    isNonnullReturn,
+  ) => {
+    var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    name = AsciiToString(name);
+    name = getFunctionName(name);
+    rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
+    exposePublicSymbol(
+      name,
+      function () {
+        throwUnboundTypeError(
+          `Cannot call ${name} due to unbound types`,
+          argTypes,
+        );
+      },
+      argCount - 1,
+    );
+    whenDependentTypesAreResolved([], argTypes, (argTypes) => {
+      var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
+      replacePublicSymbol(
+        name,
+        craftInvokerFunction(
+          name,
+          invokerArgsArray,
+          null,
+          rawInvoker,
+          fn,
+          isAsync,
+        ),
+        argCount - 1,
+      );
+      return [];
     });
   };
   var __embind_register_integer = (
@@ -6641,8 +6618,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2853360: () => Module.getRandomValue(),
-    2853396: () => {
+    2850832: () => Module.getRandomValue(),
+    2850868: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6915,12 +6892,11 @@ async function MirrorModule(moduleArg = {}) {
       _embind_register_bigint: __embind_register_bigint,
       _embind_register_bool: __embind_register_bool,
       _embind_register_class: __embind_register_class,
-      _embind_register_class_class_function:
-        __embind_register_class_class_function,
       _embind_register_class_constructor: __embind_register_class_constructor,
       _embind_register_class_function: __embind_register_class_function,
       _embind_register_emval: __embind_register_emval,
       _embind_register_float: __embind_register_float,
+      _embind_register_function: __embind_register_function,
       _embind_register_integer: __embind_register_integer,
       _embind_register_memory_view: __embind_register_memory_view,
       _embind_register_optional: __embind_register_optional,

@@ -171,6 +171,7 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
 }
 
 /**
+ * @brief Hash table entry for client packet dispatch
  * @brief Global client manager singleton - central coordination point
  *
  * This is the primary data structure for managing all connected clients.
@@ -224,6 +225,7 @@ static void initialize_default_render_capabilities(client_info_t *client) {
   client->terminal_caps.color_level = TERM_COLOR_NONE;
   client->terminal_caps.color_count = 2;
   client->terminal_caps.render_mode = RENDER_MODE_FOREGROUND;
+  client->terminal_caps.text_renderer = ASCII_RENDERER_DEFAULT;
   client->terminal_caps.palette_type = PALETTE_STANDARD;
   client->terminal_caps.desired_fps = VIDEO_RENDER_FPS;
   client->terminal_caps.wants_padding = false;
@@ -505,6 +507,10 @@ error_cleanup_transport:
 typedef struct {
   client_info_t *client;
   char display_name[MAX_DISPLAY_NAME_LEN];
+  /**
+   * @brief For server client removal, this is the live record that ties `client` together. The owning code creates it,
+   * updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+   */
 } server_client_removal_t;
 
 static asciichat_error_t server_client_begin_removal(server_context_t *server_ctx, const char *client_id,
@@ -1083,13 +1089,14 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug("Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id,
+                      frame->sequence_number, total_size);
     } else {
-      log_warn("FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame,
-               frame ? (void *)frame->data : NULL, data_len);
+      log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu",
+                     client->client_id, (void *)frame, frame ? (void *)frame->data : NULL, data_len);
     }
   } else {
-    log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
+    log_warn_every(NS_PER_SEC_INT * 3, "NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
 }
 

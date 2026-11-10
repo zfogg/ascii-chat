@@ -69,6 +69,9 @@ typedef enum database_query_id {
   DATABASE_QUERY_VerifySessionKey,
   DATABASE_QUERY_COUNT
 } database_query_id_t;
+/**
+ * @brief This is the handoff point for database query. Callers fill `name`, `sql`, `access`, `rows` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 struct database_query { const char *name; const char *sql; enum database_access access; enum database_rows rows; };
 static const struct database_query database_queries[] = {
   {"AddSessionKey", "INSERT OR IGNORE INTO session_identity_keys (\n"

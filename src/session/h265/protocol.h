@@ -9,8 +9,10 @@
 #include <stddef.h>
 
 /**
- * H.265 frame packet type identifier
- * Maps to PACKET_TYPE_IMAGE_FRAME_H265 (3002) from network/packet.h
+ * @brief For h265 packet header, this is the live record that ties `type`, `client_id`, `frame_num`, `flags` together.
+ * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+ * freeing the record. H.265 frame packet type identifier Maps to PACKET_TYPE_IMAGE_FRAME_H265 (3002) from
+ * network/packet.h
  */
 #define H265_PACKET_TYPE PACKET_TYPE_IMAGE_FRAME_H265
 

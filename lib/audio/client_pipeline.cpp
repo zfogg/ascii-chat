@@ -79,6 +79,7 @@ extern "C" {
 
 /**
  * @brief C++ wrapper for WebRTC AEC3 (opaque to C code)
+ * @brief C++ wrapper for WebRTC AEC3 (opaque to C code)
  *
  * This struct holds the C++ WebRTC objects and is cast to/from
  * void* pointers in the C interface.

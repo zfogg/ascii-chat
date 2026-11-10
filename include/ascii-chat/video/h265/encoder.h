@@ -48,6 +48,14 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
  */
 h265_encoder_t *video_encoder_create(video_codec_t codec, uint16_t initial_width, uint16_t initial_height);
 
+/** Return whether a usable software encoder is registered for @p codec.
+ *
+ * This probe is side-effect free: it does not allocate, open a codec context,
+ * or set errno. Automatic capture uses it to avoid probing unavailable codecs
+ * and reporting expected fallback failures to the user.
+ */
+bool video_encoder_is_available(video_codec_t codec);
+
 /**
  * Destroy an x265 encoder
  *

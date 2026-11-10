@@ -27,6 +27,8 @@ extern "C" {
  * ========================================================================== */
 
 /**
+ * @brief Discovered server information from mDNS
+ * @brief Configuration for TUI discovery
  * @brief Initialize log buffer for mDNS discovery UI
  *
  * Delegates to terminal_screen log initialization.

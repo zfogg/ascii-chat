@@ -5,6 +5,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/wakeup.h>
 
+/**
+ * @brief platform wakeup keeps the values that move through the subsystem: the fields shown below. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 struct platform_wakeup {
   std::binary_semaphore ready{0};
   std::atomic<bool> pending{false};

@@ -1,60 +1,13 @@
 {
-  "sourceHash": "21e3f8bfe040ff7c158b92fcd87bb39338c8494c5dfd3c2d040846bb745a4866",
-  "capabilities": {
-    "mirror": {
-      "module": "mirror",
-      "protocolVersion": "1",
-      "codecs": [
-        "raw",
-        "h264",
-        "hevc",
-        "opus"
-      ],
-      "transports": [
-        "webrtc",
-        "webtransport",
-        "websocket"
-      ],
-      "rendererModes": [
-        "luminance",
-        "glyph"
-      ],
-      "features": {
-        "stabilization": true,
-        "renderer": true,
-        "opus": true
-      }
-    },
-    "client": {
-      "module": "client",
-      "protocolVersion": "1",
-      "codecs": [
-        "raw",
-        "h264",
-        "hevc",
-        "opus"
-      ],
-      "transports": [
-        "webrtc",
-        "webtransport",
-        "websocket"
-      ],
-      "rendererModes": [],
-      "features": {
-        "stabilization": false,
-        "renderer": false,
-        "opus": true
-      }
-    }
-  },
+  "sourceHash": "00f0a77498034524c85230d8acc860eea28a7f8b8913d8afd1d5cf5e97665d77",
   "files": {
-    "mirror.js": "8ec0104c3041d0f13094c5fc3d569032d20f5e9fa2d0c80bd3a18d862a6a184c",
-    "mirror.wasm": "f9bac6106b717b8330c8201efdaf518f1c83df8ea06224d2bfea637b45205df1",
-    "client.js": "1eba14bef38470be91d869fcfeb0f65d95692f03baefeca014c9505e74931b38",
-    "client.wasm": "8591065900cc7fc117efdc60592f7f1d10bfb531c28972439696174d43deb3f1"
+    "mirror.js": "06de28b940f28f2f392bc04c2eb49d308201274f8768f4d30a0ec16deffda389",
+    "mirror.wasm": "419dbe3d48c730e171936a0934a6e9fa1dc9bda5c47ca34aaf8c490dbefab204",
+    "client.js": "1719375eef61d94856288ae871c0495ca8c35fecd69a9b1473f511400cdb524b",
+    "client.wasm": "ad0dc270344a011ca41bb7a83b57ee49728c51544ae9bd1b5db9a81a4bd7eee3"
   },
   "types": {
-    "mirror-bindings.d.ts": "c1ca73143a574a972693913fed7ba821e3708721656fba790d873311261bcc41",
-    "client-bindings.d.ts": "a6e1e43e385381c351dd8957e8cc25c3a29150e7d0e2cd3a550b0a42c77e0096"
+    "mirror-bindings.d.ts": "a7e9260e5830f6b5823f6b08ccbe7b76b607b69036496767a2c5b47cb668b6d3",
+    "client-bindings.d.ts": "9206017b7990515a85439b7c5844ec5625e734e762dc9aa7ba706c7cb8d6c83c"
   }
 }

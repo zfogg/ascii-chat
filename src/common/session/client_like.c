@@ -157,6 +157,11 @@ typedef struct {
   bool stdin_render_mode;
   bool should_init_audio;
   uint64_t audio_failed_revision;
+  /**
+   * @brief This is the handoff point for client like state. Callers fill `capture`, `display`, `audio_ctx`,
+   * `probe_source` before passing it on; consumers read the values during the operation and return ownership only where
+   * the member contract explicitly says they do.
+   */
 } client_like_state_t;
 
 static void client_like_setup_terminal_logging(void) {
@@ -409,6 +414,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
   }
 
   state->capture_config.target_fps = client_like_select_capture_fps(state);
+  ui_controller_set_effective_fps(state->capture_config.target_fps);
 
   // Apply initial seek if specified
   state->capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
@@ -598,6 +604,8 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }
+    if (state->capture_config.type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0)
+      ui_controller_set_effective_fps(session_capture_get_target_fps(state->capture));
   }
   return ASCIICHAT_OK;
 }

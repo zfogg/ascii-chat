@@ -7,6 +7,39 @@ export default function QuickReferenceSection() {
         📋 Quick Reference
       </Heading>
 
+      <div className="info-box-info mb-5 border-l-4 border-cyan-400">
+        <p className="text-gray-300 text-sm mb-2">
+          <strong className="text-cyan-300">⌨ Live controls</strong> — these
+          shortcuts work while a session is rendering:
+        </p>
+        <div className="flex flex-wrap gap-2 text-sm">
+          <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-yellow-300">
+            <code>r</code> render mode
+          </span>
+          <span className="rounded-full bg-orange-400/10 px-3 py-1 text-orange-300">
+            <code>c</code> color mode
+          </span>
+          <span className="rounded-full bg-pink-400/10 px-3 py-1 text-pink-300">
+            <code>f</code> filter
+          </span>
+          <span className="rounded-full bg-lime-400/10 px-3 py-1 text-lime-300">
+            <code>1</code> Matrix
+          </span>
+          <span className="rounded-full bg-purple-400/10 px-3 py-1 text-purple-300">
+            <code>-</code> FPS meter
+          </span>
+          <span className="rounded-full bg-teal-400/10 px-3 py-1 text-teal-300">
+            <code>Space</code> pause
+          </span>
+          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">
+            <code>← →</code> seek
+          </span>
+          <span className="rounded-full bg-green-400/10 px-3 py-1 text-green-300">
+            <code>?</code> help
+          </span>
+        </div>
+      </div>
+
       <div className="table-wrapper">
         <table className="table-base">
           <thead className="table-header">

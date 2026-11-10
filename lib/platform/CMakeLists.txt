@@ -90,6 +90,7 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/systemd.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/font.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/filesystem.c
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/linux/webcam_v4l2.c

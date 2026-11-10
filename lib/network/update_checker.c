@@ -11,7 +11,7 @@
 
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/tooling/defer/defer.h>
-#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>

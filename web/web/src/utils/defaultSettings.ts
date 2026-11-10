@@ -13,7 +13,7 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   colorFilter: defaultBrowserSettings.colorFilter,
   palette: defaultBrowserSettings.palette,
   renderer: defaultBrowserSettings.renderer,
-  stabilize: false,
+  stabilize: defaultBrowserSettings.stabilize,
   paletteExplicit: false,
   paletteChars: DEFAULT_PALETTE_CHARS,
   matrixRain: false,

@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.30)
+
+# The project has intentionally forced cache assignments for platform and
+# dependency setup. Keep those assignments from making every Ninja build
+# re-run CMake; reconfigure explicitly with the selected preset.
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 if(POLICY CMP0174)
     cmake_policy(SET CMP0174 NEW)
 endif()
@@ -290,6 +296,20 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
+# The defer parser runs from its own custom command and cannot see target-level
+# include propagation.  Keep the musl FFmpeg headers available to that parser
+# in the top-level scope used when the command is generated.
+if(USE_MUSL)
+    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
+        "${MUSL_INCLUDE_DIR}"
+        "/usr/include/aarch64-linux-musl"
+        "/usr/include/arm-linux-musleabihf"
+        "/usr/include/aarch64-linux-gnu"
+        "/usr/include/arm-linux-gnueabihf")
+    set(ASCIICHAT_DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
@@ -458,6 +478,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -DASCIICHAT_DEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}
+            -DASCIICHAT_DEFER_NATIVE_BINARY=${CMAKE_BINARY_DIR}/bin/defer-tool${CMAKE_EXECUTABLE_SUFFIX}
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")

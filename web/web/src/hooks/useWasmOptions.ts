@@ -57,7 +57,9 @@ export function applyMirrorWasmSettings(
       settings.renderer === "glyph"
         ? TextRenderer.Glyph
         : TextRenderer.Luminance,
-    stabilize: settings.stabilize ?? false,
+    ...(settings.stabilizeExplicit
+      ? { stabilize: settings.stabilize ?? true }
+      : {}),
     palette_type: paletteTypes[settings.palette],
     palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,
     palette_explicit:

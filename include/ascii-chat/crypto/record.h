@@ -10,8 +10,11 @@
 #define CRYPTO_RECORD_ANY_CHANNEL UINT_MAX
 
 /** Authenticated records over independent ordered channels and unordered delivery.
- * The caller serializes operations and keeps the borrowed crypto context alive.
- * One previous receive epoch survives until each channel crosses its marker. */
+ * @brief When code needs to work with crypto record, it keeps `crypto`, `key_epoch`, `last_receive_epoch`,
+ * `previous_crypto` here instead of scattering it across globals. Initialization establishes the handles and sizes;
+ * teardown must release any allocation, lock, thread, or callback context recorded in those fields. The caller
+ * serializes operations and keeps the borrowed crypto context alive. One previous receive epoch survives until each
+ * channel crosses its marker. */
 typedef struct crypto_record {
   crypto_context_t *crypto;
   uint64_t key_epoch, last_receive_epoch;

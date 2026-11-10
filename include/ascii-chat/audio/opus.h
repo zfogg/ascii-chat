@@ -77,6 +77,7 @@ asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate
  * ============================================================================ */
 
 /**
+ * @brief State for one Opus encoding or decoding direction
  * @brief Application mode for opus encoder
  * @ingroup audio
  */

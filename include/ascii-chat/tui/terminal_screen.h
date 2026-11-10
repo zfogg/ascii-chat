@@ -23,6 +23,7 @@
 typedef struct session_log_buffer session_log_buffer_t;
 
 /**
+ * @brief Configuration for terminal screen rendering
  * @brief Callback to render the fixed header portion of the screen
  *
  * @param buf Frame buffer to write header content into (via frame_buffer_printf, etc.)

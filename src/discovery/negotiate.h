@@ -61,9 +61,14 @@ typedef struct {
   char host_address[DISCOVERY_NEGOTIATE_HOST_ADDRESS_BUFFER_SIZE]; ///< Host's address (ours if we_are_host)
   uint16_t host_port;                                              ///< Host's port
   uint8_t connection_type;                                         ///< acip_connection_type_t
+  /**
+   */
 } negotiate_ctx_t;
 
 /**
+ * @brief negotiate ctx is intentionally a small, concrete record. Fields such as `is_initiator`, `our_quality`,
+ * `peer_quality`, `peer_quality_received` give callers the identity and current value they need. It is normally
+ * borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Initialize negotiation context
  * @param ctx Context to initialize
  * @param session_id Session UUID

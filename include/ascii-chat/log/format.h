@@ -20,6 +20,8 @@
  * ============================================================================ */
 
 /**
+ * @brief One literal or conversion token in a compiled log format
+ * @brief Compiled log format ready for use in log_template_apply()
  * @brief Types of format specifiers that can appear in a format string
  */
 typedef enum {

@@ -11,6 +11,7 @@
 #include <ascii-chat/atomic.h>
 
 /**
+ * @brief Thread-safe fixed-size history ring for session-screen log lines
  * @brief Thread-safe fixed-size history ring for session-screen log lines.
  *
  * `entries` stores formatted messages, while the atomic write position and

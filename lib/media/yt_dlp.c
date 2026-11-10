@@ -35,6 +35,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Cached yt-dlp result for one media source and its audio/video requests
  * @brief Cached yt-dlp result for one media source and its audio/video requests.
  *
  * Avoids calling yt-dlp multiple times for the same URL during

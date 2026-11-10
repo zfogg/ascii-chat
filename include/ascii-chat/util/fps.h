@@ -44,6 +44,7 @@
 
 /**
  * @brief Counters and timestamps used to calculate and report frame rate
+ * @brief Counters and timestamps used to calculate and report frame rate
  *
  * Maintains timing information for FPS calculation and lag detection.
  * All timing fields use nanosecond precision (uint64_t).

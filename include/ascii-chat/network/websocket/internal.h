@@ -16,6 +16,8 @@
 #include <ascii-chat/atomic.h>
 
 /**
+ * @brief Owned WebSocket frame queued for sending or reassembly
+ * @brief Private state for one libwebsockets-backed ACIP transport
  * @brief Owned WebSocket frame queued for sending or reassembly.
  *
  * Used for both send and receive queues. Each frame may be a complete message

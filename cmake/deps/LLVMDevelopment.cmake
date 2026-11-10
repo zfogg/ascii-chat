@@ -12,6 +12,31 @@ function(ascii_find_llvm_development)
         set(_root "$ENV{ASCIICHAT_LLVM_DEV_ROOT}")
     endif()
     if(CMAKE_HOST_WIN32)
+        # The compiler/toolchain comes from Scoop LLVM when it is installed.
+        # Scoop's compiler package does not always contain the development
+        # headers and import libraries used by the native defer host tool, so
+        # provision the repository's pinned development archive automatically
+        # when that separate payload is missing.
+        if(NOT _root)
+            find_program(_scoop_llvm_clang_cl NAMES clang-cl
+                PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
+                NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+            if(_scoop_llvm_clang_cl)
+                message(STATUS "Using Scoop LLVM toolchain: ${_scoop_llvm_clang_cl}")
+                if(EXISTS "$ENV{USERPROFILE}/scoop/apps/llvm/current/include/llvm/Support/CommandLine.h")
+                    set(_root "$ENV{USERPROFILE}/scoop/apps/llvm/current")
+                endif()
+            else()
+                message(STATUS "Scoop LLVM toolchain not found; using the configured host compiler")
+            endif()
+        endif()
+        if(NOT _root AND DEFINED ENV{ProgramFiles})
+            set(_windows_llvm_root "$ENV{ProgramFiles}/LLVM")
+            if(EXISTS "${_windows_llvm_root}/include/llvm/Support/CommandLine.h")
+                set(_root "${_windows_llvm_root}")
+                message(STATUS "Using LLVM development installation: ${_root}")
+            endif()
+        endif()
         if(NOT _root)
             if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
                 set(_suffix "-aarch64")
@@ -20,6 +45,22 @@ function(ascii_find_llvm_development)
             endif()
             get_filename_component(_repo_root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../.." ABSOLUTE)
             set(_root "${_repo_root}/.deps-cache/llvm-dev-23.1.3${_suffix}")
+        endif()
+        if(NOT EXISTS "${_root}/include/llvm/Support/CommandLine.h")
+            get_filename_component(_repo_root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../.." ABSOLUTE)
+            set(_installer "${_repo_root}/scripts/install-llvm-dev.ps1")
+            if(NOT EXISTS "${_installer}")
+                message(FATAL_ERROR "LLVM development files are missing and the installer was not found: ${_installer}")
+            endif()
+            message(STATUS "LLVM development files not found; installing the pinned archive into ${_root}")
+            execute_process(
+                COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
+                    -File "${_installer}" -Destination "${_root}"
+                RESULT_VARIABLE _llvm_install_result
+                COMMAND_ECHO STDOUT)
+            if(NOT _llvm_install_result EQUAL 0)
+                message(FATAL_ERROR "LLVM development archive installation failed with exit code ${_llvm_install_result}")
+            endif()
         endif()
         foreach(_key _llvm_include _clang_include _llvm_support _llvm_demangle _clang_library _clang_runtime)
             unset(${_key} CACHE)

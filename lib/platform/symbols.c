@@ -667,6 +667,11 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
   // Group addresses by binary using platform-independent interface
   // Works identically on Linux, macOS, and Windows
+  /**
+   * @brief One address-to-name entry in the symbolizer's hash table. `addr` is the lookup key, `symbol` points to the
+   * cached name, and `hh` links the entry into uthash; the cache owns the entry and its duplicated string until it is
+   * cleared.
+   */
   typedef struct {
     char binary_path[PLATFORM_MAX_PATH_LENGTH];
     bool relative_addresses;

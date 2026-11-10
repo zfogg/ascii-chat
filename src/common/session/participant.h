@@ -132,6 +132,7 @@ typedef struct {
 } session_participant_callbacks_t;
 
 /**
+ * @brief Client-side event hooks for connection, media, settings, and errors
  * @brief Server address, security, media, transport, and callback settings for a participant.
  * @ingroup session
  */
@@ -175,6 +176,7 @@ typedef struct {
  */
 
 /**
+ * @brief Server address, security, media, transport, and callback settings for a participant
  * @brief Create a new session participant
  * @param config Participant configuration (must not be NULL)
  * @return Pointer to participant handle, or NULL on failure
