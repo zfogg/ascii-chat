@@ -1123,9 +1123,16 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
   }
-  uv_tcp_init(&s->loop, &s->listener);
+  if (uv_tcp_init(&s->loop, &s->listener) != 0) {
+    uv_loop_close(&s->loop); rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP listener");
+  }
   s->listener.data = s;
-  uv_async_init(&s->loop, &s->stop_async, stop_async_cb);
+  if (uv_async_init(&s->loop, &s->stop_async, stop_async_cb) != 0) {
+    uv_close((uv_handle_t *)&s->listener, NULL); uv_run(&s->loop, UV_RUN_DEFAULT); uv_loop_close(&s->loop);
+    rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP stop handle");
+  }
   s->stop_async.data = s;
   if (uv_async_init(&s->loop, &s->wake_async, wake_async_cb) != 0) {
     uv_close((uv_handle_t *)&s->stop_async, NULL);
