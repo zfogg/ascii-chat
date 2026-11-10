@@ -326,6 +326,22 @@ test.describe("WASM browser boundary measurements", () => {
 
   test("records main-versus-feature artifact size measurements when configured", async () => {
     const mainRoot = process.env["WASM_MAIN_ROOT"];
+    if (mainRoot) {
+      const mainRevision = execFileSync(
+        "git",
+        ["-C", mainRoot, "rev-parse", "HEAD"],
+        {
+          encoding: "utf8",
+        },
+      ).trim();
+      const featureRevision = execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8",
+      }).trim();
+      test.skip(
+        mainRevision === featureRevision,
+        `WASM_MAIN_ROOT points at the feature revision ${featureRevision}; a distinct baseline is required`,
+      );
+    }
     const featureManifest = resolve(
       process.cwd(),
       "src/wasm/dist/manifest.json",
