@@ -18,34 +18,14 @@
 #include <string.h>
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
+#include <ascii-chat/buffer.h>
 
 static _Thread_local outbuf_t *g_output_target;
-#define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
-static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE]
-                                                 [IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
-static _Thread_local bool g_scratch_workspace_busy[ASCII_RENDER_WORKSPACE_POOL_SIZE];
 
 static uint32_t *acquire_scratch(uint32_t *inline_scratch, size_t bytes) {
   if (bytes <= ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES * sizeof(uint32_t))
     return inline_scratch;
-  if (bytes > sizeof(g_scratch_workspace[0]))
-    return NULL;
-  for (size_t i = 0; i < ASCII_RENDER_WORKSPACE_POOL_SIZE; ++i) {
-    if (!g_scratch_workspace_busy[i]) {
-      g_scratch_workspace_busy[i] = true;
-      return g_scratch_workspace[i];
-    }
-  }
-  return NULL;
-}
-
-static void release_scratch(uint32_t *scratch) {
-  for (size_t i = 0; i < ASCII_RENDER_WORKSPACE_POOL_SIZE; ++i) {
-    if (scratch == g_scratch_workspace[i]) {
-      g_scratch_workspace_busy[i] = false;
-      return;
-    }
-  }
+  return buffer_alloc(NULL, bytes);
 }
 static _Thread_local ascii_stabilizer_t *g_stabilizer_target;
 
@@ -405,7 +385,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
   if (frame->scratch != frame->inline_scratch)
-    release_scratch(frame->scratch);
+    buffer_release(frame->scratch);
   ob_term(&frame->output);
   if (frame->output_target)
     *frame->output_target = frame->output;

@@ -2,6 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 
 #include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/buffer.h>
 /**
  * @file video/ascii.c
  * @ingroup video
@@ -44,10 +45,6 @@
  * ============================================================================
  */
 
-#define ASCII_RESIZE_WORKSPACE_POOL_SIZE 4
-static _Thread_local int g_resize_columns_workspace[ASCII_RESIZE_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH];
-static _Thread_local unsigned g_resize_workspace_depth;
-
 /*
  * Resize a source image to a terminal viewport while preserving its visual
  * aspect ratio. The source is cropped to the viewport's aspect ratio first,
@@ -82,8 +79,12 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
   }
 
   // Horizontal source coordinates are identical for every destination row.
-  unsigned workspace_index = g_resize_workspace_depth++ % ASCII_RESIZE_WORKSPACE_POOL_SIZE;
-  int *source_columns = g_resize_columns_workspace[workspace_index];
+  size_t columns_bytes = (size_t)dest->w * sizeof(int);
+  int *source_columns = buffer_alloc(NULL, columns_bytes);
+  if (!source_columns) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to acquire ASCII resize workspace");
+    return;
+  }
   for (int x = 0; x < dest->w; ++x)
     source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
   int previous_source_y = -1;
@@ -100,7 +101,7 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
       dest_row[x] = source_row[source_columns[x]];
     }
   }
-  --g_resize_workspace_depth;
+  buffer_release(source_columns);
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.
