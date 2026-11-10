@@ -5,6 +5,10 @@
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/errno_stacks.h>
+#include <ascii-chat/tui/sync.h>
+#include <ascii-chat/tui/update_banner.h>
+#include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/options/runtime.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -22,7 +26,64 @@ static char g_ios_options_json[32768];
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
   int fd = ui_controller_active_fd();
+  int before = ui_controller_current_screen();
   keyboard_help_toggle_terminal(fd);
+#ifdef PLATFORM_IOS
+  if (before != UI_SCREEN_HELP && ui_controller_current_screen() == UI_SCREEN_HELP)
+    ui_controller_remove(UI_SCREEN_MEDIA);
+#endif
+}
+
+void asciichat_ios_clear_tui_surface(void) {
+  static const char clear[] = "\033[2J\033[H";
+  (void)ios_render_bridge_write(STDOUT_FILENO, clear, sizeof(clear) - 1);
+  ios_render_bridge_flush();
+}
+
+void asciichat_ios_redraw_tui(void) {
+  ui_controller_redraw();
+  ios_render_bridge_flush();
+}
+
+void asciichat_ios_deactivate_tui(void) {
+  ui_controller_select_interactive(-1);
+  ui_controller_redraw();
+  ios_render_bridge_flush();
+}
+
+void asciichat_ios_activate_tui(int item) {
+  int fd = ui_controller_active_fd();
+  switch (item) {
+  case 0:
+    asciichat_ios_toggle_help();
+    break;
+  case 1:
+    ui_controller_toggle_logs();
+    break;
+  case 2:
+    (void)stats_runtime_start("mirror", 0);
+    stats_runtime_toggle();
+    break;
+  case 3:
+    if (ui_sync_start(fd) == ASCIICHAT_OK)
+      ui_controller_select_interactive(UI_SCREEN_SYNC);
+    break;
+  case 4:
+    ui_errno_stacks_toggle();
+    break;
+  case 5:
+    update_banner_toggle_overlay();
+    if (update_banner_is_overlay_open())
+      ui_controller_select_interactive(UI_SCREEN_UPDATE);
+    break;
+  case 6: {
+    static const char key = 'o';
+    (void)ios_stdin_bridge_push(&key, 1);
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void asciichat_ios_set_session_string(const char *session_string) {

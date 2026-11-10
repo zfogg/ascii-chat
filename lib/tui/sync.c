@@ -310,7 +310,11 @@ asciichat_error_t ui_sync_start(int fd) {
   while (atomic_flag_test_and_set(&g_sync_starting))
     platform_sleep_ms(1);
   asciichat_error_t result = ASCIICHAT_OK;
-  if (!g_sync_started && platform_isatty(fd) && platform_isatty(STDIN_FILENO)) {
+  bool usable_terminal = platform_isatty(fd) && platform_isatty(STDIN_FILENO);
+#ifdef PLATFORM_IOS
+  usable_terminal = fd >= 0;
+#endif
+  if (!g_sync_started && usable_terminal) {
     g_sync_fd = platform_dup(fd);
     if (g_sync_fd < 0) {
       result = SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain sync display terminal");

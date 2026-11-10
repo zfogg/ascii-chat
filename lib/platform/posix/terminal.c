@@ -648,6 +648,15 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   caps.color_level = TERM_COLOR_NONE;
   caps.color_count = 0;
 
+#ifdef PLATFORM_IOS
+  // The render bridge is a truecolor surface, not a POSIX TTY. There is no
+  // TERM/COLORTERM environment to probe in the iOS process, so advertise the
+  // surface capability explicitly to every shared TUI renderer.
+  caps.color_level = TERM_COLOR_TRUECOLOR;
+  caps.color_count = 16777216;
+  caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+#endif
+
   if (colorterm) {
     if (strstr(colorterm, "truecolor") || strstr(colorterm, "24bit")) {
       caps.color_level = TERM_COLOR_TRUECOLOR;

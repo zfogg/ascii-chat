@@ -49,6 +49,15 @@ private func asciichat_ios_request_stop()
 @_silgen_name("asciichat_ios_toggle_help")
 private func asciichat_ios_toggle_help()
 
+@_silgen_name("asciichat_ios_clear_tui_surface")
+private func asciichat_ios_clear_tui_surface()
+@_silgen_name("asciichat_ios_redraw_tui")
+private func asciichat_ios_redraw_tui()
+@_silgen_name("asciichat_ios_deactivate_tui")
+private func asciichat_ios_deactivate_tui()
+@_silgen_name("asciichat_ios_activate_tui")
+private func asciichat_ios_activate_tui(_ item: Int32)
+
 @_silgen_name("ios_render_bridge_read_frame")
 private func ios_render_bridge_read_frame(
     _ pixels: UnsafeMutablePointer<UInt8>,
@@ -69,6 +78,8 @@ private func ios_render_bridge_configure(_ cols: Int32, _ rows: Int32, _ fontSiz
 
 @_silgen_name("ios_render_bridge_sequence")
 private func ios_render_bridge_sequence() -> UInt64
+@_silgen_name("ios_render_bridge_flush")
+private func ios_render_bridge_flush()
 
 @_silgen_name("asciichat_ios_camera_authorized")
 private func asciichat_ios_camera_authorized() -> Int32
@@ -306,8 +317,12 @@ private final class CRenderView: MTKView {
         super.layoutSubviews()
         guard let screen = window?.screen ?? window?.windowScene?.screen else { return }
         let scale = screen.nativeScale
-        let pixelWidth = max(1, Int(ceil(bounds.width)))
-        let pixelHeight = max(1, Int(ceil(bounds.height)))
+        // SwiftUI lays this view out in points, while the C renderer and the
+        // Metal drawable operate in native pixels. Use the drawable's actual
+        // pixel dimensions so high-DPI devices get a full-width grid instead
+        // of a point-sized image stretched inside the display.
+        let pixelWidth = max(1, Int(ceil(bounds.width * scale)))
+        let pixelHeight = max(1, Int(ceil(bounds.height * scale)))
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
         let configuredFontSize = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 0
@@ -333,6 +348,7 @@ private final class CRenderView: MTKView {
     }
 
     @objc private func displayFrame() {
+        ios_render_bridge_flush()
         displayTicks += 1
         let sequence = ios_render_bridge_sequence()
         guard sequence != lastSequence else { return }
@@ -1312,9 +1328,11 @@ struct ContentView: View {
         let endpoint: String
         if serverAddress.isEmpty {
             endpoint = ""
-        } else if serverAddress.hasPrefix("ws://") || serverAddress.hasPrefix("wss://") {
-            // WebSocket URLs carry their own port. Appending the numeric
-            // option here would produce an invalid host:port:port endpoint.
+        } else if serverAddress.hasPrefix("tcp://") || serverAddress.hasPrefix("ws://") ||
+                  serverAddress.hasPrefix("wss://") || serverAddress.hasPrefix("quic://") {
+            // Explicit transport URLs carry their own endpoint. Appending the
+            // numeric option here would produce an invalid host:port:port
+            // endpoint and would destroy the requested transport selection.
             endpoint = serverAddress
         } else {
             endpoint = "\(serverAddress):\(serverPort)"
@@ -1361,7 +1379,19 @@ struct ContentView: View {
 
     private func selectTUI(_ item: TUISwitcherItem) {
         activeTUI = item
-        let bytes = Array(item.keyBytes.utf8)
+        asciichat_ios_clear_tui_surface()
+        let index: Int32
+        switch item {
+        case .help: index = 0
+        case .logs: index = 1
+        case .stats: index = 2
+        case .sync: index = 3
+        case .errors: index = 4
+        case .update: index = 5
+        case .media: index = 6
+        }
+        asciichat_ios_activate_tui(index)
+        let bytes = item == .media ? Array(item.keyBytes.utf8) : []
         bytes.withUnsafeBytes { rawBuffer in
             guard let baseAddress = rawBuffer.baseAddress, !bytes.isEmpty else { return }
             _ = ios_stdin_bridge_push(baseAddress, bytes.count)
@@ -1369,13 +1399,14 @@ struct ContentView: View {
         // Let the native input loop consume the shortcut and publish its first
         // frame before removing the selector from above the render bridge.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            asciichat_ios_clear_tui_surface()
+            asciichat_ios_redraw_tui()
             showTUISwitcher = false
         }
     }
 
     private func disableTUI() {
-        let escape = "\u{1b}"
-        escape.withCString { pointer in _ = ios_stdin_bridge_push(pointer, escape.utf8.count) }
+        asciichat_ios_deactivate_tui()
         activeTUI = nil
     }
 
@@ -1510,7 +1541,7 @@ struct ContentView: View {
                     } else {
                         settingsView
                     }
-                    if sessionStarted && !sessionStopping {
+                if sessionStarted && !sessionStopping && (activeTUI == nil || activeTUI == .media) {
                         HStack {
                             TextField("Send command or answer", text: $commandLine)
                                 .textFieldStyle(.roundedBorder)
@@ -1538,17 +1569,15 @@ struct ContentView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     guard !didStart else { return }
                     startSelectedSession()
+                    if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--auto-tui=") })?.split(separator: "=", maxSplits: 1).last,
+                       let item = TUISwitcherItem(rawValue: String(value)) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            selectTUI(item)
+                        }
+                    }
                     if ProcessInfo.processInfo.arguments.contains("--auto-open-tui") {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                             showTUISwitcher = true
-                        }
-                    }
-                    if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--auto-tui=") })?.split(separator: "=", maxSplits: 1).last,
-                       let item = TUISwitcherItem(rawValue: String(value)) {
-                        // Wait for the first native media submission so the shared
-                        // controller has a live media screen to cover.
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                            selectTUI(item)
                         }
                     }
                 }

@@ -263,6 +263,7 @@ int ui_controller_active_fd(void) {
 static bool interactive_screen(int screen) {
   return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_ERRNO ||
          screen == UI_SCREEN_SYNC || screen == UI_SCREEN_STATS || screen == UI_SCREEN_PROMPT ||
+         screen == UI_SCREEN_UPDATE ||
          screen == UI_SCREEN_MDNS;
 }
 
@@ -442,7 +443,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   while (started && written < len) {
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
-    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+    if (g_rendering_screen == UI_SCREEN_MEDIA && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
       superseded = true;
       break;
     }
@@ -1100,7 +1101,13 @@ static void *presentation_main(void *unused) {
               }
           }
         }
-        if (parent >= 0 && parent != active && g_screens[parent].render)
+        // Interactive TUIs are full-screen views on iOS (and on terminal
+        // frontends that provide a native surface). Do not compose the live
+        // media frame underneath them: it makes the TUI appear over a stale
+        // ASCII image and prevents the first frame from being visually clean.
+        // The media snapshot remains retained and resumes immediately when
+        // the interactive screen is dismissed.
+        if (parent >= 0 && parent != active && parent != UI_SCREEN_MEDIA && g_screens[parent].render)
           layers[layer_count++] = g_screens[parent];
         sync_backdrop = keyboard_help_previous_interactive() == UI_SCREEN_SYNC && layer_count == 0;
       }
@@ -1499,6 +1506,14 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   mutex_lock(&g_mutex);
   uint64_t locked_ns = time_get_ns();
   if (g_finished) {
+    mutex_unlock(&g_mutex);
+    release_snapshot(copy);
+    return ASCIICHAT_OK;
+  }
+  // An interactive TUI owns the iOS surface until it is dismissed. Retain
+  // the media mailbox, but do not publish new media frames over the modal
+  // view; the next frame is submitted as soon as ASCII mode resumes.
+  if (screen == UI_SCREEN_MEDIA && interactive_screen(ui_controller_interactive_screen())) {
     mutex_unlock(&g_mutex);
     release_snapshot(copy);
     return ASCIICHAT_OK;
@@ -1927,8 +1942,13 @@ void ui_controller_toggle_logs(void) {
     ui_controller_hide_logs();
     return;
   }
+#ifndef PLATFORM_IOS
   if (!platform_isatty(STDOUT_FILENO) || GET_OPTION(snapshot_mode))
     return;
+#else
+  if (GET_OPTION(snapshot_mode))
+    return;
+#endif
   const bool snapshot = true;
   asciichat_error_t result =
       ui_controller_submit(UI_SCREEN_LOGS, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 6}, render_logs,
