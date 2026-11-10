@@ -41,7 +41,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
   await startServer();
 
   console.log("[Test] Navigating to client page...");
-  await page.goto("http://localhost:5173/client");
+  await page.goto("/client");
   await page.waitForTimeout(500);
 
   // Click Connection button to open the panel

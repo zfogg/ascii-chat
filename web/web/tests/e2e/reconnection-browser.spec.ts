@@ -63,7 +63,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
 
     // Navigate to the web client
     console.log("[E2E Test] Navigating to web client...");
-    await page.goto("http://localhost:5173/client", {
+    await page.goto("/client", {
       waitUntil: "domcontentloaded",
     });
     await page.waitForTimeout(500); // Let page settle
