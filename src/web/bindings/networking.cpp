@@ -405,6 +405,10 @@ public:
       emscripten::val response = result(code);
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       response.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
+      if (!input.empty())
+        sodium_memzero(input.data(), input.size());
+      if (!output.empty())
+        sodium_memzero(output.data(), output.size());
       return response;
     }
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser client event: %s", type.c_str()));
