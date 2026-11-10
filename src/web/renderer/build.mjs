@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const build = resolve(
   repo,
-  process.env.ASCII_CHAT_WASM_ARTIFACT_DIR ?? "build-wasm",
+  // renderer-web is emitted beside the other CMake WASM targets. Keep an
+  // override for release packaging, but make the repository build work with
+  // the normal `cmake --build build/web --target renderer-web` layout.
+  process.env.ASCII_CHAT_WASM_ARTIFACT_DIR ?? "build/web",
 );
 const dest = new URL("./dist/", import.meta.url);
 for (const file of ["renderer.js", "renderer.wasm", "renderer-bindings.d.ts"]) {
