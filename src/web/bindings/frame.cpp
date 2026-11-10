@@ -1,6 +1,7 @@
 #include <emscripten/bind.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <vector>
@@ -48,7 +49,7 @@ public:
       return std::nullopt;
     }
     std::string result(frame);
-    mirror_free_string(frame);
+    std::free(frame);
     return result;
   }
   emscripten::val processFrame(RgbaBytes rgba, int width, int height, bool contain) {
@@ -122,7 +123,7 @@ public:
       return std::nullopt;
     }
     std::string result(frame);
-    mirror_free_string(frame);
+    std::free(frame);
     return result;
   }
 

@@ -333,6 +333,3 @@ char *mirror_render_audio_visualization(mirror_render_context_t *context, unsign
   return text;
 }
 
-void mirror_free_string(char *ptr) {
-  SAFE_FREE(ptr);
-}
