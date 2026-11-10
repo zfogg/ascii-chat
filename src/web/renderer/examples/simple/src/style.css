@@ -29,20 +29,21 @@ h1 {
   color: #9aabc2;
   margin-bottom: 24px;
 }
-#output {
-  display: block;
+.canvas-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid #294363;
   border-radius: 14px;
   box-shadow: 0 20px 80px #0008;
   background: #000;
-  color: #62e6b8;
-  font:
-    12px/1.05 ui-monospace,
-    SFMono-Regular,
-    Consolas,
-    monospace;
-  white-space: pre;
+}
+canvas {
+  display: block;
+  width: min(960px, 100%);
+  height: auto;
 }
 #status {
   color: #62e6b8;

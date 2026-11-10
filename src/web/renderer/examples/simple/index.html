@@ -9,11 +9,10 @@
     <main>
       <p class="eyebrow">ascii-chat · npm module</p>
       <h1>Animated ASCII renderer</h1>
-      <p class="subtitle">
-        Generated pixels converted to a live character stream by the published
-        WASM package.
-      </p>
-      <pre id="output" aria-label="Animated ASCII art"></pre>
+      <p class="subtitle">Native WASM test pattern rendered in truecolor.</p>
+      <div class="canvas-frame">
+        <canvas id="canvas" width="960" height="640"></canvas>
+      </div>
       <p id="status">Loading renderer…</p>
     </main>
     <script type="module" src="/src/main.js"></script>
