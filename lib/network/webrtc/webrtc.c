@@ -32,7 +32,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <libplatform/system.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>

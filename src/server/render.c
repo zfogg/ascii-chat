@@ -28,7 +28,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/time.h>

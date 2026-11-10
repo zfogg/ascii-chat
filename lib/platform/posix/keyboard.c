@@ -10,7 +10,7 @@
 #include <ascii-chat/util/time.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <libplatform/lifecycle.h>
 // utf8.h no longer needed - keyboard thread handles raw bytes
 

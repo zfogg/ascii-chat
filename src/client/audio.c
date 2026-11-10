@@ -96,7 +96,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
-#include <ascii-chat/platform/system.h> // For platform_memcpy
+#include <libplatform/system.h> // For platform_memcpy
 
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
@@ -106,7 +106,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/thread_pool.h>
 
 /* ============================================================================

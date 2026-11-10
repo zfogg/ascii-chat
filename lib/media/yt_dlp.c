@@ -17,7 +17,7 @@
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/process.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/util/url.h>
 #include <yyjson.h>
 #ifndef __EMSCRIPTEN__

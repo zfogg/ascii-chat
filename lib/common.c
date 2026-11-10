@@ -15,7 +15,7 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>

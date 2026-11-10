@@ -27,7 +27,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
-#include <ascii-chat/platform/system.h>     // For FILE_PERM_* constants
+#include <libplatform/system.h>             // For FILE_PERM_* constants
 #include <libplatform/terminal.h>   // For platform_isatty()
 #include <ascii-chat/platform/filesystem.h> // For platform_mkdir(), platform_stat()
 #include <ascii-chat/platform/question.h>   // For platform_prompt_yes_no

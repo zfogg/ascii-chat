@@ -11,7 +11,7 @@
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/lifecycle.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/platform/cpu.h>
 #include <time.h>
 #include <math.h>

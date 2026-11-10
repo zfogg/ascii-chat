@@ -22,7 +22,7 @@
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
 #include <libplatform/mutex.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>

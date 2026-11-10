@@ -41,7 +41,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>

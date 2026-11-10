@@ -4,7 +4,7 @@
  * @ingroup platform
  */
 
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/asciichat_errno.h>
 
 asciichat_error_t platform_init(void) {
