@@ -28,7 +28,7 @@
 
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/debug_helpers.h>
-#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/os/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
@@ -36,7 +36,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <libplatform/cond.h>
 #include <libplatform/mutex.h> // Must come after cond.h since cond.h includes it
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/rwlock.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/log/log.h>
