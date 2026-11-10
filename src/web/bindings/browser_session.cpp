@@ -25,6 +25,7 @@ public:
     auto key = binding_copy_input(expected);
     if ((!secret.empty() && secret.size() != 64) || (!key.empty() && key.size() != 32)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer identity or verification key length");
+      construction_error_ = "Invalid peer identity or verification key length";
     } else {
       pass.push_back(0);
       session_.reset(browser_session_create(server, encryption,
@@ -48,6 +49,8 @@ public:
     return session_ && browser_session_ready(session_.get());
   }
   std::string error() const {
+    if (!session_ && !construction_error_.empty())
+      return construction_error_;
     return browser_session_error(session_.get());
   }
   void close() {
@@ -170,6 +173,7 @@ private:
                    : browser_session_send(session_.get(), bytes.data(), bytes.size());
   }
   std::unique_ptr<browser_session_t, decltype(&browser_session_destroy)> session_{nullptr, &browser_session_destroy};
+  std::string construction_error_;
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_browser_session) {
