@@ -3,6 +3,7 @@ import { test } from "@playwright/test";
 // Mark this test to run serially (don't run in parallel with other tests)
 test.describe.configure({ mode: "serial" });
 import { spawn } from "child_process";
+import path from "node:path";
 import { waitForPort } from "./server-fixture";
 
 test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
@@ -16,7 +17,11 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
       `[TEST] Starting ascii-chat server on WebSocket port ${wsPort}, TCP port ${tcpPort}`,
     );
     serverProcess = spawn(
-      "/Users/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat",
+      process.env["ASCII_CHAT_TEST_BINARY"] ||
+        path.resolve(
+          "../../build/bin/ascii-chat" +
+            (process.platform === "win32" ? ".exe" : ""),
+        ),
       [
         "server",
         "--port",

@@ -276,7 +276,14 @@ for (const { browserQuic, automaticHost } of [
         "--websocket-port",
         String(acdsWs),
         ...(browserQuic
-          ? ["--websocket-tls-cert", certificate, "--websocket-tls-key", key]
+          ? [
+              "--tls-cert",
+              certificate,
+              "--tls-key",
+              key,
+              "--quic-bind-address",
+              "127.0.0.1",
+            ]
           : []),
         "--database",
         resolve(root, "acds.db"),
@@ -309,9 +316,9 @@ for (const { browserQuic, automaticHost } of [
         identity,
         "--quic-bind-address",
         "127.0.0.1",
-        "--quic-tls-cert",
+        "--tls-cert",
         certificate,
-        "--quic-tls-key",
+        "--tls-key",
         key,
         ...(browserQuic
           ? [
@@ -340,7 +347,7 @@ for (const { browserQuic, automaticHost } of [
           session,
           ...common,
           "--discovery-quic",
-          "--quic-ca-file",
+          "--tls-ca-file",
           certificate,
           "--server-key",
           `${identity}.pub`,
