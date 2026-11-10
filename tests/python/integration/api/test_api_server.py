@@ -71,6 +71,18 @@ def test_api_server_health(binary: Path):
             assert response.status == 200
             assert response.headers["Content-Type"].startswith("text/plain")
             assert rendered
+        files_request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/convert?width=40&height=20",
+            data=image.read_bytes(),
+            method="POST",
+            headers={"Content-Type": "image/png"},
+        )
+        with urllib.request.urlopen(files_request, timeout=10) as response:
+            multipart_result = response.read()
+            assert response.status == 200
+            assert response.headers["Content-Type"].startswith("multipart/mixed")
+            assert b"Content-Disposition: attachment; filename=frame-0.txt" in multipart_result
+            assert b"--ascii-chat-frame--" in multipart_result
         boundary = b"ascii-chat-test-boundary"
         multipart = (
             b"--" + boundary + b"\r\n"
