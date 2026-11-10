@@ -57,6 +57,7 @@ typedef struct {
   size_t frame_count;
   size_t frame_capacity;
   char output_path[PLATFORM_MAX_PATH_LENGTH];
+  char source_path[PLATFORM_MAX_PATH_LENGTH];
   char mime_type[128];
   uint64_t elapsed_ms;
   bool timed_out;

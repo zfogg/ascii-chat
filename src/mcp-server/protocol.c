@@ -135,7 +135,27 @@ static void run_job(void *arg, atomic_t *cancelled) {
   http_renderer_process_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  http_renderer_process(&job->request, cancelled, &result);
+  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT && job->request.source_path[0]) {
+    http_render_request_t shared_request;
+    http_render_request_init(&shared_request);
+    shared_request.source.type = HTTP_RENDER_SOURCE_FILE;
+    SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
+    http_render_result_t shared_result = {0};
+    asciichat_error_t shared_error = http_renderer_render_file(job->request.source_path, &shared_request,
+                                                               &shared_result, cancelled);
+    memset(&result, 0, sizeof(result));
+    result.elapsed_ms = shared_result.elapsed_ms;
+    if (shared_error == ASCIICHAT_OK) {
+      result.text = shared_result.ascii;
+      result.length = shared_result.ascii_length;
+      shared_result.ascii = NULL;
+    } else {
+      SAFE_STRNCPY(result.error, asciichat_error_string(shared_error), sizeof(result.error));
+    }
+    http_render_result_destroy(&shared_result);
+  } else {
+    http_renderer_process(&job->request, cancelled, &result);
+  }
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_MCP_RENDER, time_get_ns() - render_started);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_OUTPUT_BYTES, result.length);
   ASCII_OTEL_ATTR_INT("mcp.output.bytes", (int64_t)result.length);

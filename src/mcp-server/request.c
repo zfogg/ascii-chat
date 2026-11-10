@@ -318,6 +318,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_
     if (!yyjson_is_str(path) || !*yyjson_get_str(path) || !strcmp(yyjson_get_str(path), "-") ||
         strstr(yyjson_get_str(path), "://"))
       return SET_ERRNO(ERROR_INVALID_PARAM, "path must be a local file, not stdin or a URL");
+    SAFE_STRNCPY(r->source_path, yyjson_get_str(path), sizeof(r->source_path));
     return option(r, "file", yyjson_get_str(path));
   }
   if (!yyjson_is_str(data) || yyjson_get_len(data) == 0 || yyjson_get_len(data) > MCP_MAX_INPUT - 4096)
@@ -348,6 +349,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_
   SAFE_FREE(bytes);
   if (!wrote)
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write uploaded media");
+  SAFE_STRNCPY(r->source_path, file, sizeof(r->source_path));
   return option(r, "file", file);
 }
 static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, http_renderer_process_request_t *r) {
