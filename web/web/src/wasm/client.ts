@@ -86,8 +86,7 @@ export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
     throw new Error("Client engine is unavailable");
   const result = clientSession.process({ type: "settings-receive", payload });
   if (result.code) throwWasmError(result.code, "Invalid remote settings");
-  if (!result.json)
-    throw new Error("Cannot read effective remote settings");
+  if (!result.json) throw new Error("Cannot read effective remote settings");
   return JSON.parse(result.json) as RuntimeValues;
 }
 

@@ -25,10 +25,7 @@ const types = ["mirror-bindings.d.ts", "client-bindings.d.ts"];
 const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const requiredExports = {
-  mirror: [
-    "AsciiRendererBinding",
-    "MirrorFrameBinding",
-  ],
+  mirror: ["AsciiRendererBinding", "MirrorFrameBinding"],
   client: [
     "ClientSessionBinding",
     "BrowserSessionBinding",
@@ -94,23 +91,72 @@ export interface PacketOutput { type: number; payload: Uint8Array; }
 export type PacketOutputList = ReadonlyArray<PacketOutput>;
 export interface HostPacket { id: number; bytes: Uint8Array; }
 `;
-  const marker = kind === "client" ? "export type ClientBytes = Uint8Array;" : "export type RgbaBytes = Uint8Array | Uint8ClampedArray;";
+  const marker =
+    kind === "client"
+      ? "export type ClientBytes = Uint8Array;"
+      : "export type RgbaBytes = Uint8Array | Uint8ClampedArray;";
   if (!source.includes("export type WasmRecord ="))
     source = source.replace(marker, `${marker}${types}`);
-  source = source.replaceAll("dimensions(): any;", "dimensions(): RendererDimensions;");
-  source = source.replaceAll("processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): any;", "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;");
-  source = source.replaceAll("process(_0: AudioSamples, _1: AudioSamples): any;", "process(_0: AudioSamples, _1: AudioSamples): AudioSessionResult;");
-  source = source.replaceAll("processBatch(_0: any, _1: any): number;", "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;");
-  source = source.replaceAll("process(_0: any): any;", "process(_0: SessionEvent): SessionResult;");
-  source = source.replaceAll("processBatch(_0: any): any;", "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;");
-  source = source.replaceAll("protocolInfo(): any;", "protocolInfo(): ProtocolInfo;");
-  source = source.replaceAll("render(_0: EmbindString, _1: number): any;", "render(_0: EmbindString, _1: number): Uint8ClampedArray;");
-  source = source.replaceAll("drainOutputs(): any;", "drainOutputs(): PacketOutputList;");
-  source = source.replaceAll("drainPackets(): any;", "drainPackets(): PacketOutputList;");
-  source = source.replaceAll("drainPackets(): PacketOutputList;", "drainPackets(): ReadonlyArray<HostPacket>;");
-  source = source.replace("  packetTypes(): any;", "  packetTypes(): PacketTypes;");
+  source = source.replaceAll(
+    "dimensions(): any;",
+    "dimensions(): RendererDimensions;",
+  );
+  source = source.replaceAll(
+    "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): any;",
+    "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;",
+  );
+  source = source.replaceAll(
+    "process(_0: AudioSamples, _1: AudioSamples): any;",
+    "process(_0: AudioSamples, _1: AudioSamples): AudioSessionResult;",
+  );
+  source = source.replaceAll(
+    "processBatch(_0: any, _1: any): number;",
+    "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;",
+  );
+  source = source.replaceAll(
+    "process(_0: any): any;",
+    "process(_0: SessionEvent): SessionResult;",
+  );
+  source = source.replaceAll(
+    "processBatch(_0: any): any;",
+    "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;",
+  );
+  source = source.replaceAll(
+    "protocolInfo(): any;",
+    "protocolInfo(): ProtocolInfo;",
+  );
+  source = source.replaceAll(
+    "render(_0: EmbindString, _1: number): any;",
+    "render(_0: EmbindString, _1: number): Uint8ClampedArray;",
+  );
+  source = source.replaceAll(
+    "drainOutputs(): any;",
+    "drainOutputs(): PacketOutputList;",
+  );
+  source = source.replaceAll(
+    "drainPackets(): any;",
+    "drainPackets(): PacketOutputList;",
+  );
+  source = source.replaceAll(
+    "drainPackets(): PacketOutputList;",
+    "drainPackets(): ReadonlyArray<HostPacket>;",
+  );
+  source = source.replace(
+    "  packetTypes(): any;",
+    "  packetTypes(): PacketTypes;",
+  );
   if (kind === "client" && !source.includes("export type PacketTypes ="))
-    source = source.replace("export type ClientBytes = Uint8Array;", "export type PacketTypes = Readonly<Record<string, number>>;\nexport type ClientBytes = Uint8Array;");
+    source = source.replace(
+      "export type ClientBytes = Uint8Array;",
+      "export type PacketTypes = Readonly<Record<string, number>>;\nexport type ClientBytes = Uint8Array;",
+    );
+  // Emscripten's generated filesystem/runtime declarations use `any` for
+  // values whose shape is intentionally opaque. Keep that opacity, but make
+  // it explicit so the checked-in declarations do not leak an unsound type
+  // into the browser packages. Typed arrays are not generic over their
+  // element type in the declarations emitted by this toolchain.
+  source = source.replaceAll("Uint8Array<any>", "Uint8Array");
+  source = source.replaceAll(/\bany\b/g, "unknown");
   writeFileSync(path, source);
 }
 function sourceHash() {

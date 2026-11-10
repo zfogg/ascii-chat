@@ -85,8 +85,16 @@ declare module "ws" {
       callback?: (err?: Error) => void,
     ): void;
     close(code?: number, reason?: string | Buffer): void;
-    ping(data?: RawData, mask?: boolean, callback?: (err?: Error) => void): void;
-    pong(data?: RawData, mask?: boolean, callback?: (err?: Error) => void): void;
+    ping(
+      data?: RawData,
+      mask?: boolean,
+      callback?: (err?: Error) => void,
+    ): void;
+    pong(
+      data?: RawData,
+      mask?: boolean,
+      callback?: (err?: Error) => void,
+    ): void;
     terminate(): void;
 
     readyState: number;

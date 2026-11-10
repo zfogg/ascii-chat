@@ -17,7 +17,7 @@ const state = vi.hoisted(() => ({
   keypair: vi.fn(async () => "client-key"),
   address: vi.fn(),
   endpoint: "",
-      process: vi.fn((event: { type: string; [key: string]: unknown }) => {
+  process: vi.fn((event: { type: string; [key: string]: unknown }) => {
     if (event.type === "send-packet") {
       const payload = event["payload"] as Uint8Array;
       const result = new Uint8Array(22 + payload.length);

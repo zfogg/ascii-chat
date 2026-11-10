@@ -54,7 +54,7 @@
     "client.wasm": "b274895619ca96daead0706fb59057489950f3ac13a06c0daaf50b400433e154"
   },
   "types": {
-    "mirror-bindings.d.ts": "46cc7a4d4dd00ac81e4de8f0fa176f8dec00c9be16508feba60b868ca98223cf",
-    "client-bindings.d.ts": "f87958cf648fb3b4dae3eeb015a49a1500884a8245bee4a030339795e0db57e6"
+    "mirror-bindings.d.ts": "85542721a8c92f60e2cacc1b2ac980c1c8b5bfb04d79a7110b991c269cccdd9a",
+    "client-bindings.d.ts": "d760b123befd209f1b17f5623db570c8241dd6a70367840da7b951b1a9578972"
   }
 }

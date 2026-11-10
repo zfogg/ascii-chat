@@ -40,7 +40,10 @@ export class WebTransportAcipChannel {
     this.protocol = new AcipQuicProtocol(
       security ?? {
         init: () => {
-          const result = processClientEvent({ type: "quic-event", operation: "init" });
+          const result = processClientEvent({
+            type: "quic-event",
+            operation: "init",
+          });
           if (result.code)
             throw new Error(
               `QUIC security initialization failed (${result.code})`,

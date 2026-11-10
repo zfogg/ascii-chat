@@ -5,9 +5,11 @@ import processorSource from "../../../packages/shared/src/audio/visualization-wo
 describe("continuous visualization PCM", () => {
   function processor() {
     const messages: Float32Array[] = [];
-    let Processor: (new () => {
-      process(inputs: Float32Array[][]): boolean;
-    }) | undefined;
+    let Processor:
+      | (new () => {
+          process(inputs: Float32Array[][]): boolean;
+        })
+      | undefined;
     runInNewContext(processorSource, {
       Float32Array,
       AudioWorkletProcessor: class {

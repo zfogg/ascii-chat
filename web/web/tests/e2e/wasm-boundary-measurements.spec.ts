@@ -128,40 +128,24 @@ test.describe("WASM browser boundary measurements", () => {
     expect(result).toBe(true);
   });
   test("renderer empty frame measurement", async ({ rendererPage }) => {
-    expect(
-      (
-        await measure(
-          rendererPage,
-          "empty",
-        )
-      ).resultBytes,
-    ).toBeGreaterThan(0);
+    expect((await measure(rendererPage, "empty")).resultBytes).toBeGreaterThan(
+      0,
+    );
   });
   test("renderer short frame measurement", async ({ rendererPage }) => {
-    const result = await measure(
-      rendererPage,
-      "short",
-    );
+    const result = await measure(rendererPage, "short");
     expect(result.resultBytes).toBeGreaterThan(0);
     expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
   });
   test("renderer long frame measurement", async ({ rendererPage }) => {
-    expect(
-      (
-        await measure(
-          rendererPage,
-          "long",
-        )
-      ).resultBytes,
-    ).toBeGreaterThan(0);
+    expect((await measure(rendererPage, "long")).resultBytes).toBeGreaterThan(
+      0,
+    );
   });
   test("renderer zalgo mode returns an owned snapshot", async ({
     rendererPage,
   }) => {
-    const result = await measure(
-      rendererPage,
-      "zalgo",
-    );
+    const result = await measure(rendererPage, "zalgo");
     expect(result.resultBytes).toBeGreaterThan(0);
     expect(result.stableResultIdentity).toBe(false);
     expect(result.allResultsUnique).toBe(true);
@@ -183,16 +167,8 @@ test.describe("WASM browser boundary measurements", () => {
     ).toBe(true);
   });
   test("renderer output byte count is repeatable", async ({ rendererPage }) => {
-    const a = await measure(
-      rendererPage,
-      "frame",
-      8,
-    );
-    const b = await measure(
-      rendererPage,
-      "frame",
-      8,
-    );
+    const a = await measure(rendererPage, "frame", 8);
+    const b = await measure(rendererPage, "frame", 8);
     expect(a.resultBytes).toBe(b.resultBytes);
   });
 
@@ -201,11 +177,7 @@ test.describe("WASM browser boundary measurements", () => {
     clientPage,
   }) => {
     await setupRenderer(rendererPage);
-    const frame = await measure(
-      rendererPage,
-      "long",
-      60,
-    );
+    const frame = await measure(rendererPage, "long", 60);
     await setupClient(clientPage);
     const events = await clientPage.evaluate(() => {
       const module = window.__clientModule;
@@ -257,11 +229,7 @@ test.describe("WASM browser boundary measurements", () => {
       "master's historical pthread loader cannot initialize through the isolated browser route",
     );
     await setupRenderer(rendererPage);
-    const current = await measure(
-      rendererPage,
-      "long",
-      60,
-    );
+    const current = await measure(rendererPage, "long", 60);
     await setupMasterRenderer(rendererPage);
     const master = await rendererPage.evaluate(() => {
       const renderer = (

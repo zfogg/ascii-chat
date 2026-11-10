@@ -253,7 +253,8 @@ export class WebTransportClientSession implements ClientSession {
   getCryptoEpoch(): number {
     return this.securitySession
       ? this.securitySession.quicEpoch
-      : (processClientEvent({ type: "quic-event", operation: "state" }).epoch ?? -1);
+      : (processClientEvent({ type: "quic-event", operation: "state" }).epoch ??
+          -1);
   }
 
   getUploadFeedback() {

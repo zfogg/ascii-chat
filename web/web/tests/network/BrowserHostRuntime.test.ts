@@ -7,8 +7,8 @@ describe("browser host worker backpressure", () => {
   function setup() {
     const sent: Array<Record<string, unknown>> = [];
     let worker!: {
-      onmessage: ((event: { data: Record<string, unknown> }) => void);
-      onerror: ((event: ErrorEvent) => void);
+      onmessage: (event: { data: Record<string, unknown> }) => void;
+      onerror: (event: ErrorEvent) => void;
       terminate: ReturnType<typeof vi.fn>;
     };
     vi.stubGlobal(

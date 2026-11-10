@@ -187,7 +187,8 @@ export function deviceSetupTests(site: "www" | "web") {
       expect(new URL(page.url()).searchParams.get("cameraId")).toBe(cameraId);
     const probe = () =>
       page.evaluate(async () => {
-        const p = (window as unknown as { deviceProbe: DeviceProbe }).deviceProbe;
+        const p = (window as unknown as { deviceProbe: DeviceProbe })
+          .deviceProbe;
         return {
           requests: p.requests,
           failures: p.failures,
@@ -224,16 +225,14 @@ export function deviceSetupTests(site: "www" | "web") {
     ).toBeVisible();
     await expect
       .poll(async () =>
-        (await probe()).requests.some(
-          (r: MediaStreamConstraints) => {
-            if (!r.video || typeof r.video !== "object") return false;
-            const video = r.video as MediaTrackConstraints;
-            return (
-              typeof video.deviceId === "object" &&
-              (video.deviceId as ConstrainDOMStringParameters).exact === cameraId
-            );
-          },
-        ),
+        (await probe()).requests.some((r: MediaStreamConstraints) => {
+          if (!r.video || typeof r.video !== "object") return false;
+          const video = r.video as MediaTrackConstraints;
+          return (
+            typeof video.deviceId === "object" &&
+            (video.deviceId as ConstrainDOMStringParameters).exact === cameraId
+          );
+        }),
       )
       .toBe(true);
     // Previewing an active camera clones it; closing the modal must leave capture alive.
@@ -256,13 +255,16 @@ export function deviceSetupTests(site: "www" | "web") {
     await expect
       .poll(async () => {
         const requests = (await probe()).requests.filter((r) => r.video);
-            const video = requests.at(-1)?.video;
-            return video && typeof video === "object"
-              ? (video as MediaTrackConstraints).deviceId &&
-                typeof (video as MediaTrackConstraints).deviceId === "object"
-                ? ((video as MediaTrackConstraints).deviceId as ConstrainDOMStringParameters).exact ?? ""
-                : ""
-              : "";
+        const video = requests.at(-1)?.video;
+        return video && typeof video === "object"
+          ? (video as MediaTrackConstraints).deviceId &&
+            typeof (video as MediaTrackConstraints).deviceId === "object"
+            ? ((
+                (video as MediaTrackConstraints)
+                  .deviceId as ConstrainDOMStringParameters
+              ).exact ?? "")
+            : ""
+          : "";
       })
       .toBe("");
     await expect(widget.locator("canvas.ascii-canvas")).toBeVisible();

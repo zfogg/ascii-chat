@@ -84,14 +84,8 @@ test("installs the shared PacketType object from the native WASM table", async (
 }) => {
   await page.goto("/client");
   const packetTypes = await page.evaluate(async () => {
-    const {
-      initClientWasm,
-      getPacketTypes,
-      cleanupClientWasm,
-      PacketType,
-    } = await import(
-      /* @vite-ignore */ String("/src/wasm/client.ts")
-    );
+    const { initClientWasm, getPacketTypes, cleanupClientWasm, PacketType } =
+      await import(/* @vite-ignore */ String("/src/wasm/client.ts"));
     await initClientWasm();
     const native = getPacketTypes();
     const installed = {

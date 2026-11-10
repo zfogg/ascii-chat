@@ -1,9 +1,6 @@
 export { AsciiChatWebHead } from "./AsciiChatWebHead";
 export { AsciiRenderer as AsciiCanvas } from "ascii-chat/react";
-export type {
-  AsciiRendererHandle,
-  AsciiRendererProps,
-} from "ascii-chat/react";
+export type { AsciiRendererHandle, AsciiRendererProps } from "ascii-chat/react";
 export { ConnectionPanelModal } from "./ConnectionPanelModal";
 export type { ConnectionPanelModalProps } from "./ConnectionPanelModal";
 export { DeviceSetupModal } from "./DeviceSetupModal";
