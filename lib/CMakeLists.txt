@@ -11,6 +11,8 @@ set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
                  ${CMAKE_BINARY_DIR}/deps/libplatform)
+target_include_directories(asciichat-project-includes INTERFACE
+    ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
 
 set(CORE_SRCS
     ${LIB_DIR}/media/input.c

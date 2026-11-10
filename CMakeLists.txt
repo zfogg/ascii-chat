@@ -314,6 +314,14 @@ if(BUILD_WEB AND LIBSODIUM_INCLUDE_DIRS)
     list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
 endif()
 
+# The defer parser runs outside target compile commands; expose the standalone
+# platform SDK headers to it explicitly.
+list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+    "${CMAKE_SOURCE_DIR}/deps/libplatform/include")
+set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+    "${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
+    CACHE STRING "Additional include directories for defer parsing" FORCE)
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 

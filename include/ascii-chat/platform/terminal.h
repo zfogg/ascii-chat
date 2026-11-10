@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libplatform/terminal.h>
+#include <libplatform/terminal_modes.h>
 
 /**
  * @file platform/terminal.h
