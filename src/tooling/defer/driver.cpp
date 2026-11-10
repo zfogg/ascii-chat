@@ -151,6 +151,11 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   const auto working_directory = fs::u8path(directory);
   const auto generated_overlay = fs::u8path(generated.parent_path().u8string() + ".vfs.json");
   std::vector<std::string> result = {"-working-directory", directory, "-iquote", source.parent_path().u8string()};
+  if (compiler.find("emcc") != std::string::npos || compiler.find("em++") != std::string::npos) {
+    result.insert(result.end(), {"-target", "wasm32-unknown-emscripten"});
+    const fs::path compiler_path = fs::u8path(compiler);
+    result.insert(result.end(), {"-isystem", (compiler_path.parent_path() / "cache/sysroot/include").u8string()});
+  }
   for (std::size_t i = 1; i < args.size();) {
     const auto &value = args[i];
     if (value == "-Xclang" && i + 3 < args.size() && args[i + 1] == "-include-pch" && args[i + 2] == "-Xclang") {
@@ -164,6 +169,13 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     if (value == "-ivfsoverlay" && i + 1 < args.size() &&
         fs::weakly_canonical(working_directory / fs::u8path(args[i + 1])) == fs::weakly_canonical(generated_overlay)) {
       i += 2;
+      continue;
+    }
+    // Emscripten's driver-only settings are present in the browser compile
+    // database but are not valid libclang arguments. They belong to emcc's
+    // link/driver layer, not to source parsing by the native defer host.
+    if (value.rfind("-s", 0) == 0 || value == "-msimd128" || value == "-Wno-error=pthreads-mem-growth") {
+      ++i;
       continue;
     }
     if (value == "--" || value == "-c" || value == "-MD" || value == "-MMD" || value == "-MP" ||

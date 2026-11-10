@@ -722,3 +722,24 @@ apply_sanitizers_to_target(renderer-web)
 
 target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
 target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
+
+# This file is configured as a separate CMake project for Emscripten, so the
+# parent project's defer finalization cannot see these targets. Reuse the same
+# repository-level defer module once, after all browser targets are declared.
+if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    if(NOT ASCIICHAT_DEFER_SOURCE_ROOT OR NOT ASCIICHAT_DEFER_NATIVE_BINARY)
+        message(FATAL_ERROR
+            "The parent CMake project must provide ASCIICHAT_DEFER_SOURCE_ROOT and ASCIICHAT_DEFER_NATIVE_BINARY")
+    endif()
+    include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
+    ascii_defer_prepare_native()
+    set(_batch_stage web)
+    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
+    file(WRITE "${_plan_records}" "")
+    set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
+    ascii_defer_scan_targets(_defer_sources ${_ascii_wasm_defer_targets})
+    foreach(_ascii_wasm_defer_target IN LISTS _ascii_wasm_defer_targets)
+        ascii_defer_apply_target("${_ascii_wasm_defer_target}")
+    endforeach()
+    ascii_defer_finish_batches()
+endif()

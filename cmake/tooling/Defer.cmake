@@ -2,6 +2,27 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/DeferHeaderScan.cmake")
 set(_ASCII_DEFER_SCAN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/ScanDefer.cmake")
 
+# The browser build is configured as a nested standalone project from
+# src/web, while its C sources and defer tooling live at the repository root.
+# Keep the source root explicit so the same transformation machinery can be
+# reused by both native and Emscripten targets.
+if(NOT DEFINED ASCIICHAT_DEFER_SOURCE_ROOT)
+    set(ASCIICHAT_DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}")
+endif()
+set(ASCIICHAT_DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
+    "Repository-relative directories eligible for defer scanning and transformation")
+
+function(ascii_defer_is_source_path out_var relative_path)
+    set(_eligible FALSE)
+    foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
+        if(relative_path MATCHES "^${_directory}/")
+            set(_eligible TRUE)
+            break()
+        endif()
+    endforeach()
+    set(${out_var} "${_eligible}" PARENT_SCOPE)
+endfunction()
+
 # Configure after targets are created so source replacement affects the actual targets.
 set(ASCIICHAT_LIBCLANG_PATH "" CACHE FILEPATH "LLVM 19 or newer libclang shared library")
 set(ASCIICHAT_DEFER_BACKEND "NATIVE" CACHE STRING "Defer transformer backend: NATIVE or PYTHON")
@@ -24,7 +45,7 @@ function(ascii_defer_prepare_native)
         set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${ASCIICHAT_DEFER_NATIVE_BINARY}")
         return()
     endif()
-    set(_native_dir "${CMAKE_SOURCE_DIR}/src/tooling/defer")
+    set(_native_dir "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer")
     if(NOT CMAKE_CROSSCOMPILING)
         add_subdirectory("${_native_dir}" "${CMAKE_BINARY_DIR}/defer-host" EXCLUDE_FROM_ALL)
     else()
@@ -33,7 +54,7 @@ function(ascii_defer_prepare_native)
         include(ExternalProject)
         find_program(ASCIICHAT_DEFER_HOST_CXX NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
         find_program(ASCIICHAT_DEFER_HOST_NINJA NAMES ninja NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-        include("${CMAKE_SOURCE_DIR}/cmake/deps/LLVMDevelopment.cmake")
+        include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake")
         ascii_find_llvm_development()
         if(CMAKE_HOST_WIN32)
             set(_suffix ".exe")
@@ -54,7 +75,7 @@ function(ascii_defer_prepare_native)
                 "-DCMAKE_MAKE_PROGRAM=${ASCIICHAT_DEFER_HOST_NINJA}"
                 "-DCMAKE_CXX_FLAGS:STRING=" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_TESTING=${_host_testing}"
                 "-DASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}"
-                "-DASCIICHAT_LLVM_DEVELOPMENT_MODULE=${CMAKE_SOURCE_DIR}/cmake/deps/LLVMDevelopment.cmake"
+                "-DASCIICHAT_LLVM_DEVELOPMENT_MODULE=${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/deps/LLVMDevelopment.cmake"
             INSTALL_COMMAND "" BUILD_ALWAYS TRUE BUILD_BYPRODUCTS "${_executable}")
         add_executable(ascii-defer-native IMPORTED GLOBAL)
         set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${_executable}")
@@ -87,20 +108,21 @@ function(ascii_defer_apply_target target)
     endif()
     set(_new_sources "")
     foreach(_source IN LISTS _sources)
-        if(_source MATCHES "\\$<" OR NOT _source MATCHES "\\.(c|m)$")
+        if(_source MATCHES "\\$<" OR NOT _source MATCHES "\\.(c|m|mm)$")
             list(APPEND _new_sources "${_source}")
             continue()
         endif()
         get_filename_component(_absolute "${_source}" ABSOLUTE BASE_DIR "${_source_dir}")
-        file(RELATIVE_PATH _relative "${CMAKE_SOURCE_DIR}" "${_absolute}")
-        if(NOT _relative MATCHES "^(lib|src|tests)/" OR _relative MATCHES "^src/tooling/" OR NOT EXISTS "${_absolute}")
+        file(RELATIVE_PATH _relative "${ASCIICHAT_DEFER_SOURCE_ROOT}" "${_absolute}")
+        ascii_defer_is_source_path(_eligible "${_relative}")
+        if(NOT _eligible OR NOT EXISTS "${_absolute}")
             list(APPEND _new_sources "${_source}")
             continue()
         endif()
         # Makefile generators cannot run the eligibility scan before their
         # build-system check. Keep their existing conservative behavior.
         if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
-            set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_absolute}")
+            set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_absolute}")
         endif()
         if(NOT _absolute IN_LIST _defer_sources)
             set(_panic_output "${CMAKE_BINARY_DIR}/panic_transformed/${target}/${_relative}")
@@ -241,7 +263,7 @@ function(ascii_defer_finish_batches)
         return()
     else()
         set(_plan "${CMAKE_BINARY_DIR}/defer-plan-${_batch_stage}.cmake")
-        set(_planner "${CMAKE_SOURCE_DIR}/src/tooling/defer/plan.py")
+            set(_planner "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/plan.py")
         set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_planner}")
         if(_header_active)
             set(_planner_options --header-overlays)
@@ -264,13 +286,16 @@ function(ascii_defer_scan_targets out_var)
     if(NOT _defer_wrappers)
     # Discover wrapper names from project headers, including transitive wrappers.
     # This stays conservative: false positives merely cause a source to be parsed.
-    file(GLOB_RECURSE _defer_headers CONFIGURE_DEPENDS
-        "${CMAKE_SOURCE_DIR}/include/*.h" "${CMAKE_SOURCE_DIR}/lib/*.h" "${CMAKE_SOURCE_DIR}/src/*.h"
-        "${CMAKE_SOURCE_DIR}/include/*.hpp" "${CMAKE_SOURCE_DIR}/lib/*.hpp" "${CMAKE_SOURCE_DIR}/src/*.hpp"
-        "${CMAKE_SOURCE_DIR}/include/*.hh" "${CMAKE_SOURCE_DIR}/lib/*.hh" "${CMAKE_SOURCE_DIR}/src/*.hh"
-        "${CMAKE_SOURCE_DIR}/include/*.hxx" "${CMAKE_SOURCE_DIR}/lib/*.hxx" "${CMAKE_SOURCE_DIR}/src/*.hxx"
-        "${CMAKE_SOURCE_DIR}/include/*.inc" "${CMAKE_SOURCE_DIR}/lib/*.inc" "${CMAKE_SOURCE_DIR}/src/*.inc"
-        "${CMAKE_SOURCE_DIR}/include/*.def" "${CMAKE_SOURCE_DIR}/lib/*.def" "${CMAKE_SOURCE_DIR}/src/*.def")
+    foreach(_directory IN LISTS ASCIICHAT_DEFER_SOURCE_DIRS)
+        file(GLOB_RECURSE _directory_headers CONFIGURE_DEPENDS
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.h"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hpp"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hh"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.hxx"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.inc"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/${_directory}/*.def")
+        list(APPEND _defer_headers ${_directory_headers})
+    endforeach()
     foreach(_extra_dir IN LISTS ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS)
         file(TO_CMAKE_PATH "${_extra_dir}" _extra_dir)
         if(NOT IS_DIRECTORY "${_extra_dir}")
@@ -284,7 +309,7 @@ function(ascii_defer_scan_targets out_var)
     list(REMOVE_DUPLICATES _defer_headers)
     set(_defer_definitions "")
     foreach(_header IN LISTS _defer_headers)
-        set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_header}")
+        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_header}")
         file(READ "${_header}" _header_text)
         string(REPLACE "\r\n" "\n" _header_text "${_header_text}")
         string(REGEX REPLACE "\\\\\n" " " _header_text "${_header_text}")
@@ -352,12 +377,13 @@ function(ascii_defer_scan_targets out_var)
         get_target_property(_sources "${_target}" SOURCES)
         get_target_property(_source_dir "${_target}" SOURCE_DIR)
         foreach(_source IN LISTS _sources)
-            if(_source MATCHES "\\$<" OR NOT _source MATCHES "\\.(c|m)$")
+            if(_source MATCHES "\\$<" OR NOT _source MATCHES "\\.(c|m|mm)$")
                 continue()
             endif()
             get_filename_component(_absolute "${_source}" ABSOLUTE BASE_DIR "${_source_dir}")
-            file(RELATIVE_PATH _relative "${CMAKE_SOURCE_DIR}" "${_absolute}")
-            if(_relative MATCHES "^(lib|src|tests)/" AND NOT _relative MATCHES "^src/tooling/" AND EXISTS "${_absolute}")
+            file(RELATIVE_PATH _relative "${ASCIICHAT_DEFER_SOURCE_ROOT}" "${_absolute}")
+            ascii_defer_is_source_path(_eligible "${_relative}")
+            if(_eligible AND EXISTS "${_absolute}")
                 list(APPEND _scan_files "${_absolute}")
             endif()
         endforeach()
@@ -386,7 +412,7 @@ function(ascii_defer_scan_targets out_var)
         if(NOT _scan_result EQUAL 0)
             message(FATAL_ERROR "defer source scan failed: ${_scan_error}")
         endif()
-        set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
             "${_state}" "${_ASCII_DEFER_SCAN_SCRIPT}")
         # Ninja evaluates build.ninja dependencies before compiling. The
         # symbolic input makes the scan run even on no-op builds, while restat
@@ -416,8 +442,8 @@ function(ascii_defer_scan_targets out_var)
         set(${out_var} "${_defer_sources}" PARENT_SCOPE)
         return()
     else()
-        set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py")
-        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py" "${_wrapper_file}"
+        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py")
+        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/scan.py" "${_wrapper_file}"
             ENCODING UTF-8 INPUT_FILE "${_scan_input}" OUTPUT_VARIABLE _scan_output ERROR_VARIABLE _scan_error RESULT_VARIABLE _scan_result
             OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
@@ -446,7 +472,7 @@ function(ascii_defer_prepare)
     else()
         find_program(ASCIICHAT_DEFER_UV_EXECUTABLE NAMES uv REQUIRED)
         set(ASCIICHAT_DEFER_PYTHON_COMMAND
-            "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${ASCIICHAT_DEFER_UV_EXECUTABLE};run;--project;${CMAKE_SOURCE_DIR}/src/tooling/defer;--frozen;--managed-python;python"
+            "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${ASCIICHAT_DEFER_UV_EXECUTABLE};run;--project;${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer;--frozen;--managed-python;python"
             CACHE INTERNAL "uv command for the Python defer backend" FORCE)
     endif()
     if(ASCIICHAT_DEFER_BACKEND STREQUAL "PYTHON" AND NOT ASCIICHAT_LIBCLANG_PATH)
@@ -473,7 +499,7 @@ function(ascii_defer_prepare)
     execute_process(
         COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} -c
             "import sys; assert sys.version_info >= (3, 10), 'Python 3.10 or newer is required'; sys.path.insert(0, sys.argv[1]); from clang import cindex; cindex.Config.set_compatibility_check(False); cindex.Config.set_library_file(sys.argv[2]); print(cindex.conf.get_clang_version())"
-            "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
+            "${ASCIICHAT_DEFER_SOURCE_ROOT}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
         RESULT_VARIABLE _clang_check_result OUTPUT_VARIABLE _clang_check_output ERROR_VARIABLE _clang_check_error
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
