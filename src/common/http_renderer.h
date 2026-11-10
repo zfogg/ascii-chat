@@ -96,6 +96,8 @@ typedef struct {
 typedef struct {
   char *text;
   size_t length;
+  http_render_frame_t *frames;
+  size_t frame_count;
   char error[2048];
   uint64_t elapsed_ms;
   bool timed_out;
@@ -126,6 +128,7 @@ asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result
                                                     uint64_t timestamp_ms);
 void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled,
                            http_renderer_process_result_t *result);
+void http_renderer_process_result_destroy(http_renderer_process_result_t *result);
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
                                             http_render_result_t *result, atomic_t *cancelled);

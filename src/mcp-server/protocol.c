@@ -40,10 +40,17 @@ static yyjson_mut_doc *tool_result(yyjson_val *id, const http_renderer_process_r
     yyjson_mut_val *data = yyjson_mut_obj(d), *files = yyjson_mut_arr(d), *frames = yyjson_mut_arr(d);
     yyjson_mut_obj_add_strcpy(d, data, "ascii", r->text ? r->text : "");
     yyjson_mut_obj_add_uint(d, data, "elapsed_ms", r->elapsed_ms);
-    if (r->text && r->text[0]) {
+    for (size_t i = 0; i < r->frame_count; ++i) {
+      const http_render_frame_t *source = &r->frames[i];
       yyjson_mut_val *frame = yyjson_mut_obj(d);
-      yyjson_mut_obj_add_str(d, frame, "type", "text");
-      yyjson_mut_obj_add_strcpy(d, frame, "text", r->text);
+      if (source->text) {
+        yyjson_mut_obj_add_str(d, frame, "type", "text");
+        yyjson_mut_obj_add_strcpy(d, frame, "text", source->text);
+      } else {
+        yyjson_mut_obj_add_str(d, frame, "type", "file");
+        yyjson_mut_obj_add_strcpy(d, frame, "path", source->path);
+      }
+      yyjson_mut_obj_add_uint(d, frame, "timestamp_ms", source->timestamp_ms);
       yyjson_mut_arr_add_val(frames, frame);
     }
     if (r->output_path[0]) {
@@ -175,7 +182,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
   if (!result.error[0] && result.output_path[0])
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_SAVED_FILES, 1);
   job->response = tool_result(mcp_get(yyjson_doc_get_root(job->message), "id"), &result);
-  SAFE_FREE(result.text);
+    http_renderer_process_result_destroy(&result);
   mcp_request_destroy(&job->request);
   if (!job->server->policy.hosted) {
     mcp_stdio_send(job->server, job->response);

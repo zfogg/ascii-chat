@@ -201,4 +201,19 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
     }
     SAFE_STRNCPY(result->output_path, r->output_path, sizeof(result->output_path));
   }
+  http_render_result_t frames = {0};
+  if (result->text && result->length)
+    (void)http_render_result_add_text_frame(&frames, result->text, result->length, 0);
+  if (result->output_path[0])
+    (void)http_render_result_add_file_frame(&frames, result->output_path, 0);
+  result->frames = frames.frames;
+  result->frame_count = frames.frame_count;
+}
+
+void http_renderer_process_result_destroy(http_renderer_process_result_t *result) {
+  if (!result) return;
+  for (size_t i = 0; i < result->frame_count; ++i) SAFE_FREE(result->frames[i].text);
+  SAFE_FREE(result->frames);
+  SAFE_FREE(result->text);
+  memset(result, 0, sizeof(*result));
 }
