@@ -69,6 +69,13 @@ bool terminal_should_color_output(int fd) {
     return false; // NEVER colorize
   }
 
+#ifdef PLATFORM_IOS
+  // iOS presents through the native render bridge rather than a POSIX TTY.
+  // The bridge is a truecolor terminal surface, so shared TUI renderers must
+  // keep their ANSI color output when color was not explicitly disabled.
+  return true;
+#endif
+
   // Priority 3: --color=auto (default) - Smart detection
   // Special case: Show colors for --help and --version even if not a TTY
   // Check for help/version in global argv (set by main.c early)

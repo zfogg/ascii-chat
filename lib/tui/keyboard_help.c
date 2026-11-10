@@ -38,40 +38,8 @@ const char *keyboard_help_screen_name(int parent) {
   }
 }
 
-static void render_help_snapshot(terminal_size_t size, const void *data) {
-  int fd = *(const int *)data;
-  terminal_size_t minimum;
-  char *text = ui_session_context_help_render(size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
-  if (text) {
-    ui_controller_write(fd, text, strlen(text));
-    SAFE_FREE(text);
-  }
-}
-
 static asciichat_error_t present_help_snapshot(int fd, terminal_size_t minimum, const char *text, size_t length) {
-#ifdef PLATFORM_IOS
-  (void)text;
-  (void)length;
-  static const char ios_help[] =
-      "\033[2J\033[H"
-      "\033[1;38;2;34;211;238mKEYBOARD SHORTCUTS\033[0m\n"
-      "\033[38;2;120;120;140m------------------\033[0m\n"
-      "\033[38;2;34;211;238m?\033[0m       Open this help\n"
-      "\033[38;2;34;211;238mEsc\033[0m     Close the active TUI\n"
-      "\033[38;2;34;211;238m0\033[0m       Toggle sync state\n"
-      "\033[38;2;34;211;238mF12\033[0m     Open update checker\n"
-      "\033[38;2;34;211;238mTab\033[0m     Move selection\n"
-      "\033[38;2;34;211;238mUp/Down\033[0m Select row\n"
-      "\033[38;2;34;211;238mLeft/Right\033[0m Change page\n"
-      "\n"
-      "\033[38;2;180;180;200mA hardware keyboard uses the same shortcuts.\033[0m\n";
-  terminal_size_t native_minimum = {.cols = 40, .rows = 11};
-  return ui_controller_present(UI_SCREEN_HELP, fd, native_minimum, ios_help, sizeof(ios_help) - 1);
-#else
-  (void)text;
-  (void)length;
-  return ui_controller_submit(UI_SCREEN_HELP, fd, minimum, render_help_snapshot, &fd, sizeof(fd));
-#endif
+  return ui_controller_present(UI_SCREEN_HELP, fd, minimum, text, length);
 }
 
 void keyboard_help_toggle_terminal(int fd) {
@@ -97,10 +65,14 @@ void keyboard_help_toggle_terminal(int fd) {
   char *text = ui_session_context_help_render(render_size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
   if (!text)
     return;
-  if (!GET_OPTION(snapshot_mode))
+  if (!GET_OPTION(snapshot_mode)) {
+    /* Claim focus before publishing the frame so an in-flight media producer
+     * is suppressed by the shared controller instead of repainting over Help. */
+    ui_controller_select_interactive(UI_SCREEN_HELP);
     (void)present_help_snapshot(fd, minimum, text, strlen(text));
+    ui_controller_select_interactive(UI_SCREEN_HELP);
+  }
   SAFE_FREE(text);
-  ui_controller_select_interactive(UI_SCREEN_HELP);
   return;
 }
 

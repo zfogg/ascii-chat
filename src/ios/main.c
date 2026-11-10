@@ -26,12 +26,7 @@ static char g_ios_options_json[32768];
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
   int fd = ui_controller_active_fd();
-  int before = ui_controller_current_screen();
   keyboard_help_toggle_terminal(fd);
-#ifdef PLATFORM_IOS
-  if (before != UI_SCREEN_HELP && ui_controller_current_screen() == UI_SCREEN_HELP)
-    ui_controller_remove(UI_SCREEN_MEDIA);
-#endif
 }
 
 void asciichat_ios_clear_tui_surface(void) {
