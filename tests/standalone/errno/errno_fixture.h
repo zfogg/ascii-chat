@@ -7,7 +7,7 @@
 /** Native tests use the production library and platform threads, including on Windows. */
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/util/time.h>

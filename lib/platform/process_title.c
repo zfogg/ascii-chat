@@ -6,7 +6,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE 64
 
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/common.h>
 #include <stdbool.h>
 #include <string.h>

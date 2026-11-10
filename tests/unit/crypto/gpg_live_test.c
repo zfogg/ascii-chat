@@ -5,7 +5,7 @@
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tests/logging.h>

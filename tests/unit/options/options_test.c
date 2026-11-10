@@ -18,7 +18,7 @@
 #include <ascii-chat/options/actions.h> // For deferred action tests
 #include <ascii-chat/tests/common.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
 
 TestSuite(options);

@@ -18,7 +18,7 @@
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ctype.h>

@@ -50,8 +50,8 @@
 #endif
 
 #include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/system.h>
+#include <libplatform/process.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>

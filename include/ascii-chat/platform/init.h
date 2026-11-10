@@ -16,6 +16,9 @@
 
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/mutex.h>
+#include <libplatform/rwlock.h>
+#include <libplatform/cond.h>
 #include "../debug/named.h"
 
 // ============================================================================

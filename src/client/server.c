@@ -74,7 +74,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/async.h>

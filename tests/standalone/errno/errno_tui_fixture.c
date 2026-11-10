@@ -3,7 +3,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/tui/errno_stacks.h>
 #include <stdatomic.h>
 #include <string.h>

@@ -19,8 +19,8 @@
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/process.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/log/log.h>

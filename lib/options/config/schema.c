@@ -23,7 +23,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 
 #include <string.h>

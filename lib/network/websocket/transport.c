@@ -51,7 +51,7 @@
 #include <ascii-chat/buffer.h>
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>

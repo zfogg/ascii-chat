@@ -26,7 +26,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
 #include <ascii-chat/platform/filesystem.h>

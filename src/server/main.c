@@ -131,7 +131,7 @@
 #include "stats.h"
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/handshake/common.h>

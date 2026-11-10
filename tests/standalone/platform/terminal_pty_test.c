@@ -1,5 +1,5 @@
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>

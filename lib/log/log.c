@@ -24,7 +24,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>

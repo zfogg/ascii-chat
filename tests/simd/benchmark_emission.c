@@ -1,6 +1,6 @@
 /** Isolated before/after renderer benchmark. CSV goes to stdout. */
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 #include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/common.h>

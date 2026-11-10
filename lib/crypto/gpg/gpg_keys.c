@@ -17,7 +17,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/crypto/gpg/export.h> // For gpg_get_public_key()
 #include <sodium.h>
 #include <string.h>

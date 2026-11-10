@@ -11,7 +11,7 @@
 #define PLATFORM_WINDOWS_FILESYSTEM_BIN_WITH_SUFFIX_BUFFER_SIZE 512
 
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <windows.h>

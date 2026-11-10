@@ -33,7 +33,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>

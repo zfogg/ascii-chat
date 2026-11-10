@@ -15,7 +15,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>

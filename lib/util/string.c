@@ -7,7 +7,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>

@@ -22,7 +22,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <string.h>
 #include <signal.h>
 #include <ascii-chat/tui/input.h>

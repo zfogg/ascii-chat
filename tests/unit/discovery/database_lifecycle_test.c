@@ -3,7 +3,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <stdatomic.h>
 #include <string.h>
 

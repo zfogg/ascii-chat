@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>

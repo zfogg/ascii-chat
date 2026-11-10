@@ -6,7 +6,7 @@
 
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>

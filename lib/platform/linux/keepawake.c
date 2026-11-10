@@ -4,7 +4,7 @@
  * @ingroup platform
  */
 
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>

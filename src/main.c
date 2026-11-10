@@ -71,7 +71,7 @@
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/debug/named.h>
@@ -84,7 +84,7 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>

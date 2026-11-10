@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 
 /**
  * @brief Test environment initialization (runs before main)

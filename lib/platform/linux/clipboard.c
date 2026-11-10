@@ -1,5 +1,5 @@
 #include <ascii-chat/platform/clipboard.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 

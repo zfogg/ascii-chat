@@ -8,7 +8,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>

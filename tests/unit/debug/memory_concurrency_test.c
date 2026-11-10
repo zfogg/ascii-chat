@@ -3,7 +3,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 
 #ifdef DEBUG_MEMORY
 static char report_directory[PLATFORM_MAX_PATH_LENGTH];

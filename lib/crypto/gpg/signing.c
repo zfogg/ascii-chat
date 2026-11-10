@@ -17,9 +17,9 @@
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 
 #include <ctype.h>
 #include <errno.h>

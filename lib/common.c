@@ -14,9 +14,9 @@
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/asan.h>

@@ -21,7 +21,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 
 #include <ascii-chat/atomic.h>
 #include <stdlib.h>

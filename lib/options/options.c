@@ -76,7 +76,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/systemd.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>

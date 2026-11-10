@@ -32,7 +32,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>

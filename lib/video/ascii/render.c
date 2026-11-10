@@ -15,6 +15,7 @@
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/util/overflow.h>
+#include <libplatform/util/string.h>
 #include <string.h>
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>

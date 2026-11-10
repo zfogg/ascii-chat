@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/platform/agent.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <stdio.h>

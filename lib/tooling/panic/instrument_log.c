@@ -24,7 +24,7 @@
 #include <libplatform/mutex.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
 #include <libplatform/lifecycle.h>

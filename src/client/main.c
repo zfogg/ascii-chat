@@ -95,7 +95,7 @@
 #include <ascii-chat/platform/init.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
