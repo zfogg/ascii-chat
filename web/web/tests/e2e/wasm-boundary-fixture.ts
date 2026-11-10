@@ -12,7 +12,9 @@ export async function measure(page: Page, expression: string, repeats = 32) {
   return page.evaluate(
     ({ expression, repeats }) => {
       const fn = new Function(`return (${expression})`)() as () => unknown;
-      fn();
+      const warmup = fn();
+      if (!(warmup instanceof Uint8ClampedArray) || warmup.length === 0)
+        throw new Error("Renderer warmup returned no pixel data");
       const start = performance.now();
       let first: unknown;
       let last: unknown;
@@ -21,10 +23,12 @@ export async function measure(page: Page, expression: string, repeats = 32) {
       let resultBytes = 0;
       for (let i = 0; i < repeats; i++) {
         last = fn();
+        if (!(last instanceof Uint8ClampedArray) || last.length === 0)
+          throw new Error(`Renderer returned no pixel data on iteration ${i}`);
         first ??= last;
         stableResultIdentity &&= first === last;
         results.add(last);
-        if (ArrayBuffer.isView(last)) resultBytes += last.byteLength;
+        resultBytes += last.byteLength;
       }
       return {
         elapsedMs: performance.now() - start,
