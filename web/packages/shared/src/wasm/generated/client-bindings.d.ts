@@ -393,15 +393,6 @@ export interface ClientSessionBinding extends ClassHandle {
   protocolInfo(): any;
   error(): number;
   snapshot(): any;
-  validateFrame(
-    _0: ClientBytes,
-    _1: number,
-    _2: number,
-    _3: number,
-    _4: number,
-    _5: ClientBytes,
-    _6: number,
-  ): any;
   close(): void;
   process(_0: any): any;
   processBatch(_0: any): any;

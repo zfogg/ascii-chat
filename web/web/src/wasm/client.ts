@@ -848,15 +848,16 @@ export function validateReceivedFrame(
     throw new Error("Uncompressed frame size mismatch");
   if (!wasmModule || !clientSession)
     throw new Error("Client frame validator is unavailable");
-  const result = clientSession.validateFrame(
-    bytes,
+  const result = clientSession.process({
+    type: "frame-validate",
+    encoded: bytes,
     width,
     height,
     checksum,
     flags,
-    metadata,
+    contract: metadata,
     originalSize,
-  );
+  });
   if (result.code !== 0)
     throwWasmError(
       result.code,

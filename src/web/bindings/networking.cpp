@@ -126,33 +126,6 @@ public:
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
-  emscripten::val validateFrame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
-                                unsigned flags, ClientBytes contract, unsigned original_size) {
-    const size_t input_size = encoded["length"].as<size_t>();
-    const size_t metadata_size = contract["length"].as<size_t>();
-    const bool compressed = (flags & 2) != 0;
-    emscripten::val response = emscripten::val::object();
-    if (!input_size || input_size > 16 * 1024 * 1024 || !original_size || original_size > 16 * 1024 * 1024 ||
-        metadata_size > 275 || (!compressed && input_size != original_size)) {
-      response.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded frame or metadata size")));
-      response.set("decodeFailed", false);
-      response.set("bytes", binding_copy_output(nullptr, 0));
-      return response;
-    }
-    auto input = binding_copy_input(encoded);
-    auto metadata = binding_copy_input(contract);
-    std::vector<uint8_t> decoded(compressed ? original_size : 0);
-    const uint8_t *text = compressed ? decoded.data() : input.data();
-    int code = compressed ? browser_client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
-    const bool decode_failed = code != 0;
-    if (!code)
-      code = browser_client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size, width, height,
-                                   checksum, flags, metadata.empty() ? nullptr : metadata.data(), metadata.size());
-    response.set("code", code);
-    response.set("decodeFailed", decode_failed);
-    response.set("bytes", binding_copy_output(text, code == 0 ? original_size : 0));
-    return response;
-  }
   void close() {
     if (!owned_)
       return;
@@ -163,6 +136,41 @@ public:
     if (!owned_)
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized"));
     const std::string type = event["type"].as<std::string>();
+    if (type == "frame-validate") {
+      const ClientBytes encoded(event["encoded"]);
+      const ClientBytes contract(event["contract"]);
+      const unsigned width = event["width"].as<unsigned>();
+      const unsigned height = event["height"].as<unsigned>();
+      const unsigned checksum = event["checksum"].as<unsigned>();
+      const unsigned flags = event["flags"].as<unsigned>();
+      const unsigned original_size = event["originalSize"].as<unsigned>();
+      const size_t input_size = encoded["length"].as<size_t>();
+      const size_t metadata_size = contract["length"].as<size_t>();
+      const bool compressed = (flags & 2) != 0;
+      emscripten::val response = result(0);
+      if (!input_size || input_size > 16 * 1024 * 1024 || !original_size || original_size > 16 * 1024 * 1024 ||
+          metadata_size > 275 || (!compressed && input_size != original_size)) {
+        response.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded frame or metadata size")));
+        response.set("ok", false);
+        response.set("decodeFailed", false);
+        response.set("bytes", binding_copy_output(nullptr, 0));
+        return response;
+      }
+      auto input = binding_copy_input(encoded);
+      auto metadata = binding_copy_input(contract);
+      std::vector<uint8_t> decoded(compressed ? original_size : 0);
+      const uint8_t *text = compressed ? decoded.data() : input.data();
+      int code = compressed ? browser_client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
+      const bool decode_failed = code != 0;
+      if (!code)
+        code = browser_client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size, width, height,
+                                             checksum, flags, metadata.empty() ? nullptr : metadata.data(), metadata.size());
+      response.set("code", code);
+      response.set("ok", code == 0);
+      response.set("decodeFailed", decode_failed);
+      response.set("bytes", binding_copy_output(text, code == 0 ? original_size : 0));
+      return response;
+    }
     if (type == "settings-receive") {
       auto input = binding_copy_input(event["payload"]);
       const int code = browser_client_settings_receive(transport_.get(), input.data(), input.size());
@@ -489,7 +497,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
       .function("snapshot", &ClientSessionBinding::snapshot)
-      .function("validateFrame", &ClientSessionBinding::validateFrame)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process)
       .function("processBatch", &ClientSessionBinding::processBatch)
