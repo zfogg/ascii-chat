@@ -257,7 +257,7 @@ async function supportsCodec(page: Page, encoding: "hevc" | "h264") {
         framerate: 30,
         bitrate: 3_000_000,
         latencyMode: "realtime",
-        hardwareAcceleration: "prefer-hardware",
+        hardwareAcceleration: "no-preference",
         ...(codec === "hevc"
           ? { hevc: { format: "annexb" } }
           : { avc: { format: "annexb" } }),
@@ -476,7 +476,10 @@ for (const mode of ["client", "discovery"]) {
   test(`${mode}: runtime HEVC failure stops capture without raw fallback`, async ({
     page,
   }) => {
-    test.skip(!(await supportsCodec(page, "hevc")), "HEVC WebCodecs is unsupported");
+    test.skip(
+      !(await supportsCodec(page, "hevc")),
+      "HEVC WebCodecs is unsupported",
+    );
     await connect(page, mode, "hevc");
     await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
     await page.evaluate(() => {
@@ -530,7 +533,9 @@ for (const mode of ["client", "discovery"]) {
         .click();
       const selector = page.getByLabel("Video encoding", { exact: true });
       await expect(selector).toBeEnabled();
-      await expect(selector).toHaveValue(scenario === "raw" ? "auto" : scenario);
+      await expect(selector).toHaveValue(
+        scenario === "raw" ? "auto" : scenario,
+      );
       const values = await selector
         .locator("option")
         .evaluateAll((options) =>
@@ -568,7 +573,8 @@ for (const mode of ["client", "discovery"]) {
     page,
   }) => {
     test.skip(
-      !(await supportsCodec(page, "hevc")) || !(await supportsCodec(page, "h264")),
+      !(await supportsCodec(page, "hevc")) ||
+        !(await supportsCodec(page, "h264")),
       "HEVC and H.264 WebCodecs are both required for this fallback test",
     );
     await page.addInitScript(() => {
@@ -610,7 +616,10 @@ for (const mode of ["client", "discovery"]) {
   test(`${mode}: modal persists encoding while query overrides remain temporary`, async ({
     page,
   }, info) => {
-    test.skip(!(await supportsCodec(page, "hevc")), "HEVC WebCodecs is unsupported");
+    test.skip(
+      !(await supportsCodec(page, "hevc")),
+      "HEVC WebCodecs is unsupported",
+    );
     await connect(page, mode, "default");
     await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
     const storage = () =>

@@ -74,6 +74,26 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("HEVC uploads", () => {
+  it("uses a software-capable H.264 configuration when hardware is unavailable", async () => {
+    FakeEncoder.isConfigSupported.mockImplementation(async (config) => ({
+      supported:
+        config.codec.startsWith("avc1") &&
+        config.hardwareAcceleration !== "prefer-hardware",
+      config,
+    }));
+    const encoder = await selectVideoEncoder("auto", 300, 150, 60, vi.fn());
+    try {
+      expect(encoder?.codec).toBe("h264");
+      expect(FakeEncoder.instances.at(-1)?.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codec: "avc1.42E01F",
+          hardwareAcceleration: "no-preference",
+        }),
+      );
+    } finally {
+      encoder?.destroy();
+    }
+  });
   it.each(["hevc", "h264"] as const)(
     "keeps %s output alive while an adaptive probe is pending or unsupported",
     async (codec) => {

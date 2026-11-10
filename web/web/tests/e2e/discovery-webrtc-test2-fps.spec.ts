@@ -380,11 +380,13 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
 
     const samples: Array<{
       frameFps: number;
+      changedReceivedFps: number;
       uniqueArtFps: number;
       repaintFps: number;
     }> = [];
     let previous = await page.evaluate(() => ({
       receivedFrames: window.__clientFrameMetrics?.received ?? 0,
+      changedReceived: window.__clientFrameMetrics?.changedReceived ?? 0,
       uniqueFrames: window.__clientFrameMetrics?.uniqueRendered ?? 0,
       repaints: window.__clientFrameMetrics?.rendered ?? 0,
       time: performance.now(),
@@ -393,6 +395,7 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       await page.waitForTimeout(1_000);
       const current = await page.evaluate(() => ({
         receivedFrames: window.__clientFrameMetrics?.received ?? 0,
+        changedReceived: window.__clientFrameMetrics?.changedReceived ?? 0,
         uniqueFrames: window.__clientFrameMetrics?.uniqueRendered ?? 0,
         repaints: window.__clientFrameMetrics?.rendered ?? 0,
         time: performance.now(),
@@ -400,6 +403,9 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       samples.push({
         frameFps:
           ((current.receivedFrames - previous.receivedFrames) * 1000) /
+          (current.time - previous.time),
+        changedReceivedFps:
+          ((current.changedReceived - previous.changedReceived) * 1000) /
           (current.time - previous.time),
         uniqueArtFps:
           ((current.uniqueFrames - previous.uniqueFrames) * 1000) /
@@ -468,12 +474,11 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       page.getByRole("button", { name: "Disconnect", exact: true }),
     ).toBeVisible();
 
-    const ingress =
-      server.logs.match(/Server image ingress .* fps=([\d.]+)/g) || [];
     expect(
-      ingress.length,
-      "server should receive moving test2 frames from the browser",
-    ).toBeGreaterThan(0);
+      samples.filter(({ changedReceivedFps }) => changedReceivedFps >= 35)
+        .length,
+      "the server should return changing test2 frames in at least 5 of 10 samples",
+    ).toBeGreaterThanOrEqual(5);
     expect(server.logs).toMatch(/selected local candidate:.*typ relay/i);
     const turnLogs = await run("docker", ["logs", container]);
     expect(turnLogs).toMatch(/allocation new/i);
