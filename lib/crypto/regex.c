@@ -8,7 +8,7 @@
  */
 
 #include "ascii-chat/asciichat_errno.h"
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>

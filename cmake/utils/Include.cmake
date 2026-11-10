@@ -24,6 +24,7 @@ function(configure_include_directories)
     target_include_directories(asciichat-project-includes INTERFACE
         ${CMAKE_BINARY_DIR}/generated # Configuration-generated public headers
         ${CMAKE_SOURCE_DIR}/include  # Public API headers
+        ${CMAKE_SOURCE_DIR}/deps/defer/cpp/include # Standalone defer marker
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
         ${SQLITE3_INCLUDE_DIRS}     # Public discovery/database declarations

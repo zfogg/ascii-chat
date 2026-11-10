@@ -92,6 +92,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}/generated
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
+    ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common  # For session/*.h relative includes
     ${DEPS_ROOT}

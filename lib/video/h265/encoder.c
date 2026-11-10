@@ -1,4 +1,4 @@
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**

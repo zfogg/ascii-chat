@@ -22,11 +22,11 @@ def test_project_header_is_accepted_by_defer_tool(tmp_path: Path, tool_variable:
     source = tmp_path / "source.c"
     generated = tmp_path / "generated.c"
     source.write_text(
-        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        '#include <defer.h>\n'
         'int main(void) { int value = 0; { defer(value = 1); } return value != 1; }\n',
         encoding="utf-8",
     )
-    include = str(ROOT / "include")
+    include = str(ROOT / "deps" / "defer" / "cpp" / "include")
     transformed = subprocess.run([tool, str(source), str(generated), "--", "-I", include],
                                  capture_output=True, text=True, check=False)
     assert transformed.returncode == 0, transformed.stderr

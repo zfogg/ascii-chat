@@ -35,7 +35,7 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/version.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>

@@ -15,7 +15,7 @@
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>                   // For url_is_valid(), url_parse()
