@@ -1,5 +1,6 @@
 #include "http_renderer.h"
 
+#include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/palette.h>
