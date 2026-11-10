@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

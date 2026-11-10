@@ -689,6 +689,7 @@ typedef struct {
 } mode_metadata_t;
 
 static const mode_metadata_t mode_info[] = {
+    {MODE_API_SERVER, "ascii-chat api-server", "HTTP image-to-ASCII API"},
     {MODE_MCP_SERVER, "ascii-chat mcp-server", "MCP rendering tools over stdio or HTTP"},
     {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
     {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
