@@ -1077,7 +1077,7 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
-  if ((cfg->enable_http3 && !cfg->http3_endpoint) || ((cfg->tls_certificate == NULL) != (cfg->tls_private_key == NULL)))
+  if ((cfg->enable_http3 && !cfg->http3_endpoint) || ((cfg->tls_cert_path == NULL) != (cfg->tls_key_path == NULL)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS requires certificate and key");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
   if (mutex_init(&s->response_mutex, "http_responses") != 0) {
@@ -1091,21 +1091,21 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_MEMORY, "Cannot initialize HTTP rate limiter");
   }
   s->config = *cfg;
-  if (cfg->tls_certificate) {
+  if (cfg->tls_cert_path) {
     s->tls_context = SSL_CTX_new(TLS_server_method());
     if (!s->tls_context) {
       SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
     }
-    if (cfg->tls_private_key_password) {
-      SSL_CTX_set_default_passwd_cb_userdata(s->tls_context, (void *)cfg->tls_private_key_password);
+    if (cfg->tls_key_password) {
+      SSL_CTX_set_default_passwd_cb_userdata(s->tls_context, (void *)cfg->tls_key_password);
     }
     if (!s->tls_context) {
       SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
     }
-    if (cfg->tls_private_key_password)
+    if (cfg->tls_key_password)
       SSL_CTX_set_default_passwd_cb(s->tls_context, tls_password_cb);
-    if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_certificate) != 1 ||
-        SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_private_key, SSL_FILETYPE_PEM) != 1 ||
+    if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_cert_path) != 1 ||
+        SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_key_path, SSL_FILETYPE_PEM) != 1 ||
         SSL_CTX_check_private_key(s->tls_context) != 1) {
       SSL_CTX_free(s->tls_context); s->tls_context = NULL; return SET_ERRNO(ERROR_NETWORK, "Cannot load HTTP TLS certificate or key");
     }

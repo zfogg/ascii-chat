@@ -53,9 +53,9 @@ typedef struct {
   bool enable_http1;
   bool enable_http2;
   bool enable_http3;
-  const char *tls_certificate;
-  const char *tls_private_key;
-  const char *tls_private_key_password;
+  const char *tls_cert_path;
+  const char *tls_key_path;
+  const char *tls_key_password;
   /** Optional pre-opened QUIC HTTP/3 endpoint; ownership remains with caller. */
   void *http3_endpoint;
   size_t max_connections;
