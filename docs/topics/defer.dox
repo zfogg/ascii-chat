@@ -177,10 +177,11 @@
  * batch mode supports `--dependency-stamps --incremental` with either form;
  * changing one file's arguments invalidates that file's cached transformation.
  *
- * For a single source, either implementation can read stdin and write the
- * validated transformed bytes to stdout:
+ * For a single source, either implementation automatically reads redirected
+ * stdin and writes validated transformed bytes to stdout when no input/output
+ * paths or other modes are specified:
  * @code{.sh}
- * defer-tool --stdin --filename path/to/input.c -- -std=c17 -Iinclude < input.c > output.c
+ * defer-tool --filename path/to/input.c -- -std=c17 -Iinclude < input.c > output.c
  * # Equivalent positional form:
  * defer-tool --filename path/to/input.c - - -- -std=c17 -Iinclude < input.c > output.c
  * @endcode

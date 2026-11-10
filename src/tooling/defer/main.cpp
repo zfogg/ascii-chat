@@ -29,10 +29,13 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
+#else
+#include <unistd.h>
 #endif
 
 namespace {
@@ -59,7 +62,6 @@ llvm::cl::opt<bool>
 llvm::cl::opt<std::string>
     batch("batch",
           llvm::cl::desc("Transform manifest source/output pairs with optional per-file JSON argument arrays"));
-llvm::cl::opt<bool> stream_input("stdin", llvm::cl::desc("Transform one source from stdin to stdout"));
 llvm::cl::opt<std::string> stream_filename("filename",
                                            llvm::cl::desc("Virtual input path for stdin (default: stdin.c)"),
                                            llvm::cl::init("stdin.c"));
@@ -282,18 +284,36 @@ bool cached_dependencies(const std::filesystem::path &source, const std::filesys
 
 int main(int argc, char **argv) {
   llvm::InitLLVM initializer(argc, argv);
-  llvm::cl::ParseCommandLineOptions(argc, argv, "ascii-chat defer source transformer\n");
+  llvm::cl::ParseCommandLineOptions(
+      argc, argv,
+      "ascii-chat defer source transformer\n"
+      "With redirected stdin and no input/output paths, transform one source to stdout.\n");
   try {
     const bool dash_stream = sources.size() >= 2 && sources[0] == "-" && sources[1] == "-";
-    const bool stream = stream_input || dash_stream;
+    unsigned separator = static_cast<unsigned>(argc);
+    for (int i = 1; i < argc; ++i)
+      if (std::string_view(argv[i]) == "--") {
+        separator = static_cast<unsigned>(i);
+        break;
+      }
+    bool only_compiler_arguments = true;
+    for (std::size_t i = 0; i < sources.size(); ++i)
+      if (sources.getPosition(static_cast<unsigned>(i)) < separator)
+        only_compiler_arguments = false;
+#ifdef _WIN32
+    const bool stdin_redirected = _isatty(_fileno(stdin)) == 0;
+#else
+    const bool stdin_redirected = isatty(fileno(stdin)) == 0;
+#endif
+    const bool automatic_stream = stdin_redirected && only_compiler_arguments && batch.empty() && !scan_only &&
+                                  plan_records.empty() && explain_location.empty() && show_location.empty();
+    const bool stream = dash_stream || automatic_stream;
     if (stream && (scan_only || !plan_records.empty() || !batch.empty() || !depfile.empty() || dependency_stamps ||
                    incremental || !shared_cache.empty() || !header_overlay.empty() || header_overlays ||
                    !explain_location.empty() || !show_location.empty() || jobs.getNumOccurrences()))
       throw std::runtime_error("stdin mode cannot be combined with batch, scan, planning, inspection, or output files");
     if (!stream && stream_filename.getNumOccurrences())
       throw std::runtime_error("--filename requires stdin mode");
-    if (stream_input && dash_stream)
-      throw std::runtime_error("use either --stdin or the - - positional form");
     if (scan_only) {
       if (!scan_input.empty()) {
         std::istringstream lines(defer_tool::read_file(std::filesystem::u8path(scan_input.getValue())));

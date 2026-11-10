@@ -141,7 +141,7 @@ def test_python_batch_plan_uses_explicit_tool_source_root(tmp_path: Path) -> Non
     assert "--stdin" not in rules
 
 
-@pytest.mark.parametrize("form", ["option", "dash"])
+@pytest.mark.parametrize("form", ["automatic", "dash"])
 def test_stdin_stdout_transforms_and_executes(
     tmp_path: Path, transform_environment: dict[str, str], form: str
 ) -> None:
@@ -151,7 +151,7 @@ def test_stdin_stdout_transforms_and_executes(
     source = (b'#include "value.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
               b'int main(void) { int n=0; { defer(n=VALUE); } return n!=7; }\n')
     command = [*tool_command(transform_environment), "--filename", str(virtual)]
-    command += ["--stdin"] if form == "option" else ["-", "-"]
+    command += [] if form == "automatic" else ["-", "-"]
     result = subprocess.run([*command, "--", "-std=c17", "-I", str(ROOT / "include")],
                             input=source, capture_output=True, env=transform_environment, check=False)
     assert result.returncode == 0, result.stderr.decode(errors="replace")
@@ -167,12 +167,12 @@ def test_stdin_stdout_transforms_and_executes(
     assert subprocess.run([str(executable)], check=False).returncode == 0
 
 
-@pytest.mark.parametrize("form", ["option", "dash"])
+@pytest.mark.parametrize("form", ["automatic", "dash"])
 def test_stdin_rejects_invalid_cleanup_without_output(
     tmp_path: Path, transform_environment: dict[str, str], form: str
 ) -> None:
     command = [*tool_command(transform_environment), "--filename", str(tmp_path / "input.c")]
-    command += ["--stdin"] if form == "option" else ["-", "-"]
+    command += [] if form == "automatic" else ["-", "-"]
     result = subprocess.run([*command, "--", "-std=c17", "-I", str(ROOT / "include")],
                             input=b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { defer(missing()); }\n',
                             capture_output=True, env=transform_environment, check=False)
@@ -189,7 +189,7 @@ def test_stdin_uses_original_source_compilation_database(tmp_path: Path, transfo
     database = tmp_path / "compile_commands.json"
     database.write_text(json.dumps(commands), encoding="utf-8")
     result = subprocess.run(
-        [*tool_command(transform_environment), "--stdin", "--filename", str(source), "--compilation-database", str(database)],
+        [*tool_command(transform_environment), "--filename", str(source), "--compilation-database", str(database)],
         input=b'#if VALUE != 7\n#error missing flags\n#endif\nvoid f(void) {}\n', capture_output=True,
         env=transform_environment, check=False,
     )
@@ -200,18 +200,63 @@ def test_stdin_uses_original_source_compilation_database(tmp_path: Path, transfo
 
 @pytest.mark.parametrize("option", ["--depfile", "--header-overlay"])
 def test_stdin_rejects_output_options(tmp_path: Path, transform_environment: dict[str, str], option: str) -> None:
-    result = subprocess.run([*tool_command(transform_environment), "--stdin", option, str(tmp_path / "out.d")],
+    result = subprocess.run([*tool_command(transform_environment), option, str(tmp_path / "out.d")],
                             input=b'void f(void) {}\n', capture_output=True, env=transform_environment, check=False)
     assert result.returncode != 0
     assert result.stdout == b""
     assert not (tmp_path / "out.d").exists()
 
 
-def test_stdin_cannot_be_combined_with_batch(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+def test_batch_ignores_redirected_stdin(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text("void file_input(void) {}\n", encoding="utf-8")
     manifest = tmp_path / "batch.txt"
-    manifest.write_text('', encoding="utf-8")
-    result = subprocess.run([*tool_command(transform_environment), "--stdin", "--batch", str(manifest)],
-                            input=b'void f(void) {}\n', capture_output=True, env=transform_environment, check=False)
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), "--batch", str(manifest)],
+                            input=b"invalid piped input!\n", capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert result.stdout == b""
+    assert "file_input" in output.read_text(encoding="utf-8")
+
+
+def test_file_mode_ignores_redirected_stdin(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text("void file_input(void) {}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", "-std=c17"],
+                            input=b"invalid piped input!\n", capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert result.stdout == b""
+    assert "file_input" in output.read_text(encoding="utf-8")
+
+
+def test_automatic_stdin_uses_default_filename(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    result = subprocess.run([*tool_command(transform_environment), "--", "-std=c17"],
+                            input=b'int value;\n', capture_output=True, env=transform_environment,
+                            cwd=tmp_path, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert b"stdin.c" in result.stdout
+    assert b"int value;" in result.stdout
+
+
+def test_stdin_flag_is_not_advertised(transform_environment: dict[str, str]) -> None:
+    result = subprocess.run([*tool_command(transform_environment), "--help"], capture_output=True,
+                            text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert "--stdin" not in result.stdout
+    assert "redirected stdin" in result.stdout
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires a POSIX pseudo-terminal")
+def test_terminal_without_input_files_does_not_wait_for_stdin(transform_environment: dict[str, str]) -> None:
+    import pty
+
+    master, slave = pty.openpty()
+    try:
+        result = subprocess.run([*tool_command(transform_environment), "--", "-std=c17"], stdin=slave,
+                                capture_output=True, env=transform_environment, timeout=10, check=False)
+    finally:
+        os.close(master)
+        os.close(slave)
     assert result.returncode != 0
     assert result.stdout == b""
 
@@ -228,7 +273,7 @@ def test_stdin_supports_cpp_and_objc_languages(
     else:
         flags += ["-x", "c++", "-std=c++11"]
         source = b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f() { defer((void)0); }\n'
-    result = subprocess.run([*tool_command(transform_environment), "--stdin", "--filename", str(virtual), "--", *flags],
+    result = subprocess.run([*tool_command(transform_environment), "--filename", str(virtual), "--", *flags],
                             input=source, capture_output=True, env=transform_environment, check=False)
     assert result.returncode == 0, result.stderr.decode(errors="replace")
     if extension == "m":
@@ -247,18 +292,19 @@ def test_stdin_uses_piped_contents_instead_of_virtual_file(
 ) -> None:
     virtual = tmp_path / "input.c"
     virtual.write_text("int disk_only;\n", encoding="utf-8")
-    result = subprocess.run([*tool_command(transform_environment), "--stdin", "--filename", str(virtual)],
+    result = subprocess.run([*tool_command(transform_environment), "--filename", str(virtual)],
                             input=b'int pipe_only;\n', capture_output=True, env=transform_environment, check=False)
     assert result.returncode == 0, result.stderr.decode(errors="replace")
     assert b"pipe_only" in result.stdout and b"disk_only" not in result.stdout
     assert virtual.read_text(encoding="utf-8") == "int disk_only;\n"
 
 
-def test_stdin_accepts_redirected_binary_files(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+@pytest.mark.parametrize("named", [False, True])
+def test_stdin_accepts_redirected_binary_files(tmp_path: Path, transform_environment: dict[str, str], named: bool) -> None:
     source, output = tmp_path / "input.c", tmp_path / "output.c"
     source.write_bytes(b'\xef\xbb\xbf#define defer(...) do {} while (0)\r\nvoid f(void) { defer((void)0); }\r\n')
     with source.open("rb") as input_file, output.open("wb") as output_file:
-        result = subprocess.run([*tool_command(transform_environment), "--stdin", "--filename", str(source)],
+        result = subprocess.run([*tool_command(transform_environment), *(["--filename", str(source)] if named else [])],
                                 stdin=input_file, stdout=output_file, stderr=subprocess.PIPE,
                                 env=transform_environment, check=False)
     assert result.returncode == 0, result.stderr.decode(errors="replace")
@@ -281,7 +327,7 @@ def test_stdin_matches_file_transformation(
     file_result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", *flags],
                                  capture_output=True, env=transform_environment, check=False)
     assert file_result.returncode == 0, file_result.stderr.decode(errors="replace")
-    stream_result = subprocess.run([*tool_command(transform_environment), "--stdin", "--filename", str(source), "--", *flags],
+    stream_result = subprocess.run([*tool_command(transform_environment), "--filename", str(source), "--", *flags],
                                    input=content, capture_output=True, env=transform_environment, check=False)
     assert stream_result.returncode == 0, stream_result.stderr.decode(errors="replace")
     assert stream_result.stdout == output.read_bytes()
@@ -291,7 +337,7 @@ def test_native_stdin_with_preamble(tmp_path: Path, compiler_environment: dict[s
     binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
     if not binary:
         pytest.skip("native defer binary is required")
-    command = [binary, "--stdin", "--filename", str(tmp_path / "virtual.c"), "--", "-std=c17"]
+    command = [binary, "--filename", str(tmp_path / "virtual.c"), "--", "-std=c17"]
     source = b'#define defer(...) do {} while (0)\nvoid f(void) { defer((void)0); }\n'
     ordinary = subprocess.run(command, input=source, capture_output=True, env=compiler_environment, check=False)
     reused = subprocess.run([binary, "--preamble", *command[1:]], input=source, capture_output=True,
@@ -1787,7 +1833,7 @@ def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, s
         link_flags = ["-framework", "Foundation"]
     if stream:
         streamed = subprocess.run(
-            [*tool_command(transform_environment), "--stdin", "--filename", str(source), "--", *flags],
+            [*tool_command(transform_environment), "--filename", str(source), "--", *flags],
             input=source.read_bytes(), capture_output=True, env=transform_environment, check=False,
         )
         assert streamed.returncode == 0, streamed.stderr.decode(errors="replace")

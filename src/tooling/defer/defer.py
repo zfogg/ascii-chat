@@ -324,14 +324,16 @@ def batch_main() -> int:
 
 
 def main(protected_paths: list[Path] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog="With redirected stdin and no input/output paths, transform one source to stdout.",
+    )
     parser.add_argument("--explain", metavar="SOURCE:LINE", help="explain cleanup at a source exit")
     parser.add_argument("--show-transformed", metavar="SOURCE:LINE", help="show the transformed function")
     parser.add_argument("--compilation-database", type=Path)
     parser.add_argument("--depfile", type=Path)
     parser.add_argument("--dependency-stamp", type=Path)
     parser.add_argument("--header-overlay", type=Path)
-    parser.add_argument("--stdin", action="store_true", help="transform one source from stdin to stdout")
     parser.add_argument("--filename", type=Path, help="virtual input path for stdin (default: stdin.c)")
     parser.add_argument("source", type=Path, nargs="?")
     parser.add_argument("output", type=Path, nargs="?")
@@ -341,28 +343,23 @@ def main(protected_paths: list[Path] | None = None) -> int:
     parser.add_argument(
         "clang_args", nargs=argparse.REMAINDER, help="Clang arguments after --"
     )
-    explain_args: list[str] = []
-    stream_args: list[str] = []
+    trailing_args: list[str] = []
     argv = sys.argv[1:]
-    if any(arg.split("=", 1)[0] in ("--explain", "--show-transformed") for arg in argv) and "--" in argv:
+    if "--" in argv:
         separator = argv.index("--")
-        explain_args = argv[separator + 1 :]
-        argv = argv[:separator]
-    elif "--stdin" in argv and "--" in argv:
-        separator = argv.index("--")
-        stream_args = argv[separator + 1 :]
+        trailing_args = argv[separator + 1 :]
         argv = argv[:separator]
     args = parser.parse_args(argv)
     if args.libclang:
         cindex.Config.set_library_file(str(args.libclang.resolve()))
-    clang_args = explain_args if args.explain or args.show_transformed else stream_args if args.stdin else args.clang_args
+    clang_args = [*args.clang_args, *trailing_args]
     if clang_args[:1] == ["--"]:
         clang_args = clang_args[1:]
     try:
         dash_stream = args.source == Path("-") and args.output == Path("-")
-        stream = args.stdin or dash_stream
-        if args.stdin and (args.source or args.output):
-            raise TransformError("--stdin does not accept source or output paths")
+        automatic_stream = (not sys.stdin.isatty() and args.source is None and args.output is None
+                            and not args.explain and not args.show_transformed)
+        stream = dash_stream or automatic_stream
         if args.filename and not stream:
             raise TransformError("--filename requires stdin mode")
         if stream and (args.explain or args.show_transformed or args.depfile or args.dependency_stamp or args.header_overlay):
