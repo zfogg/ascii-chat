@@ -16,7 +16,7 @@
 #ifdef HAS_ASAN
 #include <sanitizer/asan_interface.h>
 
-static atomic_t g_sanitizer_fd = {0};
+static atomic_t g_sanitizer_fd = {.impl = UINT64_MAX};
 
 static void asan_error_report_callback(const char *report) {
   const int fd = atomic_load_int(&g_sanitizer_fd);
