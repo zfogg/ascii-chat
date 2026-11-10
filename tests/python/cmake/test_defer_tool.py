@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import os
 import random
 from pathlib import Path
@@ -84,6 +85,280 @@ def transform_environment(
 def tool_command(env: dict[str, str]) -> list[str]:
     binary = env.get("ASCIICHAT_DEFER_TEST_BINARY")
     return [binary] if binary else [sys.executable, str(TOOL)]
+
+
+def test_python_manifest_parse_returns_records() -> None:
+    spec = importlib.util.spec_from_file_location("ascii_defer_manifest_test", TOOL.parent / "manifest.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        manifest = module.Manifest.parse('a.c\tout/a.c\r\nb.c\tout/b.c\t["-I", "dir with spaces"]\n')
+        assert len(manifest.records) == 2
+        assert manifest.records[0].source == Path("a.c")
+        assert manifest.records[0].arguments == []
+        assert manifest.records[1].output == Path("out/b.c")
+        assert manifest.records[1].arguments == ["-I", "dir with spaces"]
+        assert module.Manifest.parse('a.c\tout.c\t["x\u2028y"]\n').records[0].arguments == ["x\u2028y"]
+        with pytest.raises(module.ManifestError, match="cannot be combined"):
+            module.Manifest.parse('a.c\tout.c\t[]\n', compilation_database=True)
+    finally:
+        del sys.modules[spec.name]
+
+
+def test_python_batch_plan_uses_explicit_tool_source_root(tmp_path: Path) -> None:
+    cmake = shutil.which("cmake")
+    if not cmake or not shutil.which("ninja") or not CLANG:
+        pytest.skip("CMake, Ninja, and Clang are required")
+    project = tmp_path / "nested project"
+    project.mkdir()
+    source = project / "source.c"
+    source.write_text('void f(void) {}\n', encoding="utf-8")
+    build = tmp_path / "build"
+    records = tmp_path / "records.txt"
+    records.write_text(f"ascii-chat-probe\t{source}\t{build / 'generated.c'}\t\n", encoding="utf-8")
+    plan = tmp_path / "plan.cmake"
+    result = subprocess.run(
+        [sys.executable, str(TOOL.parent / "plan.py"), "--records", str(records), "--build-dir", str(build),
+         "--stage", "test", "--output", str(plan)], capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    (project / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.25)\nproject(plan_test C)\n'
+        f'set(ASCIICHAT_DEFER_SOURCE_ROOT "{ROOT.as_posix()}")\n'
+        'set(ASCIICHAT_DEFER_PYTHON_COMMAND "${CMAKE_COMMAND};-E;echo")\n'
+        'set(ASCIICHAT_LIBCLANG_PATH dummy)\nadd_library(ascii-chat-probe STATIC source.c)\n'
+        f'include("{plan.as_posix()}")\n', encoding="utf-8"
+    )
+    result = subprocess.run([cmake, "-S", str(project), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}"],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    rules = (build / "build.ninja").read_text(encoding="utf-8").replace("\\", "/").replace("$:", ":").replace("$ ", " ")
+    assert f"{ROOT.as_posix()}/src/tooling/defer/defer.py" in rules
+    assert f"{ROOT.as_posix()}/src/tooling/defer/analysis.py" in rules
+    assert "--batch" in rules
+    assert "--stdin" not in rules
+
+
+@pytest.mark.parametrize("form", ["automatic", "dash"])
+def test_stdin_stdout_transforms_and_executes(
+    tmp_path: Path, transform_environment: dict[str, str], form: str
+) -> None:
+    virtual = tmp_path / "virtual" / "source.c"
+    virtual.parent.mkdir()
+    (virtual.parent / "value.h").write_text('#define VALUE 7\n', encoding="utf-8")
+    source = (b'#include "value.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
+              b'int main(void) { int n=0; { defer(n=VALUE); } return n!=7; }\n')
+    command = [*tool_command(transform_environment), "--filename", str(virtual)]
+    command += [] if form == "automatic" else ["-", "-"]
+    result = subprocess.run([*command, "--", "-std=c17", "-I", str(ROOT / "include")],
+                            input=source, capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert b"__ascii_defer_active_" in result.stdout
+    assert not virtual.exists()
+    output = tmp_path / "generated.c"
+    output.write_bytes(result.stdout)
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", "-I", str(ROOT / "include"), "-I", str(virtual.parent),
+                             str(output), "-o", str(executable)], capture_output=True, text=True,
+                            env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("form", ["automatic", "dash"])
+def test_stdin_rejects_invalid_cleanup_without_output(
+    tmp_path: Path, transform_environment: dict[str, str], form: str
+) -> None:
+    command = [*tool_command(transform_environment), "--filename", str(tmp_path / "input.c")]
+    command += [] if form == "automatic" else ["-", "-"]
+    result = subprocess.run([*command, "--", "-std=c17", "-I", str(ROOT / "include")],
+                            input=b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { defer(missing()); }\n',
+                            capture_output=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert b"missing" in result.stderr
+
+
+def test_stdin_uses_original_source_compilation_database(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "virtual.c"
+    commands = [{"directory": str(tmp_path), "file": str(source), "arguments": [
+        CLANG, "-std=c17", "-DVALUE=7", "-c", str(source), "-o", str(tmp_path / "source.o")
+    ]}]
+    database = tmp_path / "compile_commands.json"
+    database.write_text(json.dumps(commands), encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--filename", str(source), "--compilation-database", str(database)],
+        input=b'#if VALUE != 7\n#error missing flags\n#endif\nvoid f(void) {}\n', capture_output=True,
+        env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert b"void f(void)" in result.stdout
+    assert not source.exists()
+
+
+@pytest.mark.parametrize("option", ["--depfile", "--header-overlay"])
+def test_stdin_rejects_output_options(tmp_path: Path, transform_environment: dict[str, str], option: str) -> None:
+    result = subprocess.run([*tool_command(transform_environment), option, str(tmp_path / "out.d")],
+                            input=b'void f(void) {}\n', capture_output=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert not (tmp_path / "out.d").exists()
+
+
+def test_batch_ignores_redirected_stdin(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text("void file_input(void) {}\n", encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), "--batch", str(manifest)],
+                            input=b"invalid piped input!\n", capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert result.stdout == b""
+    assert "file_input" in output.read_text(encoding="utf-8")
+
+
+def test_file_mode_ignores_redirected_stdin(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_text("void file_input(void) {}\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", "-std=c17"],
+                            input=b"invalid piped input!\n", capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert result.stdout == b""
+    assert "file_input" in output.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("arguments", [[], ["--", "-std=c17"], ["-", "-"], ["--filename", ""]])
+def test_stdin_requires_nonempty_filename(
+    tmp_path: Path, transform_environment: dict[str, str], arguments: list[str]
+) -> None:
+    result = subprocess.run([*tool_command(transform_environment), *arguments],
+                            input=b'int value;\n', capture_output=True, env=transform_environment,
+                            cwd=tmp_path, check=False)
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert b"--filename" in result.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_stdin_flag_is_not_advertised(transform_environment: dict[str, str]) -> None:
+    result = subprocess.run([*tool_command(transform_environment), "--help"], capture_output=True,
+                            text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert "--stdin" not in result.stdout
+    assert "redirected stdin" in result.stdout
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires a POSIX pseudo-terminal")
+def test_terminal_without_input_files_does_not_wait_for_stdin(transform_environment: dict[str, str]) -> None:
+    import pty
+
+    master, slave = pty.openpty()
+    try:
+        result = subprocess.run([*tool_command(transform_environment), "--", "-std=c17"], stdin=slave,
+                                capture_output=True, env=transform_environment, timeout=10, check=False)
+    finally:
+        os.close(master)
+        os.close(slave)
+    assert result.returncode != 0
+    assert result.stdout == b""
+
+
+@pytest.mark.parametrize("extension", ["cpp", "hpp", "m"])
+def test_stdin_supports_cpp_and_objc_languages(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str
+) -> None:
+    virtual = tmp_path / f"input.{extension}"
+    flags = ["-I", str(ROOT / "include")]
+    if extension == "m":
+        flags += ["-fobjc-exceptions", *objc_syntax_runtime()]
+        source = b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { defer((void)0); }\n'
+    else:
+        flags += ["-x", "c++", "-std=c++11"]
+        source = b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f() { defer((void)0); }\n'
+    result = subprocess.run([*tool_command(transform_environment), "--filename", str(virtual), "--", *flags],
+                            input=source, capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    if extension == "m":
+        assert b"@finally" in result.stdout
+    else:
+        assert b"defer((void)0)" in result.stdout
+    output = tmp_path / f"output.{extension}"
+    output.write_bytes(result.stdout)
+    result = subprocess.run([str(CLANG), *flags, "-fsyntax-only", str(output)], capture_output=True, text=True,
+                            env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+
+
+def test_stdin_uses_piped_contents_instead_of_virtual_file(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    virtual = tmp_path / "input.c"
+    virtual.write_text("int disk_only;\n", encoding="utf-8")
+    result = subprocess.run([*tool_command(transform_environment), "--filename", str(virtual)],
+                            input=b'int pipe_only;\n', capture_output=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert b"pipe_only" in result.stdout and b"disk_only" not in result.stdout
+    assert virtual.read_text(encoding="utf-8") == "int disk_only;\n"
+
+
+def test_stdin_accepts_redirected_binary_files(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_bytes(b'\xef\xbb\xbf#define defer(...) do {} while (0)\r\nvoid f(void) { defer((void)0); }\r\n')
+    with source.open("rb") as input_file, output.open("wb") as output_file:
+        result = subprocess.run([*tool_command(transform_environment), "--filename", str(source)],
+                                stdin=input_file, stdout=output_file, stderr=subprocess.PIPE,
+                                env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert output.read_bytes().startswith(b"\xef\xbb\xbf")
+    assert b"__ascii_defer_active_" in output.read_bytes()
+
+
+def test_redirected_files_require_filename(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_bytes(b"int value;\n")
+    with source.open("rb") as input_file, output.open("wb") as output_file:
+        result = subprocess.run([*tool_command(transform_environment)], stdin=input_file, stdout=output_file,
+                                stderr=subprocess.PIPE, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert b"--filename" in result.stderr
+    assert output.read_bytes() == b""
+
+
+@pytest.mark.parametrize("extension", ["c", "cpp", "m"])
+def test_stdin_matches_file_transformation(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str
+) -> None:
+    source, output = tmp_path / f"input.{extension}", tmp_path / f"output.{extension}"
+    content = b'#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { defer((void)0); }\n'
+    source.write_bytes(content)
+    flags = ["-I", str(ROOT / "include")]
+    if extension == "m":
+        flags += ["-fobjc-exceptions", *objc_syntax_runtime()]
+    elif extension == "cpp":
+        flags += ["-std=c++11"]
+    file_result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", *flags],
+                                 capture_output=True, env=transform_environment, check=False)
+    assert file_result.returncode == 0, file_result.stderr.decode(errors="replace")
+    stream_result = subprocess.run([*tool_command(transform_environment), "--filename", str(source), "--", *flags],
+                                   input=content, capture_output=True, env=transform_environment, check=False)
+    assert stream_result.returncode == 0, stream_result.stderr.decode(errors="replace")
+    assert stream_result.stdout == output.read_bytes()
+
+
+def test_native_stdin_with_preamble(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary is required")
+    command = [binary, "--filename", str(tmp_path / "virtual.c"), "--", "-std=c17"]
+    source = b'#define defer(...) do {} while (0)\nvoid f(void) { defer((void)0); }\n'
+    ordinary = subprocess.run(command, input=source, capture_output=True, env=compiler_environment, check=False)
+    reused = subprocess.run([binary, "--preamble", *command[1:]], input=source, capture_output=True,
+                            env=compiler_environment, check=False)
+    assert ordinary.returncode == 0, ordinary.stderr.decode(errors="replace")
+    assert reused.returncode == 0, reused.stderr.decode(errors="replace")
+    assert reused.stdout == ordinary.stdout
 
 
 def objc_syntax_runtime() -> list[str]:
@@ -1241,7 +1516,7 @@ def test_cmake_experimental_header_overlays_are_incremental(
     if backend == "PYTHON":
         tool_dir = src / "tooling" / "defer"
         tool_dir.mkdir(parents=True)
-        for name in ("defer.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
+        for name in ("defer.py", "analysis.py", "manifest.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
             shutil.copy2(TOOL.parent / name, tool_dir / name)
         shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     header = src / f"clean.{extension}"
@@ -1556,7 +1831,8 @@ def test_objc_native_and_python_outputs_match(tmp_path: Path, compiler_environme
 
 
 @pytest.mark.skipif(sys.platform not in ("darwin", "linux"), reason="requires an Objective-C runtime")
-def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+@pytest.mark.parametrize("stream", [False, True])
+def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, str], stream: bool) -> None:
     source = ROOT / "tests" / "standalone" / "defer_objc_runtime.m"
     output = tmp_path / "transformed.m"
     resource_dir = subprocess.run([str(CLANG), "-print-resource-dir"], capture_output=True, text=True, check=True).stdout.strip()
@@ -1569,11 +1845,19 @@ def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, s
         link_flags = ["-L", str(Path(runtime_root) / "lib"), f"-Wl,-rpath,{Path(runtime_root) / 'lib'}", "-lobjc"]
     else:
         link_flags = ["-framework", "Foundation"]
-    result = subprocess.run(
-        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
-        capture_output=True, text=True, env=transform_environment, check=False,
-    )
-    assert result.returncode == 0, result.stderr
+    if stream:
+        streamed = subprocess.run(
+            [*tool_command(transform_environment), "--filename", str(source), "--", *flags],
+            input=source.read_bytes(), capture_output=True, env=transform_environment, check=False,
+        )
+        assert streamed.returncode == 0, streamed.stderr.decode(errors="replace")
+        output.write_bytes(streamed.stdout)
+    else:
+        result = subprocess.run(
+            [*tool_command(transform_environment), str(source), str(output), "--", *flags],
+            capture_output=True, text=True, env=transform_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
     executable = tmp_path / "objc-runtime-test"
     result = subprocess.run(
         [str(CLANG), *flags, str(output), *link_flags, "-o", str(executable)],
@@ -1598,7 +1882,7 @@ def test_cmake_objc_incremental(tmp_path: Path, compiler_environment: dict[str, 
     if backend == "PYTHON":
         tool_dir = src / "tooling" / "defer"
         tool_dir.mkdir(parents=True)
-        for name in ("defer.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
+        for name in ("defer.py", "analysis.py", "manifest.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
             shutil.copy2(TOOL.parent / name, tool_dir / name)
         shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     source = src / "main.m"
@@ -2447,6 +2731,8 @@ def test_cmake_discovers_defer_and_tracks_headers(
     source_dir.mkdir(parents=True)
     tool_dir.mkdir(parents=True)
     shutil.copy2(TOOL, tool_dir / "defer.py")
+    shutil.copy2(TOOL.parent / "analysis.py", tool_dir / "analysis.py")
+    shutil.copy2(TOOL.parent / "manifest.py", tool_dir / "manifest.py")
     shutil.copy2(TOOL.parent / "scan.py", tool_dir / "scan.py")
     shutil.copy2(TOOL.parent / "plan.py", tool_dir / "plan.py")
     shutil.copy2(TOOL.parent / "pyproject.toml", tool_dir / "pyproject.toml")
@@ -2592,10 +2878,21 @@ def test_cmake_discovers_defer_and_tracks_headers(
             "the native tool must be built during the build, not configuration"
         )
     run(cmake, "--build", str(build))
+    build_rules = (build / "build.ninja").read_text(encoding="utf-8")
+    defer_commands = [line for line in build_rules.splitlines() if "--batch" in line and "defer" in line]
+    assert defer_commands
+    assert all("--stdin" not in line for line in defer_commands)
     second_objects = list(build.rglob("*second.c.obj")) + list(build.rglob("*second.c.o"))
     assert len(second_objects) == 1
     second_object = second_objects[0]
     second_mtime = second_object.stat().st_mtime_ns
+    if backend == "PYTHON":
+        time.sleep(1.1)
+        analysis_module = tool_dir / "analysis.py"
+        analysis_module.write_text(analysis_module.read_text(encoding="utf-8") + "\n# analysis update\n", encoding="utf-8")
+        output = run(cmake, "--build", str(build))
+        assert "Transforming defer source batch" in output
+        assert second_object.stat().st_mtime_ns == second_mtime
     time.sleep(1.1)
     main.write_text("int main(void) { return 0; } /* ordinary edit */\n", encoding="utf-8")
     output = run(cmake, "--build", str(build))
