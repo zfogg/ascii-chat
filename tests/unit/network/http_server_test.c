@@ -92,7 +92,7 @@ Test(http_server, rejects_unavailable_http3_and_tls) {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http1 = true,
                                  .enable_http3 = true,
-                                 .tls_certificate = "certificate.pem",
+                                 .tls_cert_path = "certificate.pem",
                                  .max_connections = 4,
                                  .max_request_body_bytes = 1024,
                                  .on_request = request};
