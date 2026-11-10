@@ -59,7 +59,6 @@ struct acip_outbound {
   outbound_packet_t *recycled;
   size_t recycled_count;
   size_t count, bytes, active_bytes;
-  atomic_t completed_pending;
   outbound_stream_t streams[OUTBOUND_MAX_STREAMS];
   atomic_t stream_count;
   atomic_t accepted, submitted, dropped, congestion, recovery_frames;
@@ -300,12 +299,13 @@ static void *outbound_worker(void *arg) {
       outbound_record_failure_and_fail_pending(out, capability_result, NULL, NULL);
       break;
     }
-    /* Video must wait for opaque backends without independent streams so it
-     * cannot build an unbounded FIFO behind an already-buffered frame.
-     * Control and audio are latency-sensitive and have expiry deadlines;
-     * withholding either can make it expire behind the media backlog. The
-     * backend preserves ordering, so submit those packets and let it drain. */
-    if (backend != 0 && !capabilities.independent_streams && p->video) {
+    /* Media must wait for opaque backends without independent streams so it
+     * cannot build an unbounded FIFO behind an already-buffered frame. A
+     * reliable control packet is different: withholding it here can make it
+     * expire while waiting behind the media backlog it is meant to control.
+     * The backend preserves ordering, so submit control traffic and let it
+     * drain normally. */
+    if (backend != 0 && !capabilities.independent_streams && (p->video || p->audio)) {
       cond_timedwait(&out->changed, &out->mutex, 2 * NS_PER_MS_INT);
       continue;
     }
@@ -336,12 +336,12 @@ static void *outbound_worker(void *arg) {
         p->options.delivery == ACIP_DELIVERY_DATAGRAM &&
         (result == ERROR_NETWORK_TIMEOUT || result == ERROR_BUFFER_FULL || result == ERROR_NOT_SUPPORTED);
     if (!p->wait) {
+      mutex_lock(&out->mutex);
+      out->active_bytes = 0;
+      --out->count;
       if (datagram_drop) {
-        if (p->encoded) {
-          mutex_lock(&out->mutex);
+        if (p->encoded)
           discard_stream(out, p);
-          mutex_unlock(&out->mutex);
-        }
         stats_add(&out->dropped, 1);
         ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
       }
@@ -350,14 +350,13 @@ static void *outbound_worker(void *arg) {
         if (p->encoded && p->keyframe)
           stats_add(&out->recovery_frames, 1);
       }
-      atomic_fetch_add_u64(&out->completed_pending, 1);
-      packet_dispose_after_send(p);
-      if (result != ASCIICHAT_OK && !datagram_drop) {
-        mutex_lock(&out->mutex);
+      if (result != ASCIICHAT_OK && !datagram_drop)
         outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
-        mutex_unlock(&out->mutex);
+      cond_broadcast(&out->changed);
+      mutex_unlock(&out->mutex);
+      packet_dispose_after_send(p);
+      if (result != ASCIICHAT_OK && !datagram_drop)
         break;
-      }
       continue;
     }
     mutex_lock(&out->mutex);
@@ -518,11 +517,6 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   }
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
-  size_t completed = (size_t)atomic_exchange_u64(&out->completed_pending, 0);
-  if (completed) {
-    out->count = completed >= out->count ? 0 : out->count - completed;
-    out->active_bytes = 0;
-  }
   info.created = time_get_ns();
   info.telemetry_context = ascii_otel_context();
   if (out->stopping || out->failed) {
