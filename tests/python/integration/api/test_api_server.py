@@ -59,6 +59,37 @@ def test_api_server_health(binary: Path):
             assert error.code == 422
         else:
             raise AssertionError("undecodable image should return 422")
+        image = Path(__file__).parents[4] / "docs" / "images" / "audio-visualizations" / "frequencies.png"
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/convert?width=40&height=20&format=text&palette-chars=.-+%23",
+            data=image.read_bytes(),
+            method="POST",
+            headers={"Content-Type": "image/png"},
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            rendered = response.read()
+            assert response.status == 200
+            assert response.headers["Content-Type"].startswith("text/plain")
+            assert rendered
+        boundary = b"ascii-chat-test-boundary"
+        multipart = (
+            b"--" + boundary + b"\r\n"
+            b'Content-Disposition: form-data; name="image"; filename="image.png"\r\n'
+            b"Content-Type: image/png\r\n\r\n"
+            + image.read_bytes()
+            + b"\r\n--"
+            + boundary
+            + b"--\r\n"
+        )
+        multipart_request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/convert?width=40&height=20&format=json&palette-chars=.-%2B%23",
+            data=multipart,
+            method="POST",
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary.decode()}"},
+        )
+        with urllib.request.urlopen(multipart_request, timeout=10) as response:
+            assert response.status == 200
+            assert json.loads(response.read())["ascii"]
     finally:
         process.terminate()
         process.wait(timeout=5)
