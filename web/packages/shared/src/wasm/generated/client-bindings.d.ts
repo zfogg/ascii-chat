@@ -474,6 +474,13 @@ export interface DiscoveryBinding extends ClassHandle {
   drainOutputs(): any;
 }
 
+export interface HandoffBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  close(): void;
+  process(_0: any): any;
+}
+
 export interface BrowserHostBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
@@ -582,6 +589,9 @@ interface EmbindModule {
   };
   DiscoveryBinding: {
     new (): DiscoveryBinding;
+  };
+  HandoffBinding: {
+    new (_0: ProtocolBytes, _1: ProtocolBytes): HandoffBinding;
   };
   BrowserHostBinding: {
     new (): BrowserHostBinding;

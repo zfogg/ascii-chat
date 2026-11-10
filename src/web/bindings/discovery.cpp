@@ -5,6 +5,7 @@ extern "C" {
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/common.h>
 }
+#include <ascii-chat/network/consensus/handoff.h>
 #include <sodium.h>
 
 #include <cstddef>
@@ -23,6 +24,107 @@ static std::vector<uint8_t> protocol_input(ProtocolBytes input, bool terminate =
     bytes.push_back(0);
   return bytes;
 }
+
+class HandoffBinding {
+public:
+  HandoffBinding(ProtocolBytes session, ProtocolBytes participant) {
+    session_ = binding_copy_input(session);
+    participant_ = binding_copy_input(participant);
+    if (session_.size() != SESSION_ID_SIZE || participant_.size() != SESSION_ID_SIZE) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Handoff identifiers must be 16 bytes");
+      session_.clear();
+      participant_.clear();
+    }
+  }
+  HandoffBinding(const HandoffBinding &) = delete;
+  HandoffBinding &operator=(const HandoffBinding &) = delete;
+  bool valid() const {
+    return session_.size() == SESSION_ID_SIZE && participant_.size() == SESSION_ID_SIZE;
+  }
+  int error() const {
+    return valid() ? 0 : static_cast<int>(ERROR_INVALID_PARAM);
+  }
+  void close() {
+    session_.clear();
+    participant_.clear();
+  }
+  emscripten::val process(emscripten::val event) {
+    if (!valid())
+      return result(SET_ERRNO(ERROR_INVALID_STATE, "Handoff session is closed"));
+    const std::string type = event["type"].as<std::string>();
+    if (type == "sample")
+      return sample();
+    if (type == "receive")
+      return receive(ProtocolBytes(event["packet"]));
+    if (type == "ack") {
+      const auto bytes = encode(static_cast<uint8_t>(event["kind"].as<int>()), event["generation"].as<unsigned>(),
+                                event["sequence"].as<unsigned>());
+      emscripten::val response = result(0);
+      response.set("bytes", binding_copy_output(bytes.data(), bytes.size()));
+      return response;
+    }
+    return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown handoff event: %s", type.c_str()));
+  }
+
+private:
+  emscripten::val sample() {
+    const unsigned sequence = ++sequence_;
+    const auto first = encode(HANDOFF_SAMPLE_START, 0, sequence);
+    const auto second = encode(HANDOFF_SAMPLE_DATA, 0, sequence);
+    std::vector<uint8_t> probe(CONSENSUS_HANDOFF_HEADER + 65536);
+    memcpy(probe.data(), second.data(), second.size());
+    emscripten::val outputs = emscripten::val::array();
+    outputs.call<void>("push", binding_copy_output(first.data(), first.size()));
+    outputs.call<void>("push", binding_copy_output(probe.data(), probe.size()));
+    emscripten::val response = result(0);
+    response.set("outputs", outputs);
+    response.set("sequence", sequence);
+    return response;
+  }
+  emscripten::val receive(ProtocolBytes input) {
+    auto bytes = binding_copy_input(input);
+    consensus_handoff_message_t message{};
+    const int code = consensus_handoff_decode(bytes.data(), bytes.size(), &message);
+    if (code)
+      return result(code);
+    emscripten::val response = result(0);
+    if (memcmp(message.session, session_.data(), SESSION_ID_SIZE) != 0 || message.generation < generation_) {
+      response.set("handled", true);
+      return response;
+    }
+    generation_ = message.generation;
+    emscripten::val action = emscripten::val::object();
+    action.set("kind", message.kind);
+    action.set("participant", binding_copy_output(message.participant, SESSION_ID_SIZE));
+    action.set("generation", message.generation);
+    action.set("sequence", message.sequence);
+    response.set("handled", true);
+    response.set("action", action);
+    return response;
+  }
+  std::vector<uint8_t> encode(uint8_t kind, unsigned generation, unsigned sequence) const {
+    consensus_handoff_message_t message{};
+    message.kind = kind;
+    message.generation = generation;
+    message.sequence = sequence;
+    message.capabilities = 2;
+    message.nat_tier = 255;
+    memcpy(message.session, session_.data(), SESSION_ID_SIZE);
+    memcpy(message.participant, participant_.data(), SESSION_ID_SIZE);
+    std::vector<uint8_t> bytes(CONSENSUS_HANDOFF_HEADER);
+    consensus_handoff_encode(&message, bytes.data());
+    return bytes;
+  }
+  static emscripten::val result(int code) {
+    emscripten::val output = emscripten::val::object();
+    output.set("code", code);
+    return output;
+  }
+  std::vector<uint8_t> session_;
+  std::vector<uint8_t> participant_;
+  unsigned generation_ = 0;
+  unsigned sequence_ = 0;
+};
 
 class DiscoveryBinding {
 public:
@@ -167,4 +269,10 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
       .function("process", &DiscoveryBinding::process)
       .function("processBatch", &DiscoveryBinding::processBatch)
       .function("drainOutputs", &DiscoveryBinding::drainOutputs);
+  emscripten::class_<HandoffBinding>("HandoffBinding")
+      .constructor<ProtocolBytes, ProtocolBytes>()
+      .function("valid", &HandoffBinding::valid)
+      .function("error", &HandoffBinding::error)
+      .function("close", &HandoffBinding::close)
+      .function("process", &HandoffBinding::process);
 }

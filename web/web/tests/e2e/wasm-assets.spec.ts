@@ -178,19 +178,17 @@ test("binding failures record actionable C errors", async ({ page }) => {
         }),
         snapshot(() => m.KeyParserBinding.parse(99, false, new Uint8Array())),
         snapshot(() => {
-          const result = processClientEvent({
-            type: "handoff-encode",
-            kind: 1,
-            session: new Uint8Array(1),
-            participant: new Uint8Array(16),
-            generation: 0,
-            sequence: 0,
-            capabilities: 0,
-            natTier: 0,
-            port: 0,
-          });
-          if (result.code)
-            throw new Error(`Handoff encode failed (${result.code})`);
+          const handoff = new m.HandoffBinding(
+            new Uint8Array(1),
+            new Uint8Array(16),
+          );
+          try {
+            const result = handoff.process({ type: "sample" });
+            if (!result.code)
+              throw new Error("Invalid handoff session was accepted");
+          } finally {
+            handoff.delete();
+          }
         }),
       ];
     } finally {

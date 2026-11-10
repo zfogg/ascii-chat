@@ -8,6 +8,25 @@ const harness = vi.hoisted(() => ({
   disconnected: vi.fn(),
   module: {
     ClientSessionBinding: { errorAction: () => 1 },
+    HandoffBinding: class {
+      valid() {
+        return true;
+      }
+      error() {
+        return 0;
+      }
+      close() {}
+      delete() {}
+      process(event: { type: string }) {
+        if (event.type === "sample")
+          return {
+            code: 0,
+            outputs: [new Uint8Array(64), new Uint8Array(65600)],
+          };
+        if (event.type === "receive") return { code: 0, handled: true };
+        return { code: 0, bytes: new Uint8Array(64) };
+      }
+    },
     runtimePacketCallback: undefined as
       | undefined
       | ((id: number, bytes: Uint8Array) => void),

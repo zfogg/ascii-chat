@@ -175,23 +175,19 @@
           assert(receive(p, 6007, new Uint8Array(80)) !== 0, "end");
           assert(snap(p).state === 7 && snap(p).terminal, "ended");
         });
-        test("handoff decode returns an owned action", () => {
+        test("handoff session returns an owned action", () => {
           const session = new Uint8Array(16).fill(1);
           const participant = new Uint8Array(16).fill(2);
-          const encodedResult = client.process({
-            type: "handoff-encode",
+          const handoff = new m.HandoffBinding(session, participant);
+          assert(handoff.valid(), "handoff init");
+          const encoded = handoff.process({
+            type: "ack",
             kind: 3,
-            session,
-            participant,
             generation: 7,
             sequence: 9,
-            capabilities: 2,
-            natTier: 255,
-            port: 0,
-          });
-          const encoded = encodedResult.bytes;
-          const action = client.process({
-            type: "handoff-decode",
+          }).bytes;
+          const action = handoff.process({
+            type: "receive",
             packet: encoded,
           }).action;
           assert(
@@ -205,16 +201,15 @@
             "participant",
           );
           assert(
-            client.process({
-              type: "handoff-decode",
-              packet: new Uint8Array(1),
-            }).code !== 0,
+            handoff.process({ type: "receive", packet: new Uint8Array(1) })
+              .code !== 0,
             "invalid packet",
           );
           assert(
             action.participant.every((byte) => byte === 2),
             "owned result",
           );
+          handoff.delete();
         });
         client.delete();
         results.textContent = lines.join("\n") + "\n\n10 tests passed";

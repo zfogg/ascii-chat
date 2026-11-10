@@ -3,7 +3,6 @@ extern "C" {
 #include <ascii-chat/network/browser/client.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/browser/transport.h>
-#include <ascii-chat/network/consensus/handoff.h>
 }
 #include "../common/opts.h"
 #include "byte_arrays.h"
@@ -472,41 +471,6 @@ public:
       emscripten::val response = result(code);
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       response.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
-      return response;
-    }
-    if (type == "handoff-encode") {
-      auto session = binding_copy_input(event["session"]);
-      auto participant = binding_copy_input(event["participant"]);
-      if (session.size() != SESSION_ID_SIZE || participant.size() != SESSION_ID_SIZE)
-        return result(SET_ERRNO(ERROR_INVALID_PARAM, "Handoff identifiers must be 16 bytes"));
-      consensus_handoff_message_t message{};
-      message.kind = static_cast<uint8_t>(event["kind"].as<int>());
-      message.generation = event["generation"].as<unsigned>();
-      message.sequence = event["sequence"].as<unsigned>();
-      message.capabilities = static_cast<uint8_t>(event["capabilities"].as<int>());
-      message.nat_tier = static_cast<uint8_t>(event["natTier"].as<int>());
-      message.port = static_cast<uint16_t>(event["port"].as<int>());
-      memcpy(message.session, session.data(), SESSION_ID_SIZE);
-      memcpy(message.participant, participant.data(), SESSION_ID_SIZE);
-      uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
-      consensus_handoff_encode(&message, bytes);
-      emscripten::val response = result(0);
-      response.set("bytes", binding_copy_output(bytes, sizeof(bytes)));
-      return response;
-    }
-    if (type == "handoff-decode") {
-      auto bytes = binding_copy_input(event["packet"]);
-      consensus_handoff_message_t message{};
-      const int code = consensus_handoff_decode(bytes.data(), bytes.size(), &message);
-      emscripten::val response = result(code);
-      if (!code) {
-        emscripten::val action = emscripten::val::object();
-        action.set("kind", message.kind);
-        action.set("participant", binding_copy_output(message.participant, SESSION_ID_SIZE));
-        action.set("generation", message.generation);
-        action.set("sequence", message.sequence);
-        response.set("action", action);
-      }
       return response;
     }
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser client event: %s", type.c_str()));

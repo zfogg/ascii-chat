@@ -4,6 +4,38 @@ import {
   HANDOFF_PACKET,
 } from "../../src/network/HandoffProtocol";
 const module = vi.hoisted(() => ({
+  HandoffBinding: class {
+    private sequence = 0;
+    valid() {
+      return true;
+    }
+    error() {
+      return 0;
+    }
+    close() {}
+    delete() {}
+    process(event: { type: string; packet?: Uint8Array }) {
+      if (event.type === "sample") {
+        const sequence = ++this.sequence;
+        const first = new Uint8Array(64);
+        const view = new DataView(first.buffer);
+        view.setUint32(0, 1);
+        view.setUint32(4, sequence);
+        return { code: 0, outputs: [first, new Uint8Array(65600)] };
+      }
+      if (event.type === "receive")
+        return {
+          code: 0,
+          action: {
+            kind: 6,
+            participant: new Uint8Array(16),
+            generation: 1,
+            sequence: 1,
+          },
+        };
+      return { code: 0, bytes: new Uint8Array(64) };
+    }
+  },
   handoffDecode: () => ({
     kind: 6,
     participant: new Uint8Array(16),
@@ -29,25 +61,6 @@ const module = vi.hoisted(() => ({
 }));
 vi.mock("../../src/wasm/client", () => ({
   getClientModule: () => module,
-  processClientEvent: (event: Record<string, unknown>) => {
-    if (event["type"] === "handoff-encode")
-      return {
-        code: 0,
-        bytes: module.handoffEncode(
-          event["kind"] as number,
-          event["session"] as Uint8Array,
-          event["participant"] as Uint8Array,
-          event["generation"] as number,
-          event["sequence"] as number,
-          2,
-          255,
-          0,
-        ),
-      };
-    if (event["type"] === "handoff-decode")
-      return { code: 0, action: module.handoffDecode() };
-    throw new Error("Unexpected client event");
-  },
 }));
 it("keeps the original probe clock and sequence through slow host startup", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] });
