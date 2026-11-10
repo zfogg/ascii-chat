@@ -173,6 +173,18 @@ jobs:
           echo "Created tarball: $TARBALL"
           echo "SHA256: $SHA256"
 
+      - name: Prepare Windows ARM manual artifact
+        shell: bash
+        run: |
+          tar -xOzf "${{ steps.tarball.outputs.tarball }}" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
+
+      - name: Upload Windows ARM manual artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-man1
+          path: ${{ runner.temp }}/release-man1
+          if-no-files-found: error
+
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -366,14 +378,6 @@ jobs:
           grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
           grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
-
-      - name: Save manual for Windows ARM packaging
-        if: matrix.runner == 'ubuntu-24.04'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-man1
-          path: build_release/share/man/man1/ascii-chat.1
-          if-no-files-found: error
 
       - name: Print build logs on failure
         if: failure()
@@ -734,7 +738,7 @@ jobs:
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    needs: [create-release, package-linux]
+    needs: [create-release]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
