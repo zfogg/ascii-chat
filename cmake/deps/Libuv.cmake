@@ -29,6 +29,7 @@ if(NOT EMSCRIPTEN)
         target_include_directories(uv_a SYSTEM PUBLIC
             "$<BUILD_INTERFACE:${MUSL_INCLUDE_DIR}>"
             "$<BUILD_INTERFACE:${KERNEL_HEADERS_DIR}>")
+        set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${asciichat_libuv_SOURCE_DIR}/include")
         set(ASCIICHAT_LIBUV_TARGET uv_a)
     else()
         find_package(PkgConfig REQUIRED)
