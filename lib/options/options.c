@@ -559,13 +559,6 @@ options_t options_t_new(void) {
   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
-  if (platform_systemd_is_managed()) {
-    opts.splash_screen = false;
-    opts.status_screen = false;
-    opts.no_check_update = true;
-    SAFE_STRNCPY(opts.log_file, "/dev/null", sizeof(opts.log_file));
-    opts.otel_endpoint[0] = '\0';
-  }
 
   // ============================================================================
   // LOGGING CATEGORY - Binary-level logging and output control options
@@ -582,6 +575,13 @@ options_t options_t_new(void) {
   SAFE_STRNCPY(opts.otel_log_level, "info", sizeof(opts.otel_log_level));
   opts.otel_timeout = 5000;
   opts.otel_queue_capacity = 4096;
+  if (platform_systemd_is_managed()) {
+    opts.splash_screen = false;
+    opts.status_screen = false;
+    opts.no_check_update = true;
+    SAFE_STRNCPY(opts.log_file, "/dev/null", sizeof(opts.log_file));
+    opts.otel_endpoint[0] = '\0';
+  }
   opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
   opts.json = OPT_JSON_DEFAULT;
   SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));

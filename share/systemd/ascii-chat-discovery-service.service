@@ -12,7 +12,7 @@ Type=notify
 ExecStart=@ASCII_CHAT_EXECUTABLE@ acds 0.0.0.0 :: \
   --port 27225 \
   --database /var/lib/ascii-chat/acds.db \
-  --key /etc/ascii-chat/acds_identity.key \
+  --key /etc/ascii-chat/acds_identity.key
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=3

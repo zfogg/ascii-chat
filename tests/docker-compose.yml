@@ -123,6 +123,12 @@ services:
   # from the normal test runner because systemd must be PID 1.
   ascii-chat-systemd:
     image: ascii-chat-tests:latest
+    profiles: [systemd]
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+      platforms:
+        - linux/amd64
     entrypoint: []
     working_dir: /app
     privileged: true

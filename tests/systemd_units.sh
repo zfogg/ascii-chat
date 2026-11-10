@@ -4,6 +4,11 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 units=(ascii-chat-server ascii-chat-discovery-service ascii-chat-mcp-server ascii-chat-api-server)
 for unit in "${units[@]}"; do
   file="$root/share/systemd/$unit.service"
+  case "$unit" in
+    ascii-chat-server|ascii-chat-api-server) expected_mode=server ;;
+    ascii-chat-discovery-service) expected_mode=acds ;;
+    ascii-chat-mcp-server) expected_mode=mcp-server ;;
+  esac
   mode="${unit#ascii-chat-}"
   test -s "$file"
   grep -q '^Type=notify$' "$file"
@@ -13,7 +18,7 @@ for unit in "${units[@]}"; do
   grep -q "^SyslogIdentifier=ascii-chat-$mode$" "$file"
   grep -q '^ExecStart=@ASCII_CHAT_EXECUTABLE@ ' "$file"
   ! grep -Eq -- '--(color|splash-screen|no-check-update|otel-endpoint|log-file)' "$file"
-  grep -Eq '^ExecStart=@ASCII_CHAT_EXECUTABLE@ (server|acds|mcp-server)( |$)' "$file"
+  grep -Eq "^ExecStart=@ASCII_CHAT_EXECUTABLE@ ${expected_mode}( |$)" "$file"
 done
 test -x "$root/scripts/install-systemd-confs.sh"
 "$root/scripts/install-systemd-confs.sh" --help >/dev/null

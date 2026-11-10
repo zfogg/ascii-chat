@@ -715,6 +715,8 @@ if(UNIX AND NOT APPLE)
         configure_file("${_systemd_service}" "${_systemd_install_dir}/${_systemd_name}" @ONLY)
         install(FILES "${_systemd_install_dir}/${_systemd_name}" DESTINATION lib/systemd/system COMPONENT Runtime)
     endforeach()
+    install(FILES "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat.sysusers"
+        DESTINATION lib/sysusers.d COMPONENT Runtime)
     message(STATUS "${BoldGreen}Configured${ColorReset} ascii-chat systemd services → ${BoldYellow}lib/systemd/system/${ColorReset}")
 endif()
 
