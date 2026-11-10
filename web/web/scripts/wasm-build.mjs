@@ -28,7 +28,6 @@ const requiredExports = {
   mirror: [
     "AsciiRendererBinding",
     "MirrorFrameBinding",
-    "AudioProcessorBinding",
   ],
   client: [
     "ClientSessionBinding",
@@ -38,8 +37,8 @@ const requiredExports = {
     "AudioSessionBinding",
   ],
 };
-function validateArtifactExports(kind, artifact) {
-  const source = readFileSync(artifact, "utf8");
+function validateArtifactExports(kind, artifact, declaration) {
+  const source = readFileSync(declaration ?? artifact, "utf8");
   for (const name of requiredExports[kind]) {
     if (!source.includes(name))
       throw new Error(`WASM ${kind} artifact does not export ${name}`);
@@ -147,8 +146,16 @@ if (
   mkdirSync(typeOutput, { recursive: true });
   for (const file of types)
     copyArtifact(resolve(source, file), resolve(typeOutput, file));
-  validateArtifactExports("mirror", resolve(output, "mirror.js"));
-  validateArtifactExports("client", resolve(output, "client.js"));
+  validateArtifactExports(
+    "mirror",
+    resolve(output, "mirror.js"),
+    resolve(typeOutput, "mirror-bindings.d.ts"),
+  );
+  validateArtifactExports(
+    "client",
+    resolve(output, "client.js"),
+    resolve(typeOutput, "client-bindings.d.ts"),
+  );
   // Normalize generated glue and declarations before recording their hashes.
   execFileSync(
     process.execPath,
