@@ -57,7 +57,6 @@ typedef struct {
   size_t frame_count;
   size_t frame_capacity;
   char output_path[PLATFORM_MAX_PATH_LENGTH];
-  char source_path[PLATFORM_MAX_PATH_LENGTH];
   char mime_type[128];
   uint64_t elapsed_ms;
   bool timed_out;
@@ -83,6 +82,8 @@ typedef struct {
 typedef struct {
   char **argv;
   size_t argc;
+  char source_path[PLATFORM_MAX_PATH_LENGTH];
+  char source_path[PLATFORM_MAX_PATH_LENGTH];
   char upload_dir[PLATFORM_MAX_PATH_LENGTH];
   char stage_dir[PLATFORM_MAX_PATH_LENGTH];
   char stage_file[PLATFORM_MAX_PATH_LENGTH];

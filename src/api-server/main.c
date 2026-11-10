@@ -129,9 +129,8 @@ static void api_write_result(http_response_t *response, const char *format, cons
 
 static void api_render_complete(http_renderer_job_t *job, const http_render_result_t *result, void *user_data) {
   (void)result;
-  (void)user_data;
+  api_server_t *server = user_data;
   api_render_job_t *pending = job->user_data;
-  api_server_t *server = pending ? pending->server : user_data;
   if (pending) {
     atomic_store_bool(&pending->completed, true);
   }
@@ -170,6 +169,8 @@ static void api_wakeup(void *user_data) {
     platform_delete_temp_file(pending->path);
     SAFE_FREE(pending);
   }
+  /* Every renderer job is owned by a pending entry.  Reap only after the
+   * completed entries have been unlinked and no callback can use them. */
   http_renderer_reap(server->renderer, false);
 }
 
@@ -351,6 +352,7 @@ int api_server_main(void) {
   http_server_t *server = NULL;
   api_server_t api = {0};
   quic_endpoint_t *http3_endpoint = NULL;
+  quic_endpoint_t *http3_endpoint6 = NULL;
   const char *tls_cert = GET_OPTION(tls_cert);
   const char *tls_key = GET_OPTION(tls_key);
   const char *tls_password = GET_OPTION(tls_key_password);
@@ -405,6 +407,15 @@ int api_server_main(void) {
                                    .http_server = server};
       err = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config,
                                &http3_endpoint);
+      if (err == ASCIICHAT_OK && GET_OPTION(address6) && *GET_OPTION(address6)) {
+        struct sockaddr_storage bind_address6;
+        socklen_t bind_length6 = 0;
+        err = parse_numeric_socket_address(GET_OPTION(address6), (uint16_t)GET_OPTION(port), &bind_address6,
+                                           &bind_length6);
+        if (err == ASCIICHAT_OK)
+          err = quic_endpoint_open((const struct sockaddr *)&bind_address6, bind_length6, true, &quic_config,
+                                   &http3_endpoint6);
+      }
     }
     if (err != ASCIICHAT_OK) {
       LOG_ERRNO_IF_SET("API HTTP/3 listener initialization failed");
@@ -420,6 +431,10 @@ int api_server_main(void) {
       (void)quic_endpoint_stop(http3_endpoint);
       (void)quic_endpoint_destroy(&http3_endpoint);
     }
+    if (http3_endpoint6) {
+      (void)quic_endpoint_stop(http3_endpoint6);
+      (void)quic_endpoint_destroy(&http3_endpoint6);
+    }
     http_server_destroy(&server);
     http_renderer_destroy(&api.renderer);
     return err;
@@ -432,6 +447,10 @@ int api_server_main(void) {
   if (http3_endpoint) {
     (void)quic_endpoint_stop(http3_endpoint);
     (void)quic_endpoint_destroy(&http3_endpoint);
+  }
+  if (http3_endpoint6) {
+    (void)quic_endpoint_stop(http3_endpoint6);
+    (void)quic_endpoint_destroy(&http3_endpoint6);
   }
   http_renderer_destroy(&api.renderer);
   api_discard_jobs(&api);
