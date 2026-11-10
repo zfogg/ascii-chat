@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import * as dgram from "node:dgram";
 import * as fs from "node:fs";
 import * as net from "node:net";
 import * as os from "node:os";
@@ -46,17 +45,6 @@ async function unusedTcpPorts(count: number): Promise<number[]> {
   return ports;
 }
 
-async function unusedUdpPort(): Promise<number> {
-  const socket = dgram.createSocket("udp4");
-  await new Promise<void>((resolve, reject) => {
-    socket.once("error", reject);
-    socket.bind(0, "127.0.0.1", resolve);
-  });
-  const address = socket.address();
-  await new Promise<void>((resolve) => socket.close(() => resolve()));
-  return address.port;
-}
-
 function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true });
@@ -80,6 +68,16 @@ async function dockerNetworkIp(network: string): Promise<string> {
   const subnet = parsed[0]?.IPAM.Config[0]?.Subnet;
   if (!subnet) throw new Error(`Docker network ${network} has no subnet`);
   return `${subnet.split(".").slice(0, 3).join(".")}.10`;
+}
+
+async function dockerPublishedPort(
+  container: string,
+  endpoint: "3478/udp" | "3478/tcp",
+): Promise<number> {
+  const output = await run("docker", ["port", container, endpoint]);
+  const match = output.match(/:(\d+)\s*$/m);
+  if (!match) throw new Error(`Docker did not publish ${endpoint}: ${output}`);
+  return Number(match[1]);
 }
 
 async function stopProcess(child: ChildProcess | undefined): Promise<void> {
@@ -272,7 +270,7 @@ async function runCryptoRenderCase(
       const acdsWsPort = ports[1]!;
       const serverTcpPort = ports[2]!;
       const serverWsPort = ports[3]!;
-      let turnPort = await unusedUdpPort();
+      let turnPort = 0;
       const relayStart = 52_000 + Math.floor(Math.random() * 11_000);
       const relayEnd = relayStart + 15;
       const subnetOctet = 20 + Math.floor(Math.random() * 200);
@@ -294,9 +292,9 @@ async function runCryptoRenderCase(
             "--ip",
             turnIp,
             "--publish",
-            `127.0.0.1:${turnPort}:3478/udp`,
+            "127.0.0.1::3478/udp",
             "--publish",
-            `127.0.0.1:${turnPort}:3478/tcp`,
+            "127.0.0.1::3478/tcp",
             "--publish",
             `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
             "coturn/coturn:latest",
@@ -322,11 +320,12 @@ async function runCryptoRenderCase(
           lastDockerError = error;
           await run("docker", ["rm", "--force", container]).catch(() => "");
           if (attempt === 7) throw error;
-          turnPort = await unusedUdpPort();
+          turnPort = 0;
         }
       }
       if (!started)
         throw lastDockerError ?? new Error("Could not start TURN container");
+      turnPort = await dockerPublishedPort(container, "3478/udp");
       turnStarted = true;
       acds = new LoggedProcess(
         [
