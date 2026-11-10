@@ -42,7 +42,7 @@ coverage/report generation, CMake helpers, and code-generation/build helpers.
 - Follow the repository's Python formatting and lint configuration. Use `uv run`
   for `pytest`, `ruff`, and `ty`.
 - Run Ruff and ty for the affected Python projects and resolve their errors before
-  committing. The defer tool has its own project under `src/tooling/defer`.
+  committing. The defer tool is maintained in its own repository.
 - Consult the [ascii-chat testing skill](../ascii-chat-testing/SKILL.md) for Python
   test placement and test commands.
 - Python scripts should use structured exceptions and actionable failures; do

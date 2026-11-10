@@ -88,16 +88,13 @@
  * declaration. These restrictions make unsupported
  * control flow a build error rather than silently losing cleanup.
  *
- * CMake builds and uses the C++ transformer by default. It writes generated
+ * CMake uses the standalone C++ transformer by default. It writes generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
- * The native tool uses LLVM support and libclang development libraries and does
- * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
- * cannot be found automatically. A cross build builds a separate host tool;
- * `DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
- * It can also point to a `defer-tool` release from
- * https://github.com/zfogg/defer; the marker header supports both that tool
- * and the in-tree implementation. Use a binary for the build host, including
- * when cross-compiling.
+ * The `deps/defer` submodule supplies the CMake integration. CMake downloads a
+ * release for the build host and verifies its checksum; `DEFER_NATIVE_BINARY`
+ * can point to an existing host executable instead. The native build does not
+ * require Python or LLVM development libraries for defer. The tool reads each
+ * translation unit's flags and include paths from `compile_commands.json`.
  * The native tool transforms batch files concurrently using available CPU
  * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
  * During incremental native builds, the batch reuses transformations whose
@@ -126,13 +123,9 @@
  * graph before compilation. Unix Makefiles use conservative reconfiguration
  * on C source changes to ensure the same correctness.
  *
- * Set `DEFER_BACKEND=PYTHON` to select the retained Python backend.
- * It runs through the defer uv project and requires uv-managed Python 3.10 or
- * newer and LLVM 19 or newer libclang; set
- * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. The CMake
- * integration for either backend requires a compilation database and a
- * single-config Ninja or Unix Makefiles generator. Their generated C and
- * fail-closed behavior are checked together.
+ * The CMake integration requires a compilation database and a single-config
+ * Ninja or Unix Makefiles generator. The standalone defer repository also
+ * maintains a Python implementation.
  * Directly compiling an untransformed C source containing defer fails rather
  * than turning cleanup into a no-op. C header functions use per-translation-
  * unit Clang VFS overlays. `DEFER_HEADER_OVERLAYS=AUTO` detects
@@ -212,7 +205,7 @@
  * it is not a standalone translation unit.
  *
  * For a longer randomized check on a Unix host with Clang and libFuzzer,
- * configure `src/tooling/defer` with `DEFER_BUILD_FUZZER=ON`, build
- * `ascii-defer-fuzz`, and run it with a writable copy of `tests/fuzz/defer` as
+ * configure the standalone defer project with `DEFER_BUILD_FUZZER=ON`, build
+ * `defer-fuzz`, and run it with a writable copy of `tests/fuzz/defer` as
  * the corpus. Successful transformations are parsed again and must remain valid C.
  */

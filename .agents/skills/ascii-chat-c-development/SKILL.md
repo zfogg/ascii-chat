@@ -32,10 +32,9 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 - CMake transforms C and Objective-C sources and supported header function bodies before compilation; generated files under
   `build/defer_transformed/` are build artifacts and must not be edited.
 - The standalone [defer tool](https://github.com/zfogg/defer) is maintained
-  separately. The current CMake integration builds the in-tree host tool by
-  default; `DEFER_NATIVE_BINARY` selects an existing host executable.
-  Use a release containing the target-triple and musl header fixes when testing
-  cross-compilation. For tool behavior and diagnostics, consult the standalone
+  separately and is included as the `deps/defer` submodule. CMake downloads a
+  host release by default; `DEFER_NATIVE_BINARY` selects an existing executable.
+  For tool behavior and diagnostics, consult the standalone
   [documentation](https://zfogg.github.io/defer/) and this repository's defer
   topic; do not edit generated transformed sources.
 - C header support uses per-translation-unit overlays. CMake automatically

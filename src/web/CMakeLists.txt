@@ -66,17 +66,6 @@ include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
 
-# defer-tool parses sources outside the compiler target and therefore does not
-# inherit target include directories. Keep the WASM libsodium headers visible
-# to that parser as well as to the actual compiler.
-if(LIBSODIUM_INCLUDE_DIRS)
-    list(APPEND DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
-endif()
-if(DEFINED libsodium-wasm-src_SOURCE_DIR)
-    list(APPEND DEFER_EXTRA_INCLUDE_DIRS
-        "${libsodium-wasm-src_SOURCE_DIR}/src/libsodium/include")
-endif()
-
 include(${_cmake_dir}/deps/PCRE2.cmake)
 include(${_cmake_dir}/deps/ICU.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
@@ -739,19 +728,12 @@ target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${
 # parent project's defer finalization cannot see these targets. Reuse the same
 # repository-level defer module once, after all browser targets are declared.
 if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY)
+    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY OR NOT EXISTS "${DEFER_CONFIG_FILE}")
         message(FATAL_ERROR
-            "The parent CMake project must provide DEFER_SOURCE_ROOT and DEFER_NATIVE_BINARY")
+            "The parent CMake project must provide DEFER_SOURCE_ROOT, DEFER_NATIVE_BINARY, and DEFER_CONFIG_FILE")
     endif()
-    include("${DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
-    ascii_defer_prepare_native()
-    set(_batch_stage web)
-    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
-    file(WRITE "${_plan_records}" "")
+    set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
+    include("${DEFER_CONFIG_FILE}")
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
-    ascii_defer_scan_targets(_defer_sources ${_ascii_wasm_defer_targets})
-    foreach(_ascii_wasm_defer_target IN LISTS _ascii_wasm_defer_targets)
-        ascii_defer_apply_target("${_ascii_wasm_defer_target}")
-    endforeach()
-    ascii_defer_finish_batches()
+    defer_targets(${_ascii_wasm_defer_targets})
 endif()

@@ -77,7 +77,6 @@ run_uv() {
 
 sync_python_tooling() {
   command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
-  run_uv sync --project "${PROJECT_ROOT}/src/tooling/defer" --frozen --managed-python
   run_uv sync --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python
 }
 
@@ -93,7 +92,7 @@ verify_llvm_for_defer() {
     exit 1
   fi
   compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
-  resolved_dir="$(dirname "$(run_uv run --project "$(dirname "${BASH_SOURCE[0]}")/../src/tooling/defer" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
+  resolved_dir="$(dirname "$(run_uv run --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
   libdir="${compiler_dir}/../lib"
   for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major" \
       "$resolved_dir/../lib/libclang.dylib" "$resolved_dir/../lib/libclang.so" "$resolved_dir/../lib/libclang.so.$major"; do
