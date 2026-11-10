@@ -376,8 +376,8 @@ int api_server_main(void) {
     (void)quic_endpoint_stop(http3_endpoint);
     (void)quic_endpoint_destroy(&http3_endpoint);
   }
+  http_renderer_destroy(&api.renderer);
   api_discard_jobs(&api);
   http_server_destroy(&server);
-  http_renderer_destroy(&api.renderer);
   return ASCIICHAT_OK;
 }
