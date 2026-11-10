@@ -2,7 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE 32
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/util/url.h>
 /**
  * @file network/http/client/client.c

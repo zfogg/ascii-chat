@@ -1,4 +1,4 @@
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/common.h>
 #include <libplatform/mutex.h>

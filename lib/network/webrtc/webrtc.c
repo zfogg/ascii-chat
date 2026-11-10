@@ -13,7 +13,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define WEBRTC_TURN_URL_BUFFER_SIZE 1024
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file networking/webrtc/webrtc.c

@@ -1,4 +1,4 @@
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/crypto/record.h>
 
 #include <ascii-chat/buffer.h>

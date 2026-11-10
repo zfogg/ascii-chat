@@ -106,8 +106,8 @@ int mcp_server_main(void) {
   asciichat_error_t err = s->policy.hosted ? mcp_http_run(s) : mcp_stdio_run(s);
   stats_runtime_set_provider(NULL, NULL);
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (s->jobs[i].started)
-      atomic_store_bool(&s->jobs[i].cancelled, true);
+    if (s->jobs[i].renderer_job.started)
+      http_renderer_job_cancel(&s->jobs[i].renderer_job);
   mcp_jobs_reap(s, true);
   mcp_stdio_release();
   mutex_destroy(&s->output_mutex);

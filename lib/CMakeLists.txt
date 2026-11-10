@@ -9,20 +9,7 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
-set(_LIBPLATFORM_BUILD_TESTS ${LIBPLATFORM_BUILD_TESTS})
-set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL "Disable standalone libplatform tests in ascii-chat" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
-                 ${CMAKE_BINARY_DIR}/deps/libplatform)
-if(DEFINED _LIBPLATFORM_BUILD_TESTS)
-    set(LIBPLATFORM_BUILD_TESTS ${_LIBPLATFORM_BUILD_TESTS})
-else()
-    unset(LIBPLATFORM_BUILD_TESTS)
-endif()
-target_include_directories(asciichat-project-includes INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
-
 set(CORE_SRCS
-    ${LIB_DIR}/log/terminal.c
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
@@ -30,6 +17,7 @@ set(CORE_SRCS
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/atomic.c
     ${LIB_DIR}/app_callbacks.c
+    ${LIB_DIR}/lifecycle.c
     ${LIB_DIR}/stats/stats.c
     ${LIB_DIR}/stats/descriptors.c
     ${LIB_DIR}/stats/runtime.c
@@ -195,6 +183,7 @@ endif()
 # Named registry, mutex tracking, backtrace, and sync always included (required for all builds)
 # These provide debug implementations for DEBUG builds, stubs for RELEASE builds
 list(APPEND CORE_SRCS
+    ${LIB_DIR}/debug/named.c
     ${LIB_DIR}/debug/mutex.c
     ${LIB_DIR}/debug/backtrace.c
     ${LIB_DIR}/debug/sync.c
@@ -205,7 +194,7 @@ list(APPEND CORE_SRCS
 )
 
 # Additional debug sources only in non-Release builds
-if(NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/atomic.c
         ${LIB_DIR}/debug/memory.c
@@ -228,15 +217,7 @@ endif()
 
 # Include subdirectories that define module source variables
 add_subdirectory(${LIB_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
-set(PLATFORM_SRCS ${LIB_DIR}/event.c)
-set(PLATFORM_LIBS)
-if(WIN32)
-    list(APPEND PLATFORM_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c)
-elseif(PLATFORM_DARWIN)
-    list(APPEND PLATFORM_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m)
-elseif(PLATFORM_LINUX)
-    list(APPEND PLATFORM_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/linux/webcam_v4l2.c)
-endif()
+add_subdirectory(${LIB_DIR}/platform ${CMAKE_BINARY_DIR}/lib/platform)
 add_subdirectory(${LIB_DIR}/crypto ${CMAKE_BINARY_DIR}/lib/crypto)
 add_subdirectory(${LIB_DIR}/video ${CMAKE_BINARY_DIR}/lib/video)
 add_subdirectory(${LIB_DIR}/audio ${CMAKE_BINARY_DIR}/lib/audio)
@@ -475,9 +456,6 @@ else()
         if(NOT USE_MUSL)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(LIBSYSTEMD REQUIRED libsystemd)
-            target_include_directories(ascii-chat-core PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-            target_link_libraries(ascii-chat-core PRIVATE ${LIBSYSTEMD_LIBRARIES})
-            target_compile_definitions(ascii-chat-core PRIVATE HAVE_LIBSYSTEMD=1)
             target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
             target_link_libraries(ascii-chat-platform PRIVATE ${LIBSYSTEMD_LIBRARIES})
             target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
@@ -714,6 +692,11 @@ endif()
 # Module 8: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
+if(PLATFORM_LINUX AND NOT USE_MUSL)
+    target_include_directories(ascii-chat-core PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-core PRIVATE ${LIBSYSTEMD_LIBRARIES})
+    target_compile_definitions(ascii-chat-core PRIVATE HAVE_LIBSYSTEMD=1)
+endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
@@ -822,23 +805,21 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+if(USE_MUSL AND ASCIICHAT_LIBUV_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_INCLUDE_DIRS})
+endif()
 # Prefer the package target so manifest/vcpkg builds carry the correct
 # include and transitive-link settings on every platform.  Keep the direct
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
-if(TARGET gotel::gotel)
-    # gotel's OTLP/gRPC target already carries its bundled nghttp2 archive.
-    # Linking the vcpkg archive here as well creates duplicate replacement
-    # symbols with lld on Windows. Keep the package include path for the
-    # HTTP/2 server, but let gotel provide the single linked implementation.
-    find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h)
-    if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR)
-        message(FATAL_ERROR "nghttp2 development headers are required for the shared HTTP/2 server")
+if(USE_MUSL)
+    # gotel builds this target for the active toolchain; a host installation
+    # can otherwise introduce glibc headers and libraries into a musl build.
+    if(NOT TARGET nghttp2_static)
+        message(FATAL_ERROR "musl builds require the toolchain-built nghttp2_static target")
     endif()
-    set(ASCIICHAT_NGHTTP2_TARGET "")
-    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
-    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
 elseif(TARGET nghttp2::nghttp2)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2)
 elseif(TARGET nghttp2::nghttp2_static)
@@ -871,6 +852,9 @@ else()
     target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
 endif()
 target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
+if(ASCIICHAT_LIBUV_TARGET)
+    target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
@@ -971,12 +955,11 @@ endif()
 set(_build_shared_lib TRUE)
 if(USE_MUSL)
     set(_build_shared_lib FALSE)
-elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT ASCIICHAT_SHARED_DEPS)
+elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     set(_build_shared_lib FALSE)
 endif()
 if(_build_shared_lib)
 add_library(ascii-chat-shared SHARED
-        $<TARGET_OBJECTS:libplatform-objects>
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
         $<TARGET_OBJECTS:ascii-chat-platform>
@@ -1041,7 +1024,7 @@ add_library(ascii-chat-shared SHARED
         else()
             set(_shared_origin "\$ORIGIN")
         endif()
-        if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release builds: use only relative paths to avoid embedded developer paths
             # Copy FFmpeg libraries to lib/ directory alongside shared library
             file(GLOB _ffmpeg_libs_for_shared "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/*.so*")
@@ -1073,7 +1056,7 @@ add_library(ascii-chat-shared SHARED
         endif()
 
         # Let CMake encode each runtime search path for the platform linker.
-        if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release: use only our explicit RPATH, don't add linked library paths automatically
             set_target_properties(ascii-chat-shared PROPERTIES
                 BUILD_RPATH "${_shared_rpath_list}"
@@ -1109,7 +1092,6 @@ add_library(ascii-chat-shared SHARED
     # Use a wrapper script to collect object files and generate .def
     # Object files are in CMakeFiles/<target>.dir/ directories
     set(MODULE_TARGETS
-        libplatform-objects
         ascii-chat-util
         ascii-chat-data-structures
         ascii-chat-platform
@@ -1521,6 +1503,11 @@ endif()
 # Note: log_debug/log_info/log_error are macros that call log_msg
 set(ASCIICHAT_REQUIRED_SYMBOLS
     "log_msg"
+    "acthread_create"
+    "thread_join"
+    "mutex_init"
+    "mutex_lock"
+    "mutex_unlock"
     "send_packet"
     "receive_packet"
     "crypto_init"
@@ -1590,6 +1577,11 @@ endif()  # End if(_build_shared_lib) - closes shared library configuration
 if(NOT ASCIICHAT_REQUIRED_SYMBOLS)
     set(ASCIICHAT_REQUIRED_SYMBOLS
         "log_msg"
+        "acthread_create"
+        "thread_join"
+        "mutex_init"
+        "mutex_lock"
+        "mutex_unlock"
         "send_packet"
         "receive_packet"
         "crypto_init"
@@ -1614,7 +1606,6 @@ endif()
 
 # List of OBJECT library targets to archive
 set(STATIC_LIB_MODULES
-    libplatform-objects
     ascii-chat-util
     ascii-chat-data-structures
     ascii-chat-platform

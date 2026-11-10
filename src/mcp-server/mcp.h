@@ -6,13 +6,11 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/otel.h>
-#include <libplatform/compiler.h>
-#include <libplatform/system.h>
-#include <libplatform/mutex.h>
-#include <libplatform/terminal.h>
-#include <libplatform/filesystem.h>
-#include <libplatform/util/string.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/string.h>
 #include <ascii-chat/network/http/server/server.h>
+#include "../common/http_renderer.h"
 #include <yyjson.h>
 #include <string.h>
 
@@ -52,33 +50,6 @@ typedef struct {
  * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
  * allocation, lock, thread, or callback context recorded in those fields.
  */
-typedef struct {
-  char **argv;
-  size_t argc;
-  char upload_dir[PLATFORM_MAX_PATH_LENGTH];
-  char stage_dir[PLATFORM_MAX_PATH_LENGTH];
-  char stage_file[PLATFORM_MAX_PATH_LENGTH];
-  char output_path[PLATFORM_MAX_PATH_LENGTH];
-  unsigned timeout_ms;
-  bool capture_webcam;
-  /**
-   */
-} mcp_render_request_t;
-
-typedef struct {
-  char *text;
-  size_t length;
-  char error[MCP_SERVER_MCP_ERROR_BUFFER_SIZE];
-  uint64_t elapsed_ms;
-  bool timed_out;
-  char output_path[PLATFORM_MAX_PATH_LENGTH];
-  /**
-   * @brief mcp render request is intentionally a small, concrete record. Fields such as `argv`, `argc`, `timeout_ms`,
-   * `capture_webcam` give callers the identity and current value they need. It is normally borrowed from, or owned by,
-   * the surrounding subsystem—not independently managed.
-   */
-} mcp_render_result_t;
-
 /**
  * @brief For mcp render result, this is the live record that ties `text`, `length`, `elapsed_ms`, `timed_out` together.
  * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
@@ -88,13 +59,10 @@ typedef struct mcp_job {
   struct mcp_server *server;
   yyjson_doc *message;
   yyjson_mut_doc *response;
-  mcp_render_request_t request;
+  http_renderer_process_request_t request;
   mcp_tool_t tool;
   gotel_context_t telemetry_parent;
-  platform_thread_t thread;
-  atomic_t cancelled;
-  atomic_t done;
-  bool started;
+  http_renderer_job_t renderer_job;
   void *connection;
   char session_id[MCP_SESSION_ID_LENGTH + 1];
 } mcp_job_t;
@@ -121,9 +89,8 @@ asciichat_error_t mcp_stdio_reserve(void);
 void mcp_stdio_release(void);
 yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *doc, const mcp_policy_t *policy);
 asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool, yyjson_val *arguments,
-                                    mcp_render_request_t *out);
-void mcp_request_destroy(mcp_render_request_t *request);
-void mcp_render_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result);
+                                    http_renderer_process_request_t *out);
+void mcp_request_destroy(http_renderer_process_request_t *request);
 yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id,
                              bool *pending);
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);

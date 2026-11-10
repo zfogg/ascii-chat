@@ -8,7 +8,7 @@
  * the complexity of the underlying embedded_resources API.
  */
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/options/manpage/resources.h>
 #include <ascii-chat/embedded_resources.h>
 #include <ascii-chat/log/log.h>

@@ -919,6 +919,7 @@ typedef enum {
   MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
   MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
   MODE_MCP_SERVER,        ///< Model Context Protocol rendering server
+  MODE_API_SERVER,        ///< Image-to-ASCII HTTP API server
   MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
@@ -936,8 +937,9 @@ typedef enum {
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
   OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
+  OPTION_MODE_API_SERVER = (1 << MODE_API_SERVER),
   OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
+  OPTION_MODE_ALL = 0x7F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**

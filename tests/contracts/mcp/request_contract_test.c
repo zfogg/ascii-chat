@@ -40,7 +40,7 @@ static int fixture_worker(platform_thread_t *thread, const char *name, void *(*f
   (void)data;
   return -1;
 }
-void mcp_render_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result) {
+void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled, http_renderer_process_result_t *result) {
   (void)request;
   (void)cancelled;
   SAFE_STRNCPY(result->error, "No renderer requested by this contract", sizeof(result->error));
@@ -76,7 +76,7 @@ static void teardown(void) {
   log_destroy();
 }
 TestSuite(mcp_requests, .init = setup, .fini = teardown, .timeout = 20);
-static bool has_arg(const mcp_render_request_t *request, const char *value) {
+static bool has_arg(const http_renderer_process_request_t *request, const char *value) {
   for (size_t i = 0; i < request->argc; ++i)
     if (!strcmp(request->argv[i], value))
       return true;
@@ -147,7 +147,7 @@ Test(mcp_requests, malformed_arguments_and_incompatible_sources_are_rejected_and
   mcp_policy_t policy = {0};
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
-    mcp_render_request_t request;
+    http_renderer_process_request_t request;
     cr_assert_neq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
                   "case %u: %s", i, cases[i].json);
     mcp_request_destroy(&request);
@@ -186,7 +186,7 @@ Test(mcp_requests, accepted_sources_produce_bounded_cli_arguments_and_staged_upl
   mcp_policy_t policy = {0};
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
-    mcp_render_request_t request;
+    http_renderer_process_request_t request;
     cr_assert_eq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
                  "case %u: %s", i, cases[i].json);
     cr_assert(has_arg(&request, cases[i].expected), "case %u missing %s", i, cases[i].expected);
@@ -210,7 +210,7 @@ Test(mcp_requests, accepted_sources_produce_bounded_cli_arguments_and_staged_upl
   }
 }
 Test(mcp_requests, binary_options_are_placed_before_mode_and_argument_overflow_preserves_existing_arguments) {
-  mcp_render_request_t request = {.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
+  http_renderer_process_request_t request = {.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
   cr_assert_eq(arg(&request, "ascii-chat"), ASCIICHAT_OK);
   cr_assert_eq(arg(&request, "mirror"), ASCIICHAT_OK);
   cr_assert_eq(option(&request, "log-level", "debug"), ASCIICHAT_OK);
@@ -229,7 +229,7 @@ Test(mcp_requests, output_staging_does_not_create_or_replace_the_published_desti
   cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-stage-contract"), ASCIICHAT_OK);
   char output[PLATFORM_MAX_PATH_LENGTH];
   SAFE_SNPRINTF(output, sizeof(output), "%s/picture.png", directory);
-  mcp_render_request_t request = {.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
+  http_renderer_process_request_t request = {.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
   cr_assert_eq(stage_output(output, &request), ASCIICHAT_OK);
   cr_assert_neq(platform_access(output, PLATFORM_ACCESS_EXISTS), 0);
   cr_assert_eq(platform_access(request.stage_dir, PLATFORM_ACCESS_EXISTS), 0);
@@ -241,7 +241,7 @@ Test(mcp_requests, output_staging_does_not_create_or_replace_the_published_desti
   cr_assert_not_null(f);
   cr_assert_eq(fwrite("keep", 1, 4, f), 4);
   cr_assert_eq(fclose(f), 0);
-  request = (mcp_render_request_t){.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
+  request = (http_renderer_process_request_t){.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
   cr_assert_eq(stage_output(output, &request), ERROR_INVALID_PARAM);
   mcp_request_destroy(&request);
   f = platform_fopen("preserved-output", output, "rb");
@@ -382,7 +382,7 @@ Test(mcp_requests, hosted_profile_accepts_url_and_stages_requested_media_format)
   yyjson_doc *doc =
       read_json("{\"url\":\"https://example.test/"
                 "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
-  mcp_render_request_t request;
+  http_renderer_process_request_t request;
   cr_assert_eq(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
   cr_assert(has_arg(&request, "--url=https://example.test/upload.mp4"));
   cr_assert(has_arg(&request, "--audio=true"));
@@ -404,7 +404,7 @@ Test(mcp_requests, hosted_default_format_tracks_snapshot_mode) {
   const char *extensions[] = {".png", ".mp4", ".mp4"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
-    mcp_render_request_t request;
+    http_renderer_process_request_t request;
     cr_assert_eq(mcp_request_parse(&policy, MCP_FILE, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
     cr_assert_not_null(strstr(request.stage_file, extensions[i]));
     mcp_request_destroy(&request);
@@ -424,7 +424,7 @@ Test(mcp_requests, gif_media_defaults_to_animation_and_respects_snapshot_options
       "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
-    mcp_render_request_t request;
+    http_renderer_process_request_t request;
     cr_assert_eq(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
     cr_assert_eq(has_arg(&request, "--snapshot=false"), i == 0);
     mcp_request_destroy(&request);
