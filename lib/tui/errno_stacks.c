@@ -424,9 +424,13 @@ void ui_errno_stacks_toggle(void) {
     g_state.output_fd = ui_controller_active_fd();
   bool visible = g_state.visible;
   state_unlock();
-  if (visible)
+  if (visible) {
     publish();
-  else
+    /* Keep diagnostic stacks as the focused screen even when the current
+     * snapshot is empty; native frontends still need the empty-state view. */
+    ui_controller_select_interactive(UI_SCREEN_ERRNO);
+    ui_controller_redraw();
+  } else
     ui_controller_remove(UI_SCREEN_ERRNO);
 #endif
 }
