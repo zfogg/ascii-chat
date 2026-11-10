@@ -29,14 +29,14 @@ if printf "%s\n" "$all_staged" | grep -q "^web/"; then
   (cd web && "$node_command" node_modules/vite-plus/bin/vp check) &
   web_pid=$!
 fi
-workflow_pid=
+github_yaml_pid=
 bash scripts/format-github-workflows.sh &
-workflow_pid=$!
+github_yaml_pid=$!
 status=0
 if [ -n "$format_pid" ]; then wait "$format_pid" || status=1; fi
 if [ -n "$clang_pid" ]; then wait "$clang_pid" || status=1; fi
 if [ -n "$web_pid" ]; then wait "$web_pid" || status=1; fi
-if [ -n "$workflow_pid" ]; then wait "$workflow_pid" || status=1; fi
+if [ -n "$github_yaml_pid" ]; then wait "$github_yaml_pid" || status=1; fi
 if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
