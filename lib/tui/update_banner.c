@@ -265,7 +265,9 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   for (int i = 0; i < count; ++i)
     buttons[i] = (ui_button_t){.label = labels[i]};
   ui_buttons_render(out, button_row, left + 3, width - 6, buttons, (size_t)count, (size_t)selected);
-  ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
+  /* The iOS bridge owns the active descriptor; process stdout is not the
+   * render surface when the Swift frontend is running. */
+  ui_controller_write(ui_controller_active_fd(), frame_buffer_get_content(out), frame_buffer_get_length(out));
   frame_buffer_destroy(out);
 }
 
@@ -618,8 +620,9 @@ void update_banner_toggle_overlay(void) {
 
 static void update_banner_present_overlay(void) {
   const bool snapshot = true;
+  int fd = ui_controller_active_fd();
   asciichat_errno_scope_t scope = errno_scope_begin();
-  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 24},
+  if (ui_controller_submit(UI_SCREEN_UPDATE, fd, (terminal_size_t){.cols = 32, .rows = 24},
                            render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
     g_update_overlay = false;
     LOG_ERRNO_IF_SET("Cannot show update checker");

@@ -72,6 +72,8 @@ void asciichat_ios_activate_tui(int item) {
     break;
   case 4:
     ui_errno_stacks_toggle();
+    if (ui_errno_stacks_visible())
+      ui_controller_select_interactive(UI_SCREEN_ERRNO);
     break;
   case 5:
     update_banner_toggle_overlay();
