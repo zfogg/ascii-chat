@@ -10,6 +10,8 @@ declare global {
     error(): number;
   };
   type BoundaryClientModule = {
+    processClientEvent(event: object): { code: number };
+    processClientEvents(events: object[]): { code: number }[];
     getClientWasmModule(): {
       ClientSessionBinding: new (options: object) => {
         process(event: object): { code: number };
@@ -182,17 +184,20 @@ test.describe("WASM browser boundary measurements", () => {
     await setupClient(clientPage);
     const result = await clientPage.evaluate(async () => {
       const module = window.__clientModule;
-      const wasm = module.getClientWasmModule();
-      const session = new wasm.ClientSessionBinding({});
       const event = { type: "snapshot" };
       const startSingle = performance.now();
-      for (let i = 0; i < 32; i++) session.process(event);
+      for (let i = 0; i < 32; i++) {
+        if (module.processClientEvent(event).code)
+          throw new Error("snapshot failed");
+      }
       const singleMs = performance.now() - startSingle;
       const startBatch = performance.now();
-      session.processBatch(Array.from({ length: 32 }, () => event));
+      const batch = module.processClientEvents(
+        Array.from({ length: 32 }, () => event),
+      );
+      if (batch.length !== 32 || batch.some((result) => result.code))
+        throw new Error("snapshot batch failed");
       const batchMs = performance.now() - startBatch;
-      session.close();
-      session.delete();
       return { singleMs, batchMs, semanticCalls: { single: 32, batch: 1 } };
     });
     expect(result.semanticCalls).toEqual({ single: 32, batch: 1 });
