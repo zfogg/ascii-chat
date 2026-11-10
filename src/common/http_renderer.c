@@ -225,6 +225,11 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     ffmpeg_decoder_destroy(decoder);
     return SET_ERRNO(ERROR_MEDIA_INIT, "Uploaded data does not contain a decodable image");
   }
+  if (image->w > 8192 || image->h > 8192) {
+    image_destroy(image);
+    ffmpeg_decoder_destroy(decoder);
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded image dimensions exceed the configured limit");
+  }
   size_t width = request->options.width > 0 ? (size_t)request->options.width : 80;
   size_t height = request->options.height > 0 ? (size_t)request->options.height
                                                : (size_t)((double)width * image->h / image->w / 2.0);
