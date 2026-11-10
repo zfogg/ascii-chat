@@ -387,6 +387,20 @@ export interface OpusCodecBinding extends ClassHandle {
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }
 
+export interface AudioSessionBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  close(): void;
+  process(
+    _0: AudioSamples,
+    _1: AudioSamples,
+  ): {
+    code?: number;
+    samples?: Float32Array;
+    payload?: Uint8Array;
+  };
+}
+
 export type PeerBytes = Uint8Array;
 
 export type NullablePeerBytes = Uint8Array | null;
@@ -561,6 +575,15 @@ interface EmbindModule {
   };
   OpusCodecBinding: {
     new (_0: number, _1: number, _2: number, _3: number): OpusCodecBinding;
+  };
+  AudioSessionBinding: {
+    new (
+      _0: number,
+      _1: boolean,
+      _2: number,
+      _3: number,
+      _4: number,
+    ): AudioSessionBinding;
   };
   BrowserSessionBinding: {
     new (

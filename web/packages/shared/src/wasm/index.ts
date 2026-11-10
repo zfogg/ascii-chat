@@ -44,6 +44,7 @@ export type { SessionUiEvent } from "../components/AsciiRenderer/types";
 export type {
   AudioProcessorBinding,
   OpusCodecBinding,
+  AudioSessionBinding,
   BrowserSessionBinding,
   DiscoveryBinding,
   HandoffBinding,

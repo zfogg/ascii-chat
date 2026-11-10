@@ -6,6 +6,8 @@ extern "C" {
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
+#include <cmath>
 #include <opus.h>
 #include <string>
 #include <vector>
@@ -204,6 +206,123 @@ private:
   std::vector<uint8_t> encoded_, input_;
 };
 
+class AudioSessionBinding {
+public:
+  AudioSessionBinding(int sample_rate, bool bypass, int encoder_channels, int bitrate, unsigned frame_samples)
+      : sample_rate_(sample_rate), encoder_channels_(encoder_channels), frame_samples_(frame_samples),
+        processor_(create_processor(sample_rate, bypass, frame_samples, 2)) {
+    if (!processor_ || (encoder_channels != 1 && encoder_channels != 2) || sample_rate <= 0 || bitrate <= 0 ||
+        frame_samples == 0) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser audio session configuration");
+      close();
+      return;
+    }
+    int error = OPUS_OK;
+    const int application = bitrate >= 128000 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
+    encoder_ = opus_encoder_create(sample_rate, encoder_channels, application, &error);
+    if (error != OPUS_OK || !encoder_) {
+      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser audio session encoder: %s", opus_strerror(error));
+      close();
+      return;
+    }
+    if (opus_encoder_ctl(encoder_, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
+      SET_ERRNO(ERROR_AUDIO, "Cannot configure browser audio session encoder");
+      close();
+      return;
+    }
+    scratch_.resize(frame_samples);
+    pcm_.resize((frame_samples / 2) * static_cast<unsigned>(encoder_channels));
+    encoded_.resize(4000);
+    initialized_ = true;
+  }
+  ~AudioSessionBinding() {
+    close();
+  }
+  AudioSessionBinding(const AudioSessionBinding &) = delete;
+  AudioSessionBinding &operator=(const AudioSessionBinding &) = delete;
+  bool valid() const {
+    return initialized_;
+  }
+  int error() const {
+    return initialized_ ? 0 : ERROR_INIT;
+  }
+  void close() {
+    if (processor_)
+      audio_processor_destroy(processor_);
+    if (encoder_)
+      opus_encoder_destroy(encoder_);
+    processor_ = nullptr;
+    encoder_ = nullptr;
+    initialized_ = false;
+    scratch_.clear();
+    pcm_.clear();
+    encoded_.clear();
+  }
+  emscripten::val process(AudioSamples microphone, AudioSamples media) {
+    const size_t count = microphone["length"].as<size_t>();
+    if (!initialized_)
+      return failure(SET_ERRNO(ERROR_INVALID_STATE, "Audio session is not initialized"));
+    if (count != frame_samples_ || media["length"].as<size_t>() != count)
+      return failure(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser audio frame size: %zu", count));
+    emscripten::val scratch = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));
+    scratch.call<void>("set", microphone);
+    const int processed = audio_processor_process(processor_, scratch_.data(), scratch_.data(), count);
+    if (processed)
+      return failure(processed);
+    emscripten::val result_samples = emscripten::val::global("Float32Array").new_(count);
+    std::vector<float> media_copy(count);
+    emscripten::val media_view = emscripten::val(emscripten::typed_memory_view(count, media_copy.data()));
+    media_view.call<void>("set", media);
+    for (size_t index = 0; index < count; ++index) {
+      scratch_[index] = std::max(-1.0f, std::min(1.0f, scratch_[index] + media_view[index].as<float>()));
+    }
+    result_samples.call<void>("set", emscripten::val(emscripten::typed_memory_view(count, scratch_.data())));
+    for (size_t index = 0; index < pcm_.size(); ++index) {
+      const float sample =
+          encoder_channels_ == 2 ? scratch_[index] : (scratch_[index * 2] + scratch_[index * 2 + 1]) * 0.5f;
+      pcm_[index] = static_cast<int16_t>(std::round(sample * (sample < 0 ? 32768.0f : 32767.0f)));
+    }
+    const int encoded = opus_encode(encoder_, pcm_.data(), static_cast<int>(frame_samples_ / 2), encoded_.data(),
+                                    static_cast<int>(encoded_.size()));
+    if (encoded < 0)
+      return failure(SET_ERRNO(ERROR_AUDIO, "Browser audio session encoding failed"));
+    const size_t payload_size = 18 + static_cast<size_t>(encoded);
+    std::vector<uint8_t> payload(payload_size);
+    auto put32 = [&payload](size_t offset, uint32_t value) {
+      payload[offset] = static_cast<uint8_t>(value >> 24);
+      payload[offset + 1] = static_cast<uint8_t>(value >> 16);
+      payload[offset + 2] = static_cast<uint8_t>(value >> 8);
+      payload[offset + 3] = static_cast<uint8_t>(value);
+    };
+    put32(0, static_cast<uint32_t>(sample_rate_));
+    put32(4, 20);
+    put32(8, 1);
+    payload[16] = static_cast<uint8_t>(encoded >> 8);
+    payload[17] = static_cast<uint8_t>(encoded);
+    memcpy(payload.data() + 18, encoded_.data(), static_cast<size_t>(encoded));
+    emscripten::val result = emscripten::val::object();
+    result.set("samples", result_samples);
+    result.set("payload", binding_copy_output(payload.data(), payload.size()));
+    return result;
+  }
+
+private:
+  static emscripten::val failure(int code) {
+    emscripten::val result = emscripten::val::object();
+    result.set("code", code);
+    return result;
+  }
+  int sample_rate_;
+  int encoder_channels_;
+  unsigned frame_samples_;
+  audio_processor_t *processor_ = nullptr;
+  OpusEncoder *encoder_ = nullptr;
+  bool initialized_ = false;
+  std::vector<float> scratch_;
+  std::vector<int16_t> pcm_;
+  std::vector<uint8_t> encoded_;
+};
+
 EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
   emscripten::register_type<AudioSamples>("AudioSamples", "Float32Array");
   emscripten::register_type<PcmSamples>("PcmSamples", "Int16Array");
@@ -225,4 +344,10 @@ EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
       .function("close", &OpusCodecBinding::close)
       .function("encode", &OpusCodecBinding::encode)
       .function("decode", &OpusCodecBinding::decode);
+  emscripten::class_<AudioSessionBinding>("AudioSessionBinding")
+      .constructor<int, bool, int, int, unsigned>()
+      .function("valid", &AudioSessionBinding::valid)
+      .function("error", &AudioSessionBinding::error)
+      .function("close", &AudioSessionBinding::close)
+      .function("process", &AudioSessionBinding::process);
 }
