@@ -25,10 +25,10 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/platform/api.h>
+#include <ascii-chat/os/api.h>
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <string.h>
 #include <ascii-chat/otel.h>
 
@@ -775,7 +775,7 @@ typedef struct {
 static void copy_cond_deadlock_state(uintptr_t key, void *data) {
   const cond_t *cond = (const cond_t *)key;
   cond_deadlock_snapshot_t *snapshot = data;
-  snapshot->waiting_count = atomic_load_u64(&cond->waiting_count);
+  snapshot->waiting_count = atomic_load(&cond->waiting_count);
   snapshot->last_wait_time_ns = cond->last_wait_time_ns;
   snapshot->last_signal_time_ns = cond->last_signal_time_ns;
   snapshot->last_waiting_key = cond->last_waiting_key;
