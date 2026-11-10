@@ -18,6 +18,10 @@ struct http_renderer {
 
 static void *http_renderer_service_main(void *argument);
 
+static bool http_renderer_cancel_requested(void *context) {
+  return context && atomic_load_bool((atomic_t *)context);
+}
+
 static void *http_renderer_job_main(void *argument) {
   http_renderer_job_t *job = argument;
   if (job->renderer)
@@ -81,7 +85,7 @@ static void *http_renderer_service_main(void *argument) {
   } else if (renderer->config.max_input_bytes && job->request.source.body_length > renderer->config.max_input_bytes) {
     error = SET_ERRNO(ERROR_BUFFER_OVERFLOW, "HTTP render input exceeds the configured limit");
   } else {
-    error = http_renderer_render_file(job->request.source.path, &job->request, &job->result);
+    error = http_renderer_render_file(job->request.source.path, &job->request, &job->result, &job->cancelled);
   }
   job->result.error = error;
   if (error == ASCIICHAT_OK) {
@@ -124,6 +128,10 @@ asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_ren
   http_renderer_job_t *job = SAFE_CALLOC(1, sizeof(*job), http_renderer_job_t *);
   job->renderer = renderer;
   job->request = *request;
+  if (!job->request.timeout_ms)
+    job->request.timeout_ms = renderer->config.timeout_ms;
+  if (!job->request.max_output_bytes)
+    job->request.max_output_bytes = renderer->config.max_output_bytes;
   atomic_store_bool(&job->cancelled, false);
   atomic_store_bool(&job->done, false);
   if (acthread_create(&job->thread, "http-render", http_renderer_job_main, job)) {
@@ -214,12 +222,12 @@ void http_render_result_destroy(http_render_result_t *result) {
 }
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
-                                            http_render_result_t *result) {
+                                            http_render_result_t *result, atomic_t *cancelled) {
   if (!path || !request || !result)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP render requires a source path, request, and result");
   memset(result, 0, sizeof(*result));
   uint64_t started = time_get_ns();
-  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create_interruptible(path, http_renderer_cancel_requested, cancelled);
   if (!decoder)
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot decode uploaded image");
   if (ffmpeg_decoder_start_prefetch(decoder) != ASCIICHAT_OK) {
@@ -229,6 +237,11 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
   image_t *image = NULL;
   uint64_t deadline = started + (request->timeout_ms ? request->timeout_ms : 10000) * NS_PER_MS_INT;
   for (;;) {
+    if (cancelled && atomic_load_bool(cancelled)) {
+      ffmpeg_decoder_destroy(decoder);
+      result->cancelled = true;
+      return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled");
+    }
     asciichat_error_context_t failure = {0};
     ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
     if (status == FFMPEG_FRAME_READY)

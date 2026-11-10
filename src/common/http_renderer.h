@@ -107,7 +107,7 @@ void http_renderer_process(http_renderer_process_request_t *request, atomic_t *c
                            http_renderer_process_result_t *result);
 
 asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
-                                            http_render_result_t *result);
+                                            http_render_result_t *result, atomic_t *cancelled);
 
 asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name,
                                           http_renderer_job_fn execute, void *context);
