@@ -462,7 +462,7 @@ for (const keyFormat of ["armored", "binary"] as const) {
                 return (
                   logs.includes(
                     "Client key authentication successful (whitelist verified)",
-                  ) && logs.includes("mutual authentication")
+                  ) && logs.includes("Authenticated client: GPG Ed25519 key")
                 );
               } catch {
                 return false;
