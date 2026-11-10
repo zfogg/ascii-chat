@@ -120,7 +120,7 @@ asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_
 }
 
 asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request,
-                                        http_renderer_job_t **out_job) {
+                                        void *user_data, http_renderer_job_t **out_job) {
   if (!renderer || !request || !out_job)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP renderer submission");
   *out_job = NULL;
@@ -132,7 +132,7 @@ asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_ren
   http_renderer_job_t *job = SAFE_CALLOC(1, sizeof(*job), http_renderer_job_t *);
   job->renderer = renderer;
   job->request = *request;
-  job->user_data = request->user_data;
+  job->user_data = user_data;
   if (!job->request.timeout_ms)
     job->request.timeout_ms = renderer->config.timeout_ms;
   if (!job->request.max_output_bytes)
@@ -172,7 +172,7 @@ void http_renderer_reap(http_renderer_t *renderer, bool all) {
     http_renderer_job_t **link = &renderer->jobs;
     http_renderer_job_t *job = NULL;
     while (*link) {
-      if (all || http_renderer_job_is_done(*link)) {
+      if (all || (job->user_data == NULL && http_renderer_job_is_done(*link))) {
         job = *link;
         *link = job->next;
         --renderer->active_jobs;

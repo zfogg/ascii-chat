@@ -139,7 +139,7 @@ void http_renderer_job_reset(http_renderer_job_t *job);
 
 asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_config_t *config);
 asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request,
-                                        http_renderer_job_t **out_job);
+                                        void *user_data, http_renderer_job_t **out_job);
 asciichat_error_t http_renderer_cancel(http_renderer_job_t *job);
 void http_renderer_reap(http_renderer_t *renderer, bool all);
 void http_renderer_stop(http_renderer_t *renderer);

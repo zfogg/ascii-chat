@@ -172,6 +172,7 @@ static void api_wakeup(void *user_data) {
         api_finish(pending->response, api_render_status(pending->renderer_job->result.error));
       }
     }
+    pending->renderer_job->user_data = NULL;
     http_response_release(&pending->response);
     platform_delete_temp_file(pending->path);
     SAFE_FREE(pending);
@@ -344,7 +345,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   pending->response = retained;
   render_request.user_data = pending;
   http_renderer_job_t *render_job = NULL;
-  asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, &render_job);
+  asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, pending, &render_job);
   if (err != ASCIICHAT_OK) {
     http_response_release(&pending->response); SAFE_FREE(pending); platform_delete_temp_file(path);
     api_finish(response, api_render_status(err)); return;

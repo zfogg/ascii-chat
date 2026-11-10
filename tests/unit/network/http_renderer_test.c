@@ -48,7 +48,7 @@ Test(http_renderer, service_reaps_failed_normalized_jobs) {
   http_render_request_init(&request);
   request.source.type = HTTP_RENDER_SOURCE_FILE;
   http_renderer_job_t *job = NULL;
-  cr_assert_eq(http_renderer_submit(renderer, &request, &job), ASCIICHAT_OK);
+  cr_assert_eq(http_renderer_submit(renderer, &request, NULL, &job), ASCIICHAT_OK);
   http_renderer_job_wait(job);
   cr_assert_neq(job->result.error, ASCIICHAT_OK);
   http_renderer_reap(renderer, false);
