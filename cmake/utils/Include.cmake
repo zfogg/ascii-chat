@@ -108,6 +108,11 @@ function(configure_include_directories)
     endif()
 
     if(USE_MUSL)
+        # Put the target libc on the compiler's primary include search path.
+        # This must be in CMAKE_*_FLAGS (before target-transitive includes),
+        # because some imported pkg-config targets still emit -I/usr/include.
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${MUSL_INCLUDE_DIR}" CACHE STRING "C compiler flags" FORCE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${MUSL_INCLUDE_DIR}" CACHE STRING "C++ compiler flags" FORCE)
         # Keep the target libc ahead of any transitive pkg-config include
         # roots (some imported targets still expose /usr/include).
         target_include_directories(asciichat-project-includes BEFORE INTERFACE
