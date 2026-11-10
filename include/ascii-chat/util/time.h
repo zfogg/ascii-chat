@@ -1,4 +1,7 @@
 #pragma once
+#include <ascii-chat/asciichat_errno.h>
+
+#include <ascii-chat/asciichat_errno.h>
 
 /**
  * @file util/time.h
@@ -70,7 +73,7 @@ using std::memory_order_relaxed;
 #include <ascii-chat-deps/sokol/sokol_time.h>
 
 // Include platform thread for thread ID in timer names
-#include "../platform/thread.h"
+#include <libplatform/thread.h>
 
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
