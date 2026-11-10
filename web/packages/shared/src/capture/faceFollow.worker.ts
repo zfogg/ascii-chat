@@ -42,7 +42,7 @@ self.onmessage = async (
 ) => {
   const { bitmap, reset } = event.data;
   try {
-    const wasm = await ready;
+    await ready;
     enabled = event.data.enabled;
     const key = `${bitmap.width}x${bitmap.height}`;
     if (reset || dimensions !== key) {

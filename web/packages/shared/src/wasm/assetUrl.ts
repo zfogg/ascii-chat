@@ -44,6 +44,7 @@ export async function getWasmCapabilities(
     capabilities?: Partial<Record<ClientLikeKind, WasmCapabilityManifest>>;
   };
   const capabilities = manifest.capabilities?.[kind];
-  if (!capabilities) throw new Error(`WASM manifest has no ${kind} capabilities`);
+  if (!capabilities)
+    throw new Error(`WASM manifest has no ${kind} capabilities`);
   return capabilities;
 }

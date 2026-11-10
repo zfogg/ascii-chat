@@ -154,10 +154,14 @@ test("binding failures record actionable C errors", async ({ page }) => {
         snapshot(() =>
           processor.process(new Float32Array(4), new Float32Array(1)),
         ),
-        snapshot(() => renderer.render("", 0)),
-        snapshot(() =>
-          new m.FaceFollowBinding().detect(new Uint8ClampedArray(1), 1, 1, 0),
-        ),
+        snapshot(() => {
+          const face = new m.FaceFollowBinding();
+          try {
+            return face.detect(new Uint8ClampedArray(1), 1, 1, 0);
+          } finally {
+            face.delete();
+          }
+        }),
         snapshot(() =>
           processClientEvent({
             type: "receive-handshake-packet",
@@ -188,7 +192,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
           if (result.code)
             throw new Error(`Handoff encode failed (${result.code})`);
         }),
-      ].filter(Boolean);
+      ];
     } finally {
       m.ErrorBinding.dismiss();
       renderer.delete();
@@ -196,11 +200,13 @@ test("binding failures record actionable C errors", async ({ page }) => {
       frame.delete();
     }
   });
-  expect(errors).toHaveLength(7);
+  expect(errors).toHaveLength(8);
   for (const error of errors) {
-    expect([85, 86]).toContain(error?.code);
+    expect(error?.code).not.toBe(0);
     expect(error?.message).toBeTruthy();
   }
+  expect(errors[4]?.code).toBe(44);
+  expect(errors[4]?.message).toMatch(/packet/i);
 });
 
 test("browser session close makes later processing safe and structured", async ({

@@ -105,7 +105,10 @@ export class WebTransportClientSession implements ClientSession {
                 port: Number(url.port) || 443,
               });
               if (serverResult.code)
-                throwWasmError(serverResult.code, "Failed to set server address");
+                throwWasmError(
+                  serverResult.code,
+                  "Failed to set server address",
+                );
               this.publicKey = publicKey;
               succeeded = true;
               return true;
@@ -173,7 +176,10 @@ export class WebTransportClientSession implements ClientSession {
           },
           packet: ({ packet }) => {
             if (this.cancelled) return;
-            const parsedResult = processClientEvent({ type: "receive-packet", packet });
+            const parsedResult = processClientEvent({
+              type: "receive-packet",
+              packet,
+            });
             if (parsedResult.code || !parsedResult.packet)
               throw new Error(`Packet parsing failed (${parsedResult.code})`);
             const parsed = parsedResult.packet;

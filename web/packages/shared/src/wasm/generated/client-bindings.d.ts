@@ -1,19 +1,17 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
-  let HEAPU8: any;
+  let HEAPU8: Uint8Array;
   namespace FS {
     export let root: any;
     export let mounts: any[];
     export let devices: {};
     export let streams: any[];
     export let nextInode: number;
-    export let nameTable: any;
+    export let nameTable: any[];
     export let currentPath: string;
     export let initialized: boolean;
     export let ignorePermissions: boolean;
-    export let filesystems: any;
     export let syncFSRequests: number;
-    export let readFiles: {};
     export { ErrnoError };
     export { FSStream };
     export { FSNode };
@@ -38,7 +36,7 @@ declare namespace RuntimeExports {
       parent: any,
       name: any,
       mode: any,
-      rdev: any,
+      rdev?: any,
     ): any;
     export function destroyNode(node: any): void;
     export function isRoot(node: any): boolean;
@@ -96,34 +94,45 @@ declare namespace RuntimeExports {
     };
     export function create(path: any, mode?: number): any;
     export function mkdir(path: any, mode?: number): any;
-    export function mkdirTree(path: any, mode: any): void;
-    export function mkdev(path: any, mode: any, dev: any): any;
+    export function mkdirTree(path: any, mode?: number): void;
+    export function mkdev(path: any, mode: any, dev?: any): any;
     export function symlink(oldpath: any, newpath: any): any;
+    export function link(oldpath: any, newpath: any, flags: any): any;
     export function rename(old_path: any, new_path: any): void;
     export function rmdir(path: any): void;
     export function readdir(path: any): any;
     export function unlink(path: any): void;
     export function readlink(path: any): any;
-    export function stat(path: any, dontFollow: any): any;
+    export function stat(path: any, dontFollow?: boolean): any;
     export function fstat(fd: any): any;
     export function lstat(path: any): any;
     export function doChmod(
       stream: any,
       node: any,
       mode: any,
-      dontFollow: any,
+      dontFollow?: boolean,
     ): void;
-    export function chmod(path: any, mode: any, dontFollow: any): void;
+    export function chmod(path: any, mode: any, dontFollow?: boolean): void;
     export function lchmod(path: any, mode: any): void;
     export function fchmod(fd: any, mode: any): void;
-    export function doChown(stream: any, node: any, dontFollow: any): void;
-    export function chown(path: any, uid: any, gid: any, dontFollow: any): void;
+    export function doChown(stream: any, node: any, dontFollow?: boolean): void;
+    export function chown(
+      path: any,
+      uid: any,
+      gid: any,
+      dontFollow?: boolean,
+    ): void;
     export function lchown(path: any, uid: any, gid: any): void;
     export function fchown(fd: any, uid: any, gid: any): void;
     export function doTruncate(stream: any, node: any, len: any): void;
     export function truncate(path: any, len: any): void;
     export function ftruncate(fd: any, len: any): void;
-    export function utime(path: any, atime: any, mtime: any): void;
+    export function utime(
+      path: any,
+      atime: any,
+      mtime: any,
+      dontFollow?: boolean,
+    ): void;
     export function open(path: any, flags: any, mode?: number): any;
     export function close(stream: any): void;
     export function isClosed(stream: any): boolean;
@@ -133,15 +142,15 @@ declare namespace RuntimeExports {
       buffer: any,
       offset: any,
       length: any,
-      position: any,
+      position?: any,
     ): any;
     export function write(
       stream: any,
       buffer: any,
       offset: any,
       length: any,
-      position: any,
-      canOwn: any,
+      position?: any,
+      canOwn?: any,
     ): any;
     export function mmap(
       stream: any,
@@ -171,12 +180,11 @@ declare namespace RuntimeExports {
       error: any,
     ): void;
     export function staticInit(): void;
-    export function init(input: any, output: any, error: any): void;
+    export function init(input?: any, output?: any, error?: any): void;
     export function quit(): void;
-    export function findObject(path: any, dontResolveLastLink: any): any;
     export function analyzePath(
       path: any,
-      dontResolveLastLink: any,
+      dontResolveLastLink?: boolean,
     ): {
       isRoot: boolean;
       exists: boolean;
@@ -191,44 +199,38 @@ declare namespace RuntimeExports {
     export function createPath(
       parent: any,
       path: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: any,
+      canWrite?: any,
     ): any;
     export function createFile(
       parent: any,
       name: any,
       properties: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: any,
+      canWrite?: any,
     ): any;
     export function createDataFile(
       parent: any,
       name: any,
-      data: any,
-      canRead: any,
-      canWrite: any,
-      canOwn: any,
+      data?: any,
+      canRead?: any,
+      canWrite?: any,
+      canOwn?: any,
     ): void;
     export function createDevice(
       parent: any,
       name: any,
-      input: any,
-      output: any,
+      input?: any,
+      output?: any,
     ): any;
     export function forceLoadFile(obj: any): boolean;
     export function createLazyFile(
       parent: any,
       name: any,
       url: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: any,
+      canWrite?: any,
     ): any;
-    export function absolutePath(): void;
-    export function createFolder(): void;
-    export function createLink(): void;
-    export function joinPath(): void;
-    export function mmapAlloc(): void;
-    export function standardizePath(): void;
   }
 }
 declare class ErrnoError extends Error {
@@ -271,6 +273,18 @@ declare class FSNode {
   get write(): boolean;
   get isFolder(): any;
   get isDevice(): any;
+  addListener(
+    cb: any,
+    exclusive?: boolean,
+  ): {
+    listeners: any;
+    entry: {
+      cb: any;
+      exclusive: boolean;
+    };
+  };
+  notifyListeners(flags: any): void;
+  exclTurn: any;
 }
 interface WasmModule {}
 
@@ -318,9 +332,9 @@ export interface AsciiRendererBinding extends ClassHandle {
   render(_0: EmbindString, _1: number): any;
 }
 
-type FacePixels = Uint8ClampedArray;
+export type FacePixels = Uint8ClampedArray;
 
-type FaceValues = Float32Array;
+export type FaceValues = Float32Array;
 
 export interface FaceFollowBinding extends ClassHandle {
   valid(): boolean;
@@ -331,7 +345,7 @@ export interface FaceFollowBinding extends ClassHandle {
   tick(_0: number, _1: boolean): FaceValues;
 }
 
-type PatternPixels = Uint8ClampedArray;
+export type PatternPixels = Uint8ClampedArray;
 
 export interface TestPatternBinding extends ClassHandle {
   valid(): boolean;
@@ -347,15 +361,15 @@ export interface TestPatternBinding extends ClassHandle {
   ): boolean;
 }
 
-type AudioSamples = Float32Array;
+export type AudioSamples = Float32Array;
 
-type PcmSamples = Int16Array;
+export type PcmSamples = Int16Array;
 
-type OpusBytes = Uint8Array;
+export type OpusBytes = Uint8Array;
 
-type NullableOpusBytes = Uint8Array | null;
+export type NullableOpusBytes = Uint8Array | null;
 
-type NullablePcmSamples = Int16Array | null;
+export type NullablePcmSamples = Int16Array | null;
 
 export interface AudioProcessorBinding extends ClassHandle {
   valid(): boolean;
@@ -373,9 +387,9 @@ export interface OpusCodecBinding extends ClassHandle {
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }
 
-type PeerBytes = Uint8Array;
+export type PeerBytes = Uint8Array;
 
-type NullablePeerBytes = Uint8Array | null;
+export type NullablePeerBytes = Uint8Array | null;
 
 export interface BrowserSessionBinding extends ClassHandle {
   valid(): boolean;
@@ -386,7 +400,7 @@ export interface BrowserSessionBinding extends ClassHandle {
   processBatch(_0: any): any;
 }
 
-type ClientBytes = Uint8Array;
+export type ClientBytes = Uint8Array;
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
@@ -397,15 +411,15 @@ export interface ClientSessionBinding extends ClassHandle {
   processBatch(_0: any): any;
 }
 
-type KeyInput = Uint8Array;
+export type KeyInput = Uint8Array;
 
-type KeyParseResult = {
+export type KeyParseResult = {
   code: number;
   bytes: Uint8Array;
   frames: ErrorFrameResult[];
 };
 
-type ErrorFrameResult = {
+export type ErrorFrameResult = {
   code: number;
   message: string;
   file: string;
@@ -430,7 +444,7 @@ export interface AVStateBinding extends ClassHandle {
   finishStop(): void;
 }
 
-type DiscoverySnapshotValue = {
+export type DiscoverySnapshotValue = {
   state: number;
   terminal: boolean;
   error: string;
@@ -449,7 +463,7 @@ type DiscoverySnapshotValue = {
   };
 };
 
-type ProtocolBytes = Uint8Array;
+export type ProtocolBytes = Uint8Array;
 
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
@@ -473,18 +487,18 @@ export interface BrowserHostBinding extends ClassHandle {
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
 
-type OptionsPatch = Record<string, number | string | boolean>;
+export type OptionsPatch = Record<string, number | string | boolean>;
 
-type OptionsSnapshot = {
+export type OptionsSnapshot = {
   revision: number;
   values: Record<string, number | string | boolean>;
 } | null;
 
 export interface OptionsBinding extends ClassHandle {}
 
-type RgbaBytes = Uint8Array | Uint8ClampedArray;
+export type RgbaBytes = Uint8Array | Uint8ClampedArray;
 
-type VisualizationSamples = Float32Array;
+export type VisualizationSamples = Float32Array;
 
 export interface MirrorFrameBinding extends ClassHandle {
   valid(): boolean;

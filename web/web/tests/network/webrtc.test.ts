@@ -96,9 +96,8 @@ vi.mock("../../src/network/ClientConnection", () => ({
 }));
 
 vi.mock("../../src/network/DiscoveryProtocol", async () => {
-  const { SessionRejectedError } = await import(
-    "../../src/network/acdsProtocol"
-  );
+  const { SessionRejectedError } =
+    await import("../../src/network/acdsProtocol");
   return {
     DiscoveryProtocol: class {
       constructor(private send: (type: number, payload: Uint8Array) => void) {}

@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-// @ts-expect-error The www package intentionally does not depend on Node types.
 import { fileURLToPath } from "node:url";
 import type { MirrorModule } from "../../packages/shared/src/wasm/mirror";
 import type {

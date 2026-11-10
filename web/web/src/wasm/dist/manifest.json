@@ -1,13 +1,39 @@
 {
-  "sourceHash": "00f0a77498034524c85230d8acc860eea28a7f8b8913d8afd1d5cf5e97665d77",
+  "sourceHash": "35801fa08984474acc912af179bfd21ed44437946c564d583b9418ca399ec4ea",
+  "capabilities": {
+    "mirror": {
+      "module": "mirror",
+      "protocolVersion": "2.3.0",
+      "codecs": ["raw", "h264", "hevc", "opus"],
+      "transports": ["webrtc", "webtransport", "websocket"],
+      "rendererModes": ["luminance", "glyph"],
+      "features": {
+        "stabilization": true,
+        "renderer": true,
+        "opus": true
+      }
+    },
+    "client": {
+      "module": "client",
+      "protocolVersion": "2.3.0",
+      "codecs": ["raw", "h264", "hevc", "opus"],
+      "transports": ["webrtc", "webtransport", "websocket"],
+      "rendererModes": [],
+      "features": {
+        "stabilization": false,
+        "renderer": false,
+        "opus": true
+      }
+    }
+  },
   "files": {
-    "mirror.js": "06de28b940f28f2f392bc04c2eb49d308201274f8768f4d30a0ec16deffda389",
-    "mirror.wasm": "419dbe3d48c730e171936a0934a6e9fa1dc9bda5c47ca34aaf8c490dbefab204",
-    "client.js": "1719375eef61d94856288ae871c0495ca8c35fecd69a9b1473f511400cdb524b",
-    "client.wasm": "ad0dc270344a011ca41bb7a83b57ee49728c51544ae9bd1b5db9a81a4bd7eee3"
+    "mirror.js": "01856972e92abd4e52d81475d94af5bfc9c2c06e79ba142d314c04e3cbcf4b63",
+    "mirror.wasm": "236c685a7523e68c5d257d1c1021895bac7d661d5edaedf9ac81d8a90a2510ab",
+    "client.js": "5fcfae26381d3bc285febcfc859a34bcf74c73493f171bbe10f2c702b2dbadec",
+    "client.wasm": "1b41606d82fde8cd012f8b35c6902dd59ded97a0c43fefad347372af3b8cae87"
   },
   "types": {
-    "mirror-bindings.d.ts": "a7e9260e5830f6b5823f6b08ccbe7b76b607b69036496767a2c5b47cb668b6d3",
-    "client-bindings.d.ts": "9206017b7990515a85439b7c5844ec5625e734e762dc9aa7ba706c7cb8d6c83c"
+    "mirror-bindings.d.ts": "a57d709bcfe2229e64770e38988b95d66fd05f697f0d4e768e49437e5373c4f0",
+    "client-bindings.d.ts": "df5a8cdc179da872c47825ab89f81669924d2e35b09f5476eb567fad1eefef53"
   }
 }

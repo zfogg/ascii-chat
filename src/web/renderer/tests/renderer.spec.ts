@@ -218,6 +218,35 @@ test("renderer render loop reports frame-source errors and stops", async ({
   expect(result).toEqual({ message: "frame source failed", running: false });
 });
 
+test("explicit palette selection wins regardless of patch order", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer, TextRenderer } = await import(url);
+    const renderer = await createRenderer();
+    try {
+      renderer.configure({
+        renderer: TextRenderer.Glyph,
+        palette_explicit: false,
+        palette_custom: " .+#",
+        palette_type: 1,
+      });
+      const first = renderer.options.read().values.palette_explicit;
+      renderer.configure({
+        palette_type: 1,
+        palette_custom: " .+#",
+        palette_explicit: false,
+      });
+      return [first, renderer.options.read().values.palette_explicit];
+    } finally {
+      renderer.dispose();
+    }
+  });
+  expect(result).toEqual([false, false]);
+});
+
 test("Embind session owns native initialization and cleanup", async ({
   page,
 }) => {

@@ -1721,7 +1721,9 @@ export function ClientPage({
                   event,
                   fileSelected ? fileVideoRef.current : videoRef.current,
                 );
-                audioRef.current?.setVolume(event.module.SessionUiBinding.volume());
+                audioRef.current?.setVolume(
+                  event.module.SessionUiBinding.volume(),
+                );
                 if (event.action === 3) disconnectMedia();
               }}
               zalgo={settings.zalgo ?? 0}

@@ -324,6 +324,7 @@ set(LIB_SRC_COMMON
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${LIB_ROOT}/tui/session.c
+    ${LIB_ROOT}/tui/status.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
     ${LIB_ROOT}/platform/keyboard.c
@@ -728,6 +729,15 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         message(FATAL_ERROR
             "The parent CMake project must provide ASCIICHAT_DEFER_SOURCE_ROOT and ASCIICHAT_DEFER_NATIVE_BINARY")
     endif()
+    # Emscripten distributions can place their cache outside the SDK directory
+    # (for example, Arch uses ~/.cache/emscripten). The native defer parser
+    # needs the target libc headers even when emcc's own cache is relocated.
+    get_filename_component(_emcc_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    execute_process(COMMAND "${Python3_EXECUTABLE}" "${_emcc_dir}/em-config.py" CACHE
+        OUTPUT_VARIABLE _em_cache OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${_em_cache}/sysroot/include")
     include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
     ascii_defer_prepare_native()
     set(_batch_stage web)

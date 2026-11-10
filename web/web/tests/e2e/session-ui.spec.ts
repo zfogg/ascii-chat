@@ -360,9 +360,9 @@ test("connected web client shows its C network logs", async ({ page }) => {
     };
   }, moduleUrl);
   await canvas.focus();
+  await page.keyboard.press("ArrowDown");
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
-  await page.keyboard.press("ArrowDown");
   await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
   await expect.poll(() => lastFrame(page)).toContain("Handshake complete");
   const canvasFps = async () =>

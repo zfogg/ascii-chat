@@ -26,7 +26,8 @@ function scheduleRender() {
   );
 }
 function renderIfDue() {
-  if (!clientModule || pendingBatches >= 2 || performance.now() < nextFrameAt) return;
+  if (!clientModule || pendingBatches >= 2 || performance.now() < nextFrameAt)
+    return;
   if (renderTimer !== null) clearTimeout(renderTimer);
   renderTimer = null;
   render();

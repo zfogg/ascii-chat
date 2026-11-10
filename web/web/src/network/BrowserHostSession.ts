@@ -164,7 +164,10 @@ export class BrowserHostSession implements ClientSession {
         queueMicrotask(() => {
           if (this.closed) return;
           if (id === this.localId) {
-            const parsed = processClientEvent({ type: "receive-packet", packet: bytes });
+            const parsed = processClientEvent({
+              type: "receive-packet",
+              packet: bytes,
+            });
             if (parsed.code || !parsed.packet)
               throw new Error(`Host packet parsing failed (${parsed.code})`);
             const packet = parsed.packet;

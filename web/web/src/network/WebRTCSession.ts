@@ -376,7 +376,10 @@ export class WebRTCSession implements ClientSession {
         this.peer.connectionState === "closed"
       ) {
         if (this.everConnected) this.waitForSuccessor();
-        else this.fail(new Error("WebRTC peer connection failed during negotiation."));
+        else
+          this.fail(
+            new Error("WebRTC peer connection failed during negotiation."),
+          );
       } else if (this.peer.connectionState === "disconnected") {
         this.options.onProgress?.("WebRTC connection interrupted");
         if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
@@ -428,7 +431,10 @@ export class WebRTCSession implements ClientSession {
             const decoded = this.securitySession!.receive(bytes);
             if (!decoded) return;
             bytes = decoded;
-            const parsed = processClientEvent({ type: "receive-packet", packet: bytes });
+            const parsed = processClientEvent({
+              type: "receive-packet",
+              packet: bytes,
+            });
             if (parsed.code || !parsed.packet)
               throw new Error(`Peer packet parsing failed (${parsed.code})`);
             const packet = parsed.packet;
@@ -491,12 +497,14 @@ export class WebRTCSession implements ClientSession {
     channel.onclose = () => {
       if (this.closed) return;
       if (this.everConnected) this.waitForSuccessor();
-      else this.fail(new Error("WebRTC data channel closed during negotiation."));
+      else
+        this.fail(new Error("WebRTC data channel closed during negotiation."));
     };
     channel.onerror = () => {
       if (this.closed) return;
       if (this.everConnected) this.waitForSuccessor();
-      else this.fail(new Error("WebRTC data channel failed during negotiation."));
+      else
+        this.fail(new Error("WebRTC data channel failed during negotiation."));
     };
     const offer = await this.peer.createOffer();
     await this.peer.setLocalDescription(offer);

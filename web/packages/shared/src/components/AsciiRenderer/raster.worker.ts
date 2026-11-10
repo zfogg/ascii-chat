@@ -22,6 +22,7 @@ async function initialize(
     session.delete();
     throw new Error(`Cannot initialize raster worker (${code})`);
   }
+  workerSession?.delete();
   workerSession = session;
   return module;
 }

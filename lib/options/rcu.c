@@ -791,6 +791,16 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  // Explicit selection state describes the entire patch. Palette setters
+  // infer it for convenience, but must not override an explicitly supplied
+  // value merely because another property appeared later in the object.
+  for (size_t i = 0; i < patch->count; ++i) {
+    const options_edit_t *edit = &patch->edits[i];
+    if (strcmp(edit->name, "palette_explicit") == 0) {
+      candidate->palette_explicit =
+          edit->operation == OPTIONS_TOGGLE ? !current->palette_explicit : edit->value.boolean;
+    }
+  }
   bool animation_changed = false;
   bool stabilize_changed = false;
   for (size_t i = 0; i < patch->count; ++i) {
