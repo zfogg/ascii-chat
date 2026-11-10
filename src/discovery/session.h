@@ -26,7 +26,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include "negotiate.h"
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
 #include "session/host.h"
 #include "session/participant.h"
@@ -36,6 +36,7 @@
 #include <ascii-chat/options/options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/mutex.h>
 #include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stdint.h>

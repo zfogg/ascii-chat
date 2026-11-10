@@ -38,6 +38,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/common/sync.h>
 #include <ascii-chat/util/path.h>
