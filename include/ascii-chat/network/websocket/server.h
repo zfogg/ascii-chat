@@ -99,6 +99,7 @@ typedef struct {
  */
 typedef struct {
   int port;                                   ///< Port to listen on
+  const char *bind_address;                   ///< Numeric local address to listen on (never a wildcard by default)
   websocket_client_handler_fn client_handler; ///< Handler for new connections
   void *user_data;                            ///< User data passed to handlers
   const char *tls_cert_path;                  ///< TLS certificate file path (optional, for wss://)

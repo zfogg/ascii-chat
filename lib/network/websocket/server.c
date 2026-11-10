@@ -780,6 +780,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
   info.port = config->port;
+  info.iface = config->bind_address;
   info.protocols = websocket_protocols;
   info.mounts = &health_mount;
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type

@@ -4,7 +4,7 @@ import time
 
 import pytest
 from ascii_chat_tests.cli import clean_environment, run_cli
-from ascii_chat_tests.process import check_client, free_port, running, server_options
+from ascii_chat_tests.process import Service, check_client, free_port, running, server_options
 
 pytestmark = [pytest.mark.integration, pytest.mark.network]
 
@@ -96,3 +96,21 @@ def test_default_client_server_authentication(binary, tmp_path):
         assert len(result.stdout.strip()) >= 100, text[-8000:]
         assert "Authentication failed" not in text
         assert server.process.poll() is None, server.text()[-8000:]
+
+
+def test_client_started_before_server_recovers_without_auth_error(binary, tmp_path):
+    """A default client must survive the first transient startup rejection."""
+    tcp_port, ws_port = free_port(), free_port()
+    client = Service(
+        binary, tmp_path, "client-first", "client",
+        [f"127.0.0.1:{tcp_port}", "--test-pattern", "--audio=false",
+         "--reconnect-attempts", "5", "--splash-screen=false"],
+    )
+    try:
+        time.sleep(0.25)
+        with running(binary, tmp_path, "late-server", "server", server_options(tcp_port, ws_port)) as server:
+            server.wait_for("Server accepting connections")
+            client.wait_for("CLIENT_CONNECTION_RUNNING", timeout=20)
+            assert "Remote request rejected: Authentication failed" not in client.text()
+    finally:
+        client.stop()

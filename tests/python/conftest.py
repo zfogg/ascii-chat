@@ -2,13 +2,16 @@
 from pathlib import Path
 import os
 import sys
+import tempfile
+import uuid
 
 import pytest
 from ascii_chat_tests.cli import clean_environment
 
 
 def pytest_addoption(parser):
-    parser.addoption("--ascii-chat-binary", help="Path to the built ascii-chat executable")
+    parser.addoption("--ascii-chat-binary", "--binary", dest="ascii_chat_binary",
+                     help="Path to the built ascii-chat executable")
     parser.addoption("--terminal-probe", help="Path to the native terminal fixture")
     parser.addoption("--lifecycle-probe", help="Path to the client lifecycle fixture")
     parser.addoption("--media-capture-probe", help="Path to the media capture fixture")
@@ -62,6 +65,63 @@ def pytest_configure(config):
     os.environ["TESTING"] = "1"
     os.environ["ASCII_CHAT_OTEL_ENABLED_TELEMETRY"] = "none"
     os.environ["ASCII_CHAT_DISABLE_FIRST_USE"] = "1"
+    configured_binary = config.getoption("ascii_chat_binary")
+    if configured_binary:
+        os.environ["ASCII_CHAT_TEST_BINARY"] = configured_binary
+    os.environ.setdefault("ASCII_CHAT_TEST_RUN_ID", os.environ.get("PYTEST_XDIST_TESTRUNUID", uuid.uuid4().hex))
+    log_root = Path(tempfile.gettempdir()) / "ascii-chat-test-logs"
+    log_root.mkdir(parents=True, exist_ok=True)
+    os.environ["ASCII_CHAT_TEST_LOG_ROOT"] = str(log_root)
+
+
+@pytest.fixture(autouse=True)
+def native_process_policy(monkeypatch):
+    """Apply native flags/logging even to tests using raw subprocess calls."""
+    if not (os.environ.get("ASCII_CHAT_TEST_BINARY") or os.environ.get("ASCII_CHAT_BINARY")):
+        yield
+        return
+    import subprocess
+    from ascii_chat_tests.cli import _copy_log_alias, _requested_log, prepare_test_command
+    original_popen = subprocess.Popen
+
+    class AliasedProcess:
+        def __init__(self, process, requested, command):
+            self._process = process
+            self._requested = requested
+            self._command = command
+
+        def _sync_log(self):
+            _copy_log_alias(self._command, self._requested)
+
+        def communicate(self, *args, **kwargs):
+            result = self._process.communicate(*args, **kwargs)
+            self._sync_log()
+            return result
+
+        def wait(self, *args, **kwargs):
+            result = self._process.wait(*args, **kwargs)
+            self._sync_log()
+            return result
+
+        def __enter__(self):
+            self._process.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self._process.__exit__(*args)
+
+        def __getattr__(self, name):
+            return getattr(self._process, name)
+
+    def popen(command, *args, **kwargs):
+        if isinstance(command, (list, tuple)):
+            requested = _requested_log(command)
+            command = prepare_test_command(command)
+            return AliasedProcess(original_popen(command, *args, **kwargs), requested, command)
+        return original_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -79,9 +139,11 @@ def serialize_shared_resources(request, tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def binary(request):
-    value = request.config.getoption("--ascii-chat-binary") or os.environ.get("ASCII_CHAT_TEST_BINARY")
+    value = (request.config.getoption("ascii_chat_binary") or
+             os.environ.get("ASCII_CHAT_TEST_BINARY") or
+             os.environ.get("ASCII_CHAT_BINARY"))
     if not value:
-        pytest.fail("Pass --ascii-chat-binary or set ASCII_CHAT_TEST_BINARY to the built executable")
+        pytest.fail("Pass --binary/--ascii-chat-binary or set ASCII_CHAT_BINARY/ASCII_CHAT_TEST_BINARY")
     path = Path(value).resolve()
     if not path.is_file():
         pytest.fail(f"Built ascii-chat binary does not exist: {path}")
@@ -98,11 +160,63 @@ def test_environment(tmp_path):
 
 
 @pytest.fixture
-def service_factory(binary, tmp_path):
+def ascii_chat_test(request, tmp_path, binary, test_environment):
+    """Shared invocation context for every native ascii-chat test process."""
+    from ascii_chat_tests.cli import TestContext
+    return TestContext(binary, tmp_path, request.node, test_environment)
+
+
+@pytest.fixture
+def ascii_chat_flags(ascii_chat_test):
+    """Return the standard reproducible flags for a new binary invocation."""
+    return ascii_chat_test.flags
+
+
+@pytest.fixture
+def test_ports(ascii_chat_test):
+    """Allocate independent loopback TCP, WebSocket, and WebRTC ports."""
+    return ascii_chat_test.ports()
+
+
+@pytest.fixture
+def service_factory(ascii_chat_test):
     from ascii_chat_tests.process import running
     def create(name, mode, options):
-        return running(binary, tmp_path, name, mode, options)
+        return running(ascii_chat_test.binary, ascii_chat_test.directory, name, mode, options,
+                       context=ascii_chat_test)
     return create
+
+
+@pytest.fixture
+def server_factory(ascii_chat_test):
+    """Start servers with shared flags, loopback-only listeners, and unique logs."""
+    from ascii_chat_tests.process import running
+    def create(options=(), name="server"):
+        tcp, websocket, webrtc = ascii_chat_test.ports()
+        base = ["127.0.0.1", "::1", "--port", str(tcp), "--websocket-port", str(websocket),
+                "--webrtc-bind-address", "127.0.0.1", "--webrtc",
+                "--status-screen=false"]
+        return running(ascii_chat_test.binary, ascii_chat_test.directory, name,
+                       "server", base + list(options), context=ascii_chat_test)
+    return create
+
+
+@pytest.fixture(autouse=True)
+def report_native_logs(request):
+    # Keep pure helper/unit tests usable without a native build. Native tests
+    # opt into the context by requesting one of its fixtures.
+    if not (request.config.getoption("ascii_chat_binary") or
+            os.environ.get("ASCII_CHAT_TEST_BINARY") or
+            os.environ.get("ASCII_CHAT_BINARY")):
+        yield
+        return
+    yield
+    from ascii_chat_tests.cli import logs_for_test
+    logs = logs_for_test(request.node.nodeid)
+    if logs:
+        print(f"ascii-chat test logs ({request.node.nodeid}):")
+        for path in logs:
+            print(path)
 
 
 def _probe_path(request, option, description):

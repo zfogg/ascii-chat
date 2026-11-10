@@ -588,6 +588,7 @@ asciichat_error_t network_server_create(const network_server_config_t *config, n
   s->listener_initialized = result == ASCIICHAT_OK;
   if (result == ASCIICHAT_OK && config->websocket_enabled) {
     websocket_server_config_t ws = {.port = config->websocket_port,
+                                    .bind_address = config->ipv4_address ? config->ipv4_address : config->ipv6_address,
                                     .client_handler = websocket_accept,
                                     .user_data = s,
                                     .tls_cert_path = config->tls_cert_path,

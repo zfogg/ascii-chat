@@ -1053,7 +1053,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
       .quic_endpoint = host->quic_endpoint,
       .webtransport_endpoint = host->webtransport_endpoint,
       .port = host->port,
-      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
       .bind_ipv4 = true,
       .max_connections = host->max_clients,
       .partial_timeout_ms = 30000,

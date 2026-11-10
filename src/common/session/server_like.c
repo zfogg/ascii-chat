@@ -279,8 +279,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   const char *address = GET_OPTION(address);
   const char *address6 = GET_OPTION(address6);
 
-  bool ipv4_has_value = (address && strlen(address) > 0);
-  bool ipv6_has_value = (address6 && strlen(address6) > 0);
+  const char *effective_address = (address && strlen(address) > 0) ? address : "127.0.0.1";
+  const char *effective_address6 = (address6 && strlen(address6) > 0) ? address6 : "::1";
 
   result = session_quic_listeners_open(port, &g_quic_endpoint, &g_webtransport_endpoint);
   if (result != ASCIICHAT_OK)
@@ -288,10 +288,10 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   network_server_config_t tcp_config = {
       .port = port,
-      .ipv4_address = ipv4_has_value ? address : NULL,
-      .ipv6_address = ipv6_has_value ? address6 : NULL,
-      .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
-      .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
+      .ipv4_address = effective_address,
+      .ipv6_address = effective_address6,
+      .bind_ipv4 = true,
+      .bind_ipv6 = true,
       .callbacks = config->connections,
       .max_payload = config->max_payload,
       .partial_timeout_ms = config->partial_timeout_ms,
