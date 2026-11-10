@@ -25,13 +25,21 @@ struct HostTransportContext {
 
 class BrowserHostBinding {
 public:
-  BrowserHostBinding() { create(); }
-  ~BrowserHostBinding() { close(); }
+  BrowserHostBinding() {
+    create();
+  }
+  ~BrowserHostBinding() {
+    close();
+  }
   BrowserHostBinding(const BrowserHostBinding &) = delete;
   BrowserHostBinding &operator=(const BrowserHostBinding &) = delete;
 
-  bool valid() const { return host_ != nullptr; }
-  int error() const { return host_ ? 0 : static_cast<int>(ERROR_INVALID_STATE); }
+  bool valid() const {
+    return host_ != nullptr;
+  }
+  int error() const {
+    return host_ ? 0 : static_cast<int>(ERROR_INVALID_STATE);
+  }
   void close() {
     session_host_destroy(host_);
     host_ = nullptr;
@@ -45,24 +53,31 @@ public:
   uint32_t addClient();
   void removeClient(uint32_t id);
   int setLocalClient(uint32_t id);
-  int render() { return host_ ? static_cast<int>(session_host_render_video(host_)) : invalidState(); }
-  int renderAudio() { return host_ ? static_cast<int>(session_host_render_audio(host_)) : invalidState(); }
+  int render() {
+    return host_ ? static_cast<int>(session_host_render_video(host_)) : invalidState();
+  }
+  int renderAudio() {
+    return host_ ? static_cast<int>(session_host_render_audio(host_)) : invalidState();
+  }
   int receive(uint32_t id, uint32_t type, ProtocolBytes packet);
   emscripten::val drainPackets();
 
 private:
   session_host_t *host_ = nullptr;
   std::array<HostTransportContext, MAX_SESSION_PARTICIPANTS> clients_{};
-  static int invalidState() { return static_cast<int>(ERROR_INVALID_STATE); }
+  static int invalidState() {
+    return static_cast<int>(ERROR_INVALID_STATE);
+  }
   void create() {
     session_host_config_t config{};
     config.max_clients = MAX_SESSION_PARTICIPANTS;
     host_ = session_host_create(&config);
-    if (host_) session_host_render_audio(host_);
+    if (host_)
+      session_host_render_audio(host_);
   }
   void send(uint32_t id, const void *data, size_t length) {
-    packets_.push_back({id, std::vector<uint8_t>(static_cast<const uint8_t *>(data),
-                                                  static_cast<const uint8_t *>(data) + length)});
+    packets_.push_back(
+        {id, std::vector<uint8_t>(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + length)});
   }
   static asciichat_error_t sendPacket(acip_transport_t *transport, const void *data, size_t length);
   static bool connected(acip_transport_t *transport);
@@ -83,20 +98,26 @@ bool BrowserHostBinding::connected(acip_transport_t *transport) {
   auto *context = transport ? static_cast<HostTransportContext *>(transport->impl_data) : nullptr;
   return context && context->owner && context->owner->valid();
 }
-socket_t BrowserHostBinding::noSocket(acip_transport_t *) { return INVALID_SOCKET_VALUE; }
-acip_transport_type_t BrowserHostBinding::type(acip_transport_t *) { return ACIP_TRANSPORT_WEBRTC; }
-const acip_transport_methods_t BrowserHostBinding::methods = {
-    .send = &BrowserHostBinding::sendPacket,
-    .get_type = &BrowserHostBinding::type,
-    .get_socket = &BrowserHostBinding::noSocket,
-    .is_connected = &BrowserHostBinding::connected};
+socket_t BrowserHostBinding::noSocket(acip_transport_t *) {
+  return INVALID_SOCKET_VALUE;
+}
+acip_transport_type_t BrowserHostBinding::type(acip_transport_t *) {
+  return ACIP_TRANSPORT_WEBRTC;
+}
+const acip_transport_methods_t BrowserHostBinding::methods = {.send = &BrowserHostBinding::sendPacket,
+                                                              .get_type = &BrowserHostBinding::type,
+                                                              .get_socket = &BrowserHostBinding::noSocket,
+                                                              .is_connected = &BrowserHostBinding::connected};
 
 uint32_t BrowserHostBinding::addClient() {
-  if (!host_) return 0;
+  if (!host_)
+    return 0;
   for (auto &client : clients_) {
-    if (client.id) continue;
+    if (client.id)
+      continue;
     const uint32_t id = session_host_add_client(host_, nullptr, ACIP_TRANSPORT_BORROWED, "browser", 0);
-    if (!id) return 0;
+    if (!id)
+      return 0;
     client.owner = this;
     client.id = id;
     client.transport = {};
@@ -113,22 +134,29 @@ uint32_t BrowserHostBinding::addClient() {
   return 0;
 }
 void BrowserHostBinding::removeClient(uint32_t id) {
-  if (!host_) return;
+  if (!host_)
+    return;
   session_host_remove_client(host_, id);
-  for (auto &client : clients_) if (client.id == id) client = {};
+  for (auto &client : clients_)
+    if (client.id == id)
+      client = {};
 }
 int BrowserHostBinding::setLocalClient(uint32_t id) {
-  if (!host_) return invalidState();
+  if (!host_)
+    return invalidState();
   session_host_render_target_t target{};
   target.client_id = id;
   return static_cast<int>(session_host_set_render_target(host_, id ? &target : nullptr));
 }
 int BrowserHostBinding::receive(uint32_t id, uint32_t typeValue, ProtocolBytes packet) {
-  if (!host_ || !id) return static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser host client"));
+  if (!host_ || !id)
+    return static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser host client"));
   const size_t length = packet["length"].as<size_t>();
   std::vector<uint8_t> input(length ? length : 1);
-  if (length) emscripten::val(emscripten::typed_memory_view(length, input.data())).call<void>("set", packet);
-  return static_cast<int>(session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
+  if (length)
+    emscripten::val(emscripten::typed_memory_view(length, input.data())).call<void>("set", packet);
+  return static_cast<int>(
+      session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
 }
 emscripten::val BrowserHostBinding::drainPackets() {
   emscripten::val result = emscripten::val::array();

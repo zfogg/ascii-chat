@@ -11,17 +11,26 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(FaceValues);
 
 class FaceFollowBinding {
 public:
-  FaceFollowBinding() { reset(); }
-  bool valid() const { return !closed_; }
-  int error() const { return valid() ? 0 : ERROR_INVALID_STATE; }
-  void close() { closed_ = true; }
+  FaceFollowBinding() {
+    reset();
+  }
+  bool valid() const {
+    return !closed_;
+  }
+  int error() const {
+    return valid() ? 0 : ERROR_INVALID_STATE;
+  }
+  void close() {
+    closed_ = true;
+  }
   void reset() {
     closed_ = false;
     face_follow_init(&state_);
     face_count_ = 0;
   }
   int detect(FacePixels pixels, int width, int height, double now) {
-    if (!valid()) return SET_ERRNO(ERROR_INVALID_STATE, "Face tracker is closed");
+    if (!valid())
+      return SET_ERRNO(ERROR_INVALID_STATE, "Face tracker is closed");
     const size_t length = pixels["length"].as<size_t>();
     if (width <= 0 || height <= 0 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT ||
         length != static_cast<size_t>(width) * height * 4)
@@ -38,14 +47,20 @@ public:
     return 0;
   }
   FaceValues tick(double now, bool enabled) {
-    if (!valid()) return FaceValues(emscripten::val::global("Float32Array").new_(11));
+    if (!valid())
+      return FaceValues(emscripten::val::global("Float32Array").new_(11));
     face_follow_tick(&state_, now, enabled);
-    const std::array<float, 11> values = {
-        state_.crop.x, state_.crop.y, state_.crop.w, state_.crop.h,
-        state_.face.x, state_.face.y, state_.face.w, state_.face.h,
-        static_cast<float>(state_.detected && now - state_.last_seen < 0.3),
-        static_cast<float>(face_count_),
-        static_cast<float>(state_.tracking && now - state_.last_seen <= 0.7)};
+    const std::array<float, 11> values = {state_.crop.x,
+                                          state_.crop.y,
+                                          state_.crop.w,
+                                          state_.crop.h,
+                                          state_.face.x,
+                                          state_.face.y,
+                                          state_.face.w,
+                                          state_.face.h,
+                                          static_cast<float>(state_.detected && now - state_.last_seen < 0.3),
+                                          static_cast<float>(face_count_),
+                                          static_cast<float>(state_.tracking && now - state_.last_seen <= 0.7)};
     emscripten::val result = emscripten::val::global("Float32Array").new_(values.size());
     result.call<void>("set", emscripten::val(emscripten::typed_memory_view(values.size(), values.data())));
     return FaceValues(result);

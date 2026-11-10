@@ -15,7 +15,8 @@ public:
     return state_ != nullptr;
   }
   void close() {
-    if (!state_) return;
+    if (!state_)
+      return;
     session_av_state_destroy(state_);
     state_ = nullptr;
   }

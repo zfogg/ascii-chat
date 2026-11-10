@@ -164,8 +164,8 @@ asciichat_error_t browser_session_receive(browser_session_t *peer, const void *d
   if (validation != ASCIICHAT_OK)
     return validation;
   if (!peer->security.ready) {
-    asciichat_error_t result = acip_security_receive(&peer->security, browser_transport_base(peer->browser), type,
-                                                     payload, payload_length);
+    asciichat_error_t result =
+        acip_security_receive(&peer->security, browser_transport_base(peer->browser), type, payload, payload_length);
     if (result != ASCIICHAT_OK || !peer->quic_handshake || type != PACKET_TYPE_PROTOCOL_VERSION)
       return result;
     crypto_capabilities_packet_t caps = {0};
@@ -176,8 +176,8 @@ asciichat_error_t browser_session_receive(browser_session_t *peer, const void *d
     caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(peer->security.mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
     caps.preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
     caps.requires_verification = peer->security.handshake.verify_server_key;
-    result = packet_send_via_transport(browser_transport_base(peer->browser), PACKET_TYPE_CRYPTO_CAPABILITIES,
-                                       &caps, sizeof(caps), 0);
+    result = packet_send_via_transport(browser_transport_base(peer->browser), PACKET_TYPE_CRYPTO_CAPABILITIES, &caps,
+                                       sizeof(caps), 0);
     if (result != ASCIICHAT_OK || !caps.requires_verification)
       return result;
     return packet_send_via_transport(browser_transport_base(peer->browser), PACKET_TYPE_CRYPTO_CLIENT_HELLO,
@@ -212,7 +212,7 @@ asciichat_error_t browser_session_tick(browser_session_t *peer) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");
   if (!peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return ASCIICHAT_OK;
-      return acip_security_flush(browser_transport_base(peer->browser));
+  return acip_security_flush(browser_transport_base(peer->browser));
 }
 
 asciichat_error_t browser_session_quic_begin(browser_session_t *peer) {
@@ -223,23 +223,26 @@ asciichat_error_t browser_session_quic_begin(browser_session_t *peer) {
 }
 
 asciichat_error_t browser_session_security_init(browser_session_t *peer) {
-  return peer ? browser_transport_security_init(peer->browser) : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+  return peer ? browser_transport_security_init(peer->browser)
+              : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
 }
 
-asciichat_error_t browser_session_security_packet(browser_session_t *peer, bool seal, uint32_t channel, uint32_t delivery,
-                                                   const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
-                                                   size_t *out_length, uint64_t *sequence) {
-  return peer ? browser_transport_security_packet(peer->browser, seal, channel, delivery, packet, length, output, capacity,
-                                                  out_length, sequence)
+asciichat_error_t browser_session_security_packet(browser_session_t *peer, bool seal, uint32_t channel,
+                                                  uint32_t delivery, const uint8_t *packet, size_t length,
+                                                  uint8_t *output, size_t capacity, size_t *out_length,
+                                                  uint64_t *sequence) {
+  return peer ? browser_transport_security_packet(peer->browser, seal, channel, delivery, packet, length, output,
+                                                  capacity, out_length, sequence)
               : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
 }
 
 asciichat_error_t browser_session_security_tick(browser_session_t *peer) {
-  return peer ? browser_transport_security_tick(peer->browser) : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+  return peer ? browser_transport_security_tick(peer->browser)
+              : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
 }
 
-asciichat_error_t browser_session_security_output(browser_session_t *peer, uint8_t *output, size_t capacity, size_t *length,
-                                                  uint32_t *channel) {
+asciichat_error_t browser_session_security_output(browser_session_t *peer, uint8_t *output, size_t capacity,
+                                                  size_t *length, uint32_t *channel) {
   return peer ? browser_transport_security_output(peer->browser, output, capacity, length, channel)
               : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
 }

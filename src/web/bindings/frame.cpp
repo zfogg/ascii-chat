@@ -19,22 +19,32 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 class MirrorFrameBinding {
 public:
   MirrorFrameBinding() : context_(mirror_render_context_create()) {}
-  ~MirrorFrameBinding() { close(); }
+  ~MirrorFrameBinding() {
+    close();
+  }
   MirrorFrameBinding(const MirrorFrameBinding &) = delete;
   MirrorFrameBinding &operator=(const MirrorFrameBinding &) = delete;
-  bool valid() const { return context_ != nullptr; }
-  int error() const { return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE); }
+  bool valid() const {
+    return context_ != nullptr;
+  }
+  int error() const {
+    return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE);
+  }
   void close() {
     mirror_render_context_destroy(context_);
     context_ = nullptr;
   }
-  static int transformRequired() { return browser_capture_transform_required(); }
+  static int transformRequired() {
+    return browser_capture_transform_required();
+  }
   void reset() {
-    if (!context_) return;
+    if (!context_)
+      return;
     mirror_render_context_reset(context_);
   }
   std::optional<std::string> convert(RgbaBytes rgba, int width, int height, bool contain) {
-    if (!context_) return std::nullopt;
+    if (!context_)
+      return std::nullopt;
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mirror image: %dx%d, %zu bytes", width, height, length);
@@ -62,8 +72,8 @@ public:
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
       result.set("message", has_context && context.context_message[0]
-                                 ? std::string(context.context_message)
-                                 : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+                                ? std::string(context.context_message)
+                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
       // Renderer failures are local input/state errors, never transport retries.
       result.set("retryable", false);
     }
@@ -74,7 +84,8 @@ public:
     return result;
   }
   int transform(RgbaBytes rgba, int width, int height) {
-    if (!context_) return error();
+    if (!context_)
+      return error();
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capture image: %dx%d, %zu bytes", width, height, length);
@@ -112,7 +123,8 @@ public:
     }
   }
   std::optional<std::string> renderAudio(unsigned width, unsigned height, int source) {
-    if (!context_) return std::nullopt;
+    if (!context_)
+      return std::nullopt;
     if (!width || !height || (source != 0 && source != 1)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization dimensions or source");
       return std::nullopt;

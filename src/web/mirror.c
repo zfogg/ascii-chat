@@ -37,7 +37,8 @@ mirror_render_context_t *mirror_render_context_create(void) {
   return SAFE_CALLOC(1, sizeof(mirror_render_context_t), mirror_render_context_t *);
 }
 void mirror_render_context_reset(mirror_render_context_t *context) {
-  if (!context) return;
+  if (!context)
+    return;
   ascii_stabilizer_reset(&context->stabilizer);
   if (context->digital_rain) {
     digital_rain_destroy(context->digital_rain);
@@ -47,7 +48,8 @@ void mirror_render_context_reset(mirror_render_context_t *context) {
   context->frame_count = 0;
 }
 void mirror_render_context_destroy(mirror_render_context_t *context) {
-  if (!context) return;
+  if (!context)
+    return;
   mirror_render_context_reset(context);
   SAFE_FREE(context);
 }
@@ -99,7 +101,8 @@ void mirror_cleanup(void) {
 // Frame Conversion API
 // ============================================================================
 
-char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data, int src_width, int src_height, int contain) {
+char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data, int src_width, int src_height,
+                           int contain) {
   if (!context) {
     SET_ERRNO(ERROR_INVALID_STATE, "Mirror render context is closed");
     return NULL;
@@ -242,7 +245,8 @@ char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data,
   bool matrix_rain = GET_OPTION(matrix_rain);
   if (matrix_rain) {
     // Initialize digital rain context if needed or dimensions changed
-    if (!context->digital_rain || context->digital_rain->num_columns != dst_width || context->digital_rain->num_rows != dst_height) {
+    if (!context->digital_rain || context->digital_rain->num_columns != dst_width ||
+        context->digital_rain->num_rows != dst_height) {
       if (context->digital_rain) {
         digital_rain_destroy(context->digital_rain);
       }
@@ -308,7 +312,8 @@ validate_output:
 }
 
 void mirror_submit_audio_samples(mirror_render_context_t *context, const float *samples, int count, int source) {
-  if (!context) return;
+  if (!context)
+    return;
   if (!samples || count <= 0 || count > 8192)
     return;
   audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
@@ -316,8 +321,10 @@ void mirror_submit_audio_samples(mirror_render_context_t *context, const float *
                              samples, (size_t)count);
 }
 
-char *mirror_render_audio_visualization(mirror_render_context_t *context, unsigned int width, unsigned int height, int source) {
-  if (!context) return NULL;
+char *mirror_render_audio_visualization(mirror_render_context_t *context, unsigned int width, unsigned int height,
+                                        int source) {
+  if (!context)
+    return NULL;
   audio_visualization_source_t audio_source =
       source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   char *text =
@@ -332,4 +339,3 @@ char *mirror_render_audio_visualization(mirror_render_context_t *context, unsign
   }
   return text;
 }
-

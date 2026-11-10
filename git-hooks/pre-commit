@@ -17,10 +17,15 @@ if printf "%s\n" "$all_staged" | grep -Eq '^(docs/|web/)|\.(md|mdx|toml|js|mjs|c
 fi
 
 # Check C formatting and web projects in parallel
-clang_pid=
 if printf "%s\n" "$all_staged" | grep -Eq '\.(c|h|cpp|hpp|m|mm)$'; then
-  zsh scripts/clang-format-and-add.zsh &
-  clang_pid=$!
+  while IFS= read -r file; do
+    if [ -f "$file" ]; then
+      clang-format -i -- "$file"
+      git add -- "$file"
+    fi
+  done <<EOF
+$all_staged
+EOF
 fi
 web_pid=
 if printf "%s\n" "$all_staged" | grep -q "^web/"; then
@@ -31,7 +36,6 @@ if printf "%s\n" "$all_staged" | grep -q "^web/"; then
 fi
 status=0
 if [ -n "$format_pid" ]; then wait "$format_pid" || status=1; fi
-if [ -n "$clang_pid" ]; then wait "$clang_pid" || status=1; fi
 if [ -n "$web_pid" ]; then wait "$web_pid" || status=1; fi
 if [ "$status" -ne 0 ]; then
   exit "$status"

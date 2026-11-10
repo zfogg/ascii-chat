@@ -28,14 +28,20 @@ public:
   static int setAudio(int value) {
     return static_cast<int>(options_set_bool("audio_enabled", value != 0));
   }
-  static int fps() { return static_cast<int>(GET_OPTION(fps_counter)); }
-  static double volume() { return static_cast<double>(GET_OPTION(speakers_volume)); }
+  static int fps() {
+    return static_cast<int>(GET_OPTION(fps_counter));
+  }
+  static double volume() {
+    return static_cast<double>(GET_OPTION(speakers_volume));
+  }
   SessionUiBinding() : SessionUiBinding(true) {}
   explicit SessionUiBinding(bool capture_logs) : session_(ui_session_create()) {
     if (session_ && capture_logs)
       ui_session_capture_logs(session_);
   }
-  ~SessionUiBinding() { close(); }
+  ~SessionUiBinding() {
+    close();
+  }
 
   SessionUiBinding(const SessionUiBinding &) = delete;
   SessionUiBinding &operator=(const SessionUiBinding &) = delete;
@@ -43,7 +49,9 @@ public:
   bool valid() const {
     return session_ != nullptr;
   }
-  int error() const { return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE); }
+  int error() const {
+    return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE);
+  }
   void close() {
     if (!session_)
       return;
