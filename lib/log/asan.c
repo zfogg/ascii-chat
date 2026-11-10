@@ -32,18 +32,22 @@ __attribute__((constructor)) static void init_asan_error_reporting(void) {
 }
 
 void sanitizer_log_init(const char *filename) {
-  if (!filename || !*filename) return;
-  const int fd = platform_open("sanitizer_log", filename,
-                               PLATFORM_O_WRONLY | PLATFORM_O_APPEND | PLATFORM_O_CREAT,
+  if (!filename || !*filename)
+    return;
+  const int fd = platform_open("sanitizer_log", filename, PLATFORM_O_WRONLY | PLATFORM_O_APPEND | PLATFORM_O_CREAT,
                                FILE_PERM_PRIVATE);
-  if (fd >= 0) atomic_store_int(&g_sanitizer_fd, fd);
+  if (fd >= 0)
+    atomic_store_int(&g_sanitizer_fd, fd);
 }
 
 void sanitizer_log_destroy(void) {
   const int fd = atomic_exchange_int(&g_sanitizer_fd, -1);
-  if (fd >= 0) (void)platform_close(fd);
+  if (fd >= 0)
+    (void)platform_close(fd);
 }
 #else
-void sanitizer_log_init(const char *filename) { (void)filename; }
+void sanitizer_log_init(const char *filename) {
+  (void)filename;
+}
 void sanitizer_log_destroy(void) {}
 #endif
