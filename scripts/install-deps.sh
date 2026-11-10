@@ -545,9 +545,9 @@ if ! command -v vp >/dev/null 2>&1; then
   fi
   export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
 fi
-if command -v vp >/dev/null 2>&1; then
-  run_as_user bash -c 'cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT"
-  run_as_user bash -c 'cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT/web"
+if VP_BIN="$(command -v vp 2>/dev/null)"; then
+  run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT" "$VP_BIN"
+  run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT/web" "$VP_BIN"
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
