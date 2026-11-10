@@ -301,7 +301,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 # in the top-level scope used when the command is generated.
 if(USE_MUSL)
     set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
-        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
+        "/usr/include/aarch64-linux-gnu"
+        "/usr/include/arm-linux-gnueabihf")
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
