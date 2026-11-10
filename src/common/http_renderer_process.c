@@ -109,7 +109,8 @@ static void tick(uv_timer_t *timer) {
     }
   }
 }
-void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled, http_renderer_process_result_t *result) {
+void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled,
+                           http_renderer_process_result_t *result) {
   memset(result, 0, sizeof(*result));
   if (r->output_type != HTTP_RENDER_OUTPUT_TEXT && r->output_type != HTTP_RENDER_OUTPUT_FILE) {
     SAFE_STRNCPY(result->error, "Renderer output must select text or files", sizeof(result->error));
@@ -211,8 +212,10 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
 }
 
 void http_renderer_process_result_destroy(http_renderer_process_result_t *result) {
-  if (!result) return;
-  for (size_t i = 0; i < result->frame_count; ++i) SAFE_FREE(result->frames[i].text);
+  if (!result)
+    return;
+  for (size_t i = 0; i < result->frame_count; ++i)
+    SAFE_FREE(result->frames[i].text);
   SAFE_FREE(result->frames);
   SAFE_FREE(result->text);
   memset(result, 0, sizeof(*result));

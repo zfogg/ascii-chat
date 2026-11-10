@@ -231,7 +231,8 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
 }
 
 asciichat_error_t mcp_http_run(mcp_server_t *s) {
-  http_server_config_t config = {.bind_address = s->policy.address, .bind_address6 = s->policy.address6,
+  http_server_config_t config = {.bind_address = s->policy.address,
+                                 .bind_address6 = s->policy.address6,
                                  .port = (uint16_t)s->policy.port,
                                  .enable_http1 = true,
                                  .enable_http2 = true,

@@ -83,14 +83,21 @@ static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
 
 static const char *get_mode_name(asciichat_mode_t mode) {
   switch (mode) {
-  case MODE_MCP_SERVER: return "mcp-server";
-  case MODE_API_SERVER: return "api-server";
-  case MODE_SERVER: return "server";
-  case MODE_CLIENT: return "client";
-  case MODE_MIRROR: return "mirror";
-  case MODE_DISCOVERY_SERVICE: return "discovery-service";
+  case MODE_MCP_SERVER:
+    return "mcp-server";
+  case MODE_API_SERVER:
+    return "api-server";
+  case MODE_SERVER:
+    return "server";
+  case MODE_CLIENT:
+    return "client";
+  case MODE_MIRROR:
+    return "mirror";
+  case MODE_DISCOVERY_SERVICE:
+    return "discovery-service";
   case MODE_DISCOVERY:
-  default: return NULL;
+  default:
+    return NULL;
   }
 }
 

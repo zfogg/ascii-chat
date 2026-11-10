@@ -175,8 +175,8 @@ const registry_entry_t g_network_entries[] = {
      parse_port_option,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
-         OPTION_MODE_DISCOVERY,
+     OPTION_MODE_CLIENT | OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER |
+         OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
      get_default_port},
     {"websocket-port",
@@ -212,7 +212,8 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"tls-key",
@@ -230,7 +231,8 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"tls-key-password",
@@ -249,7 +251,8 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"max-clients",

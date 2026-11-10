@@ -147,13 +147,15 @@ static void run_job(void *arg, atomic_t *cancelled) {
     http_render_request_t shared_request;
     http_render_request_init(&shared_request);
     shared_request.source.type = job->request.source_url[0] ? HTTP_RENDER_SOURCE_URL : HTTP_RENDER_SOURCE_FILE;
-    if (job->request.source_url[0]) SAFE_STRNCPY(shared_request.source.url, job->request.source_url, sizeof(shared_request.source.url));
-    else SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
+    if (job->request.source_url[0])
+      SAFE_STRNCPY(shared_request.source.url, job->request.source_url, sizeof(shared_request.source.url));
+    else
+      SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
     shared_request.options = job->request.options;
     http_render_result_t shared_result = {0};
     const char *shared_source = job->request.source_url[0] ? job->request.source_url : job->request.source_path;
-    asciichat_error_t shared_error = http_renderer_render_file(shared_source, &shared_request,
-                                                               &shared_result, cancelled);
+    asciichat_error_t shared_error =
+        http_renderer_render_file(shared_source, &shared_request, &shared_result, cancelled);
     memset(&result, 0, sizeof(result));
     result.elapsed_ms = shared_result.elapsed_ms;
     if (shared_error == ASCIICHAT_OK) {
@@ -185,7 +187,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
   if (!result.error[0] && result.output_path[0])
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_SAVED_FILES, 1);
   job->response = tool_result(mcp_get(yyjson_doc_get_root(job->message), "id"), &result);
-    http_renderer_process_result_destroy(&result);
+  http_renderer_process_result_destroy(&result);
   mcp_request_destroy(&job->request);
   if (!job->server->policy.hosted) {
     mcp_stdio_send(job->server, job->response);
@@ -201,7 +203,8 @@ static void run_job(void *arg, atomic_t *cancelled) {
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->renderer_job.started || (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
+    if (!j->renderer_job.started ||
+        (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
       continue;
     http_renderer_job_join(&j->renderer_job);
     yyjson_doc_free(j->message);
