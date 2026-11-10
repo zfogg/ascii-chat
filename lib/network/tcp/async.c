@@ -29,6 +29,7 @@ typedef struct {
   bool queued_receive;
   acip_transport_t *destroy_on_close;
   cond_t received;
+  cond_t writable;
   packet_decoder_t decoder;
   async_packet_t *head, *tail;
   async_packet_t *recycled;
@@ -271,6 +272,7 @@ static void async_destroy(acip_transport_t *transport) {
     }
     cond_destroy(&tcp->received);
   }
+  cond_destroy(&tcp->writable);
   buffer_workspace_destroy(&tcp->ciphertext);
   mutex_destroy(&tcp->receive_mutex);
   mutex_destroy(&tcp->mutex);
@@ -284,9 +286,26 @@ static size_t async_queued_bytes(acip_transport_t *transport) {
   return acip_async_tcp_transport_queued(transport);
 }
 
+static asciichat_error_t async_wait_writable(acip_transport_t *transport, uint64_t timeout_ns) {
+  async_tcp_t *tcp = transport->impl_data;
+  mutex_lock(&tcp->mutex);
+  while (atomic_load_u64(&tcp->queued_wire_bytes) != 0 && !atomic_load_bool(&tcp->closed) &&
+         !atomic_load_bool(&tcp->interrupted)) {
+    if (cond_timedwait(&tcp->writable, &tcp->mutex, timeout_ns) == ERROR_NETWORK_TIMEOUT)
+      break;
+  }
+  bool writable = atomic_load_u64(&tcp->queued_wire_bytes) == 0;
+  bool closed = atomic_load_bool(&tcp->closed) || atomic_load_bool(&tcp->interrupted);
+  mutex_unlock(&tcp->mutex);
+  if (closed)
+    return SET_ERRNO(ERROR_NETWORK, "Async transport closed while waiting for writable output");
+  return writable ? ASCIICHAT_OK : ERROR_NETWORK_TIMEOUT;
+}
+
 static const acip_transport_methods_t async_methods = {.send = async_send,
                                                        .reserved_bytes = SOCKET_STREAM_SEND_RESERVE,
                                                        .queued_bytes = async_queued_bytes,
+                                                       .wait_writable = async_wait_writable,
                                                        .sendv = async_sendv,
                                                        .recv = async_recv,
                                                        .close = async_close,
@@ -309,6 +328,9 @@ size_t acip_async_tcp_transport_queued(acip_transport_t *transport) {
 static void queue_changed(void *context, size_t bytes) {
   async_tcp_t *tcp = context;
   atomic_store_u64(&tcp->queued_wire_bytes, bytes);
+  mutex_lock(&tcp->mutex);
+  cond_broadcast(&tcp->writable);
+  mutex_unlock(&tcp->mutex);
 }
 
 acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *stream, crypto_context_t *crypto) {
@@ -320,6 +342,13 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
     return NULL;
   }
   if (mutex_init(&tcp->receive_mutex, "tcp_receive_queue") != ASCIICHAT_OK) {
+    mutex_destroy(&tcp->mutex);
+    SAFE_FREE(tcp);
+    SAFE_FREE(transport);
+    return NULL;
+  }
+  if (cond_init(&tcp->writable, "tcp_output_writable") != ASCIICHAT_OK) {
+    mutex_destroy(&tcp->receive_mutex);
     mutex_destroy(&tcp->mutex);
     SAFE_FREE(tcp);
     SAFE_FREE(transport);

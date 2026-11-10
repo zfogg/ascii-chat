@@ -66,10 +66,6 @@ struct acip_outbound {
   atomic_t peak_bytes;
 };
 
-static void stats_add(atomic_t *counter, uint64_t value) {
-  atomic_fetch_add_u64(counter, value);
-}
-
 static size_t backend_bytes(acip_outbound_t *out) {
   return out->transport->methods->queued_bytes ? out->transport->methods->queued_bytes(out->transport) : 0;
 }
@@ -162,7 +158,7 @@ static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video)
       *link = packet->next;
       out->bytes -= packet->cost;
       --out->count;
-      stats_add(&out->dropped, 1);
+      atomic_fetch_add_u64(&out->dropped, 1);
       ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
       packet_free(out, packet);
     } else {
@@ -204,7 +200,7 @@ static void expire_datagrams(acip_outbound_t *out, uint64_t now) {
     *link = packet->next;
     out->bytes -= packet->cost;
     --out->count;
-    stats_add(&out->dropped, 1);
+    atomic_fetch_add_u64(&out->dropped, 1);
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     packet_free(out, packet);
   }
@@ -346,7 +342,17 @@ static void *outbound_worker(void *arg) {
      * The backend preserves ordering, so submit control traffic and let it
      * drain normally. */
     if (backend != 0 && !capabilities.independent_streams && (p->video || p->audio)) {
-      cond_timedwait(&out->changed, &out->mutex, 2 * NS_PER_MS_INT);
+      if (out->transport->methods->wait_writable) {
+        mutex_unlock(&out->mutex);
+        asciichat_error_t writable = out->transport->methods->wait_writable(out->transport, 10 * NS_PER_MS_INT);
+        mutex_lock(&out->mutex);
+        if (writable != ASCIICHAT_OK && writable != ERROR_NETWORK_TIMEOUT) {
+          outbound_record_failure_and_fail_pending(out, writable, NULL, NULL);
+          break;
+        }
+      } else {
+        cond_timedwait(&out->changed, &out->mutex, 2 * NS_PER_MS_INT);
+      }
       continue;
     }
     out->head = p->next;
@@ -382,13 +388,13 @@ static void *outbound_worker(void *arg) {
       if (datagram_drop) {
         if (p->encoded)
           discard_stream(out, p);
-        stats_add(&out->dropped, 1);
+        atomic_fetch_add_u64(&out->dropped, 1);
         ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
       }
       if (result == ASCIICHAT_OK) {
-        stats_add(&out->submitted, 1);
+        atomic_fetch_add_u64(&out->submitted, 1);
         if (p->encoded && p->keyframe)
-          stats_add(&out->recovery_frames, 1);
+          atomic_fetch_add_u64(&out->recovery_frames, 1);
       }
       if (result != ASCIICHAT_OK && !datagram_drop)
         outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
@@ -405,13 +411,13 @@ static void *outbound_worker(void *arg) {
     if (datagram_drop) {
       if (p->encoded)
         discard_stream(out, p);
-      stats_add(&out->dropped, 1);
+      atomic_fetch_add_u64(&out->dropped, 1);
       ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     }
     if (result == ASCIICHAT_OK) {
-      stats_add(&out->submitted, 1);
+      atomic_fetch_add_u64(&out->submitted, 1);
       if (p->encoded && p->keyframe)
-        stats_add(&out->recovery_frames, 1);
+        atomic_fetch_add_u64(&out->recovery_frames, 1);
     }
     if (p->wait) {
       p->result = result;
@@ -572,7 +578,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   expire_datagrams(out, info.created);
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
   if (info.encoded && (!stream || (atomic_load_bool(&stream->needs_keyframe) && !info.keyframe))) {
-    stats_add(&out->dropped, 1);
+    atomic_fetch_add_u64(&out->dropped, 1);
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     *admission = ACIP_ADMISSION_NEEDS_KEYFRAME;
     ASCII_OTEL_ATTR_STRING("network.queue.admission", "needs_keyframe");
@@ -599,7 +605,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
       pending > limit || info.cost > limit - pending) {
     if (info.encoded)
       discard_stream(out, &info);
-    stats_add(&out->congestion, 1);
+     atomic_fetch_add_u64(&out->congestion, 1);
     ASCII_OTEL_ATTR_STRING("network.queue.admission", "congested");
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_CONGESTION, 1);
     mutex_unlock(&out->mutex);
@@ -636,7 +642,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   bool was_empty = outbound_insert_packet(out, p, !info.video);
   out->bytes += info.cost;
   ++out->count;
-  stats_add(&out->accepted, 1);
+  atomic_fetch_add_u64(&out->accepted, 1);
   pending += info.cost;
   uint64_t peak = atomic_load_u64(&out->peak_bytes);
   while (pending > peak && !atomic_cas_u64(&out->peak_bytes, &peak, pending))
