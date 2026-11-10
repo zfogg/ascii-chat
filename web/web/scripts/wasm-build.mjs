@@ -36,7 +36,6 @@ function copyArtifact(source, destination) {
 function sourceHash() {
   const digest = createHash("sha256");
   const walk = (directory) => {
-    if (!existsSync(directory)) return;
     for (const entry of readdirSync(directory, { withFileTypes: true }).sort(
       (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     )) {

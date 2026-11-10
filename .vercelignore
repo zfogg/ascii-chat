@@ -18,7 +18,9 @@
 *.so
 
 # Dependencies
-/deps/
+/deps/*
+!/deps/libfacedetection/
+!/deps/libfacedetection/**
 /.deps-cache/
 
 # Tests
