@@ -168,6 +168,31 @@ if(NOT EMSCRIPTEN)
     endif()
     add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                      ${CMAKE_BINARY_DIR}/gotel)
+    if(PLATFORM_IOS AND TARGET otlp_c)
+        # gotel's upstream Apple TLS path calls the macOS-only
+        # SecTrustCopyAnchorCertificates API. Keep the submodule pristine and
+        # stage an iOS-safe translation unit from the parent build instead.
+        get_target_property(_asciichat_otlp_sources otlp_c SOURCES)
+        set(_asciichat_otlp_tls_source "${CMAKE_BINARY_DIR}/generated/gotel/tls.c")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/gotel")
+        file(READ "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/tls.c" _asciichat_otlp_tls)
+        string(REPLACE "#elif defined(__APPLE__)\n#include <Security/Security.h>"
+                       "#elif defined(__APPLE__)\n#include <TargetConditionals.h>\n#if !TARGET_OS_IPHONE\n#include <Security/Security.h>\n#endif"
+                       _asciichat_otlp_tls "${_asciichat_otlp_tls}")
+        string(REPLACE "#elif defined(__APPLE__)\n    CFArrayRef roots"
+                       "#elif defined(__APPLE__) && !TARGET_OS_IPHONE\n    CFArrayRef roots"
+                       _asciichat_otlp_tls "${_asciichat_otlp_tls}")
+        file(WRITE "${_asciichat_otlp_tls_source}" "${_asciichat_otlp_tls}")
+        list(FILTER _asciichat_otlp_sources EXCLUDE REGEX "/tls\\.c$")
+        set_property(TARGET otlp_c PROPERTY SOURCES ${_asciichat_otlp_sources})
+        target_sources(otlp_c PRIVATE "${_asciichat_otlp_tls_source}")
+        # The vendored target may reintroduce its source list during its own
+        # configure step.  Keep the iOS-only API gap isolated to this target.
+        set(_asciichat_otlp_ios_compat "${CMAKE_BINARY_DIR}/generated/gotel/ios_compat.h")
+        file(WRITE "${_asciichat_otlp_ios_compat}"
+             "#include <TargetConditionals.h>\n#if TARGET_OS_IPHONE\n#define SecTrustCopyAnchorCertificates(...) errSecParam\n#endif\n")
+        target_compile_options(otlp_c PRIVATE "-include" "${_asciichat_otlp_ios_compat}")
+    endif()
     if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
         target_include_directories(gotel_cxx SYSTEM PRIVATE
                                    "${ALPINE_LIBCXX_INCLUDE_DIR}")

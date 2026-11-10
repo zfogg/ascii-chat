@@ -65,8 +65,10 @@ void asciichat_ios_activate_tui(int item) {
     stats_runtime_toggle();
     break;
   case 3:
-    if (ui_sync_start(fd) == ASCIICHAT_OK)
+    if (ui_sync_start(fd) == ASCIICHAT_OK) {
       ui_controller_select_interactive(UI_SCREEN_SYNC);
+      ui_controller_redraw();
+    }
     break;
   case 4:
     ui_errno_stacks_toggle();
@@ -84,6 +86,10 @@ void asciichat_ios_activate_tui(int item) {
   default:
     break;
   }
+  /* Native TUI selection must publish its first frame before Swift dismisses
+   * the switcher; otherwise the black render surface can be exposed briefly
+   * (or indefinitely for TUIs without a producer-driven repaint). */
+  ui_controller_redraw();
 }
 
 void asciichat_ios_set_session_string(const char *session_string) {
