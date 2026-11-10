@@ -431,10 +431,9 @@ static asciichat_error_t quic_capabilities(acip_transport_t *transport, acip_tra
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC capabilities are not negotiated yet");
   }
   size_t payload = quic_connection_datagram_payload(quic->connection);
-  *out =
-      (acip_transport_capabilities_t){.independent_streams = true,
-                                      .datagrams = payload != 0,
-                                      .max_datagram_payload = payload ? payload + QUIC_DATAGRAM_HEADER_SIZE : 0};
+  *out = (acip_transport_capabilities_t){.independent_streams = true,
+                                         .datagrams = payload != 0,
+                                         .max_datagram_payload = payload ? payload + QUIC_DATAGRAM_HEADER_SIZE : 0};
   lane_unlock(quic);
   return ASCIICHAT_OK;
 }
@@ -551,8 +550,8 @@ asciichat_error_t quic_transport_attach_serialized(quic_connection_t *connection
   return attach_transport(connection, crypto, lane, false, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto,
-                                                mutex_t *lane, acip_transport_t **out) {
+asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
+                                                acip_transport_t **out) {
   if (!lane) {
     if (out)
       *out = NULL;

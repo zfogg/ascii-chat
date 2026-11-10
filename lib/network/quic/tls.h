@@ -40,8 +40,8 @@ asciichat_error_t quic_tls_client_configure(quic_tls_t *tls, SSL *ssl, const cha
 /** The connection reference is borrowed and must remain valid while SSL uses it.
  * The caller owns the SSL and must clear its app data before freeing it if the
  * ngtcp2 connection or reference can have been destroyed first. */
-asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name,
-                                          ngtcp2_crypto_conn_ref *connection, SSL **out);
+asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name, ngtcp2_crypto_conn_ref *connection,
+                                          SSL **out);
 /** Call after the TLS handshake and before exposing the connection as ready.
  * Requires the configured ALPN; a client also requires a verified peer cert. */
 asciichat_error_t quic_tls_verify_ready(quic_tls_t *tls, SSL *ssl);

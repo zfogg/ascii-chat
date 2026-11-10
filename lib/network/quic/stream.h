@@ -12,8 +12,8 @@
  */
 #define ACIP_QUIC_STREAM_PREAMBLE_SIZE 8
 
-typedef asciichat_error_t (*quic_stream_emit_fn)(acip_traffic_class_t traffic_class, const void *packet,
-                                                      size_t size, void *context);
+typedef asciichat_error_t (*quic_stream_emit_fn)(acip_traffic_class_t traffic_class, const void *packet, size_t size,
+                                                 void *context);
 
 typedef struct {
   uint8_t preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];

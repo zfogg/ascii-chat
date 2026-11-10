@@ -21,8 +21,8 @@ asciichat_error_t quic_transport_attach_serialized(quic_connection_t *connection
 /* For an endpoint accept callback already holding lane. The returned adapter
  * uses lane for later calls; no adapter method may be called until it is
  * released. */
-asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto,
-                                                mutex_t *lane, acip_transport_t **out);
+asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
+                                                acip_transport_t **out);
 asciichat_error_t quic_transport_attach_on_lane_with_waker(quic_connection_t *connection, mutex_t *lane,
                                                            void (*wake)(void *), void *context,
                                                            void (*on_destroy)(acip_transport_t *, void *),

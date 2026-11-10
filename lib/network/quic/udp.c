@@ -64,9 +64,8 @@ static ngtcp2_path make_path(const quic_udp_endpoint_t *endpoint, const struct s
   return path;
 }
 
-asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *address, socklen_t length,
-                                           quic_tls_t *server_tls, quic_udp_accept_fn accept, void *context,
-                                           quic_udp_endpoint_t **out) {
+asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *address, socklen_t length, quic_tls_t *server_tls,
+                                           quic_udp_accept_fn accept, void *context, quic_udp_endpoint_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP endpoint output");
   *out = NULL;
@@ -142,9 +141,9 @@ static void send_retry(quic_udp_endpoint_t *endpoint, const ngtcp2_pkt_hd *initi
     (void)socket_sendto(endpoint->socket, packet, (size_t)length, 0, remote, remote_length);
 }
 
-asciichat_error_t quic_udp_connect(quic_udp_endpoint_t *endpoint, quic_tls_t *client_tls,
-                                   const char *server_name, const struct sockaddr *remote, socklen_t remote_length,
-                                   uint64_t now_ns, quic_connection_t **out) {
+asciichat_error_t quic_udp_connect(quic_udp_endpoint_t *endpoint, quic_tls_t *client_tls, const char *server_name,
+                                   const struct sockaddr *remote, socklen_t remote_length, uint64_t now_ns,
+                                   quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP connection output");
   *out = NULL;

@@ -123,8 +123,8 @@ asciichat_error_t quic_tls_client_configure(quic_tls_t *tls, SSL *ssl, const cha
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name,
-                                          ngtcp2_crypto_conn_ref *connection, SSL **out) {
+asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name, ngtcp2_crypto_conn_ref *connection,
+                                          SSL **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC TLS session arguments");
   *out = NULL;

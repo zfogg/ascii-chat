@@ -4,8 +4,7 @@
 #include <ascii-chat/log/log.h>
 #include <string.h>
 
-asciichat_error_t session_quic_listeners_open(int port, quic_endpoint_t **native,
-                                              quic_endpoint_t **webtransport) {
+asciichat_error_t session_quic_listeners_open(int port, quic_endpoint_t **native, quic_endpoint_t **webtransport) {
   if (!native || !webtransport || *native || *webtransport || port < 1 || port > UINT16_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session QUIC listener state");
   const char *native_address = GET_OPTION(quic_bind_address);
@@ -38,13 +37,13 @@ asciichat_error_t session_quic_listeners_open(int port, quic_endpoint_t **native
   if (result != ASCIICHAT_OK)
     return result;
   quic_config_t config = {.certificate_file = certificate,
-                               .private_key_file = key,
-                               .webtransport_origin = browser ? origin : NULL,
-                               .webtransport_path = browser ? path : NULL,
-                               .enable_datagrams = true,
-                               .accept_native = browser,
-                               .prefer_audio_datagrams = GET_OPTION(quic_audio_datagrams),
-                               .prefer_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
+                          .private_key_file = key,
+                          .webtransport_origin = browser ? origin : NULL,
+                          .webtransport_path = browser ? path : NULL,
+                          .enable_datagrams = true,
+                          .accept_native = browser,
+                          .prefer_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                          .prefer_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
   // One endpoint owns the UDP socket and dispatches each connection by ALPN.
   // Keep the second output empty so teardown and accept never alias ownership.
   result = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &config, native);

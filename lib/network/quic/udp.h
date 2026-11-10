@@ -19,9 +19,9 @@ asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *bind_address, 
                                            quic_udp_endpoint_t **out);
 asciichat_error_t quic_udp_endpoint_address(const quic_udp_endpoint_t *endpoint, struct sockaddr_storage *address,
                                             socklen_t *length);
-asciichat_error_t quic_udp_connect(quic_udp_endpoint_t *endpoint, quic_tls_t *client_tls,
-                                   const char *server_name, const struct sockaddr *remote, socklen_t remote_length,
-                                   uint64_t now_ns, quic_connection_t **out);
+asciichat_error_t quic_udp_connect(quic_udp_endpoint_t *endpoint, quic_tls_t *client_tls, const char *server_name,
+                                   const struct sockaddr *remote, socklen_t remote_length, uint64_t now_ns,
+                                   quic_connection_t **out);
 /* Nonblocking bounded work. A per-connection failure is returned with *failed
  * set to its borrowed handle; the caller may remove it and continue the other
  * connections. Socket-level failures leave *failed NULL. */

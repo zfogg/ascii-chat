@@ -51,8 +51,7 @@ asciichat_error_t quic_datagram_fragment(acip_traffic_class_t traffic_class, uin
 /* Returns a buffer-owned complete encrypted packet in *out, or NULL if still
  * incomplete. Identical duplicates are ignored; conflicting fragments fail.
  * now_ns is monotonic and expiry is measured from the first fragment. */
-asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length,
-                                     uint64_t now_ns, acip_traffic_class_t *traffic_class, uint8_t **out,
-                                     size_t *out_length);
+asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length, uint64_t now_ns,
+                                     acip_traffic_class_t *traffic_class, uint8_t **out, size_t *out_length);
 void quic_datagram_expire(quic_datagram_reader_t *reader, uint64_t now_ns);
 void quic_datagram_reset(quic_datagram_reader_t *reader);

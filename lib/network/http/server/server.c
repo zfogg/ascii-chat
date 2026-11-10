@@ -288,7 +288,9 @@ static bool tls_flush(http_server_client_t *c) {
     uv_write_t *request = SAFE_CALLOC(1, sizeof(*request), uv_write_t *);
     http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
     if (!copy || !request || !write) {
-      SAFE_FREE(copy); SAFE_FREE(request); SAFE_FREE(write);
+      SAFE_FREE(copy);
+      SAFE_FREE(request);
+      SAFE_FREE(write);
       return false;
     }
     memcpy(copy, buffer, (size_t)n);
@@ -299,7 +301,9 @@ static bool tls_flush(http_server_client_t *c) {
     request->data = write;
     uv_buf_t b = uv_buf_init(copy, n);
     if (uv_write(request, write->stream, &b, 1, write_done) != 0) {
-      SAFE_FREE(copy); SAFE_FREE(request); SAFE_FREE(write);
+      SAFE_FREE(copy);
+      SAFE_FREE(request);
+      SAFE_FREE(write);
       return false;
     }
     c->pending_writes++;
@@ -548,12 +552,26 @@ static asciichat_error_t client_write_plain(http_server_client_t *client, const 
     uv_write_t *request = SAFE_CALLOC(1, sizeof(*request), uv_write_t *);
     http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
     char *copy = SAFE_MALLOC(length, char *);
-    if (!request || !write || !copy) { SAFE_FREE(request); SAFE_FREE(write); SAFE_FREE(copy); return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state"); }
+    if (!request || !write || !copy) {
+      SAFE_FREE(request);
+      SAFE_FREE(write);
+      SAFE_FREE(copy);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
+    }
     memcpy(copy, data, length);
-    write->bytes = copy; write->length = length; write->stream = (uv_stream_t *)&client->tcp;
-    write->client = client; write->close_on_done = close_on_done; request->data = write;
+    write->bytes = copy;
+    write->length = length;
+    write->stream = (uv_stream_t *)&client->tcp;
+    write->client = client;
+    write->close_on_done = close_on_done;
+    request->data = write;
     uv_buf_t b = uv_buf_init(copy, (unsigned)length);
-    if (uv_write(request, write->stream, &b, 1, write_done) != 0) { SAFE_FREE(copy); SAFE_FREE(write); SAFE_FREE(request); return SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response"); }
+    if (uv_write(request, write->stream, &b, 1, write_done) != 0) {
+      SAFE_FREE(copy);
+      SAFE_FREE(write);
+      SAFE_FREE(request);
+      return SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+    }
     client->pending_writes++;
     return ASCIICHAT_OK;
   }
@@ -562,7 +580,11 @@ static asciichat_error_t client_write_plain(http_server_client_t *client, const 
     int n = SSL_write(client->tls, data + offset, (int)(length - offset));
     if (n <= 0) {
       int error = SSL_get_error(client->tls, n);
-      if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) { if (!tls_flush(client)) break; continue; }
+      if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
+        if (!tls_flush(client))
+          break;
+        continue;
+      }
       return SET_ERRNO(ERROR_NETWORK, "Cannot encrypt HTTP response");
     }
     offset += (size_t)n;
@@ -954,14 +976,26 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   }
   if (c->tls) {
     if (BIO_write(SSL_get_rbio(c->tls), base, (int)n) != n || !tls_handshake(c)) {
-      SAFE_FREE(base); client_close(c); return;
+      SAFE_FREE(base);
+      client_close(c);
+      return;
     }
-    if (!SSL_is_init_finished(c->tls)) { SAFE_FREE(base); return; }
+    if (!SSL_is_init_finished(c->tls)) {
+      SAFE_FREE(base);
+      return;
+    }
     char *plain_buffer = SAFE_MALLOC(b->len, char *);
-    if (!plain_buffer) { SAFE_FREE(base); client_close(c); return; }
+    if (!plain_buffer) {
+      SAFE_FREE(base);
+      client_close(c);
+      return;
+    }
     int plain = SSL_read(c->tls, plain_buffer, (int)b->len);
     SAFE_FREE(base);
-    if (plain <= 0) { client_close(c); return; }
+    if (plain <= 0) {
+      client_close(c);
+      return;
+    }
     base = plain_buffer;
     n = plain;
   }
@@ -1073,7 +1107,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   ASCII_OTEL_ATTR_STRING("http.backend", "libuv");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
-    c->server->config.on_request(&r, &resp, c->server->config.user_data);
+  c->server->config.on_request(&r, &resp, c->server->config.user_data);
   if (!resp.finished && !resp.deferred)
     http_response_finish(&resp);
   ASCII_OTEL_ATTR_INT("http.status", resp.status);
@@ -1128,13 +1162,24 @@ static void connection_cb(uv_stream_t *l, int status) {
       s->config.on_connection(c->peer_address, true, s->config.user_data);
     if (s->tls_context) {
       c->tls = SSL_new(s->tls_context);
-      if (!c->tls) { client_close(c); return; }
+      if (!c->tls) {
+        client_close(c);
+        return;
+      }
       BIO *read_bio = BIO_new(BIO_s_mem());
       BIO *write_bio = BIO_new(BIO_s_mem());
-      if (!read_bio || !write_bio) { BIO_free(read_bio); BIO_free(write_bio); client_close(c); return; }
+      if (!read_bio || !write_bio) {
+        BIO_free(read_bio);
+        BIO_free(write_bio);
+        client_close(c);
+        return;
+      }
       SSL_set_bio(c->tls, read_bio, write_bio);
       SSL_set_accept_state(c->tls);
-      if (!tls_handshake(c)) { client_close(c); return; }
+      if (!tls_handshake(c)) {
+        client_close(c);
+        return;
+      }
     }
     if (uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb) != 0)
       client_close(c);
@@ -1179,7 +1224,9 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   if (cfg->tls_cert_path) {
     s->tls_context = SSL_CTX_new(TLS_server_method());
     if (!s->tls_context) {
-      rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SAFE_FREE(s);
+      rate_limiter_destroy(s->rate_limiter);
+      mutex_destroy(&s->response_mutex);
+      SAFE_FREE(s);
       return SET_ERRNO(ERROR_NETWORK, "Cannot initialize TLS context");
     }
     SSL_CTX_set_app_data(s->tls_context, s);
@@ -1192,8 +1239,11 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_cert_path) != 1 ||
         SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_key_path, SSL_FILETYPE_PEM) != 1 ||
         SSL_CTX_check_private_key(s->tls_context) != 1) {
-      SSL_CTX_free(s->tls_context); s->tls_context = NULL;
-      rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SAFE_FREE(s);
+      SSL_CTX_free(s->tls_context);
+      s->tls_context = NULL;
+      rate_limiter_destroy(s->rate_limiter);
+      mutex_destroy(&s->response_mutex);
+      SAFE_FREE(s);
       return SET_ERRNO(ERROR_NETWORK, "Cannot load HTTP TLS certificate or key");
     }
   }
@@ -1212,14 +1262,23 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
   }
   if (uv_tcp_init(&s->loop, &s->listener) != 0) {
-    uv_loop_close(&s->loop); rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
+    uv_loop_close(&s->loop);
+    rate_limiter_destroy(s->rate_limiter);
+    mutex_destroy(&s->response_mutex);
+    SSL_CTX_free(s->tls_context);
+    SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP listener");
   }
   s->listener_initialized = true;
   s->listener.data = s;
   if (uv_async_init(&s->loop, &s->stop_async, stop_async_cb) != 0) {
-    uv_close((uv_handle_t *)&s->listener, NULL); uv_run(&s->loop, UV_RUN_DEFAULT); uv_loop_close(&s->loop);
-    rate_limiter_destroy(s->rate_limiter); mutex_destroy(&s->response_mutex); SSL_CTX_free(s->tls_context); SAFE_FREE(s);
+    uv_close((uv_handle_t *)&s->listener, NULL);
+    uv_run(&s->loop, UV_RUN_DEFAULT);
+    uv_loop_close(&s->loop);
+    rate_limiter_destroy(s->rate_limiter);
+    mutex_destroy(&s->response_mutex);
+    SSL_CTX_free(s->tls_context);
+    SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP stop handle");
   }
   s->stop_async_initialized = true;

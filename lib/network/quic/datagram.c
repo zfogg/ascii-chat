@@ -101,9 +101,8 @@ void quic_datagram_reset(quic_datagram_reader_t *reader) {
   memset(reader, 0, sizeof(*reader));
 }
 
-asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length,
-                                     uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out,
-                                     size_t *out_length) {
+asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length, uint64_t now_ns,
+                                     acip_traffic_class_t *flow_out, uint8_t **out, size_t *out_length) {
   if (!out || !out_length || !flow_out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output");
   *out = NULL;
@@ -116,8 +115,8 @@ asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void 
   uint32_t total = get32(wire + 16);
   uint16_t unit = get16(wire + 20), index = get16(wire + 22), count = get16(wire + 24);
   if (memcmp(wire, "ACQD", sizeof("ACQD") - 1) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] ||
-      wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count ||
-      count > QUIC_DATAGRAM_MAX_FRAGMENTS || count != ((size_t)total + unit - 1) / unit || index >= count)
+      wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count || count > QUIC_DATAGRAM_MAX_FRAGMENTS ||
+      count != ((size_t)total + unit - 1) / unit || index >= count)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram envelope");
   size_t offset = (size_t)index * unit;
   size_t part = total - offset < unit ? total - offset : unit;
@@ -156,14 +155,14 @@ asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void 
     }
     memset(bitmap, 0, bitmap_size);
     *empty = (quic_datagram_slot_t){.data = packet,
-                                         .received = bitmap,
-                                         .cost = cost,
-                                         .id = id,
-                                         .started_ns = now_ns,
-                                         .total = total,
-                                         .unit = unit,
-                                         .count = count,
-                                         .traffic_class = flow};
+                                    .received = bitmap,
+                                    .cost = cost,
+                                    .id = id,
+                                    .started_ns = now_ns,
+                                    .total = total,
+                                    .unit = unit,
+                                    .count = count,
+                                    .traffic_class = flow};
     reader->bytes += cost;
     slot = empty;
   }

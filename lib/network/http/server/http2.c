@@ -1,6 +1,5 @@
 #include "http2.h"
 
-
 #include <ascii-chat/common.h>
 #include <nghttp2/nghttp2.h>
 #include <string.h>
