@@ -100,6 +100,7 @@ test("browser capabilities are accepted by the native session", async ({
       type: "configure-browser-capabilities",
       webtransport: true,
       datagrams: true,
+      maxDatagramPayload: 1200,
       hevc: false,
       webrtc: true,
     });
@@ -112,6 +113,7 @@ test("browser capabilities are accepted by the native session", async ({
   expect(result.capabilities).toEqual({
     webtransport: true,
     datagrams: true,
+    maxDatagramPayload: 1200,
     hevc: false,
     webrtc: true,
   });
@@ -164,13 +166,13 @@ test("binding failures record actionable C errors", async ({ page }) => {
         }),
         snapshot(() =>
           processClientEvent({
-        type: "receive-transport-packet",
+            type: "receive-transport-packet",
             payload: new Uint8Array(1),
           }),
         ),
         snapshot(() => {
           const result = processClientEvent({
-        type: "receive-transport-packet",
+            type: "receive-transport-packet",
             packet: new Uint8Array(),
           });
           if (result.code)

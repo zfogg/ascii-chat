@@ -71,14 +71,17 @@ async function setupMasterRenderer(page: import("@playwright/test").Page) {
     });
   });
   return page.evaluate(async () => {
-    const factory = (await import("/__master_wasm/client.js"))
-      .default as (options: Record<string, unknown>) => Promise<any>;
+    const moduleUrl = "/__master_wasm/client.js";
+    const factory = (await import(/* @vite-ignore */ moduleUrl)).default as (
+      options: Record<string, unknown>,
+    ) => Promise<any>;
     const module = await factory({
       locateFile: (name: string) => `/__master_wasm/${name}`,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
     const renderer = new module.AsciiRendererBinding(40, 20, 12, false, 0);
-    if (!renderer.valid()) throw new Error(`master renderer error ${renderer.error()}`);
+    if (!renderer.valid())
+      throw new Error(`master renderer error ${renderer.error()}`);
     (window as unknown as { __masterBoundary: unknown }).__masterBoundary = {
       renderer,
     };
@@ -262,7 +265,11 @@ test.describe("WASM browser boundary measurements", () => {
       let bytes = 0;
       for (let i = 0; i < 60; i++)
         bytes += renderer.render("x".repeat(800), 0).byteLength;
-      return { calls: 60, resultBytes: bytes, elapsedMs: performance.now() - start };
+      return {
+        calls: 60,
+        resultBytes: bytes,
+        elapsedMs: performance.now() - start,
+      };
     });
     console.info("Master versus feature renderer metrics", { master, current });
     expect(master.calls).toBe(current.calls);
@@ -348,8 +355,7 @@ test.describe("WASM browser boundary measurements", () => {
     );
     if (!existsSync(featureManifest))
       throw new Error("Feature WASM manifest is required");
-    const baselinePath = (file: string) =>
-      `web/web/src/wasm/dist/${file}`;
+    const baselinePath = (file: string) => `web/web/src/wasm/dist/${file}`;
     const readBaseline = (file: string): Buffer => {
       if (mainRoot) {
         const path = resolve(mainRoot, baselinePath(file));

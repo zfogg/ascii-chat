@@ -556,6 +556,7 @@ export type ClientEventResult = {
   capabilities?: {
     webtransport: boolean;
     datagrams: boolean;
+    maxDatagramPayload: number;
     hevc: boolean;
     webrtc: boolean;
   };
@@ -715,23 +716,27 @@ export class BrowserSession {
   }
 
   initQuic(): void {
-    const result = this.getBinding().process({ type: "quic-event", operation: "init" })[
-      "code"
-    ] as number;
+    const result = this.getBinding().process({
+      type: "quic-event",
+      operation: "init",
+    })["code"] as number;
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
   }
 
   get quicEpoch() {
     return (
-      (this.binding?.process({ type: "quic-event", operation: "state" })["epoch"] as
-        | number
-        | undefined) ?? -1
+      (this.binding?.process({ type: "quic-event", operation: "state" })[
+        "epoch"
+      ] as number | undefined) ?? -1
     );
   }
 
   tickQuic() {
     const binding = this.getBinding();
-      const response = binding.process({ type: "quic-event", operation: "tick" }) as {
+    const response = binding.process({
+      type: "quic-event",
+      operation: "tick",
+    }) as {
       code: number;
       quicOutputs?: Array<{ flow: number; packet: Uint8Array | null }>;
     };

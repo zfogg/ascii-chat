@@ -112,6 +112,7 @@ public:
     info.set("browserCapabilities", emscripten::val::object());
     info["browserCapabilities"].set("webtransport", browser_capabilities_.webtransport);
     info["browserCapabilities"].set("datagrams", browser_capabilities_.datagrams);
+    info["browserCapabilities"].set("maxDatagramPayload", browser_capabilities_.max_datagram_payload);
     info["browserCapabilities"].set("hevc", browser_capabilities_.hevc);
     info["browserCapabilities"].set("webrtc", browser_capabilities_.webrtc);
     return info;
@@ -359,13 +360,16 @@ public:
       browser_capabilities_.datagrams = event["datagrams"].isUndefined() ? false : event["datagrams"].as<bool>();
       const size_t max_datagram_payload =
           event["maxDatagramPayload"].isUndefined() ? 0 : event["maxDatagramPayload"].as<size_t>();
+      browser_capabilities_.max_datagram_payload = browser_capabilities_.datagrams ? max_datagram_payload : 0;
       browser_capabilities_.hevc = event["hevc"].isUndefined() ? false : event["hevc"].as<bool>();
       browser_capabilities_.webrtc = event["webrtc"].isUndefined() ? false : event["webrtc"].as<bool>();
-      browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams, max_datagram_payload);
+      browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams,
+                                         browser_capabilities_.max_datagram_payload);
       emscripten::val response = result(0);
       response.set("capabilities", emscripten::val::object());
       response["capabilities"].set("webtransport", browser_capabilities_.webtransport);
       response["capabilities"].set("datagrams", browser_capabilities_.datagrams);
+      response["capabilities"].set("maxDatagramPayload", browser_capabilities_.max_datagram_payload);
       response["capabilities"].set("hevc", browser_capabilities_.hevc);
       response["capabilities"].set("webrtc", browser_capabilities_.webrtc);
       return response;
@@ -502,6 +506,7 @@ private:
     // retained for protocol diagnostics and are not native policy inputs.
     bool webtransport = false;
     bool datagrams = false;
+    size_t max_datagram_payload = 0;
     bool hevc = false;
     bool webrtc = false;
   } browser_capabilities_;
