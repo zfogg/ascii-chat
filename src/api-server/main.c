@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/version.h>
+#include <ascii-chat/otel.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -145,6 +146,11 @@ static void api_discard_jobs(api_server_t *server) {
 static void api_request(http_request_t *request, http_response_t *response, void *user_data) {
   api_server_t *server = user_data;
   const http_request_info_t *info = http_request_info(request);
+  ASCII_OTEL_SCOPE(HTTP);
+  ASCII_OTEL_ATTR_STRING("service.name", "ascii-chat-api");
+  ASCII_OTEL_ATTR_STRING("http.route", info->path);
+  ASCII_OTEL_ATTR_STRING("http.request.method", info->method);
+  ASCII_OTEL_ATTR_INT("http.protocol", info->protocol);
   if (!strcmp(info->method, "GET") && !strcmp(info->path, "/health")) {
     static const char body[] = "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
     (void)http_response_set_header(response, "Content-Type", "application/json");
@@ -240,6 +246,9 @@ static void api_request(http_request_t *request, http_response_t *response, void
     }
     p = amp ? amp + 1 : p + strlen(p);
   }
+  ASCII_OTEL_ATTR_STRING("http.render.format", format);
+  ASCII_OTEL_ATTR_INT("http.render.width", render_request.options.width);
+  ASCII_OTEL_ATTR_INT("http.render.height", render_request.options.height);
   char path[PLATFORM_MAX_PATH_LENGTH];
   int fd = -1;
   if (platform_create_temp_file(path, sizeof(path), "ascii-api", &fd) != 0 ||
