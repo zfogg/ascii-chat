@@ -1088,13 +1088,13 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug("Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
     } else {
-      log_warn("FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame,
+      log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame,
                frame ? (void *)frame->data : NULL, data_len);
     }
   } else {
-    log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
+    log_warn_every(NS_PER_SEC_INT * 3, "NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
 }
 
