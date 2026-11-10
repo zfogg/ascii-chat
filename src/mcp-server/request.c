@@ -185,6 +185,9 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     if (!p->restricted)
       property(d, s, "output_path", "string",
                "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
+    property(d, s, "output", "string", "Output mode: text or files. Defaults to text unless output_path is supplied.");
+    const char *output_modes[] = {"text", "files", NULL};
+    enum_strings(d, yyjson_mut_obj_get(props, "output"), output_modes);
     if (i == MCP_FILE)
       file_properties(d, s, !p->restricted);
     if (i == MCP_URL) {
@@ -420,7 +423,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
                                        "audio",        "visualization", "options",       "output_path", "timeout_ms",
-                                       "audio_device", "volume",        "output_format", NULL};
+                                       "audio_device", "volume",        "output_format", "output", NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
@@ -446,7 +449,15 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   yyjson_val *opts = mcp_get(a, "options");
   if (opts && !yyjson_is_obj(opts))
     return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
-  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path");
+  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path"),
+             *output_mode = mcp_get(a, "output");
+  if (output_mode && (!yyjson_is_str(output_mode) || (strcmp(yyjson_get_str(output_mode), "text") &&
+                                                       strcmp(yyjson_get_str(output_mode), "files"))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output must be text or files");
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "text") && output_value)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output=text cannot be combined with output_path");
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "files"))
+    r->output_type = HTTP_RENDER_OUTPUT_FILE;
   const char *output_name = yyjson_is_str(output_value) ? yyjson_get_str(output_value) : "";
   const char *output_ext = strrchr(output_name, '.');
   bool gif_requested = yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif");
@@ -651,6 +662,8 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     if (err)
       return err;
   }
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "files") && !r->output_path[0])
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output=files requires output_path");
   return ASCIICHAT_OK;
 }
 void mcp_request_destroy(http_renderer_process_request_t *r) {
