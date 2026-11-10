@@ -177,7 +177,7 @@ export class WebTransportClientSession implements ClientSession {
           packet: ({ packet }) => {
             if (this.cancelled) return;
             const parsedResult = processClientEvent({
-              type: "receive-packet",
+              type: "receive-transport-packet",
               packet,
             });
             if (parsedResult.code || !parsedResult.packet)

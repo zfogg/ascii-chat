@@ -25,7 +25,7 @@ const state = vi.hoisted(() => ({
       result.set(payload, 22);
       return { code: 0, bytes: result, state: 1 };
     }
-    if (event.type === "receive-packet" || event.type === "parse")
+    if (event.type === "receive-transport-packet" || event.type === "parse")
       return {
         code: 0,
         packet: {
@@ -68,7 +68,7 @@ vi.mock("../../src/wasm/client", () => ({
       bytes.set(payload, 22);
       return { code: 0, state: 1, bytes };
     }
-    if (event.type === "receive-packet" || event.type === "parse")
+    if (event.type === "receive-transport-packet" || event.type === "parse")
       return {
         code: 0,
         state: 1,

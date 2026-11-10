@@ -365,63 +365,6 @@ public:
       response["capabilities"].set("webrtc", browser_capabilities_.webrtc);
       return response;
     }
-    if (type == "receive-handshake-packet") {
-      auto bytes = binding_copy_input(event["payload"]);
-      const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
-      packet_header_t header{};
-      int code = packet_validate(bytes.data(), bytes.size(), 0, &header);
-      if (!code) {
-        const packet_type_t packet_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
-        const size_t header_size = sizeof(packet_header_t);
-        code = discovery ? browser_client_acds_handshake_receive(transport_.get(), packet_type,
-                                                                 bytes.data() + header_size, bytes.size() - header_size)
-                         : browser_client_handshake_receive(transport_.get(), packet_type, bytes.data() + header_size,
-                                                            bytes.size() - header_size);
-      }
-      if (!bytes.empty())
-        sodium_memzero(bytes.data(), bytes.size());
-      return code ? result(code) : drainOutputs();
-    }
-    if (type == "secure-packet") {
-      const bool encrypt = event["encrypt"].as<bool>();
-      auto input = binding_copy_input(event["packet"]);
-      std::vector<uint8_t> output(input.size() + (encrypt ? 72 : 0));
-      size_t length = 0;
-      const int code = encrypt ? browser_client_encrypt_packet(transport_.get(), input.data(), input.size(),
-                                                               output.data(), output.size(), &length)
-                               : browser_client_decrypt_packet(transport_.get(), input.data(), input.size(),
-                                                               output.data(), output.size(), &length);
-      emscripten::val response = result(code);
-      response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
-      if (!input.empty())
-        sodium_memzero(input.data(), input.size());
-      if (!output.empty())
-        sodium_memzero(output.data(), output.size());
-      return response;
-    }
-    if (type == "receive-packet") {
-      auto input = binding_copy_input(event["packet"]);
-      packet_header_t header{};
-      const int code = input.size() < sizeof(packet_header_t)
-                           ? SET_ERRNO(ERROR_INVALID_PARAM, "Client packet is shorter than its header")
-                           : packet_validate(input.data(), input.size(), 0, &header);
-      emscripten::val response = result(code);
-      if (!code) {
-        const uint16_t type = NET_TO_HOST_U16(header.type);
-        response.set("packet", emscripten::val::object());
-        response["packet"].set("type", type);
-        response["packet"].set("length", NET_TO_HOST_U32(header.length));
-        response["packet"].set("client_id", NET_TO_HOST_U32(header.client_id));
-        response["packet"].set("crc32", NET_TO_HOST_U32(header.crc32));
-        response.set("encrypted", type == PACKET_TYPE_ENCRYPTED);
-        response.set("kind", acip_is_media_packet(type)                                   ? "media"
-                             : acip_is_control_packet(type)                               ? "control"
-                             : packet_is_handshake_type(static_cast<packet_type_t>(type)) ? "crypto"
-                             : acip_is_message_packet(type)                               ? "message"
-                                                                                          : "unknown");
-      }
-      return response;
-    }
     if (type == "set-server") {
       const std::string host = event["host"].as<std::string>();
       const int port = event["port"].as<int>();

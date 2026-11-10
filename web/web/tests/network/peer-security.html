@@ -27,7 +27,7 @@
           return result.bytes;
         };
         const parsePacket = (packet) => {
-          const result = processClientEvent({ type: "receive-packet", packet });
+          const result = processClientEvent({ type: "receive-transport-packet", packet });
           if (result.code || !result.packet)
             throw new Error(`Packet parse failed (${result.code})`);
           return result.packet;

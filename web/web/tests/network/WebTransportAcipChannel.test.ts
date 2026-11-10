@@ -58,7 +58,7 @@ const state = vi.hoisted(() => ({
           outputs: [{ flow: 0, packet: packet(1, new Uint8Array()) }],
         };
       }
-      if (event.type === "receive-handshake-packet")
+      if (event.type === "receive-transport-packet")
         return { code: 0, state: 3 };
       return { code: 0, state: 1 };
     },
@@ -131,7 +131,7 @@ describe("WebTransport ACIP channel", () => {
       packet: packet(1108, new Uint8Array()),
     });
     expect(state.process).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "receive-handshake-packet" }),
+        expect.objectContaining({ type: "receive-transport-packet" }),
     );
     expect(state.process).toHaveBeenCalledWith({ type: "quic-init" });
     expect(channel.isReady()).toBe(false);

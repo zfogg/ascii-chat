@@ -196,10 +196,10 @@ describe("client startup ownership", () => {
     );
     expect(receiveEvents).toHaveLength(1);
     expect(
-      harness.events.some((event) => event["type"] === "receive-packet"),
+      harness.events.some((event) => event["type"] === "receive-transport-packet"),
     ).toBe(false);
     expect(
-      harness.events.some((event) => event["type"] === "secure-packet"),
+      harness.events.some((event) => event["type"] === "send-packet"),
     ).toBe(false);
     expect(packets).toEqual([new Uint8Array([1, 2, 3])]);
     client.disconnect();

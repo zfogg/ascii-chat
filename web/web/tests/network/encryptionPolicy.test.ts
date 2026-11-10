@@ -72,12 +72,6 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
         state: ConnectionState.CONNECTED,
         bytes: event["packet"],
       };
-    if (event["type"] === "secure-packet")
-      return {
-        code: 0,
-        state: ConnectionState.CONNECTED,
-        bytes: event["packet"],
-      };
     if (event["type"] === "state")
       return { code: 0, state: ConnectionState.CONNECTED };
     if (event["type"] === "resolve-crypto-policy")

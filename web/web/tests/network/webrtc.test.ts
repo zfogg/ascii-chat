@@ -24,7 +24,7 @@ vi.mock("../../src/wasm/client", async (original) => ({
       bytes.set(payload, 22);
       return { code: 0, state: ConnectionState.CONNECTED, bytes };
     }
-    if (event["type"] === "receive-packet") {
+    if (event["type"] === "receive-transport-packet") {
       const bytes = event["packet"] as Uint8Array;
       const view = new DataView(
         bytes.buffer,

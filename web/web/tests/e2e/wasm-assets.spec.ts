@@ -75,7 +75,7 @@ test("native packet intake returns protocol classification", async ({
       payload: new Uint8Array(),
     });
     const parsed = processClientEvent({
-      type: "receive-packet",
+      type: "receive-transport-packet",
       packet: encoded.bytes,
     });
     return parsed;
@@ -164,13 +164,13 @@ test("binding failures record actionable C errors", async ({ page }) => {
         }),
         snapshot(() =>
           processClientEvent({
-            type: "receive-handshake-packet",
+        type: "receive-transport-packet",
             payload: new Uint8Array(1),
           }),
         ),
         snapshot(() => {
           const result = processClientEvent({
-            type: "receive-packet",
+        type: "receive-transport-packet",
             packet: new Uint8Array(),
           });
           if (result.code)
@@ -345,7 +345,7 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     module.ErrorBinding.dismiss();
     const session = new module.ClientSessionBinding({});
     session.process({
-      type: "receive-handshake-packet",
+      type: "receive-transport-packet",
       packetType: 0,
       payload: new Uint8Array(),
     });

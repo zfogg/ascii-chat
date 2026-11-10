@@ -152,9 +152,9 @@ export class WebTransportAcipChannel {
 
   private receiveHandshake(packet: Uint8Array): void {
     const nextResult = processClientEvent({
-      type: "receive-handshake-packet",
+      type: "receive-transport-packet",
       discovery: false,
-      payload: packet,
+      packet,
     });
     if (nextResult.code)
       throw new Error(`Security handshake rejected (${nextResult.code})`);

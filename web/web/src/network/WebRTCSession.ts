@@ -432,7 +432,7 @@ export class WebRTCSession implements ClientSession {
             if (!decoded) return;
             bytes = decoded;
             const parsed = processClientEvent({
-              type: "receive-packet",
+              type: "receive-transport-packet",
               packet: bytes,
             });
             if (parsed.code || !parsed.packet)

@@ -165,7 +165,7 @@ export class BrowserHostSession implements ClientSession {
           if (this.closed) return;
           if (id === this.localId) {
             const parsed = processClientEvent({
-              type: "receive-packet",
+              type: "receive-transport-packet",
               packet: bytes,
             });
             if (parsed.code || !parsed.packet)
@@ -322,7 +322,7 @@ export class BrowserHostSession implements ClientSession {
                 }
                 if (!decoded) return;
                 const parsed = processClientEvent({
-                  type: "receive-packet",
+                  type: "receive-transport-packet",
                   packet: decoded,
                 });
                 if (parsed.code || !parsed.packet)
