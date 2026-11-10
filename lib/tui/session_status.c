@@ -61,7 +61,8 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   char status_line_colored[TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE];
   char uptime_str[TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE];
   format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
-  if (status->detail && status->mode_name && status->mode_name[0] == '\0')
+  bool generic_log_header = status->detail && (strncmp(status->detail, "q / Esc:", strlen("q / Esc:")) == 0);
+  if (generic_log_header)
     snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat | ⏱️ %s" : "ascii-chat | uptime %s",
              uptime_str);
   else if (status->detail)
