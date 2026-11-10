@@ -122,6 +122,8 @@ extern "C" {
  */
 typedef bool (*backtrace_frame_filter_t)(const char *frame);
 
+void backtrace_print_simple(int skip_frames);
+
 /** Filter implementation frames used to record an error context. */
 bool backtrace_filter_error_internal(const char *frame);
 

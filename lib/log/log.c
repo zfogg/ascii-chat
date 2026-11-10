@@ -56,7 +56,7 @@ int terminal_choose_log_fd(int level);
 #include <libplatform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/backtrace.h>
+#include <ascii-chat/debug/backtrace.h>
 
 // Readers pin the session buffer until unregister has drained their appends.
 static atomic_t g_session_log_readers = {0};

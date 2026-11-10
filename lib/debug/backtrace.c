@@ -23,7 +23,7 @@
 
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/debug/backtrace.h>
-#include <ascii-chat/platform/backtrace.h>
+#include <libplatform/backtrace.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
@@ -35,13 +35,22 @@ bool backtrace_filter_error_internal(const char *frame) {
           strstr(frame, " set_wsa()") || strstr(frame, " backtrace_capture()"));
 }
 
+static void backtrace_log_line(const char *line, void *context) {
+  (void)context;
+  log_debug("%s", line);
+}
+
+void backtrace_print_simple(int skip_frames) {
+  libplatform_backtrace_print(skip_frames, backtrace_log_line, NULL);
+}
+
 void backtrace_capture(backtrace_t *bt) {
   if (!bt) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace");
     return;
   }
   bt->tried_symbolize = false;
-  bt->count = platform_backtrace(bt->ptrs, 32);
+  bt->count = libplatform_backtrace_capture(bt->ptrs, 32);
 }
 
 #if !defined(NDEBUG) || defined(ENABLE_ERRNO_BACKTRACES)
@@ -52,7 +61,7 @@ void backtrace_symbolize(backtrace_t *bt) {
     return; // Already tried or invalid (don't try twice)
   }
   bt->tried_symbolize = true;
-  bt->symbols = platform_backtrace_symbols(bt->ptrs, bt->count);
+  bt->symbols = libplatform_backtrace_symbolize(bt->ptrs, bt->count);
 }
 
 void backtrace_capture_and_symbolize(backtrace_t *bt) {
@@ -70,7 +79,7 @@ void backtrace_t_free(backtrace_t *bt) {
     return;
   }
   if (bt->symbols) {
-    platform_backtrace_symbols_destroy(bt->symbols);
+    libplatform_backtrace_symbols_free(bt->symbols);
     bt->symbols = NULL;
   }
   bt->tried_symbolize = false;

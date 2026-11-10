@@ -73,7 +73,6 @@
 #include <ascii-chat/options/options.h>
 #include <libplatform/system.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
