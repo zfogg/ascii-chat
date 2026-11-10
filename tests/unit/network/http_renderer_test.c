@@ -21,6 +21,25 @@ Test(http_renderer, result_destroy_is_idempotent) {
   cr_assert_eq(result.ascii_length, 0);
 }
 
+Test(http_renderer, result_collects_bounded_text_frames) {
+  http_render_result_t result = {0};
+  cr_assert_eq(http_render_result_add_text_frame(&result, "first", 5, 0), ASCIICHAT_OK);
+  cr_assert_eq(http_render_result_add_text_frame(&result, "second", 6, 40), ASCIICHAT_OK);
+  cr_assert_eq(result.frame_count, 2);
+  cr_assert_str_eq(result.frames[1].text, "second");
+  cr_assert_eq(result.frames[1].timestamp_ms, 40);
+  http_render_result_destroy(&result);
+  cr_assert_null(result.frames);
+}
+
+Test(http_renderer, result_rejects_excess_frames) {
+  http_render_result_t result = {0};
+  for (size_t i = 0; i < HTTP_RENDERER_MAX_FRAMES; ++i)
+    cr_assert_eq(http_render_result_add_file_frame(&result, "frame.png", i), ASCIICHAT_OK);
+  cr_assert_eq(http_render_result_add_file_frame(&result, "overflow.png", 0), ERROR_BUFFER_OVERFLOW);
+  http_render_result_destroy(&result);
+}
+
 Test(http_renderer, service_reaps_failed_normalized_jobs) {
   http_renderer_t *renderer = NULL;
   http_renderer_config_t config = {.max_jobs = 1, .max_input_bytes = 1024, .max_output_bytes = 1024};
