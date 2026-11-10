@@ -43,6 +43,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <libplatform/time.h>
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
 // Include the appropriate header based on the compilation mode.
 #if defined(__cplusplus) && defined(_WIN32)
@@ -98,7 +99,6 @@ using std::memory_order_relaxed;
  * uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
  * ```
  */
-uint64_t time_get_ns(void);
 
 /**
  * @brief Get current wall-clock (real) time in nanoseconds
@@ -113,7 +113,6 @@ uint64_t time_get_ns(void);
  * Note: This time can jump backward if system clock is adjusted. For measuring
  * elapsed time, use time_get_ns() instead.
  */
-uint64_t time_get_realtime_ns(void);
 
 /**
  * @brief Sleep for specified nanoseconds
@@ -886,4 +885,3 @@ uint64_t time_timespec_to_ns(const struct timespec *ts);
  *
  * Useful for nanosleep() or other system calls that require struct timespec.
  */
-void time_ns_to_timespec(uint64_t ns, struct timespec *ts);

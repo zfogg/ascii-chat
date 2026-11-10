@@ -1,4 +1,5 @@
 #pragma once
+#include <libplatform/compiler.h>
 
 /**
  * @defgroup platform Platform Abstractions
@@ -211,9 +212,9 @@
 // ============================================================================
 
 #include "../platform/thread.h"
-#include "../platform/mutex.h"
+#include <libplatform/mutex.h>
 #include "../platform/rwlock.h"
-#include "../platform/cond.h"
+#include <libplatform/cond.h>
 // Windows socket shutdown constants - define before socket.h includes winsock2.h
 #ifdef _WIN32
 #ifndef SHUT_RDWR
@@ -706,12 +707,6 @@ void platform_sleep_ns(uint64_t ns);
  *
  * @ingroup platform
  */
-#ifdef _WIN32
-#define PLATFORM_SHELL_NULL_REDIRECT "2>nul"
-#else
-#define PLATFORM_SHELL_NULL_REDIRECT "2>/dev/null"
-#endif
-
 /** @} */
 
 // ============================================================================
