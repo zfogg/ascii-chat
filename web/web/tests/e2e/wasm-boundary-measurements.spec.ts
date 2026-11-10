@@ -1,4 +1,5 @@
 import { expect, measure, test } from "./wasm-boundary-fixture";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -225,23 +226,24 @@ test.describe("WASM browser boundary measurements", () => {
 
   test("records main-versus-feature artifact size measurements when configured", async () => {
     const mainRoot = process.env["WASM_MAIN_ROOT"];
-    test.skip(
-      !mainRoot,
-      "Set WASM_MAIN_ROOT to the main worktree for artifact comparison",
-    );
-    const mainManifest = resolve(
-      mainRoot!,
-      "web/web/src/wasm/dist/manifest.json",
-    );
     const featureManifest = resolve(
       process.cwd(),
       "src/wasm/dist/manifest.json",
     );
-    test.skip(
-      !existsSync(mainManifest) || !existsSync(featureManifest),
-      "Both WASM manifests are required",
-    );
-    const main = readFileSync(mainManifest, "utf8");
+    if (!existsSync(featureManifest))
+      throw new Error("Feature WASM manifest is required");
+    const baselinePath = (file: string) =>
+      `web/web/src/wasm/dist/${file}`;
+    const readBaseline = (file: string): Buffer => {
+      if (mainRoot) {
+        const path = resolve(mainRoot, baselinePath(file));
+        if (existsSync(path)) return readFileSync(path);
+      }
+      return execFileSync("git", ["show", `master:${baselinePath(file)}`], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
+    };
+    const main = readBaseline("manifest.json").toString("utf8");
     const feature = readFileSync(featureManifest, "utf8");
     const files = [
       "client.js",
@@ -253,8 +255,7 @@ test.describe("WASM browser boundary measurements", () => {
       files.map((file) => [
         file,
         {
-          main: readFileSync(resolve(mainRoot!, "web/web/src/wasm/dist", file))
-            .byteLength,
+          main: readBaseline(file).byteLength,
           feature: readFileSync(resolve(process.cwd(), "src/wasm/dist", file))
             .byteLength,
         },
