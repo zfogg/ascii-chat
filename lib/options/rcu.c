@@ -1012,7 +1012,11 @@ char *options_values_json(const options_t *values, bool remote_only) {
     const char *ptr = (const char *)values + field->offset;
     switch (field->type) {
     case OPTIONS_VALUE_INT:
-      yyjson_mut_obj_add_int(doc, root, field->name, *(const int *)ptr);
+      // Runtime render settings use 60 FPS when no explicit limit is set.
+      // Do not serialize the internal zero sentinel to a remote peer.
+      yyjson_mut_obj_add_int(doc, root, field->name,
+                             !strcmp(field->name, "fps") && remote_only && *(const int *)ptr < 1 ? 60
+                                                                                                 : *(const int *)ptr);
       break;
     case OPTIONS_VALUE_BOOL:
       yyjson_mut_obj_add_bool(doc, root, field->name, *(const bool *)ptr);
