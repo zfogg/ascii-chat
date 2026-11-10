@@ -20,6 +20,16 @@ static void api_finish(http_response_t *response, unsigned status) {
   (void)http_response_finish(response);
 }
 
+static unsigned api_render_status(asciichat_error_t error) {
+  if (error == ERROR_BUFFER_FULL)
+    return 503;
+  if (error == ERROR_BUFFER_OVERFLOW)
+    return 413;
+  if (error == ERROR_INVALID_PARAM || error == ERROR_MEDIA_INIT || error == ERROR_MEDIA_DECODE)
+    return 422;
+  return 500;
+}
+
 static const unsigned char *api_find_bytes(const unsigned char *data, size_t length, const char *needle) {
   size_t needle_length = strlen(needle);
   if (!needle_length || needle_length > length)
@@ -157,8 +167,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
     log_warn("API render failed: %s", asciichat_error_string(err));
     if (render_job)
       http_renderer_reap(server->renderer, false);
-    unsigned status = err == ERROR_BUFFER_FULL ? 503 : err == ERROR_BUFFER_OVERFLOW ? 413 : 422;
-    api_finish(response, status);
+    api_finish(response, api_render_status(err));
     return;
   }
   http_render_result_t *result = &render_job->result;
