@@ -89,6 +89,18 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
         ):
             index += 1
             continue
+        # Emscripten puts link and JavaScript-driver options in the compile
+        # database command. libclang only needs the source-level options; it
+        # rejects the driver-only flags such as -sUSE_FREETYPE=1.
+        if (
+            value == "-s"
+            or value.startswith("-s")
+            or value in ("--no-entry", "--bind", "-lembind")
+            or value.startswith("-Wno-js-")
+            or value.startswith("-Wno-pthreads-")
+        ):
+            index += 2 if value == "-s" and index + 1 < len(arguments) else 1
+            continue
         result.append(value)
         index += 1
     if not any(value.startswith("-resource-dir") for value in result):
