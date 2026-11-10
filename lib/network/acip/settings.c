@@ -30,7 +30,11 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
       values->color_filter < 0 || values->color_filter >= COLOR_FILTER_COUNT || values->render_mode < 0 ||
       values->render_mode > RENDER_MODE_HALF_BLOCK || values->palette_type < PALETTE_STANDARD ||
       values->palette_type >= PALETTE_COUNT || strlen(values->palette_custom) >= sizeof(candidate->caps.palette_custom))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid remote render settings");
+    return SET_ERRNO(
+        ERROR_INVALID_PARAM,
+        "Invalid remote render settings (size=%dx%d fps=%d color=%d filter=%d mode=%d palette=%d custom=%zu)",
+        values->width, values->height, values->fps, values->color_mode, values->color_filter, values->render_mode,
+        values->palette_type, strlen(values->palette_custom));
   acip_render_settings_t next = *candidate;
   next.width = (uint16_t)values->width;
   next.height = (uint16_t)values->height;

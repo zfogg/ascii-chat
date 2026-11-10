@@ -36,6 +36,14 @@ static int h265_thread_count(void) {
   return half > 4 ? half : 4;
 }
 
+static bool is_hardware_encoder(const AVCodec *codec) {
+  if (!codec || !codec->name)
+    return false;
+  return strstr(codec->name, "_d3d12va") != NULL || strstr(codec->name, "_nvenc") != NULL ||
+         strstr(codec->name, "_qsv") != NULL || strstr(codec->name, "_amf") != NULL ||
+         strstr(codec->name, "_mf") != NULL;
+}
+
 /**
  * @brief h265 encoder is intentionally a small, concrete record. Fields such as `codec_ctx`, `codec`, `frame`, `packet`
  * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
@@ -92,6 +100,8 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   const AVCodec *codec = avcodec_find_encoder_by_name(codec_type == VIDEO_CODEC_H264 ? "libx264" : "libx265");
   if (!codec)
     codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
+  if (is_hardware_encoder(codec))
+    codec = NULL;
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "%s encoder not found", codec_type == VIDEO_CODEC_H264 ? "H.264" : "HEVC");
     return NULL;
