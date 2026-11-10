@@ -261,6 +261,7 @@ test.describe("WASM browser boundary measurements", () => {
           initClientWasm(): Promise<void>;
         };
         const before = module.getClientWasmModule();
+        if (!before) return false;
         await module.initClientWasm();
         return before === module.getClientWasmModule();
       }),
@@ -341,8 +342,13 @@ test.describe("WASM browser boundary measurements", () => {
         maxBuffer: 64 * 1024 * 1024,
       });
     };
-    const main = readBaseline("manifest.json").toString("utf8");
+    const mainManifest = JSON.parse(readBaseline("manifest.json").toString("utf8")) as {
+      files?: Record<string, string>;
+    };
     const feature = readFileSync(featureManifest, "utf8");
+    const featureManifestData = JSON.parse(feature) as {
+      files?: Record<string, string>;
+    };
     const files = [
       "client.js",
       "client.wasm",
@@ -380,33 +386,26 @@ test.describe("WASM browser boundary measurements", () => {
         },
       ]),
     );
-    expect({
-      manifest: {
-        main: Buffer.byteLength(main),
-        feature: Buffer.byteLength(feature),
-      },
-      sizes,
-      abi,
-    }).toEqual({
-      manifest: { main: expect.any(Number), feature: expect.any(Number) },
-      sizes: Object.fromEntries(
-        files.map((file) => [
-          file,
-          { main: expect.any(Number), feature: expect.any(Number) },
-        ]),
-      ),
-      abi: Object.fromEntries(
-        abiMarkers.map((marker) => [
-          marker,
-          { main: expect.any(Number), feature: expect.any(Number) },
-        ]),
-      ),
-    });
+    expect(mainManifest.files).toBeDefined();
+    expect(featureManifestData.files).toBeDefined();
     for (const file of files) {
       const size = sizes[file]!;
       expect(size.main).toBeGreaterThan(0);
       expect(size.feature).toBeGreaterThan(0);
+      expect(mainManifest.files?.[file]).toBeTruthy();
+      expect(featureManifestData.files?.[file]).toBeTruthy();
     }
+    const totalMain = files.reduce((total, file) => total + sizes[file]!.main, 0);
+    const totalFeature = files.reduce(
+      (total, file) => total + sizes[file]!.feature,
+      0,
+    );
+    expect(totalFeature).not.toBe(totalMain);
+    test.info().attach("wasm-artifact-measurements.json", {
+      body: JSON.stringify({ sizes, abi, totalMain, totalFeature }, null, 2),
+      contentType: "application/json",
+    });
+    console.info("WASM artifact measurements", { sizes, abi, totalMain, totalFeature });
     expect(abi["feed"]?.feature).toBe(0);
   });
 });
