@@ -26,7 +26,7 @@ yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), "error", e);
   return d;
 }
-static yyjson_mut_doc *tool_result(yyjson_val *id, const mcp_render_result_t *r) {
+static yyjson_mut_doc *tool_result(yyjson_val *id, const http_renderer_process_result_t *r) {
   yyjson_mut_doc *d = envelope(id);
   yyjson_mut_val *root = yyjson_mut_doc_get_root(d), *result = yyjson_mut_obj(d), *content = yyjson_mut_arr(d),
                  *item = yyjson_mut_obj(d);
@@ -37,12 +37,31 @@ static yyjson_mut_doc *tool_result(yyjson_val *id, const mcp_render_result_t *r)
   yyjson_mut_obj_add_val(d, result, "content", content);
   yyjson_mut_obj_add_bool(d, result, "isError", r->error[0] != 0);
   if (!r->error[0]) {
-    yyjson_mut_val *data = yyjson_mut_obj(d), *files = yyjson_mut_arr(d);
+    yyjson_mut_val *data = yyjson_mut_obj(d), *files = yyjson_mut_arr(d), *frames = yyjson_mut_arr(d);
     yyjson_mut_obj_add_strcpy(d, data, "ascii", r->text ? r->text : "");
     yyjson_mut_obj_add_uint(d, data, "elapsed_ms", r->elapsed_ms);
-    if (r->output_path[0])
+    for (size_t i = 0; i < r->frame_count; ++i) {
+      const http_render_frame_t *source = &r->frames[i];
+      yyjson_mut_val *frame = yyjson_mut_obj(d);
+      if (source->text) {
+        yyjson_mut_obj_add_str(d, frame, "type", "text");
+        yyjson_mut_obj_add_strcpy(d, frame, "text", source->text);
+      } else {
+        yyjson_mut_obj_add_str(d, frame, "type", "file");
+        yyjson_mut_obj_add_strcpy(d, frame, "path", source->path);
+      }
+      yyjson_mut_obj_add_uint(d, frame, "timestamp_ms", source->timestamp_ms);
+      yyjson_mut_arr_add_val(frames, frame);
+    }
+    if (r->output_path[0]) {
       yyjson_mut_arr_add_strcpy(d, files, r->output_path);
+      yyjson_mut_val *frame = yyjson_mut_obj(d);
+      yyjson_mut_obj_add_str(d, frame, "type", "file");
+      yyjson_mut_obj_add_strcpy(d, frame, "path", r->output_path);
+      yyjson_mut_arr_add_val(frames, frame);
+    }
     yyjson_mut_obj_add_val(d, data, "saved_files", files);
+    yyjson_mut_obj_add_val(d, data, "frames", frames);
     yyjson_mut_obj_add_val(d, result, "structuredContent", data);
   }
   yyjson_mut_obj_add_val(d, root, "result", result);
@@ -113,27 +132,51 @@ static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments)
   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), "result", result);
   return d;
 }
-static void *run_job(void *arg) {
+static void run_job(void *arg, atomic_t *cancelled) {
   mcp_job_t *job = arg;
   ASCII_OTEL_SCOPE_PARENT(MCP_RENDER, &job->telemetry_parent);
   static const char *const tools[] = {"render_file", "render_url", "render_webcam", "render_visualization"};
   ASCII_OTEL_ATTR_STRING("mcp.tool", tools[job->tool]);
   ASCII_OTEL_ATTR_STRING("mcp.transport", job->server->policy.hosted ? "http" : "stdio");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDERS, 1);
-  mcp_render_result_t result;
+  http_renderer_process_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  mcp_render_execute(&job->request, &job->cancelled, &result);
+  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT &&
+      (job->request.source_path[0] || job->request.source_url[0])) {
+    http_render_request_t shared_request;
+    http_render_request_init(&shared_request);
+    shared_request.source.type = job->request.source_url[0] ? HTTP_RENDER_SOURCE_URL : HTTP_RENDER_SOURCE_FILE;
+    if (job->request.source_url[0]) SAFE_STRNCPY(shared_request.source.url, job->request.source_url, sizeof(shared_request.source.url));
+    else SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
+    shared_request.options = job->request.options;
+    http_render_result_t shared_result = {0};
+    const char *shared_source = job->request.source_url[0] ? job->request.source_url : job->request.source_path;
+    asciichat_error_t shared_error = http_renderer_render_file(shared_source, &shared_request,
+                                                               &shared_result, cancelled);
+    memset(&result, 0, sizeof(result));
+    result.elapsed_ms = shared_result.elapsed_ms;
+    if (shared_error == ASCIICHAT_OK) {
+      result.text = shared_result.ascii;
+      result.length = shared_result.ascii_length;
+      shared_result.ascii = NULL;
+    } else {
+      SAFE_STRNCPY(result.error, asciichat_error_string(shared_error), sizeof(result.error));
+    }
+    http_render_result_destroy(&shared_result);
+  } else {
+    http_renderer_process(&job->request, cancelled, &result);
+  }
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_MCP_RENDER, time_get_ns() - render_started);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_OUTPUT_BYTES, result.length);
   ASCII_OTEL_ATTR_INT("mcp.output.bytes", (int64_t)result.length);
   if (result.error[0]) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDER_FAILURES, 1);
-    const char *failure = result.timed_out ? "timeout" : atomic_load_bool(&job->cancelled) ? "cancelled" : "render";
+    const char *failure = result.timed_out ? "timeout" : atomic_load_bool(cancelled) ? "cancelled" : "render";
     ASCII_OTEL_ATTR_STRING("error.type", failure);
     if (result.timed_out)
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_TIMEOUTS, 1);
-    else if (atomic_load_bool(&job->cancelled))
+    else if (atomic_load_bool(cancelled))
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_CANCELLED, 1);
     SET_ERRNO(ERROR_FILE_OPERATION, "MCP render failed: %s", result.error);
     log_error("MCP render failed: %s", result.error);
@@ -142,24 +185,25 @@ static void *run_job(void *arg) {
   if (!result.error[0] && result.output_path[0])
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_SAVED_FILES, 1);
   job->response = tool_result(mcp_get(yyjson_doc_get_root(job->message), "id"), &result);
-  SAFE_FREE(result.text);
+    http_renderer_process_result_destroy(&result);
   mcp_request_destroy(&job->request);
   if (!job->server->policy.hosted) {
     mcp_stdio_send(job->server, job->response);
     yyjson_mut_doc_free(job->response);
     job->response = NULL;
   }
-  atomic_store_bool(&job->done, true);
-  if (job->server->policy.hosted)
+  if (job->server->policy.hosted) {
+    // The HTTP wakeup runs on the server loop and must observe completion.
+    atomic_store_bool(&job->renderer_job.done, true);
     mcp_http_wake(job->server);
-  return NULL;
+  }
 }
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->started || (!all && (!atomic_load_bool(&j->done) || (s->policy.hosted && j->connection))))
+    if (!j->renderer_job.started || (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
       continue;
-    thread_join(&j->thread, NULL);
+    http_renderer_job_join(&j->renderer_job);
     yyjson_doc_free(j->message);
     if (j->response)
       yyjson_mut_doc_free(j->response);
@@ -202,11 +246,11 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     if (!strcmp(name, "notifications/cancelled")) {
       yyjson_val *cancel = mcp_get(params, "requestId");
       for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-        if (s->jobs[i].started &&
+        if (s->jobs[i].renderer_job.started &&
             (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
              ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
-          atomic_store_bool(&s->jobs[i].cancelled, true);
+          http_renderer_job_cancel(&s->jobs[i].renderer_job);
     }
     return NULL;
   }
@@ -266,7 +310,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   mcp_jobs_reap(s, false);
   mcp_job_t *j = NULL;
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (!s->jobs[i].started) {
+    if (!s->jobs[i].renderer_job.started) {
       j = &s->jobs[i];
       break;
     }
@@ -289,7 +333,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
     ASCII_OTEL_ATTR_STRING("error.type", "invalid_arguments");
     asciichat_error_context_t ctx;
-    mcp_render_result_t fail = {0};
+    http_renderer_process_result_t fail = {0};
     SAFE_STRNCPY(fail.error, HAS_ERRNO(&ctx) ? ctx.context_message : "Invalid render request", sizeof(fail.error));
     mcp_request_destroy(&j->request);
     return tool_result(id, &fail);
@@ -305,8 +349,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   j->connection = connection;
   if (session_id)
     SAFE_STRNCPY(j->session_id, session_id, sizeof(j->session_id));
-  j->started = true;
-  if (acthread_create(&j->thread, "mcp-render", run_job, j)) {
+  if (http_renderer_job_start(&j->renderer_job, "mcp-render", run_job, j) != ASCIICHAT_OK) {
     mcp_request_destroy(&j->request);
     yyjson_doc_free(j->message);
     memset(j, 0, sizeof(*j));

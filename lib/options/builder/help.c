@@ -81,6 +81,19 @@ static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
   return NULL; // Unknown or no specific mode
 }
 
+static const char *get_mode_name(asciichat_mode_t mode) {
+  switch (mode) {
+  case MODE_MCP_SERVER: return "mcp-server";
+  case MODE_API_SERVER: return "api-server";
+  case MODE_SERVER: return "server";
+  case MODE_CLIENT: return "client";
+  case MODE_MIRROR: return "mirror";
+  case MODE_DISCOVERY_SERVICE: return "discovery-service";
+  case MODE_DISCOVERY:
+  default: return NULL;
+  }
+}
+
 /**
  * @brief Calculate global max column width across all help sections
  *
@@ -240,30 +253,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       return 20;
 
     // Get mode name for filtering usage lines (same logic as options_print_help_for_mode)
-    const char *mode_name = NULL;
-    if (!for_binary_help) {
-      switch (mode) {
-      case MODE_MCP_SERVER:
-        mode_name = "mcp-server";
-        break;
-      case MODE_SERVER:
-        mode_name = "server";
-        break;
-      case MODE_CLIENT:
-        mode_name = "client";
-        break;
-      case MODE_MIRROR:
-        mode_name = "mirror";
-        break;
-      case MODE_DISCOVERY_SERVICE:
-        mode_name = "discovery-service";
-        break;
-      case MODE_DISCOVERY:
-      default:
-        mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows all usage lines
-        break;
-      }
-    }
+    const char *mode_name = for_binary_help ? NULL : get_mode_name(mode);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
@@ -1190,28 +1180,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
   if (config->num_usage_lines > 0) {
     // Get mode name for filtering usage lines
-    const char *mode_name = NULL;
-    switch (mode) {
-    case MODE_MCP_SERVER:
-      mode_name = "mcp-server";
-      break;
-    case MODE_SERVER:
-      mode_name = "server";
-      break;
-    case MODE_CLIENT:
-      mode_name = "client";
-      break;
-    case MODE_MIRROR:
-      mode_name = "mirror";
-      break;
-    case MODE_DISCOVERY_SERVICE:
-      mode_name = "discovery-service";
-      break;
-    case MODE_DISCOVERY:
-    default:
-      mode_name = NULL; // Binary help shows all usage lines
-      break;
-    }
+    const char *mode_name = get_mode_name(mode);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];

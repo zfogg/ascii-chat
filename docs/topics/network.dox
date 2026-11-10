@@ -3,6 +3,16 @@
  * @ingroup module_network
  * @ingroup network
  *
+ * ## HTTP image API
+ *
+ * `ascii-chat api-server` exposes the shared HTTP listener for image-to-ASCII
+ * conversion. `GET /health` returns a minimal JSON readiness response.
+ * `POST /convert` accepts an image body with `image/*` or
+ * `application/octet-stream`, or one `image` multipart field. Width, height,
+ * palette, and output format are query parameters; output can be text, JSON,
+ * or escaped HTML. URL fetching, local paths, and batch conversion are not
+ * part of this public surface.
+ *
  * @brief How connections, transports, ACIP, and media admission fit together.
  *
  * @section network_overview Overview
