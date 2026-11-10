@@ -25,7 +25,7 @@
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/init.h>         // For static_mutex_t
+#include <ascii-chat/common/sync.h>           // For static_mutex_t
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>  // For platform_sleep_us
 #include <libplatform/terminal.h>

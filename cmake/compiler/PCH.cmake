@@ -27,7 +27,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
 
         set(_ascii_chat_pch_headers
             <ascii-chat/platform/system.h>
-            <ascii-chat/platform/init.h>
+            <ascii-chat/common/sync.h>
             <ascii-chat/platform/filesystem.h>
             <ascii-chat/platform/thread.h>
             <ascii-chat/platform/string.h>
