@@ -191,3 +191,18 @@
  * @see md_docs_2networking-runtime.html
  * @see md_docs_2event-driven-io.html
  */
+
+/**
+ * @page http_basic_auth HTTP Basic authentication
+ *
+ * HTTP applications can use `http_basic_auth_parse()` to decode an
+ * `Authorization: Basic` header into owned, bounded credentials. The parser
+ * requires the Basic scheme, strict Base64, a non-empty username and password,
+ * rejects embedded NUL bytes, and clears temporary decoded bytes. Use
+ * `http_basic_auth_matches()` for constant-time credential comparison and
+ * `http_basic_credentials_clear()` when the copied credentials are no longer
+ * needed. Applications can enable library-enforced authentication by setting
+ * `http_server_config_t.basic_auth`; the HTTP server then authenticates every
+ * request before invoking the application request handler and returns a
+ * `401 Unauthorized` challenge for missing or invalid credentials.
+ */
