@@ -160,7 +160,7 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
     snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=%s]", thread_name);
   }
 
-  uint64_t read_count = atomic_load_u64(&rwlock->read_lock_count);
+  uint64_t read_count = atomic_load(&rwlock->read_lock_count);
   if (read_count > 0) {
     snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%" PRIu64 "]", read_count);
   }
@@ -217,7 +217,7 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
   }
 
-  uint64_t waiting_count = atomic_load_u64(&cond->waiting_count);
+  uint64_t waiting_count = atomic_load(&cond->waiting_count);
   if (waiting_count > 0) {
     char thread_name[DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE];
     NAMED_GET_BY_PTR(cond->last_waiting_key, thread_name, sizeof(thread_name));
@@ -290,7 +290,7 @@ static void copy_rwlock_timing(uintptr_t key, void *data) {
   copy->rdlock_count = source->rdlock_count;
   copy->wrlock_count = source->wrlock_count;
   copy->unlock_count = source->unlock_count;
-  atomic_store(&copy->read_lock_count.impl, atomic_load(&source->read_lock_count.impl));
+  atomic_store(&copy->read_lock_count, atomic_load(&source->read_lock_count));
 }
 
 static void copy_cond_timing(uintptr_t key, void *data) {
@@ -303,7 +303,7 @@ static void copy_cond_timing(uintptr_t key, void *data) {
   copy->wait_count = source->wait_count;
   copy->signal_count = source->signal_count;
   copy->broadcast_count = source->broadcast_count;
-  atomic_store(&copy->waiting_count.impl, atomic_load(&source->waiting_count.impl));
+  atomic_store(&copy->waiting_count, atomic_load(&source->waiting_count));
 }
 
 static void copy_atomic_t_timing(uintptr_t key, void *data) {
