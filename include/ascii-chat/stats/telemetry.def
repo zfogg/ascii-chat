@@ -54,6 +54,7 @@ ASCII_STATS_COUNTER(MCP_OUTPUT_BYTES, MCP_OUTPUT_BYTES, "ascii-chat.mcp.output.b
 ASCII_STATS_COUNTER(MCP_SAVED_FILES, MCP_SAVED_FILES, "ascii-chat.mcp.output.files", "{file}")
 ASCII_STATS_COUNTER(MCP_HTTP_RESPONSES, MCP_HTTP_RESPONSES, "ascii-chat.mcp.http.responses", "{response}")
 ASCII_STATS_COUNTER(HTTP_REQUESTS, HTTP_REQUESTS, "ascii-chat.http.requests", "{request}")
+ASCII_STATS_COUNTER(HTTP_ERRORS, HTTP_ERRORS, "ascii-chat.http.errors", "{error}")
 ASCII_STATS_COUNTER(HTTP_REJECTED, HTTP_REJECTED, "ascii-chat.http.requests.rejected", "{request}")
 ASCII_STATS_COUNTER(HTTP_CANCELLED, HTTP_CANCELLED, "ascii-chat.http.requests.cancelled", "{request}")
 ASCII_STATS_COUNTER(HTTP_BYTES_RECEIVED, HTTP_BYTES_RECEIVED, "ascii-chat.http.bytes.received", "By")

@@ -562,6 +562,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
+  if (r->status >= 400)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_ERRORS, 1);
   if (r->cancelled) {
     if (r->inflight_accounted && !r->deferred) {
       http_request_release(r->server);

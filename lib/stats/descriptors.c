@@ -12,6 +12,7 @@ static const stats_descriptor_t counter_descriptors[STATS_COUNTER_COUNT] = {
     [STATS_COUNTER_MCP_SAVED_FILES] = {"mcp_saved_files", "files", "MCP image or video files saved"},
     [STATS_COUNTER_MCP_HTTP_RESPONSES] = {"mcp_http_responses", "responses", "MCP HTTP responses sent"},
     [STATS_COUNTER_HTTP_REQUESTS] = {"http_requests", "requests", "HTTP requests received"},
+    [STATS_COUNTER_HTTP_ERRORS] = {"http_errors", "errors", "HTTP error responses sent"},
     [STATS_COUNTER_HTTP_REJECTED] = {"http_rejected", "requests", "HTTP requests rejected before dispatch"},
     [STATS_COUNTER_HTTP_CANCELLED] = {"http_cancelled", "requests", "HTTP requests cancelled"},
     [STATS_COUNTER_HTTP_BYTES_RECEIVED] = {"http_bytes_received", "bytes", "HTTP request bytes received"},

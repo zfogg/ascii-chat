@@ -47,10 +47,11 @@
  * | HTTP/2 | libuv TCP listener or negotiated TLS endpoint | nghttp2 streams use the shared request/response handler and output backpressure. |
  * | HTTP/3 | QUIC endpoint | nghttp3 streams use the same handler contract; WebTransport CONNECT remains the ACIP path. |
  *
- * HTTP/2 and HTTP/3 are optional at build and runtime. A listener configured
- * for a specific protocol reports setup or negotiation failure instead of
- * silently changing endpoint semantics. HTTP/3 attaches to the existing QUIC
- * endpoint: it does not create a second UDP listener or authentication path.
+ * HTTP/2 and HTTP/3 are required protocol implementations. A listener
+ * configured for a specific protocol reports setup or negotiation failure
+ * instead of silently changing endpoint semantics. HTTP/3 attaches to the
+ * existing QUIC endpoint: it does not create a second UDP listener or
+ * authentication path.
  *
  * Request bodies, headers, connections, in-flight requests, and responses are
  * bounded by the shared server policy. Handlers may retain a response for

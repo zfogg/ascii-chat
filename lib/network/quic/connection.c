@@ -1,6 +1,6 @@
 #include "connection.h"
 #include "datagram.h"
-#include "http3.h"
+#include "../http/server/http3.h"
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/crypto/session.h>
 
@@ -90,7 +90,7 @@ struct quic_connection {
   SSL *ssl;
   quic_tls_t *tls;
   crypto_context_t *security;
-  quic_http3_server_t *http3;
+  http_server_http3_t *http3;
   ngtcp2_cid initial_dcid;
   bool has_initial_dcid;
   uint64_t last_time_ns;
@@ -301,7 +301,7 @@ static int acknowledged_stream_data(ngtcp2_conn *conn, int64_t stream_id, uint64
     }
     return 0;
   }
-  if (connection->http3 && quic_http3_server_ack(connection->http3, stream_id, length) == ASCIICHAT_OK)
+  if (connection->http3 && http_server_http3_ack(connection->http3, stream_id, length) == ASCIICHAT_OK)
     return 0;
   return NGTCP2_ERR_CALLBACK_FAILURE;
 }
@@ -429,7 +429,7 @@ static int receive_http3(ngtcp2_conn *conn, quic_connection_t *connection, uint3
                          const uint8_t *data, size_t length) {
   size_t consumed = 0;
   asciichat_error_t result =
-      quic_http3_server_read(connection->http3, stream_id, data, length, (flags & NGTCP2_STREAM_DATA_FLAG_FIN) != 0,
+      http_server_http3_read(connection->http3, stream_id, data, length, (flags & NGTCP2_STREAM_DATA_FLAG_FIN) != 0,
                              connection->last_time_ns, &consumed);
   if (result != ASCIICHAT_OK || ngtcp2_conn_extend_max_stream_offset(conn, stream_id, consumed) != 0) {
     connection->callback_error = result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
@@ -437,7 +437,7 @@ static int receive_http3(ngtcp2_conn *conn, quic_connection_t *connection, uint3
   }
   ngtcp2_conn_extend_max_offset(conn, consumed);
   int64_t session_id = -1;
-  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) && quic_http3_server_accepted(connection->http3, &session_id) &&
+  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) && http_server_http3_accepted(connection->http3, &session_id) &&
       stream_id == session_id) {
     connection->callback_error = ERROR_NETWORK;
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -483,7 +483,7 @@ static int receive_webtransport_uni(ngtcp2_conn *conn, quic_connection_t *connec
     if (!read_quic_varint(stream->prefix + type_length, stream->prefix_used - type_length, &session, &session_length))
       continue;
     int64_t accepted = -1;
-    if (!quic_http3_server_accepted(connection->http3, &accepted) || session != (uint64_t)accepted)
+    if (!http_server_http3_accepted(connection->http3, &accepted) || session != (uint64_t)accepted)
       goto invalid;
     stream->kind = 2;
     stream->prefix_length = type_length + session_length;
@@ -570,7 +570,7 @@ static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *da
     int64_t session_id = -1;
     uint64_t quarter = 0;
     size_t prefix_length = 0;
-    if (!quic_http3_server_accepted(connection->http3, &session_id) ||
+    if (!http_server_http3_accepted(connection->http3, &session_id) ||
         !read_quic_varint(data, length, &quarter, &prefix_length) || quarter != (uint64_t)session_id / 4)
       return 0;
     data += prefix_length;
@@ -873,7 +873,7 @@ static asciichat_error_t update_readiness(quic_connection_t *connection) {
     if (quic_connection_peer_address(connection, &peer, &peer_length) == ASCIICHAT_OK)
       (void)format_ip_address(peer.ss_family, (const struct sockaddr *)&peer, peer_address, sizeof(peer_address));
     asciichat_error_t result =
-        quic_http3_server_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
+        http_server_http3_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
                                  encoder, decoder, connection->tls->http_server, peer_address, &connection->http3);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
@@ -1029,7 +1029,7 @@ size_t quic_connection_datagram_payload(const quic_connection_t *connection) {
   if (connection->webtransport) {
     int64_t session_id = -1;
     uint8_t prefix[8];
-    if (!connection->http3 || !quic_http3_server_accepted(connection->http3, &session_id))
+    if (!connection->http3 || !http_server_http3_accepted(connection->http3, &session_id))
       return 0;
     size_t size = write_quic_varint(prefix, (uint64_t)session_id / 4);
     if (frame <= size)
@@ -1144,7 +1144,7 @@ static asciichat_error_t queue_wire_packet_internal(quic_connection_t *connectio
   if (!stream->initialized) {
     if (connection->webtransport) {
       int64_t session_id = -1;
-      if (!quic_http3_server_accepted(connection->http3, &session_id))
+      if (!http_server_http3_accepted(connection->http3, &session_id))
         return SET_ERRNO(ERROR_INVALID_STATE, "WebTransport session is not established");
       prefix_length += write_quic_varint(preamble + prefix_length, 0x54);
       prefix_length += write_quic_varint(preamble + prefix_length, (uint64_t)session_id);
@@ -1286,7 +1286,7 @@ static ngtcp2_ssize write_pending(quic_connection_t *connection, ngtcp2_path *pa
     bool fin = false;
     nghttp3_vec h3vec[8];
     size_t count = 0;
-    if (quic_http3_server_write(connection->http3, &stream_id, &fin, h3vec, 8, &count) != ASCIICHAT_OK)
+    if (http_server_http3_write(connection->http3, &stream_id, &fin, h3vec, 8, &count) != ASCIICHAT_OK)
       return NGTCP2_ERR_CALLBACK_FAILURE;
     if (stream_id >= 0) {
       ngtcp2_vec vectors[8];
@@ -1297,14 +1297,14 @@ static ngtcp2_ssize write_pending(quic_connection_t *connection, ngtcp2_path *pa
           connection->conn, path, info, packet, capacity, &consumed,
           fin ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE, stream_id, vectors, count, now_ns);
       if (consumed < 0) {
-        if (quic_http3_server_wrote(connection->http3, stream_id, 0) != ASCIICHAT_OK)
+        if (http_server_http3_wrote(connection->http3, stream_id, 0) != ASCIICHAT_OK)
           return NGTCP2_ERR_CALLBACK_FAILURE;
         if (written != NGTCP2_ERR_STREAM_DATA_BLOCKED)
           return written;
         /* Other streams and QUIC acknowledgements can still make progress
          * while this HTTP/3 stream waits for flow-control credit. */
       } else {
-        if (quic_http3_server_wrote(connection->http3, stream_id, (size_t)consumed) != ASCIICHAT_OK)
+        if (http_server_http3_wrote(connection->http3, stream_id, (size_t)consumed) != ASCIICHAT_OK)
           return NGTCP2_ERR_CALLBACK_FAILURE;
         return written;
       }
@@ -1324,7 +1324,7 @@ static ngtcp2_ssize write_pending(quic_connection_t *connection, ngtcp2_path *pa
       size_t fragment_length = 0, prefix_length = 0;
       if (connection->webtransport) {
         int64_t session_id = -1;
-        if (!quic_http3_server_accepted(connection->http3, &session_id))
+        if (!http_server_http3_accepted(connection->http3, &session_id))
           return NGTCP2_ERR_CALLBACK_FAILURE;
         prefix_length = write_quic_varint(fragment, (uint64_t)session_id / 4);
       }
@@ -1496,7 +1496,7 @@ bool quic_connection_accept_ready(const quic_connection_t *connection) {
 
 bool quic_connection_webtransport_ready(const quic_connection_t *connection) {
   return connection && connection->webtransport && connection->http3 &&
-         quic_http3_server_accepted(connection->http3, NULL) && !connection->failed;
+         http_server_http3_accepted(connection->http3, NULL) && !connection->failed;
 }
 
 bool quic_connection_tls_ready(const quic_connection_t *connection) {
@@ -1521,7 +1521,7 @@ void quic_connection_destroy(quic_connection_t **connection) {
     return;
   ngtcp2_conn_del((*connection)->conn);
   (*connection)->conn = NULL;
-  quic_http3_server_destroy(&(*connection)->http3);
+  http_server_http3_destroy(&(*connection)->http3);
   buffer_release((*connection)->early_security_packet);
   quic_datagram_reset(&(*connection)->datagram_reader);
   for (size_t i = 0; i < QUIC_FLOW_COUNT; ++i) {
