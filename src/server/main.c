@@ -129,7 +129,7 @@
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
-#include <ascii-chat/platform/string.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/platform/symbols.h>
 #include <libplatform/system.h>
 #include <ascii-chat/crypto/keys.h>

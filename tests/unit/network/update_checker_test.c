@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/version.h>
 

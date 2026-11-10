@@ -10,7 +10,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/network/http/server/server.h>
 #include <yyjson.h>
 #include <string.h>
