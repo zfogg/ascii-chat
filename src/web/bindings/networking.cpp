@@ -485,6 +485,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
   emscripten::register_type<ClientBytes>("ClientBytes", "Uint8Array");
   emscripten::class_<ClientSessionBinding>("ClientSessionBinding")
       .constructor<OptionsPatch>()
+      .class_function("errorAction", &ClientSessionBinding::errorAction)
       .function("valid", &ClientSessionBinding::valid)
       .function("protocolInfo", &ClientSessionBinding::protocolInfo)
       .function("error", &ClientSessionBinding::error)
