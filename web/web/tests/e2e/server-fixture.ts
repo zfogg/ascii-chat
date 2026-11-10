@@ -8,9 +8,16 @@ import { expect, type Page } from "@playwright/test";
 function getAsciiChatBinaryPath(): string {
   const configuredPath = process.env["ASCII_CHAT_TEST_BINARY"];
   if (configuredPath) return path.resolve(configuredPath);
-  return path.resolve(
-    process.cwd(),
-    `../../build/bin/ascii-chat${process.platform === "win32" ? ".exe" : ""}`,
+  const binaryName = `ascii-chat${process.platform === "win32" ? ".exe" : ""}`;
+  const candidates = [
+    path.resolve(process.cwd(), `../../build/bin/${binaryName}`),
+    path.resolve(
+      process.cwd(),
+      `../../build/native-quic-check/bin/${binaryName}`,
+    ),
+  ];
+  return (
+    candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0]!
   );
 }
 
