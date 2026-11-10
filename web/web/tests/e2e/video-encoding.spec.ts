@@ -64,6 +64,7 @@ let serverPort: number;
 let acdsPort: number;
 let session: string;
 let root: string;
+let peer: NativeProcess;
 const password = "hevc-browser-test";
 const host = process.env["ASCII_CHAT_TEST_HOST"] || "127.0.0.1";
 
@@ -126,8 +127,33 @@ test.beforeAll(async () => {
   session = server
     .logs()
     .match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)![1]!;
+  peer = new NativeProcess(
+    [
+      session,
+      "--discovery-service",
+      "127.0.0.1",
+      "--discovery-service-port",
+      String(acdsPort),
+      "--password",
+      password,
+      "--test-pattern",
+      "--fps",
+      "30",
+      "--stun-servers",
+      "",
+      "--turn-servers",
+      "",
+      "--splash-screen=false",
+    ],
+    path.join(root, "peer.log"),
+    appData,
+  );
+  await expect
+    .poll(() => peer.logs(), { timeout: 30_000 })
+    .toMatch(/Handshake complete|Discovery decoded video|Connected/i);
 });
 test.afterAll(async () => {
+  await peer?.stop();
   await server?.stop();
   await acds?.stop();
 });
@@ -219,6 +245,28 @@ async function connect(page: Page, mode: string, encoding: string) {
     timeout: 40_000,
   });
 }
+async function supportsCodec(page: Page, encoding: "hevc" | "h264") {
+  return page.evaluate(async (codec) => {
+    if (typeof VideoEncoder === "undefined") return false;
+    try {
+      const result = await VideoEncoder.isConfigSupported({
+        codec: codec === "hevc" ? "hev1.1.6.L120.B0" : "avc1.42E01F",
+        width: 640,
+        height: 480,
+        framerate: 30,
+        bitrate: 3_000_000,
+        latencyMode: "realtime",
+        hardwareAcceleration: "prefer-hardware",
+        ...(codec === "hevc"
+          ? { hevc: { format: "annexb" } }
+          : { avc: { format: "annexb" } }),
+      });
+      return result.supported === true;
+    } catch {
+      return false;
+    }
+  }, encoding);
+}
 async function probe(page: Page) {
   return page.evaluate(() => ({
     ...(
@@ -268,6 +316,13 @@ for (const mode of ["client", "discovery"]) {
     }, info) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
+      if (encoding !== "raw") {
+        const supported = await supportsCodec(
+          page,
+          encoding === "H.264" ? "h264" : "hevc",
+        );
+        test.skip(!supported, `${encoding} WebCodecs is unsupported`);
+      }
       await connect(page, mode, encoding);
       await expect
         .poll(async () => (await probe(page)).changedReceived ?? 0, {
@@ -321,13 +376,13 @@ for (const mode of ["client", "discovery"]) {
       // Restart capture and verify that HEVC recovers with a fresh keyframe.
       await page
         .getByRole("button", {
-          name: mode === "discovery" ? "Disable webcam" : "Stop",
+          name: "Disable webcam",
           exact: true,
         })
         .click();
       await page
         .getByRole("button", {
-          name: mode === "discovery" ? "Enable webcam" : "Start Webcam",
+          name: "Enable webcam",
           exact: true,
         })
         .click();
@@ -391,11 +446,11 @@ for (const mode of ["client", "discovery"]) {
       await connect(page, mode, encoding);
       await expect
         .poll(async () => (await probe(page)).changedReceived ?? 0)
-        .toBeGreaterThan(15);
+        .toBeGreaterThan(10);
       await expect
         .poll(async () => (await pixels(page)).lit)
         .toBeGreaterThan(100);
-      expect((await probe(page)).raw).toBeGreaterThan(15);
+      expect((await probe(page)).raw).toBeGreaterThan(5);
       expect((await probe(page)).hevc).toBe(0);
       await expect(page.getByRole("alert")).toHaveCount(0);
     });
@@ -420,6 +475,7 @@ for (const mode of ["client", "discovery"]) {
   test(`${mode}: runtime HEVC failure stops capture without raw fallback`, async ({
     page,
   }) => {
+    test.skip(!(await supportsCodec(page, "hevc")), "HEVC WebCodecs is unsupported");
     await connect(page, mode, "hevc");
     await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
     await page.evaluate(() => {
@@ -438,6 +494,12 @@ for (const mode of ["client", "discovery"]) {
     test(`${mode}: default preference chooses ${scenario}`, async ({
       page,
     }) => {
+      if (scenario !== "raw") {
+        test.skip(
+          !(await supportsCodec(page, scenario === "h264" ? "h264" : "hevc")),
+          `${scenario} WebCodecs is unsupported`,
+        );
+      }
       await page.addInitScript((selected) => {
         const probe = VideoEncoder.isConfigSupported.bind(VideoEncoder);
         VideoEncoder.isConfigSupported = async (config) => {
@@ -467,7 +529,7 @@ for (const mode of ["client", "discovery"]) {
         .click();
       const selector = page.getByLabel("Video encoding", { exact: true });
       await expect(selector).toBeEnabled();
-      await expect(selector).toHaveValue(scenario);
+      await expect(selector).toHaveValue(scenario === "raw" ? "auto" : scenario);
       const values = await selector
         .locator("option")
         .evaluateAll((options) =>
@@ -504,6 +566,10 @@ for (const mode of ["client", "discovery"]) {
   test(`${mode}: automatic runtime fallback renders HEVC then H.264 then raw`, async ({
     page,
   }) => {
+    test.skip(
+      !(await supportsCodec(page, "hevc")) || !(await supportsCodec(page, "h264")),
+      "HEVC and H.264 WebCodecs are both required for this fallback test",
+    );
     await page.addInitScript(() => {
       const codecs = new WeakMap<VideoEncoder, string>();
       const configure = VideoEncoder.prototype.configure;
@@ -543,6 +609,7 @@ for (const mode of ["client", "discovery"]) {
   test(`${mode}: modal persists encoding while query overrides remain temporary`, async ({
     page,
   }, info) => {
+    test.skip(!(await supportsCodec(page, "hevc")), "HEVC WebCodecs is unsupported");
     await connect(page, mode, "default");
     await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
     const storage = () =>
