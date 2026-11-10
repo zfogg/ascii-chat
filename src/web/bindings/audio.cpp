@@ -101,7 +101,8 @@ public:
       return;
     }
     int error = OPUS_OK;
-    encoder_ = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_AUDIO, &error);
+    const int application = bitrate >= 128000 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
+    encoder_ = opus_encoder_create(sample_rate, channels, application, &error);
     if (error != OPUS_OK || !encoder_) {
       SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus encoder: %s", opus_strerror(error));
       return;
