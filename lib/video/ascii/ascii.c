@@ -51,6 +51,12 @@
  * Terminal cells are approximately twice as tall as they are wide, hence the
  * factor of two in the source crop ratio.
  */
+/* Nested resize calls occur during compositing; retain a small thread-local
+ * pool so the render loop never enters tracked allocation. */
+#define ASCII_RESIZE_WORKSPACE_POOL_SIZE 4
+static _Thread_local int g_resize_columns_workspace[ASCII_RESIZE_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH];
+static _Thread_local unsigned g_resize_workspace_depth;
+
 static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width, ssize_t viewport_height) {
   if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 ||
       viewport_height <= 0) {
@@ -78,7 +84,8 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
   }
 
   // Horizontal source coordinates are identical for every destination row.
-  int *source_columns = SAFE_MALLOC((size_t)dest->w * sizeof(*source_columns), int *);
+  unsigned workspace_index = g_resize_workspace_depth++ % ASCII_RESIZE_WORKSPACE_POOL_SIZE;
+  int *source_columns = g_resize_columns_workspace[workspace_index];
   for (int x = 0; x < dest->w; ++x)
     source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
   int previous_source_y = -1;
@@ -95,7 +102,7 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
       dest_row[x] = source_row[source_columns[x]];
     }
   }
-  SAFE_FREE(source_columns);
+  --g_resize_workspace_depth;
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.

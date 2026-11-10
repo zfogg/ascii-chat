@@ -19,6 +19,7 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/asan.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
@@ -165,6 +166,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
     }
 
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
+    sanitizer_log_init(log_file);
     log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);
 
     // 2. KEYBOARD SYSTEM - Initialize keyboard input AFTER logging (may fail if stdin/tty not available)
@@ -295,6 +297,7 @@ void asciichat_shared_destroy(void) {
 
   // 12. Logging cleanup - free log format buffers and system state
   log_destroy();
+  sanitizer_log_destroy();
   log_system_destroy();
 
   // 13. Mutex stack cleanup - must be before memory report so stacks are freed

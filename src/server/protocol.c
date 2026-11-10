@@ -379,8 +379,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
  *
  * PROTOCOL BEHAVIOR:
  * - Client logs the disconnect reason if provided
- * - Server continues normal disconnect sequence after receiving packet
- * - Client remains responsible for closing socket
+ * - Server deactivates the client and requests transport shutdown
+ * - The normal connection-closed callback performs final removal
  *
  * ERROR HANDLING:
  * - Empty payload is handled gracefully
@@ -391,8 +391,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
  * @param data Packet payload (optional reason string)
  * @param len Size of packet payload in bytes (0-256)
  *
- * @note This handler doesn't trigger immediate disconnect
- * @note Actual disconnect occurs when socket closes
+ * @note The transport shutdown request is asynchronous; final removal occurs
+ *       from the connection-closed callback.
  */
 void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
   if (!client) {
@@ -440,8 +440,13 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
   log_debug("Setting active=false (client_id=%s)", client_id);
   atomic_store_bool(&client->active, false);
 
-  // Note: We don't disconnect the client here - that happens when socket closes
-  // This is just a clean notification before disconnect
+  // Request transport shutdown immediately. This keeps the server's client
+  // accounting from depending on the peer closing its socket after sending
+  // CLIENT_LEAVE. Final resource removal remains serialized in the normal
+  // connection-closed callback.
+  if (client->network_connection) {
+    network_connection_request_stop(client->network_connection);
+  }
 }
 
 /**
@@ -1590,7 +1595,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     mutex_unlock(&client->client_state_mutex);
     return;
   }
-  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 144;
+  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS;
   asciichat_error_t result = acip_render_settings_capabilities(&client->render_settings, &packet);
   if (result == ASCIICHAT_OK) {
     publish_render_settings(client);

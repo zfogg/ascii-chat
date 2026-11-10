@@ -4,6 +4,21 @@
   "description": "ASCII art rendering with libasciichat and WebAssembly",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "ascii",
+    "terminal",
+    "renderer",
+    "wasm",
+    "webassembly"
+  ],
+  "bugs": {
+    "url": "https://github.com/zfogg/ascii-chat/issues"
+  },
+  "homepage": "https://ascii-chat.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/zfogg/ascii-chat.git",
@@ -24,20 +39,51 @@
       "types": "./dist/options.d.ts",
       "import": "./dist/options.js"
     },
+    "./http/node": {
+      "types": "./dist/http/node.d.ts",
+      "node": "./dist/http/node.js",
+      "import": "./dist/http/node.js"
+    },
+    "./http/express": {
+      "types": "./dist/http/express.d.ts",
+      "node": "./dist/http/express.js",
+      "import": "./dist/http/express.js"
+    },
+    "./http/fastify": {
+      "types": "./dist/http/fastify.d.ts",
+      "node": "./dist/http/fastify.js",
+      "import": "./dist/http/fastify.js"
+    },
+    "./http/koa": {
+      "types": "./dist/http/koa.d.ts",
+      "node": "./dist/http/koa.js",
+      "import": "./dist/http/koa.js"
+    },
     "./bindings": {
       "types": "./dist/renderer-bindings.d.ts"
     }
   },
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts --dts --platform browser && node build.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts --dts --platform browser && tsc --target ES2022 --module ESNext --moduleResolution Bundler --skipLibCheck --outDir dist/http --rootDir src/http --declaration --noEmit false src/http/node.ts src/http/express.ts src/http/fastify.ts src/http/koa.ts && node build.mjs",
     "prepack": "npm run build",
     "test": "playwright test",
     "pretest": "npm run build",
     "test:package": "node tests/package-consumer.mjs"
   },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@types/express": "^5.0.3",
+    "@types/koa": "^2.15.0",
     "@types/node": "^25.9.9",
+    "fastify": "^5.6.1",
+    "@playwright/test": "^1.58.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "typescript": "^5.9.3"
   }
 }

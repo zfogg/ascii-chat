@@ -29,6 +29,19 @@
 #include <unistd.h>
 #include <ascii-chat/atomic.h>
 
+const char *ui_status_log_controls(void) {
+  static _Thread_local char controls[512];
+  snprintf(controls, sizeof(controls),
+           "%s / %s: close | %s: search logs | %s: keyboard controls | %s / %s: one log | "
+           "%s / %s: page | %s / %s: oldest/newest",
+           colored_string(LOG_COLOR_WARN, "q"), colored_string(LOG_COLOR_WARN, "Esc"), "/",
+           colored_string(LOG_COLOR_WARN, "?"), colored_string(LOG_COLOR_WARN, "Up"),
+           colored_string(LOG_COLOR_WARN, "Down"), colored_string(LOG_COLOR_WARN, "PageUp"),
+           colored_string(LOG_COLOR_WARN, "PageDown"), colored_string(LOG_COLOR_WARN, "Home"),
+           colored_string(LOG_COLOR_WARN, "End"));
+  return controls;
+}
+
 void ui_status_log_init(void) {
   // Initialize the shared terminal screen log buffer
   session_log_buffer_t *buf = terminal_screen_log_init();
@@ -117,6 +130,9 @@ void ui_status_display(const ui_status_t *status) {
   }
 
   // Use terminal_screen abstraction for rendering
+  ui_status_t rendered = *status;
+  if (!rendered.detail)
+    rendered.detail = ui_status_log_controls();
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
@@ -124,7 +140,7 @@ void ui_status_display(const ui_status_t *status) {
       .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = ui_status_render_header,
-      .user_data = (void *)status,
+      .user_data = &rendered,
       .show_logs = true,
   };
 
@@ -164,6 +180,9 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   }
 
   // Use terminal_screen abstraction for rendering
+  ui_status_t rendered = *status;
+  if (!rendered.detail)
+    rendered.detail = ui_status_log_controls();
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
       .output_fd = output_fd,
@@ -171,7 +190,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
       .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = ui_status_render_header,
-      .user_data = (void *)status,
+      .user_data = &rendered,
       .show_logs = true,
   };
 

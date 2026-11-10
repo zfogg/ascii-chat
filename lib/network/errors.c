@@ -80,6 +80,10 @@ asciichat_error_t network_error_decode(packet_type_t type, const void *payload, 
     if (result != ASCIICHAT_OK)
       return result;
     code = network_error_public_code(code);
+    /* Preserve the server's sanitized diagnostic.  The previous code parsed
+     * this message and then discarded it, making policy/protocol failures
+     * indistinguishable from real authentication failures. */
+    return SET_ERRNO(code, "Remote request rejected: %s", message[0] ? message : asciichat_error_string(code));
   } else {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected rejection packet type");
   }

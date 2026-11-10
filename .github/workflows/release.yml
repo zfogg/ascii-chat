@@ -1,5 +1,7 @@
 name: Release
 
+# Manual dispatch may reuse an existing immutable tag after workflow-only fixes.
+
 on:
   push:
     tags:

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
+from ascii_chat_tests.cli import logs_for_test
 
 import socket
 import shutil
@@ -145,7 +146,9 @@ def test_terminal_logs(binary, tmp_path, request):
                 exercise(mirror, "mirror", args.artifacts)
             finally:
                 mirror.close()
-                shutil.copyfile(root / "mirror.log", args.artifacts / "mirror-debug.log")
+                logs = logs_for_test(request.node.nodeid)
+                assert logs, "native invocation did not register a test log"
+                shutil.copyfile(logs[-1], args.artifacts / "mirror-debug.log")
             return
         # Keep the transport open without a handshake so startup remains observable.
         with socket.socket() as listener:
@@ -175,8 +178,19 @@ def test_terminal_logs(binary, tmp_path, request):
             shutil.copyfile(root / "mirror.log", args.artifacts / "mirror-debug.log")
         port, ws_port = free_port(), free_port()
         server = Terminal(base + ["--log-file", str(root / "server.log"), "server", "127.0.0.1", "--port", str(port),
-                                  "--websocket-port", str(ws_port), "--status-screen=false", "--no-encrypt", "--no-auth"], rows=30, cols=140)
+                                  "--websocket-port", str(ws_port), "--status-screen=true", "--no-encrypt", "--no-auth"], rows=30, cols=140)
         try:
+            server.expect(lambda text: "? Keyboard shortcuts" in text, "Server status footer missing")
+            server.write("]")
+            server.expect(lambda text: "/: search logs" in text, "Server log viewer did not open")
+            server.write("?")
+            server.expect(lambda text: "Log Viewer Keyboard Controls" in text, "Server log help did not open")
+            server.write("?")
+            server.write("\x1b[5~\x1b[6~\x1b[H\x1b[F")
+            server.pump(.2)
+            server.write("q")
+            server.expect(lambda text: "Log Viewer Keyboard Controls" not in text and "/: search logs" not in text,
+                          "Server q did not close the log viewer")
             import time
             deadline = time.monotonic() + 20
             while True:

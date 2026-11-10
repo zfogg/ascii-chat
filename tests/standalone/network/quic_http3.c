@@ -1,5 +1,5 @@
 #include <ascii-chat/common.h>
-#include <network/quic/http3.h>
+#include <network/http/server/http3.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <string.h>
@@ -53,13 +53,13 @@ static int recv_settings(nghttp3_conn *conn, const nghttp3_proto_settings *setti
   return 0;
 }
 
-static void pump_server(acip_http3_server_t *server, nghttp3_conn *client) {
+static void pump_server(http_server_http3_t *server, nghttp3_conn *client) {
   for (unsigned i = 0; i < 30; ++i) {
     int64_t stream = -1;
     bool fin = false;
     nghttp3_vec vectors[8];
     size_t count = 0, bytes = 0;
-    CHECK(acip_http3_server_write(server, &stream, &fin, vectors, 8, &count) == ASCIICHAT_OK);
+    CHECK(http_server_http3_write(server, &stream, &fin, vectors, 8, &count) == ASCIICHAT_OK);
     if (stream < 0)
       return;
     for (size_t j = 0; j < count; ++j) {
@@ -68,12 +68,12 @@ static void pump_server(acip_http3_server_t *server, nghttp3_conn *client) {
       CHECK(read >= 0 && (size_t)read == vectors[j].len);
       bytes += vectors[j].len;
     }
-    CHECK(acip_http3_server_wrote(server, stream, bytes) == ASCIICHAT_OK);
-    CHECK(acip_http3_server_ack(server, stream, bytes) == ASCIICHAT_OK);
+    CHECK(http_server_http3_wrote(server, stream, bytes) == ASCIICHAT_OK);
+    CHECK(http_server_http3_ack(server, stream, bytes) == ASCIICHAT_OK);
   }
   FATAL(ERROR_ASSERTION_FAILED, "HTTP/3 server output did not quiesce");
 }
-static void pump_client(nghttp3_conn *client, acip_http3_server_t *server) {
+static void pump_client(nghttp3_conn *client, http_server_http3_t *server) {
   for (unsigned i = 0; i < 30; ++i) {
     int64_t stream = -1;
     int fin = 0;
@@ -85,7 +85,7 @@ static void pump_client(nghttp3_conn *client, acip_http3_server_t *server) {
     size_t bytes = 0;
     for (nghttp3_ssize j = 0; j < count; ++j) {
       size_t consumed = 0;
-      CHECK(acip_http3_server_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
+      CHECK(http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
                                    &consumed) == ASCIICHAT_OK);
       CHECK(consumed == vectors[j].len);
       bytes += vectors[j].len;
@@ -95,7 +95,7 @@ static void pump_client(nghttp3_conn *client, acip_http3_server_t *server) {
   }
   FATAL(ERROR_ASSERTION_FAILED, "HTTP/3 client output did not quiesce");
 }
-static void pump_client_delayed_settings(nghttp3_conn *client, acip_http3_server_t *server) {
+static void pump_client_delayed_settings(nghttp3_conn *client, http_server_http3_t *server) {
   uint8_t delayed[512];
   size_t delayed_length = 0;
   for (unsigned i = 0; i < 30; ++i) {
@@ -114,7 +114,7 @@ static void pump_client_delayed_settings(nghttp3_conn *client, acip_http3_server
         delayed_length += vectors[j].len;
       } else {
         size_t consumed = 0;
-        CHECK(acip_http3_server_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
+        CHECK(http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
                                      &consumed) == ASCIICHAT_OK);
         CHECK(consumed == vectors[j].len);
       }
@@ -123,16 +123,16 @@ static void pump_client_delayed_settings(nghttp3_conn *client, acip_http3_server
     CHECK(nghttp3_conn_add_write_offset(client, stream, bytes) == 0);
     CHECK(nghttp3_conn_add_ack_offset(client, stream, bytes) == 0);
   }
-  CHECK(delayed_length > 0 && !acip_http3_server_accepted(server, NULL));
+  CHECK(delayed_length > 0 && !http_server_http3_accepted(server, NULL));
   size_t consumed = 0;
-  CHECK(acip_http3_server_read(server, 2, delayed, delayed_length, false, 0, &consumed) == ASCIICHAT_OK);
+  CHECK(http_server_http3_read(server, 2, delayed, delayed_length, false, 0, &consumed) == ASCIICHAT_OK);
   CHECK(consumed == delayed_length);
 }
 #define NV(name, value) {(const uint8_t *)(name), (const uint8_t *)(value), sizeof(name) - 1, sizeof(value) - 1, 0}
 static void exchange(unsigned scenario) {
   bool allowed = scenario == 0 || scenario == 5;
-  acip_http3_server_t *server = NULL;
-  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, &server) == ASCIICHAT_OK);
+  http_server_http3_t *server = NULL;
+  CHECK(http_server_http3_create("https://client.example", "/acip", 3, 7, 11, NULL, NULL, &server) == ASCIICHAT_OK);
   client_state_t capture = {0};
   nghttp3_callbacks callbacks = {
       .recv_header = recv_header, .end_headers = end_headers, .recv_settings2 = recv_settings};
@@ -173,12 +173,12 @@ static void exchange(unsigned scenario) {
     pump_client(client, server);
   pump_server(server, client);
   int64_t session_id = -1;
-  CHECK(acip_http3_server_accepted(server, &session_id) == allowed);
+  CHECK(http_server_http3_accepted(server, &session_id) == allowed);
   CHECK(capture.status == (allowed ? 200 : 403));
   if (allowed)
     CHECK(session_id == 0 && !capture.fin);
   nghttp3_conn_del(client);
-  acip_http3_server_destroy(&server);
+  http_server_http3_destroy(&server);
 }
 static uint64_t read_varint(const uint8_t *data, size_t length, size_t *offset) {
   CHECK(*offset < length);
@@ -191,13 +191,13 @@ static uint64_t read_varint(const uint8_t *data, size_t length, size_t *offset) 
   return value;
 }
 static void test_output_contract(void) {
-  acip_http3_server_t *server = NULL;
-  CHECK(acip_http3_server_create("https://client.example", "/acip", 3, 7, 11, &server) == ASCIICHAT_OK);
+  http_server_http3_t *server = NULL;
+  CHECK(http_server_http3_create("https://client.example", "/acip", 3, 7, 11, NULL, NULL, &server) == ASCIICHAT_OK);
   nghttp3_vec vectors[2];
   int64_t stream;
   bool fin;
   size_t count;
-  CHECK(acip_http3_server_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
+  CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
   CHECK(stream == 3 && !fin && count == 1 && vectors[0].len > 4);
   size_t length = vectors[0].len, first = length / 2;
   size_t offset = 0;
@@ -217,17 +217,17 @@ static void test_output_contract(void) {
       datagrams = value == 1;
   }
   CHECK(draft02 && draft07 && datagrams);
-  CHECK(acip_http3_server_write(server, &stream, &fin, vectors, 2, &count) == ERROR_INVALID_STATE);
-  CHECK(acip_http3_server_wrote(server, 7, first) == ERROR_INVALID_PARAM);
-  CHECK(acip_http3_server_wrote(server, 3, length + 1) == ERROR_INVALID_PARAM);
-  CHECK(acip_http3_server_wrote(server, 3, first) == ASCIICHAT_OK);
-  CHECK(acip_http3_server_ack(server, 3, first + 1) == ERROR_INVALID_PARAM);
-  CHECK(acip_http3_server_ack(server, 3, first) == ASCIICHAT_OK);
-  CHECK(acip_http3_server_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
+  CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ERROR_INVALID_STATE);
+  CHECK(http_server_http3_wrote(server, 7, first) == ERROR_INVALID_PARAM);
+  CHECK(http_server_http3_wrote(server, 3, length + 1) == ERROR_INVALID_PARAM);
+  CHECK(http_server_http3_wrote(server, 3, first) == ASCIICHAT_OK);
+  CHECK(http_server_http3_ack(server, 3, first + 1) == ERROR_INVALID_PARAM);
+  CHECK(http_server_http3_ack(server, 3, first) == ASCIICHAT_OK);
+  CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
   CHECK(stream == 3 && vectors[0].len == length - first);
-  CHECK(acip_http3_server_wrote(server, 3, length - first) == ASCIICHAT_OK);
-  CHECK(acip_http3_server_ack(server, 3, length - first) == ASCIICHAT_OK);
-  acip_http3_server_destroy(&server);
+  CHECK(http_server_http3_wrote(server, 3, length - first) == ASCIICHAT_OK);
+  CHECK(http_server_http3_ack(server, 3, length - first) == ASCIICHAT_OK);
+  http_server_http3_destroy(&server);
 }
 static void test_discovered_endpoint(void) {
   const char url[] = "https://example.test:4433/acip";
@@ -291,8 +291,8 @@ static void test_transport_metadata_codec(void) {
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
-  acip_http3_server_t *invalid = NULL;
-  CHECK(acip_http3_server_create("http://example", "/acip", 3, 7, 11, &invalid) == ERROR_INVALID_PARAM);
+  http_server_http3_t *invalid = NULL;
+  CHECK(http_server_http3_create("http://example", "/acip", 3, 7, 11, NULL, NULL, &invalid) == ERROR_INVALID_PARAM);
   CHECK(!invalid);
   test_output_contract();
   test_discovered_endpoint();

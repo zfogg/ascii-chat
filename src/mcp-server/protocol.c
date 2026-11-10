@@ -4,7 +4,6 @@
 #include <ascii-chat/version.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
-#include <libwebsockets.h>
 #include <string.h>
 
 static yyjson_mut_doc *envelope(yyjson_val *id) {

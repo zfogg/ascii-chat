@@ -235,6 +235,8 @@ typedef struct {
 
   /** Bytes retained by this backend, including an in-progress packet. */
   size_t (*queued_bytes)(acip_transport_t *transport);
+  /** Wait until backend-owned output becomes writable or timeout expires. */
+  asciichat_error_t (*wait_writable)(acip_transport_t *transport, uint64_t timeout_ns);
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
   /** Receives plaintext packet metadata alongside borrowed packet slices. */

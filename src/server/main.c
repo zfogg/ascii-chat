@@ -804,7 +804,7 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
  * @param session_string Session string to advertise
  * @param port Server port
  */
-static void advertise_mdns_with_session(const char *session_string, uint16_t port) {
+static void __attribute__((unused)) advertise_mdns_with_session(const char *session_string, uint16_t port) {
   asciichat_mdns_t *mdns_ctx = session_server_like_get_mdns_ctx();
   if (!mdns_ctx) {
     log_debug("mDNS context not initialized, skipping advertisement");
@@ -1390,7 +1390,7 @@ static void server_init_session_host(network_server_t *tcp, int port) {
   }
 }
 
-static bool server_allow_discovery(server_discovery_policy_t *policy) {
+static bool __attribute__((unused)) server_allow_discovery(server_discovery_policy_t *policy) {
   if (policy->has_password || policy->has_identity) {
     // Auto-enable privacy: IP revealed only after verification
     policy->expose_ip = false;
@@ -1433,9 +1433,10 @@ static bool server_allow_discovery(server_discovery_policy_t *policy) {
   return true;
 }
 
-static void server_prepare_discovery_request(acds_session_create_params_t *params,
-                                             const server_discovery_policy_t *policy, int port,
-                                             nat_upnp_context_t *upnp_ctx, bool upnp_succeeded) {
+static void __attribute__((unused)) server_prepare_discovery_request(acds_session_create_params_t *params,
+                                                                     const server_discovery_policy_t *policy, int port,
+                                                                     nat_upnp_context_t *upnp_ctx,
+                                                                     bool upnp_succeeded) {
   // Use server's Ed25519 identity public key if available
   if (g_server_encryption_enabled && policy->has_identity) {
     memcpy(params->identity_pubkey, g_server_private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
@@ -1517,9 +1518,10 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
             params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 
-static void server_join_discovery_session(const acds_session_create_params_t *params,
-                                          acds_session_create_result_t *result, const char *session_string,
-                                          const server_discovery_policy_t *policy) {
+static void __attribute__((unused)) server_join_discovery_session(const acds_session_create_params_t *params,
+                                                                  acds_session_create_result_t *result,
+                                                                  const char *session_string,
+                                                                  const server_discovery_policy_t *policy) {
   // Server must join its own session so ACDS can route signaling messages
   log_debug("Server joining session as first participant for WebRTC signaling...");
   acds_session_join_params_t join_params = {0};
@@ -1553,7 +1555,7 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
   }
 }
 
-static void server_start_discovery_keepalive(void) {
+static void __attribute__((unused)) server_start_discovery_keepalive(void) {
   // Keep ACDS connection alive for WebRTC signaling relay
   log_debug("Server staying connected to ACDS for signaling relay");
 
@@ -1617,7 +1619,7 @@ static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TU
   return turn_count;
 }
 
-static void server_init_webrtc(void) {
+static void __attribute__((unused)) server_init_webrtc(void) {
   log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
 
   // Initialize WebRTC library (libdatachannel)
@@ -1692,6 +1694,22 @@ static void server_init_webrtc(void) {
 
 static void server_register_discovery(server_discovery_startup_t *startup, int port, nat_upnp_context_t *upnp_ctx,
                                       bool upnp_succeeded) {
+  /*
+   * Server mode is a direct listener.  Shareable discovery sessions belong to
+   * discovery mode, which owns the ACDS session lifecycle and only announces a
+   * code after the discovery connection becomes active.
+   *
+   * Keep this hook in place for the server startup sequence so the networking
+   * setup remains easy to extend, but do not connect to ACDS or create a
+   * session from server mode.
+   */
+  (void)startup;
+  (void)port;
+  (void)upnp_ctx;
+  (void)upnp_succeeded;
+  return;
+
+#if 0
   if (!GET_OPTION(discovery)) {
     log_info("ACDS registration disabled (use --acds to enable)");
     return;
@@ -1763,45 +1781,13 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
   }
   advertise_mdns_with_session(startup->session_string, (uint16_t)port);
+#endif
 }
 
 static asciichat_error_t server_announce_session(server_discovery_startup_t *startup, int port) {
-  // Fallback: If no session string was set by ACDS (either disabled or failed),
-  // generate a random session string for mDNS discovery only
-  if (startup->session_string[0] == '\0' && session_server_like_get_mdns_ctx()) {
-    log_debug("No ACDS session string available, generating random session for mDNS");
-
-    // Use the proper session string generation from discovery module
-    // This generates adjective-noun-noun format using the full wordlists
-    if (acds_string_generate(startup->session_string, sizeof(startup->session_string)) != ASCIICHAT_OK) {
-      log_error("Failed to generate session string for mDNS");
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to generate session string for mDNS");
-    }
-
-    log_debug("Generated random session string for mDNS: '%s'", startup->session_string);
-
-    // Mark that this session is mDNS-only (not globally discoverable via ACDS)
-    startup->mdns_only = true;
-
-    // Advertise mDNS with random session string
-    advertise_mdns_with_session(startup->session_string, (uint16_t)port);
-  }
-
-  if (startup->session_string[0] != '\0') {
-    if (startup->mdns_only) {
-      NOTICE_ANNOUNCE("SESSION READY",
-                      "Session String: %s (LAN only via "
-                      "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
-                      "%s",
-                      startup->session_string, startup->session_string);
-    } else {
-      NOTICE_ANNOUNCE("SESSION READY",
-                      "Session String: %s\nShare this "
-                      "globally to join:\n   ascii-chat %s",
-                      startup->session_string, startup->session_string);
-    }
-  }
-
+  (void)startup;
+  (void)port;
+  /* Discovery-mode owns session creation and the share-code announcement. */
   return ASCIICHAT_OK;
 }
 

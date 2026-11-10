@@ -191,7 +191,7 @@ typedef struct session_host {
   /** @brief IPv4 listen socket */
   network_server_t *network_server;
   bool configured_quic_listeners;
-  acip_quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
+  quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
   asciichat_thread_t network_thread;
@@ -1053,7 +1053,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
       .quic_endpoint = host->quic_endpoint,
       .webtransport_endpoint = host->webtransport_endpoint,
       .port = host->port,
-      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
       .bind_ipv4 = true,
       .max_connections = host->max_clients,
       .partial_timeout_ms = 30000,
@@ -1166,7 +1166,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
-      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].rendering.fps_limit = DEFAULT_MAX_FPS;
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers

@@ -82,6 +82,15 @@ static void patch(session_host_t *host, uint32_t id, const char *json) {
   cr_assert_eq(acip_settings_encode(&header, json, payload, sizeof(payload), &length), ASCIICHAT_OK);
   cr_assert_eq(session_host_receive_packet(host, id, PACKET_TYPE_ACIP_SETTINGS_SYNC, payload, length), ASCIICHAT_OK);
 }
+
+Test(host_render, default_remote_fps_is_serialized_as_auto) {
+  options_t values = {0};
+  char *json = options_values_json(&values, true);
+  cr_assert(json);
+  cr_assert(strstr(json, "\"fps\":0") != NULL, "Default remote FPS was not preserved: %s", json);
+  SAFE_FREE(json);
+}
+
 static void update(session_host_t *host, uint32_t id, const terminal_capabilities_packet_t *caps) {
   cr_assert_eq(session_host_receive_packet(host, id, PACKET_TYPE_CLIENT_CAPABILITIES, caps, sizeof(*caps)),
                ASCIICHAT_OK);

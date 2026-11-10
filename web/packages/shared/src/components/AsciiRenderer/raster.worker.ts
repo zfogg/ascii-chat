@@ -1,4 +1,4 @@
-import { AsciiRenderer } from "ascii-chat";
+import { RendererCore } from "ascii-chat";
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
 import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";
@@ -13,7 +13,7 @@ async function initialize(
     clientLikeKind === "mirror" ? module.initMirror : module.initClient;
   if (!initializeOptions)
     throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
-  if (initializeOptions(clientLikeKind))
+  if (initializeOptions({}))
     throw new Error("Cannot initialize raster worker options");
   return module;
 }
@@ -53,7 +53,7 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       if (!renderer) throw new Error("Raster worker renderer is unavailable");
       const width = renderer.width();
       const height = renderer.height();
-      const pixels = AsciiRenderer.rasterize(renderer, text, zalgo);
+      const pixels = RendererCore.rasterize(renderer, text, zalgo);
       previousText = text;
       (
         self.postMessage as (message: unknown, transfer: Transferable[]) => void

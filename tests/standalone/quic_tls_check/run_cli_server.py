@@ -11,6 +11,12 @@ import tempfile
 import threading
 import time
 
+_test_root = Path(__file__).resolve()
+while not (_test_root / "tests" / "_environment.py").is_file():
+    _test_root = _test_root.parent
+sys.path.insert(0, str(_test_root / "tests"))
+import _environment  # noqa: F401,E402
+
 
 def free_port(kind):
     with socket.socket(socket.AF_INET, kind) as sock:

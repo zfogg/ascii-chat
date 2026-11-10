@@ -44,6 +44,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -600,7 +601,11 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store_bool(&g_log.level_manually_set, false);
   atomic_store_u64(&g_log.current_size, 0);
 
-  if (filename) {
+  if (filename && strcmp(filename, "/dev/null") == 0) {
+    g_log.filename[0] = '\0';
+    atomic_store_int(&g_log.file, -1);
+    atomic_store_bool(&g_log.terminal_output_enabled, false);
+  } else if (filename) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
 
     if (use_mmap) {
@@ -1240,6 +1245,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     if (!g_notice_text)
       session_log_buffer_append(g_history, msg_buffer);
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
+    platform_systemd_journal_log(level, msg_buffer, file, line, func);
 
     if (g_notice_text) {
       output_notice(level, file, line, func);
@@ -1320,6 +1326,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
+  platform_systemd_journal_log(level, log_buffer + header_len, file, line, func);
 
   platform_log_hook(level, log_buffer);
 

@@ -1,0 +1,24 @@
+[Unit]
+Description=ascii-chat MCP HTTP server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=@ASCII_CHAT_EXECUTABLE@ mcp-server --transport=http --address=127.0.0.1 --address6=::
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+StandardOutput=null
+StandardError=null
+SyslogIdentifier=ascii-chat-mcp-server
+WatchdogSec=30s
+CPUQuota=200%
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

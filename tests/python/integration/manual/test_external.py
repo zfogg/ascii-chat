@@ -9,7 +9,8 @@ import pytest
 from ascii_chat_tests.process import free_port
 
 ROOT = Path(__file__).resolve().parents[4]
-pytestmark = [pytest.mark.integration, pytest.mark.network]
+pytestmark = [pytest.mark.integration, pytest.mark.network, pytest.mark.hardware,
+              pytest.mark.xdist_group("hardware")]
 
 
 def test_network_audio_hardware(binary, tmp_path, request):

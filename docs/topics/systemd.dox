@@ -1,0 +1,16 @@
+/**
+@page systemd systemd integration
+
+ascii-chat can run under systemd on Linux. The packaged units use journald for
+stdout and stderr, disable terminal-only startup UI and update checks, and set
+`/dev/null` as the explicit application log sink. This discard sink does not
+open a file.
+
+When systemd provides `NOTIFY_SOCKET`, the process sends `READY=1` and startup
+`STATUS=` notifications. Support is optional at runtime, so the same binary
+works outside systemd. Install the packaged units with
+`scripts/install-systemd-confs.sh`; pass `--user` for user services and
+`--uninstall` to remove them. System-wide changes require root.
+
+The API profile uses the existing server mode; there is no separate API mode.
+*/

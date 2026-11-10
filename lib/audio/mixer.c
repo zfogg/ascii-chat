@@ -233,6 +233,7 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
   memset(mixer->spectral_left, 0, sizeof(mixer->spectral_left));
   memset(mixer->spectral_right, 0, sizeof(mixer->spectral_right));
   mixer->num_sources = 0;
+  atomic_store_int(&mixer->active_sources, 0);
   mixer->max_sources = max_sources;
   mixer->sample_rate = sample_rate;
   mixer->channels = channels;
@@ -449,6 +450,7 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
   }
   mixer->source_active[slot] = true;
   mixer->num_sources++;
+  atomic_fetch_add_int(&mixer->active_sources, 1);
 
   // OPTIMIZATION 1: Update bitset optimization structures
   mixer->active_sources_mask[slot / 64] |= (1ULL << (slot % 64)); // Set bit for this slot
@@ -482,6 +484,7 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
       SAFE_FREE(mixer->source_ids[i]);
       mixer->source_active[i] = false;
       mixer->num_sources--;
+      atomic_fetch_sub_int(&mixer->active_sources, 1);
 
       // OPTIMIZATION 1: Update bitset optimization structures
       mixer->active_sources_mask[i / 64] &= ~(1ULL << (i % 64)); // Clear bit for this slot
@@ -499,6 +502,10 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
   }
 
   rwlock_wrunlock(&mixer->source_lock);
+}
+
+int mixer_source_count(const mixer_t *mixer) {
+  return mixer ? atomic_load_int((atomic_t *)&mixer->active_sources) : 0;
 }
 
 void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active) {
@@ -685,11 +692,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     return -1;
   }
 
-  // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
-#ifndef NDEBUG
-  START_TIMER("mixer_total");
-#endif
-
   // Serialize sample distribution and mutable ducking/compressor state.
   rwlock_wrlock(&mixer->source_lock);
 
@@ -719,9 +721,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   int spectral_slot = valid_exclude ? exclude_index : mixer->max_sources;
   if (!any_active && !mixer->spectral_left[spectral_slot]) {
     rwlock_wrunlock(&mixer->source_lock);
-#ifndef NDEBUG
-    STOP_TIMER("mixer_total");
-#endif
     return 0; // No sources to mix (excluding the specified client), output silence
   }
 
@@ -900,10 +899,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (mixer->spectral_left[spectral_slot])
     mixer_spectral_process(mixer, spectral_slot, output, (size_t)num_samples);
   rwlock_wrunlock(&mixer->source_lock);
-
-#ifndef NDEBUG
-  STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "mixer_total", "Mixer took");
-#endif
 
   return num_samples;
 }

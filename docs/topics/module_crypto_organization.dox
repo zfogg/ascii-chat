@@ -53,7 +53,7 @@
  * ├── HTTPS & Key Fetching
  * │   ├── https_keys.c/h      - HTTPS key fetching (using BearSSL)
  * │   ├── discovery_keys.c/h  - ACDS discovery server key management
- * │   └── http_client.c/h     - Low-level HTTPS client
+ * │   └── http/client/client.c/h     - Low-level HTTPS client
  * │
  * ├── Handshake & Protocol
  * │   ├── handshake/

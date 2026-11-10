@@ -17,7 +17,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/endian.h>
@@ -64,7 +64,7 @@ struct network_connection {
   network_server_config_t policy;
   network_connection_t *next;
   acip_transport_t *transport;
-  acip_quic_endpoint_t *owned_quic_endpoint;
+  quic_endpoint_t *owned_quic_endpoint;
   platform_event_stream_t *stream;
   packet_decoder_t decoder;
   acip_security_t security;
@@ -516,7 +516,7 @@ static void server_tick(void *arg) {
   mutex_unlock(&s->registry_mutex);
   for (size_t i = 0; i < count; ++i)
     platform_event_stream_close(closing[i], ASCIICHAT_OK);
-  acip_quic_endpoint_t *listeners[] = {s->config.quic_endpoint, s->config.webtransport_endpoint};
+  quic_endpoint_t *listeners[] = {s->config.quic_endpoint, s->config.webtransport_endpoint};
   bool *failed[] = {&s->quic_failed, &s->webtransport_failed};
   for (size_t listener = 0; listener < 2 && !atomic_load_bool(&s->stopping); ++listener) {
     if (!listeners[listener] || *failed[listener])
@@ -593,6 +593,7 @@ asciichat_error_t network_server_create(const network_server_config_t *config, n
   s->listener_initialized = result == ASCIICHAT_OK;
   if (result == ASCIICHAT_OK && config->websocket_enabled) {
     websocket_server_config_t ws = {.port = config->websocket_port,
+                                    .bind_address = config->ipv4_address ? config->ipv4_address : config->ipv6_address,
                                     .client_handler = websocket_accept,
                                     .user_data = s,
                                     .tls_cert_path = config->tls_cert_path,
@@ -724,7 +725,7 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
 }
 
 static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpoint,
-                                              const network_connect_config_t *settings, acip_quic_endpoint_t **owner,
+                                              const network_connect_config_t *settings, quic_endpoint_t **owner,
                                               acip_transport_t **transport) {
   struct sockaddr_storage remote, local;
   socklen_t remote_length = 0, local_length = sizeof(local);
@@ -757,10 +758,10 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
     ((struct sockaddr_in6 *)&local)->sin6_port = 0;
   else
     return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
-  acip_quic_config_t config = {.ca_file = settings ? settings->tls_ca_file : NULL,
-                               .enable_datagrams = true,
-                               .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
-                               .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
+  quic_config_t config = {.ca_file = settings ? settings->tls_ca_file : NULL,
+                          .enable_datagrams = true,
+                          .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
+                          .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
   result = quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
   if (result == ASCIICHAT_OK)
     result = quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);
@@ -820,7 +821,7 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (result != ASCIICHAT_OK)
     return result;
   acip_transport_t *transport = NULL;
-  acip_quic_endpoint_t *quic_endpoint = NULL;
+  quic_endpoint_t *quic_endpoint = NULL;
   ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
                          endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket"
                          : endpoint.protocol == CONNECTION_ENDPOINT_QUIC    ? "quic"

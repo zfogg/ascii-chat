@@ -21,6 +21,43 @@
  * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
  * - `include/ascii-chat/network/negotiation.h` — connection establishment
  * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
+ * - `include/ascii-chat/network/http/server/server.h` — backend-neutral HTTP server contract
+
+ * @section network_http_layer Shared HTTP services
+ *
+ * HTTP-only services use `http_server_t` and the request/response types in
+ * `network/http/server/server.h`.  The native listener is a bounded libuv service
+ * accepting HTTP/1.0, HTTP/1.1, and prior-knowledge HTTP/2 over TCP.  It owns sockets
+ * and event-loop callbacks, while handlers own routing and application
+ * behavior.  The public contract intentionally does not expose libuv,
+ * libwebsockets, TLS, nghttp2, nghttp3, or ngtcp2 types, so MCP, API, and
+ * discovery can share the same handler code.  Generic HTTP/3 request streams
+ * attach to a pre-opened QUIC endpoint through the same handler contract;
+ * WebTransport CONNECT streams remain a separate ACIP transport use of that
+ * endpoint.  A supervisor-owned listening socket can be passed to
+ * `http_server_adopt_socket()` before start, avoiding a duplicate bind.  An
+ * explicitly enabled HTTP version is never silently downgraded.
+ *
+ * The protocol mapping is deliberate:
+ *
+ * | HTTP version | Entry point | Notes |
+ * | --- | --- | --- |
+ * | HTTP/1.0 | libuv TCP listener | Request/response completion is connection-oriented; keep-alive is not assumed. |
+ * | HTTP/1.1 | libuv TCP listener | Persistent connections, `Content-Length`, chunked bodies, and trailers are supported. |
+ * | HTTP/2 | libuv TCP listener or negotiated TLS endpoint | nghttp2 streams use the shared request/response handler and output backpressure. |
+ * | HTTP/3 | QUIC endpoint | nghttp3 streams use the same handler contract; WebTransport CONNECT remains the ACIP path. |
+ *
+ * HTTP/2 and HTTP/3 are required protocol implementations. A listener
+ * configured for a specific protocol reports setup or negotiation failure
+ * instead of silently changing endpoint semantics. HTTP/3 attaches to the
+ * existing QUIC endpoint: it does not create a second UDP listener or
+ * authentication path.
+ *
+ * Request bodies, headers, connections, in-flight requests, and responses are
+ * bounded by the shared server policy. Handlers may retain a response for
+ * asynchronous work, but must release it after completion; cancellation
+ * invalidates retained responses and prevents late writes after a stream or
+ * connection closes. Wakeups and graceful shutdown remain server-owned.
  *
  * @section network_connection_layer Connections
  *

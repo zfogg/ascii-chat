@@ -5,7 +5,7 @@
 #define TUI_CONTROLLER_BUFFER_BUFFER_SIZE 16384
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define TUI_MEDIA_SNAPSHOT_CAPACITY 3
+#define TUI_MEDIA_SNAPSHOT_CAPACITY 8
 #define TUI_LAYER_CAPACITY 3
 
 #include <ascii-chat/otel.h>
@@ -323,13 +323,20 @@ static uint64_t g_media_frame_id;
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
+static _Thread_local fps_counter_t *g_fps;
+static atomic_t g_effective_fps = {.impl = 60};
 
 void ui_controller_frame_acquired_at(uint64_t started_ns) {
   g_acquisition_started_ns = started_ns;
 }
+
+void ui_controller_set_effective_fps(unsigned int fps) {
+  atomic_store_int(&g_effective_fps, (int)(fps > 0 ? fps : 60));
+  if (g_fps)
+    fps_counter_set_effective_fps(g_fps, fps);
+}
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
-static _Thread_local fps_counter_t *g_fps;
 static _Thread_local bool g_help_sync_open;
 static _Thread_local bool g_stats_media, g_stats_failed;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;
@@ -876,6 +883,8 @@ static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
   g_fps = fps_counter_create();
+  unsigned int applied_effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+  fps_counter_set_effective_fps(g_fps, applied_effective_fps);
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
@@ -888,6 +897,11 @@ static void *presentation_main(void *unused) {
   const char *stats_page = NULL, *covered_screen = NULL;
   uint64_t stats_since = 0, covered_since = 0;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    unsigned int effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+    if (effective_fps != applied_effective_fps) {
+      fps_counter_set_effective_fps(g_fps, effective_fps);
+      applied_effective_fps = effective_fps;
+    }
     int usage_current = ui_controller_current_screen();
     usage_transition(usage_screen_name(usage_current), &usage_screen, &usage_since);
     ui_presentation_state_t usage_state = ui_controller_state();

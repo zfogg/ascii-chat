@@ -140,8 +140,8 @@ struct ffmpeg_decoder_t {
   int audio_sample_rate;       ///< Audio sample rate (Hz)
 
   // Exit signal callback (for graceful shutdown during blocking I/O)
-  _Atomic(bool (*)(void *)) should_exit_callback; ///< Callback to check if app should exit
-  _Atomic(void *) exit_callback_user_data;        ///< User data for exit callback
+  atomic_ptr_t should_exit_callback;    ///< Callback to check if app should exit
+  atomic_ptr_t exit_callback_user_data; ///< User data for exit callback
 };
 
 /* ============================================================================
@@ -314,8 +314,8 @@ static int ffmpeg_interrupt_callback(void *opaque) {
 
   // Interrupt traced_packet_read() if application is shutting down
   // This allows Ctrl+C to abort blocking I/O operations like YouTube HTTP requests
-  bool (*cancel)(void *) = decoder->should_exit_callback;
-  void *data = decoder->exit_callback_user_data;
+  bool (*cancel)(void *) = (bool (*)(void *))atomic_ptr_load(&decoder->should_exit_callback);
+  void *data = atomic_ptr_load(&decoder->exit_callback_user_data);
   if (cancel && cancel(data)) {
     return 1;
   }
@@ -633,8 +633,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     // Shutdown can race a buffered read without FFmpeg returning AVERROR_EXIT.
     // The caller's cancellation request is authoritative for this operation.
-    bool (*cancel)(void *) = decoder->should_exit_callback;
-    bool cancelled = cancel && cancel(decoder->exit_callback_user_data);
+    bool (*cancel)(void *) = (bool (*)(void *))atomic_ptr_load(&decoder->should_exit_callback);
+    bool cancelled = cancel && cancel(atomic_ptr_load(&decoder->exit_callback_user_data));
 
     if (frame_decoded) {
       char read_time_str[TIME_DURATION_BUFFER_SIZE];
@@ -796,8 +796,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
   }
 
   memset(decoder, 0, sizeof(*decoder));
-  decoder->should_exit_callback = cancel;
-  decoder->exit_callback_user_data = data;
+  atomic_ptr_store(&decoder->should_exit_callback, (void *)cancel);
+  atomic_ptr_store(&decoder->exit_callback_user_data, data);
   decoder->format_ctx = avformat_alloc_context();
   if (!decoder->format_ctx) {
     SAFE_FREE(decoder);
@@ -1508,8 +1508,8 @@ void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_e
   if (!decoder) {
     return;
   }
-  decoder->exit_callback_user_data = user_data;
-  decoder->should_exit_callback = should_exit_callback;
+  atomic_ptr_store(&decoder->exit_callback_user_data, user_data);
+  atomic_ptr_store(&decoder->should_exit_callback, (void *)should_exit_callback);
 }
 
 bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {

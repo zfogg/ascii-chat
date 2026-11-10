@@ -259,6 +259,14 @@ Test(client_video_contract, automatic_codec_failure_falls_back_to_h264_then_raw_
   cr_assert_not(server_connection_is_lost(&video_connection));
   cr_assert_not(atomic_load_bool(&g_should_exit));
 }
+
+Test(client_video_contract, encoder_availability_probe_does_not_create_client_errors) {
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  (void)video_encoder_is_available(VIDEO_CODEC_H265);
+  (void)video_encoder_is_available(VIDEO_CODEC_H264);
+  cr_assert(errno_scope_is_clean(scope), "encoder capability probing must not leave client errors");
+  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+}
 Test(client_video_contract, forced_codec_failure_requests_exit_without_falling_back) {
   options_t *v = video_options();
   SAFE_STRNCPY(v->video_codec, "h264", sizeof(v->video_codec));

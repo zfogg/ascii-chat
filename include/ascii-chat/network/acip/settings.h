@@ -36,6 +36,8 @@ typedef struct {
 
 asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *state,
                                                     const terminal_capabilities_packet_t *packet);
+/** Resolve local-only color sentinels before render settings cross the ACIP boundary. */
+terminal_color_mode_t acip_render_settings_normalize_color_mode(terminal_color_mode_t mode);
 asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate, const options_t *values);
 void acip_render_settings_options(const acip_render_settings_t *state, options_t *values);
 asciichat_error_t acip_settings_decode(const void *payload, size_t length, acip_settings_header_t *header,

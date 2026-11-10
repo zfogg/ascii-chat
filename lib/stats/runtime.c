@@ -18,6 +18,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
@@ -431,6 +432,7 @@ static void *stats_worker(void *unused) {
   bool was_active = false;
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    platform_systemd_notify_watchdog();
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
@@ -563,7 +565,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     memset(&caps, 0, sizeof(caps));
     for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i <= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
       caps.counters[i] = true;
+    for (unsigned i = STATS_COUNTER_HTTP_REQUESTS; i <= STATS_COUNTER_HTTP_BYTES_SENT; i++)
+      caps.counters[i] = true;
+    caps.gauges[STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE] = true;
+    caps.gauges[STATS_GAUGE_HTTP_STREAMS_ACTIVE] = true;
     caps.durations[STATS_DURATION_MCP_RENDER] = true;
+    caps.durations[STATS_DURATION_HTTP_REQUEST] = true;
   }
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)

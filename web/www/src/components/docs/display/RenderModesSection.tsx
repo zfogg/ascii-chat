@@ -72,6 +72,13 @@ export default function RenderModesSection() {
             "# Foreground (DEFAULT) - colored text on dark background\nascii-chat client --render-mode foreground\n\n# Background - colored background with white text\nascii-chat client --render-mode background\n\n# Half-block - Unicode blocks for 2x vertical resolution\nascii-chat mirror --render-mode half-block\n\n# Short form\nascii-chat mirror -M half-block"
           }
         </CodeBlock>
+        <div className="info-box-info mt-3 border-l-4 border-yellow-400">
+          <p className="text-gray-300 text-sm">
+            <strong className="text-yellow-300">⌨ Runtime shortcut:</strong>{" "}
+            press <code className="text-yellow-300">r</code> to cycle through
+            foreground, background, and half-block modes while rendering.
+          </p>
+        </div>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-green">
             <Heading level={4} className="text-green-300 font-semibold mb-2">
