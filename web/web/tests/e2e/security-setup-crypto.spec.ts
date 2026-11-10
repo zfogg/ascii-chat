@@ -183,17 +183,25 @@ test("Crypto validates SSH keys, shares settings across network modes, and expos
     await expect(password).toBeVisible();
     await password.fill("browser-test-password");
     const passwordBox = await password.boundingBox();
+    const cryptoBox = await page
+      .getByRole("button", { name: "Crypto", exact: true })
+      .boundingBox();
     const connectBox = await page
       .getByRole("button", { name: "Connect", exact: true })
       .boundingBox();
     expect(passwordBox).not.toBeNull();
+    expect(cryptoBox).not.toBeNull();
     expect(connectBox).not.toBeNull();
     expect(
-      connectBox!.x - (passwordBox!.x + passwordBox!.width),
+      cryptoBox!.x - (passwordBox!.x + passwordBox!.width),
     ).toBeGreaterThanOrEqual(0);
-    expect(connectBox!.x - (passwordBox!.x + passwordBox!.width)).toBeLessThan(
+    expect(cryptoBox!.x - (passwordBox!.x + passwordBox!.width)).toBeLessThan(
       40,
     );
+    expect(
+      connectBox!.x - (cryptoBox!.x + cryptoBox!.width),
+    ).toBeGreaterThanOrEqual(0);
+    expect(connectBox!.x - (cryptoBox!.x + cryptoBox!.width)).toBeLessThan(40);
   } finally {
     rmSync(keyDir, { recursive: true, force: true });
   }
