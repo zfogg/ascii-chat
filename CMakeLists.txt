@@ -495,6 +495,13 @@ foreach(_target IN LISTS _defer_root_targets _defer_src_targets)
     list(APPEND _defer_targets "${_target}")
   endif()
 endforeach()
+# Musl builds generate FFmpeg headers as part of an external build. Both the
+# compiler and defer's parser need those headers before processing sources.
+if(USE_MUSL AND TARGET ffmpeg-musl)
+  foreach(_target IN LISTS _defer_targets)
+    add_dependencies("${_target}" ffmpeg-musl)
+  endforeach()
+endif()
 set(DEFER_SOURCE_HOOK ascii_panic_defer_source)
 defer_targets(${_defer_targets})
 unset(DEFER_SOURCE_HOOK)
