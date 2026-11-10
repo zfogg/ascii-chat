@@ -153,6 +153,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char simulator_audio[] = "--audio=false";
   static char simulator_test_audio[] = "--test-audio";
+  static char simulator_waveform[] = "--waveform";
   static char simulator_no_auth[] = "--no-auth";
   static char simulator_no_encrypt[] = "--no-encrypt";
   static char simulator_discovery_service[] = "--discovery-service=127.0.0.1";
@@ -199,11 +200,13 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   argv[argc++] = width;
   argv[argc++] = height;
 #ifdef ASCIICHAT_IOS_SIMULATOR
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT || mode == ASCIICHAT_IOS_MODE_DISCOVERY)
+    argv[argc++] = simulator_audio;
   if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT ||
       mode == ASCIICHAT_IOS_MODE_DISCOVERY)
-    argv[argc++] = simulator_audio;
-  if (mode == ASCIICHAT_IOS_MODE_CLIENT || mode == ASCIICHAT_IOS_MODE_DISCOVERY)
     argv[argc++] = simulator_test_audio;
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR)
+    argv[argc++] = simulator_waveform;
   if (mode == ASCIICHAT_IOS_MODE_CLIENT || mode == ASCIICHAT_IOS_MODE_DISCOVERY) {
     /* Simulator smoke fixtures have no keychain identity or interactive TOFU
      * prompt. Keep this deterministic while leaving device security defaults
@@ -218,7 +221,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   }
   // The simulator has no camera device. Use the shared synthetic source for
   // client transport tests; device builds always use the native camera path.
-  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT) {
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT) {
     argv[argc++] = test_pattern;
   }
 #endif
