@@ -332,7 +332,7 @@ export async function validateSshPrivateKey(
       return await parseKeyInWorker("gpg-private", contents);
     } catch (error) {
       throw new Error(
-        `Expected an OpenSSH or unencrypted OpenPGP Ed25519 private key: ${error instanceof Error ? error.message : String(error)}`,
+        `Invalid private key; expected an OpenSSH or unencrypted OpenPGP Ed25519 private key: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
       );
     }
@@ -365,7 +365,9 @@ export async function validateSshPublicKey(
           }
         }
       }
-      throw new Error("Expected an SSH or armored OpenPGP Ed25519 public key.");
+      throw new Error(
+        "Invalid public key; expected an SSH or armored OpenPGP Ed25519 public key.",
+      );
     }
   }
 }
