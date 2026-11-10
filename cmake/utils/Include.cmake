@@ -90,6 +90,10 @@ function(configure_include_directories)
     endif()
 
     if(USE_MUSL)
+        # Keep the target libc ahead of any transitive pkg-config include
+        # roots (some imported targets still expose /usr/include).
+        target_include_directories(asciichat-project-includes BEFORE INTERFACE
+            "${MUSL_INCLUDE_DIR}")
         target_include_directories(asciichat-project-includes SYSTEM INTERFACE
             ${KERNEL_HEADERS_DIR} ${LIBEXECINFO_INCLUDE_DIRS}
             "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
