@@ -334,7 +334,7 @@ def main(protected_paths: list[Path] | None = None) -> int:
     parser.add_argument("--depfile", type=Path)
     parser.add_argument("--dependency-stamp", type=Path)
     parser.add_argument("--header-overlay", type=Path)
-    parser.add_argument("--filename", type=Path, help="virtual input path for stdin (default: stdin.c)")
+    parser.add_argument("--filename", help="required virtual input path for stdin")
     parser.add_argument("source", type=Path, nargs="?")
     parser.add_argument("output", type=Path, nargs="?")
     parser.add_argument(
@@ -360,12 +360,14 @@ def main(protected_paths: list[Path] | None = None) -> int:
         automatic_stream = (not sys.stdin.isatty() and args.source is None and args.output is None
                             and not args.explain and not args.show_transformed)
         stream = dash_stream or automatic_stream
-        if args.filename and not stream:
+        if args.filename is not None and not stream:
             raise TransformError("--filename requires stdin mode")
         if stream and (args.explain or args.show_transformed or args.depfile or args.dependency_stamp or args.header_overlay):
             raise TransformError("stdin mode cannot be combined with batch, scan, planning, inspection, or output files")
         if stream:
-            path = (args.filename or Path("stdin.c")).resolve()
+            if not args.filename:
+                raise TransformError("stdin mode requires a nonempty --filename")
+            path = Path(args.filename).resolve()
             if args.compilation_database:
                 if clang_args:
                     raise TransformError("explicit arguments cannot be combined with --compilation-database")

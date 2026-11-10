@@ -229,13 +229,17 @@ def test_file_mode_ignores_redirected_stdin(tmp_path: Path, transform_environmen
     assert "file_input" in output.read_text(encoding="utf-8")
 
 
-def test_automatic_stdin_uses_default_filename(tmp_path: Path, transform_environment: dict[str, str]) -> None:
-    result = subprocess.run([*tool_command(transform_environment), "--", "-std=c17"],
+@pytest.mark.parametrize("arguments", [[], ["--", "-std=c17"], ["-", "-"], ["--filename", ""]])
+def test_stdin_requires_nonempty_filename(
+    tmp_path: Path, transform_environment: dict[str, str], arguments: list[str]
+) -> None:
+    result = subprocess.run([*tool_command(transform_environment), *arguments],
                             input=b'int value;\n', capture_output=True, env=transform_environment,
                             cwd=tmp_path, check=False)
-    assert result.returncode == 0, result.stderr.decode(errors="replace")
-    assert b"stdin.c" in result.stdout
-    assert b"int value;" in result.stdout
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert b"--filename" in result.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_stdin_flag_is_not_advertised(transform_environment: dict[str, str]) -> None:
@@ -299,17 +303,27 @@ def test_stdin_uses_piped_contents_instead_of_virtual_file(
     assert virtual.read_text(encoding="utf-8") == "int disk_only;\n"
 
 
-@pytest.mark.parametrize("named", [False, True])
-def test_stdin_accepts_redirected_binary_files(tmp_path: Path, transform_environment: dict[str, str], named: bool) -> None:
+def test_stdin_accepts_redirected_binary_files(tmp_path: Path, transform_environment: dict[str, str]) -> None:
     source, output = tmp_path / "input.c", tmp_path / "output.c"
     source.write_bytes(b'\xef\xbb\xbf#define defer(...) do {} while (0)\r\nvoid f(void) { defer((void)0); }\r\n')
     with source.open("rb") as input_file, output.open("wb") as output_file:
-        result = subprocess.run([*tool_command(transform_environment), *(["--filename", str(source)] if named else [])],
+        result = subprocess.run([*tool_command(transform_environment), "--filename", str(source)],
                                 stdin=input_file, stdout=output_file, stderr=subprocess.PIPE,
                                 env=transform_environment, check=False)
     assert result.returncode == 0, result.stderr.decode(errors="replace")
     assert output.read_bytes().startswith(b"\xef\xbb\xbf")
     assert b"__ascii_defer_active_" in output.read_bytes()
+
+
+def test_redirected_files_require_filename(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "input.c", tmp_path / "output.c"
+    source.write_bytes(b"int value;\n")
+    with source.open("rb") as input_file, output.open("wb") as output_file:
+        result = subprocess.run([*tool_command(transform_environment)], stdin=input_file, stdout=output_file,
+                                stderr=subprocess.PIPE, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert b"--filename" in result.stderr
+    assert output.read_bytes() == b""
 
 
 @pytest.mark.parametrize("extension", ["c", "cpp", "m"])

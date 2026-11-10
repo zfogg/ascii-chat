@@ -62,9 +62,7 @@ llvm::cl::opt<bool>
 llvm::cl::opt<std::string>
     batch("batch",
           llvm::cl::desc("Transform manifest source/output pairs with optional per-file JSON argument arrays"));
-llvm::cl::opt<std::string> stream_filename("filename",
-                                           llvm::cl::desc("Virtual input path for stdin (default: stdin.c)"),
-                                           llvm::cl::init("stdin.c"));
+llvm::cl::opt<std::string> stream_filename("filename", llvm::cl::desc("Required virtual input path for stdin"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
 llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libclang shared library"));
@@ -314,6 +312,8 @@ int main(int argc, char **argv) {
       throw std::runtime_error("stdin mode cannot be combined with batch, scan, planning, inspection, or output files");
     if (!stream && stream_filename.getNumOccurrences())
       throw std::runtime_error("--filename requires stdin mode");
+    if (stream && (!stream_filename.getNumOccurrences() || stream_filename.empty()))
+      throw std::runtime_error("stdin mode requires a nonempty --filename");
     if (scan_only) {
       if (!scan_input.empty()) {
         std::istringstream lines(defer_tool::read_file(std::filesystem::u8path(scan_input.getValue())));

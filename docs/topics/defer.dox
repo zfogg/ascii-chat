@@ -185,8 +185,8 @@
  * # Equivalent positional form:
  * defer-tool --filename path/to/input.c - - -- -std=c17 -Iinclude < input.c > output.c
  * @endcode
- * `--filename` defaults to `stdin.c` in the current directory; it determines
- * the input language, source locations, and relative include lookup. It is a
+ * `--filename` is required for stdin input. It determines the input language,
+ * source locations, and relative include lookup. It is a
  * virtual path and is not read or overwritten. A compilation database may be
  * used instead of explicit flags when it has an entry for that path. Diagnostics
  * go to stderr and invalid input produces no transformed output. This mode
