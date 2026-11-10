@@ -38,6 +38,7 @@ typedef struct {
   uint32_t timeout_ms;
   size_t max_output_bytes;
   bool restricted;
+  void *user_data;
 } http_render_request_t;
 
 typedef struct {

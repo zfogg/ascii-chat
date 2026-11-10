@@ -63,7 +63,6 @@ typedef struct mcp_job {
   mcp_tool_t tool;
   gotel_context_t telemetry_parent;
   http_renderer_job_t renderer_job;
-  bool started;
   void *connection;
   char session_id[MCP_SESSION_ID_LENGTH + 1];
 } mcp_job_t;

@@ -51,6 +51,7 @@ typedef void (*http_wakeup_fn)(void *user_data);
 
 typedef struct {
   const char *bind_address;
+  const char *bind_address6;
   uint16_t port;
   bool enable_http1;
   bool enable_http2;

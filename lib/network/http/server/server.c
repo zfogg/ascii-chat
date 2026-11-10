@@ -52,6 +52,7 @@ struct http_server {
   http_server_config_t config;
   uv_loop_t loop;
   uv_tcp_t listener;
+  uv_tcp_t listener6;
   uv_async_t stop_async;
   uv_async_t wake_async;
   bool running;
@@ -60,6 +61,7 @@ struct http_server {
   bool foreground_running;
   bool http3_attached;
   bool listener_initialized;
+  bool listener6_initialized;
   bool stop_async_initialized;
   bool wake_async_initialized;
   asciichat_thread_t thread;
@@ -186,10 +188,24 @@ static asciichat_error_t http_server_start_listener(http_server_t *s) {
       http_server_rollback_start(s);
       return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
     }
+    if (s->config.bind_address6 && *s->config.bind_address6 && !strchr(bind_address, ':')) {
+      struct sockaddr_in6 ipv6;
+      if (uv_ip6_addr(s->config.bind_address6, s->config.port, &ipv6) != 0 ||
+          uv_tcp_bind(&s->listener6, (const struct sockaddr *)&ipv6, UV_TCP_IPV6ONLY) != 0) {
+        http_server_rollback_start(s);
+        return SET_ERRNO(ERROR_NETWORK, "Cannot bind IPv6 HTTP listener");
+      }
+    }
   }
   if (tcp_enabled && uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
+  }
+  if (tcp_enabled && s->listener6_initialized && s->config.bind_address6 && *s->config.bind_address6 &&
+      !strchr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", ':') &&
+      uv_listen((uv_stream_t *)&s->listener6, (int)s->config.max_connections, connection_cb) != 0) {
+    http_server_rollback_start(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot listen on IPv6 HTTP listener");
   }
   return ASCIICHAT_OK;
 }
@@ -1194,6 +1210,8 @@ static void stop_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (!uv_is_closing((uv_handle_t *)&s->listener))
     uv_close((uv_handle_t *)&s->listener, NULL);
+  if (s->listener6_initialized && !uv_is_closing((uv_handle_t *)&s->listener6))
+    uv_close((uv_handle_t *)&s->listener6, NULL);
   for (http_server_client_t *c = s->clients; c; c = c->next)
     client_close(c);
   uv_close((uv_handle_t *)async, NULL);
@@ -1278,6 +1296,12 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   }
   s->listener_initialized = true;
   s->listener.data = s;
+  if (uv_tcp_init(&s->loop, &s->listener6) != 0) {
+    uv_close((uv_handle_t *)&s->listener, NULL);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize IPv6 HTTP listener");
+  }
+  s->listener6_initialized = true;
+  s->listener6.data = s;
   if (uv_async_init(&s->loop, &s->stop_async, stop_async_cb) != 0) {
     uv_close((uv_handle_t *)&s->listener, NULL);
     uv_run(&s->loop, UV_RUN_DEFAULT);

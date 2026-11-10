@@ -64,7 +64,7 @@ asciichat_error_t mcp_stdio_run(mcp_server_t *s) {
   }
   SAFE_FREE(line);
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (s->jobs[i].started)
+    if (s->jobs[i].renderer_job.started)
       http_renderer_job_cancel(&s->jobs[i].renderer_job);
   mcp_jobs_reap(s, true);
   return ASCIICHAT_OK;

@@ -200,7 +200,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     if (!strcmp(name, "notifications/cancelled")) {
       yyjson_val *cancel = mcp_get(params, "requestId");
       for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-        if (s->jobs[i].started &&
+        if (s->jobs[i].renderer_job.started &&
             (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
              ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
@@ -264,7 +264,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   mcp_jobs_reap(s, false);
   mcp_job_t *j = NULL;
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (!s->jobs[i].started) {
+    if (!s->jobs[i].renderer_job.started) {
       j = &s->jobs[i];
       break;
     }

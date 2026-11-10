@@ -3,6 +3,8 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
@@ -130,6 +132,7 @@ asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_ren
   http_renderer_job_t *job = SAFE_CALLOC(1, sizeof(*job), http_renderer_job_t *);
   job->renderer = renderer;
   job->request = *request;
+  job->user_data = request->user_data;
   if (!job->request.timeout_ms)
     job->request.timeout_ms = renderer->config.timeout_ms;
   if (!job->request.max_output_bytes)
@@ -279,10 +282,35 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP render image");
   }
   image_resize(image, scaled);
-  const char *palette = request->options.palette_chars[0] ? request->options.palette_chars
-                                                           : request->options.palette[0] ? request->options.palette
-                                                                                         : DEFAULT_ASCII_PALETTE;
-  char *ascii = image_print(scaled, palette);
+  const char *palette = request->options.palette_chars[0] ? request->options.palette_chars : NULL;
+  if (!palette && request->options.palette[0]) {
+    const struct { const char *name; palette_type_t type; } palettes[] = {
+      {"standard", PALETTE_STANDARD}, {"blocks", PALETTE_BLOCKS}, {"digital", PALETTE_DIGITAL},
+      {"minimal", PALETTE_MINIMAL}, {"cool", PALETTE_COOL}
+    };
+    for (size_t i = 0; i < sizeof(palettes) / sizeof(palettes[0]); ++i)
+      if (!strcmp(request->options.palette, palettes[i].name)) { palette = get_builtin_palette(palettes[i].type)->chars; break; }
+    if (!palette) palette = request->options.palette;
+  }
+  if (!palette) palette = DEFAULT_ASCII_PALETTE;
+  char *ascii;
+  if (!strcmp(request->options.render_theme, "braille")) {
+    image_destroy(scaled); ffmpeg_decoder_destroy(decoder);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Braille rendering is not supported by the API renderer");
+  } else if (!strcmp(request->options.render_theme, "block") || !strcmp(request->options.render_theme, "half-block")) {
+    ascii_color_t color = request->options.color_mode == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE :
+                          request->options.color_mode == TERM_COLOR_256 ? ASCII_COLOR_256 :
+                          request->options.color_mode == TERM_COLOR_16 ? ASCII_COLOR_16 : ASCII_COLOR_NONE;
+    ascii = ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
+  } else if (request->options.color_mode == TERM_COLOR_TRUECOLOR) {
+    ascii = image_print_color_simd(scaled, false, false, palette);
+  } else if (request->options.color_mode == TERM_COLOR_256) {
+    ascii = ascii_render(scaled, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
+  } else if (request->options.color_mode == TERM_COLOR_16) {
+    ascii = ascii_render(scaled, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
+  } else {
+    ascii = image_print(scaled, palette);
+  }
   image_destroy(scaled);
   ffmpeg_decoder_destroy(decoder);
   if (!ascii)

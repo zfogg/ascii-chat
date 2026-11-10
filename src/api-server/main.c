@@ -58,6 +58,29 @@ static const unsigned char *api_find_bytes(const unsigned char *data, size_t len
   return NULL;
 }
 
+static bool api_decode_query_component(const char *src, size_t length, char *dst, size_t capacity) {
+  size_t out = 0;
+  for (size_t i = 0; i < length; ++i) {
+    unsigned char c = (unsigned char)src[i];
+    if (c == '%') {
+      if (i + 2 >= length) return false;
+      int hi = (src[i + 1] >= '0' && src[i + 1] <= '9') ? src[i + 1] - '0' :
+               (src[i + 1] >= 'a' && src[i + 1] <= 'f') ? src[i + 1] - 'a' + 10 :
+               (src[i + 1] >= 'A' && src[i + 1] <= 'F') ? src[i + 1] - 'A' + 10 : -1;
+      int lo = (src[i + 2] >= '0' && src[i + 2] <= '9') ? src[i + 2] - '0' :
+               (src[i + 2] >= 'a' && src[i + 2] <= 'f') ? src[i + 2] - 'a' + 10 :
+               (src[i + 2] >= 'A' && src[i + 2] <= 'F') ? src[i + 2] - 'A' + 10 : -1;
+      if (hi < 0 || lo < 0) return false;
+      c = (unsigned char)((hi << 4) | lo);
+      i += 2;
+    } else if (c == '+') c = ' ';
+    if (!c || out + 1 >= capacity) return false;
+    dst[out++] = (char)c;
+  }
+  dst[out] = 0;
+  return true;
+}
+
 static void api_write_result(http_response_t *response, const char *format, const http_render_result_t *result) {
   if (!strcmp(format, "json")) {
     size_t cap = result->ascii_length * 2 + 32;
@@ -108,11 +131,11 @@ static void api_wakeup(void *user_data) {
   api_render_job_t **link = &server->jobs;
   while (*link) {
     api_render_job_t *pending = *link;
-    if (pending->response && http_response_is_cancelled(pending->response)) {
+    if (pending->renderer_job && pending->response && http_response_is_cancelled(pending->response)) {
       (void)http_renderer_cancel(pending->renderer_job);
       http_response_release(&pending->response);
     }
-    if (!atomic_load_bool(&pending->completed) || !http_renderer_job_is_done(pending->renderer_job)) {
+    if (!pending->renderer_job || !atomic_load_bool(&pending->completed) || !http_renderer_job_is_done(pending->renderer_job)) {
       link = &pending->next;
       continue;
     }
@@ -216,7 +239,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
     size_t key_len = (size_t)(eq - p), value_len = (size_t)((amp ? amp : p + strlen(p)) - eq - 1);
     char key[32], value[256];
     if (!key_len || key_len >= sizeof(key) || value_len >= sizeof(value)) { api_finish(response, 400); return; }
-    memcpy(key, p, key_len); key[key_len] = 0; memcpy(value, eq + 1, value_len); value[value_len] = 0;
+    if (!api_decode_query_component(p, key_len, key, sizeof(key)) ||
+        !api_decode_query_component(eq + 1, value_len, value, sizeof(value))) { api_finish(response, 400); return; }
     char *endptr = NULL;
     if (!strcmp(key, "width") || !strcmp(key, "height")) {
       long n = strtol(value, &endptr, 10);
@@ -263,31 +287,31 @@ static void api_request(http_request_t *request, http_response_t *response, void
   render_request.source.body_length = length;
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
-  http_renderer_job_t *render_job = NULL;
-  asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, &render_job);
-  if (err != ASCIICHAT_OK) {
-    platform_delete_temp_file(path);
-    api_finish(response, api_render_status(err));
-    return;
-  }
   api_render_job_t *pending = SAFE_CALLOC(1, sizeof(*pending), api_render_job_t *);
+  if (!pending) { platform_delete_temp_file(path); api_finish(response, 500); return; }
   pending->server = server;
-  pending->renderer_job = render_job;
   SAFE_STRNCPY(pending->format, format, sizeof(pending->format));
   SAFE_STRNCPY(pending->path, path, sizeof(pending->path));
   atomic_store_bool(&pending->completed, false);
   http_response_t *retained = NULL;
   if (http_response_retain(response, &retained) != ASCIICHAT_OK) {
-    http_renderer_cancel(render_job);
     SAFE_FREE(pending);
     platform_delete_temp_file(path);
     api_finish(response, 500);
     return;
   }
   pending->response = retained;
-  render_job->user_data = pending;
+  render_request.user_data = pending;
+  http_renderer_job_t *render_job = NULL;
+  asciichat_error_t err = http_renderer_submit(server->renderer, &render_request, &render_job);
+  if (err != ASCIICHAT_OK) {
+    http_response_release(&pending->response); SAFE_FREE(pending); platform_delete_temp_file(path);
+    api_finish(response, api_render_status(err)); return;
+  }
+  pending->renderer_job = render_job;
   pending->next = server->jobs;
   server->jobs = pending;
+  if (atomic_load_bool(&pending->completed)) (void)http_server_wakeup(server->http);
 }
 
 int api_server_main(void) {
@@ -300,7 +324,7 @@ int api_server_main(void) {
   if (!tls_cert || !*tls_cert) tls_cert = NULL;
   if (!tls_key || !*tls_key) tls_key = NULL;
   if (!tls_password || !*tls_password) tls_password = NULL;
-  http_server_config_t config = {.bind_address = GET_OPTION(address),
+  http_server_config_t config = {.bind_address = GET_OPTION(address), .bind_address6 = GET_OPTION(address6),
                                  .port = (uint16_t)GET_OPTION(port),
                                  .enable_http1 = true,
                                  .enable_http2 = true,

@@ -210,7 +210,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
       return;
     }
     for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-      if (s->jobs[i].started && s->jobs[i].connection == response)
+      if (s->jobs[i].renderer_job.started && s->jobs[i].connection == response)
         s->jobs[i].connection = retained;
     return;
   }
@@ -231,7 +231,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
 }
 
 asciichat_error_t mcp_http_run(mcp_server_t *s) {
-  http_server_config_t config = {.bind_address = s->policy.address,
+  http_server_config_t config = {.bind_address = s->policy.address, .bind_address6 = s->policy.address6,
                                  .port = (uint16_t)s->policy.port,
                                  .enable_http1 = true,
                                  .enable_http2 = true,
@@ -270,7 +270,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
   }
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (s->jobs[i].started)
+    if (s->jobs[i].renderer_job.started)
       http_renderer_job_cancel(&s->jobs[i].renderer_job);
   http_server_stop(s->shared_http);
   http_server_destroy(&s->shared_http);
