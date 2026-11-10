@@ -685,12 +685,6 @@ void platform_sleep_ns(uint64_t ns);
  *
  * @ingroup platform
  */
-#ifdef _WIN32
-#define PLATFORM_BINARY_NAME "ascii-chat.exe"
-#else
-#define PLATFORM_BINARY_NAME "ascii-chat"
-#endif
-
 /**
  * @brief Shell null device/error redirect for platform
  *
