@@ -95,11 +95,11 @@ endif()
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
-    elseif(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    elseif(APPLE AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
-    elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    elseif(WIN32 AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
     else()
         set(_use_shared_lib TRUE)
@@ -282,7 +282,7 @@ endif()
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
 # EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
-if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
     # Use $ORIGIN for relative paths to maintain portability
     if(APPLE)
@@ -304,7 +304,7 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         BUILD_RPATH "${_rpath_list}"
         SKIP_BUILD_RPATH FALSE
     )
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARED_DEPS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
@@ -321,7 +321,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
         INSTALL_RPATH_USE_LINK_PATH FALSE
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check

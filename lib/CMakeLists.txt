@@ -200,7 +200,7 @@ list(APPEND CORE_SRCS
 )
 
 # Additional debug sources only in non-Release builds
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if(NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/atomic.c
         ${LIB_DIR}/debug/memory.c
@@ -947,7 +947,7 @@ endif()
 set(_build_shared_lib TRUE)
 if(USE_MUSL)
     set(_build_shared_lib FALSE)
-elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT ASCIICHAT_SHARED_DEPS)
     set(_build_shared_lib FALSE)
 endif()
 if(_build_shared_lib)
@@ -1017,7 +1017,7 @@ add_library(ascii-chat-shared SHARED
         else()
             set(_shared_origin "\$ORIGIN")
         endif()
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
             # Release builds: use only relative paths to avoid embedded developer paths
             # Copy FFmpeg libraries to lib/ directory alongside shared library
             file(GLOB _ffmpeg_libs_for_shared "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/*.so*")
@@ -1049,7 +1049,7 @@ add_library(ascii-chat-shared SHARED
         endif()
 
         # Let CMake encode each runtime search path for the platform linker.
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
             # Release: use only our explicit RPATH, don't add linked library paths automatically
             set_target_properties(ascii-chat-shared PROPERTIES
                 BUILD_RPATH "${_shared_rpath_list}"
