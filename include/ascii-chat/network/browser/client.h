@@ -44,7 +44,6 @@ void browser_client_cleanup(browser_transport_t *transport);
 
 int browser_client_generate_keypair(browser_transport_t *transport);
 
-int browser_client_get_connection_state(const browser_transport_t *transport);
 
 int browser_client_resolve_crypto_policy(browser_transport_t *transport, bool secure, int encryption);
 

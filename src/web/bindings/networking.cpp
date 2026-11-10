@@ -121,7 +121,7 @@ public:
     if (!owned_)
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized"));
     emscripten::val response = result(0);
-    response.set("ready", browser_client_get_connection_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
+    response.set("ready", browser_transport_state(transport_.get()) == BROWSER_TRANSPORT_CONNECTED);
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
@@ -437,7 +437,7 @@ private:
     emscripten::val response = emscripten::val::object();
     response.set("ok", code == 0);
     response.set("code", code);
-    response.set("state", browser_client_get_connection_state(transport_.get()));
+    response.set("state", static_cast<int>(browser_transport_state(transport_.get())));
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);

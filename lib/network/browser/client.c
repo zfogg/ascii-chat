@@ -564,10 +564,6 @@ int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t 
  * Get current connection state
  * @return Connection state enum value
  */
-int browser_client_get_connection_state(const browser_transport_t *transport) {
-  return transport ? (int)browser_transport_state(transport) : BROWSER_TRANSPORT_DISCONNECTED;
-}
-
 asciichat_error_t browser_client_acds_handshake_begin(browser_transport_t *transport, uint8_t mode) {
   client_state_t *state = client_state(transport);
   if (!state)
