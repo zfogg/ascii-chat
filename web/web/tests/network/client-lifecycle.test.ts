@@ -82,6 +82,14 @@ const create = () =>
   });
 
 describe("client startup ownership", () => {
+  it("reports the selected WebSocket transport without datagrams", async () => {
+    const client = create();
+    await client.connect();
+    expect(harness.capabilities).toHaveBeenCalledWith(
+      expect.objectContaining({ datagrams: false, maxDatagramPayload: 0 }),
+    );
+    client.disconnect();
+  });
   it("drains cancelled initialization before a replacement session starts", async () => {
     let resume!: () => void;
     harness.init.mockImplementationOnce(

@@ -116,17 +116,30 @@ test("native packet intake returns protocol classification", async ({
     const encoded = processClientEvent({
       type: "send-packet",
       packetType: 5001,
-      payload: new Uint8Array(),
+      payload: new Uint8Array([1, 2, 3]),
     });
     const parsed = processClientEvent({
       type: "receive-transport-packet",
       packet: encoded.bytes,
     });
-    return parsed;
+    const invalid = processClientEvent({
+      type: "receive-transport-packet",
+      packet: new Uint8Array([1]),
+    });
+    const unready = processClientEvent({
+      type: "send-packet",
+      packetType: 5001,
+      payload: new Uint8Array([1]),
+      encrypt: true,
+    });
+    return { parsed, invalid, unready };
   });
-  expect(result.ok).toBe(true);
-  expect(result.kind).toBe("control");
-  expect(result.encrypted).toBe(false);
+  expect(result.parsed.ok).toBe(true);
+  expect(result.parsed.kind).toBe("control");
+  expect(result.parsed.encrypted).toBe(false);
+  expect(Array.from(result.parsed.payload ?? [])).toEqual([1, 2, 3]);
+  expect(result.invalid.ok).toBe(false);
+  expect(result.unready.ok).toBe(false);
 });
 
 test("browser capabilities are accepted by the native session", async ({
@@ -142,11 +155,8 @@ test("browser capabilities are accepted by the native session", async ({
     const session = new module.ClientSessionBinding({});
     const value = session.process({
       type: "configure-browser-capabilities",
-      webtransport: true,
       datagrams: true,
       maxDatagramPayload: 1200,
-      hevc: false,
-      webrtc: true,
     });
     const info = session.protocolInfo();
     session.close();
@@ -155,11 +165,8 @@ test("browser capabilities are accepted by the native session", async ({
   });
   expect(result.value.ok).toBe(true);
   expect(result.capabilities).toEqual({
-    webtransport: true,
     datagrams: true,
     maxDatagramPayload: 1200,
-    hevc: false,
-    webrtc: true,
   });
 });
 

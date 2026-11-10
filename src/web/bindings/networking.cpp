@@ -146,11 +146,8 @@ public:
     for (const auto &[name, type] : packet_types)
       info["packetTypes"].set(name, static_cast<unsigned>(type));
     info.set("browserCapabilities", emscripten::val::object());
-    info["browserCapabilities"].set("webtransport", browser_capabilities_.webtransport);
     info["browserCapabilities"].set("datagrams", browser_capabilities_.datagrams);
     info["browserCapabilities"].set("maxDatagramPayload", browser_capabilities_.max_datagram_payload);
-    info["browserCapabilities"].set("hevc", browser_capabilities_.hevc);
-    info["browserCapabilities"].set("webrtc", browser_capabilities_.webrtc);
     return info;
   }
   emscripten::val packetTypes() const {
@@ -305,91 +302,52 @@ public:
       const unsigned client_id = event["clientId"].isUndefined() ? 0 : event["clientId"].as<unsigned>();
       const bool encrypt = !event["encrypt"].isUndefined() && event["encrypt"].as<bool>();
       auto input = binding_copy_input(event["payload"]);
-      std::vector<uint8_t> plaintext(input.size() + sizeof(packet_header_t) + 256);
-      size_t plaintext_length = 0;
-      int code = packet_type > UINT16_MAX
-                     ? SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet type: %u", packet_type)
-                     : packet_encode(static_cast<packet_type_t>(packet_type), input.empty() ? nullptr : input.data(),
-                                     input.size(), client_id, plaintext.data(), plaintext.size(), &plaintext_length);
-      if (!code && encrypt) {
-        std::vector<uint8_t> ciphertext(plaintext_length + 128);
-        size_t ciphertext_length = 0;
-        code = browser_client_encrypt_packet(transport_.get(), plaintext.data(), plaintext_length, ciphertext.data(),
-                                             ciphertext.size(), &ciphertext_length);
-        if (!code) {
-          std::vector<uint8_t> wrapped(ciphertext_length + sizeof(packet_header_t) + 256);
-          size_t wrapped_length = 0;
-          code = packet_encode(PACKET_TYPE_ENCRYPTED, ciphertext.data(), ciphertext_length, client_id, wrapped.data(),
-                               wrapped.size(), &wrapped_length);
-          auto response = result(code);
-          response.set("bytes", binding_copy_output(wrapped.data(), code ? 0 : wrapped_length));
-          return response;
-        }
-      }
+      if (input.size() > SIZE_MAX - sizeof(packet_header_t) - 512)
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "Browser client payload is too large"));
+      std::vector<uint8_t> output(input.size() + sizeof(packet_header_t) + 512);
+      size_t output_length = 0;
+      const int code = browser_client_send_packet(transport_.get(), packet_type, client_id, encrypt,
+                                                  input.empty() ? nullptr : input.data(), input.size(), output.data(),
+                                                  output.size(), &output_length);
+      if (!input.empty())
+        sodium_memzero(input.data(), input.size());
       auto response = result(code);
-      response.set("bytes", binding_copy_output(plaintext.data(), code || encrypt ? 0 : plaintext_length));
+      response.set("bytes", binding_copy_output(output.data(), code ? 0 : output_length));
       return response;
     }
     if (type == "receive-transport-packet") {
       if (event["packet"].isUndefined() || event["packet"].isNull())
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Transport packet is required"));
       auto input = binding_copy_input(event["packet"]);
+      if (input.size() > SIZE_MAX - 128)
+        return result(SET_ERRNO(ERROR_INVALID_PARAM, "Browser client packet is too large"));
+      std::vector<uint8_t> payload(input.size() + 128);
+      browser_client_packet_result_t packet{};
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
-      packet_header_t header{};
-      int code = input.size() < sizeof(packet_header_t)
-                     ? SET_ERRNO(ERROR_INVALID_PARAM, "Client packet is shorter than its header")
-                     : packet_validate(input.data(), input.size(), 0, &header);
-      if (code) {
-        if (!input.empty())
-          sodium_memzero(input.data(), input.size());
+      const int code = browser_client_receive_packet(transport_.get(), discovery, input.data(), input.size(),
+                                                     payload.data(), payload.size(), &packet);
+      if (!input.empty())
+        sodium_memzero(input.data(), input.size());
+      if (code)
         return result(code);
-      }
-      const packet_type_t outer_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
-      const size_t header_size = sizeof(packet_header_t);
-      if (!browser_client_ready(transport_.get()) && packet_is_handshake_type(outer_type)) {
-        code = discovery ? browser_client_acds_handshake_receive(transport_.get(), outer_type,
-                                                                 input.data() + header_size, input.size() - header_size)
-                         : browser_client_handshake_receive(transport_.get(), outer_type, input.data() + header_size,
-                                                            input.size() - header_size);
-        if (!input.empty())
-          sodium_memzero(input.data(), input.size());
-        return code ? result(code) : drainOutputs();
-      }
-      std::vector<uint8_t> packet(input.begin(), input.end());
-      if (outer_type == PACKET_TYPE_ENCRYPTED) {
-        std::vector<uint8_t> plaintext(input.size() - header_size + 128);
-        size_t plaintext_length = 0;
-        code = browser_client_decrypt_packet(transport_.get(), input.data() + header_size, input.size() - header_size,
-                                             plaintext.data(), plaintext.size(), &plaintext_length);
-        if (!code) {
-          packet.assign(plaintext.begin(), plaintext.begin() + plaintext_length);
-          if (packet.size() < header_size)
-            code = SET_ERRNO(ERROR_INVALID_PARAM, "Decrypted client packet is shorter than its header");
-          else
-            code = packet_validate(packet.data(), packet.size(), 0, &header);
-        }
-      }
-      if (code) {
-        if (!input.empty())
-          sodium_memzero(input.data(), input.size());
-        return result(code);
-      }
-      const packet_type_t packet_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
+      if (packet.handshake)
+        return drainOutputs();
+      const packet_type_t packet_type = static_cast<packet_type_t>(NET_TO_HOST_U16(packet.header.type));
       auto response = result(0);
       response.set("packet", emscripten::val::object());
       response["packet"].set("type", static_cast<unsigned>(packet_type));
-      response["packet"].set("length", NET_TO_HOST_U32(header.length));
-      response["packet"].set("client_id", NET_TO_HOST_U32(header.client_id));
-      response["packet"].set("crc32", NET_TO_HOST_U32(header.crc32));
-      response.set("encrypted", outer_type == PACKET_TYPE_ENCRYPTED);
+      response["packet"].set("length", NET_TO_HOST_U32(packet.header.length));
+      response["packet"].set("client_id", NET_TO_HOST_U32(packet.header.client_id));
+      response["packet"].set("crc32", NET_TO_HOST_U32(packet.header.crc32));
+      response.set("encrypted", packet.encrypted);
       response.set("kind", acip_is_media_packet(packet_type)       ? "media"
                            : acip_is_control_packet(packet_type)   ? "control"
                            : packet_is_handshake_type(packet_type) ? "crypto"
                            : acip_is_message_packet(packet_type)   ? "message"
                                                                    : "unknown");
-      response.set("payload", binding_copy_output(packet.data() + header_size, packet.size() - header_size));
-      if (!input.empty())
-        sodium_memzero(input.data(), input.size());
+      response.set("payload", binding_copy_output(payload.data(), packet.payload_length));
+      if (!payload.empty())
+        sodium_memzero(payload.data(), payload.size());
       return response;
     }
     if (type == "resolve-crypto-policy") {
@@ -400,23 +358,16 @@ public:
       return response;
     }
     if (type == "configure-browser-capabilities") {
-      browser_capabilities_.webtransport =
-          event["webtransport"].isUndefined() ? false : event["webtransport"].as<bool>();
       browser_capabilities_.datagrams = event["datagrams"].isUndefined() ? false : event["datagrams"].as<bool>();
       const size_t max_datagram_payload =
           event["maxDatagramPayload"].isUndefined() ? 0 : event["maxDatagramPayload"].as<size_t>();
       browser_capabilities_.max_datagram_payload = browser_capabilities_.datagrams ? max_datagram_payload : 0;
-      browser_capabilities_.hevc = event["hevc"].isUndefined() ? false : event["hevc"].as<bool>();
-      browser_capabilities_.webrtc = event["webrtc"].isUndefined() ? false : event["webrtc"].as<bool>();
       browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams,
                                          browser_capabilities_.max_datagram_payload);
       emscripten::val response = result(0);
       response.set("capabilities", emscripten::val::object());
-      response["capabilities"].set("webtransport", browser_capabilities_.webtransport);
       response["capabilities"].set("datagrams", browser_capabilities_.datagrams);
       response["capabilities"].set("maxDatagramPayload", browser_capabilities_.max_datagram_payload);
-      response["capabilities"].set("hevc", browser_capabilities_.hevc);
-      response["capabilities"].set("webrtc", browser_capabilities_.webrtc);
       return response;
     }
     if (type == "set-server") {
@@ -556,11 +507,8 @@ private:
     // WebRTC selection, and HEVC encoder/decoder selection, belong to the
     // browser adapters before they call into this session. These values are
     // retained for protocol diagnostics and are not native policy inputs.
-    bool webtransport = false;
     bool datagrams = false;
     size_t max_datagram_payload = 0;
-    bool hevc = false;
-    bool webrtc = false;
   } browser_capabilities_;
   bool owned_ = false;
   int result_ = 0;

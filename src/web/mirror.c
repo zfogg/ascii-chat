@@ -46,6 +46,7 @@ void mirror_render_context_reset(mirror_render_context_t *context) {
   }
   context->last_rain_update_time = 0.0;
   context->frame_count = 0;
+  context->has_frame = false;
 }
 void mirror_render_context_destroy(mirror_render_context_t *context) {
   if (!context)
@@ -154,6 +155,41 @@ char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data,
   caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
+  bool flip_x = GET_OPTION(flip_x);
+  bool flip_y = GET_OPTION(flip_y);
+
+  uint64_t palette_hash = UINT64_C(14695981039346656037);
+  if (palette_type == PALETTE_CUSTOM) {
+    const unsigned char *character = (const unsigned char *)GET_OPTION(palette_custom);
+    while (*character) {
+      palette_hash ^= *character++;
+      palette_hash *= UINT64_C(1099511628211);
+    }
+  }
+
+  if (context->has_frame &&
+      (context->source_width != src_width || context->source_height != src_height ||
+       context->output_width != dst_width || context->output_height != dst_height ||
+       context->renderer_mode != (int)caps.text_renderer || context->render_mode != (int)caps.render_mode ||
+       context->palette_type != (int)palette_type || context->palette_hash != palette_hash ||
+       context->palette_explicit != caps.palette_explicit || context->color_filter != (int)filter ||
+       context->flip_x != flip_x || context->flip_y != flip_y || context->contain != contain)) {
+    ascii_stabilizer_reset(&context->stabilizer);
+  }
+  context->source_width = src_width;
+  context->source_height = src_height;
+  context->output_width = dst_width;
+  context->output_height = dst_height;
+  context->renderer_mode = (int)caps.text_renderer;
+  context->render_mode = (int)caps.render_mode;
+  context->palette_type = (int)palette_type;
+  context->palette_hash = palette_hash;
+  context->palette_explicit = caps.palette_explicit;
+  context->color_filter = (int)filter;
+  context->flip_x = flip_x;
+  context->flip_y = flip_y;
+  context->contain = contain;
+  context->has_frame = true;
 
   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
@@ -162,8 +198,6 @@ char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data,
     return NULL;
   }
 
-  bool flip_x = GET_OPTION(flip_x);
-  bool flip_y = GET_OPTION(flip_y);
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++) {
       int src_x = flip_x ? (src_width - 1 - x) : x;

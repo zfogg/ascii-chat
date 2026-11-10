@@ -478,11 +478,8 @@ export type ClientEventResult = {
   publicKey?: string;
   mode?: number;
   capabilities?: {
-    webtransport: boolean;
     datagrams: boolean;
     maxDatagramPayload: number;
-    hevc: boolean;
-    webrtc: boolean;
   };
   ready?: boolean;
   queuedBytes?: number;
@@ -509,11 +506,8 @@ export function processClientEvent(
 
 /** Pass browser-detected facts to the native session policy layer. */
 export function configureBrowserCapabilities(capabilities: {
-  webtransport: boolean;
   datagrams: boolean;
   maxDatagramPayload?: number;
-  hevc: boolean;
-  webrtc: boolean;
 }): ClientEventResult {
   return processClientEvent({
     type: "configure-browser-capabilities",

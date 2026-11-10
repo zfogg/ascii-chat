@@ -1,6 +1,5 @@
 import { OutboundQueue } from "./OutboundQueue";
 import { serializeClientInitialization } from "./ClientInitialization";
-import { VideoUploadEncoder } from "./VideoUploadEncoder";
 /**
  * High-level client connection manager
  * Orchestrates WebSocket, WASM crypto, and packet handling
@@ -151,19 +150,11 @@ export class ClientConnection {
       cleanupClientWasm();
       return false;
     }
-    const hevc = await this.probeHevcSupport();
-    if (this.isUserDisconnecting) {
-      cleanupClientWasm();
-      return false;
-    }
     configureBrowserCapabilities({
-      webtransport: typeof WebTransport !== "undefined",
-      datagrams:
-        typeof WebTransport !== "undefined" &&
-        "datagrams" in WebTransport.prototype,
-      maxDatagramPayload: 1200,
-      hevc,
-      webrtc: typeof RTCPeerConnection !== "undefined",
+      // This session uses WebSocket even when the browser also supports
+      // WebTransport. Advertise the selected transport's capabilities.
+      datagrams: false,
+      maxDatagramPayload: 0,
     });
     const policy = processClientEvent({
       type: "resolve-crypto-policy",
@@ -193,13 +184,6 @@ export class ClientConnection {
     if (serverResult.code)
       throwWasmError(serverResult.code, "Failed to set server address");
     return true;
-  }
-
-  private async probeHevcSupport(): Promise<boolean> {
-    if (!VideoUploadEncoder.isSupported()) return false;
-    return VideoUploadEncoder.supports(
-      VideoUploadEncoder.configuration("hevc", 640, 480, 30),
-    );
   }
 
   private async connectSocket(): Promise<void> {

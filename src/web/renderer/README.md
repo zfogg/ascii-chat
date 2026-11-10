@@ -6,12 +6,7 @@ canvas, renders audio waveforms and FFTs, and generates animated test patterns.
 It has no network connection to ascii-chat servers.
 
 ```ts
-import {
-  createRenderer,
-  ColorMode,
-  RenderMode,
-  TextRenderer,
-} from "ascii-chat";
+import { createRenderer, ColorMode, RenderMode, TextRenderer } from "ascii-chat";
 
 const renderer = await createRenderer();
 renderer.configure({
@@ -39,8 +34,7 @@ returns a response body plus headers:
 import { getRendererWasm } from "ascii-chat/http/node";
 
 const { body, headers } = await getRendererWasm();
-for (const [name, value] of Object.entries(headers))
-  response.setHeader(name, value);
+for (const [name, value] of Object.entries(headers)) response.setHeader(name, value);
 response.end(body);
 ```
 
@@ -52,8 +46,12 @@ Call `render` for every input frame; it accepts tightly packed RGBA bytes as a
 `Uint8Array` or `Uint8ClampedArray` and copies them into WASM. Alpha is ignored.
 `draw` uses libvterm and FreeType to paint to a 2D canvas; it retains its raster
 renderer across calls. Pass matching output columns and rows to `draw` and the
-`width` and `height` options. `reset()` clears the temporal stabilizer when the
-source changes. `dispose()` releases the frame, test-pattern, raster, and Embind-owned session.
+`width` and `height` options. Pass a stable source identity as the optional fifth
+argument to `render` when switching cameras or media; changing that identity
+automatically clears the temporal stabilizer. Dimension, renderer, render-mode,
+and palette changes also clear it. Call `reset()` after a seek or other
+discontinuity within the same source. `dispose()` releases the frame,
+test-pattern, raster, and Embind-owned session.
 The session destructor performs the native cleanup; `dispose()` is safe to call
 more than once. Each `createRenderer()`
 creates an independent module. Do not use a disposed renderer.
@@ -140,8 +138,7 @@ import rendererUrl from "ascii-chat/renderer.js?url";
 import wasmUrl from "ascii-chat/renderer.wasm?url";
 const renderer = await createRenderer({
   moduleUrl: rendererUrl,
-  locateFile: (path, prefix) =>
-    path.endsWith(".wasm") ? wasmUrl : prefix + path,
+  locateFile: (path, prefix) => (path.endsWith(".wasm") ? wasmUrl : prefix + path),
 });
 ```
 

@@ -28,6 +28,22 @@ int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t 
                                   uint8_t *ciphertext, size_t ciphertext_size, size_t *out_len);
 int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len,
                                   uint8_t *plaintext, size_t plaintext_size, size_t *out_len);
+typedef struct {
+  /** Wire header in network byte order, valid when handshake is false. */
+  packet_header_t header;
+  bool encrypted;
+  bool handshake;
+  size_t payload_length;
+} browser_client_packet_result_t;
+
+/** Encode and, if requested, encrypt one message into caller-owned output. */
+asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uint32_t type, uint32_t client_id,
+                                             bool encrypt, const uint8_t *payload, size_t payload_length,
+                                             uint8_t *output, size_t output_capacity, size_t *output_length);
+/** Validate and route a handshake or copy a decoded message into caller-owned payload. */
+asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, bool discovery, const uint8_t *input,
+                                                size_t input_length, uint8_t *payload, size_t payload_capacity,
+                                                browser_client_packet_result_t *result);
 asciichat_error_t browser_client_settings_receive(browser_transport_t *transport, const void *payload, size_t length);
 char *browser_client_settings_values(browser_transport_t *transport);
 asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, const char *text, size_t length,

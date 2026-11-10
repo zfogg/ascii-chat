@@ -163,6 +163,7 @@ export function convertFrameToAscii(
   srcWidth: number,
   srcHeight: number,
   contentFit: "contain" | "cover" = "contain",
+  source?: unknown,
 ): string {
   if (!wasmModule) {
     throw new Error(
@@ -198,6 +199,7 @@ export function convertFrameToAscii(
     srcWidth,
     srcHeight,
     contentFit === "contain",
+    source,
   );
   if (frame === undefined) {
     throw new Error(
