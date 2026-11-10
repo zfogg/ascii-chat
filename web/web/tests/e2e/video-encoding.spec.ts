@@ -92,7 +92,7 @@ test.beforeAll(async () => {
   server = new NativeProcess(
     [
       "server",
-      host,
+      "0.0.0.0",
       "--port",
       String(serverPort),
       "--websocket-port",
