@@ -539,13 +539,12 @@ echo "You can now run: cmake --build --preset debug"
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then
-  curl -fsSL https://vite.plus | bash
-  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then
-    . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"
-  fi
-  export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
+  # Install Vite+ as the invoking user.  On CI this script may be run through
+  # sudo; installing as root makes vp unavailable to the subsequent user-owned
+  # dependency steps.
+  run_as_user bash -c 'curl -fsSL https://vite.plus | bash'
 fi
-if VP_BIN="$(command -v vp 2>/dev/null)"; then
+if VP_BIN="$(run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v vp' 2>/dev/null)" && [ -n "$VP_BIN" ]; then
   run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT" "$VP_BIN"
   run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT/web" "$VP_BIN"
 else
