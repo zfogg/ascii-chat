@@ -5,13 +5,13 @@
 #include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/util/url.h>
 /**
- * @file network/http_client.c
+ * @file network/http/client/client.c
  * @ingroup network
  * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
  */
 
 #include <ascii-chat/otel.h>
-#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/version.h>

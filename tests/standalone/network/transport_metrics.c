@@ -2,7 +2,7 @@
  * latency, capture devices, or rendering. All peers use password authentication
  * and application encryption, in addition to QUIC TLS or WebRTC DTLS. */
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/send.h>
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
   uint64_t setup_start = time_get_ns();
   peer_t peers[2] = {0};
   crypto_handshake_context_t handshake[2] = {0};
-  acip_quic_endpoint_t *endpoints[2] = {0};
+  quic_endpoint_t *endpoints[2] = {0};
   acip_transport_t *sender = NULL, *receiver = NULL;
   struct sockaddr_in local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   if (!strcmp(mode, "webrtc")) {
@@ -220,9 +220,9 @@ int main(int argc, char **argv) {
     receiver = peers[1].transport;
   } else {
     if (!strcmp(mode, "quic") || datagrams) {
-      acip_quic_config_t server = {
+      quic_config_t server = {
           .certificate_file = argv[2], .private_key_file = argv[3], .enable_datagrams = datagrams};
-      acip_quic_config_t client = {.ca_file = argv[2],
+      quic_config_t client = {.ca_file = argv[2],
                                    .enable_datagrams = datagrams,
                                    .prefer_audio_datagrams = datagrams,
                                    .prefer_visual_datagrams = datagrams};

@@ -293,9 +293,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
+  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", NULL};
   const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                                MODE_MCP_SERVER};
+                                                MODE_MCP_SERVER, MODE_API_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
       log_dev("Mode detected from argv[0]: %s", argv[0]);
@@ -332,7 +332,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             bool looks_like_mode_or_session = false;
 
             // Check if it looks like a mode name
-            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
+            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", NULL};
             for (int j = 0; mode_names[j] != NULL; j++) {
               if (strcmp(next_arg, mode_names[j]) == 0) {
                 looks_like_mode_or_session = true;
@@ -406,9 +406,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "default", NULL};
+  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", "default", NULL};
   const asciichat_mode_t mode_values[] = {MODE_SERVER,     MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                          MODE_MCP_SERVER, MODE_INVALID};
+                                          MODE_MCP_SERVER, MODE_API_SERVER, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -792,6 +792,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
   case MODE_MCP_SERVER:
     log_filename_literal = "mcp-server.log";
     break;
+  case MODE_API_SERVER:
+    log_filename_literal = "api-server.log";
+    break;
   case MODE_DISCOVERY_SERVICE:
     log_filename_literal = "acds.log";
     break;
@@ -969,6 +972,8 @@ static void handle_help_option(int argc, char **argv) {
             help_mode = MODE_MIRROR;
           } else if (strcmp(argv[j], "mcp-server") == 0) {
             help_mode = MODE_MCP_SERVER;
+          } else if (strcmp(argv[j], "api-server") == 0) {
+            help_mode = MODE_API_SERVER;
           } else if (strcmp(argv[j], "discovery-service") == 0) {
             help_mode = MODE_DISCOVERY_SERVICE;
           } else if (strcmp(argv[j], "discovery") == 0) {
@@ -1509,7 +1514,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   (*opts) = options_t_new_preserve_binary(opts);
-  if (detected_mode == MODE_MCP_SERVER) {
+  if (detected_mode == MODE_MCP_SERVER || detected_mode == MODE_API_SERVER) {
     opts->port = OPT_MCP_PORT_DEFAULT;
     // Zero means use the available CPU count unless max-clients is configured.
     opts->max_clients = 0;

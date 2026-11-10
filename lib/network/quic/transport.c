@@ -22,13 +22,13 @@ typedef struct received_packet {
 } received_packet_t;
 
 typedef struct {
-  acip_quic_connection_t *connection;
+  quic_connection_t *connection;
   mutex_t *lane;
   cond_t received;
   cond_t security_changed;
   void (*wake)(void *);
   void *wake_context;
-  void (*on_close)(acip_quic_connection_t *, void *);
+  void (*on_close)(quic_connection_t *, void *);
   void *close_context;
   void (*on_destroy)(acip_transport_t *, void *);
   void *destroy_context;
@@ -259,7 +259,7 @@ static asciichat_error_t quic_close(acip_transport_t *transport) {
   return result;
 }
 
-void quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
+void quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(quic_connection_t *, void *),
                                       void *context) {
   quic_transport_t *quic = transport->impl_data;
   quic->on_close = close;
@@ -431,10 +431,9 @@ static asciichat_error_t quic_capabilities(acip_transport_t *transport, acip_tra
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC capabilities are not negotiated yet");
   }
   size_t payload = quic_connection_datagram_payload(quic->connection);
-  *out =
-      (acip_transport_capabilities_t){.independent_streams = true,
-                                      .datagrams = payload != 0,
-                                      .max_datagram_payload = payload ? payload + ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0};
+  *out = (acip_transport_capabilities_t){.independent_streams = true,
+                                         .datagrams = payload != 0,
+                                         .max_datagram_payload = payload ? payload + QUIC_DATAGRAM_HEADER_SIZE : 0};
   lane_unlock(quic);
   return ASCIICHAT_OK;
 }
@@ -477,7 +476,7 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .validate_send_options = quic_validate_options,
                                                       .destroy_impl = quic_destroy_impl};
 
-static asciichat_error_t attach_transport(acip_quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
+static asciichat_error_t attach_transport(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
                                           bool lane_held, void (*wake)(void *), void *wake_context,
                                           void (*on_destroy)(acip_transport_t *, void *), void *destroy_context,
                                           acip_transport_t **out) {
@@ -536,12 +535,12 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach(quic_connection_t *connection, crypto_context_t *crypto,
                                         acip_transport_t **out) {
   return attach_transport(connection, crypto, NULL, false, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach_serialized(quic_connection_t *connection, crypto_context_t *crypto,
                                                    mutex_t *lane, acip_transport_t **out) {
   if (!lane) {
     if (out)
@@ -551,8 +550,8 @@ asciichat_error_t quic_transport_attach_serialized(acip_quic_connection_t *conne
   return attach_transport(connection, crypto, lane, false, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
-                                                mutex_t *lane, acip_transport_t **out) {
+asciichat_error_t quic_transport_attach_on_lane(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
+                                                acip_transport_t **out) {
   if (!lane) {
     if (out)
       *out = NULL;
@@ -561,7 +560,7 @@ asciichat_error_t quic_transport_attach_on_lane(acip_quic_connection_t *connecti
   return attach_transport(connection, crypto, lane, true, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
+asciichat_error_t quic_transport_attach_on_lane_with_waker(quic_connection_t *connection, mutex_t *lane,
                                                            void (*wake)(void *), void *context,
                                                            void (*on_destroy)(acip_transport_t *, void *),
                                                            void *destroy_context, acip_transport_t **out) {

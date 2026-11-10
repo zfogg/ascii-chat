@@ -2,7 +2,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MCP_RENDER_ENV_CAPACITY 16
 
-#include "mcp.h"
+#include "http_renderer.h"
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <uv.h>
@@ -16,7 +16,7 @@ typedef struct {
   uv_pipe_t output, errors;
   uv_timer_t timer;
   atomic_t *cancelled;
-  mcp_render_result_t *result;
+  http_renderer_process_result_t *result;
   uint64_t started, exit_time;
   unsigned timeout;
   bool exited, failed, stopped;
@@ -46,7 +46,7 @@ static void read_output(uv_stream_t *stream, ssize_t count, const uv_buf_t *buf)
   if (count > 0) {
     if (stream == (uv_stream_t *)&w->output) {
       size_t n = (size_t)count;
-      if (w->result->length + n > MCP_MAX_OUTPUT)
+      if (w->result->length + n > HTTP_RENDERER_MAX_OUTPUT)
         stop_worker(w, "Rendered text exceeds 8 MiB");
       else {
         memcpy(w->result->text + w->result->length, buf->base, n);
@@ -109,10 +109,14 @@ static void tick(uv_timer_t *timer) {
     }
   }
 }
-void mcp_render_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render_result_t *result) {
+void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled, http_renderer_process_result_t *result) {
   memset(result, 0, sizeof(*result));
+  if (r->output_type != HTTP_RENDER_OUTPUT_TEXT && r->output_type != HTTP_RENDER_OUTPUT_FILE) {
+    SAFE_STRNCPY(result->error, "Renderer output must select text or files", sizeof(result->error));
+    return;
+  }
   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r->timeout_ms};
-  result->text = SAFE_CALLOC(MCP_MAX_OUTPUT + 1, 1, char *);
+  result->text = SAFE_CALLOC(HTTP_RENDERER_MAX_OUTPUT + 1, 1, char *);
   if (uv_loop_init(&w.loop)) {
     SAFE_STRNCPY(result->error, "Cannot initialize renderer event loop", sizeof(result->error));
     return;
@@ -197,4 +201,19 @@ void mcp_render_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render
     }
     SAFE_STRNCPY(result->output_path, r->output_path, sizeof(result->output_path));
   }
+  http_render_result_t frames = {0};
+  if (result->text && result->length)
+    (void)http_render_result_add_text_frame(&frames, result->text, result->length, 0);
+  if (result->output_path[0])
+    (void)http_render_result_add_file_frame(&frames, result->output_path, 0);
+  result->frames = frames.frames;
+  result->frame_count = frames.frame_count;
+}
+
+void http_renderer_process_result_destroy(http_renderer_process_result_t *result) {
+  if (!result) return;
+  for (size_t i = 0; i < result->frame_count; ++i) SAFE_FREE(result->frames[i].text);
+  SAFE_FREE(result->frames);
+  SAFE_FREE(result->text);
+  memset(result, 0, sizeof(*result));
 }

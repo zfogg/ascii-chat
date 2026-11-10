@@ -1,4 +1,4 @@
-import { AsciiRenderer } from "ascii-chat";
+import { RendererCore } from "ascii-chat";
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
 import { browserKeyCode } from "./keyboard";
@@ -243,7 +243,7 @@ export function useAsciiRendererHandle({
           imageData = new ImageData(w, h);
           imageDataRef.current = imageData;
         }
-        AsciiRenderer.rasterize(
+        RendererCore.rasterize(
           renderer,
           ansiString,
           Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,

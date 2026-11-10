@@ -185,6 +185,9 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     if (!p->restricted)
       property(d, s, "output_path", "string",
                "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
+    property(d, s, "output", "string", "Output mode: text or files. Defaults to text unless output_path is supplied.");
+    const char *output_modes[] = {"text", "files", NULL};
+    enum_strings(d, yyjson_mut_obj_get(props, "output"), output_modes);
     if (i == MCP_FILE)
       file_properties(d, s, !p->restricted);
     if (i == MCP_URL) {
@@ -265,14 +268,14 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   }
   return tools;
 }
-static asciichat_error_t arg(mcp_render_request_t *r, const char *value) {
+static asciichat_error_t arg(http_renderer_process_request_t *r, const char *value) {
   if (r->argc >= MCP_REQUEST_ARGV_CAPACITY - MCP_REQUEST_RESERVED_ARGS || strlen(value) > MCP_MAX_INPUT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Too many or oversized options");
   r->argv[r->argc++] = platform_strdup(value);
   r->argv[r->argc] = NULL;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t option(mcp_render_request_t *r, const char *name, const char *value) {
+static asciichat_error_t option(http_renderer_process_request_t *r, const char *name, const char *value) {
   size_t n = strlen(name) + strlen(value) + 4;
   char *s = SAFE_MALLOC(n, char *);
   SAFE_SNPRINTF(s, n, "--%s=%s", name, value);
@@ -308,7 +311,7 @@ static asciichat_error_t check_fields(yyjson_val *obj, const char *const *allowe
   }
   return ASCIICHAT_OK;
 }
-static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_render_request_t *r) {
+static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_renderer_process_request_t *r) {
   yyjson_val *path = mcp_get(a, "path"), *data = mcp_get(a, "data_base64"), *mime = mcp_get(a, "mime_type");
   if ((path != NULL) == (data != NULL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Provide exactly one of path or data_base64");
@@ -318,6 +321,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
     if (!yyjson_is_str(path) || !*yyjson_get_str(path) || !strcmp(yyjson_get_str(path), "-") ||
         strstr(yyjson_get_str(path), "://"))
       return SET_ERRNO(ERROR_INVALID_PARAM, "path must be a local file, not stdin or a URL");
+    SAFE_STRNCPY(r->source_path, yyjson_get_str(path), sizeof(r->source_path));
     return option(r, "file", yyjson_get_str(path));
   }
   if (!yyjson_is_str(data) || yyjson_get_len(data) == 0 || yyjson_get_len(data) > MCP_MAX_INPUT - 4096)
@@ -348,19 +352,21 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
   SAFE_FREE(bytes);
   if (!wrote)
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write uploaded media");
+  SAFE_STRNCPY(r->source_path, file, sizeof(r->source_path));
   return option(r, "file", file);
 }
-static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_render_request_t *r) {
+static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, http_renderer_process_request_t *r) {
   if (!yyjson_is_str(v) || !*yyjson_get_str(v) || yyjson_get_len(v) > 4000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
+  SAFE_STRNCPY(r->source_url, url, sizeof(r->source_url));
   if (strncmp(url, "https://", sizeof("https://") - 1) && strncmp(url, "http://", sizeof("http://") - 1) &&
       (p->restricted ||
        (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }
-static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r) {
+static asciichat_error_t stage_output(const char *path, http_renderer_process_request_t *r) {
   if (!path || !*path || strlen(path) > 3500 || !strcmp(path, "-") || strchr(path, '\n'))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output_path");
   uv_fs_t fs;
@@ -404,15 +410,20 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
   SAFE_STRNCPY(r->stage_dir, fs.path, sizeof(r->stage_dir));
   uv_fs_req_cleanup(&fs);
   SAFE_SNPRINTF(r->stage_file, sizeof(r->stage_file), "%s/render%s", r->stage_dir, ext);
+  r->output_type = HTTP_RENDER_OUTPUT_FILE;
   return option(r, "render-file", r->stage_file);
 }
-asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, mcp_render_request_t *r) {
+asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, http_renderer_process_request_t *r) {
   memset(r, 0, sizeof(*r));
+  r->output_type = HTTP_RENDER_OUTPUT_TEXT;
+  r->options.width = 100;
+  r->options.height = 40;
+  r->options.color_mode = TERM_COLOR_NONE;
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
                                        "audio",        "visualization", "options",       "output_path", "timeout_ms",
-                                       "audio_device", "volume",        "output_format", NULL};
+                                       "audio_device", "volume",        "output_format", "output", NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
@@ -438,7 +449,15 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   yyjson_val *opts = mcp_get(a, "options");
   if (opts && !yyjson_is_obj(opts))
     return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
-  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path");
+  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path"),
+             *output_mode = mcp_get(a, "output");
+  if (output_mode && (!yyjson_is_str(output_mode) || (strcmp(yyjson_get_str(output_mode), "text") &&
+                                                       strcmp(yyjson_get_str(output_mode), "files"))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output must be text or files");
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "text") && output_value)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output=text cannot be combined with output_path");
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "files"))
+    r->output_type = HTTP_RENDER_OUTPUT_FILE;
   const char *output_name = yyjson_is_str(output_value) ? yyjson_get_str(output_value) : "";
   const char *output_ext = strrchr(output_name, '.');
   bool gif_requested = yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif");
@@ -485,6 +504,15 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       err = option(r, name, buf);
       if (err)
         return err;
+      if (!strcmp(name, "width")) r->options.width = (int)n;
+      else if (!strcmp(name, "height")) r->options.height = (int)n;
+      else if (!strcmp(name, "color-mode")) {
+        if (!strcmp(buf, "16")) r->options.color_mode = TERM_COLOR_16;
+        else if (!strcmp(buf, "256")) r->options.color_mode = TERM_COLOR_256;
+        else if (!strcmp(buf, "truecolor") || !strcmp(buf, "24bit")) r->options.color_mode = TERM_COLOR_TRUECOLOR;
+        else r->options.color_mode = TERM_COLOR_NONE;
+      } else if (!strcmp(name, "palette")) SAFE_STRNCPY(r->options.palette, buf, sizeof(r->options.palette));
+      else if (!strcmp(name, "palette-chars")) SAFE_STRNCPY(r->options.palette_chars, buf, sizeof(r->options.palette_chars));
     }
   bool synthetic = enabled(opts, "test-pattern"), test_audio = enabled(opts, "test-audio");
   yyjson_val *audio_device = mcp_get(a, "audio_device"), *volume = mcp_get(a, "volume");
@@ -634,9 +662,11 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     if (err)
       return err;
   }
+  if (output_mode && !strcmp(yyjson_get_str(output_mode), "files") && !r->output_path[0])
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output=files requires output_path");
   return ASCIICHAT_OK;
 }
-void mcp_request_destroy(mcp_render_request_t *r) {
+void mcp_request_destroy(http_renderer_process_request_t *r) {
   for (size_t i = 0; i < r->argc; ++i)
     SAFE_FREE(r->argv[i]);
   SAFE_FREE(r->argv);

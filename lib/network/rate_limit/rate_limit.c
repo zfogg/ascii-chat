@@ -25,6 +25,7 @@ static const char *event_type_strings[RATE_EVENT_MAX] = {
     [RATE_EVENT_PING] = "ping",
     [RATE_EVENT_CLIENT_JOIN] = "client_join",
     [RATE_EVENT_CONTROL] = "control",
+    [RATE_EVENT_HTTP_REQUEST] = "http_request",
 };
 
 // Default rate limits: conservative defaults to prevent abuse
@@ -42,6 +43,7 @@ const rate_limit_config_t DEFAULT_RATE_LIMITS[RATE_EVENT_MAX] = {
     [RATE_EVENT_PING] = {.max_events = 120, .window_secs = 60},          // 120 pings/min = 2 Hz max
     [RATE_EVENT_CLIENT_JOIN] = {.max_events = 10, .window_secs = 60},    // 10 joins per minute
     [RATE_EVENT_CONTROL] = {.max_events = 100, .window_secs = 60},       // 100 control packets/min
+    [RATE_EVENT_HTTP_REQUEST] = {.max_events = 120, .window_secs = 60},  // 120 HTTP requests/minute
 #else
     // Debug mode: slightly relaxed limits for development/testing (1.5x production limits)
     [RATE_EVENT_SESSION_CREATE] = {.max_events = 15, .window_secs = 60}, // 15 creates per minute
@@ -53,6 +55,7 @@ const rate_limit_config_t DEFAULT_RATE_LIMITS[RATE_EVENT_MAX] = {
     [RATE_EVENT_PING] = {.max_events = 180, .window_secs = 60},          // 180 pings/min = 3 Hz
     [RATE_EVENT_CLIENT_JOIN] = {.max_events = 25, .window_secs = 60},    // 25 joins per minute (for testing reconnects)
     [RATE_EVENT_CONTROL] = {.max_events = 150, .window_secs = 60},       // 150 control packets/min
+    [RATE_EVENT_HTTP_REQUEST] = {.max_events = 120, .window_secs = 60},  // 120 HTTP requests/minute
 #endif
 };
 

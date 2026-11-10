@@ -1315,6 +1315,8 @@ static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bit
     return MODE_DISCOVERY;
   if (mode_bitmask == OPTION_MODE_MCP_SERVER)
     return MODE_MCP_SERVER;
+  if (mode_bitmask == OPTION_MODE_API_SERVER)
+    return MODE_API_SERVER;
   // Bitmask has zero or multiple bits set
   return MODE_INVALID;
 }

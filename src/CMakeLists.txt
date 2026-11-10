@@ -25,10 +25,14 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer_process.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
+    # Public image-to-ASCII HTTP API
+    ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
+    # Shared render-over-HTTP request/result ownership
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode

@@ -262,7 +262,7 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
   }
 
   // Set FPS (use provided value or default to 60)
-  ctx->target_fps = target_fps > 0 ? target_fps : 60;
+  ctx->target_fps = target_fps > 0 ? target_fps : DEFAULT_MAX_FPS;
   ctx->resize_for_network = false;
 
   // Audio and keyboard will be set up separately by callers
@@ -316,7 +316,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     }
 
     // Default settings suitable for local display
-    auto_config.target_fps = 60;
+    auto_config.target_fps = DEFAULT_MAX_FPS;
     auto_config.resize_for_network = false;
     config = &auto_config;
   }
@@ -350,7 +350,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   }
 
   // Store configuration
-  ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
+  ctx->target_fps = config->target_fps > 0 ? config->target_fps : DEFAULT_MAX_FPS;
   ctx->resize_for_network = config->resize_for_network;
   ctx->should_exit_callback = config->should_exit_callback;
   ctx->callback_data = config->callback_data;

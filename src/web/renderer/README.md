@@ -30,6 +30,24 @@ renderer.draw(document.querySelector("canvas")!, art, 80, 40);
 renderer.dispose();
 ```
 
+## Serving the WASM asset from Node
+
+The Node-only `ascii-chat/node` entry point loads the packaged WASM binary and
+returns a response body plus headers:
+
+```ts
+import { getRendererWasm } from "ascii-chat/http/node";
+
+const { body, headers } = await getRendererWasm();
+for (const [name, value] of Object.entries(headers))
+  response.setHeader(name, value);
+response.end(body);
+```
+
+The helper includes `Content-Type: application/wasm`, an immutable cache policy,
+the binary length, and `Cross-Origin-Resource-Policy: cross-origin` for pages
+using cross-origin isolation.
+
 Call `render` for every input frame; it accepts tightly packed RGBA bytes as a
 `Uint8Array` or `Uint8ClampedArray` and copies them into WASM. Alpha is ignored.
 `draw` uses libvterm and FreeType to paint to a 2D canvas; it retains its raster
@@ -123,3 +141,50 @@ const renderer = await createRenderer({
     path.endsWith(".wasm") ? wasmUrl : prefix + path,
 });
 ```
+
+You can also pass explicit asset URLs directly:
+
+```ts
+const renderer = await createRenderer({
+  moduleUrl: "/assets/renderer.js",
+  wasmUrl: "/assets/renderer.wasm",
+  workerUrl: "/assets/renderer.worker.js",
+});
+```
+
+## Serving the WASM asset
+
+The Node entry point provides both a standard Fetch response and adapters for
+common Node-style response objects:
+
+```ts
+import {
+  rendererWasmResponse,
+  rendererWasmHandler,
+  writeRendererWasm,
+  sendRendererWasm,
+  sendRendererWasmFastify,
+  setRendererWasmKoa,
+} from "ascii-chat/http/node";
+
+// Fetch/Bun/Hono/Next route handlers
+export const GET = rendererWasmHandler;
+
+// node:http, or any response with setHeader() and end()
+await writeRendererWasm(response);
+
+// Express-compatible response objects
+await sendRendererWasm(res);
+
+// Fastify-compatible reply objects
+await sendRendererWasmFastify(reply);
+
+// Koa-compatible contexts
+await setRendererWasmKoa(ctx);
+```
+
+Each framework subpath also exports `rendererWasmHandler`, which delegates to
+the corresponding response helper and can be passed directly to route APIs.
+
+All helpers set `Content-Type: application/wasm`, `Content-Length`, immutable
+caching, and `Cross-Origin-Resource-Policy: cross-origin`.

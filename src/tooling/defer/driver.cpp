@@ -151,6 +151,14 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   const auto working_directory = fs::u8path(directory);
   const auto generated_overlay = fs::u8path(generated.parent_path().u8string() + ".vfs.json");
   std::vector<std::string> result = {"-working-directory", directory, "-iquote", source.parent_path().u8string()};
+  if (const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE")) {
+    if (!target->empty()) {
+      result.push_back("-target");
+      result.push_back(*target);
+      if (target->find("-musl") != std::string::npos)
+        result.push_back("-nostdinc");
+    }
+  }
   if (compiler.find("emcc") != std::string::npos || compiler.find("em++") != std::string::npos) {
     result.insert(result.end(), {"-target", "wasm32-unknown-emscripten"});
     const fs::path compiler_path = fs::u8path(compiler);
@@ -187,12 +195,19 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
     result.push_back(value);
     ++i;
   }
+  auto compiler_path = fs::u8path(compiler);
+  if (compiler_path.is_relative() && compiler_path.has_parent_path())
+    compiler_path = (working_directory / compiler_path).lexically_normal();
+  const auto resource_dir = compiler_resource_dir(compiler_path.u8string());
   if (std::none_of(result.begin(), result.end(), [](const auto &arg) { return arg.rfind("-resource-dir", 0) == 0; })) {
-    auto compiler_path = fs::u8path(compiler);
-    if (compiler_path.is_relative() && compiler_path.has_parent_path())
-      compiler_path = (working_directory / compiler_path).lexically_normal();
     result.push_back("-resource-dir");
-    result.push_back(compiler_resource_dir(compiler_path.u8string()));
+    result.push_back(resource_dir);
+  }
+  if (const auto target = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_TARGET_TRIPLE")) {
+    if (target->find("-musl") != std::string::npos) {
+      result.push_back("-isystem");
+      result.push_back((fs::u8path(resource_dir) / "include").u8string());
+    }
   }
   if (const auto extra = llvm::sys::Process::GetEnv("ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS")) {
     const std::string &value = *extra;
@@ -201,7 +216,10 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
       const auto end = value.find(';', start);
       const auto directory = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
       if (!directory.empty()) {
-        result.push_back("-I");
+        // Preserve system-header semantics for platform libc include roots.
+        // This matters on Debian ARM multiarch headers, which rely on
+        // include_next and feature macros from the system search order.
+        result.push_back("-isystem");
         result.push_back(directory);
       }
       if (end == std::string::npos)

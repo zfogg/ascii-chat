@@ -2,6 +2,9 @@
 # Note: Source file properties (C++ language, mdns warnings) set in root CMakeLists.txt
 
 set(NETWORK_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/basic_auth.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http2.c
     # Core network files
     ${CMAKE_CURRENT_SOURCE_DIR}/network.c
     ${CMAKE_CURRENT_SOURCE_DIR}/frame_validator.c
@@ -12,7 +15,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/decoder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/client/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/tailscale.c
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c
@@ -72,7 +75,7 @@ if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/establish.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/stream.c)
-    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/http3.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http3.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/datagram.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/tls.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/connection.c)

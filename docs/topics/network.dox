@@ -3,6 +3,16 @@
  * @ingroup module_network
  * @ingroup network
  *
+ * ## HTTP image API
+ *
+ * `ascii-chat api-server` exposes the shared HTTP listener for image-to-ASCII
+ * conversion. `GET /health` returns a minimal JSON readiness response.
+ * `POST /convert` accepts an image body with `image/*` or
+ * `application/octet-stream`, or one `image` multipart field. Width, height,
+ * palette, and output format are query parameters; output can be text, JSON,
+ * or escaped HTML. URL fetching, local paths, and batch conversion are not
+ * part of this public surface.
+ *
  * @brief How connections, transports, ACIP, and media admission fit together.
  *
  * @section network_overview Overview
@@ -21,6 +31,43 @@
  * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
  * - `include/ascii-chat/network/negotiation.h` — connection establishment
  * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
+ * - `include/ascii-chat/network/http/server/server.h` — backend-neutral HTTP server contract
+
+ * @section network_http_layer Shared HTTP services
+ *
+ * HTTP-only services use `http_server_t` and the request/response types in
+ * `network/http/server/server.h`.  The native listener is a bounded libuv service
+ * accepting HTTP/1.0, HTTP/1.1, and prior-knowledge HTTP/2 over TCP.  It owns sockets
+ * and event-loop callbacks, while handlers own routing and application
+ * behavior.  The public contract intentionally does not expose libuv,
+ * libwebsockets, TLS, nghttp2, nghttp3, or ngtcp2 types, so MCP, API, and
+ * discovery can share the same handler code.  Generic HTTP/3 request streams
+ * attach to a pre-opened QUIC endpoint through the same handler contract;
+ * WebTransport CONNECT streams remain a separate ACIP transport use of that
+ * endpoint.  A supervisor-owned listening socket can be passed to
+ * `http_server_adopt_socket()` before start, avoiding a duplicate bind.  An
+ * explicitly enabled HTTP version is never silently downgraded.
+ *
+ * The protocol mapping is deliberate:
+ *
+ * | HTTP version | Entry point | Notes |
+ * | --- | --- | --- |
+ * | HTTP/1.0 | libuv TCP listener | Request/response completion is connection-oriented; keep-alive is not assumed. |
+ * | HTTP/1.1 | libuv TCP listener | Persistent connections, `Content-Length`, chunked bodies, and trailers are supported. |
+ * | HTTP/2 | libuv TCP listener or negotiated TLS endpoint | nghttp2 streams use the shared request/response handler and output backpressure. |
+ * | HTTP/3 | QUIC endpoint | nghttp3 streams use the same handler contract; WebTransport CONNECT remains the ACIP path. |
+ *
+ * HTTP/2 and HTTP/3 are required protocol implementations. A listener
+ * configured for a specific protocol reports setup or negotiation failure
+ * instead of silently changing endpoint semantics. HTTP/3 attaches to the
+ * existing QUIC endpoint: it does not create a second UDP listener or
+ * authentication path.
+ *
+ * Request bodies, headers, connections, in-flight requests, and responses are
+ * bounded by the shared server policy. Handlers may retain a response for
+ * asynchronous work, but must release it after completion; cancellation
+ * invalidates retained responses and prevents late writes after a stream or
+ * connection closes. Wakeups and graceful shutdown remain server-owned.
  *
  * @section network_connection_layer Connections
  *
@@ -143,4 +190,19 @@
  * @see topic_acds
  * @see md_docs_2networking-runtime.html
  * @see md_docs_2event-driven-io.html
+ */
+
+/**
+ * @page http_basic_auth HTTP Basic authentication
+ *
+ * HTTP applications can use `http_basic_auth_parse()` to decode an
+ * `Authorization: Basic` header into owned, bounded credentials. The parser
+ * requires the Basic scheme, strict Base64, a non-empty username and password,
+ * rejects embedded NUL bytes, and clears temporary decoded bytes. Use
+ * `http_basic_auth_matches()` for constant-time credential comparison and
+ * `http_basic_credentials_clear()` when the copied credentials are no longer
+ * needed. Applications can enable library-enforced authentication by setting
+ * `http_server_config_t.basic_auth`; the HTTP server then authenticates every
+ * request before invoking the application request handler and returns a
+ * `401 Unauthorized` challenge for missing or invalid credentials.
  */

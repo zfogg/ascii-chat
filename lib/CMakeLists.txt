@@ -803,6 +803,43 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+# Prefer the package target so manifest/vcpkg builds carry the correct
+# include and transitive-link settings on every platform.  Keep the direct
+# search as a fallback for distro/Homebrew installs that do not ship a CMake
+# package file.
+find_package(nghttp2 CONFIG QUIET)
+if(TARGET nghttp2::nghttp2)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2)
+elseif(TARGET nghttp2::nghttp2_static)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2_static)
+else()
+    find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h NO_CMAKE_FIND_ROOT_PATH)
+    find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static NO_CMAKE_FIND_ROOT_PATH)
+    if(UNIX AND (NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY))
+        # vcpkg's toolchain can disable the default system prefixes even when
+        # the distro package is installed.  Retry the canonical Unix prefixes.
+        find_path(ASCIICHAT_NGHTTP2_SYSTEM_INCLUDE_DIR nghttp2/nghttp2.h
+            PATHS /usr/include /usr/local/include
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+        find_library(ASCIICHAT_NGHTTP2_SYSTEM_LIBRARY NAMES nghttp2 nghttp2_static
+            PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu
+                /usr/lib/aarch64-linux-gnu /usr/lib/arm-linux-gnueabihf
+                /usr/local/lib
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+        if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR)
+            set(ASCIICHAT_NGHTTP2_INCLUDE_DIR ${ASCIICHAT_NGHTTP2_SYSTEM_INCLUDE_DIR})
+        endif()
+        if(NOT ASCIICHAT_NGHTTP2_LIBRARY)
+            set(ASCIICHAT_NGHTTP2_LIBRARY ${ASCIICHAT_NGHTTP2_SYSTEM_LIBRARY})
+        endif()
+    endif()
+    if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY)
+        message(FATAL_ERROR "nghttp2 development files are required for the shared HTTP/2 server")
+    endif()
+    set(ASCIICHAT_NGHTTP2_TARGET ${ASCIICHAT_NGHTTP2_LIBRARY})
+    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
+endif()
+target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
@@ -1170,6 +1207,7 @@ add_library(ascii-chat-shared SHARED
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
+        ${ASCIICHAT_NGHTTP2_TARGET}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1632,6 +1670,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_NGHTTP2_TARGET})
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
 endif()

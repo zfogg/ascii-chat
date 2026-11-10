@@ -727,7 +727,10 @@ runs:
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
           Write-Host "Cloning vcpkg..."
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone --filter=blob:none https://github.com/microsoft/vcpkg.git $vcpkgDir
+          # The pinned baseline needs historical port blobs. A filtered clone
+          # can leave those blobs unavailable even after fetching the remote
+          # refs, causing vcpkg manifest checkout failures on Windows ARM64.
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone https://github.com/microsoft/vcpkg.git $vcpkgDir
           if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
           Push-Location $vcpkgDir
           # Keep in sync with vcpkg.json builtin-baseline

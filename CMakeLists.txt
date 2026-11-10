@@ -301,7 +301,20 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 # in the top-level scope used when the command is generated.
 if(USE_MUSL)
     set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
-        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
+        "${MUSL_INCLUDE_DIR}"
+        "/usr/include/aarch64-linux-musl"
+        "/usr/include/arm-linux-musleabihf"
+        "/usr/include/aarch64-linux-gnu"
+        "/usr/include/arm-linux-gnueabihf")
+    if(CMAKE_C_COMPILER_TARGET MATCHES "^x86_64-")
+        list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "/usr/include/x86_64-linux-gnu")
+    endif()
+    set(ASCIICHAT_DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
+endif()
+
+if(BUILD_WEB AND LIBSODIUM_INCLUDE_DIRS)
+    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)

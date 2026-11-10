@@ -238,6 +238,8 @@ function(ascii_defer_finish_batches)
                 COMMAND ${CMAKE_COMMAND} -E env
                     "ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
                     "DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
+                    "ASCIICHAT_DEFER_TARGET_TRIPLE=${ASCIICHAT_DEFER_TARGET_TRIPLE}"
+                    "DEFER_TARGET_TRIPLE=${ASCIICHAT_DEFER_TARGET_TRIPLE}"
                     "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
                     --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}" --dependency-stamps --incremental
                     ${_extra_arguments}

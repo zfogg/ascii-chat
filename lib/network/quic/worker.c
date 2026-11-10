@@ -10,10 +10,10 @@
  * owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
  * freeing the record.
  */
-struct acip_quic_worker {
-  acip_quic_udp_endpoint_t *endpoint;
+struct quic_worker {
+  quic_udp_endpoint_t *endpoint;
   mutex_t *lane;
-  acip_quic_worker_failure_fn failure;
+  quic_worker_failure_fn failure;
   void *context;
   asciichat_thread_t thread;
   atomic_t stopping;
@@ -23,11 +23,11 @@ struct acip_quic_worker {
 };
 
 static void *quic_worker_main(void *arg) {
-  acip_quic_worker_t *worker = arg;
+  quic_worker_t *worker = arg;
   while (!atomic_load_u64(&worker->stopping)) {
     uint64_t wait_ns = NS_PER_SEC_INT;
     bool want_write = false;
-    acip_quic_connection_t *failed = NULL;
+    quic_connection_t *failed = NULL;
     mutex_lock(worker->lane);
     uint64_t now = time_get_ns();
     asciichat_error_t result = quic_udp_pump(worker->endpoint, now, &failed);
@@ -76,15 +76,14 @@ static void *quic_worker_main(void *arg) {
   return NULL;
 }
 
-static asciichat_error_t worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                      acip_quic_worker_failure_fn failure, void *context, bool failure_on_lane,
-                                      acip_quic_worker_t **out) {
+static asciichat_error_t worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure,
+                                      void *context, bool failure_on_lane, quic_worker_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC worker output");
   *out = NULL;
   if (!endpoint || !lane)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC worker endpoint or lane");
-  acip_quic_worker_t *worker = SAFE_CALLOC(1, sizeof(*worker), acip_quic_worker_t *);
+  quic_worker_t *worker = SAFE_CALLOC(1, sizeof(*worker), quic_worker_t *);
   if (!worker)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC worker");
   worker->endpoint = endpoint;
@@ -100,24 +99,23 @@ static asciichat_error_t worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                    acip_quic_worker_failure_fn failure, void *context, acip_quic_worker_t **out) {
+asciichat_error_t quic_worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure,
+                                    void *context, quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, false, out);
 }
 
-asciichat_error_t quic_worker_start_locked_failure(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                                   acip_quic_worker_failure_fn failure, void *context,
-                                                   acip_quic_worker_t **out) {
+asciichat_error_t quic_worker_start_locked_failure(quic_udp_endpoint_t *endpoint, mutex_t *lane,
+                                                   quic_worker_failure_fn failure, void *context, quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, true, out);
 }
 
 void quic_worker_wake(void *arg) {
-  acip_quic_worker_t *worker = arg;
+  quic_worker_t *worker = arg;
   if (worker && atomic_exchange_u64(&worker->wake_pending, 1) == 0 && quic_udp_wake(worker->endpoint) != ASCIICHAT_OK)
     atomic_store_u64(&worker->wake_pending, 0);
 }
 
-asciichat_error_t quic_worker_stop(acip_quic_worker_t **worker) {
+asciichat_error_t quic_worker_stop(quic_worker_t **worker) {
   if (!worker || !*worker)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC worker stop");
   atomic_store_u64(&(*worker)->stopping, 1);

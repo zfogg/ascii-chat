@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file network/http_client.h
+ * @file network/http/client/client.h
  * @brief Simple HTTPS client for fetching public keys from GitHub/GitLab
  * @ingroup network
  * @addtogroup network
