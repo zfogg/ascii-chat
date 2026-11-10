@@ -1,5 +1,6 @@
 import { OutboundQueue } from "./OutboundQueue";
 import { serializeClientInitialization } from "./ClientInitialization";
+import { VideoUploadEncoder } from "./VideoUploadEncoder";
 /**
  * High-level client connection manager
  * Orchestrates WebSocket, WASM crypto, and packet handling
@@ -194,25 +195,10 @@ export class ClientConnection {
   }
 
   private async probeHevcSupport(): Promise<boolean> {
-    if (
-      typeof VideoEncoder === "undefined" ||
-      typeof VideoEncoder.isConfigSupported !== "function"
-    )
-      return false;
-    try {
-      const support = await VideoEncoder.isConfigSupported({
-        codec: "hev1.1.6.L120.B0",
-        width: 640,
-        height: 480,
-        bitrate: 1_000_000,
-        framerate: 30,
-        latencyMode: "realtime",
-        hevc: { format: "annexb" },
-      } as VideoEncoderConfig & { hevc: { format: "annexb" } });
-      return support.supported === true;
-    } catch {
-      return false;
-    }
+    if (!VideoUploadEncoder.isSupported()) return false;
+    return VideoUploadEncoder.supports(
+      VideoUploadEncoder.configuration("hevc", 640, 480, 30),
+    );
   }
 
   private async connectSocket(): Promise<void> {
