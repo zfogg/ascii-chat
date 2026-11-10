@@ -132,6 +132,22 @@ static bool same_stream(const outbound_packet_t *a, const outbound_packet_t *b) 
   return a->type == b->type && a->stream == b->stream;
 }
 
+static bool outbound_insert_packet(acip_outbound_t *out, outbound_packet_t *packet, bool priority) {
+  outbound_packet_t **link = &out->head;
+  if (priority) {
+    for (outbound_packet_t **scan = &out->head; *scan; scan = &(*scan)->next)
+      if (!(*scan)->video && !(*scan)->audio && (*scan)->type != PACKET_TYPE_PING &&
+          (*scan)->type != PACKET_TYPE_PONG)
+        link = &(*scan)->next;
+  }
+  while (*link && (!priority || !(*link)->video))
+    link = &(*link)->next;
+  bool was_empty = out->head == NULL;
+  packet->next = *link;
+  *link = packet;
+  return was_empty;
+}
+
 /* Conservatively invalidate all unsent encoded output for this stream. The
  * producer requests an IDR with parameter sets before resuming its chain. */
 static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video) {
@@ -615,23 +631,9 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
       memcpy(p->data + offset, buffers[i].data, buffers[i].len);
     offset += buffers[i].len;
   }
-  /* All non-video traffic must be ahead of pending media. Control packets are
-   * reliable barriers and must not expire behind stale frames; the scan below
-   * still preserves FIFO order among controls and keeps them behind any
-   * earlier control barrier. */
-  bool priority = !info.video;
-  outbound_packet_t **link = &out->head;
-  if (priority) {
-    // Do not move audio or liveness traffic across an earlier protocol barrier.
-    for (outbound_packet_t **scan = &out->head; *scan; scan = &(*scan)->next)
-      if (!(*scan)->video && !(*scan)->audio && (*scan)->type != PACKET_TYPE_PING && (*scan)->type != PACKET_TYPE_PONG)
-        link = &(*scan)->next;
-  }
-  while (*link && (!priority || !(*link)->video))
-    link = &(*link)->next;
-  bool was_empty = out->head == NULL;
-  p->next = *link;
-  *link = p;
+  /* All non-video traffic is inserted ahead of pending media while preserving
+   * protocol barriers and FIFO order within each traffic class. */
+  bool was_empty = outbound_insert_packet(out, p, !info.video);
   out->bytes += info.cost;
   ++out->count;
   stats_add(&out->accepted, 1);
