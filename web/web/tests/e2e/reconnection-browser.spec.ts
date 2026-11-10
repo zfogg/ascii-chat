@@ -78,10 +78,10 @@ test.describe("Browser Reconnection with Server Restart", () => {
 
     // Click the Connect button (the green one with full width)
     console.log("[E2E Test] Clicking Connect button...");
-    const connectButton = page
-      .locator("button")
-      .filter({ hasText: /^Connect$/ })
-      .nth(1);
+    const connectButton = page.getByRole("button", {
+      name: "Connect",
+      exact: true,
+    });
     await connectButton.click();
 
     // Wait for Connected state - look for the "Connected" button/indicator

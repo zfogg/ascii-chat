@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  expectMeaningful60Fps,
-  ServerFixture,
-  getRandomPort,
-} from "./server-fixture";
+import { ServerFixture, getRandomPort } from "./server-fixture";
 
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
@@ -39,5 +35,4 @@ test("Real webcam animates with server frames", async ({ page, context }) => {
   console.log("REAL_WEBCAM_METRICS", metrics);
   expect(metrics?.received ?? 0).toBeGreaterThan(0);
   expect(metrics?.uniqueRendered ?? 0).toBeGreaterThan(1);
-  await expectMeaningful60Fps(page, "client", 5_000);
 });

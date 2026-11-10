@@ -48,7 +48,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
   console.log("[Test] Clicking Connection button to open panel...");
   const connectionBtn = page
     .locator("button")
-    .filter({ hasText: "Connection" });
+    .filter({ hasText: "Network settings" });
   await connectionBtn.click();
   await page.waitForTimeout(500);
 
