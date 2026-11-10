@@ -90,8 +90,8 @@ static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint
           pending = true;
           break;
         }
-      if (!pending && (victim == OUTBOUND_MAX_STREAMS ||
-                       out->streams[i].last_used_ns < out->streams[victim].last_used_ns))
+      if (!pending &&
+          (victim == OUTBOUND_MAX_STREAMS || out->streams[i].last_used_ns < out->streams[victim].last_used_ns))
         victim = i;
     }
     if (victim == OUTBOUND_MAX_STREAMS) {
@@ -716,12 +716,11 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
   mutex_lock(&out->mutex);
   size_t count = (size_t)atomic_load_u64(&out->stream_count);
   for (size_t i = 0; i < count; ++i)
-    if (out->streams[i].type == type && out->streams[i].stream == id)
-      {
-        bool needs_keyframe = atomic_load_bool(&out->streams[i].needs_keyframe);
-        mutex_unlock(&out->mutex);
-        return needs_keyframe;
-      }
+    if (out->streams[i].type == type && out->streams[i].stream == id) {
+      bool needs_keyframe = atomic_load_bool(&out->streams[i].needs_keyframe);
+      mutex_unlock(&out->mutex);
+      return needs_keyframe;
+    }
   mutex_unlock(&out->mutex);
   return true;
 }

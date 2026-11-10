@@ -65,8 +65,8 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
   acip_packet_plan_t plan;
   asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, buffers, count, &plan);
   if (result != ASCIICHAT_OK) {
-      if (guarded)
-        mutex_unlock(&tcp->mutex);
+    if (guarded)
+      mutex_unlock(&tcp->mutex);
     return result;
   }
   if (!plan.encrypt) {

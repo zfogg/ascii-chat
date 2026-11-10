@@ -668,7 +668,6 @@ void *client_audio_render_thread(void *arg) {
     samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - stats_mix_start);
 
-
     log_debug_every(LOG_RATE_SLOW, "Audio render for client %s: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
@@ -685,16 +684,13 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated += samples_to_copy;
     }
 
-
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
       // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
       uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
-
       int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS,
                                         opus_buffer, sizeof(opus_buffer));
-
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {

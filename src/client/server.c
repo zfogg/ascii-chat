@@ -721,9 +721,8 @@ asciichat_error_t threaded_send_client_join_packet(client_connection_t *connecti
     bool active = atomic_load_u64(&connection->connection_active);
     acip_transport_t *transport = server_connection_get_transport(connection);
     if (active && transport) {
-      log_net_message(transport, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__,
-                      __func__, "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name,
-                      capabilities);
+      log_net_message(transport, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__, __func__,
+                      "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
     }
   }
   return send_result;

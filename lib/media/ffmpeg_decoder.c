@@ -140,7 +140,7 @@ struct ffmpeg_decoder_t {
   int audio_sample_rate;       ///< Audio sample rate (Hz)
 
   // Exit signal callback (for graceful shutdown during blocking I/O)
-  atomic_ptr_t should_exit_callback; ///< Callback to check if app should exit
+  atomic_ptr_t should_exit_callback;    ///< Callback to check if app should exit
   atomic_ptr_t exit_callback_user_data; ///< User data for exit callback
 };
 
