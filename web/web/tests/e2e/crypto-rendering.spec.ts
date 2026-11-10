@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import * as dgram from "node:dgram";
 import * as fs from "node:fs";
 import * as net from "node:net";
 import * as os from "node:os";
@@ -70,14 +71,34 @@ async function dockerNetworkIp(network: string): Promise<string> {
   return `${subnet.split(".").slice(0, 3).join(".")}.10`;
 }
 
-async function dockerPublishedPort(
-  container: string,
-  endpoint: "3478/udp" | "3478/tcp",
-): Promise<number> {
-  const output = await run("docker", ["port", container, endpoint]);
-  const match = output.match(/:(\d+)\s*$/m);
-  if (!match) throw new Error(`Docker did not publish ${endpoint}: ${output}`);
-  return Number(match[1]);
+async function unusedTransportPort(): Promise<number> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const port = 20_000 + Math.floor(Math.random() * 10_000);
+    const tcp = net.createServer();
+    const udp = dgram.createSocket("udp4");
+    try {
+      await new Promise<void>((resolve, reject) => {
+        tcp.once("error", reject);
+        tcp.listen(port, "127.0.0.1", resolve);
+      });
+      await new Promise<void>((resolve, reject) => {
+        udp.once("error", reject);
+        udp.bind(port, "127.0.0.1", resolve);
+      });
+      return port;
+    } catch {
+      // Windows may reserve a port for one protocol but not the other.
+    } finally {
+      if (tcp.listening)
+        await new Promise<void>((resolve) => tcp.close(() => resolve()));
+      try {
+        udp.close();
+      } catch {
+        // The UDP socket may never have bound after the TCP probe failed.
+      }
+    }
+  }
+  throw new Error("Could not reserve a shared TCP/UDP host port");
 }
 
 async function stopProcess(child: ChildProcess | undefined): Promise<void> {
@@ -270,62 +291,49 @@ async function runCryptoRenderCase(
       const acdsWsPort = ports[1]!;
       const serverTcpPort = ports[2]!;
       const serverWsPort = ports[3]!;
-      let turnPort = 0;
-      const relayStart = 52_000 + Math.floor(Math.random() * 11_000);
+      const turnPort = await unusedTransportPort();
+      // Keep the host relay range below Windows' commonly excluded 50k+ UDP
+      // ranges; Docker maps every relay port explicitly.
+      const relayStart = 30_000 + Math.floor(Math.random() * 10_000);
       const relayEnd = relayStart + 15;
       const subnetOctet = 20 + Math.floor(Math.random() * 200);
       const subnet = `10.252.${subnetOctet}.0/24`;
       await run("docker", ["network", "create", "--subnet", subnet, network]);
       networkCreated = true;
       const turnIp = await dockerNetworkIp(network);
-      let started = false;
-      let lastDockerError: unknown;
-      for (let attempt = 0; attempt < 8 && !started; attempt++) {
-        try {
-          await run("docker", [
-            "run",
-            "--detach",
-            "--name",
-            container,
-            "--network",
-            network,
-            "--ip",
-            turnIp,
-            "--publish",
-            "127.0.0.1::3478/udp",
-            "--publish",
-            "127.0.0.1::3478/tcp",
-            "--publish",
-            `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
-            "coturn/coturn:latest",
-            "--listening-ip=0.0.0.0",
-            "--listening-port=3478",
-            `--relay-ip=${turnIp}`,
-            `--external-ip=127.0.0.1/${turnIp}`,
-            `--min-port=${relayStart}`,
-            `--max-port=${relayEnd}`,
-            "--user=crypto-e2e:crypto-e2e-password",
-            "--realm=ascii-chat.test",
-            "--lt-cred-mech",
-            "--allowed-peer-ip=169.254.0.0-169.254.255.255",
-            "--fingerprint",
-            "--allow-loopback-peers",
-            "--no-cli",
-            "--no-tls",
-            "--log-file=stdout",
-            "--verbose",
-          ]);
-          started = true;
-        } catch (error) {
-          lastDockerError = error;
-          await run("docker", ["rm", "--force", container]).catch(() => "");
-          if (attempt === 7) throw error;
-          turnPort = 0;
-        }
-      }
-      if (!started)
-        throw lastDockerError ?? new Error("Could not start TURN container");
-      turnPort = await dockerPublishedPort(container, "3478/udp");
+      await run("docker", [
+        "run",
+        "--detach",
+        "--name",
+        container,
+        "--network",
+        network,
+        "--ip",
+        turnIp,
+        "--publish",
+        `127.0.0.1:${turnPort}:3478/udp`,
+        "--publish",
+        `127.0.0.1:${turnPort}:3478/tcp`,
+        "--publish",
+        `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
+        "coturn/coturn:latest",
+        "--listening-ip=0.0.0.0",
+        "--listening-port=3478",
+        `--relay-ip=${turnIp}`,
+        `--external-ip=127.0.0.1/${turnIp}`,
+        `--min-port=${relayStart}`,
+        `--max-port=${relayEnd}`,
+        "--user=crypto-e2e:crypto-e2e-password",
+        "--realm=ascii-chat.test",
+        "--lt-cred-mech",
+        "--allowed-peer-ip=169.254.0.0-169.254.255.255",
+        "--fingerprint",
+        "--allow-loopback-peers",
+        "--no-cli",
+        "--no-tls",
+        "--log-file=stdout",
+        "--verbose",
+      ]);
       turnStarted = true;
       acds = new LoggedProcess(
         [
