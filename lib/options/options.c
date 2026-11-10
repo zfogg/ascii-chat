@@ -1514,7 +1514,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   (*opts) = options_t_new_preserve_binary(opts);
-  if (detected_mode == MODE_MCP_SERVER) {
+  if (detected_mode == MODE_MCP_SERVER || detected_mode == MODE_API_SERVER) {
     opts->port = OPT_MCP_PORT_DEFAULT;
     // Zero means use the available CPU count unless max-clients is configured.
     opts->max_clients = 0;

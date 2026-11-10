@@ -83,14 +83,15 @@ static bool api_decode_query_component(const char *src, size_t length, char *dst
 
 static void api_write_result(http_response_t *response, const char *format, const http_render_result_t *result) {
   if (!strcmp(format, "json")) {
-    size_t cap = result->ascii_length * 2 + 32;
+    size_t cap = result->ascii_length * 6 + 32;
     char *json = SAFE_MALLOC(cap, char *);
     size_t out = (size_t)safe_snprintf(json, cap, "{\"ascii\":\"");
     for (size_t i = 0; i < result->ascii_length && out + 8 < cap; ++i) {
       unsigned char c = (unsigned char)result->ascii[i];
-      if (c == '"' || c == '\\') json[out++] = '\\';
-      if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
-      else if (c != '\r' && c >= 0x20) json[out++] = (char)c;
+      if (c == '"' || c == '\\') { json[out++] = '\\'; json[out++] = (char)c; }
+      else if (c == '\n') { json[out++] = '\\'; json[out++] = 'n'; }
+      else if (c < 0x20) out += (size_t)safe_snprintf(json + out, cap - out, "\\u%04x", c);
+      else json[out++] = (char)c;
     }
     out += (size_t)safe_snprintf(json + out, cap - out, "\"}");
     (void)http_response_set_header(response, "Content-Type", "application/json");
@@ -115,10 +116,11 @@ static void api_render_complete(http_renderer_job_t *job, const http_render_resu
   (void)result;
   (void)user_data;
   api_render_job_t *pending = job->user_data;
+  api_server_t *server = pending ? pending->server : user_data;
   if (pending) {
     atomic_store_bool(&pending->completed, true);
-    (void)http_server_wakeup(pending->server->http);
   }
+  if (server) (void)http_server_wakeup(server->http);
 }
 
 static void api_render_error(http_renderer_job_t *job, asciichat_error_t error, void *user_data) {
@@ -185,6 +187,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
     api_finish(response, 404);
     return;
   }
+  if (!strcmp(info->path, "/health")) { api_finish(response, 405); return; }
   if (strcmp(info->method, "POST")) {
     api_finish(response, 405);
     return;
@@ -208,6 +211,16 @@ static void api_request(http_request_t *request, http_response_t *response, void
     const char *boundary = strstr(content_type, "boundary=");
     if (!boundary || !boundary[9]) { api_finish(response, 400); return; }
     boundary += 9;
+    char boundary_value[256];
+    size_t boundary_len = strcspn(boundary, ";\r\n");
+    if (boundary_len >= sizeof(boundary_value)) { api_finish(response, 400); return; }
+    memcpy(boundary_value, boundary, boundary_len); boundary_value[boundary_len] = 0;
+    if (boundary_value[0] == '"') {
+      size_t n = strlen(boundary_value);
+      if (n < 2 || boundary_value[n - 1] != '"') { api_finish(response, 400); return; }
+      memmove(boundary_value, boundary_value + 1, n - 2); boundary_value[n - 2] = 0;
+    }
+    boundary = boundary_value;
     char marker[256];
     int marker_len = safe_snprintf(marker, sizeof(marker), "--%s", boundary);
     if (marker_len <= 0 || (size_t)marker_len >= sizeof(marker)) { api_finish(response, 400); return; }
