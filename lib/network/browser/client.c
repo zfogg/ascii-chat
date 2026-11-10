@@ -573,6 +573,7 @@ asciichat_error_t browser_client_acds_handshake_begin(browser_transport_t *trans
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
   state->crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_HANDSHAKE);
   return acds_handshake_begin(browser_transport_base(transport), mode);
 }
 asciichat_error_t browser_client_acds_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
@@ -618,7 +619,7 @@ asciichat_error_t browser_client_handshake_begin(browser_transport_t *transport)
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
-  browser_transport_set_state(transport, BROWSER_TRANSPORT_CONNECTING);
+  browser_transport_set_state(transport, BROWSER_TRANSPORT_HANDSHAKE);
   state->version_received = false;
   state->crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode);
   return acds_handshake_begin(browser_transport_base(transport), state->crypto_mode);

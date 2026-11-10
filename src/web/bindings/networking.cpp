@@ -187,7 +187,7 @@ public:
       const int code = discovery
                            ? static_cast<int>(browser_client_acds_handshake_begin(transport_.get(), event["mode"].as<uint8_t>()))
                            : static_cast<int>(browser_client_handshake_begin(transport_.get()));
-      return result(code);
+      return code ? result(code) : drainOutputs();
     }
     if (type == "configure-crypto") {
       auto pass = binding_copy_input(event["password"]);
@@ -274,7 +274,7 @@ public:
                                                                     payload, payload_size));
       if (!bytes.empty())
         sodium_memzero(bytes.data(), bytes.size());
-      return result(code);
+      return code ? result(code) : drainOutputs();
     }
     if (type == "encode-packet") {
       const unsigned packet_type = event["packetType"].as<unsigned>();
@@ -403,10 +403,10 @@ public:
     }
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser client event: %s", type.c_str()));
   }
-  emscripten::val drainOutputs() const {
+  emscripten::val drainOutputs() {
     emscripten::val response = result(0);
     int output_code = 0;
-    response.set("outputs", quic_outputs(&output_code));
+    response.set("outputs", browser_outputs(&output_code));
     if (!response["code"].as<int>() && output_code)
       response.set("code", output_code);
     response.set("epoch", browser_transport_security_epoch(transport_.get()));
@@ -448,24 +448,34 @@ private:
     }
     return response;
   }
-  emscripten::val quic_outputs(int *output_code) const {
+  emscripten::val browser_outputs(int *output_code) {
     emscripten::val outputs = emscripten::val::array();
-    for (unsigned index = 0; index < 32; ++index) {
-      uint8_t data[256];
-      size_t length = 0;
-      uint32_t flow = 0;
-      const int code = browser_transport_security_output(transport_.get(), data, sizeof(data), &length, &flow);
-      if (code) {
-        if (output_code)
-          *output_code = code;
-        break;
-      }
-      if (!length)
-        break;
+    while (browser_transport_output_size(transport_.get())) {
+      const size_t length = browser_transport_output_size(transport_.get());
       emscripten::val output = emscripten::val::object();
-      output.set("flow", flow);
-      output.set("packet", binding_copy_output(data, length));
+      output.set("flow", 0);
+      output.set("packet", binding_copy_output(browser_transport_output_data(transport_.get()), length));
       outputs.call<void>("push", output);
+      browser_transport_output_pop(transport_.get());
+    }
+    if (browser_transport_base(transport_.get())->crypto_ctx) {
+      for (unsigned index = 0; index < 32; ++index) {
+        uint8_t data[256];
+        size_t length = 0;
+        uint32_t flow = 0;
+        const int code = browser_transport_security_output(transport_.get(), data, sizeof(data), &length, &flow);
+        if (code) {
+          if (output_code)
+            *output_code = code;
+          break;
+        }
+        if (!length)
+          break;
+        emscripten::val output = emscripten::val::object();
+        output.set("flow", flow);
+        output.set("packet", binding_copy_output(data, length));
+        outputs.call<void>("push", output);
+      }
     }
     return outputs;
   }
