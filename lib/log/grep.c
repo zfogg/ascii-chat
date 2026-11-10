@@ -22,7 +22,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/search.h>
 
 #include <string.h>

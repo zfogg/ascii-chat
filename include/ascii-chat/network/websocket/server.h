@@ -54,7 +54,6 @@
 #include <stdbool.h>
 #include <ascii-chat/atomic.h>
 #include "../../common.h"
-#include "../../platform/abstraction.h"
 #include "../../thread_pool.h"
 #include <libwebsockets.h>
 

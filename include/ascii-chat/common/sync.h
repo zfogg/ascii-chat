@@ -311,10 +311,4 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 // Platform Initialization
 // ============================================================================
 
-// Call this once at program startup
-asciichat_error_t platform_init(void);
-
-// Call this at program exit
-void platform_destroy(void);
-
 /** @} */

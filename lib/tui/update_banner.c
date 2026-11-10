@@ -37,10 +37,10 @@
 #include "session/display.h"
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>

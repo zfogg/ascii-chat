@@ -94,7 +94,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/symbols.h>
+#include <libplatform/symbols.h>
 #include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>

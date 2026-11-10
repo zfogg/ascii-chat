@@ -18,7 +18,7 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/process.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/time.h>

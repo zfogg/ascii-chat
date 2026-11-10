@@ -13,9 +13,9 @@
 
 #include <ascii-chat/debug/named.h>
 #include "ascii-chat/debug/named.h"
-#include "ascii-chat/platform/rwlock.h"
-#include "ascii-chat/platform/string.h"
-#include "ascii-chat/platform/thread.h"
+#include "libplatform/rwlock.h"
+#include <libplatform/util/string.h>
+#include "libplatform/thread.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/util/path.h"

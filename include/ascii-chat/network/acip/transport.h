@@ -82,7 +82,7 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../crypto/crypto.h"
-#include "../../platform/socket.h"
+#include "../../os/socket.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>

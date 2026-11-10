@@ -84,7 +84,7 @@
 #pragma once
 
 #include "../options/options.h" // Provides options_t struct definition
-#include "../platform/abstraction.h"
+#include <libplatform/mutex.h>
 #include <stdbool.h>
 #include <ascii-chat/atomic.h>
 

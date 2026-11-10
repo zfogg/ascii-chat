@@ -12,7 +12,7 @@
 
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/mmap.h>
+#include <ascii-chat/os/mmap.h>
 #include <libplatform/system.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/util/time.h>

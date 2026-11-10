@@ -12,7 +12,7 @@
 #include <ascii-chat/util/time.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/cpu.h>
 #include <time.h>
 #include <math.h>
 #include <ascii-chat/atomic.h>

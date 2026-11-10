@@ -12,8 +12,8 @@
 #include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/socket.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/crypto.h>

@@ -28,7 +28,7 @@
 
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/debug_helpers.h>
-#include <ascii-chat/os/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>

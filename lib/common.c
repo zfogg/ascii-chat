@@ -17,7 +17,7 @@
 #include <libplatform/system.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/asan.h>
 #include <ascii-chat/buffer.h>
@@ -35,9 +35,9 @@
 #include <ascii-chat/debug/named.h>         // For named_destroy()
 #include <ascii-chat/debug/atomic.h>        // For debug_atomic_shutdown()
 #include <ascii-chat/debug/memory.h>        // For debug memory reporting
-#include <ascii-chat/platform/symbols.h>    // For symbols cache init
+#include <libplatform/symbols.h>    // For symbols cache init
 #include <libplatform/terminal.h>   // For terminal_screen_cleanup
-#include <ascii-chat/platform/keyboard.h>   // For keyboard_destroy()
+#include <ascii-chat/os/keyboard.h>   // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <ascii-chat/atomic.h>

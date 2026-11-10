@@ -16,7 +16,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/lifecycle.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/rwlock.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

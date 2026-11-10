@@ -20,7 +20,7 @@
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/tui/mdns.h> // For ui_mdns_server_t struct only
 #include <ascii-chat/network/acip/acds_client.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/mdns/mdns.h>

@@ -8,7 +8,7 @@
  */
 
 #include <ascii-chat/terminal/fd/reader.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <stdlib.h>

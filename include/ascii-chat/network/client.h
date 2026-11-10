@@ -18,7 +18,7 @@
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/thread.h> // For thread_id_t
+#include <libplatform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/anim/digital_rain.h>

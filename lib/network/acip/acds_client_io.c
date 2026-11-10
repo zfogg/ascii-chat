@@ -27,7 +27,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>

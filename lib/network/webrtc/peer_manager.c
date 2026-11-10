@@ -24,7 +24,7 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/mutex.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>

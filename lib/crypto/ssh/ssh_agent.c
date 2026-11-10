@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include <ascii-chat/platform/pipe.h>
+#include <ascii-chat/os/pipe.h>
 #include <libplatform/agent.h>
 #include <ascii-chat/log/log.h>
 

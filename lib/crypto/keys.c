@@ -21,6 +21,7 @@
 #include <ascii-chat/util/url.h>                   // For url_is_valid(), url_parse()
 #include <ascii-chat/crypto/gpg/export.h>          // For gpg_get_public_key()
 #include <ascii-chat/network/http/client/client.h> // For https_get()
+#include <libplatform/filesystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

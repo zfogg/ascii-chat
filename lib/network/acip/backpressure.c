@@ -4,7 +4,7 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>

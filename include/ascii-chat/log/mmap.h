@@ -36,7 +36,7 @@
 #include <ascii-chat/atomic.h>
 #endif
 #include "../common.h"
-#include "../platform/mmap.h"
+#include "../os/mmap.h"
 
 #ifdef __cplusplus
 extern "C" {

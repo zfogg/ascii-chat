@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <libplatform/terminal.h>
 

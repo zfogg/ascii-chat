@@ -38,8 +38,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/nat/upnp.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/socket.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 

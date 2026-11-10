@@ -72,7 +72,7 @@
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
@@ -90,7 +90,7 @@
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/splash.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>

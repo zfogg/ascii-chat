@@ -52,7 +52,7 @@ int terminal_choose_log_fd(int level);
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/terminal/ansi.h>

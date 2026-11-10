@@ -32,7 +32,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/cond.h>
 #include <stdatomic.h>
 #include <libplatform/lifecycle.h>
@@ -44,7 +44,7 @@
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>

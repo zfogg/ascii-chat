@@ -29,7 +29,7 @@
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/platform/clipboard.h>
+#include <ascii-chat/os/clipboard.h>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/log/search.h>

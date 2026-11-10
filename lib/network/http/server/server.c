@@ -4,7 +4,7 @@
 #include "http2.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/util/string.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/otel.h>

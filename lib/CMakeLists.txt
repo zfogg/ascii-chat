@@ -9,8 +9,15 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
+set(_LIBPLATFORM_BUILD_TESTS ${LIBPLATFORM_BUILD_TESTS})
+set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL "Disable standalone libplatform tests in ascii-chat" FORCE)
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
                  ${CMAKE_BINARY_DIR}/deps/libplatform)
+if(DEFINED _LIBPLATFORM_BUILD_TESTS)
+    set(LIBPLATFORM_BUILD_TESTS ${_LIBPLATFORM_BUILD_TESTS})
+else()
+    unset(LIBPLATFORM_BUILD_TESTS)
+endif()
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
 
@@ -188,7 +195,6 @@ endif()
 # Named registry, mutex tracking, backtrace, and sync always included (required for all builds)
 # These provide debug implementations for DEBUG builds, stubs for RELEASE builds
 list(APPEND CORE_SRCS
-    ${LIB_DIR}/debug/named.c
     ${LIB_DIR}/debug/mutex.c
     ${LIB_DIR}/debug/backtrace.c
     ${LIB_DIR}/debug/sync.c
@@ -415,7 +421,6 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
-target_link_libraries(ascii-chat-platform PRIVATE libplatform::libplatform)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-platform PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
@@ -971,6 +976,7 @@ elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" 
 endif()
 if(_build_shared_lib)
 add_library(ascii-chat-shared SHARED
+        $<TARGET_OBJECTS:libplatform-objects>
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
         $<TARGET_OBJECTS:ascii-chat-platform>
@@ -985,7 +991,6 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE libplatform::libplatform)
     target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
@@ -1104,6 +1109,7 @@ add_library(ascii-chat-shared SHARED
     # Use a wrapper script to collect object files and generate .def
     # Object files are in CMakeFiles/<target>.dir/ directories
     set(MODULE_TARGETS
+        libplatform-objects
         ascii-chat-util
         ascii-chat-data-structures
         ascii-chat-platform
@@ -1515,11 +1521,6 @@ endif()
 # Note: log_debug/log_info/log_error are macros that call log_msg
 set(ASCIICHAT_REQUIRED_SYMBOLS
     "log_msg"
-    "platform_thread_create"
-    "thread_join"
-    "mutex_init"
-    "mutex_lock"
-    "mutex_unlock"
     "send_packet"
     "receive_packet"
     "crypto_init"
@@ -1589,11 +1590,6 @@ endif()  # End if(_build_shared_lib) - closes shared library configuration
 if(NOT ASCIICHAT_REQUIRED_SYMBOLS)
     set(ASCIICHAT_REQUIRED_SYMBOLS
         "log_msg"
-        "platform_thread_create"
-        "thread_join"
-        "mutex_init"
-        "mutex_lock"
-        "mutex_unlock"
         "send_packet"
         "receive_packet"
         "crypto_init"

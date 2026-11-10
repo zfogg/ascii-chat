@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <ascii-chat/asciichat_errno.h>
+
 #include <stdarg.h>
 #include <ascii-chat/atomic.h>
 // Use atomic.h API for all platforms (C and C++)
@@ -46,7 +48,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "../platform/socket.h"
+#include <libplatform/socket.h>
 #include <libplatform/system.h>
 
 /* Forward declarations */

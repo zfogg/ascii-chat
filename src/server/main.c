@@ -78,7 +78,7 @@
 #include <fcntl.h>  // For open() and O_WRONLY
 #endif
 
-#include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
+#include <ascii-chat/os/network.h> // Consolidates platform-specific network headers
 #include <ascii-chat/app_callbacks.h>
 
 #include <errno.h>
@@ -106,9 +106,9 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -130,7 +130,7 @@
 #include "stream.h"
 #include "stats.h"
 #include <libplatform/util/string.h>
-#include <ascii-chat/platform/symbols.h>
+#include <libplatform/symbols.h>
 #include <libplatform/system.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/handshake/server.h>
@@ -152,7 +152,7 @@
 #include <ascii-chat/tui/status.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>

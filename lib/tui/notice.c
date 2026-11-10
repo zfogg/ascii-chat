@@ -2,9 +2,9 @@
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/invitation.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <stdatomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>

@@ -13,13 +13,13 @@
 #include "capture.h"
 #include "display.h"
 #include "render.h"
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <ascii-chat/os/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>

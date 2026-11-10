@@ -21,7 +21,7 @@
 
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/debug/named.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>

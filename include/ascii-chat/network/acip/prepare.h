@@ -5,7 +5,7 @@
 #include <ascii-chat/crypto/record.h>
 #include <ascii-chat/network/acip/traffic.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
 /**
  * A borrowed packet description. Neither the vector array nor its bytes are owned.

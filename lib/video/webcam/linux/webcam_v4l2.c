@@ -34,7 +34,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <libplatform/lifecycle.h>

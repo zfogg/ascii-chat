@@ -11,7 +11,7 @@
 #define FFMPEG_STDOUT_AVIO_BUFFER_SIZE 32768
 
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>

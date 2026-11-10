@@ -34,8 +34,8 @@
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/schema.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/audio/audio.h>

@@ -21,7 +21,7 @@
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/builder.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/util/path.h>

@@ -14,6 +14,7 @@
 #include <ascii-chat/options/manpage/parser.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <libplatform/util/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

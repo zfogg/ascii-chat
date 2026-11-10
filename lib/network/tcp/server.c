@@ -23,8 +23,8 @@
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/socket.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>

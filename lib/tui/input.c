@@ -31,8 +31,8 @@
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/update_banner.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/clipboard.h>
+#include <ascii-chat/os/question.h>
+#include <ascii-chat/os/clipboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>

@@ -75,7 +75,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "platform/mutex.h"
+#include <libplatform/mutex.h>
 #include "util/magic.h"
 
 /**

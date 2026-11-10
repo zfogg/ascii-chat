@@ -8,7 +8,7 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

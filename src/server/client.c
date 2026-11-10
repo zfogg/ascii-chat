@@ -63,7 +63,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/util/string.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/log.h>
 #include <ascii-chat/log/io.h>

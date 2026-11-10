@@ -77,6 +77,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <libplatform/thread.h>
 
 // Forward declaration

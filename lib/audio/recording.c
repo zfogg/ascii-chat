@@ -1,6 +1,6 @@
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>

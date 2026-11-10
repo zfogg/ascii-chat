@@ -7,11 +7,11 @@
  */
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/platform/font.h>
+#include <ascii-chat/os/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <ascii-chat/tui/render_progress.h>

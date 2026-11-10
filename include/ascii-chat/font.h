@@ -6,7 +6,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/font.h>
+#include <ascii-chat/os/font.h>
 
 // Bundled fonts — generated from TTF files at build time.
 // Matrix Resurrected font: selected explicitly with --render-font matrix or automatically by --matrix.

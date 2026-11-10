@@ -4,7 +4,7 @@
 #include "tls.h"
 #include <ascii-chat/network/acip/security.h>
 
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ngtcp2/ngtcp2.h>
 
 /* Private serialized connection engine. An endpoint owns and drives each

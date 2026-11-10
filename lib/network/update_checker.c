@@ -15,8 +15,8 @@
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/network.h>
+#include <libplatform/socket.h>
+#include <ascii-chat/os/network.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/path.h>

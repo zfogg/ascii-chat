@@ -18,7 +18,7 @@
 #include <ascii-chat/debug/named.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <stdatomic.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 
 /* ============================================================================
  * Global State

@@ -20,6 +20,7 @@
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>

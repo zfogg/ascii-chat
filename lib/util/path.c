@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 
 /** Retained for callers that used to release thread-local path resources. */
 void path_cleanup_thread_locals(void) {}

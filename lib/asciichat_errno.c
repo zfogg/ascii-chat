@@ -14,9 +14,9 @@
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/backtrace.h>
-#include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/errno.h>
+#include <libplatform/backtrace.h>
+#include <libplatform/thread.h>
+#include <ascii-chat/os/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
 #include <stdarg.h>

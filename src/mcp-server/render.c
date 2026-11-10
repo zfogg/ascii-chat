@@ -3,7 +3,7 @@
 #define MCP_RENDER_ENV_CAPACITY 16
 
 #include "mcp.h"
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <uv.h>
 #include <signal.h>

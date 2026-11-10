@@ -48,7 +48,7 @@
 #include <unistd.h>
 
 #ifdef _WIN32
-#include <ascii-chat/platform/windows_compat.h>
+#include <libplatform/windows_compat.h>
 #endif
 
 #include <errno.h>

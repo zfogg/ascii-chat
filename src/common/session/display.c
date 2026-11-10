@@ -55,7 +55,7 @@
 #include <ascii-chat/video/anim/fft.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii/neon.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/cpu.h>
 
 #include <string.h>
 #include <stdio.h>

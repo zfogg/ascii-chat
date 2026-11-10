@@ -63,7 +63,7 @@
 
 #include "../audio/mixer.h"
 #include "../audio/processor.h"
-#include "../platform/mutex.h"
+#include <libplatform/mutex.h>
 
 // Forward declarations for SpeexDSP types
 typedef struct SpeexPreprocessState_ SpeexPreprocessState;
