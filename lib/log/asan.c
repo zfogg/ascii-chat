@@ -65,11 +65,10 @@ static void asan_error_report_callback(const char *report) {
     return;
   }
 
-  // Feed the entire report through the logging system
-  // This respects --log-file, --grep, and other logging filters
-  log_fatal("AddressSanitizer detected memory error:\n%s", report);
-
-  // Note: log_fatal will abort the process, so we won't return from here
+  // Keep the report out of the terminal stream. The sanitizer runtime owns
+  // process termination; using log_fatal here would emit a terminal notice
+  // while the renderer is writing frames and would corrupt the art output.
+  log_file_msg("AddressSanitizer detected memory error:\n%s", report);
 }
 
 /**
