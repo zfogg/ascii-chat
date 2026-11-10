@@ -64,6 +64,19 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
       bytes.set(payload, 22);
       return { code: 0, state: ConnectionState.CONNECTED, bytes };
     }
+    if (event["type"] === "send-packet") {
+      const payload = event["payload"] as Uint8Array;
+      const bytes = new Uint8Array(22 + payload.length);
+      new DataView(bytes.buffer).setUint16(
+        8,
+        event["encrypt"]
+          ? PacketType.ENCRYPTED
+          : (event["packetType"] as number),
+        false,
+      );
+      bytes.set(payload, 22);
+      return { code: 0, state: ConnectionState.CONNECTED, bytes };
+    }
     if (event["type"] === "crypt")
       return {
         code: 0,
@@ -117,7 +130,7 @@ describe("WebSocket encryption defaults", () => {
         .mocked(processClientEvent)
         .mock.calls.filter(
           ([event]) =>
-            event["type"] === "secure-packet" && event["encrypt"] === true,
+            event["type"] === "send-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(encrypted ? 1 : 0);
     expect(new DataView(sockets.sent[0]!.buffer).getUint16(8, false)).toBe(
@@ -139,7 +152,7 @@ describe("WebSocket encryption defaults", () => {
         .mocked(processClientEvent)
         .mock.calls.filter(
           ([event]) =>
-            event["type"] === "secure-packet" && event["encrypt"] === true,
+            event["type"] === "send-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(1);
     connection.disconnect();
@@ -297,7 +310,7 @@ describe("authentication without payload encryption", () => {
         .mocked(processClientEvent)
         .mock.calls.filter(
           ([event]) =>
-            event["type"] === "secure-packet" && event["encrypt"] === true,
+            event["type"] === "send-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(0);
     connection.disconnect();

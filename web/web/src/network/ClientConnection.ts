@@ -383,147 +383,38 @@ export class ClientConnection {
     }
 
     try {
-      // Parse packet header
-      const parsedResult = processClientEvent({
-        type: "receive-packet",
+      const packetResult = processClientEvent({
+        type: "receive-transport-packet",
         packet: rawPacket,
+        discovery: Boolean(this.options.discoveryHandshake),
       });
-      if (parsedResult.code)
-        throwWasmError(parsedResult.code, "Packet parse failed");
-      if (!parsedResult.packet)
-        throw new Error("Packet parse returned no packet");
-      const parsed = parsedResult.packet;
-
-      // Extract payload (skip header)
-      const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
-      const payload = rawPacket.slice(HEADER_SIZE);
-
-      if (parsed.type === PacketType.ERROR_MESSAGE) {
-        this.handleRemoteError(payload);
-        return;
-      }
-
-      if (this.transportState !== ConnectionState.CONNECTED) {
-        const handshake = processClientEvent({
-          type: "receive-handshake-packet",
-          discovery: Boolean(this.options.discoveryHandshake),
-          payload: rawPacket,
-        });
-        if (handshake.code)
-          throwWasmError(handshake.code, "Handshake rejected");
-        for (const { packet } of handshake.outputs ?? [])
-          this.socket?.send(packet);
-        const next = handshake.state;
+      if (packetResult.code)
+        throwWasmError(packetResult.code, "Packet processing failed");
+      for (const { packet } of packetResult.outputs ?? [])
+        this.socket?.send(packet);
+      const next = packetResult.state;
+      if (next !== undefined && next !== this.transportState) {
         if (next === ConnectionState.CONNECTED) {
           this.wasEverConnected = true;
           this.transportState = ConnectionState.CONNECTED;
           setNetworkErrorReporter(this.reportToServer);
         }
         this.onStateChangeCallback?.(next);
-        return;
       }
-
-      // For non-handshake packets during handshake, log a warning
-      const state = this.getState();
-      if (state !== ConnectionState.CONNECTED) {
-        // console.error(
-        //   `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state
-        //   ${ConnectionState[state]} (${state}) - ignoring`,
-        // );
-        return;
-      }
-
-      // Handle PACKET_TYPE_ENCRYPTED: decrypt to get inner packet, then process
-      if (parsed.type === PacketType.ENCRYPTED) {
-        // console.log(
-        //   `[ClientConnection] ========== ENCRYPTED PACKET ==========`,
-        // );
-        // console.log(
-        //   `[ClientConnection] Encrypted payload size: ${payload.length} bytes`,
-        // );
-        try {
-          // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
-          const decryptResult = processClientEvent({
-            type: "secure-packet",
-            encrypt: false,
-            packet: payload,
-          });
-          if (decryptResult.code || !decryptResult.bytes)
-            throwWasmError(decryptResult.code, "Decryption failed");
-          const plaintext = new Uint8Array(decryptResult.bytes);
-          if (!plaintext.length) return;
-          // console.log(
-          //   `[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`,
-          // );
-          // console.error(
-          //   `[ClientConnection] Decrypted ENCRYPTED packet, inner length: ${plaintext.length}`,
-          // );
-
-          // Parse the inner packet header
-          const innerParsedResult = processClientEvent({
-            type: "receive-packet",
-            packet: plaintext,
-          });
-          if (innerParsedResult.code)
-            throwWasmError(innerParsedResult.code, "Inner packet parse failed");
-          if (!innerParsedResult.packet)
-            throw new Error("Inner packet parse returned no packet");
-          const innerParsed = innerParsedResult.packet;
-          // console.log(
-          //   `[ClientConnection] Inner packet type: ${innerParsed.type}`,
-          // );
-          // console.log(
-          //   `[ClientConnection] Inner packet payload size: ${innerParsed.length}`,
-          // );
-          // console.error(
-          //   `[ClientConnection] Inner packet: type=${innerParsed.type} (${innerName}) len=${innerParsed.length}`,
-          // );
-
-          // Extract inner payload (skip inner header)
-          const innerPayload = plaintext.slice(HEADER_SIZE);
-          if (innerParsed.type === PacketType.ERROR_MESSAGE) {
-            this.handleRemoteError(innerPayload);
-            return;
-          }
-          // console.log(
-          //   `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
-          // );
-
-          // Call user callback with the decrypted inner packet
-          this.onPacketCallback?.(innerParsed, innerPayload);
-
-          // if (innerParsed.type === PacketType.ASCII_FRAME) {
-          //   console.log(
-          //     `[ClientConnection] ========== ASCII_FRAME CALLBACK COMPLETE ==========`,
-          //   );
-          // }
-        } catch (error) {
-          console.error(
-            "[ClientConnection] ========== DECRYPTION ERROR ==========",
-          );
-          console.error(
-            "[ClientConnection] Failed to decrypt ENCRYPTED packet:",
-            error,
-          );
-          console.error(
-            "[ClientConnection] Error stack:",
-            error instanceof Error ? error.stack : String(error),
-          );
-          console.error("[ClientConnection] ========== END ERROR ==========");
-          throw error;
-        }
-        return;
-      }
-
-      if (this.usesApplicationEncryption)
-        throw new Error("Plaintext application packet on encrypted connection");
-
-      // Auth-only and TLS-only sessions send plaintext ACIP payloads.
-      this.onPacketCallback?.(parsed, payload);
+      if (!packetResult.packet || !packetResult.payload) return;
+      const parsed = packetResult.packet;
+      const payload = new Uint8Array(packetResult.payload);
+      if (parsed.type === PacketType.ERROR_MESSAGE)
+        this.handleRemoteError(payload);
+      else this.onPacketCallback?.(parsed, payload);
+      return;
     } catch (error) {
       console.error("[ClientConnection] Failed to handle packet:", error);
       if (isReportedWasmError(error)) forwardJavaScriptError(error);
-      else reportJavaScriptError(error);
+      else
+        reportJavaScriptError(
+          error instanceof Error ? error : new Error(String(error)),
+        );
       if (!this.isUserDisconnecting) {
         this.socket?.close();
         this.transportState = ConnectionState.ERROR;
@@ -612,52 +503,17 @@ export class ClientConnection {
       const state = this.getState();
 
       if (state === ConnectionState.CONNECTED) {
-        if (!this.usesApplicationEncryption) {
-          const plainResult = processClientEvent({
-            type: "encode-packet",
-            packetType,
-            payload,
-            clientId: 0,
-          });
-          if (plainResult.code || !plainResult.bytes)
-            throwWasmError(plainResult.code, "Serialization failed");
-          this.socket.send(plainResult.bytes);
-          return;
-        }
-        // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
-        // 1. Build plaintext packet (header + payload)
-        const plaintextResult = processClientEvent({
-          type: "encode-packet",
+        const packetResult = processClientEvent({
+          type: "send-packet",
           packetType,
           payload,
           clientId: 0,
+          encrypt: this.usesApplicationEncryption,
         });
-        if (plaintextResult.code || !plaintextResult.bytes)
-          throwWasmError(plaintextResult.code, "Serialization failed");
-        const plaintextPacket = plaintextResult.bytes;
-
-        // 2. Encrypt the entire plaintext packet
-        const encryptResult = processClientEvent({
-          type: "secure-packet",
-          encrypt: true,
-          packet: plaintextPacket,
-        });
-        if (encryptResult.code || !encryptResult.bytes)
-          throwWasmError(encryptResult.code, "Encryption failed");
-        const ciphertext = encryptResult.bytes;
-
-        // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
-        const encryptedResult = processClientEvent({
-          type: "encode-packet",
-          packetType: PacketType.ENCRYPTED,
-          payload: ciphertext,
-          clientId: 0,
-        });
-        if (encryptedResult.code || !encryptedResult.bytes)
-          throwWasmError(encryptedResult.code, "Serialization failed");
-        const encryptedPacket = encryptedResult.bytes;
-
-        this.socket.send(encryptedPacket);
+        if (packetResult.code || !packetResult.bytes)
+          throwWasmError(packetResult.code, "Packet send failed");
+        this.socket.send(packetResult.bytes);
+        return;
       } else if (state === ConnectionState.HANDSHAKE) {
         // During handshake, send unencrypted ACIP packet
         // Delegate to sendUnencryptedAcipPacket for consistent handling

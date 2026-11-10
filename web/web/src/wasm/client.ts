@@ -546,6 +546,7 @@ export type ClientEventResult = {
   message?: string;
   retryable?: boolean;
   bytes?: Uint8Array;
+  payload?: Uint8Array;
   packet?: ParsedPacket;
   outputs?: { flow: 0 | 1 | 2; packet: Uint8Array }[];
   epoch?: number;

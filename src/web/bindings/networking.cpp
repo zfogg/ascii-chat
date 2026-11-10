@@ -255,6 +255,96 @@ public:
       }
       return response;
     }
+    if (type == "send-packet") {
+      const unsigned packet_type = event["packetType"].as<unsigned>();
+      const unsigned client_id = event["clientId"].isUndefined() ? 0 : event["clientId"].as<unsigned>();
+      const bool encrypt = !event["encrypt"].isUndefined() && event["encrypt"].as<bool>();
+      auto input = binding_copy_input(event["payload"]);
+      std::vector<uint8_t> plaintext(input.size() + sizeof(packet_header_t) + 256);
+      size_t plaintext_length = 0;
+      int code = packet_type > UINT16_MAX
+                     ? SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet type: %u", packet_type)
+                     : packet_encode(static_cast<packet_type_t>(packet_type), input.empty() ? nullptr : input.data(),
+                                     input.size(), client_id, plaintext.data(), plaintext.size(), &plaintext_length);
+      if (!code && encrypt) {
+        std::vector<uint8_t> ciphertext(plaintext_length + 128);
+        size_t ciphertext_length = 0;
+        code = browser_client_encrypt_packet(transport_.get(), plaintext.data(), plaintext_length, ciphertext.data(),
+                                             ciphertext.size(), &ciphertext_length);
+        if (!code) {
+          std::vector<uint8_t> wrapped(ciphertext_length + sizeof(packet_header_t) + 256);
+          size_t wrapped_length = 0;
+          code = packet_encode(PACKET_TYPE_ENCRYPTED, ciphertext.data(), ciphertext_length, client_id, wrapped.data(),
+                               wrapped.size(), &wrapped_length);
+          auto response = result(code);
+          response.set("bytes", binding_copy_output(wrapped.data(), code ? 0 : wrapped_length));
+          return response;
+        }
+      }
+      auto response = result(code);
+      response.set("bytes", binding_copy_output(plaintext.data(), code || encrypt ? 0 : plaintext_length));
+      return response;
+    }
+    if (type == "receive-transport-packet") {
+      auto input = binding_copy_input(event["packet"]);
+      packet_header_t header{};
+      int code = input.size() < sizeof(packet_header_t)
+                     ? SET_ERRNO(ERROR_INVALID_PARAM, "Client packet is shorter than its header")
+                     : packet_validate(input.data(), input.size(), 0, &header);
+      if (code) {
+        if (!input.empty())
+          sodium_memzero(input.data(), input.size());
+        return result(code);
+      }
+      const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
+      const packet_type_t outer_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
+      const size_t header_size = sizeof(packet_header_t);
+      if (!browser_client_ready(transport_.get())) {
+        code = discovery ? browser_client_acds_handshake_receive(transport_.get(), outer_type,
+                                                                 input.data() + header_size, input.size() - header_size)
+                         : browser_client_handshake_receive(transport_.get(), outer_type, input.data() + header_size,
+                                                            input.size() - header_size);
+        if (!input.empty())
+          sodium_memzero(input.data(), input.size());
+        return code ? result(code) : drainOutputs();
+      }
+      std::vector<uint8_t> packet(input.begin(), input.end());
+      if (outer_type == PACKET_TYPE_ENCRYPTED) {
+        std::vector<uint8_t> plaintext(input.size() - header_size + 128);
+        size_t plaintext_length = 0;
+        code = browser_client_decrypt_packet(transport_.get(), input.data() + header_size, input.size() - header_size,
+                                             plaintext.data(), plaintext.size(), &plaintext_length);
+        if (!code) {
+          packet.assign(plaintext.begin(), plaintext.begin() + plaintext_length);
+          if (packet.size() < header_size)
+            code = SET_ERRNO(ERROR_INVALID_PARAM, "Decrypted client packet is shorter than its header");
+          else
+            code = packet_validate(packet.data(), packet.size(), 0, &header);
+        }
+      }
+      if (code) {
+        if (!input.empty())
+          sodium_memzero(input.data(), input.size());
+        return result(code);
+      }
+      const packet_type_t packet_type = static_cast<packet_type_t>(NET_TO_HOST_U16(header.type));
+      auto response = result(0);
+      response.set("packet", emscripten::val::object());
+      response["packet"].set("type", static_cast<unsigned>(packet_type));
+      response["packet"].set("length", NET_TO_HOST_U32(header.length));
+      response["packet"].set("client_id", NET_TO_HOST_U32(header.client_id));
+      response["packet"].set("crc32", NET_TO_HOST_U32(header.crc32));
+      response.set("encrypted", outer_type == PACKET_TYPE_ENCRYPTED);
+      response.set("kind", acip_is_media_packet(packet_type)       ? "media"
+                           : acip_is_control_packet(packet_type)   ? "control"
+                           : packet_is_handshake_type(packet_type) ? "crypto"
+                           : acip_is_message_packet(packet_type)   ? "message"
+                                                                   : "unknown");
+      response.set("payload", binding_copy_output(packet.data() + header_size, packet.size() - header_size));
+      if (!input.empty())
+        sodium_memzero(input.data(), input.size());
+      return response;
+    }
     if (type == "resolve-crypto-policy") {
       const int mode = browser_client_resolve_crypto_policy(transport_.get(), event["wss"].as<bool>(),
                                                             event["encryption"].as<int>());
