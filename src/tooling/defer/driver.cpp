@@ -582,16 +582,15 @@ static FileDependencies transform_with_header_overlay(ClangIndex &index, const f
   return dependencies;
 }
 
-FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, const fs::path &output_path,
-                                const DriverOptions &options) {
-  const auto source = options.header_overlay.empty() ? fs::weakly_canonical(fs::absolute(source_path))
-                                                     : fs::absolute(source_path).lexically_normal();
-  const auto output = fs::weakly_canonical(fs::absolute(output_path));
-  if (source == output || (fs::exists(source) && fs::exists(output) && fs::equivalent(source, output)))
-    throw std::runtime_error("output must not overwrite the input source");
+TransformResult transform_content(ClangIndex &index, const fs::path &source_path, const fs::path &output_path,
+                                  std::string content, const DriverOptions &options) {
+  if (!options.header_overlay.empty())
+    throw std::runtime_error("streaming does not support header overlays");
+  const auto source = fs::weakly_canonical(fs::absolute(source_path));
+  const auto output = output_path.empty() ? fs::path{} : fs::weakly_canonical(fs::absolute(output_path));
   auto arguments = options.compilation_database.empty()
                        ? options.clang_arguments
-                       : compile_arguments(options.compilation_database, output, source);
+                       : compile_arguments(options.compilation_database, output.empty() ? source : output, source);
   const bool objc = is_objc_source(source, arguments);
   if (objc)
     require_objc_exceptions(arguments);
@@ -599,11 +598,8 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
     raw.push_back(arg.c_str());
-  auto content = read_file(source);
   const auto source_name = source.u8string();
   if (is_cpp_source(source, arguments)) {
-    if (!options.header_overlay.empty())
-      throw std::runtime_error("C++ uses native scope guards and does not require a header overlay");
     CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
     TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1, false);
     const auto diagnostics = unit.errors();
@@ -618,7 +614,8 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
               fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
         },
         &dependencies.inputs);
-    check_output_dependencies(dependencies);
+    if (!output.empty())
+      check_output_dependencies(dependencies);
     std::string escaped;
     for (char c : source_name) {
       if (c == '\\' || c == '"')
@@ -630,12 +627,8 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
       content = content.substr(0, 3) + directive + content.substr(3);
     else
       content = directive + content;
-    write_if_changed(output, content);
-    return dependencies;
+    return {std::move(dependencies), std::move(content)};
   }
-  if (!options.header_overlay.empty())
-    return transform_with_header_overlay(index, source, output, raw, options.header_overlay, options.protected_paths,
-                                         objc);
   auto unit = parse_wrapped(index.get(), source_name, raw, content, options.preamble);
   auto transformed = transform(unit->get(), source.u8string(), content, objc);
   FileDependencies dependencies{output, {source.u8string()}};
@@ -646,7 +639,8 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
         files->insert(fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
       },
       &dependencies.inputs);
-  check_output_dependencies(dependencies);
+  if (!output.empty())
+    check_output_dependencies(dependencies);
   if (options.preamble) {
     unit->reparse(source_name, transformed);
     const auto diagnostics = unit->errors();
@@ -656,8 +650,35 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   } else {
     validate_generated(index.get(), source_name, raw, transformed, objc);
   }
-  write_if_changed(output, transformed);
-  return dependencies;
+  return {std::move(dependencies), std::move(transformed)};
+}
+
+FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, const fs::path &output_path,
+                                const DriverOptions &options) {
+  const auto source = options.header_overlay.empty() ? fs::weakly_canonical(fs::absolute(source_path))
+                                                     : fs::absolute(source_path).lexically_normal();
+  const auto output = fs::weakly_canonical(fs::absolute(output_path));
+  if (source == output || (fs::exists(source) && fs::exists(output) && fs::equivalent(source, output)))
+    throw std::runtime_error("output must not overwrite the input source");
+  if (!options.header_overlay.empty()) {
+    auto arguments = options.compilation_database.empty()
+                         ? options.clang_arguments
+                         : compile_arguments(options.compilation_database, output, source);
+    const bool objc = is_objc_source(source, arguments);
+    if (objc)
+      require_objc_exceptions(arguments);
+    if (is_cpp_source(source, arguments))
+      throw std::runtime_error("C++ uses native scope guards and does not require a header overlay");
+    arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+    std::vector<const char *> raw;
+    for (const auto &arg : arguments)
+      raw.push_back(arg.c_str());
+    return transform_with_header_overlay(index, source, output, raw, options.header_overlay, options.protected_paths,
+                                         objc);
+  }
+  auto result = transform_content(index, source, output, read_file(source), options);
+  write_if_changed(output, result.contents);
+  return std::move(result.dependencies);
 }
 
 std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigned line, const DriverOptions &options,
