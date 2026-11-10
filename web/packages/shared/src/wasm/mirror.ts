@@ -1,5 +1,5 @@
 import type { MainModule } from "./generated/mirror-bindings";
-import { AsciiRenderer } from "ascii-chat";
+import { RendererCore } from "ascii-chat";
 import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -27,7 +27,7 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
-let renderer: AsciiRenderer | null = null;
+let renderer: RendererCore | null = null;
 
 function releaseFrameBinding(): void {
   renderer?.dispose();
@@ -188,7 +188,7 @@ export function convertFrameToAscii(
   // Growing the WASM heap can invalidate a view supplied by a caller.
   const input =
     rgbaData.buffer === wasmModule.HEAPU8.buffer ? rgbaData.slice() : rgbaData;
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= RendererCore.fromModule(wasmModule);
   const frame = renderer.render(
     input,
     srcWidth,
@@ -214,7 +214,7 @@ export function transformCaptureRgba(
     throw new Error("Capture input must be JavaScript-owned");
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
     throw new Error("Invalid capture dimensions");
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= RendererCore.fromModule(wasmModule);
   renderer.transform(rgba, width, height);
 }
 
@@ -232,7 +232,7 @@ export function submitAudioVisualizationSamples(
   if (!wasmModule) throw new Error("WASM module not initialized");
   const input =
     samples.buffer === wasmModule.HEAPU8.buffer ? samples.slice() : samples;
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= RendererCore.fromModule(wasmModule);
   renderer.submitAudio(input, source);
 }
 
@@ -252,7 +252,7 @@ export function renderAudioVisualization(
       fft: mode === "fft",
     });
   }
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer ??= RendererCore.fromModule(wasmModule);
   const frame = renderer.renderAudio(width, height, source);
   return frame;
 }
