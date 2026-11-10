@@ -18,7 +18,7 @@ const state = vi.hoisted(() => ({
   address: vi.fn(),
   endpoint: "",
   process: vi.fn((event: { type: string; [key: string]: any }) => {
-    if (event.type === "encode-packet") {
+    if (event.type === "encode-packet" || event.type === "send-packet") {
       const payload = event["payload"] as Uint8Array;
       const result = new Uint8Array(22 + payload.length);
       new DataView(result.buffer).setUint16(8, Number(event["packetType"]));
@@ -61,7 +61,7 @@ vi.mock("../../src/wasm/client", () => ({
     if (event.type === "set-server") {
       state.address(event["host"], event["port"]);
     }
-    if (event.type === "encode-packet") {
+    if (event.type === "encode-packet" || event.type === "send-packet") {
       const payload = event["payload"] as Uint8Array;
       const bytes = new Uint8Array(22 + payload.length);
       new DataView(bytes.buffer).setUint16(8, Number(event["packetType"]));

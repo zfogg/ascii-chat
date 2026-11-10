@@ -271,10 +271,11 @@ export class WebTransportClientSession implements ClientSession {
     if (this.state !== ConnectionState.CONNECTED || !this.outbound)
       throw new Error("Security negotiation is not complete");
     const serialized = processClientEvent({
-      type: "encode-packet",
+      type: "send-packet",
       packetType: type,
       payload,
       clientId: 0,
+      encrypt: false,
     });
     if (serialized.code || !serialized.bytes)
       throw new Error(`Packet serialization failed (${serialized.code})`);
@@ -289,7 +290,7 @@ export class WebTransportClientSession implements ClientSession {
       throw new Error("Reliable outbound queue is congested");
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
-    this.sendPacket(type, payload);
+    this.channel?.send(type, payload, "reliable");
   }
   disconnect(): void {
     if (this.cancelled) return;

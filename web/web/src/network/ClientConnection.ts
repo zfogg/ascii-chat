@@ -546,7 +546,18 @@ export class ClientConnection {
 
   /** Setup packets follow the same negotiated policy as media packets. */
   sendUnencryptedAcipPacket(packetType: number, payload: Uint8Array): void {
-    this.sendPacket(packetType, payload);
+    if (!this.socket || !this.socket.isConnected())
+      throw new Error("Not connected to server");
+    const result = processClientEvent({
+      type: "send-packet",
+      packetType,
+      payload,
+      clientId: 0,
+      encrypt: false,
+    });
+    if (result.code || !result.bytes)
+      throwWasmError(result.code, "Packet send failed");
+    this.socket.send(result.bytes);
   }
 
   /**

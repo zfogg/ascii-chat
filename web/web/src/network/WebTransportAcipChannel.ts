@@ -88,10 +88,11 @@ export class WebTransportAcipChannel {
           this.bridge.send(flow, delivery, packet, deadline),
         serialize: (type, payload) => {
           const result = processClientEvent({
-            type: "encode-packet",
+            type: "send-packet",
             packetType: type,
             payload,
             clientId: 0,
+            encrypt: false,
           });
           if (result.code || !result.bytes)
             throw new Error(`Packet serialization failed (${result.code})`);

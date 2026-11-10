@@ -648,10 +648,11 @@ export class WebRTCSession implements ClientSession {
         },
       );
     const serialized = processClientEvent({
-      type: "encode-packet",
+      type: "send-packet",
       packetType: type,
       payload,
       clientId: 0,
+      encrypt: false,
     });
     if (serialized.code || !serialized.bytes)
       throw new Error(`Packet serialization failed (${serialized.code})`);
@@ -666,7 +667,16 @@ export class WebRTCSession implements ClientSession {
       throw new Error("Reliable outbound queue is congested");
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
-    this.sendPacket(type, payload);
+    const result = processClientEvent({
+      type: "send-packet",
+      packetType: type,
+      payload,
+      clientId: 0,
+      encrypt: false,
+    });
+    if (result.code || !result.bytes)
+      throw new Error(`Packet serialization failed (${result.code})`);
+    this.securitySession?.sendPacket(result.bytes);
   }
   onStateChange(callback: (state: ConnectionState) => void): void {
     this.stateCallback = callback;
