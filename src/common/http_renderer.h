@@ -83,7 +83,6 @@ typedef struct {
   char **argv;
   size_t argc;
   char source_path[PLATFORM_MAX_PATH_LENGTH];
-  char source_path[PLATFORM_MAX_PATH_LENGTH];
   char upload_dir[PLATFORM_MAX_PATH_LENGTH];
   char stage_dir[PLATFORM_MAX_PATH_LENGTH];
   char stage_file[PLATFORM_MAX_PATH_LENGTH];
