@@ -90,6 +90,7 @@ typedef struct {
   unsigned timeout_ms;
   bool capture_webcam;
   http_render_output_type_t output_type;
+  http_render_options_t options;
 } http_renderer_process_request_t;
 
 typedef struct {

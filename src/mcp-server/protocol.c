@@ -140,6 +140,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
     http_render_request_init(&shared_request);
     shared_request.source.type = HTTP_RENDER_SOURCE_FILE;
     SAFE_STRNCPY(shared_request.source.path, job->request.source_path, sizeof(shared_request.source.path));
+    shared_request.options = job->request.options;
     http_render_result_t shared_result = {0};
     asciichat_error_t shared_error = http_renderer_render_file(job->request.source_path, &shared_request,
                                                                &shared_result, cancelled);
