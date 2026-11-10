@@ -10,7 +10,7 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   *values = options_t_new();
   values->width = state->width;
   values->height = state->height;
-  values->fps = state->caps.desired_fps ? state->caps.desired_fps : 60;
+  values->fps = state->caps.desired_fps;
   values->color_mode = (terminal_color_mode_t)state->caps.color_level;
   values->color_filter = state->caps.color_filter;
   values->render_mode = state->caps.render_mode;
@@ -25,7 +25,7 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
 
 asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate, const options_t *values) {
   if (!candidate || !values || values->width < 1 || values->width > 4096 || values->height < 1 ||
-      values->height > 4096 || (uint64_t)values->width * values->height > 1048576 || values->fps < 1 ||
+      values->height > 4096 || (uint64_t)values->width * values->height > 1048576 || values->fps < 0 ||
       values->fps > 144 || values->color_mode < TERM_COLOR_NONE || values->color_mode > TERM_COLOR_TRUECOLOR ||
       values->color_filter < 0 || values->color_filter >= COLOR_FILTER_COUNT || values->render_mode < 0 ||
       values->render_mode > RENDER_MODE_HALF_BLOCK || values->palette_type < PALETTE_STANDARD ||
@@ -94,7 +94,7 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   acip_render_settings_options(state, values);
   values->width = NET_TO_HOST_U16(packet->width);
   values->height = NET_TO_HOST_U16(packet->height);
-  values->fps = packet->desired_fps ? packet->desired_fps : 60;
+  values->fps = packet->desired_fps;
   values->color_mode = NET_TO_HOST_U32(packet->color_level);
   values->color_filter = packet->color_filter;
   values->render_mode = NET_TO_HOST_U32(packet->render_mode);
