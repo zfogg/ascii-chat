@@ -822,7 +822,9 @@ else()
             PATHS /usr/include /usr/local/include
             NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
         find_library(ASCIICHAT_NGHTTP2_SYSTEM_LIBRARY NAMES nghttp2 nghttp2_static
-            PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/local/lib
+            PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu
+                /usr/lib/aarch64-linux-gnu /usr/lib/arm-linux-gnueabihf
+                /usr/local/lib
             NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
         if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR)
             set(ASCIICHAT_NGHTTP2_INCLUDE_DIR ${ASCIICHAT_NGHTTP2_SYSTEM_INCLUDE_DIR})
