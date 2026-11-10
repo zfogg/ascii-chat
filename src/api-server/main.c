@@ -2,6 +2,8 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/network/http/server/server.h>
+#include <ascii-chat/network/quic/quic.h>
+#include <ascii-chat/util/ip.h>
 #include "../common/http_renderer.h"
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/string.h>
@@ -171,6 +173,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
 
 int api_server_main(void) {
   http_server_t *server = NULL;
+  quic_endpoint_t *http3_endpoint = NULL;
   const char *tls_cert = GET_OPTION(tls_cert);
   const char *tls_key = GET_OPTION(tls_key);
   const char *tls_password = GET_OPTION(tls_key_password);
@@ -181,7 +184,6 @@ int api_server_main(void) {
                                  .port = (uint16_t)GET_OPTION(port),
                                  .enable_http1 = true,
                                  .enable_http2 = true,
-                                 /* HTTP/3 is enabled when the shared QUIC endpoint is attached. */
                                  .enable_http3 = false,
                                  .tls_cert_path = tls_cert,
                                  .tls_key_path = tls_key,
@@ -197,9 +199,32 @@ int api_server_main(void) {
     LOG_ERRNO_IF_SET("API HTTP server initialization failed");
     return err;
   }
+  if (tls_cert && tls_key) {
+    struct sockaddr_storage bind_address;
+    socklen_t bind_length = 0;
+    err = parse_numeric_socket_address(GET_OPTION(address), (uint16_t)GET_OPTION(port), &bind_address, &bind_length);
+    if (err == ASCIICHAT_OK) {
+      quic_config_t quic_config = {.alpn = "h3",
+                                   .certificate_file = tls_cert,
+                                   .private_key_file = tls_key,
+                                   .enable_http3 = true,
+                                   .http_server = server};
+      err = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config,
+                               &http3_endpoint);
+    }
+    if (err != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("API HTTP/3 listener initialization failed");
+      http_server_destroy(&server);
+      return err;
+    }
+  }
   err = http_server_start(server);
   if (err != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("API HTTP server start failed");
+    if (http3_endpoint) {
+      (void)quic_endpoint_stop(http3_endpoint);
+      (void)quic_endpoint_destroy(&http3_endpoint);
+    }
     http_server_destroy(&server);
     return err;
   }
@@ -208,6 +233,10 @@ int api_server_main(void) {
   while (!APP_CALLBACK_BOOL(should_exit))
     uv_sleep(16);
   http_server_stop(server);
+  if (http3_endpoint) {
+    (void)quic_endpoint_stop(http3_endpoint);
+    (void)quic_endpoint_destroy(&http3_endpoint);
+  }
   http_server_destroy(&server);
   return ASCIICHAT_OK;
 }
