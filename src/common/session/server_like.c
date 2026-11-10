@@ -281,6 +281,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   const char *effective_address = (address && strlen(address) > 0) ? address : "127.0.0.1";
   const char *effective_address6 = (address6 && strlen(address6) > 0) ? address6 : "::1";
+  bool ipv4_has_value = true;
 
   result = session_quic_listeners_open(port, &g_quic_endpoint, &g_webtransport_endpoint);
   if (result != ASCIICHAT_OK)

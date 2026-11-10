@@ -274,7 +274,12 @@ int main(int argc, char **argv) {
     const uint8_t *data = NULL;
     size_t bytes = 0;
     CHECK(gotel_test_capture_read(capture, &data, &bytes) == OTLP_OK && bytes > 0);
-    FILE *output = fopen(argv[1], "wb");
+    FILE *output = NULL;
+#ifdef _WIN32
+    CHECK(fopen_s(&output, argv[1], "wb") == 0);
+#else
+    output = fopen(argv[1], "wb");
+#endif
     CHECK(output != NULL);
     CHECK(fwrite(data, 1, bytes, output) == bytes);
     CHECK(fclose(output) == 0);
