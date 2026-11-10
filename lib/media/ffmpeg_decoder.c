@@ -104,7 +104,7 @@ struct ffmpeg_decoder_t {
   size_t audio_buffer_offset; ///< Current offset in audio buffer
 
   // Background thread for frame prefetching (reduces YouTube HTTP blocking)
-  asciichat_thread_t prefetch_thread; ///< Prefetch thread handle
+  platform_thread_t prefetch_thread; ///< Prefetch thread handle
   image_t *prefetch_image_a;          ///< First prefetch buffer
   image_t *prefetch_image_b;          ///< Second prefetch buffer
   image_t *current_prefetch_image;    ///< Currently available prefetched frame
@@ -1475,7 +1475,7 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   atomic_store(&decoder->prefetch_failed, false);
 
   int thread_err =
-      acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
+      platform_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }

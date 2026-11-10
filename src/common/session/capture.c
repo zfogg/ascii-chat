@@ -87,7 +87,7 @@ struct session_capture_ctx {
   void *callback_data;
   bool media_locks_ready;
   _Atomic bool loader_created, loader_done;
-  asciichat_thread_t loader;
+  platform_thread_t loader;
   atomic_t load_cancel;
   atomic_t playlist_skip;
   media_playlist_t playlist, load_playlist;
@@ -638,7 +638,7 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
     mutex_unlock(&ctx->load_mutex);
     return progress;
   }
-  if (acthread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
+  if (platform_thread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     mutex_unlock(&ctx->load_mutex);
     return SET_ERRNO(ERROR_THREAD, "Cannot start media loader");

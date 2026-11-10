@@ -61,11 +61,11 @@ Test(database_lifecycle, shared_connection_handles_concurrent_session_lookups) {
   enum { WORKERS = 4 };
   atomic_bool start = false;
   concurrent_lookup_t lookups[WORKERS] = {0};
-  asciichat_thread_t threads[WORKERS];
+  platform_thread_t threads[WORKERS];
   int created = 0;
   for (int i = 0; i < WORKERS; ++i) {
     lookups[i] = (concurrent_lookup_t){.db = db, .session_id = session.session_id, .start = &start};
-    if (acthread_create(&threads[i], "discovery_lookup", concurrent_session_lookup, &lookups[i]) != ASCIICHAT_OK)
+    if (platform_thread_create(&threads[i], "discovery_lookup", concurrent_session_lookup, &lookups[i]) != ASCIICHAT_OK)
       break;
     ++created;
   }
@@ -269,9 +269,9 @@ Test(database_lifecycle, failed_host_refresh_preserves_concurrent_session_creati
                             NULL, NULL, NULL),
                SQLITE_OK);
   host_refresh_race_t race = {0};
-  asciichat_thread_t refresh, creation;
-  cr_assert_eq(acthread_create(&refresh, "host_refresh", concurrent_failed_host_refresh, &race), ASCIICHAT_OK);
-  asciichat_error_t result = acthread_create(&creation, "session_create", concurrent_session_creation, &race);
+  platform_thread_t refresh, creation;
+  cr_assert_eq(platform_thread_create(&refresh, "host_refresh", concurrent_failed_host_refresh, &race), ASCIICHAT_OK);
+  asciichat_error_t result = platform_thread_create(&creation, "session_create", concurrent_session_creation, &race);
   atomic_store(&race.start, true);
   cr_assert_eq(thread_join(&refresh, NULL), ASCIICHAT_OK);
   if (result == ASCIICHAT_OK)

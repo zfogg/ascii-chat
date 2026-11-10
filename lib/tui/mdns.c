@@ -141,7 +141,7 @@ typedef struct {
 typedef struct {
   mutex_t mutex;
   atomic_t stop;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   bool running;
   unsigned generation;
   int count;
@@ -314,7 +314,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
   log_set_terminal_output(false);
   if (refresh) {
     thread_init(&refresh->thread);
-    refresh->running = acthread_create(&refresh->thread, "lan_refresh", refresh_mdns_servers, refresh) == 0;
+    refresh->running = platform_thread_create(&refresh->thread, "lan_refresh", refresh_mdns_servers, refresh) == 0;
     if (!refresh->running) {
       log_set_terminal_output(logging);
       SAFE_FREE(snapshot);

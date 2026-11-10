@@ -60,7 +60,7 @@ static bool g_update_result_set = false;
 static lifecycle_t g_update_result_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_result_mutex);
 
 // Background update check thread
-static asciichat_thread_t g_update_thread;
+static platform_thread_t g_update_thread;
 static bool g_update_thread_started = false;
 static bool g_update_checking = false;
 static bool g_update_finished = false;
@@ -576,7 +576,7 @@ static void update_banner_start_check_impl(bool force) {
   memset(&g_update_result, 0, sizeof(g_update_result));
   g_update_result_set = false;
   mutex_unlock(&g_update_result_mutex);
-  if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
+  if (platform_thread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
   } else {
     ascii_otel_ui_usage("update", "check_failed", 0);

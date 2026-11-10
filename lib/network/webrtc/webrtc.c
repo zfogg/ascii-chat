@@ -60,7 +60,7 @@
 struct webrtc_peer_connection {
   nat_upnp_context_t *mapping; ///< Owned UDP mapping
   socket_t port_reservation;   ///< Held until ICE starts binding
-  asciichat_thread_t mapping_thread;
+  platform_thread_t mapping_thread;
   atomic_t mapping_stop;
   bool mapping_thread_started;
   int rtc_id;                       ///< libdatachannel peer connection ID
@@ -177,7 +177,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
     return;
   }
   atomic_store_bool(&pc->mapping_stop, false);
-  if (acthread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
+  if (platform_thread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
     webrtc_mapping_close(pc);
     return;
   }

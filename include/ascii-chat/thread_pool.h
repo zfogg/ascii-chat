@@ -76,7 +76,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common.h"
-#include "platform/abstraction.h"
+#include <libplatform/mutex.h>
+#include <libplatform/thread.h>
 
 // Forward declaration
 /**
@@ -108,7 +109,7 @@ typedef struct thread_pool_work_entry {
  * Nodes are linked from the pool and are freed with the pool's thread list.
  */
 struct thread_pool_entry {
-  asciichat_thread_t thread;               ///< Thread handle
+  platform_thread_t thread;               ///< Thread handle
   int stop_id;                             ///< Cleanup order (lower = stop first, -1 = unordered)
   void *(*thread_func)(void *);            ///< Thread function
   void *thread_arg;                        ///< Thread argument

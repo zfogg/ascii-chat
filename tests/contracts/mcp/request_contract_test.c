@@ -33,7 +33,7 @@ static void fixture_camera_free(webcam_device_info_t *devices) {
 static void fixture_audio_free(audio_device_info_t *devices) {
   SAFE_FREE(devices);
 }
-static int fixture_worker(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *data) {
+static int fixture_worker(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *data) {
   (void)thread;
   (void)name;
   (void)fn;
@@ -56,13 +56,13 @@ void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response) {
 #define audio_list_input_devices fixture_microphones
 #define webcam_free_device_list fixture_camera_free
 #define audio_free_device_list fixture_audio_free
-#define acthread_create fixture_worker
+#define platform_thread_create fixture_worker
 #include "../../../src/mcp-server/protocol.c"
 #undef webcam_list_devices
 #undef audio_list_input_devices
 #undef webcam_free_device_list
 #undef audio_free_device_list
-#undef acthread_create
+#undef platform_thread_create
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);

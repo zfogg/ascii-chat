@@ -306,7 +306,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   if (session_id)
     SAFE_STRNCPY(j->session_id, session_id, sizeof(j->session_id));
   j->started = true;
-  if (acthread_create(&j->thread, "mcp-render", run_job, j)) {
+  if (platform_thread_create(&j->thread, "mcp-render", run_job, j)) {
     mcp_request_destroy(&j->request);
     yyjson_doc_free(j->message);
     memset(j, 0, sizeof(*j));

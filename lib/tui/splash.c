@@ -144,7 +144,7 @@ static struct {
   atomic_t is_running;               // true while animation should continue
   atomic_t should_stop;              // set to true when splash should stop
   atomic_t thread_created;           // true if monitor thread was successfully created
-  asciichat_thread_t monitor_thread; // monitor thread handle
+  platform_thread_t monitor_thread; // monitor thread handle
   uint64_t start_time_ns;            // when splash was started (for minimum display time)
   atomic_t intro_done_time_ns;       // when splash_intro_done() was called
 } g_splash_state = {
@@ -412,7 +412,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  int err = acthread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
+  int err = platform_thread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash monitor thread: error=%d", err);
     atomic_store_bool(&g_splash_state.thread_created, false);

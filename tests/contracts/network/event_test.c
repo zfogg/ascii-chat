@@ -189,8 +189,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   cr_assert_worker((platform_event_listen(fixture.loop, &listener, accepted, &fixture, &event_listener)) ==
                    (ASCIICHAT_OK));
   cr_assert_worker((listener) == (INVALID_SOCKET_VALUE));
-  asciichat_thread_t thread;
-  cr_assert_worker((acthread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
+  platform_thread_t thread;
+  cr_assert_worker((platform_thread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
   socket_t client = socket_create("event-test-client", AF_INET, SOCK_STREAM, 0);
   if (push && expire) {
     int receive_buffer = 4096;

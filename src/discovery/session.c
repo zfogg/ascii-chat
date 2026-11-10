@@ -43,7 +43,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/keys.h>
@@ -458,7 +458,7 @@ static void start_nat_detection(discovery_session_t *session) {
   mutex_lock(&session->nat_quality_mutex);
   session->nat_detection_completed = false;
   mutex_unlock(&session->nat_quality_mutex);
-  if (acthread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
+  if (platform_thread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
     session->nat_detection_thread_started = true;
   } else {
     log_warn("Could not start NAT detection; handoff will use unknown NAT tier");

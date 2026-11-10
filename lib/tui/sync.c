@@ -100,7 +100,7 @@ static _Atomic int g_sync_total;
 static _Atomic bool g_sync_stop;
 static atomic_flag g_sync_starting = ATOMIC_FLAG_INIT;
 static bool g_sync_started;
-static asciichat_thread_t g_sync_thread;
+static platform_thread_t g_sync_thread;
 static int g_sync_fd = -1;
 static _Thread_local bool g_sync_use_color, g_sync_use_utf8;
 
@@ -321,7 +321,7 @@ asciichat_error_t ui_sync_start(int fd) {
       g_sync_fd = -1;
     } else {
       atomic_store(&g_sync_stop, false);
-      result = acthread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
+      result = platform_thread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
       if (result == ASCIICHAT_OK) {
         g_sync_started = true;
       } else {

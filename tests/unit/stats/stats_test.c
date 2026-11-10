@@ -269,9 +269,9 @@ static void *record_worker(void *arg) {
 
 Test(stats, concurrent_recording_and_snapshots, .timeout = 30) {
   worker_context_t context = {.scope = make_scope(), .done = {0}};
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (size_t i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "stats_test", record_worker, &context), 0);
+    cr_assert_eq(platform_thread_create(&threads[i], "stats_test", record_worker, &context), 0);
   uint64_t previous = 0;
   stats_snapshot_t snapshot;
   do {

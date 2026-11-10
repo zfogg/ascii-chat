@@ -12,7 +12,7 @@ static atomic_t g_debug_stats_signal = {0};
 static atomic_t g_debug_stats_memory_signal = {0};
 static atomic_t g_debug_stats_exiting = {0};
 static atomic_t g_debug_stats_cleaning = {0};
-static asciichat_thread_t g_debug_stats_thread;
+static platform_thread_t g_debug_stats_thread;
 static uint64_t g_debug_stats_main_thread;
 static mutex_t g_debug_stats_mutex;
 static cond_t g_debug_stats_condition;
@@ -121,7 +121,7 @@ asciichat_error_t debug_stats_start_thread(void) {
       debug_stats_set_memory_report_interval((uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (acthread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
+  if (platform_thread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_debug_stats_started = true;

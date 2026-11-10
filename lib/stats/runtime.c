@@ -61,7 +61,7 @@ static void *g_provider_data;
 static char g_mode[STATS_RUNTIME_MODE_BUFFER_SIZE], g_state[STATS_RUNTIME_STATE_BUFFER_SIZE];
 static unsigned g_interval;
 static atomic_t g_stop, g_active, g_onboarding_wait;
-static asciichat_thread_t g_worker;
+static platform_thread_t g_worker;
 static bool g_started, g_keyboard;
 static int g_fd;
 static atomic_t g_media_width, g_media_height, g_media_position, g_media_duration;
@@ -607,7 +607,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
                      (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
-  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
+  if (platform_thread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
     atomic_store_bool_impl(&g_onboarding_wait, true);
     bool shown = show_first_use_instructions();
     while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested()) {

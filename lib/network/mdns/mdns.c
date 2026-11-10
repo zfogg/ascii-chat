@@ -62,7 +62,7 @@ struct asciichat_mdns_t {
   size_t buffer_capacity;                        /**< Buffer capacity */
   bool advertising;
   _Atomic bool stop_advertising;
-  asciichat_thread_t advertiser;
+  platform_thread_t advertiser;
   char service_type[NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE], instance[NETWORK_MDNS_INSTANCE_BUFFER_SIZE],
       host[NETWORK_MDNS_HOST_BUFFER_SIZE], query_service[NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE];
   char txt[MDNS_MAX_TXT_RECORDS][NETWORK_MDNS_TXT_BUFFER_SIZE];
@@ -416,7 +416,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
                               mdns->additional, mdns->additional_count) < 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot announce mDNS service");
   atomic_store(&mdns->stop_advertising, false);
-  if (acthread_create(&mdns->advertiser, "mdns_advertiser", mdns_advertiser, mdns) != 0)
+  if (platform_thread_create(&mdns->advertiser, "mdns_advertiser", mdns_advertiser, mdns) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start mDNS advertiser");
   mdns->advertising = true;
   return ASCIICHAT_OK;

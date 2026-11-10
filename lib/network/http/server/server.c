@@ -62,7 +62,7 @@ struct http_server {
   bool listener_initialized;
   bool stop_async_initialized;
   bool wake_async_initialized;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   size_t connections;
   atomic_t inflight_requests;
   http_server_client_t *clients;
@@ -1318,7 +1318,7 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (result != ASCIICHAT_OK)
     return result;
   s->running = true;
-  if (acthread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
+  if (platform_thread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
   }

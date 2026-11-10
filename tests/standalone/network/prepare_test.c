@@ -30,11 +30,11 @@ static void close_ownership(acip_transport_t *transport) {
   transport->methods->interrupt(transport);
   CHECK(thread_join(&ws->service_thread, NULL) == ASCIICHAT_OK);
   ws->service_running = false;
-  CHECK(acthread_create(&ws->service_thread, "gated_service", gated_service, NULL) == ASCIICHAT_OK);
+  CHECK(platform_thread_create(&ws->service_thread, "gated_service", gated_service, NULL) == ASCIICHAT_OK);
   ws->service_running = true;
-  asciichat_thread_t closers[2];
+  platform_thread_t closers[2];
   for (unsigned i = 0; i < 2; ++i)
-    CHECK(acthread_create(&closers[i], "concurrent_close", concurrent_close, transport) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&closers[i], "concurrent_close", concurrent_close, transport) == ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
   while (atomic_load_int(&close_ready) < 2 && time_get_ns() < deadline)
     platform_sleep_ms(1);

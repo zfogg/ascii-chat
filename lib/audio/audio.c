@@ -1995,7 +1995,7 @@ start_worker:
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {
     atomic_store_bool(&ctx->worker_should_stop, false);
-    if (acthread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
+    if (platform_thread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
       // Failed to create worker thread - stop streams and cleanup
       if (ctx->duplex_stream) {
         LOG_IO("portaudio", {

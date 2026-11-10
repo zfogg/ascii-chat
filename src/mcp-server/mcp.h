@@ -9,7 +9,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/network/http/server/server.h>
 #include <yyjson.h>
@@ -90,7 +90,7 @@ typedef struct mcp_job {
   mcp_render_request_t request;
   mcp_tool_t tool;
   gotel_context_t telemetry_parent;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   atomic_t cancelled;
   atomic_t done;
   bool started;

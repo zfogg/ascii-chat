@@ -115,8 +115,8 @@ typedef struct client_info {
   atomic_t frames_sent_count; // Total ASCII frames sent to this client
 
   // Per-client rendering threads
-  asciichat_thread_t video_render_thread;
-  asciichat_thread_t audio_render_thread;
+  platform_thread_t video_render_thread;
+  platform_thread_t audio_render_thread;
   atomic_t video_render_thread_running;
   atomic_t audio_render_thread_running;
 

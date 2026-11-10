@@ -15,7 +15,7 @@ struct quic_worker {
   mutex_t *lane;
   quic_worker_failure_fn failure;
   void *context;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   atomic_t stopping;
   atomic_t wake_pending;
   bool failure_on_lane;
@@ -91,7 +91,7 @@ static asciichat_error_t worker_start(quic_udp_endpoint_t *endpoint, mutex_t *la
   worker->failure = failure;
   worker->context = context;
   worker->failure_on_lane = failure_on_lane;
-  if (acthread_create(&worker->thread, "quic_udp_worker", quic_worker_main, worker) != 0) {
+  if (platform_thread_create(&worker->thread, "quic_udp_worker", quic_worker_main, worker) != 0) {
     SAFE_FREE(worker);
     return SET_ERRNO(ERROR_THREAD, "Cannot start QUIC worker");
   }

@@ -73,8 +73,8 @@ static int check_wakeups(void) {
     platform_wakeup_signal(test_wakeup);
   CHECK(platform_wakeup_wait(test_wakeup, NS_PER_MS_INT));
   CHECK(!platform_wakeup_wait(test_wakeup, NS_PER_MS_INT));
-  asciichat_thread_t publisher = {0};
-  CHECK(acthread_create(&publisher, "wakeup_regression", publish_wakeups, NULL) == ASCIICHAT_OK);
+  platform_thread_t publisher = {0};
+  CHECK(platform_thread_create(&publisher, "wakeup_regression", publish_wakeups, NULL) == ASCIICHAT_OK);
   for (unsigned i = 1; i <= 10000; ++i) {
     CHECK(platform_wakeup_wait(test_wakeup, NS_PER_SEC_INT));
     CHECK(atomic_load(&wake_generation) == i);
@@ -103,11 +103,11 @@ static int check_duration_recording(void) {
   capabilities.durations[STATS_DURATION_CAPTURE] = true;
   stats_scope_t *scope = NULL;
   CHECK(stats_scope_create(&capabilities, &scope) == ASCIICHAT_OK);
-  asciichat_thread_t workers[20];
+  platform_thread_t workers[20];
   atomic_store(&duration_workers_done, 0);
   atomic_store(&duration_workers_release, false);
   for (unsigned i = 0; i < 4; ++i)
-    CHECK(acthread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
   atomic_store(&duration_workers_release, true);
   stats_snapshot_t snapshot;
   do {
@@ -125,7 +125,7 @@ static int check_duration_recording(void) {
   // More simultaneous producers than shards exercise the coherent fallback.
   atomic_store(&duration_workers_release, false);
   for (unsigned i = 0; i < 20; ++i)
-    CHECK(acthread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
   atomic_store(&duration_workers_release, true);
   for (unsigned i = 0; i < 20; ++i)
     CHECK(thread_join(&workers[i], NULL) == ASCIICHAT_OK);
@@ -343,8 +343,8 @@ int main(int argc, char **argv) {
   if (!strcmp(argv[1], "deadlock") || !strcmp(argv[1], "stale")) {
     static char stop_path[1024];
     SAFE_SNPRINTF(stop_path, sizeof(stop_path), "%s.stop", argv[2]);
-    asciichat_thread_t finisher;
-    CHECK(acthread_create(&finisher, "fixture_finish", finish_blocked_fixture, stop_path) == ASCIICHAT_OK);
+    platform_thread_t finisher;
+    CHECK(platform_thread_create(&finisher, "fixture_finish", finish_blocked_fixture, stop_path) == ASCIICHAT_OK);
     for (unsigned i = 0; i < 600; ++i) {
       atomic_store_u64(&sync_values[i], i);
       NAMED_REGISTER_ATOMIC(&sync_values[i], "sync_fixture_value", NULL);
@@ -401,13 +401,13 @@ int main(int argc, char **argv) {
     CHECK(!atomic_ptr_cas(&total_pointer, &old_pointer, NULL));
     CHECK(atomic_ptr_cas(&total_pointer, &old_pointer, NULL));
     (void)atomic_ptr_exchange(&total_pointer, NULL);
-    asciichat_thread_t rates;
-    CHECK(acthread_create(&rates, "rate_worker", rate_worker, NULL) == ASCIICHAT_OK);
+    platform_thread_t rates;
+    CHECK(platform_thread_create(&rates, "rate_worker", rate_worker, NULL) == ASCIICHAT_OK);
     CHECK(mutex_init(&cycle_a, "cycle_a") == 0);
     CHECK(mutex_init(&cycle_b, "cycle_b") == 0);
     mutex_lock(&cycle_a);
-    asciichat_thread_t worker;
-    CHECK(acthread_create(&worker, "cycle_worker", cycle_worker, NULL) == ASCIICHAT_OK);
+    platform_thread_t worker;
+    CHECK(platform_thread_create(&worker, "cycle_worker", cycle_worker, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     // Intentional main/worker deadlock: the PTY test terminates this fixture.
     mutex_lock(&cycle_b);
@@ -458,8 +458,8 @@ int main(int argc, char **argv) {
           ASCIICHAT_OK);
     CHECK(time_get_ns() - start < 500 * NS_PER_MS_INT);
     CHECK(!ui_controller_state().covered);
-    asciichat_thread_t remover;
-    CHECK(acthread_create(&remover, "remove_screen", remove_screen, NULL) == ASCIICHAT_OK);
+    platform_thread_t remover;
+    CHECK(platform_thread_create(&remover, "remove_screen", remove_screen, NULL) == ASCIICHAT_OK);
     platform_sleep_ns(50 * NS_PER_MS_INT);
     CHECK(!atomic_load(&removed));
     atomic_store(&proceed, true);
@@ -550,8 +550,8 @@ int main(int argc, char **argv) {
     CHECK(registry_lock->rdlock_count == scans_before);
 #endif
 #ifndef NDEBUG
-    asciichat_thread_t holder;
-    CHECK(acthread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
+    platform_thread_t holder;
+    CHECK(platform_thread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     uint64_t start = time_get_ns();
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && !completed);
@@ -572,7 +572,7 @@ int main(int argc, char **argv) {
     CHECK(test_mutex.currently_held_by_key == (uintptr_t)thread_current_id());
 #endif
     atomic_store(&entered, false);
-    CHECK(acthread_create(&holder, "mutex_waiter", wait_for_mutex, NULL) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&holder, "mutex_waiter", wait_for_mutex, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     bool pending = false;
     uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
@@ -593,7 +593,7 @@ int main(int argc, char **argv) {
     CHECK(atomic_load(&trylock_clean));
     CHECK(cond_init(&test_cond, "regression_condition") == 0);
     atomic_store(&entered, false);
-    CHECK(acthread_create(&holder, "condition_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&holder, "condition_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     mutex_lock(&test_mutex);
     mutex_stack_entry_t **stacks = NULL;
@@ -615,9 +615,9 @@ int main(int argc, char **argv) {
     mutex_unlock(&test_mutex);
     // Two real waiters share one wall-clock interval, not two thread-seconds.
     uint64_t completed_wait = test_cond.total_wait_ns;
-    asciichat_thread_t overlapping[2];
+    platform_thread_t overlapping[2];
     for (unsigned i = 0; i < 2; ++i)
-      CHECK(acthread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
+      CHECK(platform_thread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     deadline = time_get_ns() + NS_PER_SEC_INT;
     while (atomic_load_u64(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
       platform_sleep_ms(1);

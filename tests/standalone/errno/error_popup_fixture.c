@@ -220,8 +220,8 @@ int main(int argc, char **argv) {
   safe_snprintf(log_path, sizeof(log_path), "%s.log", control_path);
   log_init(log_path, LOG_DEBUG, false, false);
   worker_t state = {0};
-  asciichat_thread_t worker;
-  if (acthread_create(&worker, "popup-media-worker", produce_errors, &state) != ASCIICHAT_OK)
+  platform_thread_t worker;
+  if (platform_thread_create(&worker, "popup-media-worker", produce_errors, &state) != ASCIICHAT_OK)
     return 4;
   if (stats_runtime_start("mirror", 0) != ASCIICHAT_OK)
     return 5;

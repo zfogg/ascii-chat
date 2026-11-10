@@ -59,7 +59,7 @@ typedef struct {
   cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
 
   // Service thread for client-side transports
-  asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
+  platform_thread_t service_thread; ///< Thread that services libwebsockets context
   bool service_running;              ///< Owner must join the service thread before freeing storage
 
   // Partial message reassembly state (preserved across recv() calls)

@@ -322,7 +322,7 @@ static webrtc_peer_manager_t *g_webrtc_peer_manager = NULL;
  *
  * @ingroup server_main
  */
-static asciichat_thread_t g_acds_receive_thread;
+static platform_thread_t g_acds_receive_thread;
 
 /**
  * @brief Flag indicating if ACDS receive thread was started
@@ -342,7 +342,7 @@ static bool g_acds_receive_thread_started = false;
  *
  * @ingroup server_main
  */
-static asciichat_thread_t g_acds_ping_thread;
+static platform_thread_t g_acds_ping_thread;
 
 /**
  * @brief Flag indicating if ACDS ping thread was started
@@ -1569,7 +1569,7 @@ static void __attribute__((unused)) server_start_discovery_keepalive(void) {
     log_debug("ACDS transport wrapper created for signaling");
 
     // Start ACDS ping thread to keep connection alive (for ALL session types)
-    int ping_thread_result = acthread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
+    int ping_thread_result = platform_thread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
     if (ping_thread_result != 0) {
       log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
     } else {
@@ -1680,7 +1680,7 @@ static void __attribute__((unused)) server_init_webrtc(void) {
       log_debug("WebRTC peer_manager initialized successfully");
 
       // Start ACDS receive thread for WebRTC signaling relay
-      int thread_result = acthread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
+      int thread_result = platform_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
       if (thread_result != 0) {
         log_error("Failed to create ACDS receive thread: %d", thread_result);
         // Cleanup peer_manager since signaling won't work

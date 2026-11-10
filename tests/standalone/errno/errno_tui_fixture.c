@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
     return 2;
 
   fixture_state_t state = {0};
-  asciichat_thread_t worker;
-  if (acthread_create(&worker, "errno-tui-fixture", publish_long_error, &state) != ASCIICHAT_OK)
+  platform_thread_t worker;
+  if (platform_thread_create(&worker, "errno-tui-fixture", publish_long_error, &state) != ASCIICHAT_OK)
     return 3;
   while (!atomic_load(&state.ready))
     platform_sleep_ms(1);

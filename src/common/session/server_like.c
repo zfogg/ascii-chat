@@ -50,7 +50,7 @@ static quic_endpoint_t *g_webtransport_endpoint;
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
 static nat_upnp_context_t *g_ws_upnp_ctx = NULL;
-static asciichat_thread_t g_upnp_thread;
+static platform_thread_t g_upnp_thread;
 static bool g_upnp_thread_started = false;
 static atomic_t g_upnp_stop = {0};
 static atomic_t g_upnp_ready = {0};
@@ -77,7 +77,7 @@ static void *upnp_renewal_thread(void *unused) {
   return NULL;
 }
 
-static asciichat_thread_t g_status_screen_thread;
+static platform_thread_t g_status_screen_thread;
 static bool g_status_screen_thread_started = false;
 
 /** Status screen callback and user data (immutable after thread start, cleared at shutdown). */
@@ -398,7 +398,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (g_upnp_ctx || g_ws_upnp_ctx) {
     atomic_store_bool(&g_upnp_stop, false);
     atomic_store_bool(&g_upnp_ready, false);
-    if (acthread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
+    if (platform_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
       g_upnp_thread_started = true;
     } else {
       log_warn("NAT: could not start lease renewal; removing the temporary mapping");
@@ -421,7 +421,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       g_status_fn = config->status_fn;
       g_status_user_data = config->status_user_data;
 
-      if (acthread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
+      if (platform_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
         g_status_screen_thread_started = true;
         log_info("Status screen thread started");
       } else {

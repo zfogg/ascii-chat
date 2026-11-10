@@ -653,7 +653,7 @@ void debug_sync_print_state(void) {
 static atomic_t g_signal = {0};
 static atomic_t g_exiting = {0};
 static atomic_t g_cleaning = {0};
-static asciichat_thread_t g_thread;
+static platform_thread_t g_thread;
 static mutex_t g_mutex;
 static cond_t g_condition;
 static bool g_initialized;
@@ -773,7 +773,7 @@ asciichat_error_t debug_sync_start_thread(void) {
       debug_sync_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (acthread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
+  if (platform_thread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_started = true;

@@ -527,7 +527,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
   do {                                                                                                                 \
-    if (acthread_create(&(thread), (func), (arg)) != 0) {                                                              \
+    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                              \
       log_error("Failed to create thread: %s", #func);                                                                 \
       return -1;                                                                                                       \
     }                                                                                                                  \

@@ -119,7 +119,7 @@ static int g_rendering_screen = -1;
 static uint32_t g_rendering_layers;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
-static asciichat_thread_t g_thread;
+static platform_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
 static _Atomic bool g_sync_finishing;
 static _Atomic bool g_sync_rendering;
@@ -1335,7 +1335,7 @@ static asciichat_error_t controller_start(void) {
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
-    if (acthread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+    if (platform_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       ui_session_destroy(g_session);
       g_session = NULL;
       NAMED_UNREGISTER(&g_title_active);

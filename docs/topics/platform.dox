@@ -60,8 +60,8 @@
  * #endif
  *
  * // ✅ GOOD - Single API, works everywhere
- * asciichat_thread_t thread;
- * acthread_create(&thread, thread_func, arg);
+ * platform_thread_t thread;
+ * platform_thread_create(&thread, thread_func, arg);
  * ```
  *
  * **Benefits of complete isolation**:
@@ -148,11 +148,11 @@
  *   #else
  *     pthread_t thread;
  *   #endif
- * } asciichat_thread_t;
+ * } platform_thread_t;
  *
- * // Application just uses asciichat_thread_t
- * asciichat_thread_t my_thread;
- * acthread_create(&my_thread, worker, NULL);
+ * // Application just uses platform_thread_t
+ * platform_thread_t my_thread;
+ * platform_thread_create(&my_thread, worker, NULL);
  * ```
  *
  * This prevents common mistakes like:
@@ -228,7 +228,7 @@
  *
  * **Layer 1: Header Definition** (`lib/platform/*.h`)
  * - Defines the public API that application code uses
- * - Declares abstract types (asciichat_thread_t, mutex_t, socket_t, etc.)
+ * - Declares abstract types (platform_thread_t, mutex_t, socket_t, etc.)
  * - Documents all functions with Doxygen comments
  * - Completely platform-agnostic
  *
@@ -335,9 +335,9 @@
  *   platform_init();
  *
  *   // Create thread
- *   asciichat_thread_t thread;
+ *   platform_thread_t thread;
  *   int data = 42;
- *   int result = acthread_create(&thread, worker_thread, &data);
+ *   int result = platform_thread_create(&thread, worker_thread, &data);
  *   if (result != 0) {
  *     log_error("Thread creation failed");
  *     return 1;
@@ -1304,7 +1304,7 @@
  *
  * **Thread Creation**:
  * ```c
- * int acthread_create(asciichat_thread_t *thread,
+ * int platform_thread_create(platform_thread_t *thread,
  *                              void *(*func)(void *), void *arg);
  * ```
  * Creates a new thread that executes `func(arg)`. The thread handle is stored in `*thread`.
@@ -1321,9 +1321,9 @@
  *
  * **Error handling example**:
  * ```c
- * asciichat_thread_t thread;
+ * platform_thread_t thread;
  * thread_init(&thread);
- * int result = acthread_create(&thread, worker, data);
+ * int result = platform_thread_create(&thread, worker, data);
  * if (result != 0) {
  *   log_error("Failed to create thread: %s", strerror(result));
  *   return;
@@ -1341,12 +1341,12 @@
  *
  * **Thread Joining** (blocking wait):
  * ```c
- * int thread_join(asciichat_thread_t *thread, void **retval);
+ * int thread_join(platform_thread_t *thread, void **retval);
  * ```
  * Blocks until the specified thread terminates.
  *
  * - **Parameters**:
- *   - `thread`: Thread handle from acthread_create()
+ *   - `thread`: Thread handle from platform_thread_create()
  *   - `retval`: Optional output parameter for thread return value (NULL to ignore)
  * - **Return**: 0 on success, non-zero on error
  * - **Blocks**: Calling thread waits indefinitely for target thread to finish
@@ -1354,7 +1354,7 @@
  *
  * **Thread Joining with Timeout**:
  * ```c
- * int thread_join_timeout(asciichat_thread_t *thread,
+ * int thread_join_timeout(platform_thread_t *thread,
  *                                    void **retval, uint64_t timeout_ns);
  * ```
  * Wait for thread with maximum wait time.
@@ -1370,7 +1370,7 @@
  *
  * **Timeout example** (graceful shutdown):
  * ```c
- * void shutdown_worker(asciichat_thread_t *worker) {
+ * void shutdown_worker(platform_thread_t *worker) {
  *   // Signal thread to stop (set flag, send message, etc.)
  *   tell_thread_to_stop(worker);
  *
@@ -1444,8 +1444,8 @@
  *
  * **Check Thread Initialization**:
  * ```c
- * bool thread_is_initialized(asciichat_thread_t *thread);
- * int  thread_init(asciichat_thread_t *thread);
+ * bool thread_is_initialized(platform_thread_t *thread);
+ * int  thread_init(platform_thread_t *thread);
  * ```
  * Check/set thread handle initialization state.
  *
@@ -1456,7 +1456,7 @@
  * **Thread Pool Example**:
  * ```c
  * typedef struct {
- *   asciichat_thread_t thread;
+ *   platform_thread_t thread;
  *   bool available;
  * } thread_pool_entry_t;
  *
@@ -1816,8 +1816,8 @@
  * int main() {
  *   platform_init();  // Installs crash handlers
  *
- *   asciichat_thread_t thread;
- *   acthread_create(&thread, worker_thread, NULL);
+ *   platform_thread_t thread;
+ *   platform_thread_create(&thread, worker_thread, NULL);
  *   thread_join(&thread, NULL);
  *
  *   platform_cleanup();
@@ -2037,7 +2037,7 @@
  * Most POSIX functions are thin wrappers:
  * ```c
  * // Thread creation - simple delegation
- * int acthread_create(asciichat_thread_t* thread, void* (*func)(void*), void* arg) {
+ * int platform_thread_create(platform_thread_t* thread, void* (*func)(void*), void* arg) {
  *   return pthread_create(&thread->thread, NULL, func, arg);
  * }
  *
@@ -2096,7 +2096,7 @@
  * **Thread timeout join**:
  * macOS doesn't have `pthread_timedjoin_np()`, so timeouts fall back to blocking:
  * ```c
- * int thread_join_timeout(asciichat_thread_t* thread, void** retval, int timeout_ms) {
+ * int thread_join_timeout(platform_thread_t* thread, void** retval, int timeout_ms) {
  *   #ifdef __APPLE__
  *     // No timeout support, fall back to blocking join
  *     return pthread_join(thread->thread, retval);
@@ -2112,13 +2112,13 @@
  * ```
  *
  * **Type name conflicts**:
- * macOS system headers define `thread_t`, so we use `asciichat_thread_t` to avoid conflicts:
+ * macOS system headers define `thread_t`, so we use `platform_thread_t` to avoid conflicts:
  * ```c
  * // ❌ BAD - Conflicts with mach/mach_types.h
  * typedef struct { pthread_t thread; } thread_t;
  *
  * // ✅ GOOD - Unique name avoids conflicts
- * typedef struct { pthread_t thread; } asciichat_thread_t;
+ * typedef struct { pthread_t thread; } platform_thread_t;
  * ```
  *
  * @section platform_examples Complete Examples
@@ -2188,8 +2188,8 @@
  *     info->client_sock = client_sock;
  *     info->client_id = ++client_id;
  *
- *     asciichat_thread_t thread;
- *     if (acthread_create(&thread, handle_client, info) != 0) {
+ *     platform_thread_t thread;
+ *     if (platform_thread_create(&thread, handle_client, info) != 0) {
  *       fprintf(stderr, "Failed to create thread\n");
  *       socket_close(client_sock);
  *       free(info);
@@ -2282,9 +2282,9 @@
  *   queue_t queue;
  *   queue_init(&queue);
  *
- *   asciichat_thread_t prod_thread, cons_thread;
- *   acthread_create(&prod_thread, producer, &queue);
- *   acthread_create(&cons_thread, consumer, &queue);
+ *   platform_thread_t prod_thread, cons_thread;
+ *   platform_thread_create(&prod_thread, producer, &queue);
+ *   platform_thread_create(&cons_thread, consumer, &queue);
  *
  *   thread_join(&prod_thread, NULL);
  *   thread_join(&cons_thread, NULL);
@@ -2427,8 +2427,8 @@
  * #endif
  *
  * // ✅ GOOD - Use platform abstraction
- * asciichat_thread_t thread;
- * acthread_create(&thread, func, arg);
+ * platform_thread_t thread;
+ * platform_thread_create(&thread, func, arg);
  * ```
  *
  * If you find yourself writing platform-specific code:
@@ -2447,7 +2447,7 @@
  * int sockfd;                // Wrong on Windows (should be SOCKET)!
  *
  * // ✅ GOOD - Platform abstraction types
- * asciichat_thread_t thread;      // Works everywhere
+ * platform_thread_t thread;      // Works everywhere
  * mutex_t mutex;             // Works everywhere
  * socket_t sock;             // Works everywhere
  * ```
@@ -2460,12 +2460,12 @@
  *
  * ```c
  * // ❌ BAD - No error checking
- * acthread_create(&thread, func, arg);
+ * platform_thread_create(&thread, func, arg);
  * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
  * socket_bind(sock, &addr, sizeof(addr));
  *
  * // ✅ GOOD - Proper error checking
- * if (acthread_create(&thread, func, arg) != 0) {
+ * if (platform_thread_create(&thread, func, arg) != 0) {
  *   log_error("Thread creation failed");
  *   return ERROR_THREAD_CREATE;
  * }
@@ -2531,15 +2531,15 @@
  *
  * ```c
  * // ❌ BAD - Joining uninitialized thread
- * asciichat_thread_t thread;
- * acthread_create(&thread, func, arg);  // What if this fails?
+ * platform_thread_t thread;
+ * platform_thread_create(&thread, func, arg);  // What if this fails?
  * thread_join(&thread, NULL);         // Undefined behavior!
  *
  * // ✅ GOOD - Check creation before join
- * asciichat_thread_t thread;
+ * platform_thread_t thread;
  * bool thread_created = false;
  *
- * if (acthread_create(&thread, func, arg) == 0) {
+ * if (platform_thread_create(&thread, func, arg) == 0) {
  *   thread_created = true;
  * } else {
  *   log_error("Thread creation failed");
@@ -2600,8 +2600,8 @@
  * // After (cross-platform)
  * #include "platform/abstraction.h"
  *
- * asciichat_thread_t thread;
- * acthread_create(&thread, worker, arg);
+ * platform_thread_t thread;
+ * platform_thread_create(&thread, worker, arg);
  * thread_join(&thread, NULL);
  * ```
  *
@@ -2617,8 +2617,8 @@
  * // After (cross-platform)
  * #include "platform/abstraction.h"
  *
- * asciichat_thread_t thread;
- * acthread_create(&thread, worker, arg);
+ * platform_thread_t thread;
+ * platform_thread_create(&thread, worker, arg);
  * thread_join(&thread, NULL);
  * ```
  *
@@ -2801,8 +2801,8 @@
  *
  * **Solution**: Check if thread was successfully created:
  * ```c
- * asciichat_thread_t thread;
- * if (acthread_create(&thread, func, arg) == 0) {
+ * platform_thread_t thread;
+ * if (platform_thread_create(&thread, func, arg) == 0) {
  *   // Only join if creation succeeded
  *   thread_join(&thread, NULL);
  * }
@@ -2833,7 +2833,7 @@
  * ```c
  * // Watchdog pattern for guaranteed timeout
  * typedef struct {
- *   asciichat_thread_t thread;
+ *   platform_thread_t thread;
  *   bool completed;
  *   mutex_t lock;
  * } watchdog_t;
