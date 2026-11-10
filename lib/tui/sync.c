@@ -44,9 +44,9 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/rwlock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
@@ -152,13 +152,13 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   } else if (!strcmp(type, "rwlock")) {
     const rwlock_t *m = (const rwlock_t *)key;
     r->owner = m->write_held_by_key;
-    r->value = atomic_load(&m->read_lock_count.impl);
+    r->value = atomic_load(&m->read_lock_count);
     r->locks = m->rdlock_count + m->wrlock_count;
     r->unlocks = m->unlock_count;
     r->last_ns = m->last_wrlock_time_ns;
   } else if (!strcmp(type, "cond")) {
     const cond_t *m = (const cond_t *)key;
-    r->value = atomic_load(&m->waiting_count.impl);
+    r->value = atomic_load(&m->waiting_count);
     r->locks = m->wait_count;
     r->unlocks = m->signal_count + m->broadcast_count;
     r->last_ns = m->last_wait_time_ns;
