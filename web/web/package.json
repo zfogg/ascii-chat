@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp run type-check && vp run format:check && vp run lint && vp run wasm:build && vp run vite:build",
+    "build": "pnpm run wasm:generate-protocol && vp run type-check && vp run format:check && vp run lint && vp run wasm:build && vp run vite:build",
     "preview": "vp preview",
     "start:caddy": "caddy run --config /etc/caddy/Caddyfile",
     "vite:build": "vp build",
@@ -20,6 +20,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:webtransport:live": "node tests/network/webtransport-live.mjs",
     "wasm:build": "node scripts/wasm-build.mjs",
+    "wasm:generate-protocol": "node ../../scripts/generate-wasm-protocol.mjs",
     "wasm:build:mirror": "cd ../.. && cmake --build build --target mirror-web",
     "wasm:build:client": "cd ../.. && cmake --build build --target client-web",
     "wasm:watch": "nodemon --watch ../../../lib --watch ../../../src/web -e c,h --exec 'pnpm run wasm:build'",
