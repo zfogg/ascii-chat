@@ -1,7 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>

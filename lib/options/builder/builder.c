@@ -11,7 +11,7 @@
 #define OPTIONS_MAX_INT_DEFAULTS 256
 #define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>

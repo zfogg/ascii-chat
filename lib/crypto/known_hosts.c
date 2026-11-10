@@ -34,7 +34,7 @@
 #include <ascii-chat/options/options.h>     // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;

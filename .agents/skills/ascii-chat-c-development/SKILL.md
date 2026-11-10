@@ -29,12 +29,18 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 
 ### Block-scoped cleanup with defer
 
-- Include `<ascii-chat/tooling/defer/defer.h>` where defer is used. CMake
-  transforms C and Objective-C sources and supported header function bodies before compilation; generated files under
+- Include `<defer.h>` where defer is used. CMake transforms C and Objective-C
+  sources and supported header function bodies before compilation; generated files under
   `build/defer_transformed/` are build artifacts and must not be edited.
+- The standalone [defer tool](https://github.com/zfogg/defer) is maintained
+  separately and is included as the `deps/defer` submodule. CMake downloads a
+  host release by default; `DEFER_NATIVE_BINARY` selects an existing executable.
+  For tool behavior and diagnostics, consult the standalone
+  [documentation](https://zfogg.github.io/defer/) and this repository's defer
+  topic; do not edit generated transformed sources.
 - C header support uses per-translation-unit overlays. CMake automatically
-  detects defer in project headers; register external header roots with
-  `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` or set `ASCIICHAT_DEFER_HEADER_OVERLAYS=ON`.
+  detects defer in project headers; use `DEFER_WRAPPER_HEADER_DIRS` for external
+  wrapper headers or set `DEFER_HEADER_OVERLAYS=ON`.
   The initial activation processes all eligible C and Objective-C files and disables target
   precompiled headers. C++11 and later use native scope guards, including in
   header functions. Objective-C and Objective-C++ require a zero-cost exception

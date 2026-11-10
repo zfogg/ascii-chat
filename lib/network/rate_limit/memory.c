@@ -13,7 +13,7 @@
 
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>

@@ -8,7 +8,7 @@
 #define CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE 512
 #define CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE 4096
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/gpg/homedir.h>

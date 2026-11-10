@@ -89,7 +89,7 @@ static void *http_renderer_service_main(void *argument) {
   job->result.mime_type[0] = '\0';
   if (atomic_load_bool(&job->cancelled)) {
     job->result.cancelled = true;
-    error = SET_ERRNO(ERROR_CANCELLED, "HTTP render cancelled");
+    error = SET_ERRNO(ERROR_INVALID_STATE, "HTTP render cancelled");
   } else if (job->request.source.type != HTTP_RENDER_SOURCE_UPLOAD &&
              job->request.source.type != HTTP_RENDER_SOURCE_FILE &&
              job->request.source.type != HTTP_RENDER_SOURCE_URL) {
@@ -351,7 +351,7 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     if (cancelled && atomic_load_bool(cancelled)) {
       ffmpeg_decoder_destroy(decoder);
       result->cancelled = true;
-      return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled");
+      return SET_ERRNO(ERROR_INVALID_STATE, "HTTP image render cancelled");
     }
     asciichat_error_context_t failure = {0};
     ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &image, &failure);
@@ -364,7 +364,7 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     }
     if (time_get_ns() >= deadline) {
       ffmpeg_decoder_destroy(decoder);
-      return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out");
+      return SET_ERRNO(ERROR_MEDIA_DECODE, "Image decoding timed out");
     }
     platform_sleep_ms(1);
   }
@@ -414,7 +414,7 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     if (cancelled && atomic_load_bool(cancelled)) {
       result->cancelled = true;
       ffmpeg_decoder_destroy(decoder);
-      return SET_ERRNO(ERROR_CANCELLED, "HTTP image render cancelled");
+      return SET_ERRNO(ERROR_INVALID_STATE, "HTTP image render cancelled");
     }
     asciichat_error_context_t failure = {0};
     image = NULL;
@@ -428,7 +428,7 @@ asciichat_error_t http_renderer_render_file(const char *path, const http_render_
     while (status == FFMPEG_FRAME_WAITING) {
       if (time_get_ns() >= deadline) {
         ffmpeg_decoder_destroy(decoder);
-        return SET_ERRNO(ERROR_TIMEOUT, "Image decoding timed out");
+        return SET_ERRNO(ERROR_MEDIA_DECODE, "Image decoding timed out");
       }
       platform_sleep_ms(1);
       status = ffmpeg_decoder_poll_video(decoder, &image, &failure);

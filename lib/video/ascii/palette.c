@@ -9,7 +9,7 @@
 #define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
 
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
