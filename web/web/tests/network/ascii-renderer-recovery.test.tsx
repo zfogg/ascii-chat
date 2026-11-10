@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vite-plus/test";
-import { useInitAsciiRenderer } from "../../../packages/shared/src/components/AsciiRenderer/useInitAsciiRenderer";
+import { useInitAsciiRenderer } from "../../../../src/web/renderer/src/AsciiRenderer/useInitAsciiRenderer";
 
 const state = vi.hoisted(() => ({ module: null as unknown }));
 vi.mock("../../../packages/shared/src/wasm/mirror", () => ({

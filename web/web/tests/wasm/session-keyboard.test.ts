@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { browserKeyCode } from "../../../packages/shared/src/components/AsciiRenderer/keyboard";
+import { browserKeyCode } from "../../../../src/web/renderer/src/AsciiRenderer/keyboard";
 
 describe("shared keyboard representation", () => {
   it.each([

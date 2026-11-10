@@ -1,5 +1,4 @@
-import type { ClientLikeKind } from "../../wasm/assetUrl";
-import type { MirrorModule } from "../../wasm/mirror";
+import type { ClientLikeKind, MirrorModule } from "@ascii-chat/shared/wasm";
 
 export interface SessionUiEvent {
   action: number;

@@ -40,7 +40,7 @@ export {
   defaultPalettes,
   TextRenderer,
 } from "@ascii-chat/shared/wasm/options";
-export type { SessionUiEvent } from "../components/AsciiRenderer/types";
+export type { SessionUiEvent } from "ascii-chat/react";
 export type {
   AudioProcessorBinding,
   OpusCodecBinding,

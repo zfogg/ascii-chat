@@ -16,7 +16,7 @@ import {
   submitAudioVisualizationSamples,
   renderAudioVisualizationFrame,
 } from "../wasm/mirror";
-import type { AsciiRendererHandle } from "../components";
+import type { AsciiRendererHandle } from "ascii-chat/react";
 import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
 import { captureVisualizationAudio } from "../audio/visualizationCapture";

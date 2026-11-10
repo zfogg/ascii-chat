@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
-import { RasterWorker } from "../../../packages/shared/src/components/AsciiRenderer/RasterWorker";
+import { RasterWorker } from "../../../../src/web/renderer/src/AsciiRenderer/RasterWorker";
 afterEach(() => vi.unstubAllGlobals());
 it.each(["mirror", "client"] as const)(
   "%s worker renders the newest pending frame and terminates cleanly",

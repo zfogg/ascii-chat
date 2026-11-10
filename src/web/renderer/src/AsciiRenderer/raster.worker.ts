@@ -1,9 +1,9 @@
 import { CanvasRenderer, Options } from "ascii-chat";
-import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
-import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
+import type { TerminalRendererModule } from "@ascii-chat/shared/wasm/terminalRenderer";
+import type { AsciiRendererBinding } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
-import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
+import { createWasmModule, type ClientLikeKind } from "@ascii-chat/shared/wasm";
 
 let workerSession: { delete(): void } | undefined;
 async function initialize(

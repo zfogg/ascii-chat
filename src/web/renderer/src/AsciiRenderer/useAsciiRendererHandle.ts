@@ -3,7 +3,7 @@ import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
 import { browserKeyCode } from "./keyboard";
 import type { SessionUiEvent } from "./types";
-import type { SessionUiBinding } from "../../wasm/generated/mirror-bindings";
+import type { SessionUiBinding } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
 import type { KeyboardEvent } from "react";
 import {
   type ForwardedRef,
@@ -14,9 +14,8 @@ import {
   useRef,
 } from "react";
 import type { AsciiRendererHandle } from "./types";
-import type { MirrorModule } from "../../wasm/mirror";
-import type { AsciiRendererBinding } from "../../wasm/generated/mirror-bindings";
-import type { ClientLikeKind } from "../../wasm/assetUrl";
+import type { MirrorModule, ClientLikeKind } from "@ascii-chat/shared/wasm";
+import type { AsciiRendererBinding } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
 import { startGridStabilityProbe } from "./gridStabilityProbe";
 
 interface UseAsciiRendererHandleParams {
