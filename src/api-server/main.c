@@ -141,6 +141,8 @@ static void api_request(http_request_t *request, http_response_t *response, void
     return;
   }
   platform_close(fd);
+  render_request.source.type = HTTP_RENDER_SOURCE_FILE;
+  SAFE_STRNCPY(render_request.source.path, path, sizeof(render_request.source.path));
   render_request.source.body_length = length;
   render_request.max_output_bytes = 8u * 1024u * 1024u;
   SAFE_STRNCPY(render_request.source.mime_type, content_type, sizeof(render_request.source.mime_type));
