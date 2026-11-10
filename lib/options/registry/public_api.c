@@ -196,6 +196,9 @@ const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, 
   case MODE_MCP_SERVER:
     mode_bitmask = OPTION_MODE_MCP_SERVER;
     break;
+  case MODE_API_SERVER:
+    mode_bitmask = OPTION_MODE_API_SERVER;
+    break;
   default:
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
     *num_options = 0;

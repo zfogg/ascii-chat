@@ -181,3 +181,17 @@
  * @see md_docs_2networking-runtime.html
  * @see md_docs_2event-driven-io.html
  */
+/**
+ * @page api_server HTTP API server
+ *
+ * The `api-server` mode exposes the public ASCII conversion service over the
+ * shared HTTP/1.1, HTTP/2, and HTTP/3 listener. `POST /convert` is protected
+ * with HTTP Basic authentication when `--api-username` is configured; use
+ * `--api-password-file` in deployments so the secret is not present in the
+ * process command line. `GET /health` remains available for health checks.
+ *
+ * Basic credentials are read only from the `Authorization: Basic` header.
+ * URL userinfo is never parsed or logged. Plain HTTP authentication is allowed
+ * only with the explicit `--api-allow-insecure-basic-auth` opt-in; TLS may be
+ * terminated by a trusted local reverse proxy.
+ */

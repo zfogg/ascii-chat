@@ -1,6 +1,10 @@
 # src/ - Application mode entry points
 
 set(APP_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_basic_auth.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
+    # Public API server
+    ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     # Server mode
     ${CMAKE_CURRENT_SOURCE_DIR}/server/main.c

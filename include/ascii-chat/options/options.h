@@ -919,6 +919,7 @@ typedef enum {
   MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
   MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
   MODE_MCP_SERVER,        ///< Model Context Protocol rendering server
+  MODE_API_SERVER,        ///< Public HTTP ASCII rendering API
   MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
@@ -936,8 +937,9 @@ typedef enum {
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
   OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
+  OPTION_MODE_API_SERVER = (1 << MODE_API_SERVER),
   OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
+  OPTION_MODE_ALL = 0x7F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -1031,6 +1033,10 @@ typedef struct options_state {
   char mcp_downloads_url_prefix[OPTIONS_BUFF_SIZE]; ///< Public HTTP origin for download links
   char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
+  bool api_allow_insecure_basic_auth;               ///< Permit Basic auth without TLS
+  char api_username[OPTIONS_BUFF_SIZE];             ///< API Basic-auth username
+  char api_password[OPTIONS_BUFF_SIZE];             ///< API Basic-auth password
+  char api_password_file[PLATFORM_MAX_PATH_LENGTH]; ///< API Basic-auth password file
   int discovery_port;                               ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
                                                     ///< exclusive with discovery_port)

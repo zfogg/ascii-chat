@@ -32,6 +32,7 @@ static const mode_descriptor_t g_mode_descriptors[] = {
     {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
     {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
     {MODE_MCP_SERVER, "mcp-server", "MCP media rendering tools", "server-like"},
+    {MODE_API_SERVER, "api-server", "HTTP ASCII rendering API", "server-like"},
     {MODE_INVALID, NULL, NULL, NULL}};
 
 /**
@@ -121,6 +122,7 @@ static const int g_port_server = OPT_PORT_INT_DEFAULT;                 // 27224
 static const int g_port_client = OPT_PORT_INT_DEFAULT;                 // 27224
 static const int g_port_discovery_service = OPT_ACDS_PORT_INT_DEFAULT; // 27225
 static const int g_port_discovery = OPT_PORT_INT_DEFAULT;              // 27224 (connects via discovery)
+static const int g_port_api = 27229;
 
 /**
  * @brief Get mode-specific default value for --port
@@ -131,6 +133,8 @@ const void *get_default_port(asciichat_mode_t mode) {
     static const int port = OPT_MCP_PORT_DEFAULT;
     return &port;
   }
+  case MODE_API_SERVER:
+    return &g_port_api;
   case MODE_SERVER:
     return &g_port_server;
   case MODE_CLIENT:

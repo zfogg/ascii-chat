@@ -147,7 +147,7 @@ const registry_entry_t g_network_entries[] = {
      .group = "NETWORK",
      .env_var_name = "ASCII_CHAT_ADDRESS",
      .parse_fn = parse_mcp_bind,
-     .mode_bitmask = OPTION_MODE_MCP_SERVER},
+     .mode_bitmask = OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER},
     {.long_name = "address6",
      .type = OPTION_TYPE_STRING,
      .offset = offsetof(options_t, address6),
@@ -157,7 +157,7 @@ const registry_entry_t g_network_entries[] = {
      .group = "NETWORK",
      .env_var_name = "ASCII_CHAT_ADDRESS6",
      .parse_fn = parse_mcp_bind6,
-     .mode_bitmask = OPTION_MODE_MCP_SERVER},
+     .mode_bitmask = OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER},
     // NETWORK GROUP - port and client management
     {"port",
      'p',
@@ -166,7 +166,7 @@ const registry_entry_t g_network_entries[] = {
      NULL, // Use mode_default_getter instead
      sizeof(int),
      "Port to host a server or discovery-service on, or port to connect to a server as a client (default: 27224 for "
-     "server/client, 27225 for discovery-service, 27228 for mcp-server).",
+     "server/client, 27225 for discovery-service, 27228 for mcp-server, 27229 for api-server).",
      "NETWORK",
      NULL,
      false,
@@ -175,7 +175,7 @@ const registry_entry_t g_network_entries[] = {
      parse_port_option,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
+     OPTION_MODE_CLIENT | OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
          OPTION_MODE_DISCOVERY,
      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
      get_default_port},
@@ -212,7 +212,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"tls-key",
@@ -230,7 +230,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"tls-key-password",
@@ -249,7 +249,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {.input_type = OPTION_INPUT_STRING},
      NULL},
     {"max-clients",
@@ -267,7 +267,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
      {.numeric_range = {1, 99, 1}, .examples = g_maxclients_examples, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"reconnect-attempts",
@@ -303,7 +303,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_CLIENT |
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_API_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_CLIENT |
          OPTION_MODE_DISCOVERY,
      {0},
      NULL},

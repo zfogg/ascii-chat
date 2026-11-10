@@ -45,6 +45,7 @@
 #include "client/main.h"
 #include "mirror/main.h"
 #include "mcp-server/mcp.h"
+#include "api-server/main.h"
 #include <ascii-chat/options/registry/core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
@@ -133,6 +134,8 @@ static const char *get_mode_log_filename(asciichat_mode_t mode) {
     return "mirror.log";
   case MODE_MCP_SERVER:
     return "mcp-server.log";
+  case MODE_API_SERVER:
+    return "api-server.log";
   case MODE_DISCOVERY_SERVICE:
     return "acds.log";
   case MODE_DISCOVERY:
@@ -417,6 +420,7 @@ static const mode_descriptor_t g_mode_table[] = {
         .entry_point = acds_main,
     },
     {.name = "mcp-server", .description = "MCP rendering tools", .entry_point = mcp_server_main},
+    {.name = "api-server", .description = "HTTP ASCII rendering API", .entry_point = api_server_main},
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
 
@@ -459,6 +463,7 @@ static const mode_descriptor_t *g_mode_lookup[] = {
     [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
     [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
     [MODE_MCP_SERVER] = &g_mode_table[4],
+    [MODE_API_SERVER] = &g_mode_table[5],
     [MODE_INVALID] = NULL, // Invalid: no descriptor
 };
 
@@ -708,6 +713,8 @@ int main(int argc, char *argv[]) {
       detected_mode = MODE_MIRROR;
     } else if (strcmp(mode_str, "mcp-server") == 0) {
       detected_mode = MODE_MCP_SERVER;
+    } else if (strcmp(mode_str, "api-server") == 0) {
+      detected_mode = MODE_API_SERVER;
     } else if (strcmp(mode_str, "acds") == 0 || strcmp(mode_str, "discovery-service") == 0) {
       detected_mode = MODE_DISCOVERY_SERVICE;
     } else if (strcmp(mode_str, "discovery") == 0) {
