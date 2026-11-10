@@ -259,7 +259,7 @@ void *client_video_render_thread(void *arg) {
   fps_t video_fps_tracker = {0};
   fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
 
-  const uint64_t frame_interval_ns = NS_PER_SEC_INT / client_fps;
+  uint64_t frame_interval_ns = NS_PER_SEC_INT / (uint64_t)client_fps;
   uint64_t next_frame_ns = time_get_ns() + frame_interval_ns;
   bool last_has_sources = false;
   uint32_t frame_gen_count = 0;
@@ -293,6 +293,23 @@ void *client_video_render_thread(void *arg) {
                 "shutting_down=%d)",
                 thread_client_id, video_running, active, shutting_down);
       break;
+    }
+
+    // SETTINGS_SYNC can change the viewer's requested render rate while this
+    // thread is alive.  Read the published capabilities under the same mutex
+    // used by publish_render_settings(), then restart the cadence from now so
+    // a rate change cannot produce a burst of catch-up frames.
+    int requested_fps = 0;
+    mutex_lock(&client->client_state_mutex);
+    requested_fps = client->terminal_caps.desired_fps;
+    mutex_unlock(&client->client_state_mutex);
+    if (requested_fps > 0 && requested_fps != client_fps) {
+      client_fps = requested_fps;
+      frame_interval_ns = NS_PER_SEC_INT / (uint64_t)client_fps;
+      next_frame_ns = time_get_ns() + frame_interval_ns;
+      fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
+      log_debug("Client %s updated render interval: %llums (%d FPS)", thread_client_id,
+                (unsigned long long)(frame_interval_ns / NS_PER_MS_INT), client_fps);
     }
 
     // Processing consumes part of the frame interval. Sleep only until the

@@ -234,7 +234,7 @@ test("native host applies live browser settings and isolates two viewers", async
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 30000,
     });
-    await expect(colors(page)).toHaveValue("none");
+    await expect(colors(page)).toHaveValue("auto");
     await expect(page.getByLabel("Width", { exact: true })).toHaveValue("0");
     await expect(page.getByLabel("Height", { exact: true })).toHaveValue("0");
     await expect.poll(() => frame(page)).not.toBe("");
