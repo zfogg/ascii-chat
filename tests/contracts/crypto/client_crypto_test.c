@@ -77,7 +77,7 @@ static void setup(void) {
   local.crypto_ctx.rekey_last_time = peer.crypto_ctx.rekey_last_time = 0;
   connection.crypto_ctx = &local;
   connection.crypto_mode = ACIP_CRYPTO_ENCRYPT;
-  connection.transport = &transport;
+  atomic_ptr_store(&connection.transport, &transport);
 }
 static void teardown(void) {
   network_connection_destroy(&startup_owner);

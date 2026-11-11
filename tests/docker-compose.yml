@@ -43,10 +43,16 @@ services:
 
     # Run tests by default
     # Use build_docker directory (build is for native OS)
-    command: >
-      sh -c "cmake --preset docker &&
-             cmake --build build_docker --target tests &&
-             ctest --test-dir build_docker --output-on-failure --parallel 0"
+    command:
+      - sh
+      - -c
+      - |
+        PYTHON3=$$(uv python find 3.15)
+        export UV_PYTHON="$$PYTHON3"
+        uv sync --project tests/ascii_chat_tests --frozen
+        cmake --preset docker -DPython3_EXECUTABLE="$$PYTHON3"
+        cmake --build build_docker --target tests
+        ctest --test-dir build_docker --output-on-failure --parallel 0
 
     # Optional: Override command for interactive shell
     # docker-compose run --rm ascii-chat-tests /bin/bash
@@ -98,10 +104,16 @@ services:
     cap_add:
       - SYS_PTRACE
 
-    command: >
-      sh -c "cmake --preset docker &&
-             cmake --build build_docker --target tests &&
-             ctest --test-dir build_docker --output-on-failure --parallel 0"
+    command:
+      - sh
+      - -c
+      - |
+        PYTHON3=$$(uv python find 3.15)
+        export UV_PYTHON="$$PYTHON3"
+        uv sync --project tests/ascii_chat_tests --frozen
+        cmake --preset docker -DPython3_EXECUTABLE="$$PYTHON3" -DOPENSSL_ROOT_DIR=/opt/openssl
+        cmake --build build_docker --target tests
+        ctest --test-dir build_docker --output-on-failure --parallel 0
 
     environment:
       # Architecture-specific deps cache (prevents cross-arch binary conflicts)

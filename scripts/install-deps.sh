@@ -437,7 +437,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv icu nghttp2 \
+      libwebsockets libuv icu libnghttp2 \
       libvterm freetype2 fontconfig
 
   else
