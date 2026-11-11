@@ -794,14 +794,16 @@ for (const mode of ["client", "discovery"]) {
     });
     try {
       const server = [
-        "server",
-        "0.0.0.0",
+        ...(mode === "client" ? ["server", "0.0.0.0"] : []),
         "--port",
         String(port),
-        "--websocket-port",
-        String(port + 1),
-        "--status-screen=false",
       ];
+      if (mode === "client")
+        server.push(
+          "--websocket-port",
+          String(port + 1),
+          "--status-screen=false",
+        );
       if (mode === "discovery") {
         const acds = port + 1000;
         start([
@@ -820,7 +822,6 @@ for (const mode of ["client", "discovery"]) {
         ]);
         await waitForPort(acds + 1, "127.0.0.1", { timeoutMs: 20000 });
         server.push(
-          "--discovery",
           "--discovery-service",
           "127.0.0.1",
           "--discovery-service-port",
@@ -838,10 +839,9 @@ for (const mode of ["client", "discovery"]) {
         query.set("turnUrls", "");
       }
       start(server);
-      await waitForPort(port + 1, "127.0.0.1", { timeoutMs: 20000 });
       if (mode === "client")
-        query.set("serverUrl", `ws://127.0.0.1:${port + 1}`);
-      else {
+        await waitForPort(port + 1, "127.0.0.1", { timeoutMs: 20000 });
+      if (mode === "discovery") {
         await expect
           .poll(
             () =>
@@ -852,6 +852,10 @@ for (const mode of ["client", "discovery"]) {
             },
           )
           .not.toBe("");
+      }
+      if (mode === "client")
+        query.set("serverUrl", `ws://127.0.0.1:${port + 1}`);
+      else {
         query.set(
           "session",
           output.match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)![1]!,
@@ -874,9 +878,16 @@ for (const mode of ["client", "discovery"]) {
       ).toBeVisible({
         timeout: 45000,
       });
-      await expect
-        .poll(() => output, { timeout: 20000 })
-        .toMatch(/rendering configured: \d+x\d+/);
+      if (mode === "client")
+        await expect
+          .poll(() => output, { timeout: 20000 })
+          .toMatch(/rendering configured: \d+x\d+/);
+      else {
+        await expect
+          .poll(() => output, { timeout: 20000 })
+          .toContain("Host render thread started");
+        expect(output).toContain("Discovery state: ACTIVE");
+      }
       expect(output).not.toContain("Invalid capabilities size");
       expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])

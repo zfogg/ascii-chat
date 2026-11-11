@@ -1,4 +1,5 @@
 #include <ascii-chat/network/browser/client.h>
+#include <ascii-chat/video/anim/fft.h>
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
@@ -421,6 +422,10 @@ int browser_client_init(browser_transport_t *transport) {
   char *argv[] = {"client", NULL};
   asciichat_error_t err = options_init(1, argv);
   if (err != ASCIICHAT_OK)
+    return -1;
+  /* Browser options are patched immediately after this call, so initialize
+   * FFTW even when the default option is off and JavaScript enables it later. */
+  if (audio_visualization_fft_init() != ASCIICHAT_OK)
     return -1;
 
   // Initialize platform layer

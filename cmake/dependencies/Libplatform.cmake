@@ -24,33 +24,6 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 add_subdirectory(${_ascii_chat_repo_root}/deps/libplatform
                  ${CMAKE_BINARY_DIR}/deps/libplatform)
-if(EMSCRIPTEN)
-    get_target_property(_libplatform_sources libplatform-objects SOURCES)
-    foreach(_generic_source
-        lib/symbols.c
-        lib/filesystem_common.c
-        lib/backtrace.c
-        lib/keyboard.c
-        lib/socket_io.c
-        lib/cond.c
-        lib/terminal.c
-        lib/lifecycle.c
-        lib/mutex.c
-        lib/system_common.c
-        lib/util/string.c
-
-        lib/wasm/stubs/audio.c
-        lib/wasm/stubs/backtrace.c
-        lib/wasm/backtrace.c
-        lib/wasm/stubs/comprehensive.c
-        lib/wasm/stubs/misc.c)
-        list(REMOVE_ITEM _libplatform_sources
-            ${_generic_source}
-            ${_ascii_chat_repo_root}/deps/libplatform/${_generic_source})
-    endforeach()
-    set_property(TARGET libplatform-objects PROPERTY SOURCES ${_libplatform_sources})
-    unset(_libplatform_sources)
-endif()
 target_include_directories(libplatform-objects PRIVATE
     ${_ascii_chat_repo_root}/include
     ${_ascii_chat_repo_root}/deps

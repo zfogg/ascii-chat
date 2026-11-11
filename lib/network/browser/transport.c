@@ -9,10 +9,6 @@
 
 #define BROWSER_TRANSPORT_MAX_QUEUED_BYTES (4u * 1024u * 1024u)
 
-bool update_banner_is_checking(void) {
-  return false;
-}
-
 typedef struct browser_output {
   struct browser_output *next;
   void *data;

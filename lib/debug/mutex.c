@@ -826,7 +826,8 @@ static void cond_deadlock_check_snapshot(const cond_deadlock_snapshot_t *cond, c
 
   cond_written +=
       safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written, "  wait entered at %s:%d %s()\n",
-                    extract_project_relative_path(cond->last_wait_file, ASCIICHAT_OWNED_SOURCE_DIRS), cond->last_wait_line, cond->last_wait_func);
+                    extract_project_relative_path(cond->last_wait_file, ASCIICHAT_OWNED_SOURCE_DIRS),
+                    cond->last_wait_line, cond->last_wait_func);
 
   if (cond_written >= 0 && cond->last_wait_mutex) {
     safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written,
