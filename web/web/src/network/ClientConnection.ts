@@ -314,8 +314,9 @@ export class ClientConnection {
         mode: this.cryptoMode,
       });
       if (handshake.code) throwWasmError(handshake.code, "Handshake failed");
-      for (const { packet } of handshake.outputs ?? [])
+      for (const { packet } of handshake.outputs ?? []) {
         this.socket?.send(packet);
+      }
     } catch (error) {
       if (isReportedWasmError(error)) forwardJavaScriptError(error);
       else reportJavaScriptError(error);
@@ -361,7 +362,13 @@ export class ClientConnection {
       });
       if (packetResult.code)
         throwWasmError(packetResult.code, "Packet processing failed");
-      for (const { packet } of packetResult.outputs ?? [])
+      const drained = drainClientOutputs();
+      if (drained.code)
+        throwWasmError(drained.code, "Failed to drain transport output");
+      for (const { packet } of [
+        ...(packetResult.outputs ?? []),
+        ...(drained.outputs ?? []),
+      ])
         this.socket?.send(packet);
       const next = packetResult.state;
       if (next !== undefined && next !== this.transportState) {
@@ -490,10 +497,6 @@ export class ClientConnection {
           throwWasmError(packetResult.code, "Packet send failed");
         this.socket.send(packetResult.bytes);
         return;
-      } else if (state === ConnectionState.HANDSHAKE) {
-        // During handshake, send unencrypted ACIP packet
-        // Delegate to sendUnencryptedAcipPacket for consistent handling
-        return this.sendUnencryptedAcipPacket(packetType, payload);
       } else {
         // In ERROR, DISCONNECTED, or CONNECTING state - don't send
         console.error(
@@ -518,22 +521,6 @@ export class ClientConnection {
       );
       throw error;
     }
-  }
-
-  /** Setup packets follow the same negotiated policy as media packets. */
-  sendUnencryptedAcipPacket(packetType: number, payload: Uint8Array): void {
-    if (!this.socket || !this.socket.isConnected())
-      throw new Error("Not connected to server");
-    const result = processClientEvent({
-      type: "send-packet",
-      packetType,
-      payload,
-      clientId: 0,
-      encrypt: false,
-    });
-    if (result.code || !result.bytes)
-      throwWasmError(result.code, "Packet send failed");
-    this.socket.send(result.bytes);
   }
 
   /**

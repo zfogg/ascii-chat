@@ -290,9 +290,6 @@ export class WebTransportClientSession implements ClientSession {
     )
       throw new Error("Reliable outbound queue is congested");
   }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
-    this.channel?.send(type, payload, "reliable");
-  }
   disconnect(): void {
     if (this.cancelled) return;
     this.cancelled = true;

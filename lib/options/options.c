@@ -835,15 +835,12 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", log_dir, PATH_SEPARATOR_STR,
                   log_filename_buf);
 
-    // Validate and normalize the path
-    char *normalized_default_log = NULL;
-    if (path_validate_user_path(default_log_path_buf, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
-      SAFE_FREE(normalized_default_log);
-    } else {
-      // Validation failed - use the path as-is (validation may fail in debug builds)
-      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
-    }
+    // get_log_dir() already selected a trusted application-owned directory.
+    // Avoid sending this internally constructed path through the user-path
+    // validator during pre-parse startup, where platform services are not
+    // fully initialized yet. User-supplied paths are still validated at their
+    // parsing sites.
+    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
 
     // Free log_dir allocated by get_log_dir() using SAFE_MALLOC
     SAFE_FREE(log_dir);

@@ -22,7 +22,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
-#include <libplatform/util/string.h>
+#include <util/string.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/limits.h>

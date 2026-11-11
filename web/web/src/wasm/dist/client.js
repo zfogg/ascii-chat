@@ -5945,8 +5945,8 @@ async function ClientModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1928080: () => Module.getRandomValue(),
-    1928116: () => {
+    1924687: () => Module.getRandomValue(),
+    1924723: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -5982,13 +5982,13 @@ async function ClientModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
-  var _strerror = makeInvalidEarlyAccess("_strerror");
   var _free = makeInvalidEarlyAccess("_free");
   var _malloc = makeInvalidEarlyAccess("_malloc");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   makeInvalidEarlyAccess("_htons");
+  var _strerror = makeInvalidEarlyAccess("_strerror");
   makeInvalidEarlyAccess("_ntohs");
+  var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   makeInvalidEarlyAccess("__emscripten_tls_init");
   var _emscripten_builtin_memalign = makeInvalidEarlyAccess(
     "_emscripten_builtin_memalign",
@@ -6046,14 +6046,6 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["pthread_self"] !== "undefined",
-      "missing Wasm export: pthread_self",
-    );
-    assert(
-      typeof wasmExports["strerror"] !== "undefined",
-      "missing Wasm export: strerror",
-    );
-    assert(
       typeof wasmExports["free"] !== "undefined",
       "missing Wasm export: free",
     );
@@ -6070,8 +6062,16 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: htons",
     );
     assert(
+      typeof wasmExports["strerror"] !== "undefined",
+      "missing Wasm export: strerror",
+    );
+    assert(
       typeof wasmExports["ntohs"] !== "undefined",
       "missing Wasm export: ntohs",
+    );
+    assert(
+      typeof wasmExports["pthread_self"] !== "undefined",
+      "missing Wasm export: pthread_self",
     );
     assert(
       typeof wasmExports["_emscripten_tls_init"] !== "undefined",
@@ -6164,13 +6164,13 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["_embind_initialize_bindings"],
       0,
     );
-    _pthread_self = wasmExports["pthread_self"];
-    _strerror = createExportWrapper("strerror", wasmExports["strerror"], 1);
     _free = createExportWrapper("free", wasmExports["free"], 1);
     _malloc = createExportWrapper("malloc", wasmExports["malloc"], 1);
     _fflush = createExportWrapper("fflush", wasmExports["fflush"], 1);
     createExportWrapper("htons", wasmExports["htons"], 1);
+    _strerror = createExportWrapper("strerror", wasmExports["strerror"], 1);
     createExportWrapper("ntohs", wasmExports["ntohs"], 1);
+    _pthread_self = wasmExports["pthread_self"];
     createExportWrapper(
       "_emscripten_tls_init",
       wasmExports["_emscripten_tls_init"],

@@ -21,44 +21,47 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
-FetchContent_Declare(libplatform
-    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 6f39f12e5e16654dd3bd3d2c5bd1d14ba9df4ef0
-    SOURCE_DIR "${_ascii_chat_libplatform_source}")
-FetchContent_MakeAvailable(libplatform)
+get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+add_subdirectory(${_ascii_chat_repo_root}/deps/libplatform
+                 ${CMAKE_BINARY_DIR}/deps/libplatform)
+if(EMSCRIPTEN)
+    get_target_property(_libplatform_sources libplatform-objects SOURCES)
+    foreach(_generic_source
+        lib/symbols.c
+        lib/filesystem_common.c
+        lib/backtrace.c
+        lib/keyboard.c
+        lib/socket_io.c
+        lib/cond.c
+        lib/terminal.c
+        lib/lifecycle.c
+        lib/mutex.c
+        lib/system_common.c
+        lib/util/string.c
 
-target_include_directories(asciichat-project-includes INTERFACE
-    "${_ascii_chat_libplatform_source}/lib")
-
-# Apply the owned-directory source formatting contract to the active pinned
-# source cache while preserving its dependency-specific include layout.
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/symbols.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace_internal.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/sync.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/memory.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/symbols.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/backtrace.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/debug/backtrace.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/windows/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/windows")
-
-# libplatform owns the shared path/logging helpers, so give it the checkout
-# root that CMake already knows instead of letting it fall back to ".".
-string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
-target_compile_definitions(libplatform-objects PRIVATE
-    LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+        lib/wasm/stubs/audio.c
+        lib/wasm/stubs/backtrace.c
+        lib/wasm/backtrace.c
+        lib/wasm/stubs/comprehensive.c
+        lib/wasm/stubs/misc.c)
+        list(REMOVE_ITEM _libplatform_sources
+            ${_generic_source}
+            ${_ascii_chat_repo_root}/deps/libplatform/${_generic_source})
+    endforeach()
+    set_property(TARGET libplatform-objects PROPERTY SOURCES ${_libplatform_sources})
+    unset(_libplatform_sources)
+endif()
+target_include_directories(libplatform-objects PRIVATE
+    ${_ascii_chat_repo_root}/include
+    ${_ascii_chat_repo_root}/deps
+    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
+    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+if(LIBSODIUM_INCLUDE_DIRS)
+    target_include_directories(libplatform-objects PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+if(EMSCRIPTEN)
+    target_compile_options(libplatform-objects PRIVATE -pthread -matomics -mbulk-memory)
+endif()
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
@@ -77,4 +80,4 @@ endif()
 
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
-unset(_ascii_chat_source_root)
+unset(_ascii_chat_repo_root)

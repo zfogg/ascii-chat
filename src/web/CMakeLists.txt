@@ -73,6 +73,7 @@ include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
 include(${_cmake_dir}/deps/FFTW.cmake)
 include(${_cmake_dir}/deps/Utf8proc.cmake)
+include(${_cmake_dir}/dependencies/Libplatform.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -90,7 +91,8 @@ asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
     ${CMAKE_BINARY_DIR}/generated
-    ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
+    ${DEPS_ROOT}/libplatform/include
+    ${DEPS_ROOT}/libplatform/lib
     ${INCLUDE_ROOT}
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
@@ -106,6 +108,25 @@ include_directories(
     ${OPUS_INCLUDE_DIRS}  # opus
     ${ZSTD_INCLUDE_DIRS}  # zstd
 )
+if(EMSCRIPTEN)
+    include_directories(SYSTEM /home/zfogg/.cache/emscripten/sysroot/include)
+        if(EXISTS "/usr/include/portaudio.h")
+            configure_file("/usr/include/portaudio.h" "${CMAKE_BINARY_DIR}/portaudio.h" COPYONLY)
+            include_directories(SYSTEM ${CMAKE_BINARY_DIR})
+        endif()
+    find_path(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE string.h
+        HINTS "$ENV{EMSDK}/upstream/emscripten/cache/sysroot/include"
+              "/home/zfogg/.cache/emscripten/sysroot/include")
+    if(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE)
+        include_directories(SYSTEM ${ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE})
+    endif()
+    if(ASCIICHAT_DEPS_CACHE_ROOT)
+        include_directories(SYSTEM
+            ${ASCIICHAT_DEPS_CACHE_ROOT}/web/libsodium-wasm-src/src/libsodium/include)
+        include_directories(SYSTEM
+            ${CMAKE_BINARY_DIR}/_deps/libsodium-build/src/libsodium/include)
+    endif()
+endif()
 
 # Source files for WASM mirror entry point
 # IMPORTANT: Do NOT include src/mirror/main.c or session/*.c files
@@ -116,31 +137,8 @@ set(WEB_SRC_MIRROR
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
 )
 
-# Platform abstraction layer for WASM
-set(PLATFORM_SRC
-    ${LIB_ROOT}/platform/wasm/init.c
-    ${LIB_ROOT}/platform/wasm/terminal.c
-    ${LIB_ROOT}/platform/wasm/thread.c
-    ${LIB_ROOT}/platform/wasm/filesystem.c
-    ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
-    ${LIB_ROOT}/platform/wasm/time.c
-    ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/process_title.c
-    ${LIB_ROOT}/platform/filesystem.c
-    ${LIB_ROOT}/platform/wasm/stubs/util.c
-    ${LIB_ROOT}/platform/wasm/stubs/actions.c
-    ${LIB_ROOT}/platform/wasm/stubs/manpage.c
-    ${LIB_ROOT}/platform/wasm/stubs/video.c
-    ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
-    ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c
-    ${LIB_ROOT}/platform/wasm/stubs/audio.c
-    ${LIB_ROOT}/platform/wasm/stubs/network.c
-    ${LIB_ROOT}/platform/wasm/stubs/misc.c
-    ${LIB_ROOT}/platform/wasm/stubs/comprehensive.c
-    ${LIB_ROOT}/platform/wasm/ffmpeg_decoder.c
-    ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
-)
+# Platform implementations are supplied by the shared libplatform target.
+set(PLATFORM_SRC)
 
 # WASM rendering components (libvterm + FreeType)
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
@@ -257,7 +255,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/render.c
     ${LIB_ROOT}/video/ascii/simd/cells.c
     ${LIB_ROOT}/video/ascii/simd/dispatch.c
-    ${LIB_ROOT}/platform/cpu.c
     ${LIB_ROOT}/video/ascii/common.c
     ${LIB_ROOT}/video/ascii/scalar/background.c
     ${LIB_ROOT}/video/ascii/scalar/foreground.c
@@ -285,11 +282,9 @@ set(LIB_SRC_COMMON
 
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
-    ${LIB_ROOT}/debug/sync.c
     ${LIB_ROOT}/debug/stats.c
     ${LIB_ROOT}/debug/errno.c
     ${LIB_ROOT}/debug/debug_helpers.c
-    ${LIB_ROOT}/debug/atomic.c
     ${LIB_ROOT}/debug/mutex.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
@@ -306,8 +301,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/wasm.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
-    ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
@@ -328,7 +321,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/status.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
-    ${LIB_ROOT}/platform/keyboard.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
@@ -352,7 +344,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c
     ${LIB_ROOT}/stats/descriptors.c
-    ${LIB_ROOT}/platform/wasm/stubs/stats.c
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
@@ -439,6 +430,7 @@ endif()
 
 add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PUBLIC asciichat-icu)
+target_link_libraries(wasm-common PUBLIC libplatform::libplatform)
 
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
@@ -446,6 +438,7 @@ target_link_libraries(wasm-common PRIVATE
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
+
 
 target_include_directories(wasm-common PRIVATE
     ${LIBSODIUM_INCLUDE_DIRS}
@@ -526,7 +519,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/opus.c
     ${LIB_ROOT}/ringbuffer.c
     ${LIB_ROOT}/util/aspect_ratio.c
-    ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
 )
 
 # Create WASM client module
@@ -729,6 +721,12 @@ apply_sanitizers_to_target(renderer-web)
 
 target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
 target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
+
+# The platform implementation is a static library; link it explicitly into
+# each Emscripten entry point so its object files are retained by wasm-ld.
+target_link_libraries(client-web PRIVATE libplatform::libplatform)
+target_link_libraries(mirror-web PRIVATE libplatform::libplatform)
+target_link_libraries(renderer-web PRIVATE libplatform::libplatform)
 
 # This file is configured as a separate CMake project for Emscripten, so the
 # parent project's defer finalization cannot see these targets. Reuse the same

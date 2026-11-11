@@ -12,7 +12,7 @@ export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 # project's Python environment for native-only commits.
 format_pid=
 if printf "%s\n" "$all_staged" | grep -Eq '^(docs/|web/)|\.(md|mdx|toml|js|mjs|cjs|jsx|ts|mts|cts|tsx|json|jsonc|json5|css|scss|less|html|htm|yaml|yml|graphql|gql|vue|svelte|astro|dox)$'; then
-  uv run --project tests/ascii_chat_tests --frozen python scripts/format-repo.py all --staged &
+  uv run --no-project --frozen python scripts/format-repo.py all --staged &
   format_pid=$!
 fi
 

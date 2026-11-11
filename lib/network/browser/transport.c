@@ -9,6 +9,10 @@
 
 #define BROWSER_TRANSPORT_MAX_QUEUED_BYTES (4u * 1024u * 1024u)
 
+bool update_banner_is_checking(void) {
+  return false;
+}
+
 typedef struct browser_output {
   struct browser_output *next;
   void *data;
@@ -253,6 +257,19 @@ void browser_transport_destroy(browser_transport_t *browser) {
   while (browser->output)
     browser_transport_output_pop(browser);
   SAFE_FREE(browser);
+}
+
+void acip_transport_destroy(acip_transport_t *transport) {
+  if (!transport)
+    return;
+  if (transport->methods && transport->methods->close && transport->methods->is_connected &&
+      transport->methods->is_connected(transport))
+    transport->methods->close(transport);
+  if (transport->crypto_ctx) {
+    crypto_destroy(transport->crypto_ctx);
+    SAFE_FREE(transport->crypto_ctx);
+  }
+  browser_transport_destroy((browser_transport_t *)transport->impl_data);
 }
 
 acip_transport_t *browser_transport_base(browser_transport_t *browser) {

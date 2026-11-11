@@ -144,7 +144,7 @@ describe("WebTransport client session", () => {
     );
     state.callbacks!.ready();
     expect(states).toEqual([1, 3]);
-    session.sendUnencryptedAcipPacket(5001, Uint8Array.from([7]));
+    session.sendPacket(5001, Uint8Array.from([7]));
     session.sendPacket(3002, Uint8Array.from([1, 2]));
     expect(state.sends.map((item) => item.delivery)).toEqual([
       "reliable",

@@ -730,10 +730,25 @@ for (const mode of ["client", "discovery"]) {
     page,
   }, info) => {
     test.setTimeout(180000);
+    const configuredCommand = process.env["ASCII_CHAT_TEST_COMMAND"];
     const binary = process.env["ASCII_CHAT_TEST_BINARY"];
+    let command: string[] | undefined;
+    if (configuredCommand) {
+      try {
+        const parsed: unknown = JSON.parse(configuredCommand);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.every((value): value is string => typeof value === "string")
+        )
+          command = parsed;
+      } catch {
+        /* The skip below reports the required command format. */
+      }
+    } else if (binary) command = [binary];
     test.skip(
-      !binary,
-      "Set ASCII_CHAT_TEST_BINARY to a compatible native executable",
+      !command,
+      'Set ASCII_CHAT_TEST_BINARY or JSON ASCII_CHAT_TEST_COMMAND, e.g. ["wsl.exe","-d","Arch","--","/tmp/ascii-chat-native-tests/bin/ascii-chat"]',
     );
     const processes: ChildProcess[] = [];
     const clientInitLogs: string[] = [];
@@ -742,11 +757,6 @@ for (const mode of ["client", "discovery"]) {
     page.on("console", (message) => {
       if (message.text().includes("[Client] Upload encoding:"))
         uploadEncodingLogs.push(message.text());
-      if (
-        message.type() === "error" ||
-        message.text().includes("track reader stopped")
-      )
-        console.log(message.text());
       if (message.text().includes("[Client WASM] Session initialized"))
         clientInitLogs.push(message.text());
     });
@@ -760,7 +770,9 @@ for (const mode of ["client", "discovery"]) {
     });
     let output = "";
     const start = (args: string[]) => {
-      const child = spawn(binary!, args, { windowsHide: true });
+      const child = spawn(command![0]!, [...command!.slice(1), ...args], {
+        windowsHide: true,
+      });
       processes.push(child);
       child.on("exit", (code, signal) => {
         output += `\nEXIT ${args[0]} code=${code} signal=${signal}\n`;
@@ -862,6 +874,10 @@ for (const mode of ["client", "discovery"]) {
       ).toBeVisible({
         timeout: 45000,
       });
+      await expect
+        .poll(() => output, { timeout: 20000 })
+        .toMatch(/rendering configured: \d+x\d+/);
+      expect(output).not.toContain("Invalid capabilities size");
       expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])
         expect(

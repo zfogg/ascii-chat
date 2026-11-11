@@ -10,7 +10,9 @@
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/settings.h>
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/browser/transport.h>
 
 typedef struct client_state client_state_t;
@@ -27,7 +29,6 @@ static client_state_t *client_state(browser_transport_t *transport);
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -87,28 +88,19 @@ asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uin
     return packet_encode((packet_type_t)type, payload, payload_length, client_id, output, output_capacity,
                          output_length);
 
-  const size_t capacity = payload_length + sizeof(packet_header_t) + 256;
-  uint8_t *plaintext = SAFE_MALLOC(capacity, uint8_t *);
-  uint8_t *ciphertext = SAFE_MALLOC(capacity + 128, uint8_t *);
-  if (!plaintext || !ciphertext) {
-    SAFE_FREE(plaintext);
-    SAFE_FREE(ciphertext);
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser client packet buffers");
+  asciichat_error_t error = packet_send_via_transport(browser_transport_base(transport), (packet_type_t)type, payload,
+                                                      payload_length, client_id);
+  if (error != ASCIICHAT_OK)
+    return error;
+  const size_t wire_length = browser_transport_output_size(transport);
+  if (wire_length > output_capacity) {
+    browser_transport_output_pop(transport);
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Encrypted browser client packet output is too small");
   }
-  size_t plaintext_length = 0, ciphertext_length = 0;
-  asciichat_error_t error =
-      packet_encode((packet_type_t)type, payload, payload_length, client_id, plaintext, capacity, &plaintext_length);
-  if (error == ASCIICHAT_OK)
-    error = browser_client_encrypt_packet(transport, plaintext, plaintext_length, ciphertext, capacity + 128,
-                                          &ciphertext_length);
-  if (error == ASCIICHAT_OK)
-    error = packet_encode(PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_length, client_id, output, output_capacity,
-                          output_length);
-  sodium_memzero(plaintext, capacity);
-  sodium_memzero(ciphertext, capacity + 128);
-  SAFE_FREE(plaintext);
-  SAFE_FREE(ciphertext);
-  return error;
+  memcpy(output, browser_transport_output_data(transport), wire_length);
+  *output_length = wire_length;
+  browser_transport_output_pop(transport);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, bool discovery, const uint8_t *input,
@@ -123,7 +115,8 @@ asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, 
     return error;
   const packet_type_t outer_type = (packet_type_t)NET_TO_HOST_U16(header.type);
   const size_t header_size = sizeof(packet_header_t);
-  if (!browser_client_ready(transport) && packet_is_handshake_type(outer_type)) {
+  if (!browser_client_ready(transport) &&
+      (outer_type == PACKET_TYPE_PROTOCOL_VERSION || packet_is_handshake_type(outer_type))) {
     result->handshake = true;
     return discovery ? browser_client_acds_handshake_receive(transport, outer_type, input + header_size,
                                                              input_length - header_size)

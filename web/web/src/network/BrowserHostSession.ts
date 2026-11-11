@@ -411,9 +411,6 @@ export class BrowserHostSession implements ClientSession {
     if (this.needsKeyframe(type) && payload[0]! & 1)
       this.localKeyframes.add(type);
   }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array) {
-    this.sendPacket(type, payload);
-  }
   getBufferedAmount() {
     return Math.max(
       0,
