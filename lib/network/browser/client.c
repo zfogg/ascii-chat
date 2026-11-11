@@ -130,39 +130,26 @@ asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, 
                      : browser_client_handshake_receive(transport, outer_type, input + header_size,
                                                         input_length - header_size);
   }
-  result->encrypted = outer_type == PACKET_TYPE_ENCRYPTED;
-  const uint8_t *packet = input;
-  size_t packet_length = input_length;
-  uint8_t *plaintext = NULL;
-  if (result->encrypted) {
-    if (input_length > SIZE_MAX - 128)
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Browser client packet is too large");
-    plaintext = SAFE_MALLOC(input_length + 128, uint8_t *);
-    if (!plaintext)
-      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser client plaintext");
-    error = browser_client_decrypt_packet(transport, input + header_size, input_length - header_size, plaintext,
-                                          input_length + 128, &packet_length);
-    if (error == ASCIICHAT_OK) {
-      packet = plaintext;
-      error = packet_length < header_size ? SET_ERRNO(ERROR_INVALID_PARAM, "Decrypted packet is too short")
-                                          : packet_validate(packet, packet_length, 0, &header);
-    }
+  packet_envelope_t envelope = {0};
+  error = packet_parse_envelope(input, input_length, browser_transport_base(transport)->crypto_ctx, &envelope);
+  if (error != ASCIICHAT_OK)
+    return error;
+  result->encrypted = envelope.was_encrypted;
+  result->consumed = envelope.consumed;
+  if (envelope.consumed) {
+    buffer_release(envelope.allocated_buffer);
+    return ASCIICHAT_OK;
   }
-  if (error == ASCIICHAT_OK) {
-    result->payload_length = packet_length - header_size;
-    if (result->payload_length > payload_capacity || (result->payload_length && !payload))
-      error = SET_ERRNO(ERROR_INVALID_PARAM, "Browser client packet output is too small");
-    else {
-      result->header = header;
-      if (result->payload_length)
-        memcpy(payload, packet + header_size, result->payload_length);
-    }
+  result->payload_length = envelope.len;
+  if (result->payload_length > payload_capacity || (result->payload_length && !payload)) {
+    buffer_release(envelope.allocated_buffer);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Browser client packet output is too small");
   }
-  if (plaintext) {
-    sodium_memzero(plaintext, input_length + 128);
-    SAFE_FREE(plaintext);
-  }
-  return error;
+  memcpy(&result->header, envelope.allocated_buffer, sizeof(result->header));
+  if (result->payload_length)
+    memcpy(payload, envelope.data, result->payload_length);
+  buffer_release(envelope.allocated_buffer);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t browser_client_settings_receive(browser_transport_t *transport, const void *payload, size_t length) {

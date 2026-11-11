@@ -33,6 +33,7 @@ typedef struct {
   packet_header_t header;
   bool encrypted;
   bool handshake;
+  bool consumed;
   size_t payload_length;
 } browser_client_packet_result_t;
 

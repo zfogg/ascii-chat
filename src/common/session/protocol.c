@@ -256,7 +256,7 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
     result = acip_send_pong(protocol->transport);
   else
     result =
-        acip_handle_client_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
+        acip_client_dispatch_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
   if (result == ASCIICHAT_OK)
     result = protocol->callback_result;
   if (result == ASCIICHAT_OK) {

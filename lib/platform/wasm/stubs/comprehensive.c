@@ -211,6 +211,16 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
 }
 
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
+                                              size_t length, const acip_client_callbacks_t *callbacks) {
+  (void)transport;
+  (void)type;
+  (void)payload;
+  (void)length;
+  (void)callbacks;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
+}
+
 void acip_transport_destroy(acip_transport_t *transport) {
   (void)transport;
 }

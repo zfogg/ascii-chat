@@ -48,10 +48,17 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   packet_envelope_t envelope = {0};
   asciichat_error_t result = acip_client_receive_packet(transport, &envelope);
   if (result == ASCIICHAT_OK)
-    result = acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+    result = acip_client_dispatch_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
   if (envelope.allocated_buffer)
     buffer_release(envelope.allocated_buffer);
   return result;
+}
+
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
+                                              size_t length, const acip_client_callbacks_t *callbacks) {
+  if (!transport || !callbacks || (!payload && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet dispatch input");
+  return acip_handle_client_packet(transport, type, payload, length, callbacks);
 }
 
 // =============================================================================

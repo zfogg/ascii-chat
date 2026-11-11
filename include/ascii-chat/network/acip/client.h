@@ -50,6 +50,10 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
                                                    const acip_client_callbacks_t *callbacks);
 
+/** Dispatch one already-decoded client packet through the shared ACIP client path. */
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
+                                              size_t length, const acip_client_callbacks_t *callbacks);
+
 // =============================================================================
 // Client Send API (client → server)
 // =============================================================================

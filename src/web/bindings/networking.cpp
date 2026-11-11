@@ -330,7 +330,7 @@ public:
         sodium_memzero(input.data(), input.size());
       if (code)
         return result(code);
-      if (packet.handshake)
+      if (packet.handshake || packet.consumed)
         return drainOutputs();
       const packet_type_t packet_type = static_cast<packet_type_t>(NET_TO_HOST_U16(packet.header.type));
       auto response = result(0);

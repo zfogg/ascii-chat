@@ -703,6 +703,33 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out) {
+  if (!wire || !out || length < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet envelope input");
+  *out = (packet_envelope_t){0};
+  void *owned = buffer_alloc(NULL, length);
+  if (!owned)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate packet envelope");
+  memcpy(owned, wire, length);
+  packet_header_t header;
+  asciichat_error_t result = packet_validate(owned, length, 0, &header);
+  if (result != ASCIICHAT_OK) {
+    buffer_release(owned);
+    return result;
+  }
+  out->type = NET_TO_HOST_U16(header.type);
+  out->data = (uint8_t *)owned + sizeof(header);
+  out->len = length - sizeof(header);
+  out->allocated_buffer = owned;
+  out->allocated_size = buffer_capacity(owned);
+  result = packet_decrypt_envelope(out, crypto_ctx);
+  if (result != ASCIICHAT_OK) {
+    buffer_release(out->allocated_buffer);
+    *out = (packet_envelope_t){0};
+  }
+  return result;
+}
+
 size_t packet_format_error_stack(char *buffer, size_t size) {
   if (!buffer || size == 0)
     return 0;
