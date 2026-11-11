@@ -1,3 +1,5 @@
+include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
+
 # =============================================================================
 # Tests Module (Criterion-based tests)
 # =============================================================================
@@ -30,6 +32,10 @@
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
+    if(UNIX AND NOT APPLE)
+        add_test(NAME systemd-units COMMAND bash ${CMAKE_SOURCE_DIR}/tests/systemd_units.sh)
+        set_tests_properties(systemd-units PROPERTIES LABELS "integration;systemd" TIMEOUT 30)
+    endif()
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     # Keep every Python CTest harness on one execution path. Coverage builds
@@ -72,12 +78,41 @@ if(BUILD_TESTS)
     endfunction()
     asciichat_add_pytest(python-cmake cmake)
     set_tests_properties(python-cmake PROPERTIES LABELS "unit;python;build")
+    if(DEFER_NATIVE_BINARY)
+        set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+            "DEFER_TEST_BINARY=${DEFER_NATIVE_BINARY}")
+        if(TARGET ascii-libclang)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "LIBCLANG_LIBRARY_FILE=$<TARGET_FILE:ascii-libclang>")
+        endif()
+        if(ASCIICHAT_LLVM_DEV_ROOT)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "ASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}")
+        endif()
+    endif()
     asciichat_add_pytest(python-unit unit)
     set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
 
     # These dependency-isolated build matrices compile selected production
     # sources directly. The shared wrapper retains their profiles under the
     # active build tree when coverage is enabled.
+    if(NOT EMSCRIPTEN)
+        asciichat_add_python_test(quic-tls-configure
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run.py
+            --cmake ${CMAKE_COMMAND} --cc ${CMAKE_C_COMPILER}
+            --module ${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+        set_tests_properties(quic-tls-configure PROPERTIES LABELS "unit;standalone" TIMEOUT 180)
+        add_executable(test-quic-dependencies EXCLUDE_FROM_ALL standalone/quic_tls_check/dependencies.c)
+        target_link_libraries(test-quic-dependencies PRIVATE asciichat-quic)
+        set_target_properties(test-quic-dependencies PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-dependencies COMMAND test-quic-dependencies)
+        set_tests_properties(quic-dependencies PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST quic-dependencies PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        endif()
+    endif()
     set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)
     foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
         if(IS_ABSOLUTE "${include_dir}")
@@ -146,9 +181,12 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # White-box contract suites retain explicit production link dependencies.
 function(asciichat_configure_contract target)
+    if(TARGET tests-timer-start)
+        add_dependencies(${target} tests-timer-start)
+    endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
-    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS})
+    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
@@ -169,6 +207,7 @@ function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
     add_test(NAME ${name} COMMAND ${target} --jobs 1 --timeout 60
         --xml=${CRITERION_XML_DIR}/${name}.xml)
+    asciichat_fail_on_lsan_report(${name})
     set_tests_properties(${name} PROPERTIES LABELS "criterion;contract"
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
@@ -666,6 +705,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 add_test(NAME ${_case_test_name}
                     COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
                 )
+                asciichat_fail_on_lsan_report(${_case_test_name})
                 set_tests_properties(${_case_test_name} PROPERTIES
                     ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
@@ -680,6 +720,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
 
             # Set test properties
+            asciichat_fail_on_lsan_report(${test_exe_name})
             set_tests_properties(${test_exe_name} PROPERTIES
                 ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
@@ -701,42 +742,24 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Building Criterion test executables"
     )
 
-    # Target to build all tests without running them (excluded from default build)
-    # This is the main public target that includes timing
-    # NOTE: Only available with --preset github (CI environment)
-    # For local development, use individual test targets (test_debug, test_release, etc.)
-    # Claude should NOT run the 'tests' target directly - run individual tests instead
-    if(DEFINED ENV{GITHUB_CMAKE_BINARY_DIR})
-        add_custom_target(tests
-            COMMENT "Building all test executables"
-        )
+    # Build all test executables without running them.
+    add_custom_target(tests COMMENT "Building all test executables")
 
-        # Timer end target runs after all tests are built
-        if(TARGET tests-timer-start)
-            add_custom_target(tests-timer-end
-                COMMAND ${CMAKE_COMMAND}
-                -DACTION=end
-                -DTARGET_NAME=tests
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-                COMMENT "Finishing test build timing"
-                VERBATIM
-            )
-            # Timer end depends on timer start and the actual test build
-            add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-            # Main tests target depends on timer end (so timing is shown)
-            add_dependencies(tests tests-timer-end)
-        else()
-            # No timer, just depend on the build target directly
-            add_dependencies(tests tests-criterion-build)
-        endif()
+    if(TARGET tests-timer-start)
+        add_custom_target(tests-timer-end
+            COMMAND ${CMAKE_COMMAND}
+            -DACTION=end
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMENT "Finishing test build timing"
+            VERBATIM
+        )
+        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        add_dependencies(tests tests-timer-end)
     else()
-        # For non-GitHub presets, print a helpful message
-        message(STATUS "Note: The 'tests' target is only available with --preset github")
-        message(STATUS "For local development, use individual test targets like:")
-        message(STATUS "  cmake --build build --target test_debug")
-        message(STATUS "  cmake --build build --target test_release")
+        add_dependencies(tests tests-criterion-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
@@ -1258,7 +1281,7 @@ if(BUILD_TESTS)
         endif()
     endforeach()
     asciichat_add_pytest(python-manual integration/manual --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-manual PROPERTIES LABELS "integration;python;manual" RUN_SERIAL TRUE)
+    set_tests_properties(python-manual PROPERTIES LABELS "integration;python;manual;hardware" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-ui-discovery integration/ui_discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-ui-discovery PROPERTIES LABELS "integration;python;terminal;network" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-mdns integration/mdns --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
@@ -1308,12 +1331,19 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
     asciichat_add_pytest(python-glyph-performance performance/glyph -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-glyph-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-fps-performance performance/fps -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-fps-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
         --ignore=${CMAKE_SOURCE_DIR}/tests/python/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery-webrtc integration/discovery/test_discovery_webrtc.py
         --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-discovery-webrtc PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-discovery-session-ownership
+        integration/discovery/test_discovery_session_ownership.py
+        --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-discovery-session-ownership PROPERTIES LABELS "integration;python;network"
+        RUN_SERIAL TRUE)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
@@ -1321,6 +1351,8 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     endforeach()
     asciichat_add_pytest(python-network integration/network --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-network PROPERTIES LABELS "integration;python;network")
+    asciichat_add_pytest(python-api-server integration/api --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-api-server PROPERTIES LABELS "integration;python;network;api" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-recording integration/recording --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-recording PROPERTIES LABELS "integration;python;media" RUN_SERIAL TRUE)
 endif()
@@ -1431,6 +1463,114 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 if(TARGET ascii-chat-static)
+    if(TARGET tests AND TARGET test-quic-dependencies)
+        add_dependencies(tests test-quic-dependencies)
+    endif()
+    if(BUILD_TESTS AND NOT EMSCRIPTEN)
+        add_executable(test-traffic-metadata EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/traffic_metadata.c)
+        add_executable(test-quic-stream EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_stream.c)
+        add_executable(test-quic-http3 EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_http3.c)
+        target_link_libraries(test-quic-http3 PRIVATE ascii-chat-static asciichat-quic ${MIMALLOC_LIBRARIES})
+        apply_sanitizers_to_target(test-quic-http3)
+        target_include_directories(test-quic-http3 PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-http3 PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-http3 COMMAND test-quic-http3)
+        set_tests_properties(quic-http3 PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST quic-http3 PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        if(TARGET tests)
+            add_dependencies(tests test-quic-http3)
+        endif()
+        add_executable(test-quic-tls EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_tls.c)
+        target_link_libraries(test-quic-tls PRIVATE ascii-chat-static asciichat-quic ${MIMALLOC_LIBRARIES})
+        apply_sanitizers_to_target(test-quic-tls)
+        target_include_directories(test-quic-tls PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-tls PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        asciichat_add_python_test(quic-tls-identity
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_handshake.py $<TARGET_FILE:test-quic-tls>)
+        set_tests_properties(quic-tls-identity PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+        if(TARGET ascii-chat)
+            asciichat_add_python_test(discovery-quic
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(discovery-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-auto-quic
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_auto_quic.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(discovery-auto-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-quic-handoff
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic_handoff.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>
+                ${CMAKE_BINARY_DIR}/test_artifacts/quic-handoff)
+            set_tests_properties(discovery-quic-handoff PROPERTIES LABELS "integration;standalone" TIMEOUT 180)
+            asciichat_add_python_test(quic-cli-server
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-server PROPERTIES LABELS "integration;standalone" TIMEOUT 100)
+            asciichat_add_python_test(quic-cli-fallback
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_fallback.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-fallback PROPERTIES LABELS "integration;standalone" TIMEOUT 120)
+        endif()
+        target_link_libraries(test-quic-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+        if(WIN32)
+            target_link_libraries(test-quic-stream PRIVATE ws2_32)
+        endif()
+        apply_sanitizers_to_target(test-quic-stream)
+        target_include_directories(test-quic-stream PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-stream PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-stream COMMAND test-quic-stream)
+        set_tests_properties(quic-stream PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        target_link_libraries(test-traffic-metadata PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+        if(WIN32)
+            target_link_libraries(test-traffic-metadata PRIVATE ws2_32)
+        endif()
+        apply_sanitizers_to_target(test-traffic-metadata)
+        target_include_directories(test-traffic-metadata PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-traffic-metadata PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME traffic-metadata COMMAND test-traffic-metadata)
+        set_tests_properties(traffic-metadata PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST traffic-metadata PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            set_property(TEST quic-stream PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            set_property(TEST quic-tls-identity PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            if(TEST quic-cli-server)
+                set_property(TEST quic-cli-server PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
+            if(TEST quic-cli-fallback)
+                set_property(TEST quic-cli-fallback PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
+        endif()
+        foreach(quic_test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${quic_test_build_target})
+                add_dependencies(${quic_test_build_target} test-traffic-metadata test-quic-stream
+                    test-quic-tls test-quic-http3 test-quic-dependencies)
+            endif()
+        endforeach()
+    endif()
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
     target_link_libraries(test-network-vectors PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     if(WIN32)
@@ -1440,6 +1580,14 @@ if(TARGET ascii-chat-static)
     target_include_directories(test-network-vectors PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-network-vectors PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        add_test(NAME network-media-wire COMMAND test-network-vectors --media-wire)
+        set_tests_properties(network-media-wire PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST network-media-wire PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
         if(TARGET tests)
             add_dependencies(tests test-network-vectors)
         endif()
@@ -1494,6 +1642,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
         --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+    asciichat_fail_on_lsan_report(discovery-nat-refresh)
     set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()
@@ -1613,16 +1762,16 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c)
-    asciichat_configure_contract(test-client-rekey)
-    target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
-    target_include_directories(test-client-rekey PRIVATE ${CMAKE_SOURCE_DIR}/src
+    add_executable(test-client-crypto contracts/crypto/client_crypto_test.c)
+    asciichat_configure_contract(test-client-crypto)
+    target_link_libraries(test-client-crypto PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-client-crypto PRIVATE ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
-    apply_sanitizers_to_target(test-client-rekey)
-    set_target_properties(test-client-rekey PROPERTIES LINKER_LANGUAGE CXX
+    apply_sanitizers_to_target(test-client-crypto)
+    set_target_properties(test-client-crypto PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    asciichat_add_contract_test(client-rekey test-client-rekey)
-    set_property(TEST client-rekey APPEND PROPERTY LABELS unit)
+    asciichat_add_contract_test(client-crypto test-client-crypto)
+    set_property(TEST client-crypto APPEND PROPERTY LABELS unit)
 
     add_executable(test-server-stream contracts/network/server_stream_test.c
         ${CMAKE_SOURCE_DIR}/src/server/stream.c)
@@ -1690,7 +1839,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
     asciichat_configure_contract(test-mcp-requests)
-    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-mcp-requests PRIVATE ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include}
@@ -1971,6 +2120,31 @@ endif()
 
 # Owned plaintext admission, real backend saturation, and codec recovery.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-transport-metrics EXCLUDE_FROM_ALL standalone/network/transport_metrics.c)
+    target_link_libraries(test-transport-metrics PRIVATE ascii-chat-static libdatachannel ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-transport-metrics PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    if(WIN32)
+        target_link_libraries(test-transport-metrics PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-transport-metrics)
+    set_target_properties(test-transport-metrics PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND UNIX AND NOT APPLE)
+        asciichat_add_python_test(transport-metrics
+            ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/transport_metrics.py
+            --binary $<TARGET_FILE:test-transport-metrics> --runs 1
+            --transports tcp,webrtc,quic,quic-datagrams
+            --output ${CMAKE_BINARY_DIR}/test_artifacts/transport-metrics)
+        set_tests_properties(transport-metrics PROPERTIES LABELS "integration;standalone" TIMEOUT 180 RUN_SERIAL TRUE)
+        foreach(_metrics_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${_metrics_build_target})
+                add_dependencies(${_metrics_build_target} test-transport-metrics)
+            endif()
+        endforeach()
+    endif()
+endif()
+
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
         if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_CRITERION_TESTS AND CRITERION_FOUND))
             continue()
@@ -2241,6 +2415,13 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
     foreach(api_test IN LISTS shared_api_tests)
         set_tests_properties(${api_test} PROPERTIES TIMEOUT 900)
         set_property(TEST ${api_test} APPEND PROPERTY LABELS unit)
+        # The Python host can import its SSL module before loading ascii-chat.
+        # Select the same OpenSSL ABI from process startup, rather than loading
+        # the runner's older libssl first under the same shared-library name.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_OPENSSL_RUNTIME_DIR)
+            set_property(TEST ${api_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+                "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_OPENSSL_RUNTIME_DIR}")
+        endif()
         # Python hosts the instrumented library, so load ASan before Python's allocator.
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
            AND EXISTS "${ASAN_RUNTIME_LIBRARY}")
@@ -2384,7 +2565,7 @@ endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     asciichat_add_pytest(python-mcp integration/mcp --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp")
+    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp;hardware" RUN_SERIAL TRUE)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")

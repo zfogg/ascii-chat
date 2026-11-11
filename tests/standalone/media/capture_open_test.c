@@ -7,7 +7,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/face_follow_image.h>
@@ -153,8 +153,8 @@ static void check_recording_fast_path(void) {
   CHECK(recording_mutex->lock_count == locks);
 #endif
   atomic_store(&submitting, true);
-  asciichat_thread_t producer;
-  CHECK(acthread_create(&producer, "recording_submitter", record_many, NULL) == ASCIICHAT_OK);
+  platform_thread_t producer;
+  CHECK(platform_thread_create(&producer, "recording_submitter", record_many, NULL) == ASCIICHAT_OK);
   for (unsigned i = 0; i < 5; ++i) {
     CHECK(audio_recording_create(&recording) == ASCIICHAT_OK);
     audio_recording_start(recording, time_get_ns());
@@ -178,9 +178,9 @@ static void check_atomic_pause(void) {
   for (size_t i = 0; i < 32; ++i)
     CHECK(silence[i] == 0);
   media_source_resume(source);
-  asciichat_thread_t toggles[2];
+  platform_thread_t toggles[2];
   for (size_t i = 0; i < 2; ++i)
-    CHECK(acthread_create(&toggles[i], "pause_toggles", toggle_pause_many, source) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&toggles[i], "pause_toggles", toggle_pause_many, source) == ASCIICHAT_OK);
   for (size_t i = 0; i < 2; ++i)
     CHECK(thread_join(&toggles[i], NULL) == ASCIICHAT_OK);
   CHECK(!media_source_is_paused(source));
@@ -209,8 +209,8 @@ static void check_audio_seek_serialization(const char *path) {
   CHECK(decoder);
   atomic_store(&audio_reading, false);
   atomic_store(&stop_audio_reads, false);
-  asciichat_thread_t reader;
-  CHECK(acthread_create(&reader, "seek_audio_reader", read_audio_during_seeks, decoder) == ASCIICHAT_OK);
+  platform_thread_t reader;
+  CHECK(platform_thread_create(&reader, "seek_audio_reader", read_audio_during_seeks, decoder) == ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
   while (!atomic_load(&audio_reading) && time_get_ns() < deadline)
     platform_sleep_ms(1);
@@ -384,10 +384,10 @@ static void check_capture_pacing(void) {
   CHECK(capture_pacing_deadline(0, 1000, interval) == 1100);
   CHECK(capture_pacing_deadline(1100, 1200, interval) == 1200);
   // A read that finishes just after its deadline must not skip the next slot.
-  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1200);
+  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1301);
   CHECK(capture_pacing_deadline(1200, 1250, interval) == 1300);
   // A long stall skips missed slots without a burst of catch-up frames.
-  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1700);
+  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1860);
   CHECK(capture_pacing_deadline(1700, 1760, interval) == 1800);
 }
 

@@ -1,7 +1,7 @@
 """Windows ConPTY integration tests for the discovery invitation.
 
 Install pywinpty and pyte in a test environment, then run:
-  python tests/ui/probe_discovery_terminal.py build/bin/ascii-chat.exe
+  uv run --project tests/ascii_chat_tests --frozen python tests/ui/probe_discovery_terminal.py build/bin/ascii-chat.exe
 Uses a private local ACDS, ephemeral ports, and generated test-pattern video.
 """
 

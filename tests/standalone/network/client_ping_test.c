@@ -1,6 +1,6 @@
 /* Check that ping telemetry reserves its zero and overlapping-ping sentinels. */
 #include "client/connection_internal.h"
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 static client_connection_t connection;
 

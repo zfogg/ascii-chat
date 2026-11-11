@@ -92,7 +92,7 @@ vi.mock("../../src/components", async () => ({
   ...(await import("../../src/components/ModeHeader")),
   AsciiChatWebHead: () => null,
   ConnectionPanelModal: () => null,
-  AsciiRenderer: ({
+  AsciiCanvas: ({
     onDimensionsChange,
   }: {
     onDimensionsChange: (dimensions: { cols: number; rows: number }) => void;

@@ -41,14 +41,14 @@
 
 #include "crypto.h"
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 
 #ifdef _WIN32
-#include <ascii-chat/platform/windows_compat.h>
+#include <libplatform/windows_compat.h>
 #endif
 
 #include <errno.h>
@@ -269,8 +269,6 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
 static void acip_on_ping(void *ctx);
 static void acip_on_pong(void *ctx);
 static void acip_on_clear_console(void *ctx);
-static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx);
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx);
@@ -280,9 +278,7 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_error = acip
                                                                 .on_ping = acip_on_ping,
                                                                 .on_pong = acip_on_pong,
                                                                 .on_clear_console = acip_on_clear_console,
-                                                                .on_crypto_rekey_request = acip_on_crypto_rekey_request,
-                                                                .on_crypto_rekey_response =
-                                                                    acip_on_crypto_rekey_response,
+
                                                                 .on_webrtc_sdp = acip_on_webrtc_sdp,
                                                                 .on_webrtc_ice = acip_on_webrtc_ice,
                                                                 .on_session_joined = acip_on_session_joined,
@@ -381,14 +377,43 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // Reset display state for new connection
   display_reset_for_new_connection(connection);
 
+  // Start receiving before the capability/settings exchange. The server may
+  // reply to the initial settings packet immediately, and that reply must not
+  // wait for the worker that dispatches it.
+  atomic_store_bool(&connection->data_thread_exited, false);
+  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
+      ASCIICHAT_OK) {
+    log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
+    LOG_ERRNO_IF_SET("Data reception thread creation failed");
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+  }
+
+  if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
-  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(
-      connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
+  asciichat_error_t cap_result =
+      threaded_send_terminal_size_with_auto_detect(connection, (int)terminal_get_effective_width(GET_OPTION(width), 80),
+                                                   (int)terminal_get_effective_height(GET_OPTION(height), 24));
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return client_startup_peer_error(connection, cap_result);
+  }
+
+  // Capabilities establish the viewer geometry, but renderer preferences are
+  // carried by SETTINGS_SYNC. Send them before STREAM_START so the server
+  // cannot render the first frames from its zero-initialized (luminance)
+  // fallback while the asynchronous settings update is still in flight.
+  options_snapshot_t initial_settings;
+  if (options_read_snapshot(&initial_settings) != ASCIICHAT_OK)
+    return client_startup_peer_error(connection, ERROR_CONFIG);
+  asciichat_error_t settings_result =
+      acip_settings_send(server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
+  if (settings_result != ASCIICHAT_OK) {
+    log_error("[FRAME_RECV_INIT] Failed to send initial rendering settings");
+    return client_startup_peer_error(connection, settings_result);
   }
 
   // Send STREAM_START packet with combined stream types
@@ -403,18 +428,6 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
     return client_startup_peer_error(connection, stream_result);
   }
-
-  // Every transport has completed security negotiation before protocol startup.
-  atomic_store_bool(&connection->data_thread_exited, false);
-  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
-      ASCIICHAT_OK) {
-    log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
-    LOG_ERRNO_IF_SET("Data reception thread creation failed");
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-  }
-
-  if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start webcam capture thread
   log_debug("Starting webcam capture thread...");
@@ -547,42 +560,6 @@ static void acip_on_clear_console(void *ctx) {
   log_debug("Console cleared by server");
 }
 
-static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Process the server's rekey request
-  asciichat_error_t crypto_result = crypto_client_process_rekey_request(connection, payload, payload_len);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
-    return;
-  }
-
-  // Send REKEY_RESPONSE
-  crypto_result = crypto_client_send_rekey_response(connection);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
-  }
-}
-
-static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Process server's response
-  asciichat_error_t crypto_result = crypto_client_process_rekey_response(connection, payload, payload_len);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
-    return;
-  }
-
-  // Send REKEY_COMPLETE
-  crypto_result = crypto_client_send_rekey_complete(connection);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
-  }
-}
-
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx) {
   (void)ctx;
   (void)total_len; // Peer manager reads variable data via pointer arithmetic
@@ -627,7 +604,7 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
 }
 
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx) {
-  (void)ctx; // Unused for now, may be used in future for context passing
+  (void)ctx;
 
   if (!joined) {
     log_error("SESSION_JOINED callback received NULL response");
@@ -648,10 +625,7 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
 
   // Check if this is a WebRTC session
   if (joined->session_type == SESSION_TYPE_WEBRTC) {
-    // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
-    // webrtc_initialize_session(joined->session_id, joined->participant_id,
-    //                           joined->turn_username, joined->turn_password);
-    log_debug("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+    log_debug("WebRTC session joined; discovery mode owns peer-manager initialization");
   } else {
     // Direct TCP - connection is already established or will be established
     log_debug("Direct TCP session - using existing connection");

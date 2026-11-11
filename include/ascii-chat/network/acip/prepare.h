@@ -2,8 +2,10 @@
 
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/record.h>
+#include <ascii-chat/network/acip/traffic.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
 /**
  * A borrowed packet description. Neither the vector array nor its bytes are owned.
@@ -17,6 +19,9 @@ typedef struct {
   size_t plaintext_size;
   size_t ciphertext_capacity;
   bool encrypt;
+  crypto_record_t *records;
+  bool records_locked;
+  acip_send_options_t options;
   buffer_domain_t *domain; ///< Borrowed control reserve for handshake/error traffic; NULL otherwise.
 } acip_packet_plan_t;
 
@@ -25,6 +30,7 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
                                    acip_packet_plan_t *plan);
 
 /**
+ * @brief The useful part of acip packet plan is in `buffers`, `count`, `plaintext_size`, `ciphertext_capacity`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * Encrypt a successful encrypted plan into caller-owned ciphertext storage and
  * construct its wire header. The caller chooses contiguous or vectored delivery,
  * and must release storage only after delivery has consumed/copied it. This helper
@@ -33,3 +39,13 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
  */
 asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain,
                                       void *ciphertext, size_t capacity, packet_header_t *header, size_t *length);
+
+asciichat_error_t acip_packet_seal(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t,
+                                   uint8_t **, size_t *);
+asciichat_error_t acip_packet_open_sequence(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *,
+                                            size_t, uint8_t **, size_t *, uint64_t *);
+asciichat_error_t acip_packet_open(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t,
+                                   uint8_t **, size_t *);
+
+asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *, unsigned channel, unsigned delivery, const void *,
+                                              size_t, uint8_t **, size_t *, uint64_t *);

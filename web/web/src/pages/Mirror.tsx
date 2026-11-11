@@ -21,7 +21,7 @@ import {
 } from "@ascii-chat/shared/wasm";
 import { SITES } from "@ascii-chat/shared/utils";
 import { BinarySettings } from "../components/shared/BinarySettings";
-import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
+import { AsciiCanvas } from "@ascii-chat/shared/components/AsciiRenderer";
 import { PageLayout } from "../components/PageLayout";
 import { ModeHeader } from "../components/ModeHeader";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
@@ -271,7 +271,7 @@ export function MirrorPage() {
   }, [clearDisplayAudio, releaseDisplay]);
   const { stop: stopScreen } = screenCapture;
   useEffect(() => {
-    getMirrorModule()?._wasm_ui_audio(
+    getMirrorModule()?.browser_ui_audio(
       Number(speakersEnabled || microphoneEnabled || screenCapture.active),
     );
   }, [speakersEnabled, microphoneEnabled, screenCapture.active]);
@@ -627,7 +627,7 @@ export function MirrorPage() {
         }
         renderer={(() => {
           return (
-            <AsciiRenderer
+            <AsciiCanvas
               clientLikeKind="mirror"
               ref={rendererRef}
               contentFit={contentFit}
@@ -661,9 +661,6 @@ export function MirrorPage() {
               error={error}
               showFps
               wasmModuleReady={!!wasmModule}
-              // initMirrorWasm already initialized the C options; initializing
-              // them again here can abort the WASM allocator during page load.
-              initializeOptions={false}
               matrixMode={!fileActive && (settings.matrixRain ?? false)}
             />
           );

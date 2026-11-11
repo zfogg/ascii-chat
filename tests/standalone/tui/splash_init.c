@@ -1,7 +1,9 @@
 /** Force competing first callers through the production splash initialization. */
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <stdatomic.h>
 
@@ -71,12 +73,12 @@ static bool competing_initializers(bool discovery) {
   atomic_store(&release_initializer, false);
   atomic_store(&waited, false);
   atomic_store(&premature_lock, false);
-  asciichat_thread_t first = {0}, second = {0};
+  platform_thread_t first = {0}, second = {0};
   void *data = discovery ? (void *)&discovery : NULL;
-  if (acthread_create(&first, "splash_init_first", set_splash_state, data) != ASCIICHAT_OK)
+  if (platform_thread_create(&first, "splash_init_first", set_splash_state, data) != ASCIICHAT_OK)
     return false;
   bool started = await_flag(&initializing);
-  bool contender = started && acthread_create(&second, "splash_init_second", set_splash_state, data) == ASCIICHAT_OK;
+  bool contender = started && platform_thread_create(&second, "splash_init_second", set_splash_state, data) == ASCIICHAT_OK;
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
   while (contender && !atomic_load(&waited) && !atomic_load(&premature_lock) && time_get_ns() < deadline)
     platform_sleep_ms(1);

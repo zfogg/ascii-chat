@@ -1,7 +1,7 @@
 import pytest
 """Verify file audio in mirror mode and local/remote audio in a real call.
 
-Run: python tests/python/integration/recording/test_file_audio.py build/bin/ascii-chat
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/python/integration/recording/test_file_audio.py build/bin/ascii-chat
 Requires ffmpeg/ffprobe; no camera, microphone, or speakers are required.
 """
 

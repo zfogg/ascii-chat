@@ -1,4 +1,5 @@
 import { getMirrorModule } from "./wasm/mirror";
+import type { TestPatternBinding } from "./wasm/generated/mirror-bindings";
 
 export interface TestPatternVideoSource {
   stream: MediaStream;
@@ -30,7 +31,7 @@ const renderers = new WeakMap<
   CanvasRenderingContext2D,
   {
     module: NonNullable<ReturnType<typeof getMirrorModule>>;
-    pointer: number;
+    pattern: TestPatternBinding;
     image: ImageData;
   }
 >();
@@ -39,7 +40,7 @@ export function releaseTestPatternFrame(
   context: CanvasRenderingContext2D,
 ): void {
   const state = renderers.get(context);
-  if (state) state.module._wasm_test_pattern_destroy(state.pointer);
+  if (state) state.pattern.delete();
   renderers.delete(context);
 }
 
@@ -59,25 +60,25 @@ export function drawSelectedTestPatternFrame(
     state = undefined;
   }
   if (!state) {
-    const pointer = module._wasm_test_pattern_create(width, height);
-    if (!pointer) throw new Error("Could not create C test pattern");
-    state = { module, pointer, image: context.createImageData(width, height) };
+    const pattern = new module.TestPatternBinding(width, height);
+    if (!pattern.valid()) {
+      pattern.delete();
+      throw new Error("Could not create C test pattern");
+    }
+    state = { module, pattern, image: context.createImageData(width, height) };
     renderers.set(context, state);
   }
   if (state.image.width !== width || state.image.height !== height)
     state.image = context.createImageData(width, height);
-  const pixels = module._wasm_test_pattern_render_rgba(
-    state.pointer,
+  const rendered = state.pattern.render(
     width,
     height,
     mode === "test2" ? 1 : 0,
     time,
-    cadence ? 1 : 0,
+    cadence,
+    state.image.data,
   );
-  if (!pixels) throw new Error("Could not render C test pattern");
-  const source = module.HEAPU8;
-  const target = state.image.data;
-  target.set(source.subarray(pixels, pixels + target.length));
+  if (!rendered) throw new Error("Could not render C test pattern");
   context.putImageData(state.image, 0, 0);
   return state.image;
 }

@@ -1,7 +1,7 @@
 """Opt-in Windows live test: creates two UDP mappings and removes them on exit.
 
 Run from the repository root after building ascii-chat:
-  python tests/manual/webrtc_port_forwarding.py --control-url http://ROUTER/CONTROL
+  uv run --project tests/ascii_chat_tests --frozen python tests/manual/webrtc_port_forwarding.py --control-url http://ROUTER/CONTROL
 
 Requires a reachable UPnP gateway, STUN, and router NAT loopback support. Only
 server-reflexive candidates are signaled (including candidates embedded in SDP).

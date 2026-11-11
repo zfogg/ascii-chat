@@ -351,3 +351,28 @@ Test(handoff, membership_capacity_rejects_excess_without_mutation) {
   cr_assert_eq(consensus_handoff_join(&s, duplicate), ASCIICHAT_OK);
   cr_assert_eq(s.count, MAX_SESSION_PARTICIPANTS);
 }
+
+Test(handoff, departure_during_pending_preparation_reissues_the_current_generation) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 111, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  consensus_handoff_message_t obsolete = action;
+  obsolete.kind = HANDOFF_READY;
+  consensus_handoff_leave(&s, host_id);
+  cr_assert_not(s.ready);
+  cr_assert(consensus_handoff_tick(&s, 112, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  cr_assert_gt(action.generation, obsolete.generation);
+  cr_assert_gt(action.sequence, obsolete.sequence);
+  uint64_t deadline = s.failure_deadline_ms;
+  cr_assert_eq(consensus_handoff_receive(&s, &obsolete, CONSENSUS_HANDOFF_HEADER, 113), ERROR_NETWORK_PROTOCOL);
+  cr_assert_not(s.ready);
+  cr_assert_eq(s.failure_deadline_ms, deadline);
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 114), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&s, 115, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+  cr_assert_arr_eq(action.participant, fast_id, 16);
+}

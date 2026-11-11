@@ -71,9 +71,12 @@
 typedef bool (*session_capture_should_exit_fn)(void *user_data);
 
 /**
- * @brief Configuration for session capture context
+ * @brief Media-source and loader settings used to create a session capture context.
  *
- * Specifies the media source type, path, and capture parameters.
+ * Selects webcam, file, URL, stdin, or test input; controls FPS, looping,
+ * network resizing, audio fallback, initial seeking, and cancellation. Paths,
+ * callbacks, and callback data remain borrowed for the lifetime of the capture
+ * operation.
  *
  * @ingroup session
  */
@@ -118,6 +121,9 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief session capture config keeps the values that move through the subsystem: `type`, `path`, `target_fps`, `loop`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
  * @brief Opaque session capture context handle
  *
  * Manages media source, FPS tracking, and adaptive sleep state.

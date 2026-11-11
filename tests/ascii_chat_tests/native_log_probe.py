@@ -172,10 +172,10 @@ def main():
                 observed.append((output.value, expected))
                 lib.log_template_free(template)
                 return None
-            lib.acthread_create.argtypes = [C.c_void_p, C.c_char_p, Worker, C.c_void_p]
+            lib.platform_thread_create.argtypes = [C.c_void_p, C.c_char_p, Worker, C.c_void_p]
             lib.thread_join.argtypes = [C.c_void_p, C.c_void_p]
             thread = C.c_void_p()
-            assert lib.acthread_create(C.byref(thread), b"log-regression", worker, None) == 0
+            assert lib.platform_thread_create(C.byref(thread), b"log-regression", worker, None) == 0
             assert lib.thread_join(C.byref(thread), None) == 0
             assert len(observed) == 1 and observed[0][0] == observed[0][1], observed
         finally:

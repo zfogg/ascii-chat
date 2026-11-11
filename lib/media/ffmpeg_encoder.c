@@ -11,7 +11,7 @@
 #define FFMPEG_STDOUT_AVIO_BUFFER_SIZE 32768
 
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
@@ -19,7 +19,10 @@
 #include <string.h>
 #include <ascii-chat/util/stdout_writer.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/terminal.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -28,6 +31,11 @@
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 
+/**
+ * @brief This is the handoff point for ffmpeg encoder. Callers fill `codec_ctx`, `stream`, `frame`, `frame_encoded`
+ * before passing it on; consumers read the values during the operation and return ownership only where the member
+ * contract explicitly says they do.
+ */
 struct ffmpeg_encoder_s {
   // Video stream
   AVCodecContext *codec_ctx;
@@ -123,13 +131,13 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
   } else if (strcmp(ext, "ogv") == 0 || strcmp(ext, "ogg") == 0) {
     *has_audio = 1;
     *audio_codec = "libvorbis";
-    *sample_fmt = AV_SAMPLE_FMT_FLT;
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "3gp") == 0) {
     *has_audio = 1;
     *audio_codec = "aac";
     *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "gif") == 0 || strcmp(ext, "png") == 0 || strcmp(ext, "jpg") == 0 ||
-             strcmp(ext, "jpeg") == 0) {
+             strcmp(ext, "jpeg") == 0 || strcmp(ext, "bmp") == 0 || strcmp(ext, "webp") == 0) {
     *has_audio = 0;
     *audio_codec = NULL;
     *sample_fmt = AV_SAMPLE_FMT_NONE;
@@ -160,7 +168,7 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   // NOLINTNEXTLINE(bugprone-branch-clone) - Each format requires distinct codec setup
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *codec = "libx264";
-    *format = "mp4";
+    *format = strcmp(ext, "mov") == 0 ? "mov" : "mp4";
     *pix_fmt = AV_PIX_FMT_YUV420P;
   } // NOLINTNEXTLINE(bugprone-branch-clone)
   else if (strcmp(ext, "mkv") == 0) {
@@ -202,6 +210,11 @@ static void get_codec_from_extension(const char *path, const char **codec, const
     *format = "image2";
     *is_image = 1;
     *pix_fmt = AV_PIX_FMT_RGB24; // PNG uses RGB24
+  } else if (strcmp(ext, "bmp") == 0 || strcmp(ext, "webp") == 0) {
+    *codec = strcmp(ext, "bmp") == 0 ? "bmp" : "libwebp";
+    *format = "image2";
+    *is_image = 1;
+    *pix_fmt = strcmp(ext, "bmp") == 0 ? AV_PIX_FMT_BGR24 : AV_PIX_FMT_YUV420P;
   } else if (strcmp(ext, "jpg") == 0 || strcmp(ext, "jpeg") == 0) {
     *codec = "mjpeg";
     *format = "image2";
@@ -825,6 +838,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   // Set up RGBA frame for conversion
   uint8_t *data[1] = {(uint8_t *)rgb};
   int linesize[1] = {pitch};
+
+  // Encoders may retain references to earlier frames for motion or transparency detection.
+  if (av_frame_make_writable(enc->frame_encoded) < 0)
+    return SET_ERRNO(ERROR_MEMORY, "ffmpeg: cannot make video frame writable");
 
   // Ensure frame format is set before each sws_scale call.
   // Some FFmpeg versions reset the format field, so we set it explicitly.

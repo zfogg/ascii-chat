@@ -1,0 +1,379 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE 32
+
+#include <defer.h>
+#include <ascii-chat/util/url.h>
+/**
+ * @file network/http/client/client.c
+ * @ingroup network
+ * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
+ */
+
+#include <ascii-chat/otel.h>
+#include <ascii-chat/network/http/client/client.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/pem.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <libplatform/socket.h>
+
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
+#ifndef _WIN32
+#include <netdb.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// ============================================================================
+// BearSSL Socket Callbacks
+// ============================================================================
+
+/**
+ * BearSSL low-level socket read callback
+ */
+static int sock_read(void *ctx, unsigned char *buf, size_t len) {
+  socket_t *sock = (socket_t *)ctx;
+  ssize_t n = recv(*sock, (char *)buf, (int)len, 0);
+  if (n < 0) {
+    SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive data from socket");
+    return -1; // Error
+  }
+  if (n == 0) {
+    SET_ERRNO(ERROR_NETWORK, "Connection closed by remote");
+    return -1; // Connection closed
+  }
+  return (int)n;
+}
+
+/**
+ * BearSSL low-level socket write callback
+ */
+static int sock_write(void *ctx, const unsigned char *buf, size_t len) {
+  socket_t *sock = (socket_t *)ctx;
+  ssize_t n = send(*sock, (const char *)buf, (int)len, 0);
+  if (n < 0) {
+    SET_ERRNO_SYS(ERROR_NETWORK, "Failed to send data to socket");
+    return -1; // Error
+  }
+  return (int)n;
+}
+
+// ============================================================================
+// HTTP Response Parsing
+// ============================================================================
+
+/**
+ * Extract body from HTTP response
+ * Returns allocated string with response body, or NULL on error
+ */
+static char *extract_http_body(const char *response, size_t response_len) {
+  // Find "\r\n\r\n" (end of headers)
+  const char *body_start = strstr(response, "\r\n\r\n");
+  if (!body_start) {
+    log_error("No HTTP body found in response");
+    return NULL;
+  }
+  body_start += 4; // Skip "\r\n\r\n"
+
+  size_t body_len = response_len - (size_t)(body_start - response);
+  const char *transfer_encoding = strstr(response, "Transfer-Encoding:");
+  bool is_chunked = transfer_encoding && strstr(transfer_encoding, "chunked") != NULL;
+
+  if (!is_chunked) {
+    char *body = SAFE_MALLOC(body_len + 1, char *);
+    memcpy(body, body_start, body_len);
+    body[body_len] = '\0';
+    return body;
+  }
+
+  // GitHub commonly uses HTTP/1.1 chunked transfer encoding. The bytes after
+  // the headers are then a sequence of `<hex-size>\\r\\n<data>\\r\\n` chunks,
+  // not the JSON document itself. Decode into a bounded buffer before handing
+  // the body to JSON parsers.
+  SAFE_MALLOC_DEFER_FREE(body, body_len + 1, char *);
+  size_t decoded_len = 0;
+  const char *cursor = body_start;
+  const char *end = response + response_len;
+
+  while (cursor < end) {
+    const char *line_end = strstr(cursor, "\r\n");
+    if (!line_end || line_end >= end) {
+      log_error("Malformed chunked HTTP response: missing chunk size terminator");
+      return NULL;
+    }
+
+    char size_text[NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE];
+    size_t size_text_len = (size_t)(line_end - cursor);
+    const char *extension = memchr(cursor, ';', size_text_len);
+    if (extension) {
+      size_text_len = (size_t)(extension - cursor);
+    }
+    if (size_text_len == 0 || size_text_len >= sizeof(size_text)) {
+      log_error("Malformed chunked HTTP response: invalid chunk size");
+      return NULL;
+    }
+    memcpy(size_text, cursor, size_text_len);
+    size_text[size_text_len] = '\0';
+
+    char *size_end = NULL;
+    unsigned long long chunk_size = strtoull(size_text, &size_end, 16);
+    if (size_end == size_text || *size_end != '\0') {
+      log_error("Malformed chunked HTTP response: invalid chunk size '%s'", size_text);
+      return NULL;
+    }
+
+    cursor = line_end + 2;
+    if (chunk_size == 0) {
+      break;
+    }
+    if (chunk_size > (unsigned long long)(end - cursor) || (size_t)chunk_size > body_len - decoded_len) {
+      log_error("Malformed chunked HTTP response: chunk exceeds response body");
+      return NULL;
+    }
+
+    memcpy(body + decoded_len, cursor, (size_t)chunk_size);
+    decoded_len += (size_t)chunk_size;
+    cursor += (size_t)chunk_size;
+    if (cursor + 2 > end || cursor[0] != '\r' || cursor[1] != '\n') {
+      log_error("Malformed chunked HTTP response: missing chunk terminator");
+      return NULL;
+    }
+    cursor += 2;
+  }
+
+  body[decoded_len] = '\0';
+  char *result = body;
+  body = NULL;
+  return result;
+}
+
+// Return the status code, or -1 for a malformed status line.
+static int parse_http_status(const char *response, size_t length) {
+  if (length < 13 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[7] == '\0' ||
+      response[8] != ' ' || response[9] < '0' || response[9] > '9' || response[10] < '0' || response[10] > '9' ||
+      response[11] < '0' || response[11] > '9' || (response[12] != ' ' && response[12] != '\r'))
+    return -1;
+  return (response[9] - '0') * 100 + (response[10] - '0') * 10 + response[11] - '0';
+}
+
+// ============================================================================
+// HTTPS GET Implementation
+// ============================================================================
+
+// Cap response size at 1 MB to prevent unbounded memory growth
+#define HTTPS_MAX_RESPONSE_SIZE (1024 * 1024)
+
+static void free_http_anchors(anchor_list *anchors) {
+  for (size_t i = 0; i < anchors->ptr; i++) {
+    free_ta_contents(&anchors->buf[i]);
+  }
+  SAFE_FREE(anchors->buf);
+}
+
+char *https_get(const char *hostname, const char *path) {
+  ASCII_OTEL_SCOPE(HTTP);
+  ascii_otel_http(&otel_scope, hostname, path);
+  char *body = NULL;
+  if (!hostname || !path) {
+    log_error("Invalid arguments");
+    return NULL;
+  }
+
+  char ascii_hostname[HOSTNAME_BUFFER_SIZE];
+  asciichat_error_t normalized = hostname_to_ascii(hostname, ascii_hostname, sizeof(ascii_hostname));
+  if (normalized != ASCIICHAT_OK)
+    return NULL;
+  hostname = ascii_hostname;
+
+  log_info("HTTPS GET https://%s%s", hostname, path);
+
+  // Load system CA certificates
+  char *pem_data = NULL;
+  size_t pem_size = 0;
+  if (platform_load_system_ca_certs(&pem_data, &pem_size) != 0) {
+    log_error("Failed to load system CA certificates");
+    return NULL;
+  }
+
+  // Parse PEM certificates into BearSSL trust anchors
+  anchor_list anchors = ANCHOR_LIST_INIT;
+  defer(free_http_anchors(&anchors));
+  size_t num_anchors = read_trust_anchors_from_memory(&anchors, (unsigned char *)pem_data, pem_size);
+  SAFE_FREE(pem_data);
+
+  if (num_anchors == 0) {
+    log_error("No trust anchors loaded");
+    return NULL;
+  }
+  log_info("Loaded %zu trust anchors", num_anchors);
+
+  // Resolve hostname using getaddrinfo (modern, non-deprecated API)
+  struct addrinfo hints, *result;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  int dns_result;
+  {
+    ASCII_OTEL_SCOPE(DNS_RESOLVE);
+    if (otel_scope.retained)
+      gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
+    dns_result = getaddrinfo(hostname, "443", &hints, &result);
+    if (dns_result && otel_scope.retained)
+      gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
+  }
+  if (dns_result != 0) {
+    log_error("Failed to resolve hostname: %s", hostname);
+    return NULL;
+  }
+
+  defer(if (result) freeaddrinfo(result));
+
+  // Create TCP socket
+  socket_t sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+  if (sock == INVALID_SOCKET_VALUE) {
+    log_error("Failed to create socket");
+    return NULL;
+  }
+
+  defer(if (sock != INVALID_SOCKET_VALUE) socket_close(sock));
+
+  // Set socket timeouts to avoid blocking indefinitely on stalled connections.
+  // Windows expects a DWORD timeout in milliseconds, while POSIX expects a
+  // struct timeval. Passing timeval to Winsock makes the timeout effectively
+  // a few milliseconds and commonly aborts the TLS handshake.
+#ifdef _WIN32
+  DWORD timeout_ms = 5000;
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+#else
+  struct timeval timeout = {.tv_sec = 5, .tv_usec = 0};
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
+#endif
+
+  // Connect to server
+  if (connect(sock, result->ai_addr, (int)result->ai_addrlen) != 0) {
+    log_error("Failed to connect to %s:443", hostname);
+    return NULL;
+  }
+
+  freeaddrinfo(result);
+  result = NULL;
+
+  log_info("Connected to %s:443", hostname);
+
+  // Initialize BearSSL X.509 minimal validator
+  br_x509_minimal_context xc;
+  br_x509_minimal_init(&xc, &br_sha256_vtable, anchors.buf, anchors.ptr);
+
+  // Initialize BearSSL client context
+  br_ssl_client_context sc;
+  br_ssl_client_init_full(&sc, &xc, anchors.buf, anchors.ptr);
+
+  // Set I/O buffer
+  const size_t iobuf_size = BR_SSL_BUFSIZE_BIDI;
+  SAFE_MALLOC_DEFER_FREE(iobuf, iobuf_size, unsigned char *);
+  br_ssl_engine_set_buffer(&sc.eng, iobuf, BR_SSL_BUFSIZE_BIDI, 1);
+
+  // Initialize I/O context
+  br_sslio_context ioc;
+  br_sslio_init(&ioc, &sc.eng, sock_read, &sock, sock_write, &sock);
+
+  // Start TLS handshake
+  br_ssl_client_reset(&sc, hostname, 0);
+
+  log_info("Starting TLS handshake with %s", hostname);
+
+  // Build HTTP request
+  char request[BUFFER_SIZE_LARGE];
+  int request_len = safe_snprintf(request, sizeof(request),
+                                  "GET %s HTTP/1.1\r\n"
+                                  "Host: %s\r\n"
+                                  "Connection: close\r\n"
+                                  "User-Agent: ascii-chat/" ASCII_CHAT_VERSION_STRING "\r\n"
+                                  "\r\n",
+                                  path, hostname);
+
+  // Send HTTP request over TLS
+  if (br_sslio_write_all(&ioc, request, (size_t)request_len) != 0) {
+    log_error("Failed to send HTTP request");
+    return NULL;
+  }
+
+  br_sslio_flush(&ioc);
+  log_info("Sent HTTP request");
+
+  // Read HTTP response
+  size_t response_capacity = 8192;
+  size_t response_len = 0;
+  SAFE_MALLOC_DEFER_FREE(response_buf, response_capacity, char *);
+
+  while (1) {
+    // Ensure we have space to read
+    if (response_len + 1024 > response_capacity) {
+      response_capacity *= 2;
+      if (response_capacity > HTTPS_MAX_RESPONSE_SIZE) {
+        log_error("Response exceeds maximum size (%d bytes)", HTTPS_MAX_RESPONSE_SIZE);
+        return NULL;
+      }
+      response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
+    }
+
+    // Read data (reserve 1 byte for null terminator)
+    int n = br_sslio_read(&ioc, response_buf + response_len, response_capacity - response_len - 1);
+    if (n < 0) {
+      // Check for TLS errors
+      int err = br_ssl_engine_last_error(&sc.eng);
+      if (err != BR_ERR_OK) {
+        log_error("TLS error: %d", err);
+        return NULL;
+      }
+      // EOF or connection closed
+      break;
+    }
+    if (n == 0) {
+      break; // EOF
+    }
+
+    response_len += (size_t)n;
+  }
+
+  response_buf[response_len] = '\0';
+  log_info("Received %zu bytes", response_len);
+
+  // Close connection
+  br_sslio_close(&ioc);
+  socket_close(sock);
+  sock = INVALID_SOCKET_VALUE;
+
+  // Parse HTTP response
+  int code = parse_http_status(response_buf, response_len);
+  if (code >= 0 && otel_scope.retained)
+    gotel_http_attributes(&otel_scope.scope, "GET", code);
+  if (code != 200) {
+    if (code < 0)
+      SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response_buf);
+    else
+      SET_ERRNO(ERROR_NETWORK, "HTTP request failed: %.50s", response_buf);
+    return NULL;
+  }
+
+  body = extract_http_body(response_buf, response_len);
+  if (body)
+    ascii_otel_http_status(&otel_scope, 200);
+
+  return body;
+}
+
+// NOTE: fetch_github_ssh_keys, fetch_gitlab_ssh_keys, fetch_github_gpg_keys,
+// and fetch_gitlab_gpg_keys have been moved to crypto/keys/https_keys.c
+// They properly belong in the keys module, not the http_client module.

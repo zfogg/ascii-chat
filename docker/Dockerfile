@@ -9,7 +9,7 @@
 FROM zfogg/ascii-chat-deps:latest AS builder
 
 # Existing dependency images may predate the required ICU hostname support.
-RUN apt-get update && apt-get install -y --no-install-recommends libicu-dev && \
+RUN apt-get update && apt-get install -y --no-install-recommends libicu-dev libfftw3-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Ensure we have the environment set (inherited from deps image)
@@ -40,6 +40,12 @@ RUN cd /build && \
       EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}" && \
     make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
 
+# Package the sanitizer runtime selected by CMake rather than assuming an LLVM version.
+RUN mkdir -p /tmp/ascii-chat-sanitizers && \
+    compiler="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' /build/build/CMakeCache.txt)" && \
+    test -n "$compiler" && \
+    cp "$("$compiler" --print-resource-dir)"/lib/linux/libclang_rt.*.so /tmp/ascii-chat-sanitizers/
+
 # ============================================================================
 # Stage 2: Runtime
 # ============================================================================
@@ -57,7 +63,7 @@ RUN apt-get update && \
 # Install minimal runtime dependencies for dynamically-linked Debug build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ca-certificates curl wget unzip openssh-client gpg \
+      ca-certificates curl wget unzip openssh-client gpg yt-dlp \
       libportaudio2 libopus0 libsodium23 libzstd1 \
       libssl3 libfreetype6 libfontconfig1 libvterm0 libsqlite3-0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
@@ -67,10 +73,8 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 # Copy all system libraries from builder to get all runtime dependencies
 COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
-# Copy clang sanitizer runtime libraries (ASan, UBSan) needed by Debug builds
-COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.asan-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
-COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.ubsan_standalone-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
-COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.ubsan_minimal-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
+# Debug builds need the sanitizer runtime selected by the builder's compiler.
+COPY --from=builder /tmp/ascii-chat-sanitizers/ /usr/local/lib/
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

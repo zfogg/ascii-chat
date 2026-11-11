@@ -20,7 +20,9 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/util/time.h>
@@ -35,6 +37,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Media source for video and audio capture
  * @brief Media source for video and audio capture
  *
  * Abstracts multiple media input types (webcam, files, stdin, test patterns)

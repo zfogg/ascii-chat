@@ -12,11 +12,11 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/backtrace.h>
-#include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/errno.h>
+#include <libplatform/backtrace.h>
+#include <libplatform/thread.h>
+#include <ascii-chat/os/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
 #include <stdarg.h>
@@ -33,8 +33,18 @@ typedef struct {
   asciichat_error_context_t context;
   int next;
   bool used;
+  /**
+   * @brief error frame is intentionally a small, concrete record. Fields such as `context`, `next`, `used` give callers
+   * the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not
+   * independently managed.
+   */
 } error_frame_t;
 
+/**
+ * @brief For error thread, this is the live record that ties `id`, `generation`, `top`, `depth` together. The owning
+ * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+ * record.
+ */
 typedef struct error_thread {
   uint64_t id;
   uint64_t generation;
@@ -306,7 +316,7 @@ static error_thread_t *register_current_locked(uint64_t id) {
 #ifndef EMSCRIPTEN_BUILD
   // Platform TLS creation/setters do not log or allocate through SAFE_MALLOC.
   if (!g_tls_ready) {
-    if (ascii_tls_key_create(&g_tls_key, error_thread_destructor) != 0)
+    if (platform_tls_key_create(&g_tls_key, error_thread_destructor) != 0)
       return NULL;
     g_tls_ready = true;
   }
@@ -316,7 +326,7 @@ static error_thread_t *register_current_locked(uint64_t id) {
       continue;
     thread = &g_threads[i];
 #ifndef EMSCRIPTEN_BUILD
-    if (ascii_tls_set(g_tls_key, thread) != 0)
+    if (platform_tls_set(g_tls_key, thread) != 0)
       return NULL;
 #endif
     thread->id = id;
@@ -719,7 +729,7 @@ void errno_destroy(void) {
   registry_lock();
 #ifndef EMSCRIPTEN_BUILD
   if (g_tls_ready)
-    ascii_tls_set(g_tls_key, NULL);
+    platform_tls_set(g_tls_key, NULL);
 #endif
   error_thread_t *thread = find_thread(id);
   if (thread)
@@ -745,7 +755,7 @@ void errno_shutdown(void) {
   registry_unlock();
 #ifndef EMSCRIPTEN_BUILD
   if (delete_key)
-    ascii_tls_key_delete(key);
+    platform_tls_key_delete(key);
 #endif
 }
 

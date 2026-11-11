@@ -7,7 +7,7 @@
  * that expect TTY I/O and user input - they will hang in the browser.
  *
  * Instead, JavaScript:
- * 1. Calls mirror_init_with_args() to initialize the C module
+ * 1. Calls mirror_init() to initialize the C module
  * 2. Calls mirror_convert_frame() for each video frame
  * 3. Manages the render loop with requestAnimationFrame
  *
@@ -24,7 +24,7 @@
  *
  * Returns immediately without blocking.
  * Real initialization happens when JavaScript calls:
- * - mirror_init_with_args() or client_init_with_args()
+ * - mirror_init() or client_init()
  *
  * @return 0 (exit status)
  */

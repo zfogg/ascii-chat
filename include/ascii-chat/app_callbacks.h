@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef void (*app_debug_write_fn)(const char *text, void *context);
+
 typedef struct {
   // Exit signals
   bool (*should_exit)(void);
@@ -24,9 +26,17 @@ typedef struct {
 
   // Audio
   void (*audio_stop_thread)(void);
+
+  app_debug_write_fn write_sync_state;
+  app_debug_write_fn write_memory_report;
+  app_debug_write_fn write_backtrace;
+  void *debug_context;
+/**
+ */
 } app_callbacks_t;
 
 /**
+ * @brief Callbacks and operations used by app callbacks.
  * Register application callbacks
  */
 void app_callbacks_register(const app_callbacks_t *callbacks);

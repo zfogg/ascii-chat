@@ -1,3 +1,4 @@
+import { WebTransportClientSession } from "./WebTransportClientSession";
 import { OutboundQueue } from "./OutboundQueue";
 import {
   encodeBrowserError,
@@ -79,10 +80,13 @@ export function discoveryRTCConfiguration(
   };
 }
 
-/** Signaling stays on ACDS; all media travels on the peer's DTLS DataChannel. */
+/** Signaling stays on ACDS; media uses the advertised WebTransport endpoint or WebRTC. */
 export class WebRTCSession implements ClientSession {
   canReconnect = true;
-  readonly transportType = "webrtc" as const;
+  get transportType(): "webrtc" | "webtransport" {
+    return this.quic ? "webtransport" : "webrtc";
+  }
+  private quic: WebTransportClientSession | null = null;
   private discovery: DiscoveryProtocol | null = null;
   private handoff: HandoffProtocol | null = null;
   private promoted: BrowserHostSession | null = null;
@@ -118,7 +122,9 @@ export class WebRTCSession implements ClientSession {
     this.clearTimer();
     this.installPeerErrorReporter();
     this.setState(ConnectionState.CONNECTED);
-    this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
+    this.options.onProgress?.(
+      `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
+    );
     this.resolveConnect?.();
     this.resolveConnect = null;
     this.rejectConnect = null;
@@ -263,7 +269,7 @@ export class WebRTCSession implements ClientSession {
         },
         this.options.onProgress,
       );
-      await this.connectPeer();
+      await this.connectMedia();
     } else if (
       (type === AcdsType.SDP || type === AcdsType.ICE) &&
       this.peer &&
@@ -303,6 +309,41 @@ export class WebRTCSession implements ClientSession {
         else this.pendingIce.push(candidate);
       }
     }
+  }
+
+  private async connectMedia(): Promise<void> {
+    if (!this.joined?.webtransportUrl || typeof WebTransport === "undefined") {
+      await this.connectPeer();
+      return;
+    }
+    if (this.options.applicationEncryption === false)
+      throw new Error("WebTransport requires ACIP application encryption");
+    this.options.onProgress?.("Negotiating QUIC WebTransport connection");
+    const session = new WebTransportClientSession({
+      serverUrl: this.joined.webtransportUrl,
+      discoveryPeer: true,
+      applicationEncryption: true,
+      cryptoOptions: {
+        ...this.options.cryptoOptions,
+        password: this.options.cryptoOptions?.password || this.options.password,
+      },
+    });
+    this.quic = session;
+    session.onStateChange((state) => {
+      if (this.closed || this.quic !== session) return;
+      if (state === ConnectionState.ERROR)
+        this.fail(new Error("Discovered QUIC endpoint failed"));
+    });
+    session.onPacketReceived((packet, payload) => {
+      if (this.closed || this.quic !== session) return;
+      if (packet.type === PacketType.PING)
+        session.sendPacket(PacketType.PONG, payload);
+      else {
+        if (packet.type === PacketType.SERVER_STATE) this.completeConnection();
+        this.packetCallback?.(packet, payload);
+      }
+    });
+    await session.connect();
   }
 
   private async connectPeer(): Promise<void> {
@@ -345,7 +386,9 @@ export class WebRTCSession implements ClientSession {
       } else if (this.peer.connectionState === "connected") {
         if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
         this.disconnectedTimer = null;
-        this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
+        this.options.onProgress?.(
+          `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
+        );
       }
     };
     const channel = this.peer.createDataChannel("acip", {
@@ -459,6 +502,8 @@ export class WebRTCSession implements ClientSession {
     );
   }
   private closePeer(): void {
+    this.quic?.disconnect();
+    this.quic = null;
     this.outbound?.close();
     this.outbound = null;
     this.peerCrypto?.close();
@@ -481,6 +526,9 @@ export class WebRTCSession implements ClientSession {
     this.disconnectedTimer = null;
     this.closePeer();
     this.joined.hostId = id;
+    // Endpoint advertisements belong to the previous host.
+    delete this.joined.webtransportUrl;
+    delete this.joined.quicPort;
     if (id.every((value, i) => value === this.joined!.participantId[i])) {
       const handoff = this.handoff;
       this.handoff = null;
@@ -533,6 +581,7 @@ export class WebRTCSession implements ClientSession {
   }
   getBufferedAmount(): number {
     return (
+      this.quic?.getBufferedAmount() ??
       this.promoted?.getBufferedAmount() ??
       (this.bridge?.getBufferedAmount() ?? 0) +
         (this.outbound?.snapshot().applicationBytes ?? 0)
@@ -541,6 +590,7 @@ export class WebRTCSession implements ClientSession {
 
   private outbound: OutboundQueue | null = null;
   getUploadFeedback() {
+    if (this.quic) return this.quic.getUploadFeedback();
     if (this.promoted) return this.promoted.getUploadFeedback();
     const snapshot = this.outbound?.snapshot();
     return {
@@ -551,12 +601,17 @@ export class WebRTCSession implements ClientSession {
   }
   needsKeyframe(type: number): boolean {
     return (
+      this.quic?.needsKeyframe(type) ??
       this.promoted?.needsKeyframe(type) ??
       this.outbound?.needsKeyframe(type) ??
       true
     );
   }
   sendPacket(type: number, payload: Uint8Array): void {
+    if (this.quic) {
+      this.quic.sendPacket(type, payload);
+      return;
+    }
     if (this.promoted) {
       this.promoted.sendPacket(type, payload);
       return;
@@ -607,6 +662,8 @@ export class WebRTCSession implements ClientSession {
     this.outbound = null;
     if (this.closed) return;
     this.closed = true;
+    this.quic?.disconnect();
+    this.quic = null;
     this.handoff?.close();
     this.promoted?.disconnect();
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);

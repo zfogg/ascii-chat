@@ -1,3 +1,4 @@
+import { defaultPalettes } from "@ascii-chat/shared/wasm";
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
 import { MirrorDemoWidget } from "../../demo";
@@ -67,7 +68,7 @@ export default function ASCIIPalettesSection() {
                 <span className="text-gray-500 ml-2">(default)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
-                  {"...',;:clodxkO0KXNWM"}
+                  {defaultPalettes.standard.slice(3)}
                 </pre>
               </div>
               <div>
@@ -75,7 +76,7 @@ export default function ASCIIPalettesSection() {
                 <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
-                  {"░░▒▒▓▓██"}
+                  {defaultPalettes.blocks.slice(3)}
                 </pre>
               </div>
               <div>
@@ -83,14 +84,14 @@ export default function ASCIIPalettesSection() {
                 <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
-                  {"-=≡≣▰▱◼"}
+                  {defaultPalettes.digital.slice(3)}
                 </pre>
               </div>
               <div>
                 <strong className="text-pink-300">minimal</strong>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
-                  {".-+*#"}
+                  {defaultPalettes.minimal.slice(3)}
                 </pre>
               </div>
               <div>
@@ -98,7 +99,7 @@ export default function ASCIIPalettesSection() {
                 <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
-                  {"▁▂▃▄▅▆▇█"}
+                  {defaultPalettes.cool.slice(3)}
                 </pre>
               </div>
               <div>

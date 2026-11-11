@@ -19,6 +19,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <defer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -36,91 +37,9 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   }
 
   *out = (packet_envelope_t){0};
-
-  log_debug("[ACIP_RECV] 📥 RECV_START: transport=%p, checking connection state", (void *)transport);
-
-  // Check if transport is connected
-  if (!transport->methods->is_connected(transport)) {
-    log_error("[ACIP_RECV] ❌ NOT_CONNECTED: transport not ready for receive");
+  if (!acip_transport_is_connected(transport) && !acip_transport_has_pending_data(transport))
     return SET_ERRNO(ERROR_NETWORK, "Transport not connected");
-  }
-
-  log_debug("[ACIP_RECV] ✅ CONNECTED: transport ready, checking transport type");
-
-  packet_envelope_t envelope = {0};
-  bool enforce_encryption = (transport->crypto_ctx != NULL);
-  log_debug("[ACIP_RECV] 🔐 CRYPTO_MODE: enforce_encryption=%s", enforce_encryption ? "yes" : "no");
-
-  socket_t sock = transport->methods->get_socket(transport);
-  log_debug("[ACIP_RECV] 🔌 TRANSPORT_SOCKET: socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
-
-  void *packet_data = NULL;
-  void *allocated_buffer = NULL;
-  size_t packet_len = 0;
-
-  log_debug("[ACIP_RECV] 📥 RECV_CALL: using transport->methods->recv()");
-  asciichat_error_t recv_result = acip_transport_recv(transport, &packet_data, &packet_len, &allocated_buffer);
-  log_debug("[ACIP_RECV] 📥 RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
-            packet_data, allocated_buffer);
-
-  if (recv_result != ASCIICHAT_OK) {
-    if (recv_result == ERROR_NETWORK_TIMEOUT) {
-      log_debug("[ACIP_RECV] Receive timed out while waiting for signaling data");
-    } else {
-      stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
-      log_error("[ACIP_RECV] ❌ RECV_FAILED: %s", asciichat_error_format(NULL, recv_result));
-    }
-    if (allocated_buffer)
-      buffer_release(allocated_buffer);
-    return recv_result;
-  }
-
-  // Parse packet header
-  log_debug("[ACIP_RECV] HEADER_CHECK: packet_len=%zu, header_size=%zu", packet_len, sizeof(packet_header_t));
-  if (packet_len < sizeof(packet_header_t)) {
-    log_error("[ACIP_RECV] ❌ HEADER_TOO_SMALL: %zu < %zu", packet_len, sizeof(packet_header_t));
-    buffer_release(allocated_buffer);
-    return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
-  }
-
-  const packet_header_t *header = (const packet_header_t *)packet_data;
-  envelope.type = NET_TO_HOST_U16(header->type);
-  envelope.len = NET_TO_HOST_U32(header->length);
-  envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
-  envelope.allocated_buffer = allocated_buffer;
-  envelope.allocated_size = packet_len;
-  envelope.was_encrypted = false;
-
-  log_debug("[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
-            envelope.len, packet_len);
-
-  log_dev_every(4500 * US_PER_MS_INT, "ACIP received packet: type=%u, len=%u, total_size=%zu", envelope.type,
-                envelope.len, packet_len);
-
-  // Validate packet length
-  log_debug("[ACIP_RECV] LENGTH_VALIDATION: payload_size=%u vs actual=%zu", envelope.len,
-            packet_len - sizeof(packet_header_t));
-  if (envelope.len != packet_len - sizeof(packet_header_t)) {
-    log_error("[ACIP_RECV] ❌ LENGTH_MISMATCH: header=%u, actual=%zu", envelope.len,
-              packet_len - sizeof(packet_header_t));
-    buffer_release(allocated_buffer);
-    return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
-                     packet_len - sizeof(packet_header_t));
-  }
-
-  // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
-  if (envelope.type == PACKET_TYPE_ENCRYPTED) {
-    log_debug("[ACIP_RECV] 🔐 ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)", envelope.len);
-    asciichat_error_t decrypt_result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
-    if (decrypt_result != ASCIICHAT_OK) {
-      log_error("[ACIP_RECV] ❌ DECRYPT_FAILED: %d", decrypt_result);
-      buffer_release(envelope.allocated_buffer);
-      return decrypt_result;
-    }
-  }
-
-  *out = envelope;
-  return ASCIICHAT_OK;
+  return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
 }
 
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
@@ -201,6 +120,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
   }
+  defer(buffer_release(output_buffer));
 
   // Admission expiry can invalidate a previously accepted reference chain.
 #ifndef __EMSCRIPTEN__
@@ -215,14 +135,12 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   if (encode_result != ASCIICHAT_OK) {
     log_error("H.265 encoding failed: %s", asciichat_error_format(NULL, encode_result));
-    buffer_release(output_buffer);
     return encode_result;
   }
 
   // h265_encode includes flags, dimensions, and the encoded picture already.
   size_t total_size = encoded_size;
   if (!total_size) {
-    buffer_release(output_buffer);
     return ASCIICHAT_OK;
   }
 
@@ -234,7 +152,6 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
-  buffer_release(output_buffer);
   return result;
 }
 

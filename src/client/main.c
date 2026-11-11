@@ -89,11 +89,13 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/terminal.h>
+#include <libplatform/symbols.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
@@ -125,7 +127,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -136,6 +138,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Client connection session state for session_client_like integration
  * @brief Global WebRTC peer manager (legacy compatibility)
  *
  * Client mode no longer uses WebRTC, but protocol.c still references this.
@@ -645,7 +648,7 @@ int client_main(void) {
   const options_t *opts_websocket = options_get();
   const char *provided_address = opts_websocket && opts_websocket->address[0] != '\0' ? opts_websocket->address : NULL;
 
-  if (provided_address && url_is_websocket(provided_address)) {
+  if (provided_address && url_looks_like_websocket(provided_address) && url_is_websocket(provided_address)) {
     // Direct WebSocket connection
     log_debug("Client: Direct WebSocket URL: %s", provided_address);
     discovered_address = provided_address;

@@ -150,6 +150,7 @@ bool should_compress(size_t original_size, size_t compressed_size);
 
 /** @} */
 /** Zero-initialized worker-owned zstd context and reusable output storage.
+ * @brief Owns the temporary storage used by compression workspace. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * Output is borrowed until the next call or destruction; never queue it without
  * copying. The caller serializes access to the workspace. */
 typedef struct {

@@ -91,6 +91,8 @@ class CaptureStream(pyte.Stream):
 
 class Terminal:
     def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None):
+        from .cli import prepare_test_command
+        argv = prepare_test_command(argv)
         self.terminal_replies = terminal_replies
         self.background_reply = "\x1b]11;rgb:0000/0000/0000\x1b\\"
         self.query_tail = ""
@@ -282,6 +284,9 @@ class TerminalProcess:
     def __init__(self, argv, *, environment, cwd, tostop=False, child_group_file=None):
         import pty
         import termios
+        from .cli import prepare_test_command
+
+        argv = prepare_test_command(argv)
 
         self.master, slave = pty.openpty()
         settings = termios.tcgetattr(slave)

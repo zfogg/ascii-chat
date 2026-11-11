@@ -3,12 +3,14 @@ import pytest
 
 from ascii_chat_tests.cli import run_cli
 from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import logs_for_test
+import os
 
 import base64
 import socket
 import struct
 
-from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.protocol import crc32c, version_packet
 from ascii_chat_tests.process import check_client, free_port, running, server_options
 
 
@@ -25,6 +27,8 @@ def reject_client(binary, directory, destination, name, extra):
          "--width", "40", "--height", "12", "--splash-screen=false", "--reconnect-attempts", "0", *extra,
         cwd=directory, env=env, capture_output=True, timeout=20,
     )
+    generated = logs_for_test(os.environ.get("PYTEST_CURRENT_TEST", "").split(" ", 1)[0])
+    log = generated[-1] if generated else log
     text = log.read_text(encoding="utf-8", errors="replace")
     assert result.returncode != 0 and not result.stdout.strip(), (
         f"{name}: exit={result.returncode}, stdout={result.stdout[-3000:]!r}, "
@@ -54,7 +58,7 @@ def receive_packet(peer):
 
 def legacy_identity_handshake(port):
     with socket.create_connection(("127.0.0.1", port), timeout=5) as peer:
-        send_packet(peer, 1, struct.pack("!HHBBB H7x", 1, 0, 3, 0, 0, 0))
+        send_packet(peer, 1, version_packet(encryption=3))
         assert receive_packet(peer)[0] == 1
         send_packet(peer, 1100, struct.pack("!HHHBBBB", 1, 1, 1, 1, 1, 1, 1))
         assert receive_packet(peer)[0] == 1101

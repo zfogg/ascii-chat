@@ -14,15 +14,18 @@
 #include <ascii-chat/tui/stats.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/systemd.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
@@ -36,6 +39,11 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
+/**
+ * @brief When code needs to work with stats peer, it keeps `scope`, `sampler`, `id` here instead of scattering it
+ * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread,
+ * or callback context recorded in those fields.
+ */
 struct stats_peer {
   stats_scope_t *scope;
   stats_sampler_t *sampler;
@@ -53,7 +61,7 @@ static void *g_provider_data;
 static char g_mode[STATS_RUNTIME_MODE_BUFFER_SIZE], g_state[STATS_RUNTIME_STATE_BUFFER_SIZE];
 static unsigned g_interval;
 static atomic_t g_stop, g_active, g_onboarding_wait;
-static asciichat_thread_t g_worker;
+static platform_thread_t g_worker;
 static bool g_started, g_keyboard;
 static int g_fd;
 static atomic_t g_media_width, g_media_height, g_media_position, g_media_duration;
@@ -426,6 +434,7 @@ static void *stats_worker(void *unused) {
   bool was_active = false;
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    platform_systemd_notify_watchdog();
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
@@ -558,7 +567,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     memset(&caps, 0, sizeof(caps));
     for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i <= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
       caps.counters[i] = true;
+    for (unsigned i = STATS_COUNTER_HTTP_REQUESTS; i <= STATS_COUNTER_HTTP_BYTES_SENT; i++)
+      caps.counters[i] = true;
+    caps.gauges[STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE] = true;
+    caps.gauges[STATS_GAUGE_HTTP_STREAMS_ACTIVE] = true;
     caps.durations[STATS_DURATION_MCP_RENDER] = true;
+    caps.durations[STATS_DURATION_HTTP_REQUEST] = true;
   }
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)
@@ -593,7 +607,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
                      (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
-  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
+  if (platform_thread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
     atomic_store_bool_impl(&g_onboarding_wait, true);
     bool shown = show_first_use_instructions();
     while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested()) {

@@ -1,0 +1,43 @@
+{
+	email {$ACME_EMAIL}
+	acme_ca {$ACME_DIRECTORY}
+	admin off
+	servers {
+		max_header_size 16KiB
+		timeouts {
+			read_header 10s
+			read_body 90s
+			write_idle 30s
+			idle 2m
+		}
+	}
+}
+
+{$MCP_SITE} {
+	# No access log: download URLs are bearer secrets.
+	@mcp path /mcp
+	@downloads path /downloads/*
+	request_body @mcp {
+		max_size 25165824
+	}
+	rate_limit {
+		zone clients {
+			key {remote_host}
+			events {$MCP_RATE_EVENTS}
+			window {$MCP_RATE_WINDOW}
+		}
+	}
+	handle @mcp {
+		reverse_proxy mcp:27228 {
+			transport http {
+				response_header_timeout 75s
+			}
+		}
+	}
+	handle @downloads {
+		reverse_proxy mcp:27228
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

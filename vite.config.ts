@@ -2,7 +2,7 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   staged: {
-    "*": "cd web && vp check --fix",
+    "*": "pnpm --dir web exec vp check --fix",
   },
   lint: {
     ignorePatterns: [

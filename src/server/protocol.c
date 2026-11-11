@@ -122,7 +122,7 @@
 #include <ascii-chat/audio/limits.h>
 #include <math.h>
 #include <stdarg.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -152,7 +152,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/format.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/log.h>
@@ -294,6 +294,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * - protocol_version_packet_t containing:
  *   - protocol_version: Major version number (must match PROTOCOL_VERSION_MAJOR)
  *   - protocol_revision: Minor version number
+ *   - protocol_patch: Patch version number
  *   - supports_encryption: Encryption capability flag
  *   - compression_algorithms: Supported compression bitmask
  *   - feature_flags: Optional feature flags
@@ -329,16 +330,18 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
   const protocol_version_packet_t *version = (const protocol_version_packet_t *)data;
   uint16_t client_major = NET_TO_HOST_U16(version->protocol_version);
   uint16_t client_minor = NET_TO_HOST_U16(version->protocol_revision);
+  uint16_t client_patch = NET_TO_HOST_U16(version->protocol_patch);
 
   // Validate major version match (minor version can differ for backward compat)
   if (client_major != PROTOCOL_VERSION_MAJOR) {
-    log_warn("Client %s protocol version mismatch: client=%u.%u, server=%u.%u", client->client_id, client_major,
-             client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    log_warn("Client %s protocol version mismatch: client=%u.%u.%u, server=%u.%u.%u", client->client_id, client_major,
+             client_minor, client_patch, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
     // Note: We don't disconnect on version mismatch for backward compatibility
     // Clients may be older or newer than server
   } else if (client_minor != PROTOCOL_VERSION_MINOR) {
-    log_info("Client %s has different protocol revision: client=%u.%u, server=%u.%u", client->client_id, client_major,
-             client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    log_info("Client %s has different protocol revision: client=%u.%u.%u, server=%u.%u.%u", client->client_id,
+             client_major, client_minor, client_patch, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
+             PROTOCOL_VERSION_PATCH);
   }
 
   // Validate reserved bytes are zero
@@ -376,8 +379,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
  *
  * PROTOCOL BEHAVIOR:
  * - Client logs the disconnect reason if provided
- * - Server continues normal disconnect sequence after receiving packet
- * - Client remains responsible for closing socket
+ * - Server deactivates the client and requests transport shutdown
+ * - The normal connection-closed callback performs final removal
  *
  * ERROR HANDLING:
  * - Empty payload is handled gracefully
@@ -388,8 +391,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
  * @param data Packet payload (optional reason string)
  * @param len Size of packet payload in bytes (0-256)
  *
- * @note This handler doesn't trigger immediate disconnect
- * @note Actual disconnect occurs when socket closes
+ * @note The transport shutdown request is asynchronous; final removal occurs
+ *       from the connection-closed callback.
  */
 void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
   if (!client) {
@@ -437,8 +440,13 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
   log_debug("Setting active=false (client_id=%s)", client_id);
   atomic_store_bool(&client->active, false);
 
-  // Note: We don't disconnect the client here - that happens when socket closes
-  // This is just a clean notification before disconnect
+  // Request transport shutdown immediately. This keeps the server's client
+  // accounting from depending on the peer closing its socket after sending
+  // CLIENT_LEAVE. Final resource removal remains serialized in the normal
+  // connection-closed callback.
+  if (client->network_connection) {
+    network_connection_request_stop(client->network_connection);
+  }
 }
 
 /**
@@ -1587,7 +1595,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     mutex_unlock(&client->client_state_mutex);
     return;
   }
-  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 144;
+  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS;
   asciichat_error_t result = acip_render_settings_capabilities(&client->render_settings, &packet);
   if (result == ASCIICHAT_OK) {
     publish_render_settings(client);

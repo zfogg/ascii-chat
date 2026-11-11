@@ -56,14 +56,9 @@ asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *dat
     length -= take;
     if (decoder->used != decoder->size)
       break;
-    packet_header_t header;
-    memcpy(&header, decoder->packet, sizeof(header));
-    size_t payload = decoder->size - sizeof(header);
-    if (payload && asciichat_crc32(decoder->packet + sizeof(header), payload) != NET_TO_HOST_U32(header.crc32)) {
-      decoder->failed = true;
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incremental packet CRC mismatch");
-    }
-    asciichat_error_t result = emit(decoder->packet, decoder->size, arg);
+    asciichat_error_t result = packet_validate(decoder->packet, decoder->size, decoder->max_payload, NULL);
+    if (result == ASCIICHAT_OK)
+      result = emit(decoder->packet, decoder->size, arg);
     // The callback borrows this storage; retain it for the next framed packet.
     decoder->header_used = decoder->used = decoder->size = 0;
     if (result != ASCIICHAT_OK) {

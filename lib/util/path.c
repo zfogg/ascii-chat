@@ -10,12 +10,13 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define PATH_COMPONENT_BUFFER_SIZE 256
 
+#include <defer.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/error_codes.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/paths.h>
 #include <ascii-chat/source_root.h>
 #include <string.h>
@@ -24,11 +25,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 
+/* Generic path primitives are provided by libplatform. */
+#if 0
 /** Retained for callers that used to release thread-local path resources. */
-void path_cleanup_thread_locals(void) {
-}
+void path_cleanup_thread_locals(void) {}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -218,6 +220,7 @@ const char *path_last_components(const char *path, size_t component_count) {
 
   return path;
 }
+#endif
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
@@ -336,7 +339,7 @@ char *get_log_dir(void) {
 
 char *get_discovery_database_dir(void) {
   platform_directory_list_t data_dirs = {0};
-  if (platform_get_data_dir_candidates(&data_dirs) == ASCIICHAT_OK) {
+  if (platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &data_dirs) == ASCIICHAT_OK) {
     for (size_t i = 0; i < data_dirs.count; i++) {
       platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
       if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
@@ -365,6 +368,7 @@ char *get_discovery_database_dir(void) {
   return NULL;
 }
 
+#if 0
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
@@ -457,7 +461,9 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 
   return false;
 }
+#endif
 
+#if 0 /* libplatform provides this generic predicate. */
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
     return false;
@@ -479,6 +485,7 @@ bool path_looks_like_path(const char *value) {
 
   return false;
 }
+#endif
 
 static asciichat_error_t map_role_to_error(path_role_t role) {
   switch (role) {
@@ -752,19 +759,19 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Failed to expand path: %s", input);
   }
 
+  defer(SAFE_FREE(expanded));
+
   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
   const char *candidate_path = expanded;
 
   if (!path_is_absolute(candidate_path)) {
     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-      SAFE_FREE(expanded);
       return SET_ERRNO(map_role_to_error(role), "Failed to determine current working directory");
     }
 
     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
     if (total_len >= sizeof(candidate_buf)) {
-      SAFE_FREE(expanded);
       return SET_ERRNO(map_role_to_error(role), "Resolved path is too long: %s/%s", cwd_buf, candidate_path);
     }
     if (strlen(candidate_path) > 0 && candidate_path[0] == PATH_DELIM) {
@@ -777,12 +784,10 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(map_role_to_error(role), "Failed to normalize path: %s", candidate_path);
   }
 
   if (!path_is_absolute(normalized_buf)) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(map_role_to_error(role), "Normalized path is not absolute: %s", normalized_buf);
   }
 
@@ -809,6 +814,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   }
 
   char *config_dir = get_config_dir();
+  defer(SAFE_FREE(config_dir));
   if (config_dir) {
     append_base_if_valid(config_dir, bases, &base_count);
   }
@@ -866,10 +872,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   // Security check: Reject paths that point to sensitive system files
   // This applies to all path roles, not just logs
   if (is_sensitive_system_path(normalized_buf)) {
-    SAFE_FREE(expanded);
-    if (config_dir) {
-      SAFE_FREE(config_dir);
-    }
     return SET_ERRNO(map_role_to_error(role), "Cannot write to protected system path: %s", normalized_buf);
   }
 
@@ -881,10 +883,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
     if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf) && !is_file_empty(normalized_buf)) {
-      SAFE_FREE(expanded);
-      if (config_dir) {
-        SAFE_FREE(config_dir);
-      }
       return SET_ERRNO(ERROR_LOGGING_INIT,
                        "Cannot overwrite existing non-ascii-chat file: %s\n"
                        "For safety, ascii-chat will only overwrite its own log files or empty files",
@@ -895,10 +893,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     if (!is_regular_file) {
       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
       if (!allowed) {
-        SAFE_FREE(expanded);
-        if (config_dir) {
-          SAFE_FREE(config_dir);
-        }
         return SET_ERRNO(ERROR_LOGGING_INIT,
                          "Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or "
                          "relative/absolute paths in safe locations)",
@@ -909,28 +903,16 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     // For non-log-file paths, apply standard whitelist validation
     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
     if (!allowed) {
-      SAFE_FREE(expanded);
-      if (config_dir) {
-        SAFE_FREE(config_dir);
-      }
       return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
     }
   }
 
   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
   if (!result) {
-    SAFE_FREE(expanded);
-    if (config_dir) {
-      SAFE_FREE(config_dir);
-    }
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized path");
   }
   safe_snprintf(result, strlen(normalized_buf) + 1, "%s", normalized_buf);
   *normalized_out = result;
 
-  SAFE_FREE(expanded);
-  if (config_dir) {
-    SAFE_FREE(config_dir);
-  }
   return ASCIICHAT_OK;
 }

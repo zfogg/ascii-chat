@@ -6,7 +6,7 @@
 #include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>

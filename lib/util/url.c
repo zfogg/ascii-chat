@@ -13,7 +13,7 @@
 #include <unicode/uidna.h>
 #ifdef __EMSCRIPTEN__
 #include <unicode/udata.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 extern const unsigned char asciichat_icu_idna_data[];
 static lifecycle_t g_icu_idna_data_lc = LIFECYCLE_INIT;
 #endif

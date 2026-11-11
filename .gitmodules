@@ -36,3 +36,18 @@
 [submodule "deps/ascii-chat-deps/gotel"]
 	path = deps/ascii-chat-deps/gotel
 	url = https://github.com/zfogg/gotel.git
+[submodule "deps/ascii-chat-deps/ngtcp2"]
+	path = deps/ascii-chat-deps/ngtcp2
+	url = https://github.com/ngtcp2/ngtcp2.git
+[submodule "deps/ascii-chat-deps/nghttp3"]
+	path = deps/ascii-chat-deps/nghttp3
+	url = https://github.com/ngtcp2/nghttp3.git
+[submodule "deps/ascii-chat-deps/mmmbed"]
+	path = deps/ascii-chat-deps/mmmbed
+	url = https://github.com/zfogg/mmmbed.git
+[submodule "deps/libplatform"]
+	path = deps/libplatform
+	url = https://github.com/zfogg/libplatform.git
+[submodule "deps/defer"]
+	path = deps/defer
+	url = https://github.com/zfogg/defer.git

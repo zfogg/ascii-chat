@@ -21,6 +21,9 @@ asciichat_error_t audio_route_capture(const float *input, size_t frames, unsigne
 asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsigned input_channels, float *output,
                                          unsigned output_channels);
 
+/**
+ * @brief When code needs to work with audio resampler, it keeps `phase`, `has_previous` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 typedef struct {
   double phase;
   float previous[AUDIO_CHANNELS];

@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/options/runtime.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
 #include "session/display.h"
@@ -81,6 +82,15 @@ static void patch(session_host_t *host, uint32_t id, const char *json) {
   cr_assert_eq(acip_settings_encode(&header, json, payload, sizeof(payload), &length), ASCIICHAT_OK);
   cr_assert_eq(session_host_receive_packet(host, id, PACKET_TYPE_ACIP_SETTINGS_SYNC, payload, length), ASCIICHAT_OK);
 }
+
+Test(host_render, default_remote_fps_is_serialized_as_auto) {
+  options_t values = {0};
+  char *json = options_values_json(&values, true);
+  cr_assert(json);
+  cr_assert(strstr(json, "\"fps\":0") != NULL, "Default remote FPS was not preserved: %s", json);
+  SAFE_FREE(json);
+}
+
 static void update(session_host_t *host, uint32_t id, const terminal_capabilities_packet_t *caps) {
   cr_assert_eq(session_host_receive_packet(host, id, PACKET_TYPE_CLIENT_CAPABILITIES, caps, sizeof(*caps)),
                ASCIICHAT_OK);
@@ -295,8 +305,8 @@ static void test_listener_interrupt(void) {
   acip_transport_t *transport = network_connection_transport(peer);
   transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   receive_wait_t wait = {.transport = transport};
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
   while (!atomic_load_bool(&wait.entered))
     platform_sleep_ms(1);
   acip_transport_interrupt(transport);
@@ -587,6 +597,12 @@ Test(host_render, ascii_only_display) {
 Test(host_render, mirror_output_validation) {
   cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
+  options_edit_t edits[] = {
+      {.name = "palette_type", .type = OPTIONS_VALUE_INT, .value.integer = PALETTE_CUSTOM},
+      {.name = "palette_custom", .type = OPTIONS_VALUE_STRING, .value.string = "XX"},
+  };
+  options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
+  cr_assert_eq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   image_t *image = image_new(8, 4);
   cr_assert_not_null(image);
   for (int i = 0; i < image->w * image->h; ++i)
@@ -606,25 +622,19 @@ Test(host_render, mirror_output_validation) {
     }
   }
   cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
-  // Simulate a corrupted renderer palette after initialization. Mirror must
-  // discard the result before presentation, then recover on a valid next frame.
+  // Live options restore the renderer palette before the next frame.
   char *palette = (char *)session_display_get_palette_chars(display);
   palette[0] = '\x1b';
   palette[1] = 0;
   CLEAR_ERRNO();
-  cr_assert_null(session_display_convert_to_ascii_reuse(display, image));
-  asciichat_error_context_t error = {0};
-  cr_assert(errno_has(&error));
-  cr_assert_eq(error.code, ERROR_INVALID_FRAME);
-  palette[0] = 'X';
-  palette[1] = 'X';
-  palette[2] = 0;
-  CLEAR_ERRNO();
   char *recovered = session_display_convert_to_ascii_reuse(display, image);
   cr_assert_not_null(recovered);
+  cr_assert_eq(session_frame_validate(recovered, strlen(recovered), 40, 12), ASCIICHAT_OK);
   session_display_release_ascii(display, recovered);
   session_display_destroy(display);
   config.custom_palette = "界é";
+  edits[1].value.string = config.custom_palette;
+  cr_assert_eq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   display = session_display_create(&config);
   cr_assert_not_null(display);
   char *wide = session_display_convert_to_ascii_reuse(display, image);

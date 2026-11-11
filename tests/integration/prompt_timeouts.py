@@ -1,6 +1,6 @@
 """Native prompt deadline regressions via shared library and real PTY/ConPTY.
 
-Run: python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
 Requires terminal_ui.py dependencies. Noninteractive tests keep stdin open.
 """
 

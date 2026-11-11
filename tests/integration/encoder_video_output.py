@@ -1,6 +1,6 @@
 """Decode encoder output across formats and exercise stdout and setup failures.
 
-Run: python tests/integration/encoder_video_output.py build/bin/asciichat.dll
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/encoder_video_output.py build/bin/asciichat.dll
 Requires ffmpeg/ffprobe; also accepts a POSIX shared library.
 """
 

@@ -10,7 +10,7 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   *values = options_t_new();
   values->width = state->width;
   values->height = state->height;
-  values->fps = state->caps.desired_fps ? state->caps.desired_fps : 60;
+  values->fps = state->caps.desired_fps;
   values->color_mode = (terminal_color_mode_t)state->caps.color_level;
   values->color_filter = state->caps.color_filter;
   values->render_mode = state->caps.render_mode;
@@ -23,14 +23,22 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   values->matrix_rain = (state->caps.capabilities & TERM_CAP_MATRIX_RAIN) != 0;
 }
 
+terminal_color_mode_t acip_render_settings_normalize_color_mode(terminal_color_mode_t mode) {
+  return mode == TERM_COLOR_AUTO ? TERM_COLOR_TRUECOLOR : mode;
+}
+
 asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate, const options_t *values) {
   if (!candidate || !values || values->width < 1 || values->width > 4096 || values->height < 1 ||
-      values->height > 4096 || (uint64_t)values->width * values->height > 1048576 || values->fps < 1 ||
+      values->height > 4096 || (uint64_t)values->width * values->height > 1048576 || values->fps < 0 ||
       values->fps > 144 || values->color_mode < TERM_COLOR_NONE || values->color_mode > TERM_COLOR_TRUECOLOR ||
       values->color_filter < 0 || values->color_filter >= COLOR_FILTER_COUNT || values->render_mode < 0 ||
       values->render_mode > RENDER_MODE_HALF_BLOCK || values->palette_type < PALETTE_STANDARD ||
       values->palette_type >= PALETTE_COUNT || strlen(values->palette_custom) >= sizeof(candidate->caps.palette_custom))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid remote render settings");
+    return SET_ERRNO(
+        ERROR_INVALID_PARAM,
+        "Invalid remote render settings (size=%dx%d fps=%d color=%d filter=%d mode=%d palette=%d custom=%zu)",
+        values->width, values->height, values->fps, values->color_mode, values->color_filter, values->render_mode,
+        values->palette_type, strlen(values->palette_custom));
   acip_render_settings_t next = *candidate;
   next.width = (uint16_t)values->width;
   next.height = (uint16_t)values->height;
@@ -90,11 +98,15 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   acip_render_settings_options(state, values);
   values->width = NET_TO_HOST_U16(packet->width);
   values->height = NET_TO_HOST_U16(packet->height);
-  values->fps = packet->desired_fps ? packet->desired_fps : 60;
+  values->fps = packet->desired_fps;
   values->color_mode = NET_TO_HOST_U32(packet->color_level);
   values->color_filter = packet->color_filter;
   values->render_mode = NET_TO_HOST_U32(packet->render_mode);
   values->palette_type = NET_TO_HOST_U32(packet->palette_type);
+  // AUTO is a local option sentinel, but older/native/browser senders may
+  // still advertise it. Resolve it at the shared wire boundary so the peer
+  // cannot reject an otherwise valid capabilities packet.
+  values->color_mode = acip_render_settings_normalize_color_mode(values->color_mode);
   if (values->palette_type == PALETTE_UNSET)
     values->palette_type = PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, packet->palette_custom, sizeof(values->palette_custom));
@@ -164,8 +176,13 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
     result = SET_ERRNO(ERROR_INVALID_STATE, "Remote settings changed; refresh and retry");
   else if (json_length) {
     result = options_prepare_json(current, json, json_length, candidate, true);
-    if (result == ASCIICHAT_OK)
+    if (result == ASCIICHAT_OK) {
+      // AUTO is a local option sentinel and is not valid in the negotiated
+      // render state. Keep legacy settings updates from invalidating a live
+      // session when they serialize the raw AUTO option.
+      candidate->color_mode = acip_render_settings_normalize_color_mode(candidate->color_mode);
       result = prepare_for_viewer(state, candidate);
+    }
   }
   header.status = result;
   header.revision = state->revision;

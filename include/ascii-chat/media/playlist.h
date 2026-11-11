@@ -10,6 +10,9 @@ typedef struct {
   char paths[MEDIA_PLAYLIST_MAX_ITEMS][MEDIA_PLAYLIST_PATH_MAX];
   bool urls[MEDIA_PLAYLIST_MAX_ITEMS];
   size_t count, index;
+/**
+ * @brief The useful part of media playlist is in `count`, `index`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } media_playlist_t;
 
 /** Append one already separated argument; preserves insertion order. */

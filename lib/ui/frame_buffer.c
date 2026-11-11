@@ -9,7 +9,9 @@
 
 #include <ascii-chat/ui/output.h>
 #include "ascii-chat/ui/frame_buffer.h"
-#include "ascii-chat/platform/abstraction.h"
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/display.h>
 #include "ascii-chat/common.h"
 #include <ascii-chat/options/options.h>
@@ -23,7 +25,13 @@
 #include <stdarg.h>
 
 /**
- * @brief Frame buffer structure
+ * @brief Growable byte buffer for assembling one complete terminal frame
+ * @brief Growable byte buffer for assembling one complete terminal frame
+ *
+ * `data` owns the accumulated ANSI and text bytes, `len` is the number ready
+ * to write, and `capacity` is the allocation size. Rendering code appends to
+ * the buffer and flushes it in one write to avoid terminal flicker; reset keeps
+ * the allocation so the next frame can reuse it.
  */
 struct frame_buffer {
   char *data;      ///< Allocated buffer
@@ -236,7 +244,7 @@ static void render_rule(frame_buffer_t *buf, int width, const char *color, bool 
 }
 
 void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
-  render_rule(buf, cols - 1, color, terminal_should_use_utf8());
+  render_rule(buf, cols - 1, color, terminal_should_use_utf8(GET_OPTION(force_utf8)));
 }
 
 void frame_buffer_render_divider(frame_buffer_t *buf, int width, bool use_utf8, bool use_colors) {

@@ -29,13 +29,13 @@ asciichat_error_t ui_popup_frame(frame_buffer_t *out, int row, int col, int widt
   if (!out || row < 1 || col < 1 || width < 2 || height < 2)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid popup frame output or rectangle");
   frame_buffer_printf(out, "\033[%d;%dH", row, col);
-  ui_popup_rule(out, width, UI_POPUP_TOP, false, terminal_should_use_utf8(), color);
-  const char *vertical = terminal_should_use_utf8() ? "│" : "|";
+  ui_popup_rule(out, width, UI_POPUP_TOP, false, terminal_should_use_utf8(GET_OPTION(force_utf8)), color);
+  const char *vertical = terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "│" : "|";
   for (int i = 1; i < height - 1; ++i)
     frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", row + i, col, colored_string(color, vertical), width - 2, "",
                         colored_string(color, vertical));
   frame_buffer_printf(out, "\033[%d;%dH", row + height - 1, col);
-  return ui_popup_rule(out, width, UI_POPUP_BOTTOM, false, terminal_should_use_utf8(), color);
+  return ui_popup_rule(out, width, UI_POPUP_BOTTOM, false, terminal_should_use_utf8(GET_OPTION(force_utf8)), color);
 }
 
 asciichat_error_t ui_popup_frame_titled(frame_buffer_t *out, int row, int col, int width, int height, log_color_t color,

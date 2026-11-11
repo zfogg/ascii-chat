@@ -14,8 +14,8 @@
  * - **TCP** (acip_tcp_transport_create): Raw TCP sockets, binary packet streaming
  * - **WebSocket** (acip_websocket_client_transport_create): HTTP upgrade, frame-based
  * - **WebRTC** (acip_webrtc_transport_create): P2P data channels, encryption at transport
- * - **HTTP** (future): Long-polling, REST-style
- * - **QUIC** (future): UDP with congestion control
+ * - **HTTP** (reserved): Long-polling, REST-style transport slot
+ * - **QUIC**: UDP-based transport with congestion control and optional datagrams
  *
  * ## Design Principles
  * 1. Protocol code never calls socket()/send()/recv() directly
@@ -32,12 +32,11 @@
  * ## Version Information
  * - **Transport API Version**: 1.0 (stable)
  * - **Supported ACIP Version**: 1.0
- * - **Release Date**: January 2026
  *
  * DESIGN GOALS:
  * =============
  * 1. Protocol code never calls socket()/send()/recv() directly
- * 2. Same ACIP handlers work with TCP, WebSocket, or any future transport
+ * 2. Same ACIP handlers work with TCP, WebSocket, WebRTC, QUIC, or another backend
  * 3. Transport implementations handle their own connection state
  * 4. Clean separation between protocol logic and transport logic
  *
@@ -76,17 +75,21 @@
 
 #pragma once
 #include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/network/acip/traffic.h>
 
 #include <ascii-chat/stats/runtime.h>
+#include <libplatform/atomic.h>
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../crypto/crypto.h"
-#include "../../platform/socket.h"
+#include "../../os/socket.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 /**
+ * @brief Transport method table (virtual function table)
+ * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @brief Transport type enumeration
  *
  * Identifies which transport implementation is being used.
@@ -107,6 +110,16 @@ typedef enum {
  * Each transport implementation defines its own state structure.
  */
 typedef struct acip_transport acip_transport_t;
+
+/** Snapshot of negotiated transport features. Datagram payload is the maximum
+ * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`, `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * application data in one QUIC DATAGRAM frame on the current path, including
+ * any transport-specific envelope. Query again after path changes. */
+typedef struct {
+  bool independent_streams;
+  bool datagrams;
+  size_t max_datagram_payload;
+} acip_transport_capabilities_t;
 
 /** Ownership transfers only after successful registration. */
 typedef enum {
@@ -222,8 +235,19 @@ typedef struct {
 
   /** Bytes retained by this backend, including an in-progress packet. */
   size_t (*queued_bytes)(acip_transport_t *transport);
+  /** Wait until backend-owned output becomes writable or timeout expires. */
+  asciichat_error_t (*wait_writable)(acip_transport_t *transport, uint64_t timeout_ns);
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
+  /** Receives plaintext packet metadata alongside borrowed packet slices. */
+  asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                const acip_send_options_t *options);
+  asciichat_error_t (*get_capabilities)(acip_transport_t *transport, acip_transport_capabilities_t *out);
+  /** Validate optional delivery semantics without enqueuing data. */
+  asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
+  /** Consume a peer request to restart an encoded stream with a keyframe. */
+  bool (*consume_keyframe_request)(acip_transport_t *transport, uint16_t type, uint32_t stream_id);
+  /** Schedule a key rotation on the transport crypto lane. */
 } acip_transport_methods_t;
 
 /**
@@ -237,9 +261,12 @@ struct acip_transport {
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
-  uint64_t receive_timeout_ns; ///< Optional TCP receive timeout override; zero uses the normal polling timeout
-  void *impl_data;             ///< Transport-specific state
-  void *user_data;             ///< Application-specific context (e.g., per-client data)
+  atomic_t packet_security_active;         ///< Publishes the stable post-handshake crypto owner.
+  uint64_t receive_timeout_ns;  ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  bool prefer_visual_datagrams; ///< Select negotiated visual datagrams when supported.
+  bool prefer_audio_datagrams;  ///< Select negotiated datagrams for audio, otherwise reliable delivery.
+  void *impl_data;              ///< Transport-specific state
+  void *user_data;              ///< Application-specific context (e.g., per-client data)
 };
 
 // =============================================================================
@@ -272,6 +299,17 @@ void acip_transport_destroy(acip_transport_t *transport);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
+
+/** Send with explicit delivery metadata. Unsupported datagrams or deadlines
+ * return ERROR_NOT_SUPPORTED and are never silently changed into reliable
+ * delivery. A deadline uses time_get_ns()'s monotonic clock.
+ */
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                          const acip_send_options_t *options);
+
+/** A backend with no capability method reports no optional capabilities.
+ * Negotiated backends can return ERROR_INVALID_STATE until negotiation finishes. */
+asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out);
 
 asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 
@@ -320,7 +358,7 @@ static inline asciichat_error_t acip_transport_close(acip_transport_t *transport
  */
 static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *transport) {
   if (!transport || !transport->methods || !transport->methods->get_type) {
-    return 0;
+    return (acip_transport_type_t)0;
   }
   return transport->methods->get_type(transport);
 }

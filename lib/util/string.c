@@ -7,13 +7,14 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ctype.h>
 
+#if 0 /* Shell escaping is provided by libplatform. */
 void escape_ascii(const char *str, const char *escape_char, char *out_buffer, size_t out_buffer_size) {
   if (escape_char == NULL || str == NULL || !out_buffer || out_buffer_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string or escape character or output buffer");
@@ -263,6 +264,7 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
 #endif
 }
+#endif
 
 // ============================================================================
 // String Formatting and Display
@@ -299,7 +301,7 @@ const char *colored_string(log_color_t color, const char *text) {
   }
   // Priority 2: If --color NOT explicitly passed, use terminal detection
   else if (!g_color_flag_passed) {
-    use_colors = terminal_should_color_output(g_colored_string_fd);
+    use_colors = terminal_should_color_output(g_colored_string_fd, options_terminal_settings());
   }
   // Priority 3: If --color=false was explicitly passed, disable colors
   // (use_colors stays false)

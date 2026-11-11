@@ -15,6 +15,7 @@
 
 /**
  * @brief Parsed pattern result from /pattern/flags syntax
+ * @brief Parsed pattern result from /pattern/flags syntax
  *
  * Shared between --grep CLI filtering and interactive grep.
  */

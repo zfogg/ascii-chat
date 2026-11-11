@@ -37,8 +37,8 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/endian.h>
@@ -46,6 +46,7 @@
 #include <string.h>
 
 /**
+ * @brief Receive queue element (variable-length message)
  * @brief Maximum receive queue size (messages buffered before recv())
  *
  * Power of 2 for ringbuffer optimization. Completed ACIP packets are queued here.
@@ -96,6 +97,8 @@ typedef struct {
   uint64_t disconnected_since_ns; ///< Start of the current transient ICE disconnect
   mutex_t state_mutex;            ///< Protect state changes
   mutex_t send_mutex;             ///< Keep chunks from concurrent packets together
+  /**
+   */
 } webrtc_transport_data_t;
 
 static void webrtc_abort(webrtc_transport_data_t *wrtc) {
@@ -185,6 +188,9 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
 }
 
 /**
+ * @brief webrtc transport data keeps the values that move through the subsystem: `peer_conn`, `data_channel`,
+ * `security`, `ready_user_data`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows
+ * the API that populated them rather than the struct copy itself.
  * @brief DataChannel message callback - push to receive queue
  */
 static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *data, size_t len, void *user_data) {
@@ -248,8 +254,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED &&
-        asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
+    if (packet_validate(msg.data, packet_len, 0, NULL) != ASCIICHAT_OK) {
       buffer_release(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC packet checksum failed");
@@ -286,15 +291,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else
         result = packet_decrypt_envelope(&envelope, crypto);
-      if (result == ASCIICHAT_OK) {
-        packet_header_t inner;
-        memcpy(&inner, envelope.allocated_buffer, sizeof(inner));
-        if (NET_TO_HOST_U64(inner.magic) != PACKET_MAGIC ||
-            asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner.crc32) ||
-            envelope.type == PACKET_TYPE_ENCRYPTED || packet_is_handshake_type(envelope.type))
-          result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted WebRTC packet");
-      }
-    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) && !packet_is_handshake_type(envelope.type)) {
+    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) &&
+               !packet_is_initial_handshake_type(envelope.type)) {
       result = SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted WebRTC connection");
     }
     if (result != ASCIICHAT_OK) {
@@ -303,6 +301,11 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       log_error("WebRTC packet rejected: %s", asciichat_error_format(NULL, result));
       webrtc_abort(wrtc);
       return;
+    }
+    if (envelope.consumed) {
+      buffer_release(envelope.allocated_buffer);
+      offset += packet_len;
+      continue;
     }
     msg.data = envelope.allocated_buffer;
     msg.len = sizeof(packet_header_t) + envelope.len;

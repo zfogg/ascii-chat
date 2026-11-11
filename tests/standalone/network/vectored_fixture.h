@@ -1,10 +1,13 @@
 #pragma once
+#include <ascii-chat/network/acip/security.h>
 
 #ifndef CHECK_WORKER
 #define CHECK_WORKER CHECK
 #endif
 /** Native transport correctness and reproducible loopback measurements. */
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/send.h>
@@ -13,12 +16,14 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/audio/audio.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #ifndef CHECK
 #define CHECK(expr)                                                                                                    \
@@ -49,6 +54,7 @@ static inline void crypto_pair(crypto_context_t *a, crypto_context_t *b) {
   CHECK(crypto_init(b) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(a, b->public_key) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(b, a->public_key) == CRYPTO_OK);
+  a->handshake_complete = b->handshake_complete = true;
 }
 
 // These cases exercise complete packet writes and encryption, independent of
@@ -103,25 +109,18 @@ static inline asciichat_error_t assembled_send(socket_t sock, crypto_context_t *
     socket_buffer_t slice = {data, len};
     return socket_sendv_all(sock, &slice, 1, BUDGET);
   }
-  size_t capacity = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_alloc(NULL, capacity);
-  CHECK(ciphertext);
-  size_t encrypted_len = 0;
-  CHECK(crypto_encrypt(crypto, data, len, ciphertext, capacity, &encrypted_len) == CRYPTO_OK);
-  packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                           .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
-                           .length = HOST_TO_NET_U32((uint32_t)encrypted_len),
-                           .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, encrypted_len)),
-                           .client_id = 0};
-  size_t wire_size = sizeof(outer) + encrypted_len;
-  uint8_t *wire = buffer_alloc(NULL, wire_size);
-  CHECK(wire);
-  memcpy(wire, &outer, sizeof(outer));
-  memcpy(wire + sizeof(outer), ciphertext, encrypted_len);
-  socket_buffer_t slice = {wire, wire_size};
-  asciichat_error_t result = socket_sendv_all(sock, &slice, 1, BUDGET);
+  uint8_t *wire = NULL;
+  size_t wire_size = 0;
+  packet_header_t header;
+  CHECK(len >= sizeof(header));
+  memcpy(&header, data, sizeof(header));
+  asciichat_error_t result = acip_security_seal(crypto, acip_packet_traffic_class(NET_TO_HOST_U16(header.type)),
+                                                ACIP_DELIVERY_RELIABLE, data, len, &wire, &wire_size);
+  if (result == ASCIICHAT_OK) {
+    socket_buffer_t slice = {wire, wire_size};
+    result = socket_sendv_all(sock, &slice, 1, BUDGET);
+  }
   buffer_release(wire);
-  buffer_release(ciphertext);
   return result;
 }
 
@@ -141,8 +140,8 @@ static inline void roundtrip(size_t len, bool encrypted, size_t iterations, bool
   for (size_t i = 0; i < len; ++i)
     payload[i] = (uint8_t)(i % 251);
   receive_context_t ctx = {receiver, payload, len, iterations};
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "vector-receiver", receive_packets, &ctx) == 0);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "vector-receiver", receive_packets, &ctx) == 0);
   uint64_t *durations = buffer_alloc(NULL, iterations * sizeof(uint64_t));
   CHECK(durations);
   socket_io_stats_reset();
@@ -251,10 +250,10 @@ static inline void concurrent_senders(void) {
   memset(payload, 0x37, sizeof(payload));
   receive_context_t send_ctx = {sender, payload, sizeof(payload), 24};
   receive_context_t recv_ctx = {receiver, payload, sizeof(payload), 96};
-  asciichat_thread_t reader, writers[4];
-  CHECK(acthread_create(&reader, "concurrent-reader", receive_packets, &recv_ctx) == 0);
+  platform_thread_t reader, writers[4];
+  CHECK(platform_thread_create(&reader, "concurrent-reader", receive_packets, &recv_ctx) == 0);
   for (size_t i = 0; i < 4; ++i)
-    CHECK(acthread_create(&writers[i], "concurrent-writer", send_concurrent, &send_ctx) == 0);
+    CHECK(platform_thread_create(&writers[i], "concurrent-writer", send_concurrent, &send_ctx) == 0);
   for (size_t i = 0; i < 4; ++i)
     CHECK(thread_join(&writers[i], NULL) == 0);
   CHECK(thread_join(&reader, NULL) == 0);
@@ -280,10 +279,10 @@ static inline void full_duplex(void) {
   CHECK(acip_tcp_transport_set_zerocopy(transports[1], true) == ASCIICHAT_OK);
   memset(payload, 0x35, len);
   receive_context_t contexts[] = {{transports[0], payload, len, 8}, {transports[1], payload, len, 8}};
-  asciichat_thread_t readers[2], writers[2];
+  platform_thread_t readers[2], writers[2];
   for (size_t i = 0; i < 2; ++i) {
-    CHECK(acthread_create(&readers[i], "duplex-receiver", receive_packets, &contexts[i]) == 0);
-    CHECK(acthread_create(&writers[i], "duplex-sender", send_concurrent, &contexts[i]) == 0);
+    CHECK(platform_thread_create(&readers[i], "duplex-receiver", receive_packets, &contexts[i]) == 0);
+    CHECK(platform_thread_create(&writers[i], "duplex-sender", send_concurrent, &contexts[i]) == 0);
   }
   for (size_t i = 0; i < 2; ++i) {
     CHECK(thread_join(&writers[i], NULL) == 0);
@@ -392,6 +391,10 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
     CHECK(NET_TO_HOST_U32(header.sample_rate) == 48000 && NET_TO_HOST_U32(header.channels) == 1);
     CHECK(body_len == sizeof(header) + sizeof(pcm));
     CHECK(memcmp(body + sizeof(header), pcm, sizeof(pcm)) == 0);
+    float decoded[4];
+    CHECK(audio_dequantize_samples(body + sizeof(header), 4, decoded) == ASCIICHAT_OK);
+    CHECK(decoded[0] == 0.0f && decoded[1] > 0.999f && decoded[2] < -0.999f && decoded[3] > 0.499f &&
+          decoded[3] < 0.501f);
     break;
   }
   case PACKET_TYPE_AUDIO_OPUS_BATCH: {
@@ -440,11 +443,13 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
 static inline void media_wire_compatibility(void) {
   acip_transport_methods_t methods = {.send = check_media};
   acip_transport_t transport = {.methods = &methods};
-  float samples[] = {0.0f, 1.0f, -1.0f, 0.5f};
+  float samples[] = {0.0f, 2.0f, -2.0f, 0.5f};
   uint16_t sizes[] = {2, 4};
   char text[4096];
   memset(text, 'A', sizeof(text));
   CHECK(acip_send_audio_batch(&transport, samples, 4, 1) == ASCIICHAT_OK);
+  float invalid[] = {NAN};
+  CHECK(acip_send_audio_batch(&transport, invalid, 1, 1) == ERROR_INVALID_PARAM);
   CHECK(acip_send_audio_opus_batch(&transport, "abcdef", 6, sizes, 2, 48000, 20) == ASCIICHAT_OK);
   CHECK(acip_send_image_frame(&transport, "abcdefghijkl", 2, 2, 0) == ASCIICHAT_OK);
   acip_frame_workspace_t workspace = {0};

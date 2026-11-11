@@ -26,10 +26,11 @@
 #include <time.h>
 #include "../common.h"
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 typedef struct network_server network_server_t;
 
 /**
+ * @brief Status information for server/discovery service modes
  * @brief Status information for server/discovery service modes
  *
  * Contains all data needed to display the status screen.
@@ -50,6 +51,9 @@ typedef struct {
 
 /** The same four-line status header in every host. */
 void ui_status_render_header(frame_buffer_t *buffer, terminal_size_t size, void *status);
+
+/** Shared controls line shown by every interactive log viewer. */
+const char *ui_status_log_controls(void);
 
 /**
  * @brief Gather current status information

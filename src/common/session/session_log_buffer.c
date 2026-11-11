@@ -4,14 +4,22 @@
  */
 
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/common.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
- * @brief Internal circular buffer structure
+ * @brief Thread-safe fixed-size history ring for session-screen log lines
+ * @brief Thread-safe fixed-size history ring for session-screen log lines.
+ *
+ * `entries` stores formatted messages, while the atomic write position and
+ * sequence counter preserve ordering as new lines overwrite old ones. The
+ * mutex protects snapshots and clearing; the buffer owns its synchronization
+ * state until destruction.
  */
 typedef struct session_log_buffer {
   session_log_entry_t entries[SESSION_LOG_BUFFER_SIZE];

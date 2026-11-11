@@ -1,0 +1,17 @@
+# Copy to /etc/systemd/system and adjust WorkingDirectory for this checkout.
+[Unit]
+Description=ascii-chat hosted MCP Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ascii-chat/deploy/mcp
+ExecStart=/usr/bin/docker compose --env-file .env up -d --build
+ExecStop=/usr/bin/docker compose --env-file .env stop
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

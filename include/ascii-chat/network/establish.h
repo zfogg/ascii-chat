@@ -14,11 +14,19 @@ typedef struct {
   bool authenticate;
   network_connection_prepare_fn prepare;
   void *context;
+/**
+ */
 } network_establish_config_t;
 
+/**
+ * @brief This is the handoff point for network establish config. Callers fill `name`, `address`, `default_port`, `connect` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct {
   connection_endpoint_t endpoint;
   uint8_t password_failure;
+/**
+ * @brief The useful part of network establish result is in `endpoint`, `password_failure`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } network_establish_result_t;
 
 /* Open and negotiate one noninteractive attempt. prepare configures connection-owned

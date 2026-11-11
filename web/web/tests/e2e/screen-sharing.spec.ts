@@ -34,7 +34,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
     hash: string;
   }>[] = [];
   page.on("console", (message) => {
-    if (message.text().includes("_client_init_with_args"))
+    if (message.text().includes("[Client WASM] Session initialized"))
       initLogs.push(message.text());
   });
   page.on("response", (response) => {
@@ -58,9 +58,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
       const { initClientWasm } = await import(path);
       await initClientWasm({ width: 80, height: 24 });
     });
-    expect(initLogs).toContain(
-      "[Client WASM] _client_init_with_args returned: 0",
-    );
+    expect(initLogs).toContain("[Client WASM] Session initialized");
     const served = await Promise.all(assets);
     for (const file of ["client.js", "client.wasm"]) {
       expect(served).toContainEqual(
@@ -532,7 +530,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
     timeout: 20000,
   });
   const proof = await page.evaluate(async (url) => {
-    const { getMirrorModule } = await import(url);
+    const { getMirrorModule, transformCaptureRgba } = await import(url);
     const { runtimeOptions } = await import(
       url.replace("mirror.ts", "common/runtimeOptions.ts")
     );
@@ -564,7 +562,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module._wasm_capture_transform_required(),
+        required: module.browser_capture_transform_required(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -573,9 +571,28 @@ test("C resolves source orientation and transforms upload pixels once while pres
     return {
       original: Array.from(original),
       results,
-      invalid: module._wasm_capture_transform_rgba(0, 2, 2),
+      fractionalRejected: (() => {
+        try {
+          transformCaptureRgba(new Uint8ClampedArray(16), 2.5, 2);
+          return false;
+        } catch (error) {
+          return (
+            error instanceof Error &&
+            error.message === "Invalid capture dimensions"
+          );
+        }
+      })(),
+      invalid: (() => {
+        const frame = new module.MirrorFrameBinding();
+        try {
+          return frame.transform(new Uint8Array(0), 2, 2);
+        } finally {
+          frame.delete();
+        }
+      })(),
     };
   }, moduleUrl);
+  expect(proof.fractionalRejected).toBe(true);
   const reversedRows = [
     20, 0, 0, 255, 10, 0, 0, 255, 40, 0, 0, 255, 30, 0, 0, 255,
   ];
@@ -598,7 +615,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
         JSON.stringify(result.local) === JSON.stringify(proof.original),
     ),
   ).toBe(true);
-  expect(proof.invalid).toBe(-1);
+  expect(proof.invalid).toBe(86);
 });
 
 test("Mirror visualizes captured audio in waveform and FFT while its enabled speakers remain silent", async ({
@@ -730,7 +747,7 @@ for (const mode of ["client", "discovery"]) {
         message.text().includes("track reader stopped")
       )
         console.log(message.text());
-      if (message.text().includes("_client_init_with_args"))
+      if (message.text().includes("[Client WASM] Session initialized"))
         clientInitLogs.push(message.text());
     });
     page.on("request", (request) => {
@@ -845,9 +862,7 @@ for (const mode of ["client", "discovery"]) {
       ).toBeVisible({
         timeout: 45000,
       });
-      expect(clientInitLogs).toContain(
-        "[Client WASM] _client_init_with_args returned: 0",
-      );
+      expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])
         expect(
           clientAssets.some(

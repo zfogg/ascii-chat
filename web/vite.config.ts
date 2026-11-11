@@ -31,6 +31,8 @@ export default defineConfig({
       "**/.vscode/**",
       "**/coverage/**",
       "**/tests/**",
+      "**/e2e/**",
+      "**/wasm/generated/**",
       "**/playwright.config.ts",
       "**/vite.config.ts",
       "**/vitest.config.ts",

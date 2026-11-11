@@ -103,7 +103,7 @@
  *
  * **Core Infrastructure:**
  * - **@ref topic_common "Common Definitions"**: Core utilities, macros, memory debugging, constants
- * - **@ref topic_errno "Error Handling System"**: Typed error codes, error context, thread-safe errors
+ * - **@ref errno "Error Handling System"**: Typed error codes, error context, thread-safe errors
  * - **@ref topic_logging "Logging System"**: Level-based logging, rate limiting, file output
  * - **@ref topic_options "Options and Configuration"**: Command-line parsing and TOML config
  *
@@ -295,255 +295,120 @@
  * 5. Start audio/video capture and network streaming
  * 6. Handle incoming packets and render to terminal
  *
- * @subsection example_client Client Workflow: Connect, Handshake, Send Video, Display ASCII
+ * @subsection modern_walkthrough Modern connection walkthrough
  *
- * Complete client workflow from connection to displaying ASCII frames:
+ * This is the current shape of a native client connection. The important
+ * distinction is that the application owns the connection lifecycle while the
+ * transport owns delivery. The application never needs to know whether the
+ * peer is reached by TCP, WebSocket, WebRTC, QUIC, or WebTransport.
+ *
+ * **1. Open one connection**
+ *
+ * Resolve and establish the endpoint through the shared connection layer. The
+ * endpoint parser selects the backend from the address and the connection keeps
+ * the transport, handshake state, deadlines, and worker together.
  *
  * @code{.c}
- * // STEP 1: Connect to server and perform crypto handshake
- * // From src/client/main.c and src/client/crypto.c
- *
- * // Connect to server
- * socket_t sockfd = server_connection_connect("127.0.0.1", 27224);
- * if (sockfd == INVALID_SOCKET_VALUE) {
- *     log_error("Failed to connect to server");
- *     return ERROR_NETWORK_CONNECT;
- * }
- *
- * // Perform cryptographic handshake with server
- * // This establishes encrypted session using X25519 key exchange
- * asciichat_error_t handshake_result = crypto_client_perform_handshake();
- * if (handshake_result != ASCIICHAT_OK) {
- *     log_error("Crypto handshake failed");
- *     return handshake_result;
- * }
- * log_info("Encrypted session established with server");
- *
- * // Send client capabilities to server (terminal size, color support, etc.)
- * client_capabilities_packet_t caps = {
- *     .terminal_width = htons(80),
- *     .terminal_height = htons(24),
- *     .supports_color = 1,
- *     .color_mode = COLOR_MODE_TRUECOLOR,
- *     .render_mode = RENDER_MODE_HALF_BLOCK
+ * network_connection_t *connection = NULL;
+ * connection_endpoint_t endpoint;
+ * network_connect_config_t connect_config = {
+ *     .timeout_ms = 5000,
+ *     .should_exit_callback = should_exit,
+ *     .callback_data = app,
+ *     .tls_ca_file = NULL,
+ *     .quic_visual_datagrams = true,
+ *     .quic_audio_datagrams = true,
  * };
- * threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps), 0);
  *
- * // STEP 2: Capture webcam frame and send to server
- * // From src/client/capture.c
- *
- * // Capture RGB frame from webcam (640x480 in this example)
- * rgb_pixel_t *webcam_pixels = NULL;
- * int width = 640, height = 480;
- * if (webcam_capture_frame(&webcam_pixels, &width, &height) != 0) {
- *     log_error("Failed to capture webcam frame");
- *     return ERROR_WEBCAM;
- * }
- *
- * // Package frame: [width:4][height:4][rgb_data:w*h*3]
- * size_t frame_size = sizeof(uint32_t) * 2 + (size_t)width * (size_t)height * sizeof(rgb_pixel_t);
- * uint8_t *frame_data = SAFE_MALLOC(frame_size, uint8_t *);
- *
- * // Write dimensions in network byte order
- * *(uint32_t *)frame_data = htonl(width);
- * *(uint32_t *)(frame_data + sizeof(uint32_t)) = htonl(height);
- *
- * // Copy pixel data
- * memcpy(frame_data + sizeof(uint32_t) * 2, webcam_pixels,
- *        (size_t)width * (size_t)height * sizeof(rgb_pixel_t));
- *
- * // Send image frame to server (automatically encrypted after handshake)
- * threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, frame_data, frame_size, 0);
- *
- * SAFE_FREE(frame_data);
- * log_debug("Sent %dx%d webcam frame to server", width, height);
- *
- * // STEP 3: Receive ASCII frame from server and display
- * // From src/client/protocol.c
- *
- * // Receive packet (automatically decrypted)
- * bool crypto_ready = crypto_client_is_ready();
- * const crypto_context_t *crypto_ctx = crypto_client_get_context();
- * packet_envelope_t envelope;
- * packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx,
- *                                                     crypto_ready, &envelope);
- *
- * if (result == PACKET_RECV_OK && envelope.type == PACKET_TYPE_ASCII_FRAME) {
- *     // Parse ASCII frame header
- *     ascii_frame_packet_t *header = (ascii_frame_packet_t *)envelope.data;
- *     header->width = ntohl(header->width);
- *     header->height = ntohl(header->height);
- *     header->original_size = ntohl(header->original_size);
- *     header->checksum = ntohl(header->checksum);
- *
- *     // Extract ASCII art string
- *     const char *frame_data_ptr = (const char *)envelope.data + sizeof(ascii_frame_packet_t);
- *     char *ascii_frame = SAFE_MALLOC(header->original_size + 1, char *);
- *     memcpy(ascii_frame, frame_data_ptr, header->original_size);
- *     ascii_frame[header->original_size] = '\0';
- *
- *     // Verify integrity
- *     uint32_t actual_crc = asciichat_crc32(ascii_frame, header->original_size);
- *     if (actual_crc == header->checksum) {
- *         // Display ASCII art in terminal
- *         display_render_frame(ascii_frame, false);
- *         log_debug("Displayed %ux%u ASCII frame", header->width, header->height);
- *     }
- *
- *     SAFE_FREE(ascii_frame);
- *     buffer_release(envelope.allocated_buffer, envelope.allocated_size);
+ * asciichat_error_t result = network_connection_open(
+ *     "client_connection", address, default_port, &connect_config,
+ *     &connection, &endpoint);
+ * if (result != ASCIICHAT_OK) {
+ *     log_error("connection failed: %s", asciichat_error_string(result));
+ *     return result;
  * }
  * @endcode
  *
- * @subsection example_server Server Workflow: Receive Video, Convert to ASCII, Broadcast
+ * **2. Let the connection perform negotiation**
  *
- * Complete server workflow showing client connection, video reception, ASCII conversion, and broadcasting:
+ * Register callbacks for application state, packets, closing, and final cleanup.
+ * The callback contract is transport-neutral: packet payloads are borrowed until
+ * the callback returns, and teardown can retain dependencies when a worker has
+ * not joined yet.
  *
  * @code{.c}
- * // STEP 1: Accept client connection and perform crypto handshake
- * // From src/server/main.c and src/server/crypto.c
+ * static const network_connection_callbacks_t callbacks = {
+ *     .open = app_connection_open,
+ *     .packet = app_packet_received,
+ *     .closing = app_connection_closing,
+ *     .closed = app_connection_closed,
+ * };
  *
- * // Accept incoming client connection
- * socket_t client_sockfd = socket_accept(listen_sockfd, NULL, NULL);
- * if (client_sockfd == INVALID_SOCKET_VALUE) {
- *     log_error("Failed to accept client connection");
- *     return ERROR_NETWORK_ACCEPT;
- * }
- *
- * // Assign client ID and create client info structure
- * uint32_t client_id = allocate_client_id();
- * client_info_t *client = create_client_info(client_id, client_sockfd);
- *
- * // Perform server-side crypto handshake
- * asciichat_error_t handshake_result = crypto_server_perform_handshake(client);
- * if (handshake_result != ASCIICHAT_OK) {
- *     log_error("Crypto handshake failed for client %u", client_id);
- *     close_client_connection(client);
- *     return handshake_result;
- * }
- * log_info("Client %u: Encrypted session established", client_id);
- *
- * // STEP 2: Receive video frame from client
- * // From src/server/protocol.c
- *
- * // Receive packet from client (automatically decrypted)
- * bool crypto_ready = crypto_server_client_is_ready(client);
- * const crypto_context_t *crypto_ctx = crypto_server_get_client_context(client);
- * packet_envelope_t envelope;
- * packet_recv_result_t result = receive_packet_secure(client_sockfd, (void *)crypto_ctx,
- *                                                     crypto_ready, &envelope);
- *
- * if (result == PACKET_RECV_OK && envelope.type == PACKET_TYPE_IMAGE_FRAME) {
- *     // Parse image frame: [width:4][height:4][rgb_data:w*h*3]
- *     uint32_t img_width = ntohl(*(uint32_t *)envelope.data);
- *     uint32_t img_height = ntohl(*(uint32_t *)(envelope.data + sizeof(uint32_t)));
- *     rgb_pixel_t *pixels = (rgb_pixel_t *)(envelope.data + sizeof(uint32_t) * 2);
- *
- *     log_debug("Client %u: Received %ux%u video frame", client_id, img_width, img_height);
- *
- *     // Store frame in client's incoming video buffer
- *     video_frame_store(client->incoming_video_buffer, envelope.data, envelope.len);
- *
- *     // Mark client as sending video
- *     atomic_store(&client->is_sending_video, true);
- *
- *     buffer_release(envelope.allocated_buffer, envelope.allocated_size);
- * }
- *
- * // STEP 3: Convert video to ASCII and broadcast to all clients
- * // From src/server/stream.c and src/server/render.c
- *
- * // For each connected client, generate personalized ASCII frame
- * for (int i = 0; i < MAX_CLIENTS; i++) {
- *     client_info_t *target_client = &g_client_manager.clients[i];
- *     if (!atomic_load(&target_client->active)) {
- *         continue;
- *     }
- *
- *     // Get target client's terminal dimensions
- *     unsigned short term_width = target_client->terminal_caps.width;
- *     unsigned short term_height = target_client->terminal_caps.height;
- *
- *     // Mix video from ALL clients into composite for this target client
- *     size_t ascii_size = 0;
- *     char *ascii_frame = create_mixed_ascii_frame_for_client(
- *         target_client->client_id, term_width, term_height, &ascii_size);
- *
- *     if (!ascii_frame) {
- *         continue; // No video sources available yet
- *     }
- *
- *     // Package ASCII frame with header
- *     ascii_frame_packet_t packet_header = {
- *         .width = htonl(term_width),
- *         .height = htonl(term_height),
- *         .original_size = htonl(ascii_size),
- *         .compressed_size = 0,
- *         .checksum = htonl(asciichat_crc32(ascii_frame, ascii_size)),
- *         .flags = 0
- *     };
- *
- *     // Combine header + ASCII data into single packet
- *     size_t total_size = sizeof(packet_header) + ascii_size;
- *     uint8_t *packet_data = SAFE_MALLOC(total_size, uint8_t *);
- *     memcpy(packet_data, &packet_header, sizeof(packet_header));
- *     memcpy(packet_data + sizeof(packet_header), ascii_frame, ascii_size);
- *
- *     // Send to target client (automatically encrypted)
- *     threaded_send_packet_to_client(target_client, PACKET_TYPE_ASCII_FRAME,
- *                                    packet_data, total_size);
- *
- *     log_debug("Sent %zub ASCII frame to client %u", total_size, target_client->client_id);
- *
- *     SAFE_FREE(ascii_frame);
- *     SAFE_FREE(packet_data);
- * }
- *
- * // STEP 4: Mix and broadcast audio to all clients
- * // From src/server/mixer.c
- *
- * // Mix audio from all clients (excluding target client's own audio)
- * for (int i = 0; i < MAX_CLIENTS; i++) {
- *     client_info_t *target_client = &g_client_manager.clients[i];
- *     if (!atomic_load(&target_client->active)) {
- *         continue;
- *     }
- *
- *     // Get mixed audio for this client (excludes their own audio)
- *     float mixed_audio[AUDIO_SAMPLES_PER_PACKET];
- *     int sample_count = mixer_get_mixed_audio_for_client(target_client->client_id,
- *                                                         mixed_audio, AUDIO_SAMPLES_PER_PACKET);
- *
- *     if (sample_count > 0) {
- *         // Send audio packet to client
- *         size_t audio_size = sample_count * sizeof(float);
- *         queue_audio_for_client(target_client, mixed_audio, audio_size);
- *     }
- * }
+ * result = network_connection_run(connection, &callbacks, app);
  * @endcode
  *
- * @subsection example_notes Important Notes
+ * During `network_connection_run()`, the shared pipeline performs the crypto
+ * handshake, validates ACIP framing, applies negotiated compression/security,
+ * and dispatches packets to `app_packet_received`. Application code does not
+ * call `recv()`, decrypt packet buffers by hand, or create a receive thread for
+ * each transport.
  *
- * **Encryption**:
- * - All packets are automatically encrypted after the crypto handshake
- * - Use `threaded_send_packet()` or `receive_packet_secure()` for encrypted I/O
- * - Crypto context is per-connection (client or server)
- * - Keys are automatically zeroed on `crypto_destroy()`
+ * **3. Send media through ACIP**
  *
- * **Compression**:
- * - Large packets (>100KB) are automatically compressed
- * - Compression is transparent - handled by packet I/O functions
- * - Use `av_send_*()` functions for media packets with compression
+ * Media producers hand frames and audio batches to type-specific ACIP helpers.
+ * Those helpers feed the shared outbound scheduler, which applies bounded
+ * admission, control-packet priority, media dropping, encryption sequencing,
+ * and negotiated datagram behavior.
  *
- * **Client Capabilities**:
- * - Sent once after crypto handshake
- * - Includes terminal size, color support, palette preferences
- * - Server uses this to format output appropriately
+ * @code{.c}
+ * acip_transport_t *transport = network_connection_transport(connection);
  *
- * **Thread Safety**:
- * - `threaded_send_packet()` is thread-safe for concurrent sending
- * - `receive_packet_secure()` should be called from dedicated receive thread
- * - Crypto context is per-connection (not thread-safe for concurrent access)
+ * result = acip_send_ascii_frame_contract(
+ *     transport, &frame_workspace, frame, frame_length,
+ *     width, height, NULL, 0, 0);
+ * if (result != ASCIICHAT_OK) {
+ *     log_warn("frame was not accepted: %s", asciichat_error_string(result));
+ * }
+ *
+ * result = acip_send_audio_opus_batch(
+ *     transport, audio, audio_length, frame_sizes, frame_count,
+ *     sample_rate, frame_duration_ms);
+ * @endcode
+ *
+ * Do not add a mode-owned video queue, audio queue, or transport send thread.
+ * The scheduler is the single admission point shared by every backend. It may
+ * choose reliable delivery or a negotiated visual/audio datagram according to
+ * explicit send options and current transport capabilities.
+ *
+ * **4. Handle the peer and application state**
+ *
+ * A packet callback updates application state or forwards the payload to the media
+ * pipeline. It must finish using the borrowed payload before returning; retain a
+ * copy only when a later worker needs it. Long-running work belongs in an owned
+ * queue or worker, not inside the backend event loop.
+ *
+ * **5. Shut down in ownership order**
+ *
+ * Request cancellation, stop media producers, and let connection callbacks drain.
+ * The `closing` callback joins application workers without holding a lock those
+ * workers need. The `closed` callback releases application state after transport
+ * callbacks have stopped. Finally destroy the connection:
+ *
+ * @code{.c}
+ * network_connection_request_stop(connection);
+ * result = network_connection_run(connection, &callbacks, app);
+ * network_connection_destroy(&connection);
+ * @endcode
+ *
+ * Servers use the same contracts with `network_server_t`; an already connected
+ * transport can be adopted with `network_server_adopt()` or
+ * `network_server_adopt_negotiating()`. ACDS supplies session and endpoint
+ * metadata, but it does not replace the connection/transport lifecycle.
+ *
+ * For the implementation map, read @ref topic_network. For detailed runtime
+ * rules, read [Network runtime and connection ownership](md_docs_2networking-runtime.html),
+ * [Event-driven I/O](md_docs_2event-driven-io.html), and
+ * [Transport backpressure](md_docs_2transport-backpressure.html).
  *
  * @section building Building Documentation
  *

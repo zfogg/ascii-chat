@@ -84,7 +84,7 @@
 #include "../../network/acip/protocol.h"
 #include "../../network/acip/acds.h"
 #include "../../network/packet/packet.h"
-#include "../../platform/socket.h"
+#include "../../os/socket.h"
 
 #ifdef __cplusplus
 extern "C" {

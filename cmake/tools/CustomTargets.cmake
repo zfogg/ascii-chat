@@ -64,7 +64,7 @@ if(NOT TARGET clang-format-check)
     add_custom_target(clang-format-check DEPENDS format-check)
 endif()
 
-# Use centralized clang-tidy from FindPrograms.cmake
+# clang-tidy is optional and uses Python when an interpreter is found in PATH.
 set(CLANG_TIDY_EXECUTABLE "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
@@ -169,7 +169,6 @@ endif()
 
 # Wrapper target that builds shared library
 add_custom_target(shared-lib
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    DEPENDS ascii-chat-shared build-timer-start
+    DEPENDS ascii-chat-shared
     VERBATIM
 )

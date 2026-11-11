@@ -30,9 +30,11 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/terminal.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
 
@@ -245,7 +247,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
     pre_convert_ns = time_get_ns();
-    char *ascii_frame = session_display_convert_to_ascii(display, image);
+    char *ascii_frame = session_display_convert_to_ascii_reuse(display, image);
     post_convert_ns = time_get_ns();
     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
@@ -325,7 +327,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       // Free frame before checking exit conditions to avoid double-free
-      SAFE_FREE(ascii_frame);
+      session_display_release_ascii(display, ascii_frame);
     }
 
     // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)

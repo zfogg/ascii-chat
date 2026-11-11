@@ -3,7 +3,7 @@ name: Doxygen Documentation
 on:
   push:
     branches:
-      - master # Only deploy docs from master branch
+      - master
     paths:
       - "lib/**/*.c"
       - "lib/**/*.h"
@@ -14,18 +14,18 @@ on:
       - "src/**/*.cpp"
       - "src/**/*.hpp"
       - "**/*.m"
-      - "docs/**/*.dox"
-      - "docs/Doxyfile.in"
+      - "include/**/*.c"
+      - "include/**/*.h"
+      - "docs/**"
+      - ".gitmodules"
       - ".github/workflows/doxygen.yml"
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -33,86 +33,34 @@ concurrency:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          fetch-depth: 0 # Full history for git describe to work
+          fetch-depth: 0
           fetch-tags: true
-          submodules: true
+          # Only the documentation theme is needed; do not initialize native
+          # dependency submodules or their nested build graph.
+          submodules: false
 
-      - name: Install Doxygen
+      - name: Checkout documentation theme
+        run: git submodule update --init --depth 1 deps/doxygen-awesome-css
+
+      - name: Install documentation tools
         run: |
           sudo apt-get update
-          # CMake configures the full project before the docs target runs.
-          # Native Linux builds require ALSA headers even though this job only
-          # publishes generated documentation.
-          sudo apt-get install -y \
-            doxygen graphviz cmake pkg-config ninja-build \
-            libasound2-dev portaudio19-dev libopus-dev libfftw3-dev \
-            libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev \
-            libsystemd-dev libsqlite3-dev libssl-dev libminiupnpc-dev \
-            libprotobuf-c-dev libavformat-dev libavcodec-dev libavutil-dev \
-            libswscale-dev libswresample-dev libabsl-dev libx264-dev libx265-dev \
-            libwebsockets-dev libuv1-dev libicu-dev libvterm-dev libfreetype6-dev libfontconfig1-dev
+          sudo apt-get install -y doxygen graphviz cmake
 
-      - name: Restore configure and build caches
-        id: cache-build
-        uses: ./.github/actions/cache-build
-        with:
-          cache-version: v7
+      - name: Configure documentation-only CMake project
+        run: cmake -S docs -B build_docs -DASCII_CHAT_SOURCE_DIR="$GITHUB_WORKSPACE" -DASCII_CHAT_DOC_SHA="${{ github.sha }}"
 
-      - name: Configure CMake build
-        run: |
-          # The docs job uses system libraries and publishes no CLI binaries.
-          # Static-link enforcement remains enabled in the CLI release workflow.
-          cmake --preset release -B build_release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
-
-      - name: Save configure cache
-        if: always()
-        uses: ./.github/actions/cache-build-save
-        with:
-          build-directory: build_release
-          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
-          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
-          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
-          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
-          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
-          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
-          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
-          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
-          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
-          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
-          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
-          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
-
-      - name: Build documentation with CMake
-        run: |
-          cmake --build build_release --target docs
-
-      - name: Save build cache
-        if: always()
-        uses: ./.github/actions/cache-build-save
-        with:
-          build-directory: build_release
-          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
-          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
-          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
-          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
-          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
-          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
-          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
-          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
-          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
-          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
-          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
-          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
+      - name: Build documentation
+        run: cmake --build build_docs --target docs
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
-          path: build_release/share/doc/html
+          path: build_docs/share/doc/html
 
   deploy:
     environment:
@@ -123,4 +71,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

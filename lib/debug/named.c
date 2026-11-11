@@ -1,7 +1,7 @@
 /**
  * @file lib/debug/named.c
  * @brief Named object registry for debugging
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Provides a centralized registry for naming any addressable resource.
  * Uses uthash for O(1) lookup by uintptr_t key.
@@ -13,13 +13,13 @@
 
 #include <ascii-chat/debug/named.h>
 #include "ascii-chat/debug/named.h"
-#include "ascii-chat/platform/rwlock.h"
-#include "ascii-chat/platform/string.h"
-#include "ascii-chat/platform/thread.h"
+#include "libplatform/rwlock.h"
+#include <libplatform/util/string.h>
+#include "libplatform/thread.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/util/path.h"
-#include "ascii-chat/util/lifecycle.h"
+#include <libplatform/lifecycle.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +37,8 @@
 #define DESCRIBE_BUFFER_SIZE 768
 
 /**
+ * @brief Registry entry for uthash
+ * @brief Global registry with uthash and rwlock
  * @brief String duplication using regular malloc (not SAFE_MALLOC)
  *
  * Uses regular malloc/free to avoid lock acquisition in memory tracking
@@ -102,6 +104,8 @@ typedef struct {
   uintptr_t key;
   bool valid;
   named_metadata_t metadata;
+  /**
+   */
 } named_metadata_entry_t;
 
 typedef struct {
@@ -109,6 +113,11 @@ typedef struct {
   size_t count;
   size_t capacity;
   named_metadata_entry_t *entries;
+  /**
+   * @brief This is the handoff point for named metadata entry. Callers fill `key`, `valid`, `metadata` before passing
+   * it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } named_metadata_cache_t;
 static _Thread_local named_metadata_cache_t *g_thread_metadata;
 
@@ -152,7 +161,7 @@ static named_metadata_cache_t *metadata_snapshot(void) {
     if (!cache)
       return NULL;
     memset(cache, 0, sizeof(*cache));
-    if (ascii_tls_set(g_metadata_tls, cache) != 0) {
+    if (platform_tls_set(g_metadata_tls, cache) != 0) {
       metadata_cache_destroy(cache);
       return NULL;
     }
@@ -240,7 +249,7 @@ asciichat_error_t named_init(void) {
     return ASCIICHAT_OK; // Continue even if rwlock init fails
   }
 
-  g_metadata_tls_ready = ascii_tls_key_create(&g_metadata_tls, metadata_cache_destroy) == 0;
+  g_metadata_tls_ready = platform_tls_key_create(&g_metadata_tls, metadata_cache_destroy) == 0;
   atomic_fetch_add(&g_metadata_revision, 1);
   lifecycle_init_commit(&g_named_registry.lifecycle);
   return ASCIICHAT_OK;
@@ -269,14 +278,17 @@ void named_destroy(void) {
   rwlock_destroy(&g_named_registry.entries_lock);
   if (g_metadata_tls_ready) {
     void *cache = g_thread_metadata;
-    ascii_tls_set(g_metadata_tls, NULL);
+    platform_tls_set(g_metadata_tls, NULL);
     metadata_cache_destroy(cache);
-    ascii_tls_key_delete(g_metadata_tls);
+    platform_tls_key_delete(g_metadata_tls);
     g_metadata_tls_ready = false;
   }
 }
 
 /**
+ * @brief Owns the temporary storage used by named metadata cache. The data pointers and size or cursor fields describe
+ * the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed.
  * @brief Lock-free atomic counters for unique naming
  */
 static uint64_t mutex_counter = 0;
@@ -572,13 +584,18 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
 }
 
 const char *named_describe_thread(void *thread) {
-  uintptr_t key = thread_to_key((asciichat_thread_t)thread);
+  uintptr_t key = thread_to_key((platform_thread_t)thread);
   return named_describe(key, "thread");
 }
 
 typedef struct {
   uintptr_t key;
   char name[MAX_NAME_LEN];
+  /**
+   * @brief named iter entry keeps the values that move through the subsystem: `key`. Some members are pointers into
+   * caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy
+   * itself.
+   */
 } named_iter_entry_t;
 
 asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *user_data, bool *completed) {

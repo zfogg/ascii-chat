@@ -3,7 +3,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/symbols.h>
@@ -112,11 +114,25 @@ static int journal_contract(void) {
   errno_notifications_enable(true);
   // Password authentication owns its deferred feedback even when the protocol
   // decoder records a rejection while interactive notifications are enabled.
-  acip_error_t rejection = {.error_code = ACIP_ERROR_INVALID_PASSWORD};
-  SAFE_STRNCPY(rejection.error_message, "PRIVATE_REMOTE_PASSWORD_DETAIL", sizeof(rejection.error_message));
+  const char rejection_text[] = "PRIVATE_REMOTE_PASSWORD_DETAIL";
+  uint8_t rejection[sizeof(error_packet_t) + sizeof(rejection_text) - 1] = {0};
+  error_packet_t *rejection_packet = (error_packet_t *)rejection;
+  uint32_t rejection_code = ERROR_INVALID_PASSWORD;
+  uint32_t rejection_length = sizeof(rejection_text) - 1;
+  rejection_packet->error_code = ((rejection_code & 0xffU) << 24) | ((rejection_code & 0xff00U) << 8) |
+                                 ((rejection_code >> 8) & 0xff00U) | (rejection_code >> 24);
+  rejection_packet->message_length = ((rejection_length & 0xffU) << 24) | ((rejection_length & 0xff00U) << 8) |
+                                     ((rejection_length >> 8) & 0xff00U) | (rejection_length >> 24);
+  memcpy(rejection + sizeof(error_packet_t), rejection_text, sizeof(rejection_text) - 1);
   bool suppressed = errno_notifications_suppress(true);
-  CHECK(network_error_decode(PACKET_TYPE_ACIP_ERROR, &rejection, sizeof(rejection)) == ERROR_INVALID_PASSWORD);
+  asciichat_errno_scope_t rejection_scope = errno_scope_begin();
+  CHECK(network_error_decode(PACKET_TYPE_ERROR_MESSAGE, rejection, sizeof(rejection)) == ERROR_INVALID_PASSWORD);
   errno_notifications_suppress(suppressed);
+  asciichat_error_context_t rejection_context;
+  CHECK(errno_peek_since(rejection_scope, &rejection_context));
+  CHECK(strstr(rejection_context.context_message, "Remote request rejected") != NULL);
+  CHECK(strstr(rejection_context.context_message, "PRIVATE_REMOTE_PASSWORD_DETAIL") != NULL);
+  errno_scope_end(rejection_scope, ASCIICHAT_ERRNO_HANDLED);
   CHECK(!errno_notifications_pending());
   CHECK(HAS_ERRNO_CODE(ERROR_INVALID_PASSWORD));
   CLEAR_ERRNO();
@@ -204,8 +220,8 @@ int main(int argc, char **argv) {
   safe_snprintf(log_path, sizeof(log_path), "%s.log", control_path);
   log_init(log_path, LOG_DEBUG, false, false);
   worker_t state = {0};
-  asciichat_thread_t worker;
-  if (acthread_create(&worker, "popup-media-worker", produce_errors, &state) != ASCIICHAT_OK)
+  platform_thread_t worker;
+  if (platform_thread_create(&worker, "popup-media-worker", produce_errors, &state) != ASCIICHAT_OK)
     return 4;
   if (stats_runtime_start("mirror", 0) != ASCIICHAT_OK)
     return 5;

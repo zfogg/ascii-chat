@@ -1,6 +1,7 @@
 #pragma once
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/acip/traffic.h>
+#include <libplatform/socket.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -22,6 +23,9 @@ typedef enum {
   ACIP_ADMISSION_NEEDS_KEYFRAME
 } acip_admission_t;
 
+/**
+ * @brief This is the handoff point for acip outbound stats. Callers fill `application_bytes`, `backend_bytes`, `backend_reserved_bytes`, `peak_bytes` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct {
   size_t application_bytes, backend_bytes, backend_reserved_bytes, peak_bytes;
   uint64_t accepted, submitted, dropped, congestion, recovery_frames;
@@ -41,5 +45,7 @@ void acip_outbound_destroy(acip_transport_t *transport);
  */
 asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                         acip_admission_t *admission);
+asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                           const acip_send_options_t *options, acip_admission_t *admission);
 asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbound_stats_t *stats);
 bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t packet_type, uint32_t stream_id);

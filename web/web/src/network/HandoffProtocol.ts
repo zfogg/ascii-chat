@@ -1,35 +1,9 @@
 const HANDOFF_FRAME_SIZE = 64;
 const HANDOFF_PROBE_PAYLOAD_SIZE = 65536;
-const SESSION_ID_SIZE = 16;
-const HANDOFF_ID_STORAGE_SIZE = 2 * SESSION_ID_SIZE;
 import { getClientModule } from "../wasm/client";
 import type { JoinedSession } from "./acdsProtocol";
 
 export const HANDOFF_PACKET = 6090;
-type Action = {
-  kind: number;
-  participant: Uint8Array;
-  generation: number;
-  sequence: number;
-};
-type Module = ReturnType<typeof getClientModule> & {
-  _browser_handoff_encode(
-    kind: number,
-    session: number,
-    id: number,
-    generation: number,
-    sequence: number,
-    capabilities: number,
-    natTier: number,
-    port: number,
-    out: number,
-  ): void;
-  _browser_handoff_decode(data: number, length: number): number;
-  _browser_host_create(): number;
-  _browser_host_destroy(): void;
-  handoffResult: Action;
-};
-
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
@@ -51,31 +25,20 @@ export class HandoffProtocol {
     generation: number,
     sequence: number,
   ): Uint8Array {
-    const module = getClientModule() as Module;
-    const pointer = module._malloc(
-      HANDOFF_ID_STORAGE_SIZE + HANDOFF_FRAME_SIZE,
+    const module = getClientModule();
+    if (!module) throw new Error("Client WASM module is unavailable");
+    const frame = module.handoffEncode(
+      kind,
+      this.joined.sessionId,
+      this.joined.participantId,
+      generation,
+      sequence,
+      2,
+      255,
+      0,
     );
-    try {
-      module.HEAPU8.set(this.joined.sessionId, pointer);
-      module.HEAPU8.set(this.joined.participantId, pointer + SESSION_ID_SIZE);
-      module._browser_handoff_encode(
-        kind,
-        pointer,
-        pointer + SESSION_ID_SIZE,
-        generation,
-        sequence,
-        2,
-        255,
-        0,
-        pointer + HANDOFF_ID_STORAGE_SIZE,
-      );
-      return module.HEAPU8.slice(
-        pointer + HANDOFF_ID_STORAGE_SIZE,
-        pointer + HANDOFF_ID_STORAGE_SIZE + HANDOFF_FRAME_SIZE,
-      );
-    } finally {
-      module._free(pointer);
-    }
+    if (!frame) throw new Error("Invalid handoff identifiers");
+    return frame;
   }
   private sample(): void {
     if (this.stopped) return;
@@ -98,17 +61,10 @@ export class HandoffProtocol {
       !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
     )
       return true;
-    const module = getClientModule() as Module;
-    const pointer = module._malloc(bytes.length);
-    let action: Action;
-    try {
-      module.HEAPU8.set(bytes, pointer);
-      if (module._browser_handoff_decode(pointer, bytes.length))
-        throw new Error("Invalid handoff frame");
-      action = module.handoffResult;
-    } finally {
-      module._free(pointer);
-    }
+    const module = getClientModule();
+    if (!module) throw new Error("Client WASM module is unavailable");
+    const action = module.handoffDecode(bytes);
+    if (!action) throw new Error("Invalid handoff frame");
     if (action.generation < this.generation) return true;
     this.generation = action.generation;
     if (
@@ -117,7 +73,7 @@ export class HandoffProtocol {
         (value, i) => value === this.joined.participantId[i],
       )
     ) {
-      const result = module._browser_host_create();
+      const result = module.browser_host_create();
       this.prepared = result === 0;
       this.send(
         HANDOFF_PACKET,
@@ -151,7 +107,7 @@ export class HandoffProtocol {
   }
   private releasePreparedHost(): void {
     if (this.prepared) {
-      (getClientModule() as Module | null)?._browser_host_destroy();
+      getClientModule()?.browser_host_destroy();
       this.prepared = false;
     }
   }

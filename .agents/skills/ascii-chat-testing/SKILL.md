@@ -5,7 +5,7 @@ description: Write, select, run, and diagnose ascii-chat C and Python tests acro
 
 # ascii-chat testing
 
-Run commands from the repository root unless stated otherwise. Read `AGENTS.md`, then inspect `tests/CMakeLists.txt`, `cmake/deps/Criterion.cmake`, and `CMakePresets.json` for the affected target. Current configuration takes precedence over historical commands.
+Run commands from the repository root unless stated otherwise. Read `AGENTS.md`, then inspect `tests/CMakeLists.txt`, `cmake/deps/Criterion.cmake`, and `CMakePresets.json` for the affected target. Current configuration takes precedence over historical commands. Plain Ninja/CMake builds use all available cores by default; do not add an explicit build job count. `ctest --parallel` is allowed with no numeric count so CTest can schedule tests across all available cores.
 
 ## Select the evidence
 

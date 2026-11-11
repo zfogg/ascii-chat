@@ -1,15 +1,12 @@
+import { Options } from "@ascii-chat/shared/wasm/options";
+import type { MainModule } from "../generated/mirror-bindings";
+
 /** Each C/WASM instance owns its state. Observers run on the browser thread. */
-export interface RuntimeOptionsModule {
-  _wasm_options_revision(): number;
-  _wasm_options_retired_count?(): number;
-  _wasm_options_values(): number;
-  _wasm_options_patch(json: number, expectedRevision: number): number;
-  _wasm_options_release(json: number): void;
-  _malloc(size: number): number;
-  _free(pointer: number): void;
-  UTF8ToString(pointer: number): string;
-  stringToUTF8(value: string, pointer: number, size: number): void;
-  lengthBytesUTF8(value: string): number;
+export interface RuntimeOptionsModule extends Pick<
+  MainModule,
+  "readOptions" | "patchOptions"
+> {
+  browser_options_revision(): number;
 }
 export type RuntimeValues = Readonly<Record<string, number | string | boolean>>;
 export interface RuntimeSnapshot {
@@ -25,21 +22,13 @@ export class RuntimeOptionsStore {
   constructor(readonly module: RuntimeOptionsModule) {}
 
   readonly getSnapshot = (): RuntimeSnapshot => {
-    const revision = this.module._wasm_options_revision();
+    const revision = this.module.browser_options_revision();
     if (this.snapshot?.revision === revision) return this.snapshot;
-    const pointer = this.module._wasm_options_values();
-    if (!pointer) throw new Error("Cannot read engine settings");
-    try {
-      const decoded = JSON.parse(
-        this.module.UTF8ToString(pointer),
-      ) as RuntimeSnapshot;
-      this.snapshot = {
-        revision: decoded.revision,
-        values: Object.freeze(decoded.values),
-      };
-    } finally {
-      this.module._wasm_options_release(pointer);
-    }
+    const decoded = new Options(this.module).read();
+    this.snapshot = {
+      revision: decoded.revision,
+      values: Object.freeze(decoded.values),
+    };
     return this.snapshot;
   };
 
@@ -67,21 +56,14 @@ export class RuntimeOptionsStore {
   };
 
   applyPatch(values: RuntimeValues, expectedRevision = -1): RuntimeSnapshot {
-    const json = JSON.stringify(values);
-    const size = this.module.lengthBytesUTF8(json) + 1;
-    const pointer = this.module._malloc(size);
-    if (!pointer) throw new Error("Cannot allocate settings patch");
-    try {
-      this.module.stringToUTF8(json, pointer, size);
-      const result = this.module._wasm_options_patch(pointer, expectedRevision);
-      if (result)
-        throw new Error(
-          `Settings update rejected (${result}); refresh the settings and retry.`,
-        );
-    } finally {
-      this.module._free(pointer);
-    }
-    const snapshot = this.getSnapshot();
+    const committed = new Options(this.module).patch(values, expectedRevision);
+    const snapshot =
+      this.snapshot?.revision === committed.revision
+        ? this.snapshot
+        : (this.snapshot = {
+            revision: committed.revision,
+            values: Object.freeze(committed.values),
+          });
     if (this.notified !== snapshot) {
       this.notified = snapshot;
       for (const listener of this.listeners) listener();

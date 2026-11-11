@@ -1,7 +1,7 @@
 """Verify the native discovery invitation and call in real tmux terminals.
 
 Run inside a Linux container with tmux installed:
-  python tests/ui/probe_discovery_tmux.py build/bin/ascii-chat build/tmux-validation
+  uv run --project tests/ascii_chat_tests --frozen python tests/ui/probe_discovery_tmux.py build/bin/ascii-chat build/tmux-validation
 No mode or transport override is supplied to either discovery peer.
 """
 

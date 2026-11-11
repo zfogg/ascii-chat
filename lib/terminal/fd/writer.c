@@ -1,16 +1,21 @@
 /**
+ * @brief terminal fd writer keeps the values that move through the subsystem: `fp`. Some members are pointers into
+ * caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy
+ * itself.
  * @file terminal/fd/writer.c
  * @ingroup terminal_fd
  * @brief Write ANSI ASCII frames to file descriptor
  */
 
 #include <ascii-chat/terminal/fd/writer.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/stdout_writer.h>
 
 typedef struct terminal_fd_writer_s {

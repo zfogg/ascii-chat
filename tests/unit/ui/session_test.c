@@ -2,6 +2,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tui/session.h>
+#include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <stdio.h>
 #include <string.h>
@@ -168,6 +169,10 @@ Test(session_ui, log_history_returns_latest_entries_after_wrap) {
 Test(session_ui, media_toggle_action_and_shared_help) {
   double volume = 1.0;
   cr_assert_eq(ui_session_key((keyboard_key_t)'[', &volume), UI_ACTION_TOGGLE_MEDIA);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'q', &volume), UI_ACTION_QUIT);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'Q', &volume), UI_ACTION_FORCE_QUIT);
+  cr_assert_eq(ui_session_key(KEY_ESCAPE, &volume), UI_ACTION_CLOSE);
+  cr_assert_eq(ui_session_key(KEY_SHIFT_ESCAPE, &volume), UI_ACTION_FORCE_QUIT);
   terminal_size_t minimum;
   char *help = ui_session_help_render((terminal_size_t){.rows = 60, .cols = 160}, true, false, &minimum);
   cr_assert_not_null(help);
@@ -178,4 +183,22 @@ Test(session_ui, media_toggle_action_and_shared_help) {
   cr_assert_null(strstr(help, "Error stacks diagnostic TUI"));
 #endif
   SAFE_FREE(help);
+}
+
+Test(session_ui, embedded_log_help_uses_the_session_viewport) {
+  terminal_screen_logs_reset();
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  ui_session_resize(session, 100, 40);
+  cr_assert_eq(ui_session_input(session, ']'), UI_ACTION_LOGS);
+  cr_assert_eq(ui_session_input(session, KEY_QUESTION), UI_ACTION_LOGS);
+  const char *frame = ui_session_tick(session, NS_PER_SEC_INT);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "Log Viewer Keyboard Controls"));
+  cr_assert_eq(ui_session_input(session, KEY_ESCAPE), UI_ACTION_LOGS);
+  frame = ui_session_tick(session, 2 * NS_PER_SEC_INT);
+  cr_assert_not_null(frame);
+  cr_assert_null(strstr(frame, "Log Viewer Keyboard Controls"));
+  ui_session_destroy(session);
+  terminal_screen_logs_reset();
 }

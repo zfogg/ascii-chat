@@ -33,7 +33,7 @@ Native Windows supports selected CTest library/standalone/Python checks, but Cri
 
 The wrapper builds `tests/Dockerfile` when needed, mounts source at `/app`, uses `build_docker/`, and retains ccache/dependency volumes. `-Build` rebuilds the image; `-NoBuild` skips image creation but still builds tests. Avoid `-Clean` routinely. It removes the fixed container `ascii-chat-test-runner`, so inspect ownership before concurrent use. Filters select CTest names, not individual Criterion cases. The wrapper lacks `--no-tests=error`; inspect selected counts or use a direct command with that option.
 
-Compose persists build/dependency/ccache named volumes. Inspect `docker compose -f tests/docker-compose.yml config`. The current Arch service points at a missing root `Dockerfile`; use a temporary override setting `services.ascii-chat-tests.build.dockerfile: tests/Dockerfile`, or build the matching image first:
+Compose persists build/dependency/ccache named volumes. Inspect `docker compose -f tests/docker-compose.yml config`; the Arch service builds `tests/Dockerfile`:
 
 ```powershell
 docker build -f tests/Dockerfile -t zfogg/ascii-chat:latest .
@@ -42,9 +42,9 @@ docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests
 docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -lc 'cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker -L "^unit$" --no-tests=error --output-on-failure'
 ```
 
-The Ubuntu service uses `tests/Dockerfile.ubuntu` but hardcodes `DOCKER_OS=arm64`; align the cache namespace with actual architecture. Preserve volumes and reuse the same Compose project name. For direct Docker mounts read the cross-platform skill: retain `build_docker/`, `.deps-cache-docker/` mapped to `/app/.deps-cache`, and ccache. Separate native/Linux/architecture caches.
+The Ubuntu service uses `tests/Dockerfile.ubuntu` and defaults `DOCKER_OS` to `arm64`. Set `DOCKER_OS` in a `.env` file or the shell to match the container architecture; for a file under `tests`, use `docker compose --env-file tests/.env -f tests/docker-compose.yml`. Build and ccache volumes must also be kept separate across architectures. Preserve volumes and reuse the same Compose project name. For direct Docker mounts read the cross-platform skill: retain `build_docker/`, `.deps-cache-docker/` mapped to `/app/.deps-cache`, and ccache. Separate native/Linux/architecture caches.
 
-Compose adds `SYS_PTRACE` and disables LeakSanitizer detection through its environment workaround. A passing run there is not leak-freedom evidence; use a supported environment with leak detection enabled for that claim.
+Compose and non-interactive wrapper runs enable LeakSanitizer. A run with leak detection disabled is not evidence of leak freedom. Compose retains `SYS_PTRACE` for hosts that require it. CTest fails registered Criterion tests when a worker prints a LeakSanitizer report, even if Criterion exits successfully. Direct Criterion invocations can still exit successfully after reporting leaks, so inspect their output or use CTest. Test selection still limits what a passing run can prove.
 
 ## Python integration and standalone fixtures
 

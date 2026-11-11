@@ -15,15 +15,17 @@
 #include <ascii-chat-deps/sokol/sokol_time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/rwlock.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/lifecycle.h>
+#include <libplatform/rwlock.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <ctype.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // ============================================================================
 // Global State
@@ -108,38 +110,6 @@ static int format_human_readable_time_ago(double total_seconds, int minutes, int
 // Core Monotonic Timing Implementation
 // ============================================================================
 
-uint64_t time_get_ns(void) {
-  // sokol_time provides monotonic clock that never goes backwards
-  // stm_ns() converts ticks to nanoseconds
-  // Ensure sokol_time is initialized before use (defensive programming)
-  if (!g_sokol_time_initialized) {
-    stm_setup();
-    g_sokol_time_initialized = true;
-  }
-  return (uint64_t)stm_ns(stm_now());
-}
-
-uint64_t time_get_realtime_ns(void) {
-#ifdef _WIN32
-  // Windows: Use GetSystemTimePreciseAsFileTime (Win8+) for high-precision wall clock
-  // FILETIME is 100-nanosecond intervals since January 1, 1601
-  FILETIME ft;
-  GetSystemTimePreciseAsFileTime(&ft);
-  // Convert FILETIME to nanoseconds
-  uint64_t filetime = ((uint64_t)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
-  // Convert 100-nanosecond intervals to nanoseconds
-  return filetime * 100;
-#else
-  // Get wall-clock (real-time) timestamp
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    // Fallback on error (unlikely)
-    return 0;
-  }
-  return time_timespec_to_ns(&ts);
-#endif
-}
-
 void time_sleep_ns(uint64_t ns) {
   // Use platform abstraction for cross-platform sleep
   // Convert nanoseconds to microseconds (1 us = 1000 ns)
@@ -176,15 +146,6 @@ uint64_t time_timespec_to_ns(const struct timespec *ts) {
     return UINT64_MAX;
   }
   return (uint64_t)result + (uint64_t)ts->tv_nsec;
-}
-
-void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
-  if (!ts) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
-    return;
-  }
-  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
-  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
 }
 
 // ============================================================================

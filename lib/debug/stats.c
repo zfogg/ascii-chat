@@ -2,16 +2,18 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>
+#include <ascii-chat/options/options.h>
 
 static atomic_t g_debug_stats_signal = {0};
+static atomic_t g_debug_stats_memory_signal = {0};
 static atomic_t g_debug_stats_exiting = {0};
 static atomic_t g_debug_stats_cleaning = {0};
-static asciichat_thread_t g_debug_stats_thread;
+static platform_thread_t g_debug_stats_thread;
 static uint64_t g_debug_stats_main_thread;
 static mutex_t g_debug_stats_mutex;
 static cond_t g_debug_stats_condition;
@@ -57,6 +59,10 @@ void debug_stats_trigger_print(void) {
   // handler. The worker checks this flag at most 100ms after its next wakeup.
   atomic_store_bool_impl(&g_debug_stats_signal, true);
 }
+void debug_stats_trigger_memory_report(void) {
+  // Signal handlers may only set the request; the worker performs the report.
+  atomic_store_bool_impl(&g_debug_stats_memory_signal, true);
+}
 bool debug_stats_is_cleanup_in_progress(void) {
   return atomic_load_bool_impl(&g_debug_stats_cleaning);
 }
@@ -65,6 +71,7 @@ void debug_stats_poll(void) {
     return;
   uint64_t now = time_get_ns();
   bool all = atomic_exchange_bool_impl(&g_debug_stats_signal, false);
+  bool requested_memory = atomic_exchange_bool_impl(&g_debug_stats_memory_signal, false);
   mutex_lock(&g_debug_stats_mutex);
   bool memory = g_debug_stats_memory_deadline && now >= g_debug_stats_memory_deadline;
   if (memory)
@@ -73,8 +80,8 @@ void debug_stats_poll(void) {
   if (all)
     debug_stats_print();
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  if (memory)
-    debug_memory_report();
+  if (memory || requested_memory)
+    debug_memory_report(GET_OPTION(color));
 #else
   (void)memory;
 #endif
@@ -115,7 +122,7 @@ asciichat_error_t debug_stats_start_thread(void) {
       debug_stats_set_memory_report_interval((uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (acthread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
+  if (platform_thread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_debug_stats_started = true;
@@ -143,6 +150,7 @@ void debug_stats_destroy(void) {
     mutex_destroy(&g_debug_stats_mutex);
     g_debug_stats_initialized = false;
     atomic_store_bool_impl(&g_debug_stats_signal, false);
+    atomic_store_bool_impl(&g_debug_stats_memory_signal, false);
     g_debug_stats_memory_deadline = g_debug_stats_memory_interval = 0;
   }
 }

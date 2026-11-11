@@ -2,6 +2,8 @@ name: ascii-chat-otel
 services:
   spaniel:
     image: ${SPANIEL_IMAGE:-ghcr.io/zfogg/spaniel:latest}
+    pull_policy: always
+    restart: unless-stopped
     command:
       [
         "--db-path",

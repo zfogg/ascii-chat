@@ -1,6 +1,6 @@
 """Exercise the production invitation renderer from a built shared library.
 
-Usage: python tests/ui/probe_invitation.py build/bin/asciichat.dll
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/ui/probe_invitation.py build/bin/asciichat.dll
 Also accepts libasciichat.so / libasciichat.dylib on Unix.
 """
 

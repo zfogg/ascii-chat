@@ -1,0 +1,35 @@
+name: SQL tools on Windows ARM64
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/sql-tools-arm64.yml'
+      - '.gitmodules'
+      - '.gitattributes'
+      - 'Makefile'
+      - 'deps/ascii-chat-deps/mmmbed'
+      - 'scripts/install-deps.ps1'
+      - 'lib/discovery/sql/**'
+      - 'lib/network/rate_limit/sql/**'
+      - 'lib/discovery/queries_generated.h'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql-tools:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          path-type: inherit
+          install: git make mingw-w64-clang-aarch64-toolchain
+      - name: Build and check SQL catalog
+        shell: msys2 {0}
+        run: |
+          make sql-check
+          make sql-generate
+          git diff --exit-code -- lib/discovery/queries_generated.h

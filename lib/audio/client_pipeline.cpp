@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cmath>
 #include <atomic>
+#include <libplatform/filesystem.h>
 
 // WebRTC headers for AEC3 MUST come before ascii-chat headers to avoid macro conflicts
 // Define required WebRTC macros before including headers
@@ -58,7 +59,9 @@ extern "C" {
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 
 // Include mixer.h for compressor, noise gate, and filter functions
@@ -78,6 +81,7 @@ extern "C" {
 // ============================================================================
 
 /**
+ * @brief C++ wrapper for WebRTC AEC3 (opaque to C code)
  * @brief C++ wrapper for WebRTC AEC3 (opaque to C code)
  *
  * This struct holds the C++ WebRTC objects and is cast to/from

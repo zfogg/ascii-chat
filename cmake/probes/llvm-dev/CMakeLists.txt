@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.25)
+project(ascii_llvm_dev_probe LANGUAGES CXX)
+include("${CMAKE_CURRENT_LIST_DIR}/../../deps/LLVMDevelopment.cmake")
+ascii_find_llvm_development()
+add_executable(ascii-llvm-dev-probe main.cpp)
+target_compile_features(ascii-llvm-dev-probe PRIVATE cxx_std_17)
+ascii_configure_llvm_host_tool(ascii-llvm-dev-probe)
+target_link_libraries(ascii-llvm-dev-probe PRIVATE ascii-llvm-support ascii-libclang)

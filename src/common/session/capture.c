@@ -13,7 +13,7 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 /**
  * @file session/capture.c
  * @brief 📹 Unified media capture implementation
@@ -29,6 +29,7 @@
 #include "session/capture.h"
 #include "session/capture_pacing.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
@@ -42,8 +43,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/thread.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/prompt.h>
@@ -68,9 +69,13 @@ static bool playback_cancelled(void *data);
  * ============================================================================ */
 
 /**
- * @brief Internal session capture context structure
+ * @brief Runtime state for media loading, frame timing, and source switching
+ * @brief Runtime state for media loading, frame timing, and source switching.
  *
- * Contains all state for media capture including source, timing, and FPS tracking.
+ * The context owns the active and pending media sources, loader synchronization,
+ * frame workspaces, playlist state, pause/toggle flags, and FPS deadlines. It
+ * also retains the cancellation callback and borrowed audio source used during
+ * transitions; destruction stops the loader before releasing those resources.
  */
 struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
@@ -82,7 +87,7 @@ struct session_capture_ctx {
   void *callback_data;
   bool media_locks_ready;
   _Atomic bool loader_created, loader_done;
-  asciichat_thread_t loader;
+  platform_thread_t loader;
   atomic_t load_cancel;
   atomic_t playlist_skip;
   media_playlist_t playlist, load_playlist;
@@ -124,6 +129,8 @@ struct session_capture_ctx {
 
   /** @brief Frame count for FPS calculation */
   uint64_t frame_count;
+  uint64_t observed_rate_start_ns;
+  uint64_t observed_rate_frames;
 
   /** @brief Start time for FPS calculation (nanoseconds) */
   uint64_t start_time_ns;
@@ -147,7 +154,7 @@ struct session_capture_ctx {
   void *mic_audio_ctx;
 
   /** @brief Main audio context for playback (borrowed, not owned) */
-  _Atomic(void *) audio_ctx;
+  atomic_ptr_t audio_ctx;
 
   /** @brief Pause media source after first frame is read (--pause flag) */
   bool should_pause_after_first_frame;
@@ -255,7 +262,7 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
   }
 
   // Set FPS (use provided value or default to 60)
-  ctx->target_fps = target_fps > 0 ? target_fps : 60;
+  ctx->target_fps = target_fps > 0 ? target_fps : DEFAULT_MAX_FPS;
   ctx->resize_for_network = false;
 
   // Audio and keyboard will be set up separately by callers
@@ -309,7 +316,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     }
 
     // Default settings suitable for local display
-    auto_config.target_fps = 60;
+    auto_config.target_fps = DEFAULT_MAX_FPS;
     auto_config.resize_for_network = false;
     config = &auto_config;
   }
@@ -343,7 +350,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   }
 
   // Store configuration
-  ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
+  ctx->target_fps = config->target_fps > 0 ? config->target_fps : DEFAULT_MAX_FPS;
   ctx->resize_for_network = config->resize_for_network;
   ctx->should_exit_callback = config->should_exit_callback;
   ctx->callback_data = config->callback_data;
@@ -386,7 +393,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
-  if (config->type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0) {
+  if (config->type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0 && !GET_OPTION(waveform) && !GET_OPTION(fft)) {
     double source_fps = media_source_get_video_fps(ctx->source);
     if (source_fps >= 0.5 && source_fps <= 1000.0) {
       ctx->target_fps = (uint32_t)(source_fps + 0.5);
@@ -631,7 +638,7 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
     mutex_unlock(&ctx->load_mutex);
     return progress;
   }
-  if (acthread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
+  if (platform_thread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     mutex_unlock(&ctx->load_mutex);
     return SET_ERRNO(ERROR_THREAD, "Cannot start media loader");
@@ -702,7 +709,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     CLEAR_ERRNO();
     return;
   }
-  audio_context_t *audio = ctx->audio_ctx;
+  audio_context_t *audio = atomic_ptr_load(&ctx->audio_ctx);
   if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
     ascii_otel_ui_usage("media_input_prompt", "load_failed", 0);
     ctx->advance_failed |= automatic;
@@ -836,8 +843,9 @@ void session_capture_unlock_source(session_capture_ctx_t *ctx) {
 
 static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
   if (ctx->audio_update) {
-    ctx->audio_ctx = ctx->audio_update(ctx->source, ctx->audio_update_data);
-    ctx->audio_enabled = ctx->audio_ctx && ((audio_context_t *)ctx->audio_ctx)->running;
+    atomic_ptr_store(&ctx->audio_ctx, ctx->audio_update(ctx->source, ctx->audio_update_data));
+    void *audio_ctx = atomic_ptr_load(&ctx->audio_ctx);
+    ctx->audio_enabled = audio_ctx && ((audio_context_t *)audio_ctx)->running;
   }
   capture_commit_media(ctx);
   bool loading = ctx->loader_created;
@@ -877,7 +885,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       ctx->media_was_paused = media_source_is_paused(ctx->source);
       media_source_pause(ctx->source);
     }
-    audio_context_t *audio = ctx->audio_ctx;
+    audio_context_t *audio = atomic_ptr_load(&ctx->audio_ctx);
     if (audio && audio_stop_duplex(audio) == ASCIICHAT_OK) {
       if (leaving) {
         ctx->saved_audio_source = audio->capture_media_source;
@@ -989,6 +997,21 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     // Track frame for FPS reporting
     fps_frame_ns(&ctx->fps_tracker, frame_available_time_ns, "frame captured");
     ctx->frame_count++;
+    if (ctx->observed_rate_start_ns == 0)
+      ctx->observed_rate_start_ns = frame_available_time_ns;
+    ctx->observed_rate_frames++;
+    if (ctx->source && media_source_uses_webcam(ctx->source) && GET_OPTION(fps) == 0 &&
+        frame_available_time_ns - ctx->observed_rate_start_ns >= NS_PER_SEC_INT) {
+      double elapsed = (double)(frame_available_time_ns - ctx->observed_rate_start_ns) / (double)NS_PER_SEC_INT;
+      unsigned int observed_fps = (unsigned int)(ctx->observed_rate_frames / elapsed + 0.5);
+      if (observed_fps > 0) {
+        log_info("Webcam OS delivery: %.3f FPS over %.2f seconds (%llu frames)",
+                 (double)ctx->observed_rate_frames / elapsed, elapsed, (unsigned long long)ctx->observed_rate_frames);
+        ui_controller_set_effective_fps(observed_fps);
+      }
+      ctx->observed_rate_start_ns = frame_available_time_ns;
+      ctx->observed_rate_frames = 0;
+    }
     atomic_fetch_add_u64(&ctx->frame_serial, 1);
 
     // Log frame-to-frame timing
@@ -1145,8 +1168,9 @@ static size_t capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size
   }
 
   // If using microphone fallback, read from mic context
-  if (ctx->mic_audio_ctx || (ctx->audio_ctx && atomic_load_bool(&ctx->non_media_active))) {
-    audio_context_t *audio_ctx = ctx->mic_audio_ctx ? ctx->mic_audio_ctx : ctx->audio_ctx;
+  void *current_audio_ctx = atomic_ptr_load(&ctx->audio_ctx);
+  if (ctx->mic_audio_ctx || (current_audio_ctx && atomic_load_bool(&ctx->non_media_active))) {
+    audio_context_t *audio_ctx = ctx->mic_audio_ctx ? ctx->mic_audio_ctx : current_audio_ctx;
     if (audio_ctx && audio_ctx->capture_buffer) {
       return audio_ring_buffer_read(audio_ctx->capture_buffer, buffer, num_samples);
     }
@@ -1181,7 +1205,7 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
     return NULL;
   }
-  return ctx->audio_ctx;
+  return atomic_ptr_load(&ctx->audio_ctx);
 }
 
 void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
@@ -1195,7 +1219,7 @@ void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_captu
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx) {
   if (ctx) {
     session_capture_lock_source(ctx);
-    ctx->audio_ctx = audio_ctx;
+    atomic_ptr_store(&ctx->audio_ctx, audio_ctx);
     session_capture_unlock_source(ctx);
   }
 }

@@ -41,7 +41,8 @@
 #define COLORSCHEME_SGR_BUFFER_SIZE 32
 
 #include "../common.h"
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/video/rgba/image.h>
 
 #ifdef __cplusplus
@@ -53,6 +54,8 @@ extern "C" {
  * ============================================================================ */
 
 /**
+ * @brief Color scheme definition
+ * @brief Compiled ANSI escape codes for a color scheme
  * @brief Terminal theme detection result
  *
  * Represents the detected or selected terminal theme (color background preference).

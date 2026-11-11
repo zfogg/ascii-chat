@@ -39,6 +39,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Use llvm-config to get LLVM/Clang configuration
 # On macOS with Homebrew, llvm-config is typically not in PATH
+get_filename_component(_clang_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+find_program(LLVM_CONFIG_EXECUTABLE NAMES llvm-config llvm-config.exe HINTS "${_clang_bin}" NO_DEFAULT_PATH)
 find_program(LLVM_CONFIG_EXECUTABLE
     NAMES llvm-config llvm-config.exe
     HINTS

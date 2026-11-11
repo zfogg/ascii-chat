@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { act, renderHook } from "@testing-library/react";
 import { useLayoutEffect } from "react";
-import { useEngineSettings } from "../src/hooks/useEngineSettings";
+import {
+  renderPreferences,
+  useEngineSettings,
+} from "../src/hooks/useEngineSettings";
 import { runtimeOptions } from "@ascii-chat/shared/wasm";
 import type { RuntimeOptionsModule } from "@ascii-chat/shared/wasm";
 import { DEFAULT_SETTINGS } from "../src/utils/defaultSettings";
@@ -13,7 +16,6 @@ vi.mock("@ascii-chat/shared/wasm", async (original) => ({
   ...(await original<typeof import("@ascii-chat/shared/wasm")>()),
   getMirrorModule: () => engine.module,
   isWasmReady: () => true,
-  isOptionsInitialized: () => true,
 }));
 import {
   applyMirrorWasmSettings,
@@ -25,36 +27,16 @@ afterEach(() => vi.unstubAllGlobals());
 function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let revision = 1;
   let values: Record<string, string | boolean | number> = { ...initial };
-  let pointer = 0;
-  const strings = new Map<number, string>();
   const patches: Record<string, unknown>[] = [];
-  const release = (p: number) => {
-    strings.delete(p);
-  };
   engine.module = {
-    _wasm_options_revision: () => revision,
-    _wasm_options_values: () => {
-      strings.set(++pointer, JSON.stringify({ revision, values }));
-      return pointer;
-    },
-    _wasm_options_patch: (p) => {
-      const patch = JSON.parse(strings.get(p)!) as Record<
-        string,
-        string | boolean | number
-      >;
+    browser_options_revision: () => revision,
+    readOptions: () => ({ revision, values: { ...values } }),
+    patchOptions: (patch) => {
       patches.push(patch);
       values = { ...values, ...patch };
       revision++;
       return 0;
     },
-    _wasm_options_release: release,
-    _malloc: () => ++pointer,
-    _free: release,
-    UTF8ToString: (p) => strings.get(p)!,
-    stringToUTF8: (value, p) => {
-      strings.set(p, value);
-    },
-    lengthBytesUTF8: (value) => new TextEncoder().encode(value).length,
   };
   return {
     patches,
@@ -68,6 +50,17 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
 }
 
 describe("browser preference transactions", () => {
+  it.each(["client", "discovery"])(
+    "includes stabilization in %s viewer preferences",
+    () => {
+      createEngine({ stabilize: true, fps: 30, color_mode: 3 });
+      expect(renderPreferences(80, 24)).toMatchObject({
+        width: 80,
+        height: 24,
+        stabilize: true,
+      });
+    },
+  );
   it("logs rejected settings and keeps the hook usable for a subsequent edit", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/util/format.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <inttypes.h>
 
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {

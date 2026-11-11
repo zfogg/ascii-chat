@@ -8,7 +8,7 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>

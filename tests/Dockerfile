@@ -36,7 +36,10 @@ COPY scripts/install-deps.sh /tmp/install-deps.sh
 RUN sed -i 's/\r$//' /tmp/install-deps.sh && \
     chmod +x /tmp/install-deps.sh && \
     sed -i 's/git submodule update --recursive --init --depth 1/true/' /tmp/install-deps.sh && \
-    sed -i 's/pacman -S --needed/pacman -S --noconfirm --needed/' /tmp/install-deps.sh && \
+    sed -i 's/pacman -S /pacman -S --noconfirm /g' /tmp/install-deps.sh && \
+    sed -i '/run_uv sync --project/d' /tmp/install-deps.sh && \
+    sed -i '/mmmbed_go_mod=/,/^echo ""$/d' /tmp/install-deps.sh && \
+    sed -i '/# Vite+ supplies/,$d' /tmp/install-deps.sh && \
     /tmp/install-deps.sh
 
 # Install additional packages needed for Docker testing/packaging
@@ -45,6 +48,9 @@ RUN pacman -S --noconfirm --needed \
   which \
   openssh \
   gnupg \
+  patch \
+  systemd \
+  systemd-sysvcompat \
   libc++ \
   libc++abi \
   python-pyte \

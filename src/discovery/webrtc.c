@@ -14,14 +14,16 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/network/acip/protocol.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/util/endian.h>
 
 #include <string.h>

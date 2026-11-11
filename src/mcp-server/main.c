@@ -3,7 +3,9 @@
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/app_callbacks.h>
 #include <sodium.h>
+#include <uv.h>
 #include <ascii-chat/stats/runtime.h>
+#include <libplatform/systemd.h>
 #include <uv.h>
 
 static void mcp_stats_view(stats_view_t *view, void *data) {
@@ -26,10 +28,50 @@ int mcp_server_main(void) {
                              .address6 = GET_OPTION(address6),
                              .port = GET_OPTION(port),
                              .origin = GET_OPTION(http_origin),
-                             .tls_cert = GET_OPTION(http_tls_cert),
-                             .tls_key = GET_OPTION(http_tls_key),
-                             .tls_password = GET_OPTION(http_tls_key_password),
-                             .max_jobs = (unsigned)GET_OPTION(max_clients)};
+                             .tls_cert = GET_OPTION(tls_cert),
+                             .tls_key = GET_OPTION(tls_key),
+                             .tls_password = GET_OPTION(tls_key_password),
+                             .max_jobs = (unsigned)GET_OPTION(max_clients),
+                             .downloads_url_prefix = GET_OPTION(mcp_downloads_url_prefix)};
+  if (s->policy.restricted && s->policy.hosted && s->policy.downloads_url_prefix && *s->policy.downloads_url_prefix) {
+    const char *prefix = s->policy.downloads_url_prefix;
+    const char *authority = !strncmp(prefix, "https://", sizeof("https://") - 1) ? prefix + 8
+                            : !strncmp(prefix, "http://", sizeof("http://") - 1) ? prefix + 7
+                                                                                 : NULL;
+    if (!authority || !*authority || *authority == '/' || strpbrk(prefix, " \t\r\n?#")) {
+      SAFE_FREE(s);
+      return SET_ERRNO(ERROR_CONFIG, "--downloads-url-prefix must be an HTTP(S) URL without query or fragment");
+    }
+  }
+  if (s->policy.restricted && s->policy.hosted) {
+    const char *override = GET_OPTION(mcp_downloads_dir);
+    char *data_dir = NULL;
+    if (override && *override) {
+      SAFE_STRNCPY(s->policy.downloads_dir, override, sizeof(s->policy.downloads_dir));
+    } else {
+      data_dir = platform_get_data_dir();
+      if (!data_dir) {
+        SAFE_FREE(s);
+        return SET_ERRNO(ERROR_CONFIG, "Cannot determine MCP data directory");
+      }
+      SAFE_SNPRINTF(s->policy.downloads_dir, sizeof(s->policy.downloads_dir), "%s/downloads", data_dir);
+      SAFE_FREE(data_dir);
+    }
+    asciichat_error_t directory_error = platform_mkdir_recursive(s->policy.downloads_dir, 0700);
+    if (directory_error != ASCIICHAT_OK) {
+      SAFE_FREE(s);
+      return directory_error;
+    }
+    uv_fs_t resolved;
+    int rc = uv_fs_realpath(NULL, &resolved, s->policy.downloads_dir, NULL);
+    if (rc < 0 || strlen((const char *)resolved.ptr) >= sizeof(s->policy.downloads_dir)) {
+      uv_fs_req_cleanup(&resolved);
+      SAFE_FREE(s);
+      return SET_ERRNO(ERROR_CONFIG, "Cannot resolve MCP downloads directory");
+    }
+    SAFE_STRNCPY(s->policy.downloads_dir, (const char *)resolved.ptr, sizeof(s->policy.downloads_dir));
+    uv_fs_req_cleanup(&resolved);
+  }
   log_set_terminal_output(s->policy.hosted);
   unsigned available_cpus = uv_available_parallelism();
   if (!available_cpus)
@@ -37,8 +79,8 @@ int mcp_server_main(void) {
   if (!s->policy.max_jobs || s->policy.max_jobs > available_cpus)
     s->policy.max_jobs = available_cpus;
   if (s->policy.hosted && (!!s->policy.tls_cert[0] != !!s->policy.tls_key[0])) {
-    asciichat_error_t err = SET_ERRNO(ERROR_CONFIG, "MCP HTTPS requires both --http-tls-cert and --http-tls-key");
-    log_error("MCP HTTPS requires both --http-tls-cert and --http-tls-key");
+    asciichat_error_t err = SET_ERRNO(ERROR_CONFIG, "MCP HTTPS requires both --tls-cert and --tls-key");
+    log_error("MCP HTTPS requires both --tls-cert and --tls-key");
     SAFE_FREE(s);
     return err;
   }
@@ -56,12 +98,16 @@ int mcp_server_main(void) {
   }
   log_info("MCP server started (%s, %s capabilities, %u render jobs)", s->policy.hosted ? "HTTP" : "stdio",
            s->policy.restricted ? "restricted" : "local", s->policy.max_jobs);
+  if (s->policy.hosted) {
+    platform_systemd_notify_status("MCP HTTP listener started");
+    platform_systemd_notify_ready();
+  }
   stats_runtime_set_provider(mcp_stats_view, s);
   asciichat_error_t err = s->policy.hosted ? mcp_http_run(s) : mcp_stdio_run(s);
   stats_runtime_set_provider(NULL, NULL);
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (s->jobs[i].started)
-      atomic_store_bool(&s->jobs[i].cancelled, true);
+    if (s->jobs[i].renderer_job.started)
+      http_renderer_job_cancel(&s->jobs[i].renderer_job);
   mcp_jobs_reap(s, true);
   mcp_stdio_release();
   mutex_destroy(&s->output_mutex);

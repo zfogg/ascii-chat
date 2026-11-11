@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
 /**
  * Playwright configuration for E2E tests
@@ -10,7 +11,17 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  outputDir: fileURLToPath(new URL("./test-results", import.meta.url)),
+  reporter: [
+    [
+      "html",
+      {
+        outputFolder: fileURLToPath(
+          new URL("./playwright-report", import.meta.url),
+        ),
+      },
+    ],
+  ],
 
   use: {
     baseURL: "http://localhost:3000",

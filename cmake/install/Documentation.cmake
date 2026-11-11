@@ -14,6 +14,11 @@
 #   - docs: ${CMAKE_BINARY_DIR}/share/doc/html/ and ${CMAKE_BINARY_DIR}/share/man/man3/
 # =============================================================================
 
+# Shared roots used by the standalone docs project and the main build.
+set(ASCII_CHAT_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+set(ASCII_CHAT_BINARY_DIR "${CMAKE_BINARY_DIR}")
+set(DOXYLAYOUTFILE_OUT "${CMAKE_BINARY_DIR}/DoxygenLayout.xml")
+
 # =============================================================================
 # Man1 Target (User Manual - No Doxygen Required)
 # =============================================================================
@@ -206,8 +211,23 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
     message(STATUS "Man3 target ${BoldGreen}'man3'${ColorReset} is available (man pages only, no HTML). Build with: ${BoldYellow}cmake --build build --target man3${ColorReset}")
 endif()
 
-# Use centralized ASCIICHAT_DOXYGEN_EXECUTABLE from FindPrograms.cmake
+# Use centralized ASCIICHAT_DOXYGEN_EXECUTABLE from FindPrograms.cmake.
+# The actual Doxygen target lives in docs/CMakeLists.txt so CI and local users can
+# configure documentation without configuring the native application.
 if(ASCIICHAT_DOXYGEN_EXECUTABLE)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/docs" "${CMAKE_BINARY_DIR}/docs-cmake")
+
+    set(DOCS_TARGET_DEPENDENCIES docs-html man1 man3)
+    if(UNIX)
+        list(APPEND DOCS_TARGET_DEPENDENCIES man5)
+    endif()
+    add_custom_target(docs
+        DEPENDS ${DOCS_TARGET_DEPENDENCIES}
+        COMMENT "All documentation targets complete"
+    )
+endif()
+
+if(FALSE AND ASCIICHAT_DOXYGEN_EXECUTABLE)
     message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${ASCIICHAT_DOXYGEN_EXECUTABLE}")
 
     set(AWESOME_CSS_DIR "${CMAKE_SOURCE_DIR}/deps/doxygen-awesome-css")
@@ -305,7 +325,7 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
     # This ensures proper platform-specific paths and CPack integration
 
     message(STATUS "Documentation target ${BoldCyan}'docs'${ColorReset} is available. Build with: ${BoldYellow}cmake --build build --target docs${ColorReset}")
-else()
+elseif(FALSE)
     message(WARNING "${BoldRed}Doxygen${ColorReset} not found. Documentation target will not be available.")
     message(WARNING "Install Doxygen to generate API documentation:")
     message(WARNING "  - macOS: brew install doxygen")

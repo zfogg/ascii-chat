@@ -1,17 +1,22 @@
 /**
+ * @brief For terminal fd reader, this is the live record that ties `fp`, `frame_height`, `frame_width`, `line_buffer`
+ * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+ * storage before freeing the record.
  * @file terminal/fd/reader.c
  * @ingroup terminal_fd
  * @brief Read ANSI ASCII frames from file descriptor, chunked by height
  */
 
 #include <ascii-chat/terminal/fd/reader.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 typedef struct terminal_fd_reader_s {
   FILE *fp; // File pointer created from FD

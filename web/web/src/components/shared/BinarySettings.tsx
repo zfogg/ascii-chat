@@ -42,6 +42,7 @@ export interface BinarySettingsConfig {
   palette: Palette;
   renderer?: "luminance" | "glyph";
   stabilize?: boolean;
+  stabilizeExplicit?: boolean;
   paletteExplicit?: boolean;
   paletteChars?: string;
   matrixRain?: boolean;
@@ -379,15 +380,30 @@ export function BinarySettings({
             </div>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-terminal-fg">
-            <input
-              type="checkbox"
-              checked={config.stabilize ?? false}
-              disabled={disabled}
-              onChange={(e) => updateConfig({ stabilize: e.target.checked })}
-            />
-            Reduce flicker
-          </label>
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : audioVisualizationSelected
+                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
+                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
+            }
+          >
+            <label className="flex items-center gap-2 text-sm text-terminal-fg">
+              <input
+                type="checkbox"
+                checked={config.stabilize ?? true}
+                disabled={disabled}
+                onChange={(e) => {
+                  updateConfig({
+                    stabilize: e.target.checked,
+                    stabilizeExplicit: true,
+                  });
+                }}
+              />
+              Reduce flicker
+            </label>
+          </Tooltip>
 
           <Tooltip
             text={
@@ -493,7 +509,7 @@ export function BinarySettings({
               </label>
               <select
                 id={rendererSelectId}
-                value={config.renderer ?? "luminance"}
+                value={config.renderer ?? "glyph"}
                 onChange={(e) =>
                   updateConfig({
                     renderer: e.target.value as "luminance" | "glyph",
@@ -663,7 +679,7 @@ export function BinarySettings({
               </label>
               <select
                 value={config.animation ?? "matrix"}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateConfig({
                     animation: e.target.value as Animation,
                     matrixRain: e.target.value === "matrix",
@@ -671,8 +687,8 @@ export function BinarySettings({
                       e.target.value === "waveform" || e.target.value === "fft"
                         ? "none"
                         : config.colorFilter,
-                  })
-                }
+                  });
+                }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >

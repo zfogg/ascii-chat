@@ -1,6 +1,6 @@
 """Opt-in OTEL soak/pressure/outage checks. Never registered with CTest.
 
-Run manually: python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
+Run manually: uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
 Reports the enabled/disabled timing ratio without imposing noisy CI thresholds.
 """
 

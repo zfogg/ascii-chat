@@ -175,8 +175,8 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
                                     .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
   platform_sleep_ms(50);
   char endpoint[128];
   safe_snprintf(endpoint, sizeof(endpoint), "%s://%s:%u%s", websocket ? "ws" : "tcp",
@@ -414,8 +414,8 @@ Test(network_connections, tcp_packet_rejection_is_delivered_before_close) {
                                     .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
   char endpoint[64];
   safe_snprintf(endpoint, sizeof(endpoint), "tcp://127.0.0.1:%u", port);
   network_connection_t *client = NULL;
@@ -536,13 +536,13 @@ Test(network_connections, websocket_concurrent_close) {
   ws->service_running = false;
   // Keep a replacement thread blocked: concurrent close calls must return
   // without trying to join this owner-managed service thread.
-  cr_assert_eq(acthread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
+  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
   ws->service_running = true;
-  asciichat_thread_t threads[8];
+  platform_thread_t threads[8];
   concurrent_close_worker_t workers[8];
   for (size_t i = 0; i < 8; ++i) {
     workers[i] = (concurrent_close_worker_t){.fixture = &fixture, .index = i};
-    cr_assert_eq(acthread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
+    cr_assert_eq(platform_thread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
                  ASCIICHAT_OK);
   }
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;

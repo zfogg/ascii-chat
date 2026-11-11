@@ -15,6 +15,7 @@
 
 /**
  * @brief Pre-computed 256-color ANSI SGR sequence
+ * @brief Pre-computed 256-color ANSI SGR sequence
  */
 typedef struct {
   char seq[VIDEO_ASCII_SGR_SEQ_BUFFER_SIZE]; ///< ANSI sequence string (max 11 bytes for "\e[38;5;NNNm")

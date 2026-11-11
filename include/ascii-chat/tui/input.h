@@ -6,8 +6,8 @@ void ui_input_poll_sync(void);
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define TUI_INPUT_PASTE_BUFFER_SIZE 8192
 
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/keyboard.h>
+#include <ascii-chat/os/question.h>
 #include <ascii-chat/tui/controller.h>
 
 /** Input policy is separate from presentation. Covered controls are consumed and discarded. */

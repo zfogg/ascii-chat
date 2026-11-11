@@ -61,7 +61,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 #include <stdio.h>
 
@@ -70,8 +70,10 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>
@@ -84,8 +86,8 @@ typedef struct {
   session_connection_t connection;
   session_protocol_t protocol;
   network_connection_t *network;
-  asciichat_thread_t receiver_thread;
-  asciichat_thread_t audio_thread;
+  platform_thread_t receiver_thread;
+  platform_thread_t audio_thread;
   bool receiver_started;
   bool audio_started;
   acip_transport_t *transport;
@@ -96,6 +98,8 @@ typedef struct {
   client_audio_pipeline_t *audio_pipeline;
   uint64_t observed_audio_blocks, observed_audio_samples, observed_audio_ns, observed_audio_gap_ns;
   uint64_t observed_video_frames;
+  /**
+   */
 } discovery_video_receiver_t;
 
 static void discovery_media_interrupt(void *context) {
@@ -132,14 +136,21 @@ static void discovery_media_release(void *context) {
   log_info("DISCOVERY_MEDIA_RELEASED: workers=0");
 }
 
+/**
+ * @brief discovery video receiver is intentionally a small, concrete record. Fields such as `connection`, `protocol`,
+ * `network`, `receiver_thread` give callers the identity and current value they need. It is normally borrowed from, or
+ * owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   session_host_t *host;
   session_audio_ctx_t *audio;
   uint32_t participant_id;
   atomic_t running;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   bool started;
   asciichat_error_t result;
+  /**
+   */
 } discovery_host_audio_capture_t;
 
 static void *discovery_host_audio_capture(void *user_data) {
@@ -205,9 +216,9 @@ static asciichat_error_t discovery_present_frame(const ascii_frame_packet_t *hea
   discovery_video_receiver_t *receiver = context;
   (void)header;
   session_display_render_frame(receiver->display, text);
-  if (GET_OPTION(test_audio) && text && text[0]) {
+  if (text && text[0]) {
     receiver->observed_video_frames++;
-    if (receiver->observed_video_frames == 1 || receiver->observed_video_frames % 25 == 0)
+    if (receiver->observed_video_frames == 1 || (GET_OPTION(test_audio) && receiver->observed_video_frames % 25 == 0))
       log_info("Discovery decoded video: frames=%llu", (unsigned long long)receiver->observed_video_frames);
   }
   return ASCIICHAT_OK;
@@ -277,7 +288,9 @@ static void *discovery_video_receive_thread(void *arg) {
   discovery_video_receiver_t *receiver = arg;
   network_connection_callbacks_t callbacks = {.packet = discovery_media_packet};
   receiver->result = network_connection_run(receiver->network, &callbacks, receiver);
-  if (!atomic_load_bool(&receiver->running) || should_exit())
+  if ((!atomic_load_bool(&receiver->running) || should_exit()) &&
+      (receiver->result == ASCIICHAT_OK || receiver->result == ERROR_NETWORK ||
+       receiver->result == ERROR_NETWORK_TIMEOUT))
     receiver->result = ASCIICHAT_OK;
   atomic_store_bool(&receiver->running, false);
   return NULL;
@@ -361,10 +374,17 @@ static void on_session_ready(const char *session_string, void *user_data) {
   }
 }
 
+/**
+ * @brief This is the handoff point for discovery host audio capture. Callers fill `host`, `audio`, `participant_id`,
+ * `running` before passing it on; consumers read the values during the operation and return ownership only where the
+ * member contract explicitly says they do.
+ */
 typedef struct {
   mutex_t mutex;
   char error[DISCOVERY_MAIN_ERROR_BUFFER_SIZE];
   asciichat_error_t error_code;
+  /**
+   */
 } discovery_ui_state_t;
 
 /** Save callback errors for reporting after terminal cleanup. */
@@ -379,8 +399,10 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
 }
 
 /**
- * Adapter function for session capture exit callback
- * Converts from void*->bool signature to match session_capture_should_exit_fn
+ * @brief When code needs to work with discovery ui state, it keeps `mutex`, `error_code` here instead of scattering it
+ * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread,
+ * or callback context recorded in those fields. Adapter function for session capture exit callback Converts from
+ * void*->bool signature to match session_capture_should_exit_fn
  *
  * @param user_data Unused (NULL)
  * @return true if capture should exit
@@ -529,7 +551,8 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture, &host_capture);
+      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+                                      &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
         return result;
@@ -600,9 +623,12 @@ role_dispatch:
       if (host_capture.started && !atomic_load_bool(&host_capture.running))
         break;
 
-      // Keep discovery session responsive (NAT negotiations, migrations)
+      // Keep discovery session responsive (NAT negotiations, migrations).
+      // This runs after a captured frame and must not add a fixed delay to
+      // the media cadence; session_capture_sleep_for_fps() is the sole frame
+      // pacing point in the host loop.
       asciichat_errno_scope_t process_scope = errno_scope_begin();
-      result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+      result = discovery_session_process(g_discovery, 0);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
         log_error("Discovery session process failed %s", asciichat_error_format(NULL, result));
         break;
@@ -653,6 +679,7 @@ role_dispatch:
     session_participant_t *participant = discovery_session_get_participant(g_discovery);
     acip_transport_t *transport = session_participant_get_transport(participant);
     if (transport) {
+      bool quic_disconnected = false;
       bool enable_audio = GET_OPTION(audio_enabled);
       log_info("Discovery participant audio: %s", enable_audio ? "enabled" : "disabled");
       uint64_t advertised_revision = UINT64_MAX;
@@ -712,14 +739,14 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
-                               &receiver);
+      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+                                      discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result =
-            acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
+        result = platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+                                        &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);
@@ -797,6 +824,8 @@ role_dispatch:
         session_capture_sleep_for_fps(capture);
       }
     media_cleanup:
+      quic_disconnected =
+          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC && !acip_transport_is_connected(transport);
       session_capture_set_audio_context(capture, NULL);
       /* These workers borrow stack audio/display state. Retain it and retry a
        * failed join before returning to the application/media cleanup. */
@@ -806,7 +835,15 @@ role_dispatch:
       }
       NAMED_UNREGISTER(&receiver.running);
       NAMED_UNREGISTER(&receiver.connection.state);
-      if (!should_exit() && g_discovery->session_type == SESSION_TYPE_WEBRTC) {
+      bool quic_recoverable =
+          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC &&
+          (quic_disconnected || g_discovery->handoff_pending || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+          (g_discovery->state == DISCOVERY_STATE_ACTIVE || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+          (receiver.result == ASCIICHAT_OK || receiver.result == ERROR_NETWORK ||
+           receiver.result == ERROR_NETWORK_TIMEOUT) &&
+          (result == ASCIICHAT_OK || result == ERROR_NETWORK || result == ERROR_NETWORK_TIMEOUT ||
+           (result == ERROR_INVALID_STATE && quic_disconnected));
+      if (!should_exit() && (g_discovery->session_type == SESSION_TYPE_WEBRTC || quic_recoverable)) {
         if (!g_discovery->handoff_pending && g_discovery->state != DISCOVERY_STATE_MIGRATING) {
           if (g_discovery->state == DISCOVERY_STATE_FAILED)
             return g_discovery->error;

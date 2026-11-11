@@ -14,11 +14,13 @@
 #define WEBSOCKET_CALLBACK_TIMING_H
 
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 
 /**
- * @brief Per-callback timing statistics
+ * @brief Counters and timing aggregates for one WebSocket callback kind
+ * @brief Timing aggregates for protocol-init, teardown, writable, and receive callbacks
+ * @brief Counters and timing aggregates for one WebSocket callback kind.
  *
  * Tracks invocation counts, timestamps, and durations for a single callback type.
  */
@@ -31,7 +33,7 @@ typedef struct {
 } websocket_callback_stats_t;
 
 /**
- * @brief WebSocket callback timing data for protocol lifecycle
+ * @brief Timing aggregates for protocol-init, teardown, writable, and receive callbacks.
  *
  * Aggregates statistics for PROTOCOL_INIT and PROTOCOL_DESTROY callbacks.
  */

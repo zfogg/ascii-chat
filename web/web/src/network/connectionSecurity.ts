@@ -13,11 +13,21 @@ export function getConnectionSecurityLines(
   try {
     protocol = new URL(urlValue).protocol;
   } catch {
-    return [{ label: "Security", value: "Enter a valid WebSocket URL" }];
+    return [{ label: "Security", value: "Enter a valid connection URL" }];
+  }
+
+  if (protocol === "https:" && !discoveryMode) {
+    return [
+      { label: "Transport", value: "WebTransport (HTTP/3 TLS encrypted)" },
+      {
+        label: "Application encryption",
+        value: "X25519 + XSalsa20-Poly1305 AEAD",
+      },
+    ];
   }
 
   if (protocol !== "ws:" && protocol !== "wss:")
-    return [{ label: "Security", value: "Unsupported WebSocket URL scheme" }];
+    return [{ label: "Security", value: "Unsupported connection URL scheme" }];
 
   if (discoveryMode) {
     const lines: ConnectionSecurityLine[] = [

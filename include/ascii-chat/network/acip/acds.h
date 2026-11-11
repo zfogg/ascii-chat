@@ -6,7 +6,8 @@
  * @file network/acip/acds.h
  * @brief ascii-chat Discovery Service (ACDS) Protocol Message Formats
  * @ingroup acip
- * @addtogroup acds
+ * @addtogroup module_acds
+ * @ingroup module_acds
  * @{
  *
  * This module defines the binary message formats for the ACIP discovery protocol.
@@ -143,7 +144,7 @@ extern "C" {
  * - DIRECT_TCP: Clients connect directly to server IP:port (default, requires public IP)
  * - WEBRTC: Clients use WebRTC P2P mesh with STUN/TURN (works behind NAT)
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef enum {
   SESSION_TYPE_DIRECT_TCP = 0, ///< Direct TCP connection to server IP:port (default)
@@ -153,7 +154,7 @@ typedef enum {
 /**
  * @name ACDS Session Management Messages
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /**
@@ -194,7 +195,7 @@ typedef enum {
  * **Host Responsibility**: The creator becomes the session host (participant_id)
  * and controls session settings in discovery mode.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key of session host
@@ -258,7 +259,7 @@ typedef struct __attribute__((packed)) {
  * The creator is assigned a participant_id and is considered the session initiator
  * (controls session settings in discovery mode).
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;                       ///< Length of session string (e.g., 20 for "swift-river-mountain")
@@ -300,7 +301,7 @@ typedef struct __attribute__((packed)) {
  * **Security Note**: Server does NOT reveal host IP in SESSION_INFO response,
  * preventing information leakage to non-members.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;
@@ -339,7 +340,7 @@ typedef struct __attribute__((packed)) {
  * **Server Verification**: If require_server_verify=1, host must verify client
  * identity using Ed25519 signatures.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t found;                                ///< 0 = not found, 1 = found
@@ -393,7 +394,7 @@ typedef struct __attribute__((packed)) {
  * SESSION_JOINED containing server connection information upon successful
  * authentication.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;
@@ -446,7 +447,7 @@ typedef struct __attribute__((packed)) {
  * **TURN Credentials**: RFC 5766 time-limited credentials for NAT traversal.
  * Format: "timestamp:session_id" and HMAC-SHA1(secret, username).
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t success;                             ///< 0 = failed, 1 = joined
@@ -486,7 +487,7 @@ typedef struct __attribute__((packed)) {
  * In discovery mode, this triggers NAT quality exchange and host negotiation
  * between the new joiner and existing participants.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];                     ///< Session UUID
@@ -503,7 +504,7 @@ typedef struct __attribute__((packed)) {
  * Sent to remaining participants when someone leaves the session (gracefully or timeout).
  * If the leaving participant was the host, this triggers host migration.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];          ///< Session UUID
@@ -520,7 +521,7 @@ typedef struct __attribute__((packed)) {
  * The client gracefully leaves a session, allowing the server to update
  * participant count and potentially notify other participants.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -535,7 +536,7 @@ typedef struct __attribute__((packed)) {
  * The session host terminates the session, preventing new joins and
  * notifying all participants. Requires signature proof of host identity.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -550,7 +551,7 @@ typedef struct __attribute__((packed)) {
  * The client reconnects to a session after disconnection, using stored
  * participant ID and identity proof to resume participation.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -563,7 +564,7 @@ typedef struct __attribute__((packed)) {
 /**
  * @name ACDS WebRTC Signaling Messages
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /**
@@ -596,7 +597,7 @@ typedef struct __attribute__((packed)) {
  * WebRTC session description protocol messages are relayed through the
  * discovery server to facilitate peer-to-peer connection establishment.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];   ///< Session UUID
@@ -643,7 +644,7 @@ typedef struct __attribute__((packed)) {
  * WebRTC ICE candidates are relayed through the discovery server to
  * facilitate NAT traversal during peer-to-peer connection establishment.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -658,7 +659,7 @@ typedef struct __attribute__((packed)) {
 /**
  * @name ACDS String Reservation Messages (Future)
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /**
@@ -669,7 +670,7 @@ typedef struct __attribute__((packed)) {
  * **FUTURE FEATURE**: Reserve a memorable session string for future use,
  * preventing others from using it for a specified duration.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
@@ -687,7 +688,7 @@ typedef struct __attribute__((packed)) {
  *
  * **FUTURE FEATURE**: Confirms successful string reservation or reports error.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t success;
@@ -703,7 +704,7 @@ typedef struct __attribute__((packed)) {
  *
  * **FUTURE FEATURE**: Extends an existing string reservation before expiration.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
@@ -721,7 +722,7 @@ typedef struct __attribute__((packed)) {
  *
  * **FUTURE FEATURE**: Voluntarily releases a reserved string before expiration.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
@@ -736,7 +737,7 @@ typedef struct __attribute__((packed)) {
 /**
  * @name ACDS Ring Consensus Protocol (New P2P Design)
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  *
  * NEW ARCHITECTURE: Proactive future host election every 5 minutes.
  * Participants form a virtual ring and rotate who collects NAT data.
@@ -763,7 +764,7 @@ typedef struct __attribute__((packed)) {
  * - Who is next in ring (for NAT collection)
  * - Who is quorum leader this round (last in rotation)
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -782,7 +783,7 @@ typedef struct __attribute__((packed)) {
  *
  * Follows acip_participant_list_t in packet payload. Array of num_participants entries.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t participant_id[SESSION_ID_SIZE];
@@ -805,7 +806,7 @@ typedef struct __attribute__((packed)) {
  * - ... (continues around ring)
  * - Participant[N-1] has all NAT data, runs election, announces future host
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -819,12 +820,12 @@ typedef struct __attribute__((packed)) {
 /**
  * @name ACDS Discovery Mode Messages (Host Negotiation & Migration)
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /**
  * @brief NAT type classification for host selection
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef enum {
   ACIP_NAT_TYPE_OPEN = 0,            ///< No NAT (public IP)
@@ -836,7 +837,7 @@ typedef enum {
 
 /**
  * @brief Connection type for host announcement
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef enum {
   ACIP_CONNECTION_TYPE_DIRECT_PUBLIC = 0, ///< Direct public IP connection
@@ -865,7 +866,7 @@ typedef enum {
  *    - Participants exchange fresh NETWORK_QUALITY if pre-elected future host unavailable
  *    - Enables fallback re-election
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -903,7 +904,7 @@ typedef struct __attribute__((packed)) {
  * starting the server. ACDS stores this and includes it in future SESSION_JOINED
  * responses.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -923,7 +924,7 @@ typedef struct __attribute__((packed)) {
  * Sent by ACDS after receiving HOST_ANNOUNCEMENT to notify all participants
  * who the host is and where to connect.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -949,7 +950,7 @@ typedef struct __attribute__((packed)) {
  * Actual migration happens peer-to-peer without ACDS involvement - participants
  * connect to pre-elected future host immediately upon detection.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -977,7 +978,7 @@ typedef struct __attribute__((packed)) {
  * This packet is broadcast by ACDS after receiving it from quorum leader,
  * ensuring all participants know the migration plan before host dies.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
@@ -993,7 +994,7 @@ typedef struct __attribute__((packed)) {
 /**
  * @name ACDS Error Handling
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /**
@@ -1004,7 +1005,7 @@ typedef struct __attribute__((packed)) {
  * Generic error response used when no specific response packet type exists.
  * Contains error code and human-readable message.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t error_code;                                 ///< Error code (see acip_error_code_t)
@@ -1018,7 +1019,7 @@ typedef struct __attribute__((packed)) {
  * this packet followed by test payload data. ACDS measures receive time
  * and calculates upload speed.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];     ///< Session identifier
@@ -1034,7 +1035,7 @@ typedef struct __attribute__((packed)) {
  * upload speed (measured by ACDS), download speed (echo test), RTT,
  * jitter, and packet loss metrics.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint32_t measured_upload_kbps;   ///< Upload bandwidth in kilobits/sec
@@ -1053,7 +1054,7 @@ typedef struct __attribute__((packed)) {
  * (e.g., HOST_DESIGNATED, FUTURE_HOST_ELECTED). ACDS tracks ACKs and
  * retries broadcasts to clients that haven't acknowledged.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];     ///< Session UUID
@@ -1067,7 +1068,7 @@ typedef struct __attribute__((packed)) {
  *
  * Standard error codes returned in ACIP error responses.
  *
- * @ingroup acds
+ * @ingroup module_acds
  */
 typedef enum {
   ACIP_ERROR_NONE = 0,              ///< No error (success)
@@ -1086,7 +1087,7 @@ typedef enum {
 /**
  * @name ACDS Protocol Constants
  * @{
- * @ingroup acds
+ * @ingroup module_acds
  */
 
 /** @brief Maximum session string length (e.g., "swift-river-mountain" = 20 chars) */

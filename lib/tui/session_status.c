@@ -44,8 +44,9 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border
-  bool unicode = terminal_should_use_utf8();
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+  bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
+  bool colors = !GET_OPTION(strip_ansi) &&
+                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 
   // The bundled browser font does not contain the emoji used in native status titles.
@@ -61,7 +62,11 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   char status_line_colored[TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE];
   char uptime_str[TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE];
   format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
-  if (status->detail)
+  bool generic_log_header = status->detail && strstr(status->detail, "keyboard controls") != NULL;
+  if (generic_log_header)
+    snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat | ⏱️ %s" : "ascii-chat | uptime %s",
+             uptime_str);
+  else if (status->detail)
     snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat %s | ⏱️ %s" : "ascii-chat %s | uptime %s",
              status->mode_name, uptime_str);
   else
@@ -133,6 +138,11 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
 typedef struct {
   size_t entry;
   int row;
+  /**
+   * @brief When code needs to work with log row ref, it keeps `entry`, `row` here instead of scattering it across
+   * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+   * callback context recorded in those fields.
+   */
 } log_row_ref_t;
 
 static const char *startup_log_summary(const char *message, char *buffer, size_t buffer_size) {
@@ -378,10 +388,9 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
 }
 
 void terminal_screen_logs_render_help(frame_buffer_t *output, terminal_size_t size) {
-  const ui_help_entry_t entries[] = {{"j / Down", "newer line"},
-                                     {"k / Up", "older line"},
-                                     {"Ctrl-D / Right", "half page newer"},
-                                     {"Ctrl-U / Left", "half page older"}};
+  const ui_help_entry_t entries[] = {{"Down", "newer log"},    {"Up", "older log"},        {"PageDown", "newer page"},
+                                     {"PageUp", "older page"}, {"End", "newest log"},      {"Home", "oldest log"},
+                                     {"/", "search logs"},     {"q / Esc", "close viewer"}};
   char footer[TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE], keys[TUI_SESSION_STATUS_KEYS_BUFFER_SIZE];
   ui_help_keys(keys, sizeof(keys), "? / Esc");
   snprintf(footer, sizeof(footer), "%s closes this help", keys);

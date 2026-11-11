@@ -1,16 +1,16 @@
 #include <ascii-chat/debug/errno.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>
 
 static atomic_t g_debug_errno_signal = {0};
 static atomic_t g_debug_errno_exiting = {0};
 static atomic_t g_debug_errno_cleaning = {0};
-static asciichat_thread_t g_debug_errno_thread;
+static platform_thread_t g_debug_errno_thread;
 static mutex_t g_debug_errno_mutex;
 static cond_t g_debug_errno_condition;
 static bool g_debug_errno_initialized;
@@ -101,7 +101,7 @@ asciichat_error_t debug_errno_start_thread(void) {
       debug_errno_print_delayed((uint64_t)(opts->debug_errno_stacks_time * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (acthread_create(&g_debug_errno_thread, "debug_errno", debug_errno_worker, NULL) != 0)
+  if (platform_thread_create(&g_debug_errno_thread, "debug_errno", debug_errno_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_debug_errno_started = true;

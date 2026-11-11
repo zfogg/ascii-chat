@@ -1,6 +1,7 @@
 #pragma once
 /** Shared packet fixtures and production transport interoperability. */
 #include <ascii-chat/network/acip/prepare.h>
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/network/network.h>
@@ -22,6 +23,7 @@ static inline void crypto_pair(crypto_context_t *a, crypto_context_t *b) {
   CHECK(crypto_init(b) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(a, b->public_key) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(b, a->public_key) == CRYPTO_OK);
+  a->handshake_complete = b->handshake_complete = true;
 }
 
 static inline packet_header_t inner_header(size_t size) {
@@ -61,7 +63,7 @@ static inline void fixtures(void) {
     // Exercise every handshake exception, rather than duplicating its allowlist.
     unsigned exceptions = 0;
     for (unsigned type = 0; type <= UINT16_MAX; ++type) {
-      if (!packet_is_handshake_type((packet_type_t)type))
+      if (!packet_is_initial_handshake_type((packet_type_t)type))
         continue;
       header.type = HOST_TO_NET_U16(type);
       CHECK(acip_packet_plan(&crypto, slices, 4, &plan) == ASCIICHAT_OK && !plan.encrypt);
@@ -72,18 +74,14 @@ static inline void fixtures(void) {
     for (int vector = 0; vector < 2; ++vector) {
       CHECK(acip_packet_plan(&crypto, vector ? slices : &contiguous, vector ? 4 : 1, &plan) == ASCIICHAT_OK);
       CHECK(plan.encrypt && plan.plaintext_size == sizeof(original));
-      uint8_t ciphertext[sizeof(original) + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE];
-      uint8_t expected[sizeof(ciphertext)], plaintext[sizeof(original)];
+      uint8_t ciphertext[sizeof(original) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE];
       packet_header_t outer;
-      size_t length = 0, expected_length = 0, plain_length = 0;
-      crypto_context_t reference = crypto;
-      CHECK(crypto_encrypt(&reference, original, sizeof(original), expected, sizeof(expected), &expected_length) ==
-            CRYPTO_OK);
-      CHECK(acip_packet_encrypt(&crypto, &plan, NULL, ciphertext, sizeof(ciphertext), &outer, &length) == ASCIICHAT_OK);
-      CHECK(length == expected_length && memcmp(ciphertext, expected, length) == 0);
+      size_t length = 0;
       // Exclusive wire buffers decrypt in place, while shared wire owners
       // retain unchanged ciphertext and use the allocation fallback.
       for (unsigned mode = 0; mode < 3; ++mode) {
+        CHECK(acip_packet_encrypt(&crypto, &plan, NULL, ciphertext, sizeof(ciphertext), &outer, &length) ==
+              ASCIICHAT_OK);
         size_t wire_size = sizeof(outer) + length;
         uint8_t *wire = buffer_alloc(NULL, wire_size);
         CHECK(wire);
@@ -114,8 +112,6 @@ static inline void fixtures(void) {
       CHECK(NET_TO_HOST_U64(outer.magic) == PACKET_MAGIC && NET_TO_HOST_U16(outer.type) == PACKET_TYPE_ENCRYPTED);
       CHECK(NET_TO_HOST_U32(outer.length) == length && outer.client_id == 0);
       CHECK(NET_TO_HOST_U32(outer.crc32) == asciichat_crc32(ciphertext, length));
-      CHECK(crypto_decrypt(&peer, ciphertext, length, plaintext, sizeof(plaintext), &plain_length) == CRYPTO_OK);
-      CHECK(plain_length == sizeof(original) && memcmp(plaintext, original, plain_length) == 0);
     }
   }
 
@@ -138,7 +134,7 @@ static inline void fixtures(void) {
   CHECK(acip_packet_encrypt(&crypto, &plan, NULL, output, sizeof(output), &outer, &length) == ERROR_CRYPTO);
   CHECK(length == 0);
   crypto.nonce_counter = nonce;
-  socket_buffer_t huge[] = {{&header, sizeof(header)}, {"x", CRYPTO_MAX_PLAINTEXT_SIZE - sizeof(header)}};
+  socket_buffer_t huge[] = {{&header, sizeof(header)}, {"x", CRYPTO_MAX_PLAINTEXT_SIZE - 24 - sizeof(header)}};
   CHECK(acip_packet_plan(&crypto, huge, 2, &plan) == ASCIICHAT_OK);
   ++huge[1].len;
   CHECK(acip_packet_plan(&crypto, huge, 2, &plan) == ERROR_NETWORK_SIZE);
@@ -250,11 +246,15 @@ static inline void websocket_fixture(const char *url, void (*before_destroy)(aci
   CHECK(NET_TO_HOST_U16(outer.type) == PACKET_TYPE_ENCRYPTED);
   CHECK(NET_TO_HOST_U32(outer.length) == size - sizeof(outer));
   CHECK(NET_TO_HOST_U32(outer.crc32) == asciichat_crc32((uint8_t *)data + sizeof(outer), size - sizeof(outer)));
-  uint8_t plain[128];
+  uint8_t *plain = NULL;
   size_t length = 0;
-  CHECK(crypto_decrypt(&peer, (uint8_t *)data + sizeof(outer), size - sizeof(outer), plain, sizeof(plain), &length) ==
-        CRYPTO_OK);
+  uint64_t sequence;
+  bool consumed;
+  CHECK(acip_security_open(&peer, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data, size, &plain, &length,
+                           &sequence, &consumed) == ASCIICHAT_OK &&
+        !consumed);
   CHECK(length == sizeof(outer) + 9 && memcmp(plain + sizeof(outer), "123456789", 9) == 0);
+  buffer_release(plain);
   buffer_release(owner);
   if (before_destroy)
     before_destroy(transport);

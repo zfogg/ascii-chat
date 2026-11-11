@@ -11,7 +11,9 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
@@ -27,6 +29,7 @@
 #endif
 
 /**
+ * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
  * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
  */
 typedef struct {
@@ -249,8 +252,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   // close descriptor zero, which can subsequently be reused by the event loop.
   connection_attempt_t ipv4_attempt = {.socket = INVALID_SOCKET_VALUE};
   connection_attempt_t ipv6_attempt = {.socket = INVALID_SOCKET_VALUE};
-  asciichat_thread_t ipv4_thread;
-  asciichat_thread_t ipv6_thread;
+  platform_thread_t ipv4_thread;
+  platform_thread_t ipv6_thread;
 
   thread_init(&ipv4_thread);
   thread_init(&ipv6_thread);
@@ -269,7 +272,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv4_attempt.addr, ipv4_addr->ai_addr, ipv4_addr->ai_addrlen);
     ipv4_attempt.addr_len = ipv4_addr->ai_addrlen;
 
-    acthread_create(&ipv4_thread, "connect_ipv4", attempt_connection_thread, &ipv4_attempt);
+    platform_thread_create(&ipv4_thread, "connect_ipv4", attempt_connection_thread, &ipv4_attempt);
   }
 
   // Start IPv6 attempt if available
@@ -286,7 +289,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv6_attempt.addr, ipv6_addr->ai_addr, ipv6_addr->ai_addrlen);
     ipv6_attempt.addr_len = ipv6_addr->ai_addrlen;
 
-    acthread_create(&ipv6_thread, "connect_ipv6", attempt_connection_thread, &ipv6_attempt);
+    platform_thread_create(&ipv6_thread, "connect_ipv6", attempt_connection_thread, &ipv6_attempt);
   }
 
   // Wait for winner or both to finish

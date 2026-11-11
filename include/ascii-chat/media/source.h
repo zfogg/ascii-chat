@@ -33,30 +33,46 @@
  * - Audio: mp3, aac, opus, flac, wav, ogg, m4a
  * - Images: gif, png, jpg (static - single frame)
  *
- * USAGE:
- * ======
- * @code
- * // Create media source from file
+ * COMMAND-LINE EXAMPLES:
+ * ======================
+ * @code{.sh}
+ * # Webcam preview with a deterministic source instead of a camera
+ * ascii-chat mirror --test-pattern --color-mode 256
+ *
+ * # Play a file repeatedly, starting at one minute and thirty seconds
+ * ascii-chat mirror --file "demo recording.mp4" --loop --seek 01:30
+ *
+ * # Decode a URL through the normal FFmpeg/yt-dlp resolver
+ * ascii-chat mirror --url "https://example.com/clip.m3u8"
+ *
+ * # Feed any FFmpeg-readable format through stdin
+ * ffmpeg -i input.mkv -f matroska - | ascii-chat mirror --file -
+ * @endcode
+ *
+ * PROGRAMMATIC EXAMPLE:
+ * =====================
+ * @code{.c}
  * media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, "video.mp4");
+ * if (!source) return ERROR_MEDIA;
  * media_source_set_loop(source, true);
  *
- * // Read video frames
- * while (!done) {
+ * for (;;) {
  *     image_t *frame = media_source_read_video(source);
- *     if (!frame) {
- *         if (media_source_at_end(source)) break;
- *         continue; // Error, try next frame
+ *     if (frame) {
+ *         render_frame(frame);
+ *         continue;
  *     }
- *     // Process frame...
+ *     if (media_source_at_end(source)) break;
+ *     // A temporary decode miss is not EOF; let the capture loop try again.
  * }
  *
- * // Read audio samples
- * float buffer[480];
- * size_t samples = media_source_read_audio(source, buffer, 480);
- *
- * // Cleanup
+ * float samples[960]; // 20 ms of interleaved 48 kHz stereo float audio
+ * size_t count = media_source_read_audio(source, samples, 960);
+ * (void)count;
  * media_source_destroy(source);
  * @endcode
+ *
+ * @note The CLI examples use the same media-source abstraction as the C API.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026

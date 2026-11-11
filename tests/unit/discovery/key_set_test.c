@@ -233,6 +233,15 @@ Test(discovery_key_set, migration_retains_old_sessions_keys_revocations_and_admi
     sqlite3_reset(stmt);
   }
   sqlite3_finalize(stmt);
+  // Older deployments could leave orphaned rows when foreign keys were disabled.
+  cr_assert_eq(sqlite3_exec(db,
+                            "PRAGMA foreign_keys = OFF; "
+                            "INSERT INTO session_keys "
+                            "(session_string, identity_pubkey, key_version, added_at, revoked) "
+                            "VALUES ('missing-session', zeroblob(32), 1, 123, 0); "
+                            "PRAGMA foreign_keys = ON;",
+                            NULL, NULL, NULL),
+               SQLITE_OK);
   cr_assert_eq(sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy;", NULL, NULL, NULL),
                SQLITE_OK);
   database_close(db);
@@ -298,7 +307,9 @@ Test(discovery_key_set, restricted_sessions_still_require_passwords_and_typed_st
 }
 
 static void count_create_callback(const acip_session_create_t *req, acip_transport_t *transport, const char *ip,
-                                  void *ctx) {
+                                  const uint8_t *extension, size_t extension_length, void *ctx) {
+  (void)extension;
+  (void)extension_length;
   (void)req;
   (void)transport;
   (void)ip;

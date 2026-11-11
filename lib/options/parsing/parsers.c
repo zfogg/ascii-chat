@@ -38,6 +38,7 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
 
 /**
  * @brief Lookup table for setting string-to-enum mapping
+ * @brief Lookup table for setting string-to-enum mapping
  */
 typedef struct {
   const char *match; ///< Setting string (lowercased)
@@ -253,7 +254,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  render_mode_t *render_mode = (render_mode_t *)dest;
+  terminal_render_mode_t *render_mode = (terminal_render_mode_t *)dest;
   char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
@@ -660,12 +661,11 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return 1; // Consumed 1 argument
   }
 
-  // Check for TCP URL (tcp://) - passed through directly to FFmpeg
-  // TCP URLs are used for streaming media from custom TCP servers
-  if (strncmp(arg, "tcp://", 6) == 0) {
-    log_debug("Detected TCP URL: %s", arg);
+  // Explicit transport URLs are resolved by the connection layer.
+  if (strncmp(arg, "tcp://", 6) == 0 || strncmp(arg, "quic://", 7) == 0) {
+    log_debug("Detected transport URL: %s", arg);
     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
-    // Don't set port - TCP transport handles URL parsing internally
+    // The connection layer extracts the port from the URL.
     return 1; // Consumed 1 argument
   }
 
@@ -1076,6 +1076,12 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
       *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
+  }
+
+  if (strcmp(arg, "/dev/null") == 0) {
+    SAFE_STRNCPY((char *)dest, arg, 255);
+    ((char *)dest)[255] = '\0';
+    return true;
   }
 
   // Validate and normalize the log file path

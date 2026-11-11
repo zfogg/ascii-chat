@@ -31,17 +31,19 @@
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/update_banner.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/clipboard.h>
+#include <ascii-chat/os/question.h>
+#include <ascii-chat/os/clipboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 uint64_t ui_input_deadline(unsigned seconds) {
   return time_get_ns() + (uint64_t)seconds * NS_PER_SEC_INT;
@@ -171,6 +173,11 @@ typedef struct {
   size_t length, cursor;
   uint64_t deadline;
   bool active, submitted, pasted;
+  /**
+   * @brief This is the handoff point for input editor. Callers fill `length`, `cursor`, `deadline`, `active` before
+   * passing it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } input_editor_t;
 static input_editor_t g_media_editor;
 
@@ -246,7 +253,7 @@ static bool input_initialize(void) {
     lifecycle_init_commit(&g_input_lifecycle);
   }
   uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
-  while (atomic_load_u64(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING) {
+  while (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING) {
     if (time_get_ns() >= deadline) {
       SET_ERRNO(ERROR_THREAD, "Timed out waiting for terminal input initialization");
       return false;
@@ -274,7 +281,7 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
 
 void ui_input_poll_sync(void) {
 #ifndef NDEBUG
-  if (atomic_load_u64(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
+  if (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
       mutex_trylock(&g_input_mutex) != 0)
     return;
   if (g_switch_pending) {
@@ -308,7 +315,9 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  if (action == TUI_SHORTCUT_LOGS) {
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+  if (action == TUI_SHORTCUT_LOGS && !server) {
     ascii_otel_ui_usage("logs", "shortcut", 0);
     ui_controller_toggle_logs();
     return KEY_NONE;
@@ -322,15 +331,17 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
-                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   if (server && current == UI_SCREEN_LOGS) {
     if (ui_session_logs_key(key))
       return KEY_NONE;
-    if (key == KEY_ESCAPE) {
+    if (key == KEY_ESCAPE || key == 'q') {
       ui_controller_hide_logs();
       return KEY_NONE;
     }
+  }
+  if (server && (key == 'Q' || key == KEY_SHIFT_ESCAPE)) {
+    platform_force_exit(1);
+    return KEY_NONE;
   }
   if (server && (key == 'q' || key == 3)) {
     shutdown_request();

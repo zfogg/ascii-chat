@@ -29,7 +29,8 @@ vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
   useCanvasCapture: () => ({ captureFrame: vi.fn() }),
 }));
-vi.mock("@ascii-chat/shared/wasm", () => ({
+vi.mock("@ascii-chat/shared/wasm", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@ascii-chat/shared/wasm")>()),
   getMirrorModule: () => null,
   initMirrorWasm: vi.fn(),
   createWasmModule: vi.fn(),
@@ -60,7 +61,7 @@ vi.mock("../../src/components/shared/BinarySettings", () => ({
   ),
 }));
 vi.mock("@ascii-chat/shared/components/AsciiRenderer", () => ({
-  AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
+  AsciiCanvas: ({ uiLoading }: { uiLoading: boolean }) => (
     <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
   ),
 }));

@@ -6,6 +6,9 @@
 typedef struct {
   uint64_t due_ns;
   bool pending;
+/**
+ * @brief The useful part of flow control debounce is in `due_ns`, `pending`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } flow_control_debounce_t;
 
 /** Record an event whose action should run after delay_ns of inactivity. */

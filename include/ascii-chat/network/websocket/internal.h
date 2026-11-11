@@ -7,16 +7,17 @@
 #ifndef ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 #define ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 
-#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
- * @brief WebSocket message element (individual frame or fragment)
+ * @brief Owned WebSocket frame queued for sending or reassembly
+ * @brief Private state for one libwebsockets-backed ACIP transport
+ * @brief Owned WebSocket frame queued for sending or reassembly.
  *
  * Used for both send and receive queues. Each frame may be a complete message
  * or a fragment of a larger fragmented message. The receiver checks first/final
@@ -36,7 +37,12 @@ asciichat_error_t websocket_transport_send(acip_transport_t *transport, const vo
 typedef websocket_msg_t websocket_recv_msg_t;
 
 /**
- * @brief WebSocket transport implementation data
+ * @brief Private state for one libwebsockets-backed ACIP transport.
+ *
+ * It owns or borrows the libwebsockets handles according to `owns_context`,
+ * holds synchronized send/receive queues, tracks connection and service-thread
+ * state, and retains partial-fragment and in-flight-send buffers until their
+ * completion callbacks release them.
  */
 typedef struct {
   struct lws *wsi;             ///< libwebsockets instance (owned)
@@ -53,7 +59,7 @@ typedef struct {
   cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
 
   // Service thread for client-side transports
-  asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
+  platform_thread_t service_thread; ///< Thread that services libwebsockets context
   bool service_running;              ///< Owner must join the service thread before freeing storage
 
   // Partial message reassembly state (preserved across recv() calls)

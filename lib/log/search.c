@@ -16,10 +16,10 @@
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/log/grep.h"
-#include "ascii-chat/platform/keyboard.h"
-#include "ascii-chat/platform/mutex.h"
-#include "ascii-chat/platform/terminal.h"
-#include "ascii-chat/util/lifecycle.h"
+#include "ascii-chat/os/keyboard.h"
+#include <libplatform/mutex.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
 #include "ascii-chat/util/flow_control.h"
@@ -32,7 +32,7 @@
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Constants
@@ -75,6 +75,11 @@ typedef struct {
   atomic_t mode_atomic;            ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
   flow_control_debounce_t debounce;
+  /**
+   * @brief log search state is intentionally a small, concrete record. Fields such as `mode`, `len`, `cursor`,
+   * `previous_pattern_count` give callers the identity and current value they need. It is normally borrowed from, or
+   * owned by, the surrounding subsystem—not independently managed.
+   */
 } log_search_state_t;
 
 static log_search_state_t g_search_state = {

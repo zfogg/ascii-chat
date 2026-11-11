@@ -2,7 +2,7 @@ from pathlib import Path
 import re,subprocess
 base=Path(__file__).resolve().parent
 subprocess.run(['node', str(base/'complete-references.mjs')], cwd=base, check=True)
-subprocess.run(['python', str(base/'validate_guides.py')], cwd=base, check=True)
+subprocess.run(['uv', 'run', '--project', 'tests/ascii_chat_tests', '--frozen', 'python', str(base/'validate_guides.py')], cwd=base, check=True)
 subprocess.run(['node', str(base/'highlight.mjs')], cwd=base, check=True)
 html=(base/'dist/index.html').read_text(encoding='utf8')
 css=(base/'dist/style.css').read_text(encoding='utf8')

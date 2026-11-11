@@ -85,7 +85,7 @@ typedef SSIZE_T ssize_t;
 #define X_OK 0 /* Windows doesn't have execute permission, map to existence check */
 #endif
 
-/* sleep/usleep are handled by ascii-chat/platform/system.h macros */
+/* sleep/usleep are handled by libplatform/system.h macros */
 
 #endif /* _WIN32 */
 #endif /* _UNISTD_H_COMPAT */

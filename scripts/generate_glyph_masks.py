@@ -2,7 +2,7 @@
 """Generate the experimental glyph matcher's coverage atlas.
 
 Run with Pillow installed and the DejaVu Sans Mono 2.37 TTF:
-  python scripts/generate_glyph_masks.py path/to/DejaVuSansMono.ttf > lib/video/ascii/glyph_masks.h
+  uv run --project tests/ascii_chat_tests --frozen python scripts/generate_glyph_masks.py path/to/DejaVuSansMono.ttf > lib/video/ascii/glyph_masks.h
 """
 import sys
 from PIL import Image, ImageDraw, ImageFont

@@ -61,7 +61,6 @@
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
-#include <ascii-chat/platform/abstraction.h>
 #endif
 
 /* ============================================================================
@@ -70,6 +69,7 @@
  */
 
 /**
+ * @brief Non-owning source reference used when laying out an ASCII frame. `frame_data` points to the source text and `frame_size` tells the compositor how many bytes are valid; the source must remain alive until layout and copy-out finish.
  * @brief Default ASCII palette characters
  *
  * Default character palette for ASCII art conversion. Contains
@@ -161,7 +161,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 
 // Capability-aware ASCII conversion using terminal detection
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /**
  * @brief Convert image to ASCII art with terminal capability awareness

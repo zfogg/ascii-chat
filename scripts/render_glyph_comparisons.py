@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rasterize captured truecolor snapshot output into side-by-side GIFs and PNGs.
 
-Usage: python scripts/render_glyph_comparisons.py CAPTURE_DIR OUTPUT_DIR FONT.ttf
+Usage: uv run --project tests/ascii_chat_tests --frozen python scripts/render_glyph_comparisons.py CAPTURE_DIR OUTPUT_DIR FONT.ttf
 CAPTURE_DIR contains pattern0-{baseline,glyph}.log, pattern1-*.log and testsrc-*.log,
 produced by the commands in docs/glyph-match-prototype.md. Requires Pillow.
 """

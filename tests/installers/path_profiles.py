@@ -1,6 +1,6 @@
 """Exercise real Bash/Zsh startup files and Y/n prompts in a disposable PTY.
 
-Run: python3 tests/installers/path_profiles.py web/www/public/install.sh
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/installers/path_profiles.py web/www/public/install.sh
 Uses only the standard library; requires Bash and Zsh on PATH.
 """
 

@@ -5,7 +5,7 @@
 #define TUI_CONTROLLER_BUFFER_BUFFER_SIZE 16384
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define TUI_MEDIA_SNAPSHOT_CAPACITY 3
+#define TUI_MEDIA_SNAPSHOT_CAPACITY 8
 #define TUI_LAYER_CAPACITY 3
 
 #include <ascii-chat/otel.h>
@@ -23,17 +23,19 @@
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/tui/errno_stacks.h>
 #include <ascii-chat/tui/error_popup.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
 #include <stdatomic.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/runtime.h>
@@ -42,7 +44,7 @@
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>
@@ -50,16 +52,27 @@
 typedef struct {
   _Atomic unsigned references;
   int fd;
+  /**
+   */
 } screen_terminal_t;
 
 typedef struct media_snapshot_slot media_snapshot_slot_t;
 
+/**
+ * @brief When code needs to work with media snapshot slot, it keeps `busy`, `snapshot`, `capacity` here instead of
+ * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation,
+ * lock, thread, or callback context recorded in those fields.
+ * @brief The useful part of screen terminal is in `references`, `fd`: together they describe what is pending, who owns
+ * it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   _Atomic unsigned references;
   media_snapshot_slot_t *slot;
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
   _Alignas(max_align_t) char data[];
+  /**
+   */
 } screen_snapshot_t;
 
 struct media_snapshot_slot {
@@ -75,6 +88,11 @@ typedef struct {
   terminal_size_t dimensions;
   size_t len;
   const char *text;
+  /**
+   * @brief This is the handoff point for screen snapshot. Callers fill `references`, `slot`, `terminal`, `frame_id`
+   * before passing it on; consumers read the values during the operation and return ownership only where the member
+   * contract explicitly says they do.
+   */
 } text_snapshot_t;
 static void render_text(terminal_size_t size, const void *data);
 
@@ -101,7 +119,7 @@ static int g_rendering_screen = -1;
 static uint32_t g_rendering_layers;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
-static asciichat_thread_t g_thread;
+static platform_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
 static _Atomic bool g_sync_finishing;
 static _Atomic bool g_sync_rendering;
@@ -145,22 +163,26 @@ static _Atomic int g_interactive_screen = -1;
 static _Atomic int g_background_screen = -1;
 static _Atomic uint32_t g_screen_mask;
 static atomic_t g_volume_until = {0};
+/* The UI controller owns the terminal while any full-screen presentation is live. */
+static bool g_terminal_screen_active;
+static int g_terminal_screen_fd = -1;
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
 static _Thread_local terminal_capabilities_t g_volume_caps;
 static _Thread_local terminal_color_mode_t g_volume_color_mode;
 static _Thread_local color_setting_t g_volume_color_setting;
 static _Thread_local utf8_setting_t g_volume_utf8_setting;
-static _Thread_local render_mode_t g_volume_render_mode;
+static _Thread_local terminal_render_mode_t g_volume_render_mode;
 
 static terminal_capabilities_t volume_capabilities(void) {
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   color_setting_t color = GET_OPTION(color);
   utf8_setting_t utf8 = GET_OPTION(force_utf8);
-  render_mode_t render = GET_OPTION(render_mode);
+  terminal_render_mode_t render = GET_OPTION(render_mode);
   if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
       utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
-    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities());
+    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities(options_terminal_settings()),
+                                              options_terminal_settings());
     g_volume_color_mode = mode;
     g_volume_color_setting = color;
     g_volume_utf8_setting = utf8;
@@ -168,6 +190,32 @@ static terminal_capabilities_t volume_capabilities(void) {
     g_volume_caps_valid = true;
   }
   return g_volume_caps;
+}
+
+static void terminal_screen_enter(int fd) {
+  if (!platform_isatty(fd) || GET_OPTION(snapshot_mode))
+    return;
+  const char sequence[] = "\033[?1049h\033[?25l\033[H\033[2J";
+  size_t written = platform_write_all(fd, sequence, sizeof(sequence) - 1);
+  if (written > 0) {
+    g_terminal_screen_active = true;
+    g_terminal_screen_fd = fd;
+  }
+  if (written != sizeof(sequence) - 1)
+    log_error("Cannot completely enter alternate terminal screen");
+}
+
+static void terminal_screen_leave(void) {
+  if (!g_terminal_screen_active || g_terminal_screen_fd < 0)
+    return;
+  const char sequence[] = "\033[0m\033[?25h\033[?1049l";
+  size_t written = platform_write_all(g_terminal_screen_fd, sequence, sizeof(sequence) - 1);
+  if (written == sizeof(sequence) - 1) {
+    g_terminal_screen_active = false;
+    g_terminal_screen_fd = -1;
+  } else {
+    log_error("Cannot completely restore the normal terminal screen");
+  }
 }
 
 void ui_controller_show_volume(void) {
@@ -191,7 +239,7 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   int col = size.cols - 5;
   terminal_capabilities_t caps = volume_capabilities();
   bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  bool utf8 = terminal_should_use_utf8();
+  bool utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   frame_buffer_append(buffer, "\0337\033[0m", 6);
   for (int row = 0; row < height; ++row) {
     int level = height - row;
@@ -303,13 +351,21 @@ static uint64_t g_media_frame_id;
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
+static _Thread_local fps_counter_t *g_fps;
+static atomic_t g_effective_fps = {.impl = 60};
 
 void ui_controller_frame_acquired_at(uint64_t started_ns) {
   g_acquisition_started_ns = started_ns;
 }
+
+void ui_controller_set_effective_fps(unsigned int fps) {
+  atomic_store_int(&g_effective_fps, (int)(fps > 0 ? fps : 60));
+  if (g_fps)
+    fps_counter_set_effective_fps(g_fps, fps);
+}
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
-static _Thread_local fps_counter_t *g_fps;
+static _Thread_local bool g_help_sync_open;
 static _Thread_local bool g_stats_media, g_stats_failed;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;
 static void stats_media_begin(bool media) {
@@ -396,7 +452,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool synchronized = g_render_snapshot != NULL;
+  bool help_media_overlay =
+      ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
+  bool synchronized = g_render_snapshot != NULL || help_media_overlay;
+  g_help_sync_open = help_media_overlay;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
   uint64_t sync_started_ns = g_stats_media && synchronized ? time_get_ns() : 0;
   size_t written = 0;
@@ -441,7 +500,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (probe)
     g_probe_requested_ns = time_get_ns();
   size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
-  bool ended = !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+  bool ended = g_help_sync_open || !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
   if (!ended)
     g_probe_requested_ns = 0;
   // Switching screens intentionally cancels the remainder of an old media frame.
@@ -563,6 +622,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
   }
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     release_screen(&retired[i], i == UI_SCREEN_NOTICE);
+  terminal_screen_leave();
   platform_write_all(fd, data, len);
   atomic_store_bool(&g_live, false);
 }
@@ -609,6 +669,17 @@ typedef struct {
   size_t layer_count;
   int active;
   bool volume, drew, fresh, errors, sync_backdrop;
+  /**
+   * @brief screen keeps the values that move through the subsystem: `next`, `owned`, `snapshot`, `render`. Some members
+   * are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than
+   * the struct copy itself.
+   * @brief For text snapshot, this is the live record that ties `fd`, `media`, `dimensions`, `len` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   * @brief When code needs to work with native view, it keeps `screen`, `layers`, `layer_count`, `active` here instead
+   * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   */
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -636,9 +707,20 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
     layer->render(size, layer->snapshot);
     g_render_snapshot = previous_snapshot;
   }
-  view->fresh = fps_counter_frame_begin_id(
-      g_fps, view->active == UI_SCREEN_MEDIA && !view->errors ? view->screen->owned->frame_id : 0);
-  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
+  uint64_t media_frame_id = 0;
+  if (!view->errors) {
+    for (size_t i = 0; i < view->layer_count; ++i) {
+      if (view->layers[i].render == render_text && view->layers[i].owned) {
+        media_frame_id = view->layers[i].owned->frame_id;
+        break;
+      }
+    }
+  }
+  // Measure the media layer wherever it is rendered, including beneath an
+  // interactive TUI overlay. The active screen is not sufficient here:
+  // keyboard help, stats, and other screens can still compose and print the
+  // current ASCII frame.
+  view->fresh = fps_counter_frame_begin_id(g_fps, media_frame_id);
   if (view->errors && view->active != UI_SCREEN_HELP)
     ui_error_popup_render(output, size);
   if (view->errors && terminal_screen_logs_help_open() &&
@@ -723,9 +805,10 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     char count[32] = "";
     if (errors > 1)
       snprintf(count, sizeof(count), "(%zu) ", errors);
-    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8() ? "•" : "*",
-             count, (int)latest.code, asciichat_error_string(latest.code));
-  } else if (terminal_should_use_utf8()) {
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s",
+             terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*", count, (int)latest.code,
+             asciichat_error_string(latest.code));
+  } else if (terminal_should_use_utf8(GET_OPTION(force_utf8))) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);
     if (phase != UI_TITLE_IDLE || activity != UI_TITLE_ACTIVITY_IDLE || screen >= UI_SCREEN_LOGS ||
@@ -819,6 +902,8 @@ static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
   g_fps = fps_counter_create();
+  unsigned int applied_effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+  fps_counter_set_effective_fps(g_fps, applied_effective_fps);
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
@@ -831,6 +916,11 @@ static void *presentation_main(void *unused) {
   const char *stats_page = NULL, *covered_screen = NULL;
   uint64_t stats_since = 0, covered_since = 0;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    unsigned int effective_fps = (unsigned int)atomic_load_int(&g_effective_fps);
+    if (effective_fps != applied_effective_fps) {
+      fps_counter_set_effective_fps(g_fps, effective_fps);
+      applied_effective_fps = effective_fps;
+    }
     int usage_current = ui_controller_current_screen();
     usage_transition(usage_screen_name(usage_current), &usage_screen, &usage_since);
     ui_presentation_state_t usage_state = ui_controller_state();
@@ -999,10 +1089,14 @@ static void *presentation_main(void *unused) {
         redraw = true;
       volume_was_visible = volume_visible;
       last_volume_until = volume_until;
-      bool show_fps = active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter);
+      int fps_screen = active == UI_SCREEN_HELP ? keyboard_help_parent_screen() : active;
+      bool show_fps = fps_screen == UI_SCREEN_MEDIA && GET_OPTION(fps_counter);
       redraw |= fps_counter_set_visible(g_fps, show_fps);
       bool was_covered = ui_session_is_covered(g_session);
-      if (changed || was_covered)
+      // Opening keyboard help does not stop the media layer underneath it.
+      // Preserve its measured FPS instead of resetting the overlay to zero
+      // merely because the active presentation screen changed to HELP.
+      if ((changed && fps_screen != UI_SCREEN_MEDIA) || was_covered)
         fps_counter_reset(g_fps);
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
@@ -1106,7 +1200,12 @@ static void *presentation_main(void *unused) {
         fps_counter_reset(g_fps);
       if (output) {
         stats_media_begin(context.fresh && context.drew);
-        g_probe_frame = context.fresh && context.drew && reply_support >= 0;
+        // Probe terminal acknowledgement support during startup only. Once a
+        // frontend has answered (or timed out), media presentation must not
+        // make every frame wait on an optional terminal protocol round trip.
+        // The mailbox already retains the newest frame when a frontend is
+        // temporarily busy, so steady-state video should follow capture FPS.
+        g_probe_frame = context.fresh && context.drew && reply_support == 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
         if (written == ASCIICHAT_OK && active == UI_SCREEN_NOTICE && context.drew && !covered && !errors)
@@ -1154,8 +1253,14 @@ static void *presentation_main(void *unused) {
         if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
-      if (!covered && !context.drew)
-        fps_counter_render(g_fps, screen->fd, size.cols, context.drew);
+      // The FPS meter is the final overlay: draw it once after the complete
+      // ASCII/TUI composition has been written, without clearing anything.
+      if (!covered && show_fps)
+        fps_counter_render(g_fps, screen->fd, size.cols, active == UI_SCREEN_HELP);
+      if (g_help_sync_open) {
+        (void)write_output_chunk(screen->fd, "\033[?2026l", 8);
+        g_help_sync_open = false;
+      }
     }
   frame_complete:
     g_render_fd = -1;
@@ -1262,7 +1367,7 @@ static asciichat_error_t controller_start(void) {
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
-    if (acthread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+    if (platform_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       ui_session_destroy(g_session);
       g_session = NULL;
       NAMED_UNREGISTER(&g_title_active);
@@ -1280,6 +1385,7 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
     }
+    terminal_screen_enter(atomic_load(&g_default_fd));
     lifecycle_init_commit(&g_lifecycle);
   }
   if (!lifecycle_is_initialized(&g_lifecycle))
@@ -1390,6 +1496,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     g_render_fd = previous_fd;
     return ASCIICHAT_OK;
   }
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    atomic_store(&g_default_fd, fd);
   asciichat_error_t err = controller_start();
   if (err != ASCIICHAT_OK)
     return err;
@@ -1792,6 +1900,7 @@ void ui_controller_shutdown(void) {
   atomic_store(&g_background_screen, -1);
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
+  terminal_screen_leave();
   NAMED_UNREGISTER(&g_title_active);
   NAMED_UNREGISTER(&g_title_render);
   NAMED_UNREGISTER(&g_title_ready);

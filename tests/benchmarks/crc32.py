@@ -1,6 +1,6 @@
 """Test real CRC/CPU sources without Criterion or other project dependencies.
 
-Usage: python tests/benchmarks/crc32.py [--cc clang] [--sanitize] [--bench]
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/benchmarks/crc32.py [--cc clang] [--sanitize] [--bench]
 Builds runtime dispatch, hardware-disabled, and simulated no-CRC CPU variants.
 The benchmark compares the old bitwise/bytewise algorithms with the new paths;
 it is a microbenchmark, not an end-to-end network throughput measurement.

@@ -7,22 +7,29 @@
  */
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/platform/font.h>
+#include <ascii-chat/os/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/memory.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
+#include <ascii-chat/font.h>
+#include <libplatform/font.h>
 
 #define RENDER_AUTO_FONT_SIZE_PT 12.0
 #define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280
 #define RENDER_AUTO_MIN_FONT_SIZE_PT 3.0
 
+/**
+ * @brief For render file ctx, this is the live record that ties `progress`, `error`, `renderer`, `encoder` together.
+ * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+ * freeing the record.
+ */
 struct render_file_ctx_s {
   render_progress_t *progress;
   asciichat_error_t error;
@@ -37,6 +44,7 @@ struct render_file_ctx_s {
   bool live_timing;
   bool kitty;
   bool kitty_only;
+  bool discard;
   uint32_t audio_sample_rate; // 48000 Hz
   int fps;
   float *audio_read_buf; // Temporary buffer for reading audio samples
@@ -51,6 +59,12 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols,
            rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+  if (strcmp(output_path, "/dev/null") == 0) {
+    ctx->discard = true;
+    ctx->error = ASCIICHAT_OK;
+    *out = ctx;
+    return ASCIICHAT_OK;
+  }
   ctx->kitty_only = strcmp(output_path, "--kitty") == 0;
   ctx->kitty = ctx->kitty_only || GET_OPTION(render_kitty);
   if (ctx->kitty && !GET_OPTION(snapshot_mode)) {
@@ -87,6 +101,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     log_debug("[MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
+  platform_font_register("matrix", g_font_matrix_resurrected, g_font_matrix_resurrected_size);
+  platform_font_register("default", g_font_default, g_font_default_size);
+  platform_font_register("DejaVu Sans Mono", g_font_default, g_font_default_size);
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
@@ -110,7 +127,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   double font_size_pt = GET_OPTION(render_font_size);
   const char *extension = strrchr(output_path, '.');
   bool is_image =
-      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg"));
+      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg") ||
+                    !strcmp(extension, ".bmp") || !strcmp(extension, ".webp"));
   bool automatic_video_size = font_size_pt == 0.0 && !is_image && !ctx->kitty;
   if (font_size_pt == 0.0) {
     font_size_pt = RENDER_AUTO_FONT_SIZE_PT;
@@ -333,6 +351,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *fr
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render context or frame");
   if (ctx->error != ASCIICHAT_OK)
     return ctx->error;
+  if (ctx->discard)
+    return ASCIICHAT_OK;
   asciichat_error_t err = render_file_write_frame_internal(ctx, frame, captured_ns);
   if (err != ASCIICHAT_OK)
     ui_controller_title_render(UI_TITLE_FAILED);
@@ -356,6 +376,10 @@ void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double act
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;
+  if (ctx->discard) {
+    SAFE_FREE(ctx);
+    return ASCIICHAT_OK;
+  }
   NAMED_UNREGISTER(ctx);
   ui_controller_title_render(ctx->error == ASCIICHAT_OK ? UI_TITLE_FINALIZING : UI_TITLE_FAILED);
   render_progress_finalize(ctx->progress);

@@ -132,7 +132,7 @@
 #define SERVER_STREAM_HEX_BUFFER_SIZE 300
 #define SERVER_STREAM_ASCII_BUFFER_SIZE 100
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>
@@ -171,9 +171,12 @@
 static atomic_t g_previous_active_video_count = {0};
 
 /**
- * @brief Image source structure for multi-client video mixing
+ * @brief One client's video input as seen by the compositor
  *
- * Represents a single video source (client) in the video mixing pipeline.
+ * Holds the current buffer-backed image, the stable client identifier used for
+ * layout labels, and whether that client is actively sending video. The image
+ * pointer is borrowed from the client's frame-buffer system; this record does
+ * not free the pixels.
  * This structure is used to collect video frames from all active clients
  * before creating composite layouts for multi-user display.
  * ============
@@ -243,6 +246,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
   // Snapshot fields while holding the manager read lock so removal cannot
   // invalidate a frame-buffer pointer between this scan and its copy.
+  /**
+   * @brief One client's video input as seen by the compositor
+   */
   typedef struct {
     char client_id[MAX_CLIENT_ID_LEN];
     bool is_active;
@@ -1093,7 +1099,6 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     return NULL;
   }
 
-  START_TIMER("composite_create");
   if (sources_with_video == 1) {
     // Single source handling - create composite and convert to ASCII
     // Note: create_single_source_composite returns a reference to sources[i].image
@@ -1113,7 +1118,6 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     composite =
         create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
   }
-  STOP_TIMER_AND_LOG(dev, 500000, "composite_create", "Composite creation (single/multi)");
 
   char *out = NULL;
 
@@ -1125,10 +1129,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 
   // Convert composite to ASCII using client capabilities
   // Pass terminal dimensions so the frame can be padded to full width
-  START_TIMER("ascii_convert");
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering, sources,
                                                  source_count, sources_with_video);
-  STOP_TIMER_AND_LOG(dev, 500000, "ascii_convert", "ASCII conversion (composite to ASCII)");
 
   if (ascii_frame) {
     // The frame should have been null-terminated by the padding functions.
@@ -1181,7 +1183,6 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     *out_size = 0;
   }
 
-  START_TIMER("image_cleanup");
   if (composite) {
     image_destroy(composite);
   }
@@ -1190,7 +1191,6 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
       image_destroy(sources[i].image);
     }
   }
-  STOP_TIMER_AND_LOG(dev, 500000, "image_cleanup", "Image cleanup (composite + sources)");
 
   uint64_t frame_gen_end_ns = time_get_ns();
   uint64_t frame_gen_duration_ns = frame_gen_end_ns - frame_gen_start_ns;

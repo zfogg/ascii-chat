@@ -1,6 +1,6 @@
 """Verify exclusive TUI switches and detect even transient media writes in a real PTY.
 
-Run: python tests/integration/tui_switching.py --binary build/bin/ascii-chat.exe
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/tui_switching.py --binary build/bin/ascii-chat.exe
 Requires the same PTY dependencies as terminal_ui.py and ffmpeg.
 """
 

@@ -2,6 +2,7 @@
 #include <ascii-chat/network/packet/packet.h>
 
 /** Incremental wire framing. Feed only on the owning connection's serial lane.
+ * @brief When code needs to work with packet decoder, it keeps `header_used`, `packet`, `used`, `size` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * Callback borrows a complete header+payload until it returns. It must copy any
  * bytes it retains. An error is terminal: reset before feeding a new connection.
  */

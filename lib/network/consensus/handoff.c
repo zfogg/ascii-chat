@@ -88,7 +88,10 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[SESSION_ID
     ++s->generation;
     if (memcmp(s->host, id, SESSION_ID_SIZE) == 0)
       s->host_lost = true;
-    if (memcmp(s->successor, id, SESSION_ID_SIZE) == 0) {
+    // Pending acknowledgements carry the old membership generation. Reissue
+    // their preparation instead of rejecting the late reply and exhausting
+    // recovery without trying the still-eligible successor again.
+    if (!s->ready || memcmp(s->successor, id, SESSION_ID_SIZE) == 0) {
       memset(s->successor, 0, SESSION_ID_SIZE);
       s->ready = false;
     }
@@ -253,7 +256,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     memset(s->successor, 0, SESSION_ID_SIZE);
   }
   uint8_t zero[SESSION_ID_SIZE] = {0};
-  if (memcmp(s->successor, zero, SESSION_ID_SIZE)) {
+  if (memcmp(s->successor, zero, sizeof(s->successor))) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
     if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
         (s->ready || now < s->prepare_deadline_ms))

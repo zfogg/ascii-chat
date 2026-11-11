@@ -3,7 +3,7 @@
 # =============================================================================
 # Post-processes compile_commands.json to fix the "directory" field.
 # CMAKE_EXPORT_COMPILE_COMMANDS uses the build directory as the "directory"
-# field, but LibTooling-based tools like the defer tool need it to be set
+# field, but LibTooling-based tools using Clang need it to be set
 # to the source directory so that paths can be resolved correctly.
 #
 # This script replaces all "directory" fields with the source directory path.

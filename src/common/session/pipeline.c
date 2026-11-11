@@ -13,15 +13,18 @@
 #include "capture.h"
 #include "display.h"
 #include "render.h"
-#include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <ascii-chat/os/memory.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/terminal.h>
+#include <libplatform/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 
@@ -47,6 +50,17 @@ typedef struct {
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
+  /**
+   * @brief When code needs to work with frame slot, it keeps `frame`, `busy`, `capacity` here instead of scattering it
+   * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock,
+   * thread, or callback context recorded in those fields.
+   * @brief Owns the temporary storage used by frame queue. The data pointers and size or cursor fields describe the
+   * live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+   * needed.
+   * @brief pipeline frame keeps the values that move through the subsystem: `slot`, `pixels`, `w`, `h`. Some members
+   * are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than
+   * the struct copy itself.
+   */
 } pipeline_frame_t;
 
 struct frame_slot_s {
@@ -265,10 +279,15 @@ static bool frame_is_valid(const pipeline_frame_t *f) {
  * Pipeline Context
  * ============================================================================ */
 
+/**
+ * @brief For session pipeline, this is the live record that ties `capture_tid`, `encode_tid`, `input_tid`,
+ * `input_start_status` together. The owning code creates it, updates it while work is active, and releases its handles
+ * and pointed-to storage before freeing the record.
+ */
 struct session_pipeline_s {
-  asciichat_thread_t capture_tid;
-  asciichat_thread_t encode_tid;
-  asciichat_thread_t input_tid;
+  platform_thread_t capture_tid;
+  platform_thread_t encode_tid;
+  platform_thread_t input_tid;
   atomic_int input_start_status;
   session_keyboard_handler_fn keyboard_handler;
   session_should_exit_fn should_exit;
@@ -560,7 +579,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   atomic_store_u64(&p->first_frame_ns, 0);
 
   // Start capture thread
-  if (acthread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
     free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
     platform_wakeup_destroy(p->display_ready);
     NAMED_UNREGISTER(&p->display_pending);
@@ -572,7 +591,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 
   // Start encode thread only if render_file is active
   if (p->has_render_file) {
-    if (acthread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
+    if (platform_thread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
       atomic_store_bool(&p->stop, true);
       thread_join(&p->capture_tid, NULL);
       free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
@@ -616,12 +635,12 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
   uint64_t display_epoch = UINT64_MAX;
-  if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
+  if (keyboard_handler && !GET_OPTION(snapshot_mode) && !(pipeline->has_render_file && !terminal_is_interactive())) {
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;
     atomic_store(&pipeline->input_start_status, 0);
-    if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
+    if (platform_thread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
     while (atomic_load(&pipeline->input_start_status) == 0)
       platform_sleep_ms(1);

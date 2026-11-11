@@ -11,7 +11,7 @@
 #include <ascii-chat/debug/stats.h>
 /**
  * @file debug/mutex.c
- * @ingroup debug_sync
+ * @ingroup debug_util
  * @brief Per-thread mutex lock stack for deadlock detection
  * @date February 2026
  *
@@ -25,10 +25,10 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/platform/api.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/os/api.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
+#include <libplatform/thread.h>
 #include <string.h>
 #include <ascii-chat/otel.h>
 
@@ -43,6 +43,8 @@ typedef struct {
   int depth;
   atomic_t guard;
   mutex_wait_snapshot_t telemetry;
+  /**
+   */
 } thread_lock_stack_t;
 
 static void stack_lock(thread_lock_stack_t *stack) {
@@ -57,9 +59,16 @@ static void stack_unlock(thread_lock_stack_t *stack) {
 
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
+/**
+ * @brief thread lock stack keeps the values that move through the subsystem: `depth`, `guard`, `telemetry`. Some
+ * members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather
+ * than the struct copy itself.
+ */
 typedef struct {
   thread_id_t thread_id;
   thread_lock_stack_t *stack; // Heap-allocated stack per thread
+  /**
+   */
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
@@ -90,6 +99,10 @@ static atomic_t g_shutting_down = {0};
 typedef struct {
   uintptr_t mutexes[MAX_CYCLE_MUTEXES];
   int count;
+  /**
+   * @brief The useful part of thread registry entry is in `thread_id`, `stack`: together they describe what is pending,
+   * who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+   */
 } deadlock_state_t;
 static deadlock_state_t g_last_deadlock = {0};
 
@@ -125,7 +138,7 @@ static void ensure_tls_initialized(void) {
     registry_lock();
     // Try to initialize TLS key with destructor
     if (!atomic_load_bool(&g_tls_initialized) &&
-        ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
+        platform_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
       atomic_store_bool(&g_tls_initialized, true);
     }
     registry_unlock();
@@ -150,7 +163,7 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
   ensure_tls_initialized();
 
   // Get current thread's stack from TLS
-  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)platform_tls_get(g_tls_mutex_stack);
 
   if (stack == NULL) {
     // Allocate stack on heap for this thread
@@ -159,7 +172,7 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
     if (stack) {
       memset(stack, 0, sizeof(thread_lock_stack_t));
       // Store in TLS (destructor will free it when thread exits)
-      ascii_tls_set(g_tls_mutex_stack, stack);
+      platform_tls_set(g_tls_mutex_stack, stack);
       register_thread_if_needed();
     }
   }
@@ -741,6 +754,11 @@ void mutex_stack_detect_deadlocks(void) {
 #define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
 static _Atomic uint64_t g_next_cond_check_ns;
 
+/**
+ * @brief deadlock state is intentionally a small, concrete record. Fields such as `count` give callers the identity and
+ * current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently
+ * managed.
+ */
 typedef struct {
   uint64_t waiting_count;
   uint64_t last_wait_time_ns;
@@ -750,12 +768,14 @@ typedef struct {
   int last_wait_line;
   const char *last_wait_func;
   const mutex_t *last_wait_mutex;
+  /**
+   */
 } cond_deadlock_snapshot_t;
 
 static void copy_cond_deadlock_state(uintptr_t key, void *data) {
   const cond_t *cond = (const cond_t *)key;
   cond_deadlock_snapshot_t *snapshot = data;
-  snapshot->waiting_count = atomic_load_u64(&cond->waiting_count);
+  snapshot->waiting_count = atomic_load(&cond->waiting_count);
   snapshot->last_wait_time_ns = cond->last_wait_time_ns;
   snapshot->last_signal_time_ns = cond->last_signal_time_ns;
   snapshot->last_waiting_key = cond->last_waiting_key;
@@ -766,6 +786,9 @@ static void copy_cond_deadlock_state(uintptr_t key, void *data) {
 }
 
 /**
+ * @brief cond deadlock snapshot is intentionally a small, concrete record. Fields such as `waiting_count`,
+ * `last_wait_time_ns`, `last_signal_time_ns`, `last_waiting_key` give callers the identity and current value they need.
+ * It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Check copied condition state after releasing the registry lock
  * @param cond Protected copy of the condition state
  * @param name Human-readable name of the primitive
@@ -776,8 +799,9 @@ static void cond_deadlock_check_snapshot(const cond_deadlock_snapshot_t *cond, c
   }
 
   // Skip deadlock checks for thread pool work queues - it's normal for worker threads
-  // to wait idly when there's no work to process
-  if (name && strstr(name, "task_available") != NULL) {
+  // to wait idly when there's no work to process. Older registrations used
+  // task_available; current pools register work_available.
+  if (name && (strstr(name, "task_available") != NULL || strstr(name, "work_available") != NULL)) {
     return;
   }
 
@@ -818,11 +842,20 @@ extern bool debug_sync_is_cleanup_in_progress(void);
 typedef struct {
   cond_deadlock_snapshot_t state;
   char name[DEBUG_MUTEX_NAME_BUFFER_SIZE];
+  /**
+   */
 } cond_deadlock_entry_t;
 
+/**
+ * @brief When code needs to work with cond deadlock entry, it keeps `state` here instead of scattering it across
+ * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+ * callback context recorded in those fields.
+ */
 typedef struct {
   cond_deadlock_entry_t *entries;
   size_t count;
+  /**
+   */
 } cond_deadlock_batch_t;
 
 static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const char *name, const char *type,
@@ -839,6 +872,8 @@ static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const c
 }
 
 /**
+ * @brief The useful part of cond deadlock batch is in `entries`, `count`: together they describe what is pending, who
+ * owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @brief Check all condition variables for deadlocks
  *
  * Scans all registered condition variables and logs warnings for any that
@@ -849,7 +884,7 @@ static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const c
  *
  * Skips checks during shutdown to avoid accessing freed memory.
  *
- * @ingroup debug_sync
+ * @ingroup debug_util
  */
 void debug_sync_check_cond_deadlocks(void) {
   if (debug_sync_is_cleanup_in_progress()) {
@@ -877,7 +912,7 @@ void debug_sync_check_cond_deadlocks(void) {
       const cond_deadlock_snapshot_t *state = &batch.entries[i].state;
       const char *name = batch.entries[i].name;
       cond_deadlock_check_snapshot(state, name);
-      if (state->waiting_count && !strstr(name, "task_available")) {
+      if (state->waiting_count && !strstr(name, "task_available") && !strstr(name, "work_available")) {
         uint64_t due = state->last_wait_time_ns + COND_DEADLOCK_THRESHOLD_NS;
         // A recent signal already rules out this wait. Repeated warnings for
         // an actually stuck condition retain their existing 500 ms cadence.
@@ -917,13 +952,13 @@ void mutex_stack_cleanup_current_thread(void) {
     return; // TLS not initialized, nothing to clean up
   }
 
-  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)platform_tls_get(g_tls_mutex_stack);
   if (!stack) {
     return; // No stack allocated for this thread
   }
 
   // Clear from TLS
-  ascii_tls_set(g_tls_mutex_stack, NULL);
+  platform_tls_set(g_tls_mutex_stack, NULL);
 
   // Update registry if this thread is registered
   thread_id_t current_thread = thread_self();
@@ -949,7 +984,7 @@ void mutex_stack_cleanup(void) {
   // destructors; POSIX key deletion does not. Delete first so those callbacks
   // retire their entries before we free any remaining allocations.
   if (atomic_load_bool(&g_tls_initialized)) {
-    ascii_tls_key_delete(g_tls_mutex_stack);
+    platform_tls_key_delete(g_tls_mutex_stack);
     atomic_store_bool(&g_tls_initialized, false);
   }
   registry_lock();

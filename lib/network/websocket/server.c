@@ -25,11 +25,13 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/websocket.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/debug/named.h>
@@ -53,29 +55,33 @@
 #include <ascii-chat/network/websocket/callback_timing.h>
 
 /**
- * @brief Per-connection user data
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  *
- * Stored in libwebsockets per-session user data (wsi user pointer).
+ * Libwebsockets allocates one instance as the protocol's per-session user
+ * data and passes it back to every callback for that socket.  It ties the
+ * socket to the server and ACIP transport, records the handler thread and
+ * cleanup state, and keeps the partially-written outbound message until the
+ * next writable callback.  The callback counters are used to observe races
+ * during connection teardown; the transport and pending-send buffer are
+ * released by the WebSocket close path.
  */
 typedef struct {
-  websocket_server_t *server;        ///< Back-reference to server
-  acip_transport_t *transport;       ///< ACIP transport for this connection
-  asciichat_thread_t handler_thread; ///< Client handler thread
-  bool handler_started;              ///< True if handler thread was started
-  bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
+  websocket_server_t *server;       ///< Back-reference to server
+  acip_transport_t *transport;      ///< ACIP transport for this connection
+  platform_thread_t handler_thread; ///< Client handler thread
+  bool handler_started;             ///< True if handler thread was started
+  bool cleaning_up;                 ///< True if cleanup is in progress (prevents race with remove_client)
 
   // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
-  uint8_t *pending_send_data; ///< Current message being sent
-  size_t pending_send_len;    ///< Total length of message being sent
-  size_t pending_send_offset; ///< Current offset in message (bytes already sent)
-  bool has_pending_send;      ///< True if there's an in-progress message
+  uint8_t *pending_send_data;        ///< Current message being sent
+  size_t pending_send_len;           ///< Total length of message being sent
+  size_t pending_send_offset;        ///< Current offset in message (bytes already sent)
+  bool has_pending_send;             ///< True if there's an in-progress message
+  atomic_t receive_callback_count;   ///< RECEIVE callbacks for this connection
+  atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
+  /**
+   */
 } websocket_connection_data_t;
-
-// Per-connection callback counters for diagnosing event loop interleaving.
-// These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
-// TODO: Make these per-connection instead of global for proper multi-client support
-static atomic_t g_receive_callback_count = {0};
-static atomic_t g_writeable_callback_count = {0};
 
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
@@ -142,6 +148,8 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->pending_send_len = 0;
   conn_data->pending_send_offset = 0;
   conn_data->has_pending_send = false;
+  atomic_store_u64(&conn_data->receive_callback_count, 0);
+  atomic_store_u64(&conn_data->writeable_callback_count, 0);
 
   // Get client address
   char client_ip[IP_ADDRESS_BUFFER_SIZE] = {0};
@@ -313,7 +321,8 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
 }
 
 static void websocket_send_queued_messages(struct lws *wsi, websocket_connection_data_t *conn_data) {
-  atomic_fetch_add_u64(&g_writeable_callback_count, 1);
+  if (conn_data)
+    atomic_fetch_add_u64(&conn_data->writeable_callback_count, 1);
   if (!conn_data || conn_data->cleaning_up || !conn_data->transport)
     return;
   uint64_t started = time_get_ns();
@@ -376,7 +385,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
   log_dev("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
-  atomic_fetch_add_u64(&g_receive_callback_count, 1);
+  atomic_fetch_add_u64(&conn_data->receive_callback_count, 1);
   log_debug("[WS_TIMING] incremented callback count");
 
   // OPTIMIZATION: Only enable TCP_QUICKACK on first fragment of each message.
@@ -394,15 +403,15 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
 
   if (is_first) {
     // Reset fragment counters at start of new message
-    atomic_store_u64(&g_writeable_callback_count, 0);
-    atomic_store_u64(&g_receive_callback_count, 1);
+    atomic_store_u64(&conn_data->writeable_callback_count, 0);
+    atomic_store_u64(&conn_data->receive_callback_count, 1);
   }
 
   // Log fragment arrival
   // Note: Timing calculation with global g_receive_first_fragment_ns is broken for multi-fragment
   // messages and will be fixed with per-connection tracking
   {
-    uint64_t frag_num = atomic_load_u64(&g_receive_callback_count);
+    uint64_t frag_num = atomic_load_u64(&conn_data->receive_callback_count);
     log_dev("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
             is_final);
   }
@@ -457,7 +466,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   // interferes with fragmented frame processing in libwebsockets)
 
   log_dev("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-          (unsigned long long)atomic_load_u64(&g_receive_callback_count));
+          (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
 
   // Record timing for this callback
   websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
@@ -511,60 +520,10 @@ static bool websocket_serve_health(struct lws *wsi) {
   return websocket_write_json(wsi, doc, buf, sizeof(buf));
 }
 
-static bool websocket_serve_stats(struct lws *wsi) {
-  const struct lws_protocols *protocol = lws_get_protocol(wsi);
-  websocket_server_t *ws_server = protocol ? (websocket_server_t *)protocol->user : NULL;
-
-  yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-  yyjson_mut_val *root = yyjson_mut_obj(doc);
-  yyjson_mut_doc_set_root(doc, root);
-
-  if (ws_server && ws_server->user_data) {
-    acds_server_t *acds = (acds_server_t *)ws_server->user_data;
-    yyjson_mut_val *network_obj = yyjson_mut_obj(doc);
-
-    uint64_t bytes_sent = atomic_load_u64(&acds->stats.bytes_sent);
-    uint64_t bytes_received = atomic_load_u64(&acds->stats.bytes_received);
-    uint64_t packets_sent = atomic_load_u64(&acds->stats.packets_sent);
-    uint64_t packets_received = atomic_load_u64(&acds->stats.packets_received);
-    time_t start_time = acds->stats.start_time;
-
-    yyjson_mut_obj_add_uint(doc, network_obj, "bytes_sent", bytes_sent);
-    yyjson_mut_obj_add_uint(doc, network_obj, "bytes_received", bytes_received);
-    yyjson_mut_obj_add_uint(doc, network_obj, "packets_sent", packets_sent);
-    yyjson_mut_obj_add_uint(doc, network_obj, "packets_received", packets_received);
-
-    time_t now = time(NULL);
-    long uptime_seconds = now - start_time;
-    yyjson_mut_obj_add_int(doc, network_obj, "uptime_seconds", uptime_seconds);
-
-    yyjson_mut_obj_add_val(doc, root, "network", network_obj);
-
-    if (acds->db) {
-      int64_t session_count = 0;
-      int64_t unique_clients = 0;
-
-      if (database_stats_session_count(acds->db, &session_count) == ASCIICHAT_OK) {
-        yyjson_mut_obj_add_int(doc, root, "active_sessions", session_count);
-      }
-
-      if (database_stats_unique_clients(acds->db, &unique_clients) == ASCIICHAT_OK) {
-        yyjson_mut_obj_add_int(doc, root, "unique_clients", unique_clients);
-      }
-    }
-  }
-
-  unsigned char buf[LWS_PRE + 4096];
-  return websocket_write_json(wsi, doc, buf, sizeof(buf));
-}
-
 // HTTP helpers return whether libwebsockets should keep the connection open.
 static bool websocket_handle_http(struct lws *wsi, const char *path) {
   if (path && (strcmp(path, "/health") == 0 || strcmp(path, "health") == 0)) {
     return websocket_serve_health(wsi);
-  }
-  if (path && (strcmp(path, "/stats") == 0 || strcmp(path, "stats") == 0)) {
-    return websocket_serve_stats(wsi);
   }
   lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Not Found");
   return !lws_http_transaction_completed(wsi);
@@ -608,6 +567,7 @@ static asciichat_error_t websocket_request_writable_callbacks(struct lws *wsi) {
 }
 
 /**
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  * @brief libwebsockets callback for ACIP protocol
  *
  * Handles connection lifecycle events for WebSocket clients.
@@ -772,6 +732,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
   info.port = config->port;
+  info.iface = config->bind_address;
   info.protocols = websocket_protocols;
   info.mounts = &health_mount;
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type

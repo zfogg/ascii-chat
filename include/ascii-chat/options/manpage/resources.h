@@ -15,6 +15,7 @@
 
 /**
  * @brief Man page resource container
+ * @brief Man page resource container
  *
  * Holds loaded man page resources with metadata about their origin
  * and lifecycle management.

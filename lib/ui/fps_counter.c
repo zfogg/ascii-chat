@@ -6,6 +6,7 @@
 
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/output.h>
 #include <string.h>
 
@@ -16,13 +17,17 @@
 #define FPS_WINDOW_SIZE 30 ///< Number of frames to average over
 
 /**
- * @brief FPS counter state
+ * @brief Per-renderer timing state for the on-screen FPS overlay
+ * @brief Per-renderer timing state for the on-screen FPS overlay
  *
- * Maintains a circular buffer of frame timestamps for rolling-window
- * FPS calculation.
+ * Tracks visibility, the frame currently being measured, write completion and
+ * failure state, plus monotonic timestamps used to calculate the rolling FPS
+ * value and periodically report render timing. The timestamp ring and this
+ * state belong to one renderer thread and are hidden behind fps_counter_t.
  */
 struct fps_counter_s {
   bool visible;
+  unsigned int effective_fps;
   int last_fps;
   bool measuring;
   bool written;
@@ -49,6 +54,7 @@ fps_counter_t *fps_counter_create(void) {
   }
 
   counter->last_fps = -1;
+  counter->effective_fps = 60;
   counter->report_start = time_get_ns();
 
   // Initialize circular buffer pointers
@@ -145,6 +151,13 @@ bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
   return changed;
 }
 
+void fps_counter_set_effective_fps(fps_counter_t *counter, unsigned int fps) {
+  if (counter) {
+    counter->effective_fps = fps > 0 ? fps : 60;
+    counter->last_fps = -1;
+  }
+}
+
 void fps_counter_frame_begin(fps_counter_t *counter, bool measure) {
   if (!counter)
     return;
@@ -193,10 +206,19 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
     return;
   uint64_t now = time_get_ns();
   float measured = fps_counter_get_at(counter, now);
+  // A UI overlay can repaint for longer than the media counter's inactivity
+  // window. Keep the last visible value during a forced overlay redraw so
+  // opening keyboard help does not make an otherwise-live stream display 0.
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
-  if (counter->visible && columns >= 7 && (redrawn || value != counter->last_fps)) {
+  if (redrawn && value == 0 && counter->last_fps > 0)
+    value = counter->last_fps;
+  // `FPS:ddd/ddd` is ten columns wide. Start nine columns before the
+  // terminal's rightmost column so the complete overlay stays on one line.
+  if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
-    if (ui_output_printf(fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", columns - 6, value) == ASCIICHAT_OK)
+    const char *style = terminal_has_dark_background() ? "\033[97;40m" : "\033[30;47m";
+    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 9, style, value,
+                         counter->effective_fps) == ASCIICHAT_OK)
       counter->last_fps = value;
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {

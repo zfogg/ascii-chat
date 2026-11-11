@@ -17,7 +17,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/debug/named.h>
 #include <mfapi.h>
 #include <mfidl.h>
@@ -325,7 +325,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_warn("Could not select fastest webcam mode: 0x%08x", hr);
       bestNumerator = 0;
     } else {
-      log_info("Selected webcam capture rate: %.3f FPS", (double)bestNumerator / bestDenominator);
+      log_info("Requested webcam media mode: %.3f advertised FPS", (double)bestNumerator / bestDenominator);
     }
   }
 
@@ -376,7 +376,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       UINT64 actualRate = 0;
       if (SUCCEEDED(IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_RATE, &actualRate)) && (UINT32)actualRate) {
         cam->fps = (double)(actualRate >> 32) / (UINT32)actualRate;
-        log_info("Negotiated webcam capture rate: %.3f FPS", cam->fps);
+        log_info("Webcam OS media type accepted: %.3f advertised FPS (delivery measured during capture)", cam->fps);
       }
     } else {
       // Default resolution if we can't get the actual size
@@ -745,7 +745,9 @@ read_latest:
   return img;
 }
 
-double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
+double webcam_get_fps(webcam_context_t *ctx) {
+  return ctx ? ctx->fps : 0.0;
+}
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height) {

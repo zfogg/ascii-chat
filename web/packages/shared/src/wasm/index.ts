@@ -5,11 +5,13 @@ export {
   adoptMirrorWasmModule,
   resetAdoptedMirrorWasmModule,
   cleanupMirrorWasm,
+  cleanupRenderSession,
+  resetRenderStabilizer,
   convertFrameToAscii,
+  transformCaptureRgba,
   submitAudioVisualizationSamples,
   submitAudioSamples,
   renderAudioVisualization,
-  formatAudioVisualizationFrame,
   renderAudioVisualizationFrame,
   isWasmReady,
   getMirrorModule,
@@ -25,43 +27,25 @@ export type {
   EmscriptenModuleFactory,
   MirrorModule,
 } from "./mirror";
-export { createOptionAccessor } from "./common/optionsWrapper";
-export type { WasmModule, OptionAccessor } from "./common/optionsWrapper";
 export {
-  initializeOptions,
-  cleanupOptions,
-  isOptionsInitialized,
-  setWidth,
-  getWidth,
-  setHeight,
-  getHeight,
-  setDimensions,
-  getDimensions,
-  setColorMode,
-  getColorMode,
-  setColorFilter,
-  getColorFilter,
-  setRenderMode,
-  getRenderMode,
-  setPalette,
-  getPalette,
-  setPaletteChars,
-  getPaletteChars,
-  setMatrixRain,
-  setWaveform,
-  getWaveform,
-  setFft,
-  getFft,
-  getMatrixRain,
-  setFlipX,
-  getFlipX,
-  setFlipY,
-  getFlipY,
-  setTargetFps,
-  getTargetFps,
-} from "./common/options";
-
-export type { SessionUiEvent } from "./sessionUi";
+  colorModeValues,
+  colorFilterValues,
+  defaultBrowserSettings,
+  paletteTypes,
+  paletteName,
+  defaultPalettes,
+  TextRenderer,
+} from "@ascii-chat/shared/wasm/options";
+export type { SessionUiEvent } from "../components/AsciiRenderer/types";
+export type {
+  AudioProcessorBinding,
+  OpusCodecBinding,
+  PeerCryptoBinding,
+  DiscoveryBinding,
+  HostPacketBinding,
+  AVStateBinding,
+} from "./generated/client-bindings";
+export type { MainModule as ClientWasmBindings } from "./generated/client-bindings";
 
 export { runtimeOptions, RuntimeOptionsStore } from "./common/runtimeOptions";
 export type {

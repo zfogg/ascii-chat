@@ -264,6 +264,10 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
  */
 asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size);
 
+/** Convert an unbracketed numeric IPv4 or IPv6 address and port to a socket address. */
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
+                                               socklen_t *length);
+
 /**
  * @brief Format IP address with port number
  * @param ip IP address (without brackets, must not be NULL)

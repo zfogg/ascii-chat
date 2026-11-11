@@ -20,6 +20,11 @@
 #include <string.h>
 #include <stdio.h>
 
+/**
+ * @brief This is the handoff point for ui session. Callers fill `size`, `frame`, `media`, `logs` before passing it on;
+ * consumers read the values during the operation and return ownership only where the member contract explicitly says
+ * they do.
+ */
 struct ui_session {
   terminal_size_t size;
   frame_buffer_t *frame;
@@ -119,10 +124,12 @@ asciichat_error_t ui_session_media(ui_session_t *s, const char *data, size_t len
   return ASCIICHAT_OK;
 }
 
+static bool ui_session_logs_key_sized(keyboard_key_t key, terminal_size_t size);
+
 ui_session_action_t ui_session_input(ui_session_t *s, keyboard_key_t key) {
   if (!s)
     return UI_ACTION_NONE;
-  if (s->show_logs && ui_session_logs_key(key)) {
+  if (s->show_logs && ui_session_logs_key_sized(key, s->size)) {
     s->dirty = true;
     return UI_ACTION_LOGS;
   }
@@ -208,7 +215,8 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       bool colors = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-                    (mode != TERM_COLOR_AUTO || detect_terminal_capabilities().color_level != TERM_COLOR_NONE);
+                    (mode != TERM_COLOR_AUTO ||
+                     detect_terminal_capabilities(options_terminal_settings()).color_level != TERM_COLOR_NONE);
       frame_buffer_printf(s->frame, "\033[%d;1H", top + 2);
       invitation_render_logo(s->frame, s->size.cols, (int)(s->splash.animation.seconds * 60), colors, false);
     }
@@ -234,26 +242,19 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
 }
 
 void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
-  const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? "MCP Server"
-                     : GET_OPTION(detected_mode) == MODE_MIRROR   ? "Mirror"
-                                                                  : "Client";
   char detail[TUI_SESSION_DETAIL_BUFFER_SIZE];
   size_t offset = terminal_screen_logs_offset();
   char offset_text[TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE];
   snprintf(offset_text, sizeof(offset_text), "%zu", offset);
-  const char *escape_key = colored_string(LOG_COLOR_WARN, "Esc");
-  const char *search_key = colored_string(LOG_COLOR_WARN, "/");
-  const char *help_key = colored_string(LOG_COLOR_WARN, "?");
   const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
-  snprintf(detail, sizeof(detail), "%s: close | %s: search logs | %s: keyboard controls | %s rows from tail",
-           escape_key, search_key, help_key, colored_offset);
-  ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
+  snprintf(detail, sizeof(detail), "%s | %s rows from tail", ui_status_log_controls(), colored_offset);
+  ui_status_t status = {.mode_name = "", .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
   terminal_screen_compose(output, size, &config, s->logs);
 }
 
-bool ui_session_logs_key(keyboard_key_t key) {
+static bool ui_session_logs_key_sized(keyboard_key_t key, terminal_size_t size) {
   if (key == KEY_ESCAPE && log_search_is_active()) {
     log_search_exit_mode(false);
     return true;
@@ -262,7 +263,7 @@ bool ui_session_logs_key(keyboard_key_t key) {
     log_search_handle_key(key);
     return true;
   }
-  if (terminal_screen_logs_handle_key(key))
+  if (terminal_screen_logs_handle_key_sized(key, size))
     return true;
   // Client-like log screens own these keys while the renderer is hidden.
   // Search and log navigation take precedence over rendering shortcuts.
@@ -290,6 +291,10 @@ bool ui_session_logs_key(keyboard_key_t key) {
     break;
   }
   return false;
+}
+
+bool ui_session_logs_key(keyboard_key_t key) {
+  return ui_session_logs_key_sized(key, ui_controller_size());
 }
 
 static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,

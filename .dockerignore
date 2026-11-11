@@ -52,6 +52,11 @@ test_*.sh
 *.tar.gz
 *.zip
 
+# Deployment configuration and local secrets
+deploy/
+.env
+**/.env
+
 # Temporary files
 *.log
 *.tmp

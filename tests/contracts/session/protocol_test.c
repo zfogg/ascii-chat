@@ -129,6 +129,7 @@ typedef struct {
   uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
   size_t reply_length;
   unsigned callbacks;
+  bool fail_send;
 } settings_roundtrip_t;
 
 static bool mock_transport_is_connected(acip_transport_t *transport) {
@@ -137,11 +138,13 @@ static bool mock_transport_is_connected(acip_transport_t *transport) {
 }
 
 static asciichat_error_t settings_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  settings_roundtrip_t *test = transport->impl_data;
+  if (test->fail_send)
+    return ERROR_NETWORK;
   cr_assert_eq(count, 2);
   packet_header_t packet;
   memcpy(&packet, buffers[0].data, sizeof(packet));
   cr_assert_eq(NET_TO_HOST_U16(packet.type), PACKET_TYPE_ACIP_SETTINGS_SYNC);
-  settings_roundtrip_t *test = transport->impl_data;
   return acip_settings_request(&test->host, buffers[1].data, buffers[1].len, test->reply, sizeof(test->reply),
                                &test->reply_length);
 }
@@ -170,6 +173,9 @@ static void test_participant_settings(void) {
   cr_assert_eq(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   cr_assert_eq(session_participant_request_settings(participant, &requested), ASCIICHAT_OK);
   cr_assert(test.host.width == 80 && test.callbacks == 0);
+  test.fail_send = true;
+  cr_assert_eq(session_participant_request_settings(participant, &requested), ERROR_NETWORK);
+  test.fail_send = false;
   cr_assert_eq(session_participant_receive_settings(participant, test.reply, test.reply_length), ASCIICHAT_OK);
   cr_assert_eq(test.callbacks, 1);
   requested.width = 55;
@@ -194,17 +200,23 @@ static void test_participant_settings(void) {
   cr_assert(participant);
   session_settings_init(&requested);
   cr_assert_eq(requested.color_mode, TERM_COLOR_AUTO);
+  cr_assert_eq(requested.fps, 0);
   terminal_capabilities_t caps = detect_terminal_capabilities();
   int expected_color = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   memset(&test.host, 0, sizeof(test.host));
   cr_assert_eq(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
-  cr_assert_eq(session_participant_request_settings(participant, &requested), ASCIICHAT_OK);
+  asciichat_error_t request_result = session_participant_request_settings(participant, &requested);
+  cr_assert_eq(request_result, ASCIICHAT_OK, "request result %d width %d height %d fps %u palette %u color %d",
+               request_result, requested.width, requested.height, requested.fps, requested.palette_type,
+               requested.color_mode);
   cr_assert_eq(requested.color_mode, TERM_COLOR_AUTO);
+  cr_assert_eq(requested.fps, 0);
+  cr_assert_eq(test.host.caps.desired_fps, DEFAULT_MAX_FPS);
   cr_assert_eq(test.host.caps.color_level, expected_color);
   cr_assert_eq(session_participant_receive_settings(participant, test.reply, test.reply_length), ASCIICHAT_OK);
   session_settings_t effective;
   cr_assert_eq(session_participant_get_settings(participant, &effective), ASCIICHAT_OK);
-  cr_assert(effective.color_mode == expected_color && test.callbacks == 4);
+  cr_assert(effective.color_mode == expected_color && effective.fps == 60 && test.callbacks == 4);
   cr_assert_eq(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   session_participant_destroy(participant);
   options_state_destroy();
@@ -395,6 +407,7 @@ void test_session_protocol(void) {
   test_initial_renderer_capabilities();
   test_participant_settings();
   sink_t sinks[2] = {0};
+  sinks[0].expect_mono_expansion = true;
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
                                     {.methods = &methods, .impl_data = &sinks[1]}};

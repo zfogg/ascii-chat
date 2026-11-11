@@ -16,7 +16,7 @@
 #pragma once
 
 #include <stddef.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 
 #ifdef __cplusplus
 extern "C" {

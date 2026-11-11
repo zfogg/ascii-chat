@@ -34,7 +34,7 @@ static void render_wait(unsigned ms) {
   else if (waits >= capability_wait)
     client.has_terminal_caps = true;
 }
-static int render_create(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *context) {
+static int render_create(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *context) {
   ++starts;
   cr_assert_eq(context, &client);
   cr_assert_not_null(fn);
@@ -44,13 +44,13 @@ static int render_create(asciichat_thread_t *thread, const char *name, void *(*f
   handles[thread == &client.audio_render_thread] = true;
   return 0;
 }
-static bool render_initialized(const asciichat_thread_t *thread) {
+static bool render_initialized(const platform_thread_t *thread) {
   return handles[thread == &client.audio_render_thread];
 }
-static void render_init(asciichat_thread_t *thread) {
+static void render_init(platform_thread_t *thread) {
   handles[thread == &client.audio_render_thread] = false;
 }
-static int render_join(asciichat_thread_t *thread, void **result) {
+static int render_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   ++joins;
@@ -129,7 +129,7 @@ static void render_video(client_info_t *recipient, acip_frame_workspace_t *works
 #define time_get_ns render_clock
 #define platform_sleep_ns render_sleep
 #define platform_sleep_ms render_wait
-#define acthread_create render_create
+#define platform_thread_create render_create
 #define thread_join render_join
 #define thread_init render_init
 #define thread_is_initialized render_initialized
@@ -143,7 +143,7 @@ static void render_video(client_info_t *recipient, acip_frame_workspace_t *works
 #undef time_get_ns
 #undef platform_sleep_ns
 #undef platform_sleep_ms
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 #undef thread_init
 #undef thread_is_initialized

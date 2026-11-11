@@ -16,13 +16,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
 /* Forward declaration of session_log_buffer_t */
 typedef struct session_log_buffer session_log_buffer_t;
 
 /**
+ * @brief Configuration for terminal screen rendering
  * @brief Callback to render the fixed header portion of the screen
  *
  * @param buf Frame buffer to write header content into (via frame_buffer_printf, etc.)
@@ -133,6 +134,8 @@ void terminal_screen_set_output_fd(int fd);
 
 /** Handle a key while the live log viewer owns the terminal. */
 bool terminal_screen_logs_handle_key(int key);
+/** Browser/embedded sessions supply their own viewport instead of a native controller. */
+bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size);
 /** Reset the retained log-viewer position when the viewer is closed. */
 void terminal_screen_logs_reset(void);
 /** Number of rendered rows currently held above the live tail. */

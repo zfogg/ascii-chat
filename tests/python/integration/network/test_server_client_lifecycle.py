@@ -1,10 +1,11 @@
 """Client admission, failed handshakes, and slot reuse."""
 import socket
 import time
+import re
 
 import pytest
 from ascii_chat_tests.cli import clean_environment, run_cli
-from ascii_chat_tests.process import check_client, free_port, running, server_options
+from ascii_chat_tests.process import Service, check_client, free_port, running, server_options
 
 pytestmark = [pytest.mark.integration, pytest.mark.network]
 
@@ -72,3 +73,70 @@ def test_server_client_lifecycle(binary, tmp_path):
         print("PASS: three WebSocket reconnects", flush=True)
     if "Server shutdown complete" not in server.text():
         raise AssertionError("Server cleanup did not finish")
+
+
+def test_default_client_server_authentication(binary, tmp_path):
+    """Default peers must complete the shared, unauthenticated ACIP handshake."""
+    tcp_port, ws_port = free_port(), free_port()
+    log = tmp_path / "default-auth-client.log"
+    with running(binary, tmp_path, "default-auth-server", "server",
+                 server_options(tcp_port, ws_port)) as server:
+        server.wait_for("Server accepting connections")
+        env = clean_environment()
+        env.update(CLAUDECODE="1", HOME=str(tmp_path), USERPROFILE=str(tmp_path),
+                   APPDATA=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path))
+        result = run_cli(
+            str(binary), "--log-file", str(log), "client", f"127.0.0.1:{tcp_port}",
+            "--test-pattern", "--video-codec", "raw", "--audio=false", "--snapshot",
+            "--snapshot-delay", "0", "--width", "40", "--height", "12",
+            "--color-mode", "none", "--splash-screen=false", env=env, cwd=tmp_path,
+            capture_output=True, timeout=30,
+        )
+        text = log.read_text(encoding="utf-8", errors="replace")
+        assert result.returncode == 0, text[-8000:]
+        assert len(result.stdout.strip()) >= 100, text[-8000:]
+        assert "Authentication failed" not in text
+        assert server.process.poll() is None, server.text()[-8000:]
+
+
+def test_client_uses_glyph_renderer_for_first_server_frame(binary, tmp_path):
+    """Initial settings must arrive before STREAM_START renders a frame."""
+    tcp_port, ws_port = free_port(), free_port()
+    with running(binary, tmp_path, "glyph-server", "server",
+                 server_options(tcp_port, ws_port)) as server:
+        server.wait_for("Server accepting connections")
+        env = clean_environment()
+        env.update(CLAUDECODE="1", HOME=str(tmp_path), USERPROFILE=str(tmp_path),
+                   APPDATA=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path))
+        result = run_cli(
+            str(binary), "client", f"127.0.0.1:{tcp_port}", "--test-pattern",
+            "--audio=false", "--snapshot", "--snapshot-delay", "0",
+            "--renderer=glyph", "--width", "40", "--height", "12",
+            "--color-mode", "none", "--splash-screen=false", "--reconnect-attempts", "0",
+            env=env, cwd=tmp_path, capture_output=True, timeout=30,
+        )
+        assert result.returncode == 0, server.text()[-8000:]
+        # The glyph atlas contains printable characters outside the standard
+        # luminance palette. This observes the first frame returned by the
+        # server, not a later runtime settings update.
+        output = re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", result.stdout)
+        standard = set(b"   ...',;:clodxkO0KXNWM")
+        assert set(output) - standard, output[-4000:]
+
+
+def test_client_started_before_server_recovers_without_auth_error(binary, tmp_path):
+    """A default client must survive the first transient startup rejection."""
+    tcp_port, ws_port = free_port(), free_port()
+    client = Service(
+        binary, tmp_path, "client-first", "client",
+        [f"127.0.0.1:{tcp_port}", "--test-pattern", "--audio=false",
+         "--reconnect-attempts", "5", "--splash-screen=false"],
+    )
+    try:
+        time.sleep(0.25)
+        with running(binary, tmp_path, "late-server", "server", server_options(tcp_port, ws_port)) as server:
+            server.wait_for("Server accepting connections")
+            client.wait_for("CLIENT_CONNECTION_RUNNING", timeout=20)
+            assert "Remote request rejected: Authentication failed" not in client.text()
+    finally:
+        client.stop()

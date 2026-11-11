@@ -18,9 +18,9 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/thread.h>
+#include <libplatform/process.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/log/log.h>
@@ -112,11 +112,11 @@ static const gotel_metric_t metrics[] = {
 #include <ascii-chat/otel_metrics.def>
 #undef ASCII_OTEL_METRIC
 };
-static _Atomic(gotel_host_t *) host;
+static atomic_ptr_t host;
 static atomic_uint readers;
 static atomic_bool stopping;
 static atomic_bool worker_done;
-static asciichat_thread_t worker;
+static platform_thread_t worker;
 static bool worker_started;
 static asciichat_error_t drain_result;
 static int minimum_log_level;
@@ -143,10 +143,10 @@ static uint64_t telemetry_realtime_ns(void) {
 #endif
 }
 static gotel_host_t *retain(void) {
-  if (!atomic_load_explicit(&host, memory_order_acquire))
+  if (!atomic_ptr_load(&host))
     return NULL;
   atomic_fetch_add_explicit(&readers, 1, memory_order_seq_cst);
-  gotel_host_t *h = atomic_load_explicit(&host, memory_order_seq_cst);
+  gotel_host_t *h = atomic_ptr_load(&host);
   if (!h)
     atomic_fetch_sub_explicit(&readers, 1, memory_order_seq_cst);
   return h;
@@ -160,7 +160,7 @@ const char *ascii_otel_current_operation(void) {
              : "";
 }
 bool ascii_otel_enabled(void) {
-  return atomic_load_explicit(&host, memory_order_acquire) != NULL;
+  return atomic_ptr_load(&host) != NULL;
 }
 void ascii_otel_metric(ascii_otel_metric_t metric, double value) {
   gotel_host_t *h = retain();
@@ -470,7 +470,7 @@ void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_
   gotel_attr_string(&scope->scope, "acip.transport", carrier);
 }
 void ascii_otel_shutdown(void) {
-  gotel_host_t *h = atomic_exchange_explicit(&host, NULL, memory_order_seq_cst);
+  gotel_host_t *h = atomic_ptr_exchange(&host, NULL);
   if (!h)
     return;
   gotel_end(&command_scope);
@@ -533,9 +533,9 @@ static const gotel_command_rule_t command_argument_rules[] = {
     {"--port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"-p", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--websocket-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-cert", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-cert", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service-url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
@@ -557,6 +557,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     return ASCIICHAT_OK;
   const options_t *o = options_get();
   const char *endpoint = o->otel_endpoint;
+  if (!endpoint || endpoint[0] == '\0')
+    return ASCIICHAT_OK;
   bool endpoint_cli = false, timeout_cli = false;
   for (int i = 1; i < argc; ++i) {
     endpoint_cli |= !strcmp(argv[i], "--otel-endpoint") || !strncmp(argv[i], "--otel-endpoint=", 16);
@@ -679,14 +681,14 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   atomic_store(&stopping, false);
   atomic_store(&exporter_queue_capacity, config.exporter.queue_capacity);
   atomic_store(&worker_done, false);
-  if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
+  if (platform_thread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
     gotel_command_args_destroy(&command_args);
     return SET_ERRNO(ERROR_THREAD, "Cannot start telemetry exporter");
   }
   worker_started = true;
   (void)atexit(ascii_otel_shutdown);
-  atomic_store_explicit(&host, h, memory_order_release);
+  atomic_ptr_store(&host, h);
   gotel_begin(h, &command_scope, ASCII_OTEL_CLI, NULL);
   (void)otel_status(gotel_command_args_set_span(&command_scope, &command_args), "Attach telemetry command arguments");
   gotel_command_args_destroy(&command_args);
@@ -698,7 +700,7 @@ void ascii_otel_log(int level, const char *file, int line, const char *function,
   (void)file;
   (void)line;
   (void)function;
-  if (in_log || level < minimum_log_level || !atomic_load_explicit(&host, memory_order_acquire))
+  if (in_log || level < minimum_log_level || !atomic_ptr_load(&host))
     return;
   in_log = true;
   gotel_host_t *h = retain();
@@ -846,6 +848,19 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
   sequel_analysis_options_t analysis = {.format = true};
   gotel_sqlite_options_t options = {.analysis = &analysis};
   if (otel_status(gotel_sqlite_attach_with_options(h, db, "ascii-chat.storage", queries, count, &options, &a),
+                  "Attach SQLite telemetry") != ASCIICHAT_OK)
+    log_warn("Could not attach SQLite telemetry");
+  release();
+}
+
+void ascii_otel_sqlite_catalog(sqlite3 *db, const gotel_query_catalog_t *catalog) {
+  gotel_host_t *h = retain();
+  if (!h)
+    return;
+  gotel_sqlite_t *a = NULL;
+  sequel_analysis_options_t analysis = {.format = true};
+  gotel_sqlite_options_t options = {.analysis = &analysis};
+  if (otel_status(gotel_sqlite_attach_catalog_with_options(h, db, "ascii-chat.storage", catalog, &options, &a),
                   "Attach SQLite telemetry") != ASCIICHAT_OK)
     log_warn("Could not attach SQLite telemetry");
   release();

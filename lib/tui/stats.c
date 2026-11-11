@@ -10,11 +10,13 @@
 #include <ascii-chat/ui/table.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/ui/frame_buffer.h>
@@ -62,6 +64,11 @@ terminal_size_t tui_stats_minimum(const stats_view_t *view) {
 typedef struct {
   const stats_view_t *view;
   char text[TUI_STATS_TEXT_BUFFER_SIZE];
+  /**
+   * @brief When code needs to work with stats table context, it keeps `view` here instead of scattering it across
+   * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+   * callback context recorded in those fields.
+   */
 } stats_table_context_t;
 static void stats_cells(size_t row, const char **cells, size_t count, void *data) {
   (void)count;
@@ -78,7 +85,7 @@ void tui_stats_render(terminal_size_t size, const void *data) {
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols + 64);
   if (!buffer)
     return;
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   bool color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
                (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);

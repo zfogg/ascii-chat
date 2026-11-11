@@ -30,7 +30,7 @@
 
 // Preserve Windows error values and remove conflicting macros before the enum.
 #ifdef _WIN32
-#include <ascii-chat/platform/windows_compat.h>
+#include <libplatform/windows_compat.h>
 #endif
 
 /**

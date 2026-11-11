@@ -15,7 +15,8 @@
     "./components/*": "./src/components/*",
     "./devices/*": "./src/devices/*.ts",
     "./hooks/*": "./src/hooks/*.ts",
-    "./capture/*": "./src/capture/*.ts"
+    "./capture/*": "./src/capture/*.ts",
+    "./wasm/options": "./src/wasm/options.ts"
   },
   "scripts": {
     "build": "echo 'Shared package (no build needed)'"
@@ -26,7 +27,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
-    "react-syntax-highlighter": "^16.1.0"
+    "react-syntax-highlighter": "^16.1.0",
+    "ascii-chat": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

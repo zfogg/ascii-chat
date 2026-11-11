@@ -15,7 +15,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/platform/network.h>
+#include <ascii-chat/os/network.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <stdio.h>
@@ -48,7 +48,12 @@ int is_valid_ipv4(const char *ip) {
     return 0; // Invalid
   }
 
-  // inet_pton accepts only dotted-decimal IPv4 addresses and rejects leading zeros.
+  // Some platforms accept octets with leading zeros; reject ambiguous forms
+  // consistently before using the system parser for the remaining validation.
+  for (const char *p = ip; *p; ++p) {
+    if ((p == ip || p[-1] == '.') && p[0] == '0' && p[1] >= '0' && p[1] <= '9')
+      return 0;
+  }
   struct in_addr address;
   return inet_pton(AF_INET, ip, &address) == 1;
 }
@@ -146,28 +151,25 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 }
 
 // Format IP address from socket address structure
-asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
-  if (!addr || !output || output_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
+                                               socklen_t *length) {
+  if (!host || !*host || !address || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid numeric socket address");
+  struct sockaddr_in ipv4 = {.sin_family = AF_INET, .sin_port = htons(port)};
+  struct sockaddr_in6 ipv6 = {.sin6_family = AF_INET6, .sin6_port = htons(port)};
+  memset(address, 0, sizeof(*address));
+  if (inet_pton(AF_INET, host, &ipv4.sin_addr) == 1) {
+    memcpy(address, &ipv4, sizeof(ipv4));
+    *length = sizeof(ipv4);
+    return ASCIICHAT_OK;
   }
-
-  const void *ip_ptr = NULL;
-
-  if (family == AF_INET) {
-    const struct sockaddr_in *addr_in = (const struct sockaddr_in *)addr;
-    ip_ptr = &addr_in->sin_addr;
-  } else if (family == AF_INET6) {
-    const struct sockaddr_in6 *addr_in6 = (const struct sockaddr_in6 *)addr;
-    ip_ptr = &addr_in6->sin6_addr;
-  } else {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported address family: %d", family);
+  if (inet_pton(AF_INET6, host, &ipv6.sin6_addr) == 1) {
+    memcpy(address, &ipv6, sizeof(ipv6));
+    *length = sizeof(ipv6);
+    return ASCIICHAT_OK;
   }
-
-  if (inet_ntop(family, ip_ptr, output, (socklen_t)output_size) == NULL) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to format IP address");
-  }
-
-  return ASCIICHAT_OK;
+  *length = 0;
+  return SET_ERRNO(ERROR_INVALID_PARAM, "Expected a numeric IPv4 or IPv6 address");
 }
 
 // Format IP address with port number

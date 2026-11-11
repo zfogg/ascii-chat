@@ -1,8 +1,12 @@
 # Local telemetry
 
-Start the declared Spaniel deployment with `docker compose -f deploy/otel/docker-compose.yml up -d`.
+Start the declared Spaniel deployment with `docker compose -f spaniel/docker-compose.yml up -d`.
 The API is at http://127.0.0.1:28080 and OTLP/HTTP is at http://127.0.0.1:24318.
 Set `SPANIEL_IMAGE` to override the pinned image.
+
+The container uses Docker's `unless-stopped` restart policy, so it starts again
+when the Docker daemon or host reboots. If it was intentionally stopped with
+`docker compose stop`, start it again with the command above.
 The image is built from Spaniel commit `1325fa3391c0f693ea614eb13fc6ad6ccd2ff982`:
 
 ```sh

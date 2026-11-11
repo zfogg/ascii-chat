@@ -1,6 +1,6 @@
 """Real CLI security negotiation, authentication failures, and rendered frames.
 
-Run: python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
 Uses temporary identities and loopback TCP/WS/WSS listeners only.
 """
 
@@ -126,7 +126,7 @@ def main():
     ]
     for name, scheme, server_extra, client_extra, mode, success in cases:
         tcp, ws = free_port(), free_port()
-        tls = ["--websocket-tls-cert", str(certificate), "--websocket-tls-key", str(tls_key)] if scheme == "wss" else []
+        tls = ["--tls-cert", str(certificate), "--tls-key", str(tls_key)] if scheme == "wss" else []
         with running(binary, directory, name, "server", server_options(tcp, ws) + server_extra + tls) as service:
             service.wait_for("Server accepting connections", timeout=40)
             address = f"127.0.0.1:{tcp}" if scheme == "tcp" else f"{scheme}://127.0.0.1:{ws}"

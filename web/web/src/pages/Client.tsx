@@ -22,6 +22,7 @@ import { readUrlValue } from "../utils/urlState";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useId,
   useMemo,
   useRef,
@@ -62,13 +63,14 @@ import {
   adoptMirrorWasmModule,
   getMirrorModule,
   resetAdoptedMirrorWasmModule,
+  cleanupRenderSession,
   convertFrameToAscii,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
 import type { MirrorModule } from "@ascii-chat/shared/wasm";
 import {
-  AsciiRenderer,
+  AsciiCanvas,
   BinarySettings,
   AsciiChatWebHead,
   PageLayout,
@@ -379,7 +381,11 @@ export function ClientPage({
 
   const [serverUrl, setServerUrl] = useUrlState<string>(
     "serverUrl",
-    params.get("testServerUrl") || "ws://localhost:27226",
+    params.get("testServerUrl") || "https://localhost:27224/acip",
+  );
+  const [fallbackWebSocketUrl, setFallbackWebSocketUrl] = useUrlState<string>(
+    "fallbackWebSocketUrl",
+    "",
   );
   const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
     ? "discovery-service"
@@ -486,6 +492,7 @@ export function ClientPage({
     onAudioPacket,
     onConnectionStateChange,
     serverUrl,
+    ...(fallbackWebSocketUrl ? { fallbackWebSocketUrl } : {}),
     terminalDimensions,
     settings,
     rendererRef,
@@ -670,6 +677,15 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
+  useLayoutEffect(() => {
+    cleanupRenderSession();
+  }, [
+    rendererReady,
+    fileSelected,
+    fileMedia.fileName,
+    displayInput,
+    isWebcamRunning,
+  ]);
   const screenRestore = useRef<{ file: boolean; webcam: boolean } | null>(null);
   const screenCapture = useDisplayCapture({
     setError,
@@ -775,7 +791,7 @@ export function ClientPage({
   );
 
   useEffect(() => {
-    getMirrorModule()?._wasm_ui_audio(
+    getMirrorModule()?.browser_ui_audio(
       Number(audioEnabled || micEnabled || displayInput),
     );
   }, [audioEnabled, micEnabled, displayInput, connectionState, rendererReady]);
@@ -816,6 +832,7 @@ export function ClientPage({
     }
 
     if (connectionState === ConnectionState.DISCONNECTED) {
+      cleanupRenderSession();
       stopWebcam();
       closeAudio();
     } else if (connectionState === ConnectionState.ERROR) {
@@ -833,7 +850,7 @@ export function ClientPage({
     try {
       const pipeline = ensureAudio();
       const ui = getMirrorModule();
-      if (ui) pipeline.setVolume(ui._wasm_ui_volume());
+      if (ui) pipeline.setVolume(ui.browser_ui_volume());
       if (speakers) await pipeline.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
@@ -1281,7 +1298,7 @@ export function ClientPage({
                     <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
                       <HelpLabel
                         label="Session name"
-                        text="Join with the host's generated name: lowercase adjective-noun-noun from ascii-chat's word lists, e.g. swift-river-mountain. Create session generates a name to share."
+                        text="Join with the host's generated name, e.g. swift-river-mountain. Create session generates a name to share. Transport selection is Auto: prefer the advertised QUIC endpoint when supported, otherwise use WebRTC."
                       />
                       <Tooltip text={disabledSettingsHelp} className="block">
                         <input
@@ -1524,18 +1541,39 @@ export function ClientPage({
                     }}
                   >
                     <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
-                      Server WebSocket URL
+                      <HelpLabel
+                        label="Server URL"
+                        text="The URL chooses the transport: quic://chat.example:27224 uses QUIC (WebTransport); wss://chat.example:27226 uses secure WebSocket; ws://localhost:27226 uses WebSocket on an HTTP development page. quic:// defaults to port 27224 and /acip. HTTPS selects Auto: prefer QUIC, with the configured WSS endpoint as fallback when WebTransport is unavailable. Certificate and authentication failures stop the connection. Discovery uses advertised endpoints automatically."
+                      />
                       <Tooltip text={disabledSettingsHelp} className="block">
                         <input
-                          aria-label="Server WebSocket URL"
+                          aria-label="Server URL"
                           disabled={settingsDisabled}
                           value={serverUrl}
                           onChange={(event) => setServerUrl(event.target.value)}
-                          placeholder="ws://localhost:27226"
+                          placeholder="quic://chat.example:27224"
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
                         />
                       </Tooltip>
                     </label>
+                    {serverUrl.startsWith("https://") && (
+                      <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
+                        WSS fallback URL (optional; requires a pinned server
+                        key)
+                        <Tooltip text={disabledSettingsHelp} className="block">
+                          <input
+                            aria-label="WSS fallback URL"
+                            disabled={settingsDisabled}
+                            value={fallbackWebSocketUrl}
+                            onChange={(event) =>
+                              setFallbackWebSocketUrl(event.target.value)
+                            }
+                            placeholder="wss://example.com:27226"
+                            className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
+                          />
+                        </Tooltip>
+                      </label>
+                    )}
                     <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
                       <HelpLabel
                         label="Crypto password"
@@ -1661,7 +1699,7 @@ export function ClientPage({
         }
         renderer={
           rendererRequested ? (
-            <AsciiRenderer
+            <AsciiCanvas
               clientLikeKind="client"
               ref={rendererRef}
               workerRendering
@@ -1683,14 +1721,13 @@ export function ClientPage({
                   event,
                   fileSelected ? fileVideoRef.current : videoRef.current,
                 );
-                audioRef.current?.setVolume(event.module._wasm_ui_volume());
+                audioRef.current?.setVolume(event.module.browser_ui_volume());
                 if (event.action === 3) disconnectMedia();
               }}
               zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
-              initializeOptions={false}
               onFpsChange={setFps}
               error={discoveryMode ? rendererError : error || rendererError}
               showFps

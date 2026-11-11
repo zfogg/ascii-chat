@@ -1,0 +1,104 @@
+#include <emscripten/bind.h>
+extern "C" {
+#include "../common/font.h"
+#include <ascii-chat/media/render/renderer.h>
+}
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(RasterPixels);
+
+class TerminalRendererBinding {
+public:
+  TerminalRendererBinding(int cols, int rows, double font_size, bool matrix, int selection) {
+    term_renderer_config_t config{};
+    config.cols = cols;
+    config.rows = rows;
+    config.font_size_pt = font_size;
+    config.theme = static_cast<term_renderer_theme_t>(0);
+    config.font_data = get_font_default_ptr(selection);
+    config.font_data_size = get_font_default_size(selection);
+    if (matrix)
+      SAFE_STRNCPY(config.font_spec, "Matrix", sizeof(config.font_spec));
+    result_ = term_renderer_create(&config, &renderer_);
+  }
+  ~TerminalRendererBinding() {
+    if (renderer_)
+      term_renderer_destroy(renderer_);
+  }
+  TerminalRendererBinding(const TerminalRendererBinding &) = delete;
+  TerminalRendererBinding &operator=(const TerminalRendererBinding &) = delete;
+
+  bool valid() const {
+    return renderer_ && !result_;
+  }
+  int error() const {
+    return result_;
+  }
+  int cols() {
+    return term_renderer_get_cols(renderer_);
+  }
+  int rows() {
+    return term_renderer_get_rows(renderer_);
+  }
+  int width() {
+    return term_renderer_width_px(renderer_);
+  }
+  int height() {
+    return term_renderer_height_px(renderer_);
+  }
+  int setZalgo(int level) {
+    return term_renderer_set_zalgo(renderer_, level);
+  }
+  int feed(const std::string &text) {
+    return term_renderer_feed(renderer_, text.data(), text.size());
+  }
+  bool copyPixels(RasterPixels output) {
+    if (!renderer_) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer is not initialized");
+      return false;
+    }
+    const int w = width(), h = height(), pitch = term_renderer_pitch(renderer_);
+    const uint8_t *pixels = term_renderer_pixels(renderer_);
+    if (!pixels || w <= 0 || h <= 0 || pitch <= 0 || static_cast<uint64_t>(pitch) < static_cast<uint64_t>(w) * 4) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer has invalid pixel storage");
+      return false;
+    }
+    if (static_cast<uint64_t>(w) * h * 4 != output["length"].as<size_t>()) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Terminal pixel output size does not match %dx%d", w, h);
+      return false;
+    }
+    const size_t row_bytes = static_cast<size_t>(w) * 4;
+    if (static_cast<size_t>(pitch) == row_bytes) {
+      output.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes * h, pixels)));
+    } else {
+      for (int row = 0; row < h; ++row) {
+        output.call<void>(
+            "set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)),
+            row * row_bytes);
+      }
+    }
+    return true;
+  }
+
+private:
+  terminal_renderer_s *renderer_ = nullptr;
+  int result_;
+};
+
+EMSCRIPTEN_BINDINGS(ascii_chat_terminal_renderer) {
+  emscripten::register_type<RasterPixels>("RasterPixels", "Uint8ClampedArray");
+  emscripten::class_<TerminalRendererBinding>("TerminalRendererBinding")
+      .constructor<int, int, double, bool, int>()
+      .function("valid", &TerminalRendererBinding::valid)
+      .function("error", &TerminalRendererBinding::error)
+      .function("cols", &TerminalRendererBinding::cols)
+      .function("rows", &TerminalRendererBinding::rows)
+      .function("width", &TerminalRendererBinding::width)
+      .function("height", &TerminalRendererBinding::height)
+      .function("setZalgo", &TerminalRendererBinding::setZalgo)
+      .function("feed", &TerminalRendererBinding::feed)
+      .function("copyPixels", &TerminalRendererBinding::copyPixels);
+}

@@ -8,28 +8,28 @@ const COLOR_FILTER_OPTIONS: DemoOption[] = [
   {
     id: "rainbow",
     label: "Rainbow",
-    settings: { colorFilter: ColorFilter.RAINBOW },
+    settings: { colorFilter: ColorFilter.Rainbow },
   },
-  { id: "green", label: "Green", settings: { colorFilter: ColorFilter.GREEN } },
-  { id: "cyan", label: "Cyan", settings: { colorFilter: ColorFilter.CYAN } },
+  { id: "green", label: "Green", settings: { colorFilter: ColorFilter.Green } },
+  { id: "cyan", label: "Cyan", settings: { colorFilter: ColorFilter.Cyan } },
   {
     id: "magenta",
     label: "Magenta",
-    settings: { colorFilter: ColorFilter.MAGENTA },
+    settings: { colorFilter: ColorFilter.Magenta },
   },
   {
     id: "orange",
     label: "Orange",
-    settings: { colorFilter: ColorFilter.ORANGE },
+    settings: { colorFilter: ColorFilter.Orange },
   },
   {
     id: "yellow",
     label: "Yellow",
-    settings: { colorFilter: ColorFilter.YELLOW },
+    settings: { colorFilter: ColorFilter.Yellow },
   },
-  { id: "pink", label: "Pink", settings: { colorFilter: ColorFilter.PINK } },
-  { id: "red", label: "Red", settings: { colorFilter: ColorFilter.RED } },
-  { id: "teal", label: "Teal", settings: { colorFilter: ColorFilter.TEAL } },
+  { id: "pink", label: "Pink", settings: { colorFilter: ColorFilter.Pink } },
+  { id: "red", label: "Red", settings: { colorFilter: ColorFilter.Red } },
+  { id: "teal", label: "Teal", settings: { colorFilter: ColorFilter.Teal } },
 ];
 
 export default function ColorFiltersSection() {
@@ -50,6 +50,14 @@ export default function ColorFiltersSection() {
             "# No filter (DEFAULT)\nascii-chat mirror --color-filter none\n\n# Single color tints\nascii-chat mirror --color-filter green     # Classic terminal green\nascii-chat mirror --color-filter cyan      # Cool blue-green\nascii-chat mirror --color-filter fuchsia   # Vibrant pink\nascii-chat mirror --color-filter orange    # Warm amber\nascii-chat mirror --color-filter red       # Intense red\n\n# Rainbow mode - cycles through colors\nascii-chat mirror --color-filter rainbow\n\n# Via environment\nexport ASCII_CHAT_COLOR_FILTER=green"
           }
         </CodeBlock>
+        <div className="info-box-info mt-3 border-l-4 border-pink-400">
+          <p className="text-gray-300 text-sm">
+            <strong className="text-pink-300">⌨ Runtime shortcut:</strong> press{" "}
+            <code className="text-pink-300">f</code> to cycle through the
+            available color filters. The active filter also switches the output
+            to monochrome color mode.
+          </p>
+        </div>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-cyan">
             <Heading level={4} className="text-cyan-300 font-semibold mb-2">

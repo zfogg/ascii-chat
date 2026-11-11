@@ -28,6 +28,7 @@
 
 /**
  * @brief TURN server credentials (username + password)
+ * @brief TURN server credentials (username + password)
  */
 typedef struct {
   char username[NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE]; /**< Format: "timestamp:session_id" */

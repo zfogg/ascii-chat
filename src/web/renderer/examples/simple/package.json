@@ -1,0 +1,12 @@
+{
+  "name": "ascii-chat-renderer-simple-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1"
+  },
+  "dependencies": {
+    "ascii-chat": "0.1.0",
+    "vite": "latest"
+  }
+}
