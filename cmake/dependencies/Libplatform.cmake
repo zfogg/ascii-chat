@@ -22,4 +22,10 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
                  ${CMAKE_BINARY_DIR}/deps/libplatform)
 
+# libplatform's POSIX helpers use interfaces such as fileno() that musl hides
+# from strict C mode unless the feature-test macros are enabled on the target.
+if(UNIX AND NOT APPLE)
+    target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
+endif()
+
 unset(_ascii_chat_libplatform_shared)
