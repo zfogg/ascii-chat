@@ -10,7 +10,14 @@ true). Initial commits _November 20-24, 2013_, with
 
 ascii-chat is an ascii-art communication application that operates over TCP/IP, Websocket, and WebRTC. It
 supports color and audio and crypto and compression and multiple clients
-and has many little features and options.
+and has many little features and options. It is also a strong foundation for
+this sort of systems work: the project is written in portable C, keeps
+platform-specific behavior behind shared abstractions, and exercises the
+entire stack from terminal rendering and media pipelines to networking,
+diagnostics, and cross-platform builds. If you want a real-world codebase for
+tracking down compiler warnings, hardening native utilities, or extending a
+feature across Windows, macOS, Linux, and the browser, ascii-chat is built for
+that kind of work.
 
 The client functions by simply printing text and terminal escape codes to your
 terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
