@@ -1135,7 +1135,10 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Output routing logic
-  bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
+  // A snapshot still needs terminal cursor framing when stdout is a real TTY.
+  // `terminal_is_interactive()` also depends on stdin, which is commonly false
+  // for scripted snapshot invocations even though the PTY can display output.
+  bool use_tty_control = ctx->has_tty;
 
   uint64_t frame_write_started_ns = time_get_ns();
 
@@ -1173,9 +1176,18 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
 
       log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout",
                       total_size, cursor_seq_len, frame_len);
-      asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
-          UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
-          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
+      int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
+      asciichat_error_t presented = ASCIICHAT_OK;
+      if (ctx->snapshot_mode) {
+        // Snapshot processes may exit immediately after the first frame. Write
+        // directly so teardown cannot discard a queued UI-controller update.
+        if (platform_write_all(output_fd, frame_buffer, total_size) != total_size)
+          presented = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write snapshot frame to terminal");
+      } else {
+        presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
+            UI_SCREEN_MEDIA, output_fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+            frame_buffer, total_size);
+      }
       if (was_first_frame && presented == ASCIICHAT_OK)
         ui_controller_remove(UI_SCREEN_SPLASH);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
@@ -1505,7 +1517,8 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
   }
 
   if (!ctx->render_file) {
-    log_warn("  -> render_file is NULL, cannot set duration");
+    // Terminal snapshots have no render-file encoder; their duration is
+    // governed by the capture loop and requires no additional action.
     return;
   }
 

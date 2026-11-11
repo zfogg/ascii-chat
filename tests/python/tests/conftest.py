@@ -198,11 +198,16 @@ def ensure_can_render(binary, test_environment, tmp_path):
             import time
             raw = ""
             deadline = time.monotonic() + max(8.0, float(delay) + 5.0)
-            while time.monotonic() < deadline:
+            while time.monotonic() < deadline and term.process.isalive():
                 try:
                     raw += term.output.get(timeout=0.1)
                 except queue.Empty:
                     continue
+            while True:
+                try:
+                    raw += term.output.get_nowait()
+                except queue.Empty:
+                    break
             frame_start = raw.find("\x1b[H")
             assert "\ufffd" not in raw, "terminal stream contained invalid UTF-8"
             raw.encode("utf-8", errors="strict").decode("utf-8", errors="strict")
