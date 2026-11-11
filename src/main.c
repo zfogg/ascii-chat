@@ -135,8 +135,7 @@ static void app_question_usage(const char *kind, const char *result) {
  * @param mode The ascii-chat mode enum
  * @return The mode-specific log filename (e.g., "server.log", "client.log")
  */
-static int platform_question_input_adapter(const char *prompt, char *buffer, size_t max_len,
-                                           prompt_opts_t opts) {
+static int platform_question_input_adapter(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
   return ui_input_prompt(prompt, buffer, max_len, opts) == ASCIICHAT_OK ? 0 : -1;
 }
 
