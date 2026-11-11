@@ -1279,7 +1279,16 @@ typedef struct options_state {
  */
 const options_t *options_get(void);
 
-terminal_options_t options_terminal_settings(void);
+const terminal_options_t *options_terminal_settings_ptr(void);
+
+/*
+ * Keep terminal settings out of the Windows DLL return-value ABI.  The
+ * terminal_options_t record is larger than the register return size, so
+ * returning it by value across asciichat.dll/libplatform.dll requires a
+ * hidden return-buffer argument.  Expose a stable settings record instead,
+ * and pass its address through the platform API.
+ */
+#define options_terminal_settings() options_terminal_settings_ptr()
 
 /**
  * @brief Safely get a specific option field (lock-free read)

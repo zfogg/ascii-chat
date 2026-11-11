@@ -531,9 +531,10 @@ const options_t *options_get(void) {
   return current;
 }
 
-terminal_options_t options_terminal_settings(void) {
+const terminal_options_t *options_terminal_settings_ptr(void) {
+  static terminal_options_t settings;
   const options_t *options = options_get();
-  terminal_options_t settings = {
+  settings = (terminal_options_t){
       .color = (terminal_color_setting_t)options->color,
       .color_mode = options->color_mode,
       .force_utf8 = (terminal_utf8_setting_t)options->force_utf8,
@@ -542,10 +543,8 @@ terminal_options_t options_terminal_settings(void) {
       .height = options->height,
       .fps = options->fps,
       .snapshot_mode = options->snapshot_mode,
-      .argc = g_argc,
-      .argv = g_argv,
   };
-  return settings;
+  return &settings;
 }
 
 typedef struct {

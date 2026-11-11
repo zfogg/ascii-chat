@@ -811,6 +811,18 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // Version output is self-contained and must not cross the shared platform
+  // initialization/DLL boundary.  Keep this path deterministic for scripts
+  // and package managers, and avoid initializing subsystems that the action
+  // immediately terminates without using.
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+      printf("ascii-chat %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+      fflush(stdout);
+      _Exit(0);
+    }
+  }
+
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
   // If JSON format is requested, don't write text logs to file
