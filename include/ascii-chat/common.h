@@ -32,6 +32,7 @@
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
 #include "os/api.h" // IWYU pragma: keep
+#include "os/filesystem.h" // platform file and descriptor helpers
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>

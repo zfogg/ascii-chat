@@ -27,6 +27,7 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
+#include <libplatform/mutex.h>
 #include <stdio.h>
 #include <string.h>
 
