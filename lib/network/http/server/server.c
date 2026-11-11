@@ -5,7 +5,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/atomic.h>
 #include <libplatform/thread.h>
-#include <libplatform/util/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>

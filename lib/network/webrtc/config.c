@@ -2,7 +2,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <libplatform/util/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
 

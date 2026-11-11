@@ -138,6 +138,10 @@ static void app_question_usage(const char *kind, const char *result) {
  * @param mode The ascii-chat mode enum
  * @return The mode-specific log filename (e.g., "server.log", "client.log")
  */
+static int platform_question_input_adapter(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
+  return ui_input_prompt(prompt, buffer, max_len, opts) == ASCIICHAT_OK ? 0 : -1;
+}
+
 static const char *get_mode_log_filename(asciichat_mode_t mode) {
   switch (mode) {
   case MODE_SERVER:
@@ -1112,7 +1116,7 @@ int asciichat_main(int argc, char *argv[]) {
 
   static const platform_question_callbacks_t question_callbacks = {
       .pop_response = env_pop_prompt_response,
-      .input = ui_input_prompt,
+      .input = platform_question_input_adapter,
       .notice_kind = ui_notice_prompt_kind,
       .kind_name = ui_prompt_kind_name,
       .error = app_question_error,
