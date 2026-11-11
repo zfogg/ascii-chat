@@ -33,6 +33,7 @@
 // DLL export/import macros (must be included first to avoid circular dependencies)
 #include "os/api.h" // IWYU pragma: keep
 #include "os/filesystem.h" // platform file and descriptor helpers
+#include "asciichat_errno.h"
 #include "os/string.h" // platform string helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
