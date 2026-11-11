@@ -216,6 +216,18 @@ Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch)
   cr_assert_eq(wire.callbacks, 0);
 }
 
+Test(acip_roundtrip, shared_envelope_release_preserves_other_buffer_owner) {
+  uint8_t *owned = buffer_alloc(NULL, 4);
+  cr_assert_not_null(owned);
+  memcpy(owned, "key!", 4);
+  const void *shared = buffer_share(owned);
+  cr_assert_not_null(shared);
+  packet_envelope_t envelope = {.allocated_buffer = owned};
+  packet_envelope_release(&envelope);
+  cr_assert_arr_eq(shared, "key!", 4);
+  buffer_release(shared);
+}
+
 Test(acip_roundtrip, missing_context_disconnection_and_backend_errors) {
   wire_t wire = {0};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
