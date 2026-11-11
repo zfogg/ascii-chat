@@ -229,6 +229,33 @@ Test(acip_roundtrip, shared_envelope_release_preserves_other_buffer_owner) {
   buffer_release(shared);
 }
 
+Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized_wire) {
+  uint8_t *payload = buffer_alloc(NULL, MAX_PACKET_SIZE);
+  uint8_t *wire = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE);
+  cr_assert_not_null(payload);
+  cr_assert_not_null(wire);
+  memset(payload, 0x5a, MAX_PACKET_SIZE);
+  size_t wire_length = 0;
+  cr_assert_eq(packet_encode(PACKET_TYPE_PING, payload, MAX_PACKET_SIZE, 0, wire,
+                             sizeof(packet_header_t) + MAX_PACKET_SIZE, &wire_length),
+               ASCIICHAT_OK);
+  cr_assert_eq(wire_length, sizeof(packet_header_t) + MAX_PACKET_SIZE);
+  packet_envelope_t envelope = {0};
+  cr_assert_eq(packet_parse_envelope(wire, wire_length, NULL, &envelope), ASCIICHAT_OK);
+  cr_assert_eq(envelope.type, PACKET_TYPE_PING);
+  cr_assert_eq(envelope.len, MAX_PACKET_SIZE);
+  cr_assert_mem_eq(envelope.data, payload, MAX_PACKET_SIZE);
+  packet_envelope_release(&envelope);
+  buffer_release(wire);
+  buffer_release(payload);
+
+  uint8_t *oversized = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1);
+  cr_assert_not_null(oversized);
+  cr_assert_eq(packet_parse_envelope(oversized, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
+               ERROR_INVALID_PARAM);
+  buffer_release(oversized);
+}
+
 Test(acip_roundtrip, missing_context_disconnection_and_backend_errors) {
   wire_t wire = {0};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
