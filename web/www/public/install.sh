@@ -127,10 +127,7 @@ ascii_chat_install() (
   trap cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
-  # curl's progress-bar is the most portable byte-level progress UI available
-  # here. Gum provides the surrounding panels, but does not currently expose a
-  # progress-bar command (only a spinner).
-  download() { curl --fail --location --retry 3 --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' --progress-bar "$1" -o "$2"; }
+  download() { curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 --max-time 300 --proto '=https' --proto-redir '=https' "$1" -o "$2"; }
   sha256() {
     if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d ' ' -f 1
     else shasum -a 256 "$1" | cut -d ' ' -f 1; fi

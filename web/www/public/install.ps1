@@ -3,7 +3,7 @@
 # ASCII_CHAT_VERSION pins a release, e.g. 0.12.17 (v0.12.17 also works).
 & {
     $ErrorActionPreference = 'Stop'
-    $ProgressPreference = 'Continue'
+    $ProgressPreference = 'SilentlyContinue'
     if ($env:OS -ne 'Windows_NT') { throw 'Use install.sh on Linux and macOS.' }
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     $nativeArch = $env:PROCESSOR_ARCHITEW6432
@@ -33,45 +33,9 @@
     $previous = Join-Path $work 'previous'
     $replaced = $false
     $committed = $false
-    function Save-Download {
-        param(
-            [Parameter(Mandatory = $true)][string]$Uri,
-            [Parameter(Mandatory = $true)][string]$OutFile,
-            [Parameter(Mandatory = $true)][string]$Activity
-        )
-        $request = [Net.WebRequest]::Create($Uri)
-        $response = $null
-        $input = $null
-        $output = $null
-        try {
-            $response = $request.GetResponse()
-            $input = $response.GetResponseStream()
-            $output = [IO.File]::Open($OutFile, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
-            $buffer = New-Object byte[] 65536
-            $total = [int64]0
-            $length = $response.ContentLength
-            while (($read = $input.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                $output.Write($buffer, 0, $read)
-                $total += $read
-                $percent = if ($length -gt 0) { [int](($total * 100) / $length) } else { 0 }
-                $status = if ($length -gt 0) {
-                    "{0}% ({1:N1} / {2:N1} MB)" -f $percent, ($total / 1MB), ($length / 1MB)
-                } else {
-                    "{0:N1} MB downloaded" -f ($total / 1MB)
-                }
-                Write-Progress -Activity $Activity -Status $status -PercentComplete $percent
-            }
-        }
-        finally {
-            Write-Progress -Activity $Activity -Completed
-            if ($output) { $output.Dispose() }
-            if ($input) { $input.Dispose() }
-            if ($response) { $response.Dispose() }
-        }
-    }
     try {
         $gumZip = Join-Path $work 'gum.zip'
-        Save-Download 'https://github.com/charmbracelet/gum/releases/download/v2.0.2/gum_2.0.2_Windows_x86_64.zip' $gumZip 'Downloading Gum'
+        Invoke-WebRequest -UseBasicParsing 'https://github.com/charmbracelet/gum/releases/download/v2.0.2/gum_2.0.2_Windows_x86_64.zip' -OutFile $gumZip -TimeoutSec 300
         if ((Get-FileHash $gumZip -Algorithm SHA256).Hash -ne '0397091dec9b4e8f00e02b90fd3eb07bf45acabbdb61d67437950f18e03a8b79') { throw 'Gum checksum mismatch.' }
         Expand-Archive -LiteralPath $gumZip -DestinationPath "$work\gum"
         $gum = @(Get-ChildItem "$work\gum" -Recurse -Filter gum.exe)[0].FullName
@@ -111,7 +75,7 @@
         if ($asset.Count -ne 1) { throw "Release does not contain $name" }
         Show-GumPanel @("Downloading $name", 'Please wait while the release is verified.')
         $zip = Join-Path $work 'release.zip'
-        Save-Download $asset[0].browser_download_url $zip "Downloading $name"
+        Invoke-WebRequest -UseBasicParsing $asset[0].browser_download_url -OutFile $zip -TimeoutSec 300
         if ($asset[0].digest -match '^sha256:(.+)$') {
             if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $Matches[1]) { throw 'Release checksum mismatch.' }
         }
@@ -127,7 +91,7 @@
         if ($ytAsset.Count -ne 1 -or $ytAsset[0].digest -notmatch '^sha256:([a-fA-F0-9]{64})$') { throw 'yt-dlp release asset or checksum missing.' }
         $ytHash = $Matches[1]
         $ytBinary = Join-Path $payload 'bin\yt-dlp.exe'
-        Save-Download $ytAsset[0].browser_download_url $ytBinary "Downloading $ytName"
+        Invoke-WebRequest -UseBasicParsing $ytAsset[0].browser_download_url -OutFile $ytBinary -TimeoutSec 300
         if ((Get-FileHash $ytBinary -Algorithm SHA256).Hash -ne $ytHash) { throw 'yt-dlp checksum mismatch.' }
         & $ytBinary --version
         if ($LASTEXITCODE -ne 0) { throw "yt-dlp executable failed: $LASTEXITCODE" }
@@ -138,7 +102,7 @@
         if ($denoAsset.Count -ne 1 -or $denoAsset[0].digest -notmatch '^sha256:([a-fA-F0-9]{64})$') { throw 'Deno release asset or checksum missing.' }
         $denoHash = $Matches[1]
         $denoZip = Join-Path $work 'deno.zip'
-        Save-Download $denoAsset[0].browser_download_url $denoZip "Downloading $denoName"
+        Invoke-WebRequest -UseBasicParsing $denoAsset[0].browser_download_url -OutFile $denoZip -TimeoutSec 300
         if ((Get-FileHash $denoZip -Algorithm SHA256).Hash -ne $denoHash) { throw 'Deno checksum mismatch.' }
         Expand-Archive -LiteralPath $denoZip -DestinationPath "$work\deno"
         $denoBinary = Join-Path $payload 'bin\deno.exe'
