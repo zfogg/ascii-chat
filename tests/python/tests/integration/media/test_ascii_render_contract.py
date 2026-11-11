@@ -19,4 +19,4 @@ CASES = [
 
 @pytest.mark.parametrize("palette, extra_args", CASES)
 def test_mirror_render_contract(ensure_can_render, palette, extra_args):
-    ensure_can_render(palette, "1", *extra_args)
+    ensure_can_render("mirror", palette, "1", *extra_args)

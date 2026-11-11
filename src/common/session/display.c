@@ -1138,7 +1138,8 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   // A snapshot still needs terminal cursor framing when stdout is a real TTY.
   // `terminal_is_interactive()` also depends on stdin, which is commonly false
   // for scripted snapshot invocations even though the PTY can display output.
-  bool use_tty_control = ctx->has_tty;
+  bool use_tty_control = ctx->has_tty ||
+                         (ctx->snapshot_mode && ctx->tty_info.fd >= 0 && platform_isatty(ctx->tty_info.fd));
 
   uint64_t frame_write_started_ns = time_get_ns();
 

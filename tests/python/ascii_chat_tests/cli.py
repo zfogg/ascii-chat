@@ -32,8 +32,7 @@ def prepare_test_command(command):
             os.environ.get("ASCII_CHAT_TEST_LOG_ROOT") and
             (os.environ.get("ASCII_CHAT_TEST_BINARY") or os.environ.get("ASCII_CHAT_BINARY"))):
         mode = next((value for value in command[1:] if value in _MODES), None)
-        if mode is None:
-            return command
+        effective_mode = mode or "discovery"
         # Preserve deliberately invalid destinations so option-validation tests
         # still exercise the native error path instead of being redirected to
         # the shared artifact directory.
@@ -60,10 +59,10 @@ def prepare_test_command(command):
             filtered.append(value)
         command = filtered
         flags = ["--no-check-update", "--log-level=debug", "--log-file", str(log)]
-        if mode in {"client", "mirror", "discovery"} or mode is None:
+        if effective_mode in {"client", "mirror", "discovery"}:
             flags.insert(1, "--splash-screen=false")
         mode_index = next((index for index, value in enumerate(command[1:], 1)
-                           if value in _MODES), len(command))
+                           if value in _MODES), 1)
         command[mode_index:mode_index] = flags
         return command
     return command
