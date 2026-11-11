@@ -45,6 +45,7 @@
 #include "client/main.h"
 #include "mirror/main.h"
 #include "mcp-server/mcp.h"
+#include "api-server/main.h"
 #include <ascii-chat/options/registry/core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
@@ -64,19 +65,19 @@
 
 // Utilities
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/env.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
 
 // Common headers for version info and initialization
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/backtrace.h>
+#include <libplatform/system.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
@@ -86,15 +87,18 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/terminal.h>
+#include <libplatform/question.h>
+#include <libplatform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/splash.h>
-#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/prompt.h>
+#include <libplatform/thread.h>
 
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>
@@ -116,6 +120,14 @@
 #define APP_NAME "ascii-chat"
 #define VERSION ASCII_CHAT_VERSION_FULL
 
+static void app_question_error(const char *prompt) {
+  log_error("Cannot answer prompt without an interactive terminal: %s", prompt ? prompt : "(null)");
+}
+
+static void app_question_usage(const char *kind, const char *result) {
+  ascii_otel_ui_usage(kind ? kind : "confirmation", result ? result : "declined", 0);
+}
+
 /* ============================================================================
  * Default Log File Path Determination
  * ============================================================================ */
@@ -136,6 +148,8 @@ static const char *get_mode_log_filename(asciichat_mode_t mode) {
     return "mirror.log";
   case MODE_MCP_SERVER:
     return "mcp-server.log";
+  case MODE_API_SERVER:
+    return "api-server.log";
   case MODE_DISCOVERY_SERVICE:
     return "acds.log";
   case MODE_DISCOVERY:
@@ -420,6 +434,7 @@ static const mode_descriptor_t g_mode_table[] = {
         .entry_point = acds_main,
     },
     {.name = "mcp-server", .description = "MCP rendering tools", .entry_point = mcp_server_main},
+    {.name = "api-server", .description = "HTTP image-to-ASCII API", .entry_point = api_server_main},
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
 
@@ -462,6 +477,7 @@ static const mode_descriptor_t *g_mode_lookup[] = {
     [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
     [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
     [MODE_MCP_SERVER] = &g_mode_table[4],
+    [MODE_API_SERVER] = &g_mode_table[5],
     [MODE_INVALID] = NULL, // Invalid: no descriptor
 };
 
@@ -525,7 +541,7 @@ int asciichat_main(int argc, char *argv[]) {
 #ifdef _WIN32
   NAMED_REGISTER_THREAD(GetCurrentThread(), "main", NULL);
 #else
-  NAMED_REGISTER_THREAD((asciichat_thread_t)thread_self(), "main", NULL);
+  NAMED_REGISTER_THREAD((platform_thread_t)thread_self(), "main", NULL);
 #endif
   // Also save main thread ID for memory reporting (must be very early)
   debug_stats_set_main_thread_id();
@@ -533,6 +549,13 @@ int asciichat_main(int argc, char *argv[]) {
 
   // Preserve arguments before environment consumers or option parsing retain pointers.
   asciichat_errno_scope_t title_init_scope = errno_scope_begin();
+  static const platform_application_config_t platform_config = {
+      .name = "ascii-chat",
+      .config_directory = "ascii-chat",
+      .data_directory = "ascii-chat",
+  };
+  (void)platform_set_application_config(&platform_config);
+
   asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);
   if (title_init_result == ASCIICHAT_OK)
     ASSERT_NO_ERRNO_SINCE(title_init_scope);
@@ -612,8 +635,10 @@ int asciichat_main(int argc, char *argv[]) {
   // Detect terminal capabilities early so colored help output works
   // Logging will be initialized by asciichat_shared_init() before options_init()
   log_redetect_terminal_capabilities();
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
+  apply_color_mode_override_into(&caps, options_terminal_settings(), &caps);
+  platform_color_set_truecolor_supported(caps.color_level == TERM_COLOR_TRUECOLOR);
 
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
@@ -648,6 +673,16 @@ int asciichat_main(int argc, char *argv[]) {
 
   // Initialize logging colors so they're ready for help output
   log_init_colors();
+
+  // Keep libplatform diagnostics on the same active ascii-chat palette.
+  platform_color_set_code(PLATFORM_COLOR_DEV, log_level_color(LOG_COLOR_DEV));
+  platform_color_set_code(PLATFORM_COLOR_DEBUG, log_level_color(LOG_COLOR_DEBUG));
+  platform_color_set_code(PLATFORM_COLOR_INFO, log_level_color(LOG_COLOR_INFO));
+  platform_color_set_code(PLATFORM_COLOR_WARN, log_level_color(LOG_COLOR_WARN));
+  platform_color_set_code(PLATFORM_COLOR_ERROR, log_level_color(LOG_COLOR_ERROR));
+  platform_color_set_code(PLATFORM_COLOR_FATAL, log_level_color(LOG_COLOR_FATAL));
+  platform_color_set_code(PLATFORM_COLOR_GREY, log_level_color(LOG_COLOR_GREY));
+  platform_color_set_code(PLATFORM_COLOR_RESET, log_level_color(LOG_COLOR_RESET));
 
   // EARLY PARSE: Find the mode position (first positional argument)
   // Binary-level options must appear BEFORE the mode
@@ -711,6 +746,8 @@ int asciichat_main(int argc, char *argv[]) {
       detected_mode = MODE_MIRROR;
     } else if (strcmp(mode_str, "mcp-server") == 0) {
       detected_mode = MODE_MCP_SERVER;
+    } else if (strcmp(mode_str, "api-server") == 0) {
+      detected_mode = MODE_API_SERVER;
     } else if (strcmp(mode_str, "acds") == 0 || strcmp(mode_str, "discovery-service") == 0) {
       detected_mode = MODE_DISCOVERY_SERVICE;
     } else if (strcmp(mode_str, "discovery") == 0) {
@@ -775,6 +812,18 @@ int asciichat_main(int argc, char *argv[]) {
         strcmp(argv[i], "-V") == 0) {
       early_quiet_output = true;
       break;
+    }
+  }
+
+  // Version output is self-contained and must not cross the shared platform
+  // initialization/DLL boundary.  Keep this path deterministic for scripts
+  // and package managers, and avoid initializing subsystems that the action
+  // immediately terminates without using.
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+      printf("ascii-chat %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+      fflush(stdout);
+      _Exit(0);
     }
   }
 
@@ -1061,12 +1110,28 @@ int asciichat_main(int argc, char *argv[]) {
   };
   app_callbacks_register(&app_callbacks);
 
+  static const platform_question_callbacks_t question_callbacks = {
+      .pop_response = env_pop_prompt_response,
+      .input = ui_input_prompt,
+      .notice_kind = ui_notice_prompt_kind,
+      .kind_name = ui_prompt_kind_name,
+      .error = app_question_error,
+      .usage = app_question_usage,
+  };
+  platform_question_set_callbacks(&question_callbacks);
+
   // Register shutdown callback so splash thread and other code can check for exit
   shutdown_register_callback((shutdown_check_fn)should_exit);
 
   // Diagnostic monitoring is Debug-only; error storage is available in every build.
 #ifndef NDEBUG
-  if (debug_sync_start_thread() != ASCIICHAT_OK) {
+  uint64_t sync_state_delay_ns = 0;
+  uint64_t debug_backtrace_delay_ns = 0;
+  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0)
+    sync_state_delay_ns = (uint64_t)(opts->debug_sync_state_time * 1000000000.0);
+  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0)
+    debug_backtrace_delay_ns = (uint64_t)(opts->debug_backtrace_time * 1000000000.0);
+  if (debug_sync_start_thread(sync_state_delay_ns, debug_backtrace_delay_ns) != 0) {
     FATAL(ERROR_THREAD, "Cannot start synchronization worker");
   }
   if (debug_errno_start_thread() != ASCIICHAT_OK) {
@@ -1088,7 +1153,8 @@ int asciichat_main(int argc, char *argv[]) {
   // Mode entry points use options_get() to access parsed options
   if (title_init_result == ASCIICHAT_OK) {
     asciichat_errno_scope_t title_scope = errno_scope_begin();
-    asciichat_error_t title_result = platform_process_title_set_args(mode->name, argc, argv, opts->mode_arg_index);
+    asciichat_error_t title_result =
+        platform_process_title_set_args("ascii-chat: ", mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
       log_debug("Could not set process title for %s mode", mode->name);
     } else {

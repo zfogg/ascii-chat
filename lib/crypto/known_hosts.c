@@ -27,14 +27,14 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
-#include <ascii-chat/platform/system.h>     // For FILE_PERM_* constants
-#include <ascii-chat/platform/terminal.h>   // For platform_isatty()
-#include <ascii-chat/platform/filesystem.h> // For platform_mkdir(), platform_stat()
-#include <ascii-chat/platform/question.h>   // For platform_prompt_yes_no
-#include <ascii-chat/options/options.h>     // For opt_snapshot_mode
+#include <libplatform/system.h>   // For FILE_PERM_* constants
+#include <libplatform/terminal.h> // For platform_isatty()
+#include <libplatform/filesystem.h>
+#include <ascii-chat/os/question.h>     // For platform_prompt_yes_no
+#include <ascii-chat/options/options.h> // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
@@ -598,7 +598,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return true;
   }
 #endif
-  if (!terminal_can_prompt_user()) {
+  if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode))) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
     NOTICE(DANGER, "HOST VERIFICATION FAILED",
@@ -749,7 +749,7 @@ static bool is_automated_mode(void) {
   }
 
   // Check if user prompts are possible (TTY + not snapshot + not automated)
-  if (!terminal_can_prompt_user()) {
+  if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode))) {
     return true; // Skip interactive prompts in non-interactive environments
   }
 

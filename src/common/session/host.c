@@ -37,8 +37,8 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/mutex.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -194,7 +194,7 @@ typedef struct session_host {
   quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
-  asciichat_thread_t network_thread;
+  platform_thread_t network_thread;
   bool network_thread_started;
 
   /** @brief Server is running */
@@ -213,7 +213,7 @@ typedef struct session_host {
   mutex_t clients_mutex;
 
   /** @brief Render thread handle (for video mixing and audio distribution) */
-  asciichat_thread_t render_thread;
+  platform_thread_t render_thread;
 
   /** @brief Render thread is running */
   bool render_thread_running;
@@ -1063,7 +1063,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
   if (result == ASCIICHAT_OK)
     result = network_server_start(host->network_server);
   if (result == ASCIICHAT_OK)
-    result = acthread_create(&host->network_thread, "host_network", host_network_run, host);
+    result = platform_thread_create(&host->network_thread, "host_network", host_network_run, host);
   if (result != ASCIICHAT_OK) {
     network_server_destroy(&host->network_server);
     return result;
@@ -1656,7 +1656,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
 
   // Spawn render thread
   host->render_thread_running = true;
-  if (acthread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
+  if (platform_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
     log_error("Failed to spawn render thread");
     host->render_thread_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn render thread");

@@ -23,21 +23,19 @@
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/tui/errno_stacks.h>
 #include <ascii-chat/tui/error_popup.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/frame_flush.h>
-#ifdef PLATFORM_IOS
-#include <ascii-chat/platform/ios/render_bridge.h>
-#endif
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
 #include <stdatomic.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/runtime.h>
@@ -46,7 +44,7 @@
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>
@@ -121,7 +119,7 @@ static int g_rendering_screen = -1;
 static uint32_t g_rendering_layers;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
-static asciichat_thread_t g_thread;
+static platform_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
 static _Atomic bool g_sync_finishing;
 static _Atomic bool g_sync_rendering;
@@ -165,22 +163,26 @@ static _Atomic int g_interactive_screen = -1;
 static _Atomic int g_background_screen = -1;
 static _Atomic uint32_t g_screen_mask;
 static atomic_t g_volume_until = {0};
+/* The UI controller owns the terminal while any full-screen presentation is live. */
+static bool g_terminal_screen_active;
+static int g_terminal_screen_fd = -1;
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
 static _Thread_local terminal_capabilities_t g_volume_caps;
 static _Thread_local terminal_color_mode_t g_volume_color_mode;
 static _Thread_local color_setting_t g_volume_color_setting;
 static _Thread_local utf8_setting_t g_volume_utf8_setting;
-static _Thread_local render_mode_t g_volume_render_mode;
+static _Thread_local terminal_render_mode_t g_volume_render_mode;
 
 static terminal_capabilities_t volume_capabilities(void) {
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   color_setting_t color = GET_OPTION(color);
   utf8_setting_t utf8 = GET_OPTION(force_utf8);
-  render_mode_t render = GET_OPTION(render_mode);
+  terminal_render_mode_t render = GET_OPTION(render_mode);
   if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
       utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
-    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities());
+    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities(options_terminal_settings()),
+                                              options_terminal_settings());
     g_volume_color_mode = mode;
     g_volume_color_setting = color;
     g_volume_utf8_setting = utf8;
@@ -188,6 +190,32 @@ static terminal_capabilities_t volume_capabilities(void) {
     g_volume_caps_valid = true;
   }
   return g_volume_caps;
+}
+
+static void terminal_screen_enter(int fd) {
+  if (!platform_isatty(fd) || GET_OPTION(snapshot_mode))
+    return;
+  const char sequence[] = "\033[?1049h\033[?25l\033[H\033[2J";
+  size_t written = platform_write_all(fd, sequence, sizeof(sequence) - 1);
+  if (written > 0) {
+    g_terminal_screen_active = true;
+    g_terminal_screen_fd = fd;
+  }
+  if (written != sizeof(sequence) - 1)
+    log_error("Cannot completely enter alternate terminal screen");
+}
+
+static void terminal_screen_leave(void) {
+  if (!g_terminal_screen_active || g_terminal_screen_fd < 0)
+    return;
+  const char sequence[] = "\033[0m\033[?25h\033[?1049l";
+  size_t written = platform_write_all(g_terminal_screen_fd, sequence, sizeof(sequence) - 1);
+  if (written == sizeof(sequence) - 1) {
+    g_terminal_screen_active = false;
+    g_terminal_screen_fd = -1;
+  } else {
+    log_error("Cannot completely restore the normal terminal screen");
+  }
 }
 
 void ui_controller_show_volume(void) {
@@ -211,7 +239,7 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   int col = size.cols - 5;
   terminal_capabilities_t caps = volume_capabilities();
   bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  bool utf8 = terminal_should_use_utf8();
+  bool utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   frame_buffer_append(buffer, "\0337\033[0m", 6);
   for (int row = 0; row < height; ++row) {
     int level = height - row;
@@ -602,6 +630,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
   }
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     release_screen(&retired[i], i == UI_SCREEN_NOTICE);
+  terminal_screen_leave();
   platform_write_all(fd, data, len);
   atomic_store_bool(&g_live, false);
 }
@@ -788,9 +817,10 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     char count[32] = "";
     if (errors > 1)
       snprintf(count, sizeof(count), "(%zu) ", errors);
-    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8() ? "•" : "*",
-             count, (int)latest.code, asciichat_error_string(latest.code));
-  } else if (terminal_should_use_utf8()) {
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s",
+             terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*", count, (int)latest.code,
+             asciichat_error_string(latest.code));
+  } else if (terminal_should_use_utf8(GET_OPTION(force_utf8))) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);
     if (phase != UI_TITLE_IDLE || activity != UI_TITLE_ACTIVITY_IDLE || screen >= UI_SCREEN_LOGS ||
@@ -1355,7 +1385,7 @@ static asciichat_error_t controller_start(void) {
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
-    if (acthread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+    if (platform_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       ui_session_destroy(g_session);
       g_session = NULL;
       NAMED_UNREGISTER(&g_title_active);
@@ -1373,6 +1403,7 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
     }
+    terminal_screen_enter(atomic_load(&g_default_fd));
     lifecycle_init_commit(&g_lifecycle);
   }
   if (!lifecycle_is_initialized(&g_lifecycle))
@@ -1487,6 +1518,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     g_render_fd = previous_fd;
     return ASCIICHAT_OK;
   }
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    atomic_store(&g_default_fd, fd);
   asciichat_error_t err = controller_start();
   if (err != ASCIICHAT_OK)
     return err;
@@ -1897,6 +1930,7 @@ void ui_controller_shutdown(void) {
   atomic_store(&g_background_screen, -1);
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
+  terminal_screen_leave();
   NAMED_UNREGISTER(&g_title_active);
   NAMED_UNREGISTER(&g_title_render);
   NAMED_UNREGISTER(&g_title_ready);

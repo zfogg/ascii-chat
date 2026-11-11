@@ -21,12 +21,14 @@
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>       // For monotonic timing
-#include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
+#include <libplatform/lifecycle.h>      // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/init.h>         // For static_mutex_t
-#include <ascii-chat/platform/abstraction.h>  // For platform_sleep_us
+#include <ascii-chat/common/sync.h> // For static_mutex_t
+#include <libplatform/compiler.h>
+#include <libplatform/system.h> // For platform_sleep_us
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/packet/packet.h> // For audio_batch_packet_t
 #include <ascii-chat/log/log.h>               // For log_* macros
 #include <ascii-chat/debug/named.h>
@@ -34,7 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdatomic.h>
 
 // PortAudio callbacks publish bounded, lock-free telemetry samples. The audio
@@ -1993,7 +1995,7 @@ start_worker:
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {
     atomic_store_bool(&ctx->worker_should_stop, false);
-    if (acthread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
+    if (platform_thread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
       // Failed to create worker thread - stop streams and cleanup
       if (ctx->duplex_stream) {
         LOG_IO("portaudio", {

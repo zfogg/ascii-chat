@@ -829,7 +829,7 @@ int main(int argc, const char **argv) {
   if (mapped) {
     tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef input) {
       auto adjusted = args;
-      adjusted.push_back("-DASCIICHAT_DEFER_PARSING=1");
+      adjusted.push_back("-DDEFER_PARSING=1");
       adjusted.push_back("-iquote");
       adjusted.push_back(fs::path(input.str()).parent_path().string());
       return adjusted;

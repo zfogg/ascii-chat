@@ -43,7 +43,7 @@ endif()
 # Note: Only compute if not already passed from parent build (e.g., auxiliary build)
 # This allows the auxiliary CMake build to use the same cache as the parent
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
-    set(ASCIICHAT_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
+    set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
@@ -296,24 +296,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
-# The defer parser runs from its own custom command and cannot see target-level
-# include propagation.  Keep the musl FFmpeg headers available to that parser
-# in the top-level scope used when the command is generated.
-if(USE_MUSL)
-    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
-        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include"
-        "${MUSL_INCLUDE_DIR}"
-        "/usr/include/aarch64-linux-musl"
-        "/usr/include/arm-linux-musleabihf"
-        "/usr/include/aarch64-linux-gnu"
-        "/usr/include/arm-linux-gnueabihf")
-    set(ASCIICHAT_DEFER_TARGET_TRIPLE "${CMAKE_C_COMPILER_TARGET}")
-endif()
-
-if(BUILD_WEB AND LIBSODIUM_INCLUDE_DIRS)
-    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS})
-endif()
-
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
@@ -349,6 +331,7 @@ asciichat_enable_analyzers_for_targets()
 # runs in the same scope as source variable definitions
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt)
+asciichat_sanitize_musl_include_properties()
 
 # =============================================================================
 # Embedded Resource Generation (Man Pages, etc.)
@@ -417,7 +400,86 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
-include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
+# The transformer is a host executable even when the application is cross-built.
+set(DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}" CACHE PATH "Root of sources to transform")
+set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
+set(DEFER_NATIVE_BINARY "" CACHE FILEPATH "Path to a standalone defer-tool host executable")
+set(DEFER_VERSION "v0.1.1" CACHE STRING "Standalone defer release")
+if(NOT DEFER_NATIVE_BINARY)
+    string(TOLOWER "${CMAKE_HOST_SYSTEM_PROCESSOR}" _defer_cpu)
+    if(_defer_cpu MATCHES "^(amd64|x86_64|x64)$")
+        set(_defer_arch amd64)
+    elseif(_defer_cpu MATCHES "^(arm64|aarch64)$")
+        set(_defer_arch arm64)
+    else()
+        message(FATAL_ERROR "Unsupported defer host architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}; set DEFER_NATIVE_BINARY")
+    endif()
+    if(CMAKE_HOST_WIN32)
+        set(_defer_platform windows)
+        set(_defer_suffix .exe)
+    elseif(CMAKE_HOST_APPLE)
+        set(_defer_platform macos)
+        set(_defer_suffix "")
+    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+        execute_process(COMMAND ldd --version OUTPUT_VARIABLE _defer_ldd ERROR_VARIABLE _defer_ldd_error)
+        if("${_defer_ldd}${_defer_ldd_error}" MATCHES "[Mm]usl")
+            set(_defer_platform linux-musl)
+        else()
+            set(_defer_platform linux-glibc)
+        endif()
+        set(_defer_suffix "")
+    else()
+        message(FATAL_ERROR "Unsupported defer host: ${CMAKE_HOST_SYSTEM_NAME}; set DEFER_NATIVE_BINARY")
+    endif()
+    set(_defer_archive "defer-${_defer_platform}-${_defer_arch}.zip")
+    if(ASCIICHAT_DEPS_CACHE_ROOT)
+        set(_defer_cache_root "${ASCIICHAT_DEPS_CACHE_ROOT}/defer-tool")
+    else()
+        set(_defer_cache_root "${CMAKE_BINARY_DIR}/_deps/defer")
+    endif()
+    set(_defer_cache "${_defer_cache_root}/${DEFER_VERSION}/${_defer_platform}-${_defer_arch}")
+    set(_defer_executable "${_defer_cache}/bin/defer-tool${_defer_suffix}")
+    if(NOT EXISTS "${_defer_executable}")
+        file(MAKE_DIRECTORY "${_defer_cache}")
+        set(_defer_url "https://github.com/zfogg/defer/releases/download/${DEFER_VERSION}")
+        file(DOWNLOAD "${_defer_url}/SHA256SUMS.txt" "${_defer_cache}/SHA256SUMS.txt" STATUS _defer_status TLS_VERIFY ON)
+        list(GET _defer_status 0 _defer_error)
+        if(NOT _defer_error EQUAL 0)
+            message(FATAL_ERROR "Cannot download defer ${DEFER_VERSION} checksums: ${_defer_status}; set DEFER_NATIVE_BINARY to a host executable")
+        endif()
+        file(STRINGS "${_defer_cache}/SHA256SUMS.txt" _defer_checksums REGEX "${_defer_archive}$")
+        if(NOT _defer_checksums MATCHES "^([0-9a-fA-F]+)[ \t]+\\*?${_defer_archive}$")
+            message(FATAL_ERROR "Missing checksum for ${_defer_archive}")
+        endif()
+        set(_defer_hash "${CMAKE_MATCH_1}")
+        file(DOWNLOAD "${_defer_url}/${_defer_archive}" "${_defer_cache}/${_defer_archive}"
+            EXPECTED_HASH "SHA256=${_defer_hash}" TLS_VERIFY ON STATUS _defer_status SHOW_PROGRESS)
+        list(GET _defer_status 0 _defer_error)
+        if(NOT _defer_error EQUAL 0)
+            message(FATAL_ERROR "Cannot download defer release: ${_defer_status}")
+        endif()
+        file(ARCHIVE_EXTRACT INPUT "${_defer_cache}/${_defer_archive}" DESTINATION "${_defer_cache}")
+    endif()
+    # ZIP timestamps can be interpreted in the host's local time zone and
+    # land in the future. Ninja would then rerun unchanged batches until that
+    # time passes, even though the transformer preserves unchanged outputs.
+    if(EXISTS "${_defer_executable}")
+        file(TIMESTAMP "${_defer_executable}" _defer_executable_time "%s" UTC)
+        string(TIMESTAMP _defer_now "%s" UTC)
+        if(_defer_executable_time GREATER _defer_now)
+            file(TOUCH "${_defer_executable}")
+        endif()
+    endif()
+    set(DEFER_NATIVE_BINARY "${_defer_executable}")
+endif()
+if(NOT EXISTS "${DEFER_NATIVE_BINARY}")
+    message(FATAL_ERROR "defer-tool host executable not found: ${DEFER_NATIVE_BINARY}")
+endif()
+set(_defer_config "${CMAKE_SOURCE_DIR}/deps/defer/Defer.cmake")
+if(NOT EXISTS "${_defer_config}")
+    message(FATAL_ERROR "The defer submodule is missing; run git submodule update --init deps/defer")
+endif()
+include("${_defer_config}")
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
@@ -439,7 +501,24 @@ endif()
 # project include/link settings before it captures commands for native sources;
 # the deferred pass below still covers targets declared later (notably tests).
 asciichat_finalize_project_settings()
-ascii_defer_prepare()
+get_property(_defer_root_targets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY BUILDSYSTEM_TARGETS)
+get_property(_defer_src_targets DIRECTORY "${CMAKE_SOURCE_DIR}/src" PROPERTY BUILDSYSTEM_TARGETS)
+set(_defer_targets "")
+foreach(_target IN LISTS _defer_root_targets _defer_src_targets)
+  if(_target MATCHES "^ascii-chat(-|$)")
+    list(APPEND _defer_targets "${_target}")
+  endif()
+endforeach()
+# Musl builds generate FFmpeg headers as part of an external build. Both the
+# compiler and defer's parser need those headers before processing sources.
+if(USE_MUSL AND TARGET ffmpeg-musl)
+  foreach(_target IN LISTS _defer_targets)
+    add_dependencies("${_target}" ffmpeg-musl)
+  endforeach()
+endif()
+set(DEFER_SOURCE_HOOK ascii_panic_defer_source)
+defer_targets(${_defer_targets})
+unset(DEFER_SOURCE_HOOK)
 enable_testing()
 if(TARGET ascii-chat)
     add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
@@ -457,7 +536,8 @@ if(BUILD_WEB)
     # (Emscripten build is handled separately with correct toolchain below)
     if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
         add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
-        ascii_defer_prepare_web()
+        get_property(_defer_web_targets DIRECTORY "${CMAKE_SOURCE_DIR}/src/web" PROPERTY BUILDSYSTEM_TARGETS)
+        defer_targets(${_defer_web_targets})
     endif()
 else()
     message(STATUS "Web components ${BoldYellow}disabled${ColorReset} (BUILD_WEB=OFF)")
@@ -487,8 +567,9 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            -DASCIICHAT_DEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}
-            -DASCIICHAT_DEFER_NATIVE_BINARY=${CMAKE_BINARY_DIR}/bin/defer-tool${CMAKE_EXECUTABLE_SUFFIX}
+            "-DDEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+            "-DDEFER_NATIVE_BINARY=${DEFER_NATIVE_BINARY}"
+            "-DDEFER_CONFIG_FILE=${_defer_config}"
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
@@ -526,15 +607,8 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
     enable_testing()
   endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
-  ascii_defer_prepare_tests()
-  if(BUILD_TESTS AND TARGET tests AND TARGET ascii-defer-native)
-    add_dependencies(tests ascii-defer-native)
-    foreach(_defer_test text clang transform)
-      if(TARGET ascii-defer-${_defer_test}-test)
-        add_dependencies(tests ascii-defer-${_defer_test}-test)
-      endif()
-    endforeach()
-  endif()
+  get_property(_defer_test_targets DIRECTORY "${CMAKE_SOURCE_DIR}/tests" PROPERTY BUILDSYSTEM_TARGETS)
+  defer_targets(${_defer_test_targets})
 endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.

@@ -10,7 +10,7 @@
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/util/overflow.h>
 
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/util/time.h>
 
 /**
@@ -31,7 +31,7 @@ typedef struct {
   mutex_t receive_mutex;
   atomic_t closed;
   platform_event_loop_t *loop;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   bool thread_started;
   bool queued_receive;
   acip_transport_t *destroy_on_close;
@@ -556,7 +556,7 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
   if (result == ASCIICHAT_OK)
     result = platform_event_loop_tick(tcp->loop, 50, client_tick, tcp);
   if (result == ASCIICHAT_OK)
-    result = acthread_create(&tcp->thread, "tcp_io", client_loop, tcp);
+    result = platform_thread_create(&tcp->thread, "tcp_io", client_loop, tcp);
   if (result != ASCIICHAT_OK) {
     acip_transport_destroy(transport);
     return NULL;

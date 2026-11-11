@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 
 // ── Platform renderer ─────────────────────────────────────────────────────
 

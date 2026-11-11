@@ -2,7 +2,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>

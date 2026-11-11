@@ -1,8 +1,8 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/atomic.h>
+#include <libplatform/mutex.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>

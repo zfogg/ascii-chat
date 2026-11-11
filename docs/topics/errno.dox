@@ -133,7 +133,7 @@ guarantee and the API is not async-signal-safe.
 
 @section errno_diagnostics Diagnostics workers
 
-lib/debug/sync.c owns the debug_sync worker for synchronization inspection,
+deps/libplatform/lib/debug_sync.c owns the debug_sync worker for synchronization inspection,
 deadlock monitoring, and backtraces. lib/debug/stats.c owns the separate
 debug_stats worker for error totals and memory statistics. lib/debug/errno.c owns
 the debug_errno worker for all pending thread stacks and handled history.

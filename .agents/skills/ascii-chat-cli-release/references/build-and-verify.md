@@ -28,7 +28,7 @@ cmake --build build_release_CANDIDATE_linux --target all static-lib docs
 
 Use the musl toolchain for dependencies too. Glibc headers leaking into dependencies can produce unresolved `mmap64`, `__sysconf`, or `gnu_get_libc_version` symbols. Fix include/toolchain selection. Linux does not package a shared library when static FFmpeg cannot link into it.
 
-Windows uses `--preset windows-release`, triplet `x64-windows-static` or `arm64-windows-static`, `ASCIICHAT_ENABLE_NSIS=OFF`, `ASCIICHAT_ENABLE_ANALYZERS=OFF`, and `ASCIICHAT_ENFORCE_STATIC_RELEASE=ON`. Match `ASCIICHAT_TARGET_ARM64` and `ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS` to the architecture. Use the MSVC SDK environment with Clang; pass a prebuilt `ASCIICHAT_DEFER_TOOL` only if available and compatible. Build `ascii-chat`, `static-lib`, `shared-lib`, `docs` (amd64), and `package`. Criterion is unsupported on Windows.
+Windows uses `--preset windows-release`, triplet `x64-windows-static` or `arm64-windows-static`, `ASCIICHAT_ENABLE_NSIS=OFF`, `ASCIICHAT_ENABLE_ANALYZERS=OFF`, and `ASCIICHAT_ENFORCE_STATIC_RELEASE=ON`. Match `ASCIICHAT_TARGET_ARM64` and `ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS` to the architecture. Use the MSVC SDK environment with Clang; pass a prebuilt `DEFER_NATIVE_BINARY` only if available and compatible. Build `ascii-chat`, `static-lib`, `shared-lib`, `docs` (amd64), and `package`. Criterion is unsupported on Windows.
 
 The Windows preset's default output is `build/windows-release`; CI explicitly overrides it with `-B build_release`. Match every later build, cache, package, and audit path to the effective configured directory. A local `-B` override can hide a CI preset/directory mismatch, so inspect the workflow's actual command too.
 

@@ -11,7 +11,7 @@
 #define OPTIONS_MAX_INT_DEFAULTS 256
 #define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
@@ -19,8 +19,10 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/layout.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/string.h>
@@ -30,14 +32,14 @@
 #include <stdarg.h>
 
 // Use platform utilities
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 // Error strings are released with SAFE_FREE, including static mimalloc builds.
 static asciichat_error_t builder_format_error(char **output, const char *format, ...) {
   *output = NULL;
   va_list arguments, measure;
   va_start(arguments, format);
   va_copy(measure, arguments);
-  int length = platform_vsnprintf(NULL, 0, format, measure);
+  int length = safe_vsnprintf(NULL, 0, format, measure);
   va_end(measure);
   if (length < 0) {
     va_end(arguments);
@@ -48,7 +50,7 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
     va_end(arguments);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate option error message");
   }
-  int written = platform_vsnprintf(message, (size_t)length + 1, format, arguments);
+  int written = safe_vsnprintf(message, (size_t)length + 1, format, arguments);
   va_end(arguments);
   if (written != length) {
     SAFE_FREE(message);

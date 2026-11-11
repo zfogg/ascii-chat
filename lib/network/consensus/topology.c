@@ -1,7 +1,7 @@
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 /**
  * @file network/consensus/topology.c
  * @brief Ring topology implementation

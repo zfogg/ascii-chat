@@ -3,11 +3,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/platform/event.h>
-#include "../../atomic.h"
+#include <ascii-chat/os/event.h>
+#include <libplatform/atomic.h>
 #include "../../common.h"
-#include "../../platform/socket.h"
-#include "../../platform/abstraction.h"
+#include <libplatform/socket.h>
 #include <ascii-chat/uthash.h> // For UT_hash_handle
 
 // Forward declarations

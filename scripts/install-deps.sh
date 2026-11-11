@@ -77,7 +77,6 @@ run_uv() {
 
 sync_python_tooling() {
   command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
-  run_uv sync --project "${PROJECT_ROOT}/src/tooling/defer" --frozen --managed-python
   run_uv sync --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python
 }
 
@@ -93,7 +92,7 @@ verify_llvm_for_defer() {
     exit 1
   fi
   compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
-  resolved_dir="$(dirname "$(run_uv run --project "$(dirname "${BASH_SOURCE[0]}")/../src/tooling/defer" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
+  resolved_dir="$(dirname "$(run_uv run --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
   libdir="${compiler_dir}/../lib"
   for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major" \
       "$resolved_dir/../lib/libclang.dylib" "$resolved_dir/../lib/libclang.so" "$resolved_dir/../lib/libclang.so.$major"; do
@@ -438,7 +437,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv icu nghttp2 \
+      libwebsockets libuv icu libnghttp2 \
       libvterm freetype2 fontconfig
 
   else
@@ -539,15 +538,14 @@ echo "You can now run: cmake --build --preset debug"
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then
-  curl -fsSL https://vite.plus | bash
-  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then
-    . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"
-  fi
-  export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
+  # Install Vite+ as the invoking user.  On CI this script may be run through
+  # sudo; installing as root makes vp unavailable to the subsequent user-owned
+  # dependency steps.
+  run_as_user bash -c 'curl -fsSL https://vite.plus | bash'
 fi
-if VP_BIN="$(command -v vp 2>/dev/null)"; then
-  run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT" "$VP_BIN"
-  run_as_user env "PATH=$(dirname "$VP_BIN"):$PATH" bash -c 'cd "$1" && "$2" install --ignore-scripts' bash "$PROJECT_ROOT/web" "$VP_BIN"
+if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v vp >/dev/null 2>&1' 2>/dev/null; then
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT"
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT/web"
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
@@ -555,8 +553,8 @@ fi
 if command -v corepack >/dev/null 2>&1; then
   run_as_user corepack enable
 fi
-if command -v pnpm >/dev/null 2>&1; then
-  run_as_user bash -c 'cd "$1" && pnpm install --frozen-lockfile' bash "$PROJECT_ROOT"
+if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v pnpm >/dev/null 2>&1' 2>/dev/null; then
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && pnpm install --frozen-lockfile' bash "$PROJECT_ROOT"
 else
   echo >&2 "pnpm is unavailable after dependency setup"
   exit 1

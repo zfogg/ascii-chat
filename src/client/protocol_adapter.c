@@ -41,14 +41,14 @@
 
 #include "crypto.h"
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 
 #ifdef _WIN32
-#include <ascii-chat/platform/windows_compat.h>
+#include <libplatform/windows_compat.h>
 #endif
 
 #include <errno.h>
@@ -394,8 +394,9 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
-  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(
-      connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
+  asciichat_error_t cap_result =
+      threaded_send_terminal_size_with_auto_detect(connection, (int)terminal_get_effective_width(GET_OPTION(width), 80),
+                                                   (int)terminal_get_effective_height(GET_OPTION(height), 24));
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return client_startup_peer_error(connection, cap_result);

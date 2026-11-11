@@ -14,7 +14,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include "../log/log.h"
 
@@ -83,7 +83,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg);
 /**
  * @brief Parse render mode option
  * @param arg String argument (e.g., "foreground", "background", "half-block")
- * @param dest Destination pointer (render_mode_t*)
+ * @param dest Destination pointer (terminal_render_mode_t*)
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
  *

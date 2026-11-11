@@ -26,7 +26,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include "negotiate.h"
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
 #include "session/host.h"
 #include "session/participant.h"
@@ -34,7 +34,10 @@
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/mutex.h>
+#include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -146,7 +149,7 @@ typedef struct {
   uint64_t nat_quality_measured_ms;
 
   // NAT detection threading (non-blocking background detection)
-  asciichat_thread_t nat_detection_thread;
+  platform_thread_t nat_detection_thread;
   bool nat_detection_thread_started;
   bool nat_detection_completed; ///< Protected by nat_quality_mutex
   bool nat_detection_attempted;

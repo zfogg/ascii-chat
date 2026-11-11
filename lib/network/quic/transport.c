@@ -2,10 +2,10 @@
 #include "datagram.h"
 
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/backpressure.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <errno.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
 #define UI_MEDIA_MIN_COLS 20

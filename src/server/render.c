@@ -25,8 +25,10 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/time.h>
@@ -921,7 +923,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
   asciichat_error_t video_result;
 
-  video_result = acthread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
+  video_result = platform_thread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
 
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
@@ -935,7 +937,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%s", client->client_id);
   asciichat_error_t audio_result;
 
-  audio_result = acthread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
+  audio_result = platform_thread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store_bool(&client->video_render_thread_running, false);

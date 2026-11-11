@@ -7,14 +7,14 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -10,6 +10,7 @@
 #pragma once
 
 #include <ascii-chat/network/client.h>
+#include <libplatform/rwlock.h>
 
 // Forward declaration to avoid circular dependency with main.h
 // Files that need the full definition should include main.h themselves

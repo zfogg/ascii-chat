@@ -15,7 +15,7 @@
 #include "connection.h"
 #include <ascii-chat/media/codecs.h>
 
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/log/log.h>
 #include <stdint.h>

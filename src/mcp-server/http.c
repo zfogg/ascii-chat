@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <uv.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 
 static const char *shared_header(const http_request_info_t *info, const char *name) {
   for (size_t i = 0; i < info->header_count; ++i)
@@ -45,7 +45,7 @@ static void shared_http_wakeup(void *user_data) {
   mcp_server_t *s = user_data;
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->started || !j->connection || !atomic_load_bool(&j->done))
+    if (!j->renderer_job.started || !j->connection || !http_renderer_job_is_done(&j->renderer_job))
       continue;
     http_response_t *response = j->connection;
     if (http_response_is_cancelled(response)) {
@@ -210,7 +210,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
       return;
     }
     for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-      if (s->jobs[i].started && s->jobs[i].connection == response)
+      if (s->jobs[i].renderer_job.started && s->jobs[i].connection == response)
         s->jobs[i].connection = retained;
     return;
   }
@@ -232,6 +232,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
 
 asciichat_error_t mcp_http_run(mcp_server_t *s) {
   http_server_config_t config = {.bind_address = s->policy.address,
+                                 .bind_address6 = s->policy.address6,
                                  .port = (uint16_t)s->policy.port,
                                  .enable_http1 = true,
                                  .enable_http2 = true,
@@ -270,8 +271,8 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
   }
   for (unsigned i = 0; i < s->policy.max_jobs; ++i)
-    if (s->jobs[i].started)
-      atomic_store_bool(&s->jobs[i].cancelled, true);
+    if (s->jobs[i].renderer_job.started)
+      http_renderer_job_cancel(&s->jobs[i].renderer_job);
   http_server_stop(s->shared_http);
   http_server_destroy(&s->shared_http);
   nat_upnp_close(&mapping);

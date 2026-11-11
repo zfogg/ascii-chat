@@ -4,7 +4,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 
 typedef enum {
   UI_NOTICE_INFO,
@@ -39,7 +39,7 @@ void ui_notice_first_use_complete(const void *snapshot);
 
 /** Explicitly styled yes/no prompt; default remains No. */
 #ifdef EMSCRIPTEN_BUILD
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 static inline bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds) {
   (void)severity;
   return platform_prompt_yes_no_timeout(text, false, timeout_seconds);

@@ -14,10 +14,10 @@
 #define ASCIICHAT_VIDEO_TERMINAL_ANSI_H
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/util/math.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/options/options.h>
 #include <stddef.h>
 #include <stdint.h>

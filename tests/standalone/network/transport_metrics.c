@@ -1,7 +1,9 @@
 /* Synthetic ACIP packet delivery measurements; this does not measure acoustic
  * latency, capture devices, or rendering. All peers use password authentication
  * and application encryption, in addition to QUIC TLS or WebRTC DTLS. */
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/security.h>
@@ -99,8 +101,8 @@ static void negotiate(acip_transport_t *sender, acip_transport_t *receiver, cryp
                                   .password = PASSWORD,
                                   .require_auth = true,
                                   .require_encryption = true};
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "metrics_negotiate", client_negotiate, &client) == ASCIICHAT_OK);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "metrics_negotiate", client_negotiate, &client) == ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   while (!server.ready && time_get_ns() - start < 20 * NS_PER_SEC_INT) {
     if (!acip_transport_has_pending_data(receiver)) {
@@ -286,8 +288,8 @@ int main(int argc, char **argv) {
   r->start = time_get_ns();
   r->datagrams = datagrams;
   atomic_store_bool(&r->running, true);
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "metrics_receiver", receive_loop, r) == ASCIICHAT_OK);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "metrics_receiver", receive_loop, r) == ASCIICHAT_OK);
   log_warn("METRICS_READY");
   uint64_t due[3] = {r->start, r->start, r->start}, sequence[3] = {0}, sent[2][3] = {{0}}, rejected[2][3] = {{0}};
   size_t peak_queue = 0;

@@ -2,7 +2,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/common.h>

@@ -25,18 +25,17 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/frame_flush.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/version.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
@@ -1316,6 +1315,8 @@ static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bit
     return MODE_DISCOVERY;
   if (mode_bitmask == OPTION_MODE_MCP_SERVER)
     return MODE_MCP_SERVER;
+  if (mode_bitmask == OPTION_MODE_API_SERVER)
+    return MODE_API_SERVER;
   // Bitmask has zero or multiple bits set
   return MODE_INVALID;
 }

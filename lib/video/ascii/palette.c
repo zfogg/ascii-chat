@@ -9,7 +9,7 @@
 #define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
 
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -24,7 +24,7 @@
 
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/utf8.h> // For UTF-8 character width detection
 
 /* Default palette constants for legacy functions */

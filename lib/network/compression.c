@@ -10,7 +10,7 @@
 #include <string.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 
 static void compression_measure(size_t input, size_t output, bool compressing) {

@@ -9,14 +9,16 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/system.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/options/options.h>
@@ -102,11 +104,11 @@ struct ffmpeg_decoder_t {
   size_t audio_buffer_offset; ///< Current offset in audio buffer
 
   // Background thread for frame prefetching (reduces YouTube HTTP blocking)
-  asciichat_thread_t prefetch_thread; ///< Prefetch thread handle
-  image_t *prefetch_image_a;          ///< First prefetch buffer
-  image_t *prefetch_image_b;          ///< Second prefetch buffer
-  image_t *current_prefetch_image;    ///< Currently available prefetched frame
-  _Atomic bool prefetch_frame_ready;  ///< Whether current_prefetch_image has valid data
+  platform_thread_t prefetch_thread; ///< Prefetch thread handle
+  image_t *prefetch_image_a;         ///< First prefetch buffer
+  image_t *prefetch_image_b;         ///< Second prefetch buffer
+  image_t *current_prefetch_image;   ///< Currently available prefetched frame
+  _Atomic bool prefetch_frame_ready; ///< Whether current_prefetch_image has valid data
   asciichat_error_context_t prefetch_failure;
   _Atomic bool prefetch_failed;
   bool prefetch_thread_running;      ///< Whether prefetch thread is active
@@ -1472,8 +1474,8 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
   atomic_store(&decoder->prefetch_failed, false);
 
-  int thread_err =
-      acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err = platform_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
+                                          ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }

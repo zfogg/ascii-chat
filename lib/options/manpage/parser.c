@@ -10,10 +10,12 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MANPAGE_INITIAL_PARSE_CAPACITY 16
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/options/manpage/parser.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <libplatform/util/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

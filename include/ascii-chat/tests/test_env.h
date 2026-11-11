@@ -20,7 +20,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include "../platform/system.h"
+#include <libplatform/system.h>
 
 /**
  * @brief Check if we're running in a test environment

@@ -3,6 +3,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
 
 Test(crypto_policy, resolves_supported_combinations) {
   struct {

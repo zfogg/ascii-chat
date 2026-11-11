@@ -58,12 +58,12 @@
 // C++ mode on Windows: use <atomic> from MSVC runtime
 #include <atomic>
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #endif
 
 #include "../audio/mixer.h"
 #include "../audio/processor.h"
-#include "../platform/mutex.h"
+#include <libplatform/mutex.h>
 
 // Forward declarations for SpeexDSP types
 typedef struct SpeexPreprocessState_ SpeexPreprocessState;

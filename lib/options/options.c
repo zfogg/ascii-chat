@@ -76,9 +76,10 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/systemd.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/systemd.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
@@ -293,9 +294,10 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                                MODE_MCP_SERVER};
+  const char *const mode_names_check[] = {"server",     "client",     "mirror", "discovery-service",
+                                          "mcp-server", "api-server", NULL};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER,     MODE_CLIENT,    MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+                                                MODE_MCP_SERVER, MODE_API_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
       log_dev("Mode detected from argv[0]: %s", argv[0]);
@@ -332,7 +334,8 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             bool looks_like_mode_or_session = false;
 
             // Check if it looks like a mode name
-            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
+            const char *const mode_names[] = {"server",     "client",     "mirror", "discovery-service",
+                                              "mcp-server", "api-server", NULL};
             for (int j = 0; mode_names[j] != NULL; j++) {
               if (strcmp(next_arg, mode_names[j]) == 0) {
                 looks_like_mode_or_session = true;
@@ -406,9 +409,10 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "default", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER,     MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                          MODE_MCP_SERVER, MODE_INVALID};
+  const char *const mode_names[] = {"server",     "client",     "mirror",  "discovery-service",
+                                    "mcp-server", "api-server", "default", NULL};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER,     MODE_CLIENT,     MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+                                          MODE_MCP_SERVER, MODE_API_SERVER, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -769,7 +773,7 @@ options_t options_t_new_preserve_binary(const options_t *source) {
   return opts;
 }
 
-static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
+static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t *opts) {
   // Use static buffers to avoid SAFE_MALLOC and malloc before memory tracking is initialized
   static char log_filename_buf[OPTIONS_LOG_FILENAME_BUFFER_SIZE];
   static char default_log_path_buf[PLATFORM_MAX_PATH_LENGTH];
@@ -791,6 +795,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     break;
   case MODE_MCP_SERVER:
     log_filename_literal = "mcp-server.log";
+    break;
+  case MODE_API_SERVER:
+    log_filename_literal = "api-server.log";
     break;
   case MODE_DISCOVERY_SERVICE:
     log_filename_literal = "acds.log";
@@ -814,11 +821,11 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     // Validate and normalize the path
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path_buf, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
       SAFE_FREE(normalized_default_log);
     } else {
       // Validation failed - use the path as-is (validation may fail in debug builds)
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
+      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
     }
 
     // Free log_dir allocated by get_log_dir() using SAFE_MALLOC
@@ -969,6 +976,8 @@ static void handle_help_option(int argc, char **argv) {
             help_mode = MODE_MIRROR;
           } else if (strcmp(argv[j], "mcp-server") == 0) {
             help_mode = MODE_MCP_SERVER;
+          } else if (strcmp(argv[j], "api-server") == 0) {
+            help_mode = MODE_API_SERVER;
           } else if (strcmp(argv[j], "discovery-service") == 0) {
             help_mode = MODE_DISCOVERY_SERVICE;
           } else if (strcmp(argv[j], "discovery") == 0) {
@@ -1168,10 +1177,22 @@ static asciichat_error_t validate_binary_option_position(int argc, char **argv, 
 
 static void initialize_binary_options(options_t *opts, asciichat_mode_t detected_mode,
                                       const binary_actions_t *actions) {
+  log_debug("initialize_binary_options: before systemd");
   opts->no_check_update = actions->no_check_update_flag_seen || platform_systemd_is_managed();
+  log_debug("initialize_binary_options: after systemd");
   opts->detected_mode = detected_mode;
-  if (!platform_systemd_is_managed()) {
-    char *log_filename = options_get_log_filepath(detected_mode, (*opts));
+  if (actions->has_action) {
+    // Immediate output actions must not allocate or validate a log path before
+    // the diagnostic allocator has completed initialization.
+#ifdef _WIN32
+    SAFE_STRNCPY(opts->log_file, "NUL", sizeof(opts->log_file));
+#else
+    SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
+#endif
+  } else if (!platform_systemd_is_managed()) {
+    log_debug("initialize_binary_options: before log path");
+    char *log_filename = options_get_log_filepath(detected_mode, opts);
+    log_debug("initialize_binary_options: after log path");
     SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   } else {
     SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
@@ -1509,7 +1530,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   (*opts) = options_t_new_preserve_binary(opts);
-  if (detected_mode == MODE_MCP_SERVER) {
+  if (detected_mode == MODE_MCP_SERVER || detected_mode == MODE_API_SERVER) {
     opts->port = OPT_MCP_PORT_DEFAULT;
     // Zero means use the available CPU count unless max-clients is configured.
     opts->max_clients = 0;
@@ -2355,6 +2376,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
+  log_debug("options_init: state initialized");
 
   // Discover binary actions before mode parsing so help and early exits need no media setup.
   handle_help_option(argc, argv);
@@ -2363,6 +2385,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
+  log_debug("options_init: binary actions scanned");
   set_action_flag(actions.has_action);
 
   asciichat_mode_t detected_mode = MODE_DISCOVERY;
@@ -2378,7 +2401,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   options_t opts = options_t_new();
+  log_debug("options_init: options constructed");
   initialize_binary_options(&opts, detected_mode, &actions);
+  log_debug("options_init: binary options initialized");
   bool handled = false;
   result = handle_immediate_actions(&opts, &actions, &handled);
   if (result != ASCIICHAT_OK || handled) {
@@ -2389,7 +2414,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
   if (actions.show_version || actions.create_config || actions.create_manpage) {
-    return handle_fallback_actions(&opts, &actions);
+    result = handle_fallback_actions(&opts, &actions);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+    return ASCIICHAT_OK;
   }
 
   // Mode parsing owns the temporary argv and schema until the shared cleanup path.

@@ -27,9 +27,11 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
+#include <ascii-chat/common/sync.h>
 
 #include <string.h>
 

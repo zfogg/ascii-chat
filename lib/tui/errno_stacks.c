@@ -26,13 +26,15 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -273,7 +275,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     return;
   }
 
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd);
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd, options_terminal_settings());
   errno_tui_row_t *rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*rows), errno_tui_row_t *);
   errno_tui_row_t *current_rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*current_rows), errno_tui_row_t *);
   if (!rows || !current_rows) {

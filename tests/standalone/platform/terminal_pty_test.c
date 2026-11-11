@@ -1,5 +1,5 @@
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>
@@ -8,7 +8,7 @@
 #include <string.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/tui/errno_stacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/keyboard.h>

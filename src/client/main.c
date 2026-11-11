@@ -89,11 +89,13 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/terminal.h>
+#include <libplatform/symbols.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
@@ -125,7 +127,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif

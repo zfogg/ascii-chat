@@ -5,7 +5,8 @@ units=(ascii-chat-server ascii-chat-discovery-service ascii-chat-mcp-server asci
 for unit in "${units[@]}"; do
   file="$root/share/systemd/$unit.service"
   case "$unit" in
-    ascii-chat-server|ascii-chat-api-server) expected_mode=server ;;
+    ascii-chat-server) expected_mode=server ;;
+    ascii-chat-api-server) expected_mode=api-server ;;
     ascii-chat-discovery-service) expected_mode=acds ;;
     ascii-chat-mcp-server) expected_mode=mcp-server ;;
   esac

@@ -45,3 +45,9 @@
 [submodule "deps/ascii-chat-deps/mmmbed"]
 	path = deps/ascii-chat-deps/mmmbed
 	url = https://github.com/zfogg/mmmbed.git
+[submodule "deps/libplatform"]
+	path = deps/libplatform
+	url = https://github.com/zfogg/libplatform.git
+[submodule "deps/defer"]
+	path = deps/defer
+	url = https://github.com/zfogg/defer.git

@@ -19,7 +19,7 @@
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/registry.h>
-#include <ascii-chat/platform/terminal.h>   // For term_color_level_t
+#include <libplatform/terminal.h>           // For terminal color modes
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
 #include <string.h>
@@ -52,6 +52,8 @@ static const mode_string_mapping_t mode_registry[] = {
     {MODE_MIRROR, "mirror", "Local webcam preview (no networking)"},
     {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery server (ACDS)"},
     {MODE_DISCOVERY_SERVICE, "acds", "Alias for discovery-service"},
+    {MODE_MCP_SERVER, "mcp-server", "MCP rendering server"},
+    {MODE_API_SERVER, "api-server", "HTTP image-to-ASCII API"},
     {MODE_INVALID, NULL, NULL} // Terminator
 };
 
@@ -154,7 +156,7 @@ const char *color_mode_to_string(terminal_color_mode_t mode) {
 // Render Mode String Conversions
 // ============================================================================
 
-const char *render_mode_to_string(render_mode_t mode) {
+const char *render_mode_to_string(terminal_render_mode_t mode) {
   switch (mode) {
   case RENDER_MODE_FOREGROUND:
     return OPT_RENDER_MODE_FOREGROUND;

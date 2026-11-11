@@ -6,7 +6,7 @@
 
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/output.h>
 #include <string.h>
 

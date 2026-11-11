@@ -29,7 +29,7 @@ typedef struct {
   session_connection_t connection;
   socket_t socket;
   acip_transport_t *transport;
-  asciichat_thread_t worker;
+  platform_thread_t worker;
   bool started;
   bool joined;
   bool fail_join;
@@ -131,8 +131,8 @@ static void webrtc_interrupt_test(void) {
     transports[i].impl_data = &data[i];
   }
   webrtc_wait_t wait = {.transport = &transports[0]};
-  asciichat_thread_t worker;
-  cr_assert_eq(acthread_create(&worker, "blocked_webrtc", wait_for_webrtc, &wait), ASCIICHAT_OK);
+  platform_thread_t worker;
+  cr_assert_eq(platform_thread_create(&worker, "blocked_webrtc", wait_for_webrtc, &wait), ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   while (!atomic_load_bool(&wait.entered) && time_elapsed_ns(start, time_get_ns()) < NS_PER_SEC_INT)
     platform_sleep_ms(1);
@@ -276,7 +276,7 @@ Test(session_connections, retains_owners_until_workers_join, .timeout = 60) {
   socket_t peers[2];
   for (int i = 0; i < 2; i++) {
     initialize(&owners[i], connect_peer(listener, &address, &peers[i]));
-    cr_assert_eq(acthread_create(&owners[i].worker, "owner_receive", receive_packets, &owners[i]), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&owners[i].worker, "owner_receive", receive_packets, &owners[i]), ASCIICHAT_OK);
     owners[i].started = true;
     cr_assert_eq(session_connection_start(&owners[i].connection), ASCIICHAT_OK);
     progress(&owners[i], peers[i]);
@@ -291,8 +291,8 @@ Test(session_connections, retains_owners_until_workers_join, .timeout = 60) {
   cr_assert_eq(session_connection_stop(&owners[0].connection), ASCIICHAT_OK);
   cr_assert_eq(owners[0].releases, 1);
   progress(&owners[1], peers[1]);
-  asciichat_thread_t stopper;
-  cr_assert_eq(acthread_create(&stopper, "foreign_stop", foreign_stop, &owners[1]), ASCIICHAT_OK);
+  platform_thread_t stopper;
+  cr_assert_eq(platform_thread_create(&stopper, "foreign_stop", foreign_stop, &owners[1]), ASCIICHAT_OK);
   cr_assert_eq(thread_join(&stopper, NULL), ASCIICHAT_OK);
   cr_assert(owners[1].releases == 0 && owners[1].transport);
   cr_assert_eq(session_connection_stop(&owners[1].connection), ASCIICHAT_OK);

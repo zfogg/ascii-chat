@@ -78,7 +78,7 @@
 #include <fcntl.h>  // For open() and O_WRONLY
 #endif
 
-#include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
+#include <ascii-chat/os/network.h> // Consolidates platform-specific network headers
 #include <ascii-chat/app_callbacks.h>
 
 #include <errno.h>
@@ -101,13 +101,15 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/uthash.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/socket.h>
+#include <ascii-chat/common/sync.h>
+#include <ascii-chat/os/question.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -127,9 +129,9 @@
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
-#include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/util/string.h>
+#include <libplatform/symbols.h>
+#include <libplatform/system.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -150,10 +152,10 @@
 #include <ascii-chat/tui/status.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Global State
@@ -320,7 +322,7 @@ static webrtc_peer_manager_t *g_webrtc_peer_manager = NULL;
  *
  * @ingroup server_main
  */
-static asciichat_thread_t g_acds_receive_thread;
+static platform_thread_t g_acds_receive_thread;
 
 /**
  * @brief Flag indicating if ACDS receive thread was started
@@ -340,7 +342,7 @@ static bool g_acds_receive_thread_started = false;
  *
  * @ingroup server_main
  */
-static asciichat_thread_t g_acds_ping_thread;
+static platform_thread_t g_acds_ping_thread;
 
 /**
  * @brief Flag indicating if ACDS ping thread was started
@@ -1400,7 +1402,7 @@ static bool server_allow_discovery(server_discovery_policy_t *policy) {
     // Explicit opt-in to public IP disclosure
     // Only prompt if running interactively (can prompt user)
     // When non-interactive (automated/scripted), treat explicit flag as confirmation
-    bool is_interactive = terminal_can_prompt_user();
+    bool is_interactive = terminal_can_prompt_user(!GET_OPTION(snapshot_mode));
 
     if (is_interactive) {
       if (!ui_notice_confirm_kind(UI_PROMPT_IP_DISCLOSURE, UI_NOTICE_DANGER,
@@ -1567,7 +1569,7 @@ static void server_start_discovery_keepalive(void) {
     log_debug("ACDS transport wrapper created for signaling");
 
     // Start ACDS ping thread to keep connection alive (for ALL session types)
-    int ping_thread_result = acthread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
+    int ping_thread_result = platform_thread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
     if (ping_thread_result != 0) {
       log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
     } else {
@@ -1678,7 +1680,7 @@ static void server_init_webrtc(void) {
       log_debug("WebRTC peer_manager initialized successfully");
 
       // Start ACDS receive thread for WebRTC signaling relay
-      int thread_result = acthread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
+      int thread_result = platform_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
       if (thread_result != 0) {
         log_error("Failed to create ACDS receive thread: %d", thread_result);
         // Cleanup peer_manager since signaling won't work

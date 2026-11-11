@@ -10,15 +10,15 @@
 #define NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512
 
 #include <ascii-chat/network/update_checker.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/network.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/socket.h>
+#include <ascii-chat/os/network.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>

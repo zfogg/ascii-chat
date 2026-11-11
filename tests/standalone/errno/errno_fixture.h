@@ -6,14 +6,14 @@
 #include <ascii-chat/debug/sync.h>
 /** Native tests use the production library and platform threads, including on Windows. */
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/thread.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>
@@ -303,8 +303,8 @@ static inline void *held_error_worker(void *arg) {
 
 static inline void cross_thread_contract(void) {
   worker_data_t data = {0};
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "errno-test", held_error_worker, &data) == 0);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "errno-test", held_error_worker, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   asciichat_error_context_t snapshot;
@@ -334,7 +334,7 @@ static inline void cross_thread_contract(void) {
 
   asciichat_error_stats_t before = asciichat_error_stats_get();
   memset(&data, 0, sizeof(data));
-  CHECK(acthread_create(&thread, "errno-exit-test", held_error_worker, &data) == 0);
+  CHECK(platform_thread_create(&thread, "errno-exit-test", held_error_worker, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   atomic_store_bool_impl(&data.release, true);
@@ -367,8 +367,8 @@ static inline void *publish_during_clear(void *arg) {
 }
 static inline void cross_thread_history_timing(void) {
   worker_data_t data = {0};
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "errno-history-race", publish_during_clear, &data) == 0);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "errno-history-race", publish_during_clear, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   for (int i = 0; i < 2000; ++i) {
@@ -386,10 +386,10 @@ static inline void cross_thread_history_timing(void) {
 }
 
 static inline void concurrency_contract(void) {
-  asciichat_thread_t threads[8];
+  platform_thread_t threads[8];
   atomic_t done = {0};
   for (size_t i = 0; i < 8; ++i)
-    CHECK(acthread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
+    CHECK(platform_thread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
   while (atomic_load_int_impl(&done) < 8) {
     asciichat_errno_history_t history[4];
     size_t count = errno_history_snapshot(history, 4);
@@ -402,10 +402,10 @@ static inline void concurrency_contract(void) {
   CHECK(asciichat_error_stats_get().pending_errors == 0);
 
   worker_data_t data[20] = {0};
-  asciichat_thread_t held[20];
+  platform_thread_t held[20];
   for (size_t i = 0; i < 20; ++i) {
     data[i].overflow = true;
-    CHECK(acthread_create(&held[i], "errno-budget", held_error_worker, &data[i]) == 0);
+    CHECK(platform_thread_create(&held[i], "errno-budget", held_error_worker, &data[i]) == 0);
     while (!atomic_load_bool_impl(&data[i].ready))
       platform_sleep_ns(NS_PER_MS_INT);
   }
@@ -447,9 +447,9 @@ static inline void *probe_producer(void *name) {
 static inline int pending_signal_probe(void) {
   log_set_level(LOG_INFO);
   CHECK(platform_signal(SIGUSR1, probe_signal) != SIG_ERR);
-  asciichat_thread_t first, second;
-  CHECK(acthread_create(&first, "errno_producer_a", probe_producer, "producer-a") == 0);
-  CHECK(acthread_create(&second, "errno_producer_b", probe_producer, "producer-b") == 0);
+  platform_thread_t first, second;
+  CHECK(platform_thread_create(&first, "errno_producer_a", probe_producer, "producer-a") == 0);
+  CHECK(platform_thread_create(&second, "errno_producer_b", probe_producer, "producer-b") == 0);
   while (atomic_load_u64(&probe_ready) != 2)
     platform_sleep_ns(NS_PER_MS_INT);
   CHECK(debug_errno_start_thread() == ASCIICHAT_OK);
@@ -552,9 +552,9 @@ static inline void formatted_error_contract(void) {
   CHECK(strstr(context.context_message, "100% complete %s %n") != NULL);
   CHECK(GET_ERRNO() == ERROR_INTERNAL);
   CLEAR_ERRNO();
-  asciichat_thread_t first_thread, second_thread;
-  CHECK(acthread_create(&first_thread, "format-a", formatted_error_worker, "first") == ASCIICHAT_OK);
-  CHECK(acthread_create(&second_thread, "format-b", formatted_error_worker, "second") == ASCIICHAT_OK);
+  platform_thread_t first_thread, second_thread;
+  CHECK(platform_thread_create(&first_thread, "format-a", formatted_error_worker, "first") == ASCIICHAT_OK);
+  CHECK(platform_thread_create(&second_thread, "format-b", formatted_error_worker, "second") == ASCIICHAT_OK);
   CHECK(thread_join(&first_thread, NULL) == ASCIICHAT_OK);
   CHECK(thread_join(&second_thread, NULL) == ASCIICHAT_OK);
 }

@@ -5,6 +5,7 @@
 
 #include "security.h"
 #include <ascii-chat/crypto/sizes.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
 #include <ascii-chat/network/crc32.h>
@@ -76,7 +77,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -1038,8 +1039,6 @@ asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, s
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
     const protocol_version_packet_t *version = payload;
     if (NET_TO_HOST_U16(version->protocol_version) != PROTOCOL_VERSION_MAJOR ||
-        NET_TO_HOST_U16(version->protocol_revision) != PROTOCOL_VERSION_MINOR ||
-        NET_TO_HOST_U16(version->protocol_patch) != PROTOCOL_VERSION_PATCH ||
         version->supports_encryption != g_crypto_mode)
       return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
     g_version_received = true;

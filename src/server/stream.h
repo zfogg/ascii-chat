@@ -8,7 +8,7 @@
 #include "client.h"
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // Global shutdown flag
 extern atomic_t g_should_exit;

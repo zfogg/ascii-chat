@@ -22,7 +22,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
@@ -110,6 +110,7 @@ typedef struct session_participant {
   session_settings_t settings;
   mutex_t settings_mutex;
   uint32_t settings_request;
+  uint32_t settings_applied_request;
 
   /** @brief Video capture context (for webcam/file media) */
   session_capture_ctx_t *video_capture;
@@ -121,10 +122,10 @@ typedef struct session_participant {
   bool audio_uses_video;
 
   /** @brief Video capture thread handle */
-  asciichat_thread_t video_capture_thread;
+  platform_thread_t video_capture_thread;
 
   /** @brief Audio capture thread handle */
-  asciichat_thread_t audio_capture_thread;
+  platform_thread_t audio_capture_thread;
 
   /** @brief Video worker handle requires joining */
   bool video_thread_created;
@@ -293,6 +294,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->connected = true;
@@ -403,7 +405,7 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
   if (values->fps == 0)
     values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
+    terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   }
   acip_render_settings_t prepared = {0};
@@ -586,7 +588,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
   }
 
   // Spawn video capture thread (media source is ready in ctx)
-  if (acthread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
     session_participant_stop_video(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
@@ -678,7 +680,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   }
 
   // Spawn audio capture thread
-  if (acthread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     session_participant_stop_audio(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");
@@ -749,6 +751,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   p->transport = transport;
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
@@ -823,7 +826,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result != ASCIICHAT_OK)
     return result;
   mutex_lock(&p->settings_mutex);
-  if ((header.request && header.request != p->settings_request) || header.revision < p->settings.version) {
+  if ((header.request && (header.request > p->settings_request || header.request < p->settings_applied_request)) ||
+      header.revision < p->settings.version) {
     mutex_unlock(&p->settings_mutex);
     return ASCIICHAT_OK;
   }
@@ -834,6 +838,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result == ASCIICHAT_OK) {
     session_settings_from_values(candidate, &p->settings);
     p->settings.version = header.revision;
+    if (header.request)
+      p->settings_applied_request = header.request;
   }
   session_settings_t effective = p->settings;
   SAFE_FREE(current);

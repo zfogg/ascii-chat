@@ -1,4 +1,4 @@
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -11,7 +11,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 
 #include <libavcodec/avcodec.h>
 #include <libavutil/frame.h>

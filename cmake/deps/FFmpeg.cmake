@@ -104,9 +104,6 @@ if(PLATFORM_IOS)
 
     set(FFMPEG_FOUND TRUE)
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
-    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIRS}" CACHE INTERNAL
-        "Additional include directories for defer source parsing")
-
     # iOS frameworks needed for FFmpeg
     set(FFMPEG_LIBRARIES
         "${FFMPEG_PREFIX}/lib/libavformat.a"

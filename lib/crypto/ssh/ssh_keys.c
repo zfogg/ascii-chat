@@ -14,12 +14,13 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define SSH_BCRYPT_SALT_SIZE 16
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>

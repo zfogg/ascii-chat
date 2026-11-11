@@ -1,4 +1,4 @@
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/common.h>

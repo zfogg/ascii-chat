@@ -7,7 +7,7 @@
 
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/video/anim/controller.h>
 
 /**

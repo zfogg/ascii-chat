@@ -109,11 +109,13 @@
 #include <ascii-chat/util/thread.h> // For THREAD_IS_CREATED macro
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <time.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
 
 /* ============================================================================
