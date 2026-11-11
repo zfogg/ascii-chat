@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import tempfile
 from itertools import count
 
 
@@ -158,9 +159,24 @@ def is_test_binary(command):
 
 
 def run_cli(binary, *args, **subprocess_options):
-    """Run the native binary with subprocess.run options."""
+    """Run the native binary with file-backed logs and captured render output."""
     import subprocess
     requested_log = _requested_log(args)
+    if requested_log is None:
+        test_id = os.environ.get("PYTEST_CURRENT_TEST", "native-cli").split(" ", 1)[0]
+        root = os.environ.get("ASCII_CHAT_TEST_LOG_ROOT")
+        if root:
+            log_dir = Path(root)
+            log_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            log_dir = Path(tempfile.gettempdir()) / "ascii-chat-test-logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+        invocation = _next_invocation(test_id)
+        stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", test_id).strip("_")[:120]
+        digest = sha1(f"{test_id}:{invocation}".encode(), usedforsecurity=False).hexdigest()[:8]
+        requested_log = log_dir / f"{stem}-{digest}.log"
+        _CLI_LOGS.setdefault(test_id, []).append(requested_log)
+        args = ("--log-file", str(requested_log), *args)
     command = cli_command(binary, *args)
     result = subprocess.run(command, **subprocess_options)
     _copy_log_alias(command, requested_log)

@@ -14,14 +14,16 @@ pytestmark = [pytest.mark.integration, pytest.mark.media]
 def render(binary, tmp_path, test_environment):
     def invoke(font):
         output = tmp_path / "output.png"
+        log = tmp_path / "render-font.log"
         result = run_cli(binary, "mirror", "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
                          "--splash-screen=false", "--width", "40", "--height", "20", "--render-font", str(font),
-                         "--render-file", str(output), capture_output=True, timeout=45, cwd=tmp_path, env=test_environment)
-        return result, output
+                         "--render-file", str(output), "--log-file", str(log), capture_output=True, timeout=45,
+                         cwd=tmp_path, env=test_environment)
+        return result, output, log
     return invoke
 
 
-def check_png(result, output):
+def check_png(result, output, _log):
     assert result.returncode == 0, result.stderr.decode(errors="replace")
     data = output.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
@@ -36,15 +38,15 @@ def test_bundled_font_renders(render):
 def test_unsupported_font_is_rejected(render, tmp_path, relative):
     invalid = tmp_path / "unsupported.ttf"
     invalid.write_bytes(b"This is not a supported font format\n")
-    result, output = render(invalid.name if relative else invalid)
-    text = (result.stdout + result.stderr).decode(errors="replace")
+    result, output, log = render(invalid.name if relative else invalid)
+    text = log.read_text(errors="replace")
     assert result.returncode != 0 and "Unsupported font format" in text
     assert not output.exists()
 
 
 @pytest.mark.parametrize("relative", [False, True])
 def test_missing_explicit_font_does_not_fall_back(render, tmp_path, relative):
-    result, output = render(os.path.join(".", "missing.ttf") if relative else tmp_path / "missing.ttf")
+    result, output, _log = render(os.path.join(".", "missing.ttf") if relative else tmp_path / "missing.ttf")
     assert result.returncode != 0 and not output.exists()
 
 
@@ -70,8 +72,8 @@ def test_hvf_table_is_rejected_without_hvf_outlines(render, tmp_path):
     builder.font["hvgl"] = table
     path = tmp_path / "synthetic-hvf.ttf"
     builder.save(path)
-    result, output = render(path)
-    text = (result.stdout + result.stderr).decode(errors="replace")
+    result, output, log = render(path)
+    text = log.read_text(errors="replace")
     assert result.returncode != 0 and "Unsupported" in text and "HVF" in text
     assert not output.exists()
 

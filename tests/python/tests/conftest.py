@@ -6,7 +6,13 @@ import tempfile
 import uuid
 
 import pytest
-from ascii_chat_tests.cli import clean_environment, native_test_environment
+from ascii_chat_tests.cli import clean_environment, native_test_environment, cli_command
+from ascii_chat_tests.terminal import Terminal
+
+ASCII_PALETTE_STANDARD = ".',;:clodxkO0KXNWM"
+ASCII_PALETTE_GLYPH = " .-+*#"
+ASCII_RENDER_WIDTH = 120
+ASCII_RENDER_HEIGHT = 80
 
 
 def pytest_addoption(parser):
@@ -175,6 +181,40 @@ def test_environment(tmp_path):
     env.update(TESTING="1", ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", ASCII_CHAT_DISABLE_FIRST_USE="1",
                ASCII_CHAT_NO_CHECK_UPDATE="1", TERM="dumb", NO_COLOR="1")
     return env
+
+
+@pytest.fixture
+def ensure_can_render(binary, test_environment, tmp_path):
+    """Render mirror output in a PTY and require a reset plus palette glyphs."""
+    def render(palette="standard", delay="1", *extra_args):
+        palette_chars = ASCII_PALETTE_STANDARD if palette == "standard" else ASCII_PALETTE_GLYPH
+        term = Terminal(
+            cli_command(str(binary), "--log-file", str(tmp_path / "ascii-render.log"), "mirror", "-S", "-D", delay,
+                        "--test-pattern", "--audio=false", "--palette-chars", palette_chars,
+                        "--splash-screen=false", *extra_args),
+            rows=ASCII_RENDER_HEIGHT, cols=ASCII_RENDER_WIDTH, environment=test_environment)
+        try:
+            import queue
+            import time
+            raw = ""
+            deadline = time.monotonic() + max(8.0, float(delay) + 5.0)
+            while time.monotonic() < deadline:
+                try:
+                    raw += term.output.get(timeout=0.1)
+                except queue.Empty:
+                    continue
+            frame_start = raw.find("\x1b[H")
+            assert "\ufffd" not in raw, "terminal stream contained invalid UTF-8"
+            raw.encode("utf-8", errors="strict").decode("utf-8", errors="strict")
+            assert frame_start >= 0, "mirror emitted no terminal frame reset"
+            frame = raw[frame_start:]
+            present = set(frame) & set(palette_chars.replace(" ", ""))
+            minimum = 0.20 if palette == "standard" else 0.05
+            assert len(present) / max(1, len(set(palette_chars.replace(" ", "")))) >= minimum
+            return frame
+        finally:
+            term.close()
+    return render
 
 
 @pytest.fixture
