@@ -161,6 +161,8 @@ static _Atomic int g_interactive_screen = -1;
 static _Atomic int g_background_screen = -1;
 static _Atomic uint32_t g_screen_mask;
 static atomic_t g_volume_until = {0};
+/* The UI controller owns the terminal while any full-screen presentation is live. */
+static bool g_terminal_screen_active;
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
 static _Thread_local terminal_capabilities_t g_volume_caps;
@@ -1352,6 +1354,14 @@ static asciichat_error_t controller_start(void) {
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
     }
     lifecycle_init_commit(&g_lifecycle);
+    if (platform_isatty(atomic_load(&g_default_fd)) && !GET_OPTION(snapshot_mode)) {
+      const char enter_screen[] = "\033[?1049h\033[?25l\033[H\033[2J";
+      if (platform_write_all(atomic_load(&g_default_fd), enter_screen, sizeof(enter_screen) - 1) ==
+          sizeof(enter_screen) - 1)
+        g_terminal_screen_active = true;
+      else
+        log_error("Cannot enter alternate terminal screen");
+    }
   }
   if (!lifecycle_is_initialized(&g_lifecycle))
     return SET_ERRNO(ERROR_INVALID_STATE, "UI controller initialization is not complete");
@@ -1863,6 +1873,11 @@ void ui_controller_shutdown(void) {
   atomic_store(&g_background_screen, -1);
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
+  if (g_terminal_screen_active) {
+    const char leave_screen[] = "\033[0m\033[?25h\033[?1049l";
+    (void)platform_write_all(atomic_load(&g_default_fd), leave_screen, sizeof(leave_screen) - 1);
+    g_terminal_screen_active = false;
+  }
   NAMED_UNREGISTER(&g_title_active);
   NAMED_UNREGISTER(&g_title_render);
   NAMED_UNREGISTER(&g_title_ready);
