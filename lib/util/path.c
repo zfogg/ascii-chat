@@ -14,6 +14,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/os/string.h>
 #include <ascii-chat/common/error_codes.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
