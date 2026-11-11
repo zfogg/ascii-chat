@@ -34,7 +34,6 @@
 #include "os/api.h" // IWYU pragma: keep
 #include "os/filesystem.h" // platform file and descriptor helpers
 #include "asciichat_errno.h"
-#include "os/string.h" // platform string helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
 
@@ -424,6 +423,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
 #include "asciichat_errno.h"
+#include "os/string.h" // platform string helpers
 /* Safe string duplication with memory tracking */
 #define SAFE_STRDUP(dst, src)                                                                                          \
   do {                                                                                                                 \
