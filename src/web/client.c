@@ -5,6 +5,7 @@
 
 #include "security.h"
 #include <ascii-chat/crypto/sizes.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
 #include <ascii-chat/network/crc32.h>
@@ -1037,7 +1038,8 @@ asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, s
     if (!payload || length != sizeof(protocol_version_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
     const protocol_version_packet_t *version = payload;
-    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != g_crypto_mode)
+    if (NET_TO_HOST_U16(version->protocol_version) != PROTOCOL_VERSION_MAJOR ||
+        version->supports_encryption != g_crypto_mode)
       return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
     g_version_received = true;
     if (g_crypto_mode == ACIP_CRYPTO_NONE) {

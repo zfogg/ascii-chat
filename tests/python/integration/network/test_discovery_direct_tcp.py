@@ -41,7 +41,7 @@ def test_discovery_direct_tcp(binary, tmp_path):
                                       "--color-mode", "none", "--splash-screen=false"], environment)
         client.wait_for("Discovery connection route: direct TCP (--no-webrtc)")
         host.wait_for("state=changing")
-        client.wait_for("inner_type=3000")
+        client.wait_for("Received first ASCII frame")
         text = client.text()
         assert re.search(r"Added new transport client [^\n]+type=1,", host.text()), host.text()[-4000:]
         assert "Authenticated WebRTC connection adopted" not in host.text(), host.text()[-4000:]
