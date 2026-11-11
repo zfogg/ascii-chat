@@ -2,6 +2,7 @@
 # Note: Source file properties (C++ language, mdns warnings) set in root CMakeLists.txt
 
 set(NETWORK_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/basic_auth.c
     ${CMAKE_CURRENT_SOURCE_DIR}/http/server/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http2.c
     # Core network files

@@ -10,7 +10,7 @@
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -984,8 +984,8 @@ static void quic_network_server_test(const char *certificate, const char *privat
   CHECK(network_server_create(&config, &network_server) == ASCIICHAT_OK);
   CHECK(network_server_start(network_server) == ASCIICHAT_OK);
   quic_server_runner_t runner = {.server = network_server};
-  asciichat_thread_t server_thread;
-  CHECK(acthread_create(&server_thread, "quic_server_loop", quic_server_run, &runner) == ASCIICHAT_OK);
+  platform_thread_t server_thread;
+  CHECK(platform_thread_create(&server_thread, "quic_server_loop", quic_server_run, &runner) == ASCIICHAT_OK);
   crypto_handshake_context_t client_handshake;
   CHECK(crypto_handshake_init_with_password("quic-network-client", &client_handshake, false, "test-password") ==
         ASCIICHAT_OK);
@@ -1091,8 +1091,8 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
                                     sizeof(insecure_version)) == ERROR_CRYPTO);
   CHECK(!server_negotiation.ready && server_negotiation.step == 0);
   quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = client_handshake};
-  asciichat_thread_t negotiation_thread;
-  CHECK(acthread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) ==
+  platform_thread_t negotiation_thread;
+  CHECK(platform_thread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) ==
         ASCIICHAT_OK);
   start = time_get_ns();
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT && !server_negotiation.ready) {
@@ -1452,8 +1452,8 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     buffer_release(audio_allocation);
     server_transport->receive_timeout_ns = 200 * NS_PER_MS_INT;
     quic_concurrent_sender_t sender = {.transport = client_transport, .packet = packets[0], .length = lengths[0]};
-    asciichat_thread_t thread;
-    CHECK(acthread_create(&thread, "quic_concurrent_sender", quic_concurrent_send, &sender) == 0);
+    platform_thread_t thread;
+    CHECK(platform_thread_create(&thread, "quic_concurrent_sender", quic_concurrent_send, &sender) == 0);
     unsigned received = 0;
     start = time_get_ns();
     while (received < 32 && time_get_ns() - start < 10 * NS_PER_SEC_INT) {
@@ -1471,7 +1471,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     CHECK(sender.result == ASCIICHAT_OK && received == 32);
     server_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
     quic_concurrent_receiver_t receiver = {.transport = server_transport};
-    CHECK(acthread_create(&thread, "quic_concurrent_receiver", quic_concurrent_receive, &receiver) == 0);
+    CHECK(platform_thread_create(&thread, "quic_concurrent_receiver", quic_concurrent_receive, &receiver) == 0);
     while (!atomic_load_u64(&receiver.started))
       time_sleep_ns(NS_PER_MS_INT);
     CHECK(acip_transport_send(client_transport, packets[0], lengths[0]) == ASCIICHAT_OK);
@@ -1483,7 +1483,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
           memcmp(receiver.packet, packets[0], receiver.length) == 0);
     buffer_release(receiver.allocation);
     receiver = (quic_concurrent_receiver_t){.transport = server_transport};
-    CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
+    CHECK(platform_thread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
     while (!atomic_load_u64(&receiver.started))
       time_sleep_ns(NS_PER_MS_INT);
     mutex_lock(&server_lane);
@@ -1501,7 +1501,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     CHECK(acip_transport_send(server_transport, packets[0], lengths[0]) == ERROR_INVALID_STATE);
     receiver = (quic_concurrent_receiver_t){.transport = client_transport};
     client_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
-    CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
+    CHECK(platform_thread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
     while (!atomic_load_u64(&receiver.started))
       time_sleep_ns(NS_PER_MS_INT);
     acip_transport_interrupt(client_transport);
@@ -1678,8 +1678,8 @@ static void quic_udp_wakeup_test(void) {
   CHECK(wait_ns == 10 * NS_PER_MS_INT && !want_write);
   CHECK(quic_udp_wait(endpoint, wait_ns, want_write, &ready) == ASCIICHAT_OK && !ready);
   quic_udp_wait_test_t state = {.endpoint = endpoint};
-  asciichat_thread_t thread;
-  CHECK(acthread_create(&thread, "quic_udp_wait", quic_udp_wait_thread, &state) == 0);
+  platform_thread_t thread;
+  CHECK(platform_thread_create(&thread, "quic_udp_wait", quic_udp_wait_thread, &state) == 0);
   while (!atomic_load_u64(&state.started))
     time_sleep_ns(NS_PER_MS_INT);
   CHECK(quic_udp_wake(endpoint) == ASCIICHAT_OK);

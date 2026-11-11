@@ -30,7 +30,7 @@ typedef struct {
   const char *value;
 } http_header_t;
 
-typedef struct {
+typedef struct http_request_info {
   const char *method;
   const char *path;
   const char *query;
@@ -41,6 +41,8 @@ typedef struct {
   void *user_data;
 } http_request_info_t;
 
+#include <ascii-chat/network/http/server/basic_auth.h>
+
 typedef void (*http_request_fn)(http_request_t *request, http_response_t *response, void *user_data);
 typedef void (*http_connection_fn)(const char *peer_address, bool connected, void *user_data);
 typedef void (*http_error_fn)(asciichat_error_t error, const char *message, void *user_data);
@@ -49,6 +51,7 @@ typedef void (*http_wakeup_fn)(void *user_data);
 
 typedef struct {
   const char *bind_address;
+  const char *bind_address6;
   uint16_t port;
   bool enable_http1;
   bool enable_http2;
@@ -68,6 +71,8 @@ typedef struct {
   size_t max_requests_per_peer;
   /** Request rate window in seconds; zero uses the safe default. */
   uint32_t request_rate_window_seconds;
+  /** Optional library-enforced Basic authentication for every request. */
+  http_basic_auth_config_t basic_auth;
   http_request_fn on_request;
   http_connection_fn on_connection;
   http_error_fn on_error;

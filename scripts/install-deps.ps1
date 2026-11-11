@@ -335,8 +335,6 @@ uv python pin 3.15
 uv tool install --upgrade "yt-dlp[default]"
 uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen --python 3.15 --managed-python
 if ($LASTEXITCODE -ne 0) { throw "Failed to sync the Python test project" }
-uv sync --project "$PSScriptRoot\..\src\tooling\defer" --frozen --python 3.15 --managed-python
-if ($LASTEXITCODE -ne 0) { throw "Failed to sync the defer Python project" }
 
 Write-Host ""
 $clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue

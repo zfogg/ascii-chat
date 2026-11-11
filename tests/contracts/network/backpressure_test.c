@@ -245,11 +245,11 @@ Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   acip_outbound_stats_t stats;
   acip_transport_t *concurrent = create();
   atomic_store_u64(&((backend_t *)concurrent->impl_data)->bytes, 300000);
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   producer_t producers[4];
   for (uint32_t i = 0; i < 4; ++i) {
     producers[i] = (producer_t){concurrent, i};
-    cr_assert_eq(acthread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
   }
   for (size_t i = 0; i < 4; ++i)
     cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
@@ -301,8 +301,8 @@ static void check_stopped_control(bool interrupt) {
   backend_t *backend = transport->impl_data;
   atomic_store_u64(&backend->bytes, 1);
   failing_producer_t producer = {.transport = transport};
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "closing_control", submit_control, &producer), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "closing_control", submit_control, &producer), ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;
@@ -349,9 +349,9 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   backend->wrap_context = wrap_context;
   atomic_store_u64(&backend->bytes, 1); // Hold both controls until they are queued.
   failing_producer_t producers[2] = {{.transport = transport}, {.transport = transport}};
-  asciichat_thread_t threads[2];
+  platform_thread_t threads[2];
   for (size_t i = 0; i < 2; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;

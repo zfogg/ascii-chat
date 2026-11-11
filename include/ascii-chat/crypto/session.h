@@ -1,6 +1,6 @@
 #pragma once
 #include <ascii-chat/crypto/rekey.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 
 #define CRYPTO_SESSION_MESSAGES 16
 

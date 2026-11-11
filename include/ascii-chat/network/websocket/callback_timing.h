@@ -14,7 +14,7 @@
 #define WEBSOCKET_CALLBACK_TIMING_H
 
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 
 /**

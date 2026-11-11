@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/terminal.h>
 
 /** Debug-only service. Collection and input never wait on application locks. */
 asciichat_error_t ui_sync_start(int fd);

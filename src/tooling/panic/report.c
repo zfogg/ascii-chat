@@ -31,7 +31,7 @@
 
 #include <unistd.h>
 #ifdef _WIN32
-#include <ascii-chat/platform/windows/getopt.h>
+#include <ascii-chat/os/windows/getopt.h>
 #else
 #include <getopt.h>
 #endif

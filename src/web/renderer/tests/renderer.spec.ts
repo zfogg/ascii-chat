@@ -356,7 +356,10 @@ test("object options patches commit atomically and respect revisions", async ({ 
 
 test("shared rendering constants match the native definitions", async ({ page }) => {
   const terminal = readFileSync(
-    new URL("../../../../include/ascii-chat/platform/terminal.h", import.meta.url),
+    new URL(
+      "../../../../include/libplatform/terminal.h",
+      import.meta.url,
+    ),
     "utf8",
   );
   const palette = readFileSync(

@@ -21,18 +21,17 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         set(_ascii_chat_pch_targets
             ascii-chat-core
             ascii-chat-network
-            ascii-chat-platform
             ascii-chat-util
         )
 
         set(_ascii_chat_pch_headers
-            <ascii-chat/platform/system.h>
-            <ascii-chat/platform/init.h>
-            <ascii-chat/platform/filesystem.h>
-            <ascii-chat/platform/thread.h>
-            <ascii-chat/platform/string.h>
-            <ascii-chat/platform/socket.h>
-            <ascii-chat/platform/terminal.h>
+            <libplatform/system.h>
+            <ascii-chat/common/sync.h>
+            <libplatform/filesystem.h>
+            <libplatform/thread.h>
+            <libplatform/util/string.h>
+            <libplatform/socket.h>
+            <libplatform/terminal.h>
 
             <ascii-chat/log/log.h>
             <ascii-chat/options/options.h>
@@ -50,7 +49,8 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/util/parsing.h>
             <ascii-chat/util/aspect_ratio.h>
             <ascii-chat/util/ip.h>
-            <ascii-chat/util/lifecycle.h>
+
+            <libplatform/util/string.h>
 
             <ascii-chat/crypto/known_hosts.h>
 

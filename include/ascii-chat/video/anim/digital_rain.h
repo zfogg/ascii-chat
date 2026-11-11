@@ -45,7 +45,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../common.h"
-#include "../../platform/terminal.h"
+#include <libplatform/terminal.h>
 
 /* ============================================================================
  * Types and Constants

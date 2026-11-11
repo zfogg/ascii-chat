@@ -7,13 +7,12 @@
 #ifndef ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 #define ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
 
-#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
  * @brief Owned WebSocket frame queued for sending or reassembly
@@ -60,7 +59,7 @@ typedef struct {
   cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
 
   // Service thread for client-side transports
-  asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
+  platform_thread_t service_thread; ///< Thread that services libwebsockets context
   bool service_running;              ///< Owner must join the service thread before freeing storage
 
   // Partial message reassembly state (preserved across recv() calls)

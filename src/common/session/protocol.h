@@ -2,7 +2,7 @@
 
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/settings.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/buffer.h>
 
 /* Callbacks borrow decoded buffers for the duration of the call. Device and UI

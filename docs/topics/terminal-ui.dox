@@ -55,6 +55,13 @@
  * suppressed by the warning. Shutdown joins the presentation thread before keyboard,
  * log, option, and named-registry teardown.
  *
+ * Interactive presentation takes ownership of the terminal's alternate screen
+ * when the controller starts. The alternate screen begins at the home position
+ * with the cursor hidden and has no application scrollback, so live TUI and ASCII
+ * frames cannot be scrolled independently of the screen. Controller shutdown
+ * restores the normal screen, cursor, and terminal attributes; redirected output
+ * and snapshot mode do not enter the alternate screen.
+ *
  * ## Audio visualizations
  *
  * Keyboard help places Current Settings and Animations to the right of Navigation

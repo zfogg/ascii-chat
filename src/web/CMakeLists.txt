@@ -65,6 +65,7 @@ endif()
 include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
+
 include(${_cmake_dir}/deps/PCRE2.cmake)
 include(${_cmake_dir}/deps/ICU.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
@@ -91,6 +92,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}/generated
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
+    ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common  # For session/*.h relative includes
     ${DEPS_ROOT}
@@ -123,7 +125,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/wasm/lifecycle.c
     ${LIB_ROOT}/platform/process_title.c
     ${LIB_ROOT}/platform/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
@@ -733,47 +734,12 @@ target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${
 # parent project's defer finalization cannot see these targets. Reuse the same
 # repository-level defer module once, after all browser targets are declared.
 if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(NOT ASCIICHAT_DEFER_SOURCE_ROOT OR NOT ASCIICHAT_DEFER_NATIVE_BINARY)
+    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY OR NOT EXISTS "${DEFER_CONFIG_FILE}")
         message(FATAL_ERROR
-            "The parent CMake project must provide ASCIICHAT_DEFER_SOURCE_ROOT and ASCIICHAT_DEFER_NATIVE_BINARY")
+            "The parent CMake project must provide DEFER_SOURCE_ROOT, DEFER_NATIVE_BINARY, and DEFER_CONFIG_FILE")
     endif()
-    # Emscripten distributions can place their cache outside the SDK directory
-    # (for example, Arch uses ~/.cache/emscripten). The native defer parser
-    # needs the target libc headers even when emcc's own cache is relocated.
-    get_filename_component(_emcc_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-    find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    execute_process(COMMAND "${Python3_EXECUTABLE}" "${_emcc_dir}/em-config.py" CACHE
-        OUTPUT_VARIABLE _em_cache OUTPUT_STRIP_TRAILING_WHITESPACE
-        COMMAND_ERROR_IS_FATAL ANY)
-    list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${_em_cache}/sysroot/include")
-    # The defer host parses the same source set as emcc, but it does not see
-    # target include directories from CMake's compiler command lines. Pass the
-    # dependency include roots explicitly so headers such as sodium.h resolve
-    # during native parsing as they do during the WASM compile.
-    foreach(_defer_dependency_include_dir IN ITEMS
-        ${LIBSODIUM_INCLUDE_DIRS}
-        ${PCRE2_INCLUDE_DIRS}
-        ${OPUS_INCLUDE_DIRS}
-        ${ZSTD_INCLUDE_DIRS}
-        ${VTERM_INCLUDE_DIRS}
-        ${FFMPEG_INCLUDE_DIRS}
-        ${FREETYPE_INCLUDE_DIRS}
-        ${FONTCONFIG_INCLUDE_DIRS}
-        ${BEARSSL_INCLUDE_DIRS}
-        ${LIBWEBSOCKETS_INCLUDE_DIRS})
-        if(IS_DIRECTORY "${_defer_dependency_include_dir}")
-            list(APPEND ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS "${_defer_dependency_include_dir}")
-        endif()
-    endforeach()
-    include("${ASCIICHAT_DEFER_SOURCE_ROOT}/cmake/tooling/Defer.cmake")
-    ascii_defer_prepare_native()
-    set(_batch_stage web)
-    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
-    file(WRITE "${_plan_records}" "")
+    set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
+    include("${DEFER_CONFIG_FILE}")
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
-    ascii_defer_scan_targets(_defer_sources ${_ascii_wasm_defer_targets})
-    foreach(_ascii_wasm_defer_target IN LISTS _ascii_wasm_defer_targets)
-        ascii_defer_apply_target("${_ascii_wasm_defer_target}")
-    endforeach()
-    ascii_defer_finish_batches()
+    defer_targets(${_ascii_wasm_defer_targets})
 endif()

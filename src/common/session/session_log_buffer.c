@@ -4,11 +4,13 @@
  */
 
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/common.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
  * @brief Thread-safe fixed-size history ring for session-screen log lines

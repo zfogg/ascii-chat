@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>

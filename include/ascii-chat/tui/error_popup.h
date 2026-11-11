@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /** Error notifications are an overlay, independent of the selected application screen. */
 bool ui_error_popup_visible(void);

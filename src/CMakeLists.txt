@@ -25,10 +25,14 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer_process.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
+    # Public image-to-ASCII HTTP API
+    ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
+    # Shared render-over-HTTP request/result ownership
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
@@ -95,14 +99,10 @@ endif()
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    elseif(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    else()
+    if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         set(_use_shared_lib TRUE)
+    else()
+        set(_use_shared_lib FALSE)
     endif()
 endif()
 
@@ -203,7 +203,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
@@ -282,7 +282,7 @@ endif()
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
 # EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
-if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
     # Use $ORIGIN for relative paths to maintain portability
     if(APPLE)
@@ -304,7 +304,7 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         BUILD_RPATH "${_rpath_list}"
         SKIP_BUILD_RPATH FALSE
     )
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARED_DEPS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
@@ -321,7 +321,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
         INSTALL_RPATH_USE_LINK_PATH FALSE
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check

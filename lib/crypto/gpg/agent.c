@@ -14,9 +14,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/agent.h>
-#include <ascii-chat/platform/pipe.h>
+#include <libplatform/system.h>
+#include <libplatform/agent.h>
+#include <ascii-chat/os/pipe.h>
 
 #include <ctype.h>
 #include <errno.h>

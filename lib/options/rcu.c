@@ -16,12 +16,14 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/lifecycle.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/process.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
@@ -527,6 +529,22 @@ const options_t *options_get(void) {
   }
 
   return current;
+}
+
+const terminal_options_t *options_terminal_settings_ptr(void) {
+  static terminal_options_t settings;
+  const options_t *options = options_get();
+  settings = (terminal_options_t){
+      .color = (terminal_color_setting_t)options->color,
+      .color_mode = options->color_mode,
+      .force_utf8 = (terminal_utf8_setting_t)options->force_utf8,
+      .render_mode = options->render_mode,
+      .width = options->width,
+      .height = options->height,
+      .fps = options->fps,
+      .snapshot_mode = options->snapshot_mode,
+  };
+  return &settings;
 }
 
 typedef struct {

@@ -50,12 +50,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <ascii-chat/asciichat_errno.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "../platform/thread.h"
+#include <libplatform/thread.h>
 
 // ============================================================================
 // Core Registry API
@@ -317,7 +318,7 @@ const char *named_describe(uintptr_t key, const char *type_hint);
 
 /**
  * @brief Convert a thread handle to a registry key
- * @param thread Thread handle (asciichat_thread_t)
+ * @param thread Thread handle (platform_thread_t)
  * @return uintptr_t suitable for registry lookups
  * @ingroup debug_util
  *
@@ -326,7 +327,7 @@ const char *named_describe(uintptr_t key, const char *type_hint);
  *
  * This function is defined in lib/platform/posix/thread.c or lib/platform/windows/thread.c
  */
-uintptr_t thread_to_key(asciichat_thread_t thread);
+uintptr_t thread_to_key(platform_thread_t thread);
 
 // ============================================================================
 // Convenience Macros — Pointer-based Registration
@@ -810,7 +811,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 
 /**
  * @brief Register a thread handle with name and automatic format specifier
- * @param thread asciichat_thread_t handle (NOT a pointer)
+ * @param thread platform_thread_t handle (NOT a pointer)
  * @param name Base name string
  * @ingroup debug_util
  *
@@ -825,7 +826,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 
 /**
  * @brief Unregister a thread handle
- * @param thread asciichat_thread_t handle (NOT a pointer)
+ * @param thread platform_thread_t handle (NOT a pointer)
  * @ingroup debug_util
  */
 #define NAMED_UNREGISTER_THREAD(thread) named_unregister(thread_to_key((thread)))
@@ -865,7 +866,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 
 /**
  * @brief Describe a thread for logging
- * @param t asciichat_thread_t handle
+ * @param t platform_thread_t handle
  * @ingroup debug_util
  *
  * Uses named_describe_thread() function to handle platform-specific conversion.
@@ -901,11 +902,11 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 
 /**
  * @brief Describe a thread for logging (function wrapper)
- * @param thread asciichat_thread_t handle
+ * @param thread platform_thread_t handle
  * @return Description string "thread: name (0xID)"
  * @ingroup debug_util
  *
- * This is a function (not a macro) to handle the opaque asciichat_thread_t type
+ * This is a function (not a macro) to handle the opaque platform_thread_t type
  * properly, converting it through thread_to_key().
  */
 const char *named_describe_thread(void *thread);

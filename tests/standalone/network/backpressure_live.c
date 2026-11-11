@@ -44,7 +44,7 @@ struct fixture {
   struct lws_context *context;
   struct lws *wsi;
   endpoint_t endpoints[2];
-  asciichat_thread_t relay_thread, service_thread, proxy_thread;
+  platform_thread_t relay_thread, service_thread, proxy_thread;
   socket_t proxy_listener;
   struct sockaddr_in proxy_target;
   atomic_t proxy_running;
@@ -415,7 +415,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     f->context = lws_create_context(&info);
     CHECK(f->context);
     atomic_store_bool(&f->running, true);
-    CHECK(acthread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) == ASCIICHAT_OK);
     f->proxy_target = address;
     struct sockaddr_in proxy_address;
     f->proxy_listener = bound_socket(SOCK_STREAM, &proxy_address);
@@ -423,7 +423,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     CHECK(socket_setsockopt(f->proxy_listener, SOL_SOCKET, SO_RCVBUF, &receive_size, sizeof(receive_size)) == 0);
     CHECK(socket_listen(f->proxy_listener, 1) == 0);
     atomic_store_bool(&f->proxy_running, true);
-    CHECK(acthread_create(&f->proxy_thread, "tcp_proxy", tcp_proxy_loop, f) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&f->proxy_thread, "tcp_proxy", tcp_proxy_loop, f) == ASCIICHAT_OK);
     char url[128];
     safe_snprintf(url, sizeof(url), "ws://127.0.0.1:%u", NET_TO_HOST_U16(proxy_address.sin_port));
     f->sender = acip_websocket_client_transport_create("backpressure", url, NULL);
@@ -438,7 +438,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     f->relay = bound_socket(SOCK_DGRAM, &address);
     socket_set_nonblocking(f->relay, true);
     atomic_store_bool(&f->running, true);
-    CHECK(acthread_create(&f->relay_thread, "test_udp_relay", relay_loop, f) == ASCIICHAT_OK);
+    CHECK(platform_thread_create(&f->relay_thread, "test_udp_relay", relay_loop, f) == ASCIICHAT_OK);
     for (int i = 0; i < 2; ++i) {
       endpoint_t *e = &f->endpoints[i];
       e->fixture = f;

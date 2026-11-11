@@ -61,7 +61,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 #include <stdio.h>
 
@@ -70,8 +70,10 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>
@@ -84,8 +86,8 @@ typedef struct {
   session_connection_t connection;
   session_protocol_t protocol;
   network_connection_t *network;
-  asciichat_thread_t receiver_thread;
-  asciichat_thread_t audio_thread;
+  platform_thread_t receiver_thread;
+  platform_thread_t audio_thread;
   bool receiver_started;
   bool audio_started;
   acip_transport_t *transport;
@@ -144,7 +146,7 @@ typedef struct {
   session_audio_ctx_t *audio;
   uint32_t participant_id;
   atomic_t running;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   bool started;
   asciichat_error_t result;
   /**
@@ -549,7 +551,8 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture, &host_capture);
+      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+                                      &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
         return result;
@@ -736,14 +739,14 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
-                               &receiver);
+      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+                                      discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result =
-            acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
+        result = platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+                                        &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);

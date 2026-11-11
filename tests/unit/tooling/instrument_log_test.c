@@ -1,8 +1,8 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/system.h>
+#include <libplatform/thread.h>
 
 #include <errno.h>
 #include <inttypes.h>

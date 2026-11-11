@@ -4,6 +4,8 @@
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 
+_Static_assert(ACIP_TRAFFIC_CONTROL == CRYPTO_RECORD_CONTROL_CHANNEL, "Control channel IDs must match");
+
 asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer_t *buffers, size_t count,
                                    acip_packet_plan_t *plan) {
   if (!plan)

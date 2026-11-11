@@ -80,8 +80,8 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ACIP_OPUS_BATCH_HEADER_SIZE 16
 
-#include "../../platform/socket.h"
-#include "../../platform/abstraction.h"
+#include <libplatform/socket.h>
+#include <libplatform/compiler.h>
 #include "../../crypto/crypto.h"
 #include "../../log/log.h"
 #include "../../util/magic.h"

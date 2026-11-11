@@ -60,7 +60,7 @@ if(TEST_EMISSION)
         lib/video/ascii/ascii.c
         lib/video/terminal/ansi.c
         lib/video/ascii/simd/dispatch.c lib/platform/cpu.c
-        lib/lifecycle.c lib/atomic.c lib/platform/rwlock.c
+        deps/libplatform/lib/atomic.c lib/platform/rwlock.c
         lib/platform/posix/rwlock.c lib/platform/posix/mutex.c
         lib/platform/posix/string.c lib/platform/posix/system.c lib/platform/system.c lib/util/time.c)
     foreach(source IN LISTS emission_sources)

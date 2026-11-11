@@ -90,7 +90,7 @@ services:
       - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTP_PORT:-8080}:80"
       - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTPS_PORT:-8443}:443"
     environment:
-      MCP_SITE: ${MCP_SITE:-http://localhost}
+      MCP_SITE: ${MCP_SITE:-http://localhost http://127.0.0.1}
       ACME_EMAIL: ${ACME_EMAIL:-you@example.com}
       ACME_DIRECTORY: ${ACME_DIRECTORY:-https://acme-staging-v02.api.letsencrypt.org/directory}
       MCP_RATE_EVENTS: ${MCP_RATE_EVENTS:-30}

@@ -33,9 +33,9 @@
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/schema.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/audio/audio.h>
@@ -237,10 +237,11 @@ static void execute_list_speakers(void) {
  * @brief Execute show capabilities immediately (for early binary-level execution)
  */
 void action_show_capabilities_immediate(void) {
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
 
   // Determine if we should use colored output
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
 
   // Override color level if colors should not be shown
   if (!use_colors) {
@@ -353,10 +354,11 @@ void action_check_update(void) {
  * and --height flags), then exits.
  */
 static void execute_show_capabilities(void) {
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
 
   // Determine if we should use colored output
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
 
   // Override color level if colors should not be shown
   if (!use_colors) {
@@ -437,7 +439,7 @@ static void execute_show_capabilities(void) {
 // ============================================================================
 
 void action_show_version(void) {
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
   if (use_colors) {
     printf("%s %s (%s, %s)\n", colored_string(LOG_COLOR_WARN, "ascii-chat"),
            colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),

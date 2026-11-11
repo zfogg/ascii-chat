@@ -3,6 +3,16 @@
  * @ingroup module_network
  * @ingroup network
  *
+ * ## HTTP image API
+ *
+ * `ascii-chat api-server` exposes the shared HTTP listener for image-to-ASCII
+ * conversion. `GET /health` returns a minimal JSON readiness response.
+ * `POST /convert` accepts an image body with `image/*` or
+ * `application/octet-stream`, or one `image` multipart field. Width, height,
+ * palette, and output format are query parameters; output can be text, JSON,
+ * or escaped HTML. URL fetching, local paths, and batch conversion are not
+ * part of this public surface.
+ *
  * @brief How connections, transports, ACIP, and media admission fit together.
  *
  * @section network_overview Overview
@@ -180,4 +190,19 @@
  * @see topic_acds
  * @see md_docs_2networking-runtime.html
  * @see md_docs_2event-driven-io.html
+ */
+
+/**
+ * @page http_basic_auth HTTP Basic authentication
+ *
+ * HTTP applications can use `http_basic_auth_parse()` to decode an
+ * `Authorization: Basic` header into owned, bounded credentials. The parser
+ * requires the Basic scheme, strict Base64, a non-empty username and password,
+ * rejects embedded NUL bytes, and clears temporary decoded bytes. Use
+ * `http_basic_auth_matches()` for constant-time credential comparison and
+ * `http_basic_credentials_clear()` when the copied credentials are no longer
+ * needed. Applications can enable library-enforced authentication by setting
+ * `http_server_config_t.basic_auth`; the HTTP server then authenticates every
+ * request before invoking the application request handler and returns a
+ * `401 Unauthorized` challenge for missing or invalid credentials.
  */

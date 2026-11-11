@@ -3,9 +3,9 @@
 #include "server_internal.h"
 #include "http2.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/atomic.h>
+#include <libplatform/thread.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
@@ -52,6 +52,7 @@ struct http_server {
   http_server_config_t config;
   uv_loop_t loop;
   uv_tcp_t listener;
+  uv_tcp_t listener6;
   uv_async_t stop_async;
   uv_async_t wake_async;
   bool running;
@@ -60,9 +61,10 @@ struct http_server {
   bool foreground_running;
   bool http3_attached;
   bool listener_initialized;
+  bool listener6_initialized;
   bool stop_async_initialized;
   bool wake_async_initialized;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   size_t connections;
   atomic_t inflight_requests;
   http_server_client_t *clients;
@@ -102,6 +104,7 @@ struct http_response {
   http3_submit_response_fn http3_submit;
   void *http3_context;
 };
+
 struct http_server_client {
   uv_tcp_t tcp;
   http_server_t *server;
@@ -185,10 +188,24 @@ static asciichat_error_t http_server_start_listener(http_server_t *s) {
       http_server_rollback_start(s);
       return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
     }
+    if (s->config.bind_address6 && *s->config.bind_address6 && !strchr(bind_address, ':')) {
+      struct sockaddr_in6 ipv6;
+      if (uv_ip6_addr(s->config.bind_address6, s->config.port, &ipv6) != 0 ||
+          uv_tcp_bind(&s->listener6, (const struct sockaddr *)&ipv6, UV_TCP_IPV6ONLY) != 0) {
+        http_server_rollback_start(s);
+        return SET_ERRNO(ERROR_NETWORK, "Cannot bind IPv6 HTTP listener");
+      }
+    }
   }
   if (tcp_enabled && uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
+  }
+  if (tcp_enabled && s->listener6_initialized && s->config.bind_address6 && *s->config.bind_address6 &&
+      !strchr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", ':') &&
+      uv_listen((uv_stream_t *)&s->listener6, (int)s->config.max_connections, connection_cb) != 0) {
+    http_server_rollback_start(s);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot listen on IPv6 HTTP listener");
   }
   return ASCIICHAT_OK;
 }
@@ -838,7 +855,8 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   ASCII_OTEL_ATTR_STRING("http.route", request.info.path);
   ASCII_OTEL_ATTR_STRING("http.protocol", "3");
   ASCII_OTEL_ATTR_STRING("http.backend", "quic-ngtcp2-nghttp3");
-  server->config.on_request(&request, &response, server->config.user_data);
+  if (http_server_authorize(&server->config.basic_auth, &request.info, &response))
+    server->config.on_request(&request, &response, server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
     ASCII_OTEL_ATTR_INT("http.status", response.status);
@@ -947,7 +965,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                               .max_body_length = http_max_response_body(client->server),
                               .inflight_accounted = true,
                               .status = 200};
-  client->server->config.on_request(&request, &response, client->server->config.user_data);
+  if (http_server_authorize(&client->server->config.basic_auth, &request.info, &response))
+    client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
     ASCII_OTEL_ATTR_INT("http.status", response.status);
@@ -1107,7 +1126,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   ASCII_OTEL_ATTR_STRING("http.backend", "libuv");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
-  c->server->config.on_request(&r, &resp, c->server->config.user_data);
+  if (http_server_authorize(&c->server->config.basic_auth, &r.info, &resp))
+    c->server->config.on_request(&r, &resp, c->server->config.user_data);
   if (!resp.finished && !resp.deferred)
     http_response_finish(&resp);
   ASCII_OTEL_ATTR_INT("http.status", resp.status);
@@ -1190,6 +1210,8 @@ static void stop_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (!uv_is_closing((uv_handle_t *)&s->listener))
     uv_close((uv_handle_t *)&s->listener, NULL);
+  if (s->listener6_initialized && !uv_is_closing((uv_handle_t *)&s->listener6))
+    uv_close((uv_handle_t *)&s->listener6, NULL);
   for (http_server_client_t *c = s->clients; c; c = c->next)
     client_close(c);
   uv_close((uv_handle_t *)async, NULL);
@@ -1207,6 +1229,9 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
+  if (cfg->basic_auth.enabled && (!cfg->basic_auth.username || !cfg->basic_auth.password ||
+                                  !cfg->basic_auth.username[0] || !cfg->basic_auth.password[0]))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Basic authentication requires non-empty credentials");
   if ((cfg->enable_http3 && !cfg->http3_endpoint) || ((cfg->tls_cert_path == NULL) != (cfg->tls_key_path == NULL)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS requires certificate and key");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
@@ -1271,6 +1296,12 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   }
   s->listener_initialized = true;
   s->listener.data = s;
+  if (uv_tcp_init(&s->loop, &s->listener6) != 0) {
+    uv_close((uv_handle_t *)&s->listener, NULL);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initialize IPv6 HTTP listener");
+  }
+  s->listener6_initialized = true;
+  s->listener6.data = s;
   if (uv_async_init(&s->loop, &s->stop_async, stop_async_cb) != 0) {
     uv_close((uv_handle_t *)&s->listener, NULL);
     uv_run(&s->loop, UV_RUN_DEFAULT);
@@ -1311,7 +1342,7 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (result != ASCIICHAT_OK)
     return result;
   s->running = true;
-  if (acthread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
+  if (platform_thread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
   }

@@ -1,9 +1,9 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 
 #ifdef DEBUG_MEMORY
 static char report_directory[PLATFORM_MAX_PATH_LENGTH];
@@ -39,7 +39,7 @@ Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_liv
   cr_assert_eq((uintptr_t)aligned % 64, 0);
   debug_track_aligned(NULL, 256, "aligned-report-fixture.c", 9001);
   memset(aligned, 0x5a, 256);
-  debug_memory_report();
+  debug_memory_report(true);
   FILE *report = report_file;
   cr_assert_eq(fseek(report, 0, SEEK_SET), 0);
   char text[32768];
@@ -63,7 +63,7 @@ Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_liv
     cr_assert_eq(block[i], 0x6b);
   block = debug_realloc(block, 0, "realloc-report-fixture.c", 9002);
   cr_assert_null(block);
-  debug_memory_report();
+  debug_memory_report(true);
   cr_assert_eq(fseek(report, (long)length, SEEK_SET), 0);
   length = fread(text, 1, sizeof(text) - 1, report);
   text[length] = '\0';
@@ -100,10 +100,10 @@ static void *allocate_concurrently(void *argument) {
 
 Test(memory_concurrency, allocation_tracking_is_serialized_across_threads, .timeout = 30) {
   allocation_worker_t workers[8];
-  asciichat_thread_t threads[8];
+  platform_thread_t threads[8];
   for (int i = 0; i < 8; i++) {
     workers[i] = (allocation_worker_t){.value = (unsigned char)(i + 1)};
-    cr_assert_eq(acthread_create(&threads[i], "allocation-regression", allocate_concurrently, &workers[i]), 0);
+    cr_assert_eq(platform_thread_create(&threads[i], "allocation-regression", allocate_concurrently, &workers[i]), 0);
   }
   for (int i = 0; i < 8; i++) {
     cr_assert_eq(thread_join(&threads[i], NULL), 0);

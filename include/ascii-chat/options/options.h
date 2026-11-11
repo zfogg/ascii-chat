@@ -211,7 +211,7 @@
 #include <stdbool.h>
 #include <ascii-chat/media/playlist.h>
 #include <stdio.h>
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include "../discovery/strings.h"
 #include "explicit.h"
@@ -921,6 +921,7 @@ typedef enum {
   MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
   MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
   MODE_MCP_SERVER,        ///< Model Context Protocol rendering server
+  MODE_API_SERVER,        ///< Image-to-ASCII HTTP API server
   MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
@@ -938,8 +939,9 @@ typedef enum {
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
   OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
+  OPTION_MODE_API_SERVER = (1 << MODE_API_SERVER),
   OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
+  OPTION_MODE_ALL = 0x7F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -1088,7 +1090,7 @@ typedef struct options_state {
   terminal_color_mode_t color_mode; ///< Color mode (auto/none/16/256/truecolor)
   color_filter_t color_filter;      ///< Monochromatic color filter (none/black/white/green/etc)
   char color_scheme_name[OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE]; ///< Color scheme name (e.g., "pastel", "nord")
-  render_mode_t render_mode;                                     ///< Render mode (foreground/background/half-block)
+  terminal_render_mode_t render_mode;                            ///< Render mode (foreground/background/half-block)
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
@@ -1278,6 +1280,17 @@ typedef struct options_state {
  * @return Pointer to current options (never NULL after options_init())
  */
 const options_t *options_get(void);
+
+const terminal_options_t *options_terminal_settings_ptr(void);
+
+/*
+ * Keep terminal settings out of the Windows DLL return-value ABI.  The
+ * terminal_options_t record is larger than the register return size, so
+ * returning it by value across asciichat.dll/libplatform.dll requires a
+ * hidden return-buffer argument.  Expose a stable settings record instead,
+ * and pass its address through the platform API.
+ */
+#define options_terminal_settings() options_terminal_settings_ptr()
 
 /**
  * @brief Safely get a specific option field (lock-free read)

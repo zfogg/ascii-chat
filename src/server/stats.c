@@ -131,7 +131,7 @@
  * @see packet_queue.c For queue performance metrics
  */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -144,8 +144,8 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/debug/sync.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/lifecycle.h>
 
 /**
  * @brief Global server statistics structure

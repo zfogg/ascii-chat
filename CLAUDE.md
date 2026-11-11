@@ -277,7 +277,7 @@ an assertion.
 
 ### C cleanup with defer
 
-Include `<ascii-chat/tooling/defer/defer.h>` and use `defer(action);` for
+Include `<defer.h>` and use `defer(action);` for
 block-scoped cleanup. CMake transforms C and Objective-C sources and supported header functions;
 C++ uses scope guards. Use the C development skill and `docs/topics/defer.dox`
 for scope, header discovery, restrictions, diagnostics, and build requirements.
@@ -610,7 +610,7 @@ Cross-platform support via abstraction:
 
 Key abstractions:
 
-- Threads: `asciichat_thread_t`, `acthread_create()`
+- Threads: `platform_thread_t`, `platform_thread_create()`
 - Mutexes: `mutex_t`, `mutex_init/lock/unlock()`
 - Sockets: `socket_t`, `socket_close()`, `INVALID_SOCKET_VALUE`
 - Safe wrappers: `SAFE_GETENV()`, `SAFE_STRERROR()`, `platform_open()`

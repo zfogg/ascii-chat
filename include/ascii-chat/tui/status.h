@@ -26,7 +26,7 @@
 #include <time.h>
 #include "../common.h"
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 typedef struct network_server network_server_t;
 
 /**

@@ -3,9 +3,9 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <math.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
@@ -108,9 +108,9 @@ static void test_transactions(void) {
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);
   before = options_revision();
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (int i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"), ASCIICHAT_OK);
   while (atomic_load_int(&ready) != 4)
     time_sleep_ns(1000);
   atomic_store_int(&start, 1);

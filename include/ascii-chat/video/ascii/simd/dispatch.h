@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/cpu.h>
 
 /** RGB24 to rounded BT.601 luminance. Exactly count pixels are read/written. */
 typedef void (*simd_luminance_fn)(const uint8_t *rgb, uint8_t *out, size_t count);

@@ -5,7 +5,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

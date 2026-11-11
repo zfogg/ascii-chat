@@ -33,13 +33,13 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/log/io.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
@@ -70,10 +70,10 @@ struct webcam_context_t {
   AVFrame *mjpeg_decoded_frame;       // Decoded JPEG frame buffer
 
   // Async camera reading (non-blocking)
-  lifecycle_t async_lifecycle;      // Lifecycle state machine for camera thread
-  asciichat_thread_t camera_thread; // Background thread for continuous frame capture
-  atomic_ptr_t latest_frame;        // Latest frame from camera (atomic swap)
-  image_t *async_cached_frame;      // Last frame returned to caller (returned when no new frame available)
+  lifecycle_t async_lifecycle;     // Lifecycle state machine for camera thread
+  platform_thread_t camera_thread; // Background thread for continuous frame capture
+  atomic_ptr_t latest_frame;       // Latest frame from camera (atomic swap)
+  image_t *async_cached_frame;     // Last frame returned to caller (returned when no new frame available)
 };
 
 /**
@@ -519,7 +519,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Start background camera thread
   asciichat_error_t thread_err =
-      acthread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
+      platform_thread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
   if (thread_err != ASCIICHAT_OK) {
     lifecycle_shutdown(&context->async_lifecycle);
     for (int i = 0; i < context->buffer_count; i++) {

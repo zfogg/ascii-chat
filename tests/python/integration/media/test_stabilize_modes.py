@@ -18,7 +18,7 @@ def flicker_video(tmp_path_factory):
     output = tmp_path_factory.mktemp("stabilize-modes") / "flicker.mkv"
     subprocess.run(
         [ffmpeg, "-v", "error", "-f", "lavfi", "-i",
-         "nullsrc=s=64x64:r=30:d=2,geq=lum='if(mod(N,2),104,100)':cb=128:cr=128",
+         "nullsrc=s=64x64:r=30:d=2,geq=lum='if(mod(floor(N/4),2),104,100)':cb=128:cr=128",
          "-c:v", "ffv1", str(output)],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=30,
     )
@@ -34,7 +34,9 @@ def test_stabilization_reduces_flicker_in_every_mode(binary, test_environment, f
         "--color-mode", "truecolor", "--render-mode", render_mode, "--renderer", renderer,
         "--splash-screen=false",
     ]
-    color = b"48" if render_mode == "background" else b"38"
+    # Glyph matching carries the sample signal in its foreground color even in
+    # background mode; its background is a separately quantized estimate.
+    color = b"48" if render_mode == "background" and renderer != "glyph" else b"38"
     pattern = rb"\x1b\[" + color + rb";2;(\d+);\d+;\d+m"
     changes = []
     for enabled in (False, True):
@@ -42,8 +44,9 @@ def test_stabilization_reduces_flicker_in_every_mode(binary, test_environment, f
             command + (["--stabilize"] if enabled else []), env=test_environment,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=True,
         )
-        # A uniform frame emits one truecolor sequence for each of its ten rows.
-        values = [int(value) for value in re.findall(pattern, result.stdout)][::10]
+        # Use every emitted row. Sampling every tenth value can alias with the
+        # frame rate (or the row count of a renderer) and hide real flicker.
+        values = [int(value) for value in re.findall(pattern, result.stdout)]
         assert len(values) >= 5, (render_mode, renderer, enabled, result.stderr[-1000:])
         changes.append(statistics.mean(abs(a - b) for a, b in zip(values, values[1:])))
     assert changes[0] > 0, (render_mode, renderer, changes)

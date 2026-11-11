@@ -1,6 +1,6 @@
 #include <ascii-chat/audio/spectral.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common/sync.h>
 #include <fftw3.h>
 #include <math.h>
 #include <string.h>

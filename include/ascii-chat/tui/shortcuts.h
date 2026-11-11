@@ -1,5 +1,5 @@
 #pragma once
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/ui/help_menu.h>
 typedef enum {
   TUI_SHORTCUT_NONE,

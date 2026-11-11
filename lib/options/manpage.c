@@ -32,8 +32,8 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

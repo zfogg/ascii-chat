@@ -7,7 +7,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define HANDSHAKE_NONCE_PACKET_CAPACITY 256
 
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/notice.h>

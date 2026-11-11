@@ -55,7 +55,7 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 

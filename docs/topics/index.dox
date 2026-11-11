@@ -166,6 +166,7 @@
  * @copybrief module_network
  *
  * - @ref topic_network "Network I/O" - Socket operations, timeouts, connections, packet protocol
+ * - @ref http_basic_auth "HTTP Basic authentication" - Bounded credential parsing and comparison
  * - @ref topic_quic "QUIC and WebTransport" - Native QUIC, HTTP/3, datagrams, trust, and migration
  * - @ref topic_compression "Network Compression" - zstd compression utilities for network payload optimization
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions

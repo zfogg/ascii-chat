@@ -12,7 +12,7 @@
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/connection.h>
-#include <ascii-chat/platform/api.h>
+#include <ascii-chat/os/api.h>
 #include <ascii-chat/tui/status.h>
 #include <stdbool.h>
 

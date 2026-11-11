@@ -16,7 +16,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/discovery/session.h>
 #include "nat.h"
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <stdbool.h>
 #include <stdint.h>
 

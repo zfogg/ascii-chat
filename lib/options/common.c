@@ -20,8 +20,8 @@
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/builder.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/stat.h>
+#include <libplatform/terminal.h>
+#include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/util/path.h>
@@ -103,6 +103,9 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
   if (mode_bitmask & OPTION_MODE_MCP_SERVER) {
     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smcp-server", first ? "" : ", ");
     first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_API_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sapi-server", first ? "" : ", ");
   }
 
   // Fallback if no modes matched
@@ -686,6 +689,7 @@ typedef struct {
 } mode_metadata_t;
 
 static const mode_metadata_t mode_info[] = {
+    {MODE_API_SERVER, "ascii-chat api-server", "HTTP image-to-ASCII API"},
     {MODE_MCP_SERVER, "ascii-chat mcp-server", "MCP rendering tools over stdio or HTTP"},
     {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
     {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},

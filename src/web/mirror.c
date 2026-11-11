@@ -14,8 +14,8 @@
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
@@ -122,8 +122,8 @@ char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data,
   float time_seconds = (float)context->frame_count / (float)target_fps;
 
   // Get current settings from options or terminal detection
-  int dst_width = (int)terminal_get_effective_width();
-  int dst_height = (int)terminal_get_effective_height();
+  int dst_width = (int)terminal_get_effective_width(GET_OPTION(width), 80);
+  int dst_height = (int)terminal_get_effective_height(GET_OPTION(height), 24);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (context->frame_count <= 3 || context->frame_count % 120 == 0) {
@@ -146,7 +146,7 @@ char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data,
                                                       : 16777216;
   caps.utf8_support = true;
   caps.detection_reliable = true;
-  caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  caps.render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
   caps.text_renderer = GET_OPTION(renderer);
   caps.stabilize = GET_OPTION(stabilize);
   caps.palette_explicit = GET_OPTION(palette_explicit);

@@ -31,13 +31,15 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/runtime.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/app_callbacks.h>
 
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // Forward declarations (implemented below)
 static bool client_like_capture_should_exit_adapter(void *user_data);

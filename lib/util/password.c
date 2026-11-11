@@ -6,7 +6,7 @@
 
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/question.h>
+#include <ascii-chat/os/question.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common/buffer_sizes.h>
 

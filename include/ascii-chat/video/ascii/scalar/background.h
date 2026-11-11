@@ -9,7 +9,7 @@
  */
 
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /**
  * @brief Convert image to colored ASCII art with background colors

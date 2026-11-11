@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../platform/socket.h"
+#include <libplatform/socket.h>
 #include "../../crypto/crypto.h"
 #include "../../crypto/keys.h"
 #include "../../network/packet/packet.h"

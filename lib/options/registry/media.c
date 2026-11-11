@@ -15,7 +15,7 @@
 #include <ascii-chat/options/registry/metadata.h>
 
 #include <ascii-chat/options/parsers.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <string.h>
 
 // ============================================================================

@@ -30,7 +30,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/uthash.h>
 #include "../../common.h"

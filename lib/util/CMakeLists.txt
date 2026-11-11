@@ -1,12 +1,11 @@
 # lib/util - Core utilities
 
 set(UTIL_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/stdout_writer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/format.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/path.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/url.c
     ${CMAKE_CURRENT_SOURCE_DIR}/string.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/stdout_writer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/parsing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/url.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ip.c
     ${CMAKE_CURRENT_SOURCE_DIR}/aspect_ratio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/time.c
@@ -14,12 +13,9 @@ set(UTIL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/password.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fps.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/utf8.c
     ${CMAKE_CURRENT_SOURCE_DIR}/display.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pcre2.c
     ${CMAKE_CURRENT_SOURCE_DIR}/env.c
-    # utf8proc Unicode library
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
 if(USE_MUSL)
