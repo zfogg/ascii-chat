@@ -7,6 +7,7 @@
 #define UI_TABLE_CELL_CAPACITY 32
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/table.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/display.h>

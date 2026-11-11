@@ -1,5 +1,6 @@
 #pragma once
 #include <libplatform/terminal.h>
+#include <ascii-chat/asciichat_errno.h>
 typedef struct {
   int body_row, body_rows, detail_row, footer_row;
 /**

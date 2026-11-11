@@ -3,6 +3,7 @@
 #define UI_SCROLLBAR_CELL_BUFFER_SIZE 128
 
 #include <ascii-chat/ui/scrollbar.h>
+#include <ascii-chat/options/options.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
