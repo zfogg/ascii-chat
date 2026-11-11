@@ -32,6 +32,10 @@
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
 #include "os/api.h" // IWYU pragma: keep
+#include "os/filesystem.h" // platform file and descriptor helpers
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
+#include <libplatform/util/string.h>
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
@@ -416,7 +420,14 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   } while (0)
 
 /* Safe string copy */
-#define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
+#define SAFE_STRNCPY(dst, src, size)                                                                                  \
+  do {                                                                                                               \
+    size_t _safe_strncpy_size = (size);                                                                              \
+    if (_safe_strncpy_size > 0) {                                                                                    \
+      strncpy((dst), (src), _safe_strncpy_size - 1);                                                                  \
+      (dst)[_safe_strncpy_size - 1] = '\0';                                                                          \
+    }                                                                                                                \
+  } while (0)
 
 #include "asciichat_errno.h"
 /* Safe string duplication with memory tracking */
@@ -467,7 +478,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
 /* Platform-safe strerror */
 #include <libplatform/system.h>
-#include <libplatform/util/string.h>
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */

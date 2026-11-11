@@ -9,7 +9,8 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/mutex.h>
 #include <libplatform/system.h>
-#include <libplatform/util/string.h>
+#include <ascii-chat/os/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/network/http/server/server.h>
 #include "../common/http_renderer.h"
 #include <yyjson.h>

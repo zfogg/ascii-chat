@@ -52,9 +52,9 @@ if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
     set(ASCIICHAT_DEPS_CACHE_ROOT "${_repo_root}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
 endif()
 
-# Standalone and parent-driven builds use the same build-local artifact layout.
-if(NOT WEB_DEPS_CACHE_DIR)
-    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}"
+# Standalone and parent-driven builds use the repository dependency cache.
+if(NOT WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR MATCHES "[/\\\\]_deps[/\\\\]legacy[/\\\\]")
+    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}"
         CACHE PATH "WASM dependency build/install cache" FORCE)
 endif()
 
