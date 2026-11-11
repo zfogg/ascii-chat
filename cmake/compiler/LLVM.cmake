@@ -360,7 +360,7 @@ function(configure_llvm_post_project)
     # For self-contained LLVM (Homebrew, git-built), clear CMAKE_OSX_SYSROOT.
     # CMake's project() auto-sets it via xcrun, but these compilers find system
     # headers on their own. The extra -isysroot breaks include ordering.
-    if(LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built")
+    if((LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built") AND NOT PLATFORM_IOS)
         if(CMAKE_OSX_SYSROOT)
             message(STATUS "${BoldGreen}Clearing${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for self-contained ${LLVM_SOURCE_NAME} (was: ${CMAKE_OSX_SYSROOT})")
             unset(CMAKE_OSX_SYSROOT CACHE)
@@ -391,7 +391,7 @@ function(configure_llvm_post_project)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")
     endif()
 
-    if(_need_llvm_libs)
+    if(_need_llvm_libs AND NOT PLATFORM_IOS)
         set(DETECTED_LLVM_LINK_FLAGS "")
 
         # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/

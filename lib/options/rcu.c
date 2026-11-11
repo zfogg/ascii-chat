@@ -567,6 +567,10 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(reconnect_attempts, OPTIONS_VALUE_INT, "reconnect-attempts"),
     FIELD(microphone_index, OPTIONS_VALUE_INT, "microphone-index"),
     FIELD(speakers_index, OPTIONS_VALUE_INT, "speakers-index"),
+    FIELD(webcam_index, OPTIONS_VALUE_INT, "webcam-index"),
+    FIELD(microphone_channels, OPTIONS_VALUE_INT, "microphone-channels"),
+    FIELD(microphone_channel, OPTIONS_VALUE_INT, "microphone-channel"),
+    FIELD(audio_fft_size, OPTIONS_VALUE_INT, "audio-fft-size"),
     FIELD(discovery_port, OPTIONS_VALUE_INT, "discovery-port"),
     FIELD(port, OPTIONS_VALUE_INT, "port"),
     FIELD(fps, OPTIONS_VALUE_INT, "fps"),
@@ -636,6 +640,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(server_key, OPTIONS_VALUE_STRING, "server-key"),
     FIELD(client_keys, OPTIONS_VALUE_STRING, "client-keys"),
     FIELD(discovery_server, OPTIONS_VALUE_STRING, "discovery-server"),
+    FIELD(discovery_service_url, OPTIONS_VALUE_STRING, "discovery-service-url"),
     FIELD(discovery_service_key, OPTIONS_VALUE_STRING, "discovery-service-key"),
     FIELD(discovery_database_path, OPTIONS_VALUE_STRING, "discovery-database-path"),
     FIELD(log_file, OPTIONS_VALUE_STRING, "log-file"),
@@ -649,8 +654,11 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(turn_secret, OPTIONS_VALUE_STRING, "turn-secret"),
     FIELD(session_string, OPTIONS_VALUE_STRING, "session-string"),
     FIELD(snapshot_delay, OPTIONS_VALUE_DOUBLE, "snapshot-delay"),
+    FIELD(render_font_size, OPTIONS_VALUE_DOUBLE, "render-font-size"),
     FIELD(microphone_sensitivity, OPTIONS_VALUE_DOUBLE, "microphone-volume"),
     FIELD(speakers_volume, OPTIONS_VALUE_DOUBLE, "speakers-volume"),
+    FIELD(webrtc_ice_timeout_ms, OPTIONS_VALUE_INT, "webrtc-ice-timeout"),
+    FIELD(webrtc_reconnect_attempts, OPTIONS_VALUE_INT, "webrtc-reconnect-attempts"),
 };
 #undef FIELD
 
@@ -661,6 +669,8 @@ static const runtime_field_t *find_field(const char *name) {
     name = "speakers_volume";
   if (!strcmp(name, "ivolume") || !strcmp(name, "microphone-volume"))
     name = "microphone_sensitivity";
+  if (!strcmp(name, "webrtc_ice_timeout"))
+    name = "webrtc_ice_timeout_ms";
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i)
     if (!strcmp(name, runtime_fields[i].name) || !strcmp(name, runtime_fields[i].cli))
       return &runtime_fields[i];
@@ -1017,14 +1027,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   yyjson_mut_doc_set_root(doc, root);
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
-    bool exposed = options_remote_render_field(field->name);
-    if (!remote_only &&
-        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
-         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
-         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
-         !strcmp(field->name, "audio_enabled")))
-      exposed = true;
+    bool exposed = remote_only ? options_remote_render_field(field->name) : true;
+    // The local iOS settings editor uses the non-remote snapshot to expose the
+    // complete editable runtime registry. This marker is derived state and is
+    // intentionally not patchable.
+    if (!remote_only && !strcmp(field->name, "flip_x_explicit"))
+      exposed = false;
     if (!exposed)
       continue;
     const char *ptr = (const char *)values + field->offset;

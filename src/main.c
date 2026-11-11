@@ -50,6 +50,9 @@
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
+#ifdef PLATFORM_IOS
+#include "ios/main.h"
+#endif
 
 // Global exit API (exported in main.h)
 #include "main.h"
@@ -511,7 +514,7 @@ static void on_exit_show_cursor(void) {
  * Main Entry Point
  * ============================================================================ */
 
-int main(int argc, char *argv[]) {
+int asciichat_main(int argc, char *argv[]) {
   if (process_utf8_arguments(&argc, &argv) != ASCIICHAT_OK) {
     fprintf(stderr, "Failed to convert command-line arguments to UTF-8\n");
     return 1;
@@ -886,8 +889,17 @@ int main(int argc, char *argv[]) {
     options_state_destroy();
     options_cleanup_schema();
 
+#ifdef PLATFORM_IOS
+    return options_result;
+#else
     exit(options_result);
+#endif
   }
+
+#ifdef PLATFORM_IOS
+  // Apply persisted runtime settings after the shared options snapshot exists.
+  asciichat_ios_apply_pending_options();
+#endif
 
   // Get parsed options
   const options_t *opts = options_get();
@@ -1182,8 +1194,18 @@ int main(int argc, char *argv[]) {
   // (called via atexit handler), which runs AFTER the memory report
 
   if (exit_code == ERROR_USAGE) {
+#ifdef PLATFORM_IOS
+    return exit_code;
+#else
     exit(ERROR_USAGE);
+#endif
   }
 
   return exit_code;
 }
+
+#ifndef PLATFORM_IOS
+int main(int argc, char *argv[]) {
+  return asciichat_main(argc, argv);
+}
+#endif

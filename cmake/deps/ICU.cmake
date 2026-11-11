@@ -25,10 +25,19 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     find_program(_icu_host_cc NAMES clang NO_CMAKE_FIND_ROOT_PATH REQUIRED)
     find_program(_icu_host_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
     set(_icu_source "${CMAKE_BINARY_DIR}/_deps/icu-source")
-    set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build")
-    set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu")
+    if(PLATFORM_IOS)
+        set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build-${CMAKE_OSX_ARCHITECTURES}-native2")
+    else()
+        set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build")
+    endif()
+    if(PLATFORM_IOS)
+        set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu-${CMAKE_OSX_ARCHITECTURES}-native2")
+    else()
+        set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu")
+    endif()
     set(_icu_options --enable-static --disable-shared --disable-tests --disable-samples
         --disable-extras --disable-icuio --with-data-packaging=static)
+    set(_icu_cross_options ${_icu_options} --disable-tools)
     ExternalProject_Add(asciichat-icu-host
         URL https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz
         URL_HASH SHA512=04A49455E1489030C520A4BFD2664FA2171E7938D08F2ACDBBCB1FDA976639FD8B1F0704F2EEC89BA59A7B6D118CEAAB6EC5A096E40D9085A0895D91CE225245
@@ -36,7 +45,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         SOURCE_DIR "${_icu_source}" BINARY_DIR "${_icu_host_build}"
         PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-host"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_host_cc}" "CXX=${_icu_host_cxx}"
-            "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
+            "CPPFLAGS=" "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
             <SOURCE_DIR>/source/configure ${_icu_options}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ""
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_OUTPUT_ON_FAILURE TRUE)
@@ -50,18 +59,32 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     else()
         set(_icu_cc "${CMAKE_C_COMPILER}")
         set(_icu_cxx "${CMAKE_CXX_COMPILER}")
-        set(_icu_host "aarch64-apple-darwin")
-        set(_icu_cflags "${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
-        set(_icu_cxxflags "${CMAKE_CXX_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
+        if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+            set(_icu_host "x86_64-apple-darwin")
+        else()
+            set(_icu_host "aarch64-apple-darwin")
+        endif()
+        if(PLATFORM_IOS)
+            if(BUILD_IOS_SIM)
+                set(_icu_target "${CMAKE_OSX_ARCHITECTURES}-apple-ios16.0-simulator")
+                set(_icu_min_flag "-mios-simulator-version-min=16.0")
+            else()
+                set(_icu_target "${CMAKE_OSX_ARCHITECTURES}-apple-ios16.0")
+                set(_icu_min_flag "-miphoneos-version-min=16.0")
+            endif()
+            set(_icu_target_flags "-target ${_icu_target} ${_icu_min_flag}")
+        endif()
+        set(_icu_cflags "${CMAKE_C_FLAGS} ${_icu_target_flags} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
+        set(_icu_cxxflags "${CMAKE_CXX_FLAGS} ${_icu_target_flags} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
     endif()
     file(MAKE_DIRECTORY "${_icu_prefix}/include")
     ExternalProject_Add(asciichat-icu-cross
         SOURCE_DIR "${_icu_source}" DOWNLOAD_COMMAND ""
-        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/icu-build"
+        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/icu-build-${CMAKE_OSX_ARCHITECTURES}-native2"
         PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-cross"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_cc}" "CXX=${_icu_cxx}"
             "CFLAGS=${_icu_cflags}" "CXXFLAGS=${_icu_cxxflags}" "LDFLAGS=${_icu_ldflags}" "LIBS=${_icu_libs}"
-            <SOURCE_DIR>/source/configure ${_icu_options} --host=${_icu_host}
+            <SOURCE_DIR>/source/configure ${_icu_cross_options} --host=${_icu_host}
             --with-cross-build=${_icu_host_build} --prefix=${_icu_prefix}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ${_icu_make} install
         INSTALL_BYPRODUCTS "${_icu_prefix}/lib/libicuuc.a" "${_icu_prefix}/lib/libicudata.a"

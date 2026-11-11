@@ -27,20 +27,32 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(LIBSODIUM_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libsodium-build")
+    set(LIBSODIUM_IOS_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    if(NOT LIBSODIUM_IOS_ARCH)
+        set(LIBSODIUM_IOS_ARCH "arm64")
+    endif()
+    set(LIBSODIUM_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium-${IOS_BUILD_VARIANT}-${LIBSODIUM_IOS_ARCH}")
+    set(LIBSODIUM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libsodium-build-${IOS_BUILD_VARIANT}-${LIBSODIUM_IOS_ARCH}")
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
-        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+        set(IOS_SDK_PATH "${CMAKE_OSX_SYSROOT}")
         set(IOS_SDK_NAME "iphonesimulator")
     else()
-        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+        set(IOS_SDK_PATH "${CMAKE_OSX_SYSROOT}")
         set(IOS_SDK_NAME "iphoneos")
     endif()
 
     if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         message(STATUS "  libsodium library not found in cache, will build from source")
+
+        if(BUILD_IOS_SIM)
+            set(_LIBSODIUM_IOS_TARGET "${LIBSODIUM_IOS_ARCH}-apple-ios16.0-simulator")
+            set(_LIBSODIUM_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
+        else()
+            set(_LIBSODIUM_IOS_TARGET "${LIBSODIUM_IOS_ARCH}-apple-ios16.0")
+            set(_LIBSODIUM_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
+        endif()
 
         ExternalProject_Add(libsodium-ios
             URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
@@ -57,10 +69,10 @@ if(PLATFORM_IOS)
                 --disable-shared
                 --with-pic
                 --host=arm-apple-darwin
-                CC=clang
-                CFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
+                CC=${CMAKE_C_COMPILER}
+                CFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ ${LIBSODIUM_IOS_ARCH}\ ${_LIBSODIUM_IOS_MIN_FLAG}
                 LD=ld
-                LDFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64
+                LDFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ ${LIBSODIUM_IOS_ARCH}\ ${_LIBSODIUM_IOS_MIN_FLAG}
             BUILD_COMMAND make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a

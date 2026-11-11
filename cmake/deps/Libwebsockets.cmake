@@ -52,7 +52,7 @@ function(asciichat_build_libwebsockets)
     endif()
     set(LWS_WITHOUT_TESTAPPS ON)
     set(DISABLE_WERROR ON)
-    set(LWS_WITH_SSL ON)
+    set(LWS_WITH_SSL ON CACHE BOOL "Enable libwebsockets OpenSSL TLS" FORCE)
     set(LWS_WITH_SCHANNEL OFF)
     set(LWS_WITH_MBEDTLS OFF)
     set(LWS_WITH_GNUTLS OFF)
@@ -63,13 +63,17 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITH_SYSTEMD OFF)
     set(LWS_WITH_LIBCAP OFF)
     set(LWS_WITH_JOSE OFF)
-    set(LWS_WITH_GENCRYPTO OFF)
+    set(LWS_WITH_GENCRYPTO OFF CACHE BOOL "Disable libwebsockets generic crypto" FORCE)
     set(LWS_WITH_HTTP3 OFF)
     set(LWS_ROLE_QUIC OFF)
     set(LWS_WITHOUT_EXTENSIONS OFF)
     set(LWS_WITH_ZLIB ON)
     set(LWS_WITH_BUNDLED_ZLIB OFF)
     set(LWS_WITH_SOCKS5 OFF)
+    set(LWS_WITH_SPAWN OFF CACHE BOOL "Disable libwebsockets subprocess support on iOS" FORCE)
+    if(PLATFORM_IOS)
+        set(LWS_WITH_STUB OFF CACHE BOOL "Disable libwebsockets IPC stubs on iOS" FORCE)
+    endif()
     set(LWS_WITHOUT_DAEMONIZE ON)
     set(LWS_IPV6 ON)
     FetchContent_Declare(asciichat_libwebsockets
@@ -77,14 +81,38 @@ function(asciichat_build_libwebsockets)
         URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_SUBDIR asciichat-patch-first)
+    set(_asciichat_saved_c_flags "${CMAKE_C_FLAGS}")
     FetchContent_MakeAvailable(asciichat_libwebsockets)
+    set(CMAKE_C_FLAGS "${_asciichat_saved_c_flags}")
     set(LWS_SOURCE_DIR "${asciichat_libwebsockets_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libwebsockets-cmake.cmake")
     add_subdirectory("${asciichat_libwebsockets_SOURCE_DIR}" "${asciichat_libwebsockets_BINARY_DIR}" EXCLUDE_FROM_ALL)
+    if(TARGET websockets)
+        target_compile_definitions(websockets PRIVATE
+            LWS_SUPPRESS_DEPRECATED_API_WARNINGS
+            LWS_HAVE_ECDSA_SIG_set0
+            LWS_HAVE_BN_bn2binpad
+            LWS_HAVE_EVP_MD_CTX_free
+            LWS_HAVE_EVP_PKEY_GET_BN_PARAM
+            LWS_HAVE_RSA_SET0_KEY)
+    endif()
+    if(PLATFORM_IOS AND TARGET websockets)
+        get_target_property(_lws_sources websockets SOURCES)
+        # libwebsockets' unix-spawn.c still references the tree callback when
+        # LWS_WITH_SPAWN is disabled, while the tree implementation itself is
+        # unavailable on iOS.  iOS does not use libwebsockets subprocess
+        # support, so omit both translation units instead of supplying an
+        # ascii-chat-side symbol stub.
+        list(FILTER _lws_sources EXCLUDE REGEX "(^|/)(unix-spawn(-tree)?|stub)\\.c$")
+        set_property(TARGET websockets PROPERTY SOURCES "${_lws_sources}")
+    endif()
     # An OpenSSL package prefix can also contain installed copies of libraries
     # being built here. Keep those external headers after the selected sources.
     foreach(_target websockets websockets_shared)
         if(TARGET ${_target})
+            if(PLATFORM_IOS)
+                target_compile_definitions(${_target} PRIVATE LWS_HAVE_HMAC_CTX_new=1)
+            endif()
             foreach(_include IN LISTS OPENSSL_INCLUDE_DIR OPENSSL_INCLUDE_DIRS)
                 target_include_directories(${_target} SYSTEM PUBLIC "$<BUILD_INTERFACE:${_include}>")
             endforeach()

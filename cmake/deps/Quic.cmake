@@ -10,6 +10,19 @@ function(asciichat_check_quic_tls)
     endif()
 
     cmake_push_check_state(RESET)
+    get_target_property(_quic_ssl_includes OpenSSL::SSL INTERFACE_INCLUDE_DIRECTORIES)
+    if(NOT _quic_ssl_includes)
+        set(_quic_ssl_includes "${OPENSSL_INCLUDE_DIR}")
+    endif()
+    set(CMAKE_REQUIRED_INCLUDES ${_quic_ssl_includes})
+    set(CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto ${CMAKE_DL_LIBS})
+    # The main project may carry host-only runtime flags (for example
+    # Homebrew's macOS libunwind). They must not leak into an iOS probe.
+    set(CMAKE_EXE_LINKER_FLAGS "")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "")
+    set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "")
     # OpenSSL::SSL may not propagate its crypto dependency while CMake is
     # probing a static QUIC link. Require both selected targets explicitly so
     # the probe validates the same libraries used by the final executable.
@@ -41,6 +54,9 @@ function(asciichat_configure_quic)
         "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
         "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
+        "-DCMAKE_EXE_LINKER_FLAGS:STRING="
+        "-DCMAKE_SHARED_LINKER_FLAGS:STRING="
+        "-DCMAKE_MODULE_LINKER_FLAGS:STRING="
         "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON"
         "-DENABLE_LIB_ONLY:BOOL=ON"
         "-DENABLE_STATIC_LIB:BOOL=ON"

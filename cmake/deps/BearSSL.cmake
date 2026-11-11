@@ -36,14 +36,20 @@ if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source (iOS cross-compile)...")
 
     set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
-    set(BEARSSL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/bearssl-build")
+    set(BEARSSL_IOS_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    if(NOT BEARSSL_IOS_ARCH)
+        set(BEARSSL_IOS_ARCH "arm64")
+    endif()
+    set(BEARSSL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/bearssl-build-${IOS_BUILD_VARIANT}-${BEARSSL_IOS_ARCH}")
     set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
         execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        set(BEARSSL_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
     else()
         execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        set(BEARSSL_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
     endif()
 
     if(EXISTS "${BEARSSL_SOURCE_DIR}")
@@ -62,7 +68,7 @@ if(PLATFORM_IOS)
             # Build the static library for iOS with position-independent code
             # Disable getentropy, use /dev/urandom, disable fortification
             execute_process(
-                COMMAND bash -c "make -j lib CC=clang AR=ar 'CFLAGS=-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector -fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0'"
+                COMMAND bash -c "make -j lib CC=clang AR=ar 'CFLAGS=-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector -fPIC -isysroot ${IOS_SDK_PATH} -arch ${BEARSSL_IOS_ARCH} ${BEARSSL_IOS_MIN_FLAG}'"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_MAKE_RESULT
                 OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT

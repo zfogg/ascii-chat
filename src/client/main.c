@@ -572,7 +572,11 @@ static int client_initialize_devices(void) {
       asciichat_error_t update_result = options_set_bool("test_pattern", true);
       if (update_result != ASCIICHAT_OK) {
         log_error("Failed to update options for test pattern fallback");
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
 
       // Retry initialization with test pattern enabled
@@ -580,7 +584,11 @@ static int client_initialize_devices(void) {
       if (init_result != 0) {
         log_error("Failed to initialize even with test pattern fallback");
         webcam_print_init_error_help(init_result);
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
       log_debug("Successfully initialized with test pattern fallback");
 
@@ -593,7 +601,11 @@ static int client_initialize_devices(void) {
       // Release builds or other errors: print help and exit
       if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
         webcam_print_init_error_help(init_result);
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
       // For other errors, just exit with the error code
       return init_result;
@@ -616,6 +628,12 @@ static asciichat_error_t client_prepare_destination(void *user_data) {
 int client_main(void) {
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
+
+  // Preserve the parsed CLI/config password in the session-owned buffer used
+  // by each connection attempt and by password retry handling.
+  const options_t *options = options_get();
+  if (options && options->password[0] != '\0')
+    SAFE_STRNCPY(g_client_session.password, options->password, sizeof(g_client_session.password));
 
   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c

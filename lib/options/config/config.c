@@ -1620,7 +1620,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     (void)platform_write_all(STDOUT_FILENO, builder.buffer, builder.size);
     // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
-    (void)terminal_flush(STDOUT_FILENO);
+    (void)platform_frame_flush(STDOUT_FILENO);
   }
 
   return ASCIICHAT_OK;

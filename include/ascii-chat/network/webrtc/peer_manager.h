@@ -42,7 +42,9 @@ extern "C" {
 #endif
 
 /**
- * @brief For webrtc peer manager config, this is the live record that ties `role`, `bind_address`, `stun_servers`, `stun_count` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For webrtc peer manager config, this is the live record that ties `role`, `bind_address`, `stun_servers`,
+ * `stun_count` together. The owning code creates it, updates it while work is active, and releases its handles and
+ * pointed-to storage before freeing the record.
  * @brief Hooks that deliver local SDP offers/answers and ICE candidates to ACDS
  * @addtogroup webrtc
  * @brief Manage WebRTC peer connections for session participants
@@ -66,7 +68,9 @@ typedef enum {
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer
  *
- * Delivered only by dispatch_ready on the thread that created the manager.
+ * Delivered by dispatch_ready; the pending transport is removed under the
+ * manager mutex before the callback runs, so event-loop dispatch is safe from
+ * the server's transport thread.
  * The callback must not destroy the manager.
  * The callback receives ownership of the transport and must either:
  * - Use it for ACIP communication

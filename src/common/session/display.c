@@ -262,11 +262,21 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Presentation follows stdout. Opening a separate controlling terminal can
   // fail under ConPTY even though stdout is an interactive console.
   ctx->has_tty = terminal_is_stdout_tty();
+#if defined(PLATFORM_IOS)
+  ctx->has_tty = true;
+#endif
   const char *stdout_output = GET_OPTION(render_file);
   bool owns_stdout = GET_OPTION(render_kitty) || strcmp(stdout_output, "--kitty") == 0 ||
                      strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;
   if (owns_stdout)
     ctx->has_tty = false;
+#if defined(PLATFORM_IOS)
+  // iOS owns stdout through the render bridge; render-file's normal pipe
+  // detection must not divert native sessions around the shared UI controller.
+  ctx->has_tty = true;
+  ctx->tty_info.fd = STDOUT_FILENO;
+  ctx->tty_info.owns_fd = false;
+#endif
   if (ctx->has_tty) {
     // Retain the terminal before decoder/audio workers redirect process stdio
     // through LOG_IO. The first media submission must remain interactive too.
@@ -1123,7 +1133,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (ctx->snapshot_mode) {
       (void)fflush(stdout);
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
 
   } else if (terminal_is_interactive()) {
@@ -1144,7 +1154,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (ctx->snapshot_mode) {
       (void)fflush(stdout);
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
   } else {
     // Named render files leave stdout available for ASCII output
@@ -1174,11 +1184,16 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     (void)fflush(stdout);
     if (ctx->snapshot_mode && ctx->has_tty) {
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
   }
 
 cleanup_frame:
+  // Live iOS frames need an explicit bridge boundary after the complete ASCII
+  // frame has been written. Snapshot paths flush at their existing boundaries.
+  if (!ctx->snapshot_mode)
+    (void)platform_frame_flush(STDOUT_FILENO);
+
   log_dev_every(3 * US_PER_SEC_INT, "FRAME_WRITE: Published in %.2f ms",
                 (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
 
@@ -1273,7 +1288,7 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
   (void)ui_controller_write(fd, data, len);
 
   // Flush immediately after write to TTY to ensure data is sent
-  (void)terminal_flush(fd);
+  (void)platform_frame_flush(fd);
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {

@@ -182,7 +182,7 @@ endif()
 message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")
 include(CheckIPOSupported)
 set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "IPO is enabled only for supported project configurations" FORCE)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+if((CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") AND NOT PLATFORM_IOS)
     # Musl builds disable LTO to prevent TPOFF32 relocations. macOS also
     # needs a working LLD linker for ThinLTO.
     if(NOT USE_MUSL AND NOT (APPLE AND NOT EXISTS "${ASCIICHAT_LLD_EXECUTABLE}"))
@@ -494,6 +494,9 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+if(PLATFORM_IOS)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/src/ios ${CMAKE_BINARY_DIR}/src/ios)
+endif()
 # Defer transformation consumes the compile database during the build. Apply
 # project include/link settings before it captures commands for native sources;
 # the deferred pass below still covers targets declared later (notably tests).
@@ -517,8 +520,10 @@ set(DEFER_SOURCE_HOOK ascii_panic_defer_source)
 defer_targets(${_defer_targets})
 unset(DEFER_SOURCE_HOOK)
 enable_testing()
-add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
-set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
+if(TARGET ascii-chat)
+    add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
+    set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
+endif()
 ascii_panic_finalize()
 ascii_query_finalize()
 

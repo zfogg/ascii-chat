@@ -114,29 +114,25 @@ function(configure_base_compiler_flags)
     # Base warning flags for Clang/GCC compilers
     # -Wall: Enable common warnings
     # -Wextra: Enable extra warnings
-    target_compile_options(asciichat-project-options INTERFACE -Wall -Wextra)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wall;-Wextra>
+    )
 
     # Essential safety warnings (always enabled)
     # Keep it simple - just the important stuff that catches real bugs
     target_compile_options(asciichat-project-options INTERFACE
-        -Wformat=2                # Extra format string security checks
-        -Wwrite-strings           # Warn when string literals could be written to
-        -Wnull-dereference        # Warn about potential null pointer dereferences
-        -Wformat-security         # Warn about potential format string vulnerabilities
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wformat=2;-Wwrite-strings;-Wnull-dereference;-Wformat-security>
     )
 
     # Clang-specific warnings
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         target_compile_options(asciichat-project-options INTERFACE
-            -Wconditional-uninitialized  # Warn about potentially uninitialized variables
-            -Widiomatic-parentheses   # Warn about confusing precedence without parentheses
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wconditional-uninitialized;-Widiomatic-parentheses>
         )
 
         # Disable noisy Clang warnings
         target_compile_options(asciichat-project-options INTERFACE
-            -Wno-comma                                       # Too noisy with comma operator in macros/third-party
-            -Wno-format-nonliteral                           # False positives in variadic format functions
-            -Wno-incompatible-pointer-types-discards-qualifiers  # Pragmatic const handling
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-comma;-Wno-format-nonliteral;-Wno-incompatible-pointer-types-discards-qualifiers>
         )
     endif()
 
@@ -153,7 +149,9 @@ function(configure_base_compiler_flags)
     # Enable frame pointers for better backtraces (required for musl + libexecinfo)
     # Frame pointers help with stack traces and debugging, but disable in Release for performance
     if(ASCIICHAT_SUPPORTS_NO_OMIT_FRAME_POINTER AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
+        target_compile_options(asciichat-project-options INTERFACE
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-omit-frame-pointer>
+        )
         message(STATUS "${BoldGreen}Frame pointers${ColorReset} enabled for backtraces")
     endif()
 endfunction()
@@ -173,7 +171,9 @@ function(configure_lld_linker)
                 ERROR_QUIET
             )
             if(LLD_CHECK_RESULT EQUAL 0)
-                target_link_options(asciichat-project-options INTERFACE -fuse-ld=lld)
+                target_link_options(asciichat-project-options INTERFACE
+                    $<$<NOT:$<LINK_LANGUAGE:Swift>>:-fuse-ld=lld>
+                )
                 if(PLATFORM_LINUX)
                     target_link_options(asciichat-project-options INTERFACE "LINKER:--allow-multiple-definition")
                 endif()
@@ -232,24 +232,26 @@ endfunction()
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
     # Enhanced debug info with macro definitions
-    target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-g3;-O0;-DDEBUG>
+    )
 
     # Better debugging experience
     target_compile_options(asciichat-project-options INTERFACE
-        -fno-inline                           # Disable inlining for easier stepping
-        -fno-eliminate-unused-debug-types     # Keep all debug types
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-inline;-fno-eliminate-unused-debug-types>
     )
 
     # Clang-specific debug enhancements
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         target_compile_options(asciichat-project-options INTERFACE
-            -fstandalone-debug                # Full debug info even for headers
-            -gcolumn-info                     # Include column information
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fstandalone-debug;-gcolumn-info>
         )
     endif()
 
     # Stack protection in debug builds (helps catch buffer overflows early)
-    target_compile_options(asciichat-project-options INTERFACE -fstack-protector-strong)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fstack-protector-strong>
+    )
 
     # LLD linker setup moved to configure_lld_linker() — called for all build types
 
@@ -290,11 +292,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
 #   IS_APPLE_SILICON - Whether running on Apple Silicon
 #   ASCIICHAT_ENABLE_CRC32_HW - Whether CRC32 hardware acceleration is enabled
 #   WITH_DEBUG_INFO - Optional: If true, keep debug symbols (for RelWithDebInfo), default false
-function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ASCIICHAT_ENABLE_CRC32_HW)
+function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ASCIICHAT_ENABLE_CRC32_HW WITH_DEBUG_INFO)
     # Handle optional WITH_DEBUG_INFO parameter
-    set(WITH_DEBUG_INFO FALSE)
-    if(ARGC GREATER 5)
-        set(WITH_DEBUG_INFO ${ARGV5})
+    if(NOT DEFINED WITH_DEBUG_INFO)
+        set(WITH_DEBUG_INFO FALSE)
     endif()
 
     target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
@@ -305,11 +306,13 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         if(WITH_DEBUG_INFO)
             # RelWithDebInfo: Keep debug symbols but still optimize
-            target_compile_options(asciichat-project-options INTERFACE -g)
+            target_compile_options(asciichat-project-options INTERFACE
+                "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-g>")
             message(STATUS "Release build with debug info: keeping debug symbols")
         else()
             # Release: No debug info
-            target_compile_options(asciichat-project-options INTERFACE -g0)
+            target_compile_options(asciichat-project-options INTERFACE
+                "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-g0>")
         endif()
     endif()
 
@@ -341,22 +344,23 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # CPU-aware optimization flags
     # For RelWithDebInfo, use -O2 instead of -O3 to maintain better debug info quality
     if(WITH_DEBUG_INFO)
-        target_compile_options(asciichat-project-options INTERFACE -O2 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
+        target_compile_options(asciichat-project-options INTERFACE
+            "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-O2;-funroll-loops;-fstrict-aliasing;-ftree-vectorize;-pipe>")
         # Keep frame pointers in RelWithDebInfo for better backtraces
-        target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
+        target_compile_options(asciichat-project-options INTERFACE "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-omit-frame-pointer>")
     else()
-        target_compile_options(asciichat-project-options INTERFACE -O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
+        target_compile_options(asciichat-project-options INTERFACE
+            "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-O3;-funroll-loops;-fstrict-aliasing;-ftree-vectorize;-pipe>")
 
         if(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS)
-            target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
+            target_compile_options(asciichat-project-options INTERFACE "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-omit-frame-pointer>")
         else()
-            target_compile_options(asciichat-project-options INTERFACE -fomit-frame-pointer)
+            target_compile_options(asciichat-project-options INTERFACE "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fomit-frame-pointer>")
         endif()
 
         # Additional safe optimizations
         target_compile_options(asciichat-project-options INTERFACE
-            -foptimize-sibling-calls     # Optimize tail recursion
-        )
+            "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-foptimize-sibling-calls>")
 
         if(ASCIICHAT_RELEASE_ENABLE_FAST_MATH)
             target_compile_options(asciichat-project-options INTERFACE
@@ -393,7 +397,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             check_c_compiler_flag("-mllvm -polly" COMPILER_SUPPORTS_POLLY)
 
             if(COMPILER_SUPPORTS_POLLY)
-                target_compile_options(asciichat-project-options INTERFACE -mllvm -polly)  # Enable Polly loop optimizer
+                target_compile_options(asciichat-project-options INTERFACE
+                    "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-mllvm;-polly>")
             endif()
 
             # Additional Clang optimizations
@@ -504,7 +509,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Dead Code Elimination (all platforms)
     # =============================================================================
     # Requires -ffunction-sections -fdata-sections to separate each function/data into sections
-    target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
+    target_compile_options(asciichat-project-options INTERFACE
+        "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-ffunction-sections;-fdata-sections>")
 
     if(PLATFORM_LINUX)
         # GNU ld: Use --gc-sections to remove unused sections
@@ -513,7 +519,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     elseif(APPLE)
         # Apple ld: Use -dead_strip to remove unused sections
         target_link_options(asciichat-project-options INTERFACE
-            "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:ASCIICHAT_KEEP_TEST_REGISTRATION>>>:-Wl,-dead_strip>")
+            "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:ASCIICHAT_KEEP_TEST_REGISTRATION>>>:LINKER:-dead_strip>")
     elseif(WIN32)
         # MSVC linker: Use /OPT:REF and /OPT:ICF for dead code elimination and COMDAT folding
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -526,7 +532,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # =============================================================================
     if(NOT WIN32)
         if(ASCIICHAT_SUPPORTS_STACK_PROTECTOR_STRONG)
-            target_compile_options(asciichat-project-options INTERFACE -fstack-protector-strong)
+            target_compile_options(asciichat-project-options INTERFACE "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fstack-protector-strong>")
         endif()
         if(ASCIICHAT_SUPPORTS_STACK_CLASH_PROTECTION AND PLATFORM_LINUX)
             target_compile_options(asciichat-project-options INTERFACE -fstack-clash-protection)
@@ -534,7 +540,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     endif()
 
     # All platforms: Alignment optimizations
-    target_compile_options(asciichat-project-options INTERFACE -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+    target_compile_options(asciichat-project-options INTERFACE
+        "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-falign-loops=32;-falign-functions=32;-fmerge-all-constants>")
 
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
@@ -542,7 +549,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             # PIE assumes executable TLS access, including after ThinLTO imports.
             # Keep library objects (including vendored libraries) PIC so they can
             # link into shared libraries. Executable linker flags are set separately.
-            target_compile_options(asciichat-project-options INTERFACE "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-fPIE>")
+            target_compile_options(asciichat-project-options INTERFACE
+                "$<$<AND:$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>,$<NOT:$<COMPILE_LANGUAGE:Swift>>>:-fPIE>")
 
             if(USE_MUSL)
                 # Static-PIE for musl builds (combines static linking with ASLR)

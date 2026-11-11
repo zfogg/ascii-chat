@@ -89,7 +89,11 @@ bool stats_runtime_active(void) {
 }
 
 void stats_runtime_toggle(void) {
+#ifdef PLATFORM_IOS
+  if (g_started) {
+#else
   if (g_started && g_keyboard) {
+#endif
     bool active = !stats_runtime_active();
     atomic_store_bool_impl(&g_active, active);
     ui_controller_select_interactive(active ? UI_SCREEN_STATS : -1);

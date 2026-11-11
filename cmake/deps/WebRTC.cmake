@@ -40,6 +40,7 @@ function(asciichat_build_aec3)
         cmake_policy(POP)
     endif()
     set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}")
+    set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}" CACHE INTERNAL "WebRTC AEC3 source directory" FORCE)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
     add_subdirectory("${asciichat_aec3_SOURCE_DIR}" "${asciichat_aec3_BINARY_DIR}")
     # Upstream uses private directory includes; publish the public audio API.
@@ -55,6 +56,14 @@ function(asciichat_build_aec3)
         target_compile_definitions(AudioProcess PUBLIC WEBRTC_POSIX)
     endif()
     set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    if(PLATFORM_IOS AND CMAKE_CXX_COMPILER_TARGET)
+        # WebRTC is added through its own CMake project and does not inherit
+        # the top-level compiler target on an Intel macOS host. Without this,
+        # Clang selects x86 WebRTC intrinsics even when -arch arm64 is present.
+        foreach(_target AudioProcess aec3 api base)
+            target_compile_options(${_target} PRIVATE "--target=${CMAKE_CXX_COMPILER_TARGET}")
+        endforeach()
+    endif()
     # MSVC's C++ container annotations must match the consuming ASan objects.
     if(WIN32 AND "-fsanitize=address" IN_LIST ASCIICHAT_SANITIZER_COMPILE_FLAGS)
         foreach(_target AudioProcess aec3 api base)

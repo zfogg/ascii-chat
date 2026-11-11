@@ -75,7 +75,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         set(_is_homebrew_llvm TRUE)
     endif()
 
-    if(_is_homebrew_llvm)
+    if(_is_homebrew_llvm AND NOT PLATFORM_IOS AND NOT CMAKE_OSX_SYSROOT MATCHES "iPhone(OS|Simulator)")
         # Homebrew LLVM is self-contained and finds system headers via its own driver.
         # CMAKE_OSX_SYSROOT (auto-set by CMake's project() from xcrun) adds a conflicting
         # -isysroot that breaks the include path ordering. Clear it.
@@ -124,6 +124,13 @@ else()
 endif()
 
 # Enable GNU extensions for POSIX functions (matches Makefile)
+if(PLATFORM_IOS)
+    # Shared C modules are compiled before the iOS executable target. Propagate
+    # the platform marker through the common project interface so their iOS
+    # render, input, audio, and filesystem branches are compiled in too.
+    target_compile_definitions(asciichat-project-options INTERFACE PLATFORM_IOS=1)
+endif()
+
 if(PLATFORM_POSIX AND NOT WIN32)
     target_compile_definitions(asciichat-project-options INTERFACE _GNU_SOURCE)
 endif()

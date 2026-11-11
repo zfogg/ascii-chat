@@ -291,6 +291,7 @@ int ui_controller_active_fd(void) {
 static bool interactive_screen(int screen) {
   return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_ERRNO ||
          screen == UI_SCREEN_SYNC || screen == UI_SCREEN_STATS || screen == UI_SCREEN_PROMPT ||
+         screen == UI_SCREEN_UPDATE ||
          screen == UI_SCREEN_MDNS;
 }
 
@@ -400,7 +401,14 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
   // another thread. Non-owner logging must remain nonblocking here.
   if (g_owner)
     ui_controller_packet_begin();
-  size_t written = platform_write_all(fd, data, length);
+  size_t written;
+#ifdef PLATFORM_IOS
+  (void)fd;
+  ssize_t bridged = ios_render_bridge_write(STDOUT_FILENO, data, length);
+  written = bridged > 0 ? (size_t)bridged : 0;
+#else
+  written = platform_write_all(fd, data, length);
+#endif
   if (g_owner)
     ui_controller_packet_end();
   if (g_stats_media) {
@@ -463,7 +471,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   while (started && written < len) {
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
-    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+    if (g_rendering_screen == UI_SCREEN_MEDIA && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
       superseded = true;
       break;
     }
@@ -651,7 +659,11 @@ terminal_size_t ui_controller_size(void) {
     terminal_size_t detected = {0};
     asciichat_errno_scope_t scope = errno_scope_begin();
     int fd = atomic_load(&g_default_fd);
-    if (platform_isatty(fd) && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 &&
+    bool can_query_geometry = platform_isatty(fd);
+#ifdef PLATFORM_IOS
+    can_query_geometry = true;
+#endif
+    if (can_query_geometry && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 &&
         detected.rows > 0)
       size = detected;
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
@@ -1119,7 +1131,13 @@ static void *presentation_main(void *unused) {
               }
           }
         }
-        if (parent >= 0 && parent != active && g_screens[parent].render)
+        // Interactive TUIs are full-screen views on iOS (and on terminal
+        // frontends that provide a native surface). Do not compose the live
+        // media frame underneath them: it makes the TUI appear over a stale
+        // ASCII image and prevents the first frame from being visually clean.
+        // The media snapshot remains retained and resumes immediately when
+        // the interactive screen is dismissed.
+        if (parent >= 0 && parent != active && parent != UI_SCREEN_MEDIA && g_screens[parent].render)
           layers[layer_count++] = g_screens[parent];
         sync_backdrop = keyboard_help_previous_interactive() == UI_SCREEN_SYNC && layer_count == 0;
       }
@@ -1214,7 +1232,7 @@ static void *presentation_main(void *unused) {
           fps_counter_write_begin(g_fps);
           // A frontend reply drains the complete update. A local console query
           // adds an RPC without establishing any stronger completion boundary.
-          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : terminal_flush(screen->fd);
+          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : platform_frame_flush(screen->fd);
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();
@@ -1475,7 +1493,11 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     }
   }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if ((!live && !retained_terminal && !platform_isatty(fd)) ||
+  bool native_ui_output = false;
+#ifdef PLATFORM_IOS
+  native_ui_output = true;
+#endif
+  if ((!live && !retained_terminal && !platform_isatty(fd) && !native_ui_output) ||
       (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
@@ -1517,6 +1539,14 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   mutex_lock(&g_mutex);
   uint64_t locked_ns = time_get_ns();
   if (g_finished) {
+    mutex_unlock(&g_mutex);
+    release_snapshot(copy);
+    return ASCIICHAT_OK;
+  }
+  // An interactive TUI owns the iOS surface until it is dismissed. Retain
+  // the media mailbox, but do not publish new media frames over the modal
+  // view; the next frame is submitted as soon as ASCII mode resumes.
+  if (screen == UI_SCREEN_MEDIA && interactive_screen(ui_controller_interactive_screen())) {
     mutex_unlock(&g_mutex);
     release_snapshot(copy);
     return ASCIICHAT_OK;
@@ -1946,8 +1976,13 @@ void ui_controller_toggle_logs(void) {
     ui_controller_hide_logs();
     return;
   }
+#ifndef PLATFORM_IOS
   if (!platform_isatty(STDOUT_FILENO) || GET_OPTION(snapshot_mode))
     return;
+#else
+  if (GET_OPTION(snapshot_mode))
+    return;
+#endif
   const bool snapshot = true;
   asciichat_error_t result =
       ui_controller_submit(UI_SCREEN_LOGS, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 6}, render_logs,

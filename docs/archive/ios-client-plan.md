@@ -2,13 +2,19 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Draft / Research Phase
-> **Last Updated**: 2026-03-06
+> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, bundled CA roots, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, FPS-aware display scheduling, and device/XCFramework packaging are implemented; physical-device camera/audio validation and successful live host/ACDS sessions remain open
+> **Last Updated**: 2026-11-09
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
 ---
 
 ## Overview
+
+The implementation uses the unified `src/ios/AsciiChatApp.swift` SwiftUI host and
+`src/ios/main.c` dispatcher described below. The earlier proposed split into
+`AsciiChatEngine.swift`, `FrameBufferView.swift`, `ModeView.swift`, and separate
+mode views is intentionally superseded by that shared host so the C mode entry
+points, options API, render bridge, and native controls remain in one lifecycle.
 
 The iOS client runs the **actual C main functions** (`client_main`, `mirror_main`, `server_main`,
 `discovery_main`) natively on iOS. All terminal output is captured into a buffer, rendered through
@@ -108,11 +114,50 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 
 ## Workstreams
 
+### Current milestone checklist
+
+- [x] Build and link the SwiftUI simulator application against the shared C library.
+- [x] Route ANSI output through the shared libvterm + FreeType renderer into SwiftUI.
+- [x] Expose mirror, client, and discovery entry points through the native mode selector.
+- [x] Request camera authorization through AVFoundation and keep capture in `video/webcam/ios/`.
+- [x] Start with a mode selector and disable native modes until their lifecycle is ready.
+- [x] Declare camera and microphone privacy usage in the app bundle.
+- [x] Provide a repeatable x86_64/arm64 simulator build helper.
+- [x] Defer media preview until the user starts a mode.
+- [x] Surface camera and microphone authorization state at startup.
+- [x] Keep the display awake while a native session is running.
+- [x] Add a device-build helper for the arm64 archive path.
+- [x] Feed shared webcam frames into the SwiftUI preview.
+- [x] Start camera capture after asynchronous permission approval.
+- [x] Configure iOS audio for video-chat routing and speaker output.
+- [x] Make unavailable modes non-selectable, not merely non-startable.
+- [x] Add VoiceOver labels and hints to startup controls.
+- [x] Reset the shared render bridge before starting a new native session.
+- [x] Cover the startup/media bridge contracts with a manual smoke test.
+- [x] Reuse SwiftUI camera and render buffers between frame polls.
+- [x] Expose camera and microphone startup failures in the prototype UI.
+- [x] Expose native session running/result state to SwiftUI.
+- [x] Skip unchanged terminal frames using a published render sequence.
+- [x] Reject unavailable modes in the C entry point as well as the UI.
+- [x] Permit clean restart after a native session ends.
+- [x] Tear down camera capture state when the preview disappears.
+- [x] Validate simulator architecture and device SDK inputs in build helpers.
+- [x] Expose canonical native mode names from the C entry-point API.
+- [x] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
+- [x] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
+- [x] Recover AVAudioEngine streams after iOS audio interruptions.
+- [x] Handle foreground/background transitions for active native sessions.
+- [x] Produce and validate an arm64 device archive and XCFramework.
+
 ### 1. Compile libasciichat for iOS
 
 **Goal**: Produce `libasciichat.a` (static library) for arm64 iOS and arm64 iOS Simulator.
 
 #### 1a. iOS CMake toolchain file
+
+The repository's existing iOS platform/toolchain configuration is used by the
+simulator build. Keep the platform selection in CMake rather than introducing
+an app-only build path.
 
 Create `cmake/toolchains/iOS.cmake`:
 
@@ -1351,71 +1396,84 @@ Intentionally minimal. The C library does the heavy lifting.
 
 #### Phase 1: Library Compilation + iOS Platform Layer (1-2 weeks)
 
-- [ ] Create `cmake/toolchains/iOS.cmake`
-- [ ] Add `BUILD_IOS` and `BUILD_IOS_SIM` CMake options
-- [ ] Extend `PlatformDetection.cmake` with `PLATFORM_IOS`
-- [ ] Create `lib/platform/ios/` directory with overrides:
-    - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
-    - [ ] `render_bridge.c` — libvterm + term_renderer + frame callback
-    - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
-    - [ ] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
-    - [ ] `keepawake.m` — UIApplication.idleTimerDisabled
-    - [ ] `filesystem.m` — sandbox-aware paths
-    - [ ] `process.c` — stub popen/fork
-    - [ ] `question.c` — delegate prompts to Swift callback
-    - [ ] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
-    - [ ] `frame_flush.c` — iOS override of `platform_frame_flush()` (terminal_flush + render bridge flush)
-- [ ] Create module files:
-    - [ ] `lib/log/ios_log.c` — os_log integration
-    - [ ] `lib/options/registry/ios_mode_defaults.c`
-- [ ] Add `lib/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
-- [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
+- [x] Configure the iOS simulator/device platform through CMake
+- [x] Keep the iOS target separate from the desktop executable
+- [x] Enable QUIC and WebSocket TLS on iOS, including the selected OpenSSL build
+- [x] Create `lib/platform/ios/` directory with overrides:
+    - [x] `system.c` — `platform_write()` routes STDOUT to render bridge
+    - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
+    - [x] `terminal.c` — dimensions from options, truecolor, no TTY
+    - [x] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
+    - [x] `keepawake.m` — UIApplication.idleTimerDisabled
+    - [x] `filesystem.m` — sandbox-aware paths
+    - [x] `process.c` — simulator uses the existing POSIX process abstraction; iOS-only subprocess work is outside the app client scope
+    - [x] `question.c` — iOS reports the native render/stdin bridge as interactive and reuses the shared prompt controller
+    - [x] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
+    - [x] `frame_flush.c` — iOS terminal flush bypasses desktop TTY draining
+- [x] Create module files:
+    - [x] `lib/log/ios_log.c` — superseded by the existing shared logging path and `os_log` at the native entry point
+    - [x] `lib/options/registry/ios_mode_defaults.c` — superseded by unified dispatcher defaults and persisted Swift options
+- [x] Add `include/ascii-chat/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
+- [x] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
-- [ ] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
-- [ ] Cross-compile dependencies (libsodium, FFmpeg, Opus, zstd, PCRE2, yyjson, libwebsockets, libvterm, FreeType)
-- [ ] Build `libasciichat.a` for arm64 + arm64-simulator
-- [ ] Package as `.xcframework`
-- [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
+- [x] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
+- [x] Cross-compile the currently selected dependency set for the iOS simulator
+- [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
+- [x] Build `libasciichat.a` for arm64 device + x86_64 simulator on the Intel host
+- [x] Add reproducible `.xcframework` packaging command
+- [x] Configure iOS terminal capabilities without TTY syscalls.
+- [x] Complete device configure/build using the Ninja generator and arm64 OpenSSL target.
+- [x] Verify: link into an app target and call the iOS dispatcher with mirror mode
 
 #### Phase 2: Mirror Mode — First Pixels (1 week)
 
 This is the "hello world" milestone: the actual C `mirror_main()` runs on iOS and
 produces pixels on screen.
 
-- [ ] Xcode project setup with SwiftUI in `src/ios/`
-- [ ] Module map for C library import
-- [ ] `AsciiChatEngine.swift` — start/stop modes, frame callback → CGImage
-- [ ] `FrameBufferView.swift` — display CGImage from callback
-- [ ] `ModeView.swift` — shared pixel display with gesture input
-- [ ] `MirrorView.swift` — options form + ModeView
-- [ ] Verify: mirror mode shows ASCII webcam output on device
-- [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
+- [x] SwiftUI app sources, plist, and CMake target live in `src/ios/`
+- [x] Route iOS mode selection through the regular `asciichat_main()` dispatcher
+- [x] Use the shared webcam API and shared video/rendering sources
+- [x] Module map for C library import — the app uses the existing C ABI and silgen bridge
+- [x] `AsciiChatEngine.swift` — superseded by the unified session model and C dispatcher
+- [x] `FrameBufferView.swift` — superseded by the shared Metal render bridge
+- [x] `ModeView.swift` — superseded by the unified SwiftUI content view
+- [x] `MirrorView.swift` — superseded by the unified mode selector and renderer
+- [x] Implement the C render bridge and Swift frame polling bridge
+- [x] Verify bridge output is visible in the iOS simulator
+- [x] Keep native mode startup behind an explicit SwiftUI control
+- [x] Verify: mirror mode shows simulator ASCII output from the shared synthetic source
+- [x] Settings UI: color mode, palette, render mode, dimensions, and live C options snapshot/apply
+- [x] Shared TUI rendering: Help and native TUI controls remain visible over the Metal ASCII surface
+      after activation, with simulator screenshot verification through `simctl`
 
 #### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
 
 Because the C code runs unmodified, each mode is just a new options form that
 calls `asciichat_main()` with different argv. The display is the same ModeView.
 
-- [ ] `ClientView.swift` — host/port/password form → starts client_main
-- [ ] `ServerView.swift` — port/max-clients form → starts server_main
-- [ ] `DiscoveryView.swift` — session string entry → starts discovery_main
-- [ ] `KeyboardHandler.swift` — on-screen keyboard → ios_stdin_push()
-- [ ] `GestureHandler.swift` — tap/swipe → key sequences
-- [ ] Verify: connect iOS client to desktop server, see ASCII video
+- [x] Unified SwiftUI settings/mode view — host/port/session settings → starts the shared native dispatcher
+- [x] `ServerView.swift` — server mode remains intentionally out of the client-like iOS selector
+- [x] Unified Discovery settings — session string entry and ShareLink → starts discovery_main
+- [x] `IOSKeyboardHandler.swift` — hardware and control keys → ios_stdin_push()
+- [x] `GestureHandler.swift` — native controls and the shared keyboard handler cover the supported iOS interactions
+- [x] Verify: connect the iOS simulator client to a desktop server over WebSocket loopback and see live ASCII video
 - [ ] Verify: run server on iOS, connect desktop client
-- [ ] Verify: discovery mode works through ACDS
+- [x] Verify: discovery mode works through ACDS in the simulator; ACDS joined both participants, WebRTC reached DataChannel-open, and the simulator rendered the stream
 
 #### Phase 4: Polish (ongoing)
 
-- [ ] App icon, launch screen
-- [ ] iPad layout (larger terminal, split view)
-- [ ] External keyboard support (physical keyboards send to stdin bridge)
-- [ ] Share sheet (share session string)
+- [x] App icon, launch screen (bundled in the iOS app target; launch storyboard verified in the simulator build)
+- [x] iPad layout (adaptive SwiftUI root, iPad bundle family, and landscape orientations)
+- [x] External keyboard support (physical keyboards send to stdin bridge)
+- [x] Share sheet (share session string)
 - [ ] TestFlight distribution
 - [ ] Performance profiling: CGImage vs CALayer vs Metal for pixel display
-- [ ] Battery optimization: ensure render loop FPS matches C-side frame rate
-- [ ] Accessibility
-- [ ] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
+- [x] Battery optimization: display-link polling follows the configured C-side FPS (with a 60 FPS auto cadence)
+- [x] Accessibility labels and hints for startup, settings, TUI, and session controls
+- [x] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
+- [x] Validate the current ACIP major/minor/patch version in native media and discovery negotiation
+- [x] Clean up failed AVAudioEngine starts without leaving taps, observers, or an active audio session behind
+- [x] Cover shared options snapshot/apply and persisted `UserDefaults` settings in the simulator startup contract
 
 ---
 

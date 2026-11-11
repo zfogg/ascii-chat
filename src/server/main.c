@@ -1393,7 +1393,7 @@ static void server_init_session_host(network_server_t *tcp, int port) {
   }
 }
 
-static bool __attribute__((unused)) server_allow_discovery(server_discovery_policy_t *policy) {
+static bool server_allow_discovery(server_discovery_policy_t *policy) {
   if (policy->has_password || policy->has_identity) {
     // Auto-enable privacy: IP revealed only after verification
     policy->expose_ip = false;
@@ -1436,7 +1436,7 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
   return true;
 }
 
-static void __attribute__((unused)) server_prepare_discovery_request(acds_session_create_params_t *params,
+static void server_prepare_discovery_request(acds_session_create_params_t *params,
                                                                      const server_discovery_policy_t *policy, int port,
                                                                      nat_upnp_context_t *upnp_ctx,
                                                                      bool upnp_succeeded) {
@@ -1521,7 +1521,7 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
             params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 
-static void __attribute__((unused)) server_join_discovery_session(const acds_session_create_params_t *params,
+static void server_join_discovery_session(const acds_session_create_params_t *params,
                                                                   acds_session_create_result_t *result,
                                                                   const char *session_string,
                                                                   const server_discovery_policy_t *policy) {
@@ -1558,7 +1558,7 @@ static void __attribute__((unused)) server_join_discovery_session(const acds_ses
   }
 }
 
-static void __attribute__((unused)) server_start_discovery_keepalive(void) {
+static void server_start_discovery_keepalive(void) {
   // Keep ACDS connection alive for WebRTC signaling relay
   log_debug("Server staying connected to ACDS for signaling relay");
 
@@ -1622,7 +1622,7 @@ static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TU
   return turn_count;
 }
 
-static void __attribute__((unused)) server_init_webrtc(void) {
+static void server_init_webrtc(void) {
   log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
 
   // Initialize WebRTC library (libdatachannel)
@@ -1697,24 +1697,8 @@ static void __attribute__((unused)) server_init_webrtc(void) {
 
 static void server_register_discovery(server_discovery_startup_t *startup, int port, nat_upnp_context_t *upnp_ctx,
                                       bool upnp_succeeded) {
-  /*
-   * Server mode is a direct listener.  Shareable discovery sessions belong to
-   * discovery mode, which owns the ACDS session lifecycle and only announces a
-   * code after the discovery connection becomes active.
-   *
-   * Keep this hook in place for the server startup sequence so the networking
-   * setup remains easy to extend, but do not connect to ACDS or create a
-   * session from server mode.
-   */
-  (void)startup;
-  (void)port;
-  (void)upnp_ctx;
-  (void)upnp_succeeded;
-  return;
-
-#if 0
   if (!GET_OPTION(discovery)) {
-    log_info("ACDS registration disabled (use --acds to enable)");
+    log_debug("ACDS registration disabled (use --discovery to enable)");
     return;
   }
   const char *password = GET_OPTION(password);
@@ -1784,13 +1768,13 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
   }
   advertise_mdns_with_session(startup->session_string, (uint16_t)port);
-#endif
 }
 
 static asciichat_error_t server_announce_session(server_discovery_startup_t *startup, int port) {
-  (void)startup;
+  if (startup->session_string[0]) {
+    log_plain("Run: ascii-chat %s", startup->session_string);
+  }
   (void)port;
-  /* Discovery-mode owns session creation and the share-code announcement. */
   return ASCIICHAT_OK;
 }
 

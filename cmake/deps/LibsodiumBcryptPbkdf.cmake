@@ -31,20 +31,23 @@ if(PLATFORM_IOS)
         # Get iOS SDK path
         if(BUILD_IOS_SIM)
             execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(LIBSODIUM_BCRYPT_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
         else()
             execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(LIBSODIUM_BCRYPT_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
         endif()
 
         set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf")
 
         message(STATUS "  Building libsodium-bcrypt-pbkdf for iOS...")
         execute_process(
-            COMMAND bash -c "export PATH=/tmp/bin:$PATH && cd '${DEP_DIR}' && \
-                    CC=clang \
-                    AR=ar \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
+            COMMAND bash -c "cd '${DEP_DIR}' && \
+                    CC='${CMAKE_C_COMPILER}' \
+                    AR='${CMAKE_AR}' \
+                    OBJCOPY='${ASCIICHAT_OBJCOPY_EXECUTABLE}' \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch ${IOS_TARGET_ARCH} ${LIBSODIUM_BCRYPT_IOS_MIN_FLAG}' \
                     HAVE_EXPLICIT_BZERO=0 \
-                    make lib && \
+                    make lib CC='${CMAKE_C_COMPILER}' AR='${CMAKE_AR}' OBJCOPY='${ASCIICHAT_OBJCOPY_EXECUTABLE}' && \
                     mkdir -p '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib' '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include' && \
                     cp src/libsodium-bcrypt-pbkdf.a '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib/' && \
                     cp include/*.h '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include/'"
@@ -67,6 +70,10 @@ if(PLATFORM_IOS)
             INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_BCRYPT_PBKDF_INCLUDE_DIR}"
         )
     endif()
+
+    function(configure_libsodium_bcrypt_pbkdf)
+        # The iOS branch builds and configures this dependency above.
+    endfunction()
 
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium-bcrypt-pbkdf (iOS): ${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}")
     return()

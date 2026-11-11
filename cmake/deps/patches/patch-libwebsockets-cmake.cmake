@@ -18,6 +18,31 @@ foreach(_relative CMakeLists.txt lib/CMakeLists.txt lib/tls/CMakeLists.txt)
     endif()
 endforeach()
 
+# The iOS SDK provides getifaddrs through libSystem, but libwebsockets'
+# link-based probe cannot resolve it during cross compilation.  Using its
+# bundled fallback alongside the SDK's <ifaddrs.h> causes a duplicate struct
+# definition, so tell the dependency to use the platform implementation.
+set(_file "${LWS_SOURCE_DIR}/CMakeLists.txt")
+file(READ "${_file}" _contents)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS" AND NOT _contents MATCHES "asciichat iOS getifaddrs")
+    string(REPLACE
+        "CHECK_FUNCTION_EXISTS(getifaddrs LWS_HAVE_GETIFADDRS)"
+        "# asciichat iOS getifaddrs\nif(CMAKE_SYSTEM_NAME MATCHES \"iOS\")\n\tset(LWS_HAVE_GETIFADDRS 1)\nelse()\n\tCHECK_FUNCTION_EXISTS(getifaddrs LWS_HAVE_GETIFADDRS)\nendif()"
+        _contents "${_contents}")
+    file(WRITE "${_file}" "${_contents}")
+endif()
+
+# Wake-on-LAN uses ETHER_ADDR_LEN from desktop networking headers that are not
+# available in the iOS SDK.  It is optional and unrelated to websocket or QUIC
+# transport, so leave it out of the iOS static library.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS" AND NOT _contents MATCHES "asciichat iOS WOL")
+    string(REPLACE
+        "project(libwebsockets C)"
+        "project(libwebsockets C)\n# asciichat iOS WOL\nset(LWS_WITH_WOL OFF CACHE BOOL \"Disable Wake-on-LAN on iOS\" FORCE)"
+        _contents "${_contents}")
+    file(WRITE "${_file}" "${_contents}")
+endif()
+
 set(_file "${LWS_SOURCE_DIR}/lib/CMakeLists.txt")
 file(READ "${_file}" _contents)
 set(_original "${_contents}")

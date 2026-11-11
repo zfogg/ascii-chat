@@ -38,14 +38,8 @@ const char *keyboard_help_screen_name(int parent) {
   }
 }
 
-static void render_help_snapshot(terminal_size_t size, const void *data) {
-  int fd = *(const int *)data;
-  terminal_size_t minimum;
-  char *text = ui_session_context_help_render(size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
-  if (text) {
-    ui_controller_write(fd, text, strlen(text));
-    SAFE_FREE(text);
-  }
+static asciichat_error_t present_help_snapshot(int fd, terminal_size_t minimum, const char *text, size_t length) {
+  return ui_controller_present(UI_SCREEN_HELP, fd, minimum, text, length);
 }
 
 void keyboard_help_toggle_terminal(int fd) {
@@ -62,14 +56,24 @@ void keyboard_help_toggle_terminal(int fd) {
     ascii_otel_ui_usage("error", "help_viewed", 0);
   atomic_store(&g_help_previous, ui_controller_interactive_screen());
   atomic_store(&g_help_parent, ui_controller_current_screen());
+  terminal_size_t render_size = ui_controller_size();
+  if (render_size.cols < 80 || render_size.rows < 24) {
+    render_size.cols = 80;
+    render_size.rows = 24;
+  }
   terminal_size_t minimum;
-  char *text =
-      ui_session_context_help_render(ui_controller_size(), (ui_screen_t)keyboard_help_parent_screen(), &minimum);
+  char *text = ui_session_context_help_render(render_size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
   if (!text)
     return;
-  if (!GET_OPTION(snapshot_mode))
-    (void)ui_controller_submit(UI_SCREEN_HELP, fd, minimum, render_help_snapshot, &fd, sizeof(fd));
+  if (!GET_OPTION(snapshot_mode)) {
+    /* Claim focus before publishing the frame so an in-flight media producer
+     * is suppressed by the shared controller instead of repainting over Help. */
+    ui_controller_select_interactive(UI_SCREEN_HELP);
+    (void)present_help_snapshot(fd, minimum, text, strlen(text));
+    ui_controller_select_interactive(UI_SCREEN_HELP);
+  }
   SAFE_FREE(text);
+  return;
 }
 
 void keyboard_help_toggle(session_display_ctx_t *ctx) {

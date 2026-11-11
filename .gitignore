@@ -88,6 +88,9 @@ vcpkg_installed/
 # Build directory fonts (downloaded at build time)
 /build/fonts/
 
+# Swift package build products
+/src/ios/.build/
+
 # Valgrind core dumps and profiling data
 vgcore*
 callgrind.out*

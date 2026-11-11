@@ -1379,6 +1379,10 @@ static struct lws_context *websocket_create_client_context(void) {
 
   struct lws_context_creation_info info;
   memset(&info, 0, sizeof(info));
+  char *client_ca_pem = NULL;
+  size_t client_ca_pem_size = 0;
+  if (platform_load_system_ca_certs(&client_ca_pem, &client_ca_pem_size) != ASCIICHAT_OK)
+    log_warn("No system CA roots found while creating WebSocket context; WSS will report this explicitly");
   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
   info.protocols = client_protocols;
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
@@ -1386,6 +1390,8 @@ static struct lws_context *websocket_create_client_context(void) {
   // Initialize SSL globally for client (required even for clients to use OpenSSL)
   // The LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT flag works for both servers and clients
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+  info.client_ssl_ca_mem = client_ca_pem;
+  info.client_ssl_ca_mem_len = (unsigned int)client_ca_pem_size;
   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
   // Increase per-thread service buffer to prevent fragmentation of large messages
@@ -1404,7 +1410,9 @@ static struct lws_context *websocket_create_client_context(void) {
   // Enable libwebsockets logging through centralized logging system
   lws_log_init_client();
 
-  return lws_create_context(&info);
+  struct lws_context *context = lws_create_context(&info);
+  SAFE_FREE(client_ca_pem);
+  return context;
 }
 
 /**
@@ -1555,6 +1563,17 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   int port = endpoint.port;
   bool use_ssl = endpoint.use_ssl;
 
+  if (use_ssl) {
+    char *ca_pem = NULL;
+    size_t ca_pem_size = 0;
+    if (platform_load_system_ca_certs(&ca_pem, &ca_pem_size) != ASCIICHAT_OK || ca_pem_size == 0) {
+      SAFE_FREE(ca_pem);
+      SET_ERRNO(ERROR_INVALID_STATE, "No CA roots available for WebSocket TLS");
+      return NULL;
+    }
+    SAFE_FREE(ca_pem);
+  }
+
   acip_transport_t *transport = websocket_allocate_client_transport(name);
   if (!transport) {
     return NULL;
@@ -1596,9 +1615,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // This ensures WebSocket upgrade includes Sec-WebSocket-Protocol: acip
   connect_info.local_protocol_name = "acip";
   connect_info.protocol = "acip";
-  // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
-  connect_info.ssl_connection =
-      use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
+  connect_info.ssl_connection = use_ssl ? LCCSCF_USE_SSL : 0;
   connect_info.opaque_user_data = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");

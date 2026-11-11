@@ -6,6 +6,7 @@
 
 #ifdef __APPLE__
 
+#import <TargetConditionals.h>
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
@@ -122,6 +123,11 @@ static NSArray *getSupportedDeviceTypes(void) {
   // Always add built-in camera
   [deviceTypes addObject:AVCaptureDeviceTypeBuiltInWideAngleCamera];
 
+#if TARGET_OS_IPHONE
+  if (@available(iOS 11.1, *)) {
+    [deviceTypes addObject:AVCaptureDeviceTypeBuiltInTrueDepthCamera];
+  }
+#else
   // Add continuity camera support for macOS 13.0+
   if (@available(macOS 13.0, *)) {
     [deviceTypes addObject:AVCaptureDeviceTypeContinuityCamera];
@@ -131,6 +137,7 @@ static NSArray *getSupportedDeviceTypes(void) {
   if (@available(macOS 14.0, *)) {
     [deviceTypes addObject:AVCaptureDeviceTypeExternal];
   }
+#endif
 
   return [[deviceTypes copy] autorelease];
 }
@@ -221,18 +228,16 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
-    // Configure video output for RGB format with fallback support
-    // Try RGB24 first, then fallback to other common formats (UYVY, YUV420, etc)
-    NSArray *preferredFormats = @[
-      @(kCVPixelFormatType_24RGB),            // Preferred: 24-bit RGB
-      @(kCVPixelFormatType_422YpCbCr8),       // UYVY - very common
-      @(kCVPixelFormatType_420YpCbCr8Planar), // I420/YUV420 (3-plane)
-      @(kCVPixelFormatType_32BGRA),           // 32-bit BGRA fallback
-    ];
-
-    NSDictionary *videoSettings = @{(NSString *)kCVPixelBufferPixelFormatTypeKey : preferredFormats};
+    // AVCaptureVideoDataOutput accepts one pixel format, not an ordered array.
+    // BGRA is the stable native format on iOS; macOS retains the RGB24 path.
+#if TARGET_OS_IPHONE
+    NSNumber *pixelFormat = @(kCVPixelFormatType_32BGRA);
+#else
+    NSNumber *pixelFormat = @(kCVPixelFormatType_24RGB);
+#endif
+    NSDictionary *videoSettings = @{(NSString *)kCVPixelBufferPixelFormatTypeKey : pixelFormat};
     [context->output setVideoSettings:videoSettings];
-    log_debug("Configured AVFoundation video output with format priorities: RGB24, UYVY, I420, BGRA");
+    log_debug("Configured AVFoundation video output pixel format: 0x%x", [pixelFormat unsignedIntValue]);
 
     // Create delegate and queue
     context->delegate = [[WebcamCaptureDelegate alloc] init];
@@ -664,7 +669,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 }
 
-double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
+double webcam_get_fps(webcam_context_t *ctx) {
+  return ctx ? ctx->fps : 0.0;
+}
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)

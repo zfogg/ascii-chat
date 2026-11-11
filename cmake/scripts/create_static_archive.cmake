@@ -130,7 +130,10 @@ file(WRITE "${_archive_response}" "${_archive_arguments}")
 # ar replaces named members but retains removed sources in an existing archive.
 # Build a fresh archive and preserve the previous output until indexing succeeds.
 get_filename_component(_archive_name "${OUTPUT}" NAME)
-set(_archive_output "${TEMP_DIR}/${_archive_name}")
+# Keep the archive outside the staging directory. Some ar implementations
+# replace or clean response-file directories while creating the archive.
+set(_archive_output "${OUTPUT}.tmp")
+file(REMOVE "${_archive_output}")
 message(STATUS "  Running: ${AR} crs ${_archive_output} <${OBJECT_COUNT} objects>")
 execute_process(
     COMMAND "${AR}" crs "${_archive_output}" "@${_archive_response}"

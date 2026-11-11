@@ -64,12 +64,16 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/election.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/metrics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/coordinator.c
-    # nat/
-    ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp.c
     # mdns/
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/mdns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/discovery.c
 )
+
+if(NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp.c)
+elseif(PLATFORM_IOS)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp_ios.c)
+endif()
 
 if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/establish.c)
