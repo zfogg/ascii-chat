@@ -20,7 +20,6 @@
 #include <stdint.h>
 #include "api.h"
 #include "../asciichat_errno.h"
-#include <libplatform/process.h>
 
 typedef struct {
   double cpu_seconds;
@@ -284,3 +283,5 @@ void platform_process_destroy(platform_process_t *process);
 #endif
 
 /** @} */
+asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream);
+asciichat_error_t platform_pclose(FILE **stream_ptr);
