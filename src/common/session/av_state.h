@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 typedef enum {
   SESSION_AV_STATE_IDLE,

@@ -88,7 +88,7 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>
 #include <ascii-chat/util/time.h> // For timing instrumentation
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 #include <ascii-chat/audio/audio.h>           // lib/audio/audio.h for PortAudio wrapper
 #include <ascii-chat/audio/client_pipeline.h> // Unified audio processing pipeline
@@ -96,15 +96,18 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
-#include <ascii-chat/platform/system.h> // For platform_memcpy
+#include <libplatform/system.h> // For platform_memcpy
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 #include <string.h>
 #include <math.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/thread_pool.h>
 
 /* ============================================================================

@@ -24,7 +24,7 @@
 
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/utf8.h> // For UTF-8 character width detection
 
 /* Default palette constants for legacy functions */

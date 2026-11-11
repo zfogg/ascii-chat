@@ -46,7 +46,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/image.h>
 

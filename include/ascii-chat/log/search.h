@@ -22,7 +22,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
 

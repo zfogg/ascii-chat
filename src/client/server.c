@@ -70,9 +70,11 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/video/h265/encoder.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/async.h>
@@ -96,11 +98,11 @@
 #include <stdarg.h>
 #include <time.h>
 #include <sys/types.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 
-#include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
+#include <ascii-chat/os/network.h> // Consolidates platform-specific network headers (includes TCP options)
 
 // Debug flags
 #define DEBUG_NETWORK 1

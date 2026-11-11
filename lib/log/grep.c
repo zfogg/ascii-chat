@@ -17,12 +17,12 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/search.h>
 
 #include <string.h>
@@ -106,7 +106,7 @@ static void destroy_match_data(void *data) {
  * @brief Initialize thread-local storage key (called once)
  */
 static void create_match_data_key(void) {
-  ascii_tls_key_create(&g_filter_state.match_data_key, destroy_match_data);
+  platform_tls_key_create(&g_filter_state.match_data_key, destroy_match_data);
 }
 
 /** Resolve search highlighting through the shared live theme service. */
@@ -198,7 +198,7 @@ static void ensure_match_data_key_initialized(void) {
 static pcre2_match_data *get_thread_match_data(void) {
   ensure_match_data_key_initialized();
 
-  pcre2_match_data *data = ascii_tls_get(g_filter_state.match_data_key);
+  pcre2_match_data *data = platform_tls_get(g_filter_state.match_data_key);
   if (!data) {
     // Find any regex pattern to create match data from
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
@@ -207,7 +207,7 @@ static pcre2_match_data *get_thread_match_data(void) {
         if (code) {
           data = pcre2_match_data_create_from_pattern(code, NULL);
           if (data) {
-            ascii_tls_set(g_filter_state.match_data_key, data);
+            platform_tls_set(g_filter_state.match_data_key, data);
             break;
           }
         }

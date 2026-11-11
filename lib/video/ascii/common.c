@@ -10,12 +10,12 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/lifecycle.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/cpu.h>
 #include <time.h>
 #include <math.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
@@ -138,8 +138,8 @@ static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uth
 static bool init_utf8_cache_system(void) {
   if (!lifecycle_init_once(&g_utf8_cache_lc)) {
     // A competing renderer must wait for both the lock and heap to exist.
-    while (atomic_load_u64(&g_utf8_cache_lc.state) == LIFECYCLE_INITIALIZING)
-      platform_sleep_us(1);
+    while (atomic_load_explicit(&g_utf8_cache_lc.state, memory_order_acquire) == LIFECYCLE_INITIALIZING)
+      platform_sleep_ms(1);
     return lifecycle_is_initialized(&g_utf8_cache_lc);
   }
   if (rwlock_init(&g_utf8_cache_rwlock, "utf8_cache") != 0) {

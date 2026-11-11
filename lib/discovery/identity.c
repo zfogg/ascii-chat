@@ -9,8 +9,10 @@
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/filesystem.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <string.h>

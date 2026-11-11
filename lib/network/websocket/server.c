@@ -25,11 +25,13 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/websocket.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/debug/named.h>
@@ -66,7 +68,7 @@
 typedef struct {
   websocket_server_t *server;        ///< Back-reference to server
   acip_transport_t *transport;       ///< ACIP transport for this connection
-  asciichat_thread_t handler_thread; ///< Client handler thread
+  platform_thread_t handler_thread; ///< Client handler thread
   bool handler_started;              ///< True if handler thread was started
   bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
 

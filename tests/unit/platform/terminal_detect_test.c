@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 

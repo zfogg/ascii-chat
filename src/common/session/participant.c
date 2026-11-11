@@ -22,7 +22,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
@@ -121,10 +121,10 @@ typedef struct session_participant {
   bool audio_uses_video;
 
   /** @brief Video capture thread handle */
-  asciichat_thread_t video_capture_thread;
+  platform_thread_t video_capture_thread;
 
   /** @brief Audio capture thread handle */
-  asciichat_thread_t audio_capture_thread;
+  platform_thread_t audio_capture_thread;
 
   /** @brief Video worker handle requires joining */
   bool video_thread_created;
@@ -403,7 +403,7 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
   if (values->fps == 0)
     values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
+    terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   }
   acip_render_settings_t prepared = {0};
@@ -586,7 +586,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
   }
 
   // Spawn video capture thread (media source is ready in ctx)
-  if (acthread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
     session_participant_stop_video(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
@@ -678,7 +678,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   }
 
   // Spawn audio capture thread
-  if (acthread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     session_participant_stop_audio(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");

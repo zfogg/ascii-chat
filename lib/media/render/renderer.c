@@ -7,17 +7,19 @@
  */
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/platform/font.h>
+#include <ascii-chat/os/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/memory.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
+#include <ascii-chat/font.h>
+#include <libplatform/font.h>
 
 #define RENDER_AUTO_FONT_SIZE_PT 12.0
 #define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280
@@ -99,6 +101,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     log_debug("[MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
+  platform_font_register("matrix", g_font_matrix_resurrected, g_font_matrix_resurrected_size);
+  platform_font_register("default", g_font_default, g_font_default_size);
+  platform_font_register("DejaVu Sans Mono", g_font_default, g_font_default_size);
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {

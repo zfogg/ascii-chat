@@ -15,8 +15,8 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/error_codes.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/paths.h>
 #include <ascii-chat/source_root.h>
 #include <string.h>
@@ -25,8 +25,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 
+/* Generic path primitives are provided by libplatform. */
+#if 0
 /** Retained for callers that used to release thread-local path resources. */
 void path_cleanup_thread_locals(void) {}
 
@@ -218,6 +220,7 @@ const char *path_last_components(const char *path, size_t component_count) {
 
   return path;
 }
+#endif
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
@@ -336,7 +339,7 @@ char *get_log_dir(void) {
 
 char *get_discovery_database_dir(void) {
   platform_directory_list_t data_dirs = {0};
-  if (platform_get_data_dir_candidates(&data_dirs) == ASCIICHAT_OK) {
+  if (platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &data_dirs) == ASCIICHAT_OK) {
     for (size_t i = 0; i < data_dirs.count; i++) {
       platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
       if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
@@ -365,6 +368,7 @@ char *get_discovery_database_dir(void) {
   return NULL;
 }
 
+#if 0
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
@@ -457,7 +461,9 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 
   return false;
 }
+#endif
 
+#if 0 /* libplatform provides this generic predicate. */
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
     return false;
@@ -479,6 +485,7 @@ bool path_looks_like_path(const char *value) {
 
   return false;
 }
+#endif
 
 static asciichat_error_t map_role_to_error(path_role_t role) {
   switch (role) {

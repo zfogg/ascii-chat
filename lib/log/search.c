@@ -16,10 +16,10 @@
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/log/grep.h"
-#include "ascii-chat/platform/keyboard.h"
-#include "ascii-chat/platform/mutex.h"
-#include "ascii-chat/platform/terminal.h"
-#include "ascii-chat/util/lifecycle.h"
+#include "ascii-chat/os/keyboard.h"
+#include <libplatform/mutex.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
 #include "ascii-chat/util/flow_control.h"
@@ -32,7 +32,7 @@
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Constants

@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/atomic.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -32,10 +32,10 @@ Test(palette_init, concurrent_first_renderers_observe_a_complete_cache, .init = 
     simd_caches_destroy_all();
     atomic_t ready = {0}, start = {0};
     palette_worker_t workers[8];
-    asciichat_thread_t threads[8];
+    platform_thread_t threads[8];
     for (unsigned i = 0; i < 8; i++) {
       workers[i] = (palette_worker_t){.ready = &ready, .start = &start};
-      cr_assert_eq(acthread_create(&threads[i], "palette-init", open_palette, &workers[i]), 0);
+      cr_assert_eq(platform_thread_create(&threads[i], "palette-init", open_palette, &workers[i]), 0);
     }
     uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
     while (atomic_load_u64(&ready) != 8 && time_get_ns() < deadline)

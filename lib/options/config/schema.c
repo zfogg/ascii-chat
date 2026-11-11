@@ -22,8 +22,8 @@
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 
 #include <string.h>
@@ -157,7 +157,7 @@ static size_t get_field_size(option_type_t type, size_t offset) {
     if (offset == offsetof(options_t, color_mode)) {
       return sizeof(terminal_color_mode_t);
     } else if (offset == offsetof(options_t, render_mode)) {
-      return sizeof(render_mode_t);
+      return sizeof(terminal_render_mode_t);
     } else if (offset == offsetof(options_t, palette_type)) {
       return sizeof(palette_type_t);
     }

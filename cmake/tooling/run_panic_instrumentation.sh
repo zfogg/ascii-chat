@@ -455,7 +455,7 @@ echo "Headers copied to instrumented tree"
 
 extra_source_files=(
   "lib/platform/system.c"
-  "lib/debug/memory.c"
+  "deps/libplatform/lib/debug_memory.c"
   "lib/platform/posix/system.c"
   "lib/platform/posix/mutex.c"
   "lib/platform/posix/thread.c"

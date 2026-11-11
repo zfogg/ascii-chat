@@ -16,7 +16,7 @@
 #include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #ifndef _WIN32

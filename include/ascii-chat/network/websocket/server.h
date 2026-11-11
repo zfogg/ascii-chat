@@ -52,9 +52,8 @@
 #include <ascii-chat/common/limits.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include "../../common.h"
-#include "../../platform/abstraction.h"
 #include "../../thread_pool.h"
 #include <libwebsockets.h>
 

@@ -11,15 +11,15 @@ bool g_snapshot_first_frame_rendered = false;
 #include "../../../src/common/session/pipeline.h"
 static unsigned pipeline_fail_thread_at, pipeline_thread_calls, pipeline_join_calls;
 static bool pipeline_fake_workers, pipeline_force_recording, pipeline_fail_wakeup;
-static int pipeline_create_thread(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
+static int pipeline_create_thread(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   ++pipeline_thread_calls;
   if (pipeline_thread_calls == pipeline_fail_thread_at)
     return -1;
   if (pipeline_fake_workers)
     return 0;
-  return acthread_create(thread, name, fn, arg);
+  return platform_thread_create(thread, name, fn, arg);
 }
-static int pipeline_join_thread(asciichat_thread_t *thread, void **result) {
+static int pipeline_join_thread(platform_thread_t *thread, void **result) {
   ++pipeline_join_calls;
   return pipeline_fake_workers ? 0 : thread_join(thread, result);
 }
@@ -29,12 +29,12 @@ static asciichat_error_t pipeline_create_wakeup(platform_wakeup_t **wakeup) {
 static bool pipeline_recording(session_display_ctx_t *display) {
   return pipeline_force_recording || session_display_has_render_file(display);
 }
-#define acthread_create pipeline_create_thread
+#define platform_thread_create pipeline_create_thread
 #define thread_join pipeline_join_thread
 #define platform_wakeup_create pipeline_create_wakeup
 #define session_display_has_render_file pipeline_recording
 #include "../../../src/common/session/pipeline.c"
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 #undef platform_wakeup_create
 #undef session_display_has_render_file

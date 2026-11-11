@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h> // For acip_transport_t
@@ -17,8 +17,8 @@
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/thread.h> // For thread_id_t
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/anim/digital_rain.h>
@@ -115,8 +115,8 @@ typedef struct client_info {
   atomic_t frames_sent_count; // Total ASCII frames sent to this client
 
   // Per-client rendering threads
-  asciichat_thread_t video_render_thread;
-  asciichat_thread_t audio_render_thread;
+  platform_thread_t video_render_thread;
+  platform_thread_t audio_render_thread;
   atomic_t video_render_thread_running;
   atomic_t audio_render_thread_running;
 

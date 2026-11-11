@@ -59,7 +59,7 @@
 
 #include <ascii-chat/audio/format.h>
 #include <stdbool.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <portaudio.h>
 #ifdef __linux__
 #include <sched.h>
@@ -71,9 +71,9 @@
 #endif
 
 #include "../common.h"
-#include "../platform/thread.h"
-#include "../platform/mutex.h"
-#include "../platform/cond.h"
+#include <libplatform/thread.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include "../ringbuffer.h"
 #include "../options/options.h"
 
@@ -131,7 +131,7 @@ typedef struct {
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
 
   // Worker thread for heavy processing (AEC3, filters)
-  asciichat_thread_t worker_thread;    ///< Worker thread for audio processing
+  platform_thread_t worker_thread;    ///< Worker thread for audio processing
   mutex_t audio_processing_wait_guard; ///< Coordinates device-worker sleep with shutdown
   cond_t audio_processing_wakeup;      ///< Capture/AEC work, monitor refill, or shutdown notification
   bool worker_running;                 ///< True if worker thread is running

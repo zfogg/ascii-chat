@@ -5,9 +5,9 @@
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>
 #include <sodium.h>

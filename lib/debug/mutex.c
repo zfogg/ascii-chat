@@ -25,10 +25,10 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/platform/api.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/os/api.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
+#include <libplatform/thread.h>
 #include <string.h>
 #include <ascii-chat/otel.h>
 
@@ -138,7 +138,7 @@ static void ensure_tls_initialized(void) {
     registry_lock();
     // Try to initialize TLS key with destructor
     if (!atomic_load_bool(&g_tls_initialized) &&
-        ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
+        platform_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
       atomic_store_bool(&g_tls_initialized, true);
     }
     registry_unlock();
@@ -163,7 +163,7 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
   ensure_tls_initialized();
 
   // Get current thread's stack from TLS
-  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)platform_tls_get(g_tls_mutex_stack);
 
   if (stack == NULL) {
     // Allocate stack on heap for this thread
@@ -172,7 +172,7 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
     if (stack) {
       memset(stack, 0, sizeof(thread_lock_stack_t));
       // Store in TLS (destructor will free it when thread exits)
-      ascii_tls_set(g_tls_mutex_stack, stack);
+      platform_tls_set(g_tls_mutex_stack, stack);
       register_thread_if_needed();
     }
   }
@@ -775,7 +775,7 @@ typedef struct {
 static void copy_cond_deadlock_state(uintptr_t key, void *data) {
   const cond_t *cond = (const cond_t *)key;
   cond_deadlock_snapshot_t *snapshot = data;
-  snapshot->waiting_count = atomic_load_u64(&cond->waiting_count);
+  snapshot->waiting_count = atomic_load(&cond->waiting_count);
   snapshot->last_wait_time_ns = cond->last_wait_time_ns;
   snapshot->last_signal_time_ns = cond->last_signal_time_ns;
   snapshot->last_waiting_key = cond->last_waiting_key;
@@ -952,13 +952,13 @@ void mutex_stack_cleanup_current_thread(void) {
     return; // TLS not initialized, nothing to clean up
   }
 
-  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)platform_tls_get(g_tls_mutex_stack);
   if (!stack) {
     return; // No stack allocated for this thread
   }
 
   // Clear from TLS
-  ascii_tls_set(g_tls_mutex_stack, NULL);
+  platform_tls_set(g_tls_mutex_stack, NULL);
 
   // Update registry if this thread is registered
   thread_id_t current_thread = thread_self();
@@ -984,7 +984,7 @@ void mutex_stack_cleanup(void) {
   // destructors; POSIX key deletion does not. Delete first so those callbacks
   // retire their entries before we free any remaining allocations.
   if (atomic_load_bool(&g_tls_initialized)) {
-    ascii_tls_key_delete(g_tls_mutex_stack);
+    platform_tls_key_delete(g_tls_mutex_stack);
     atomic_store_bool(&g_tls_initialized, false);
   }
   registry_lock();

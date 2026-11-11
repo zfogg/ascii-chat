@@ -32,14 +32,14 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/system.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/nat/upnp.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/socket.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 
@@ -60,7 +60,7 @@
 struct webrtc_peer_connection {
   nat_upnp_context_t *mapping; ///< Owned UDP mapping
   socket_t port_reservation;   ///< Held until ICE starts binding
-  asciichat_thread_t mapping_thread;
+  platform_thread_t mapping_thread;
   atomic_t mapping_stop;
   bool mapping_thread_started;
   int rtc_id;                       ///< libdatachannel peer connection ID
@@ -177,7 +177,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
     return;
   }
   atomic_store_bool(&pc->mapping_stop, false);
-  if (acthread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
+  if (platform_thread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
     webrtc_mapping_close(pc);
     return;
   }

@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
 /* Forward declaration of session_log_buffer_t */

@@ -13,7 +13,7 @@
  */
 
 #include <stdint.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 
 /**
  * @brief Counters and rates describing the server's media pipeline

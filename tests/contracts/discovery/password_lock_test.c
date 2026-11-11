@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/cond.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/time.h>
 #include <sodium.h>
@@ -99,8 +99,8 @@ static acip_session_join_t request(void) {
 }
 static void run_join(uint8_t expected) {
   acip_session_join_t join = request();
-  asciichat_thread_t worker;
-  cr_assert_eq(acthread_create(&worker, "other-client", other_client, NULL), 0);
+  platform_thread_t worker;
+  cr_assert_eq(platform_thread_create(&worker, "other-client", other_client, NULL), 0);
   acip_session_joined_t response;
   asciichat_error_t result = database_session_join(db, &join, &config, &response);
   cr_assert_eq(thread_join(&worker, NULL), 0);

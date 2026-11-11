@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <uv.h>
-#include <ascii-chat/platform/stat.h>
+#include <sys/stat.h>
 
 static const char *shared_header(const http_request_info_t *info, const char *name) {
   for (size_t i = 0; i < info->header_count; ++i)

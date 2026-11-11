@@ -13,7 +13,7 @@
 #include <ascii-chat/options/registry/mode_defaults.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <string.h>
 #include <stdio.h>
 

@@ -21,7 +21,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   if (!ctx) {
     return;
   }
-  bool unicode = terminal_should_use_utf8();
+  bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
 
   if (ctx->discovery.enabled) {
     invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining,

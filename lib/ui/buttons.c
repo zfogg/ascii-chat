@@ -42,7 +42,7 @@ void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const 
     int x = stacked ? left + (width - length) / 2 : col;
     bool selected_button = i == selected;
     bool colors = !GET_OPTION(strip_ansi) && GET_OPTION(color_mode) != TERM_COLOR_NONE &&
-                  terminal_should_color_output(frame_buffer_get_screen_output_fd());
+                  terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
     if (selected_button && colors) {
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       if (mode == TERM_COLOR_AUTO)

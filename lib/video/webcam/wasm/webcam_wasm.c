@@ -23,7 +23,9 @@
 #include <string.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>

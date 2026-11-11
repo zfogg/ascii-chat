@@ -1,9 +1,11 @@
 #pragma once
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/thread.h>
+#include <libplatform/mutex.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -118,7 +120,7 @@ typedef struct {
 typedef void (*http_renderer_job_fn)(void *context, atomic_t *cancelled);
 
 struct http_renderer_job {
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   atomic_t cancelled;
   atomic_t done;
   http_renderer_job_fn execute;

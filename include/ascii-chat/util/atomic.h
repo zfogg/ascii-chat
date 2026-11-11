@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 

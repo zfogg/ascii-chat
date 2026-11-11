@@ -305,8 +305,8 @@ static void test_listener_interrupt(void) {
   acip_transport_t *transport = network_connection_transport(peer);
   transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   receive_wait_t wait = {.transport = transport};
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
   while (!atomic_load_bool(&wait.entered))
     platform_sleep_ms(1);
   acip_transport_interrupt(transport);

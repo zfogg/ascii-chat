@@ -76,9 +76,10 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/systemd.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/systemd.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
@@ -2397,7 +2398,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
   if (actions.show_version || actions.create_config || actions.create_manpage) {
-    return handle_fallback_actions(&opts, &actions);
+    result = handle_fallback_actions(&opts, &actions);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+    return ASCIICHAT_OK;
   }
 
   // Mode parsing owns the temporary argv and schema until the shared cleanup path.

@@ -12,7 +12,9 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 // Test configuration
 #define TEST_PORT_BASE 10000

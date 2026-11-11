@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/audio/mixer.h>

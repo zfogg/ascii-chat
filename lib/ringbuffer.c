@@ -14,7 +14,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <stdlib.h>

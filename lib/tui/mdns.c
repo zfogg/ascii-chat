@@ -28,11 +28,13 @@
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
 
@@ -103,7 +105,7 @@ void ui_mdns_free_results(ui_mdns_server_t *servers) {
  * @brief Interactive server selection
  */
 int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
-  if (terminal_can_prompt_user())
+  if (terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
     return ui_mdns_select(servers, count);
   if (!servers || count <= 0) {
     return -1;
@@ -139,7 +141,7 @@ typedef struct {
 typedef struct {
   mutex_t mutex;
   atomic_t stop;
-  asciichat_thread_t thread;
+  platform_thread_t thread;
   bool running;
   unsigned generation;
   int count;
@@ -222,8 +224,8 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
   if (!buffer)
     return;
   frame_buffer_printf(buffer, "\033[0m\033[H\033[2J");
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
-  bool unicode = terminal_should_use_utf8();
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO, options_terminal_settings());
+  bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
   int panel_width = size.cols - 1 < 80 ? size.cols - 1 : 80;
   bool show_title = size.rows >= 5;
   int chrome = show_title ? 4 : 3;
@@ -296,7 +298,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
                              ui_mdns_server_t *chosen) {
   if (count < 0 || (!servers && count > 0))
     return -1;
-  if (!terminal_can_prompt_user())
+  if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
     return ui_mdns_prompt_selection(servers, count);
   if (keyboard_init() != ASCIICHAT_OK)
     return -1;
@@ -312,7 +314,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
   log_set_terminal_output(false);
   if (refresh) {
     thread_init(&refresh->thread);
-    refresh->running = acthread_create(&refresh->thread, "lan_refresh", refresh_mdns_servers, refresh) == 0;
+    refresh->running = platform_thread_create(&refresh->thread, "lan_refresh", refresh_mdns_servers, refresh) == 0;
     if (!refresh->running) {
       log_set_terminal_output(logging);
       SAFE_FREE(snapshot);

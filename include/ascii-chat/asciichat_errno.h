@@ -15,17 +15,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <libplatform/debug/backtrace.h>
 #include "common.h"
 #include "log/log.h"
-
-typedef struct {
-  void *ptrs[ASCIICHAT_BACKTRACE_FRAME_CAPACITY];
-  char **symbols;
-  int count;
-  bool tried_symbolize;
-/**
- */
-} backtrace_t;
 
 #define ASCIICHAT_ERRNO_MESSAGE_MAX 1024
 #define ASCIICHAT_ERRNO_MAX_DEPTH 64

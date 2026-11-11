@@ -15,10 +15,12 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/atomic.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/network/connection.h>

@@ -8,7 +8,7 @@
 #include "../main.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>

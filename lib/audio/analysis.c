@@ -9,6 +9,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/util/time.h>
+#include <libplatform/filesystem.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h>

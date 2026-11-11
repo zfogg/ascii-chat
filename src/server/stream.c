@@ -132,7 +132,7 @@
 #define SERVER_STREAM_HEX_BUFFER_SIZE 300
 #define SERVER_STREAM_ASCII_BUFFER_SIZE 100
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>

@@ -1,4 +1,5 @@
 #pragma once
+#include <libplatform/mutex.h>
 
 /**
  * @file video_frame.h
@@ -76,12 +77,11 @@
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #endif
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common/buffer_sizes.h>
 
 /* ============================================================================

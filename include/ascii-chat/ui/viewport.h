@@ -1,7 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 
 /** Selection is an absolute item index; first_visible is relative to its page.
  * @brief For ui viewport, this is the live record that ties `selected`, `first_visible`, `page_size` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.

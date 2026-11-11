@@ -11,7 +11,7 @@
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <limits.h>

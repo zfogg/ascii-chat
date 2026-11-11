@@ -9,8 +9,8 @@
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <errno.h>
@@ -194,7 +194,7 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
     SAFE_SNPRINTF(entry->name, sizeof(entry->name), "%s_worker_%zu", pool->name, i);
 
     // Create worker thread
-    if (acthread_create(&entry->thread, entry->name, thread_pool_worker_thread, pool) != 0) {
+    if (platform_thread_create(&entry->thread, entry->name, thread_pool_worker_thread, pool) != 0) {
       log_error("Failed to create worker thread %zu", i);
       SAFE_FREE(entry);
       thread_pool_destroy(pool);
@@ -368,7 +368,7 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
   }
 
   // Create thread
-  if (acthread_create(&entry->thread, entry->name, thread_func, thread_arg) != 0) {
+  if (platform_thread_create(&entry->thread, entry->name, thread_func, thread_arg) != 0) {
     // Save name before freeing entry
     char thread_name_copy[THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE];
     SAFE_STRNCPY(thread_name_copy, entry->name, sizeof(thread_name_copy));
