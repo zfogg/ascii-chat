@@ -119,6 +119,10 @@ if(MINIUPNPC_FOUND)
         set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
     endif()
 
+    # The result depends on the selected MiniUPnP headers.  Do not reuse a
+    # cached probe result when switching toolchains or platform dependency
+    # roots in an existing build directory.
+    unset(MINIUPNPC_HAS_7ARG_GETVALIDIGD CACHE)
     check_c_source_compiles("
         #include <stddef.h>  // For size_t - miniupnpc headers need it but don't include it
         #include <miniupnpc.h>
