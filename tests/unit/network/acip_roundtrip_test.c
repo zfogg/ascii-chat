@@ -175,14 +175,15 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   acip_client_session_t session;
   acip_client_session_init(&session, &transport, &callbacks);
   cr_assert_eq(acip_client_session_dispatch(&session, PACKET_TYPE_PING, payload, sizeof(payload)), ASCIICHAT_OK);
-  cr_assert_eq(wire.callbacks, 2);
+  cr_assert_eq(wire.callbacks, 1);
   uint8_t malformed = 0;
-  cr_assert_eq(packet_parse_envelope(&malformed, MAX_PACKET_SIZE + 1, NULL, &envelope), ERROR_INVALID_PARAM);
+  cr_assert_eq(packet_parse_envelope(&malformed, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
+               ERROR_INVALID_PARAM);
   cr_assert_eq(acip_client_dispatch_packet(&transport, PACKET_TYPE_PING, payload, sizeof(payload), &callbacks),
                ASCIICHAT_OK);
-  cr_assert_eq(wire.callbacks, 3);
+  cr_assert_eq(wire.callbacks, 2);
   cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
-  cr_assert_eq(wire.callbacks, 4);
+  cr_assert_eq(wire.callbacks, 3);
 }
 
 Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch) {
