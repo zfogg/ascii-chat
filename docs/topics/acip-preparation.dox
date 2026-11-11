@@ -91,11 +91,11 @@
  * on both sides.
  *
  * @code{.sh}
- * uv run --project tests/ascii_chat_tests --frozen \
- *   python -m pytest tests/python/integration/acip \
+ * uv run --frozen \
+ *   python -m pytest tests/python/tests/integration/acip \
  *   --acip-websocket-probe build/bin/test-acip-prepare
  *
- * uv run --project tests/ascii_chat_tests --frozen \
+ * uv run --frozen \
  *   python tests/integration/crypto_policy.py build/bin/ascii-chat
  * @endcode
  *

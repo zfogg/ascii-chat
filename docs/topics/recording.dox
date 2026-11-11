@@ -84,7 +84,7 @@
  * in each call output, and A/V synchronization:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/recording --ascii-chat-binary build/bin/ascii-chat
+ * uv run --frozen python -m pytest tests/python/tests/integration/recording --ascii-chat-binary build/bin/ascii-chat
  * ```
  *
  * ## Media transition behavior
@@ -121,7 +121,7 @@
  *
  * Focused regression coverage:
  *
- * - `pytest tests/python/integration/recording --ascii-chat-binary BINARY --recording-transitions-only`: hardware-free
+ * - `pytest tests/python/tests/integration/recording --ascii-chat-binary BINARY --recording-transitions-only`: hardware-free
  *   paused-file finalization, synthetic A/V duration and playlist source switching
  *   with both tones retained in one recording.
  * - `tests/standalone/media/capture_open_test.c`: retained paused recording frames,

@@ -134,13 +134,9 @@ static void exporter_event(void *context, const otlp_event_t *event) {
 }
 
 static uint64_t telemetry_realtime_ns(void) {
-  uint64_t now = time_get_realtime_ns();
-#ifdef _WIN32
-  // The platform clock returns FILETIME nanoseconds since 1601; OTLP uses Unix time.
-  return now - UINT64_C(11644473600000000000);
-#else
-  return now;
-#endif
+  // time_get_realtime_ns() is normalized to Unix epoch nanoseconds by
+  // libplatform on every supported platform, including Windows.
+  return time_get_realtime_ns();
 }
 static gotel_host_t *retain(void) {
   if (!atomic_ptr_load(&host))
@@ -313,6 +309,10 @@ static void pipeline_health(gotel_host_t *h, uint64_t now) {
 }
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
+  /* Telemetry export is best-effort.  DNS/collector failures must not become
+   * user-facing modal errors, especially while the application is otherwise
+   * connected and rendering normally. */
+  bool notifications = errno_notifications_suppress(true);
   uint64_t last_health = 0;
   uint64_t last_failure_warning = 0, observed_failures = 0, observed_sent = 0;
   bool collector_failed = false;
@@ -380,6 +380,7 @@ static void *export_worker(void *arg) {
   }
   // Keep final connection setup (including synchronous DNS) off the exit thread.
   drain_result = otel_status(gotel_drain(h), "Drain telemetry exporter");
+  errno_notifications_suppress(notifications);
   atomic_store_explicit(&worker_done, true, memory_order_release);
   return NULL;
 }

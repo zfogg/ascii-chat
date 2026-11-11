@@ -391,8 +391,15 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     keyboard_key_t key = input_next_key();
     if (key == KEY_QUESTION)
       keyboard_help_toggle_terminal(ui_controller_active_fd());
-    else if (key != KEY_NONE && key != KEY_PASTE && key != 3)
+    else if (key != KEY_NONE && key != KEY_PASTE && key != 3) {
       ui_error_popup_key(key);
+      /* The first q dismisses the modal error.  Only a later q, after the
+       * final error is gone, is allowed to reach the session exit handler. */
+      if (key == 'q' && !ui_error_popup_visible()) {
+        input_unlock();
+        return key;
+      }
+    }
     if (key == KEY_PASTE)
       g_events.ready = false;
     input_unlock();

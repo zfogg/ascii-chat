@@ -1,6 +1,6 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/common.h>
@@ -11,7 +11,7 @@
 #include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/prompt.h>

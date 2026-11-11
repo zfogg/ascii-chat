@@ -12,6 +12,7 @@
 
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
 #include <string.h>
 
 static bool parse_test_pattern(const char *arg, void *dest, char **error_msg) {

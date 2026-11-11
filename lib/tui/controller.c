@@ -415,6 +415,8 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
 // Media frames contain complete newline-separated rows; clipped frames end
 // each row with EL. Splitting after a row keeps CSI and UTF-8 sequences intact.
 static size_t media_chunk_boundary(const char *data, size_t length) {
+  if (!data || length == 0)
+    return 0;
   const char *end = data + length;
   const char *last = NULL;
   for (const char *p = data; p < end;) {
@@ -433,6 +435,12 @@ static size_t media_chunk_boundary(const char *data, size_t length) {
     p = k + 1;
   }
   return last ? (size_t)(last - data) : 0;
+}
+
+size_t ui_controller_trim_utf8_chunk(const char *data, size_t length) {
+  while (data && length && ((unsigned char)data[length - 1] & 0xc0) == 0x80)
+    --length;
+  return length;
 }
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
@@ -476,8 +484,9 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
         count = boundary;
         row_boundary = true;
       }
-      while (count && ((unsigned char)data[written + count] & 0xc0) == 0x80)
-        --count;
+      // Never inspect beyond the candidate chunk: the next byte may belong
+      // to unrelated memory or to the next output chunk.
+      count = ui_controller_trim_utf8_chunk(data + written, count);
     }
     size_t sent = write_output_chunk(fd, data + written, count);
     written += sent;
@@ -911,6 +920,7 @@ static void *presentation_main(void *unused) {
   uint64_t reply_requested_ns = 0, reply_frame_ns = 0, reply_frame_id = 0, reply_written_ns = 0;
   int reply_support = 0;
   bool awaiting_reply = false;
+  uint64_t error_revision = 0;
   const char *usage_screen = NULL;
   uint64_t usage_since = 0;
   const char *stats_page = NULL, *covered_screen = NULL;
@@ -1101,6 +1111,9 @@ static void *presentation_main(void *unused) {
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
       bool errors = ui_error_popup_visible();
+      uint64_t current_error_revision = ui_error_popup_revision();
+      bool errors_changed = current_error_revision != error_revision;
+      error_revision = current_error_revision;
       bool overlay = errors || active == UI_SCREEN_HELP || active == UI_SCREEN_UPDATE;
       bool sync_backdrop = false;
       mutex_lock(&g_mutex);
@@ -1177,12 +1190,13 @@ static void *presentation_main(void *unused) {
       ui_session_view_t view = {
           .screen = active,
           .minimum = errors && active != UI_SCREEN_HELP ? (terminal_size_t){1, 1} : screen->minimum,
-          .dirty = screen->dirty || overlay || volume_changed || help_changed,
+          .dirty = screen->dirty || errors_changed || volume_changed || help_changed,
           .refresh_ns = active == UI_SCREEN_PROMPT   ? 50 * NS_PER_MS_INT
                         : active == UI_SCREEN_LOGS   ? 100 * NS_PER_MS_INT
                         : active == UI_SCREEN_UPDATE ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
                         : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
+                            : active == UI_SCREEN_NOTICE || active == UI_SCREEN_ERROR ? 0
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS && active != UI_SCREEN_HELP
                                    ? 16 * NS_PER_MS_INT
                                    : 0),

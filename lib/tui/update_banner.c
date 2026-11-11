@@ -513,7 +513,11 @@ static void *update_check_thread_func(void *arg) {
     errno_notifications_suppress(previous_notifications);
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   } else {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool previous_notifications = errno_notifications_suppress(true);
     err = force ? update_check_perform(&result) : update_check_startup(&result);
+    errno_notifications_suppress(previous_notifications);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   while (!shutdown_is_requested() && !atomic_load(&g_update_cancel_requested)) {
     uint64_t overlay_until = atomic_load(&g_update_visible_until_ns);

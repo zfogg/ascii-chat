@@ -187,7 +187,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
-
 if(WIN32)
     # The upstream TOML parser uses portable C stdio rather than MSVC's secure CRT extensions.
     set_source_files_properties(
@@ -409,9 +408,6 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 add_library(ascii-chat-platform INTERFACE)
-target_sources(ascii-chat-platform INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c
-)
 target_link_libraries(ascii-chat-platform INTERFACE libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include

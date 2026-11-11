@@ -113,7 +113,7 @@
  *
  * ## Verification
  *
- * `tests/python/integration/terminal_ui/test_ui.py` drives the real executable in a resizable PTY
+ * `tests/python/tests/integration/terminal_ui/test_ui.py` drives the real executable in a resizable PTY
  * (ConPTY on Windows), interprets its output using pyte, and checks startup-small,
  * resize recovery, a live WebSocket handshake while covered, ignored keyboard input,
  * help restoration, paused playback, explicit dimensions, recording while covered,
@@ -121,9 +121,9 @@
  * It requires `pyte`, `pywinpty` on Windows or `pexpect` on POSIX, and `ffmpeg`.
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat --debug-sync
+ * uv run --frozen python -m pytest tests/python/tests/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat --debug-sync
  * cmake --build build --target test-sync-regressions
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/sync --sync-probe build/bin/test-sync-regressions
+ * uv run --frozen python -m pytest tests/python/tests/integration/sync --sync-probe build/bin/test-sync-regressions
  * ```
  *
  * The Criterion `ui_too_small` suite checks exact boundaries and the 1x1/unknown-size
@@ -150,13 +150,13 @@
  *   -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 \
  *   -c:v libx264 -pix_fmt yuv420p -c:a aac /tmp/render-evidence/media.mp4
  *
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence
  * ```
  *
@@ -165,7 +165,7 @@
  *
  * ```sh
  * cmake --build build --target ui-native-probe
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
+ * uv run --frozen python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
  *   --artifacts /tmp/render-evidence
  * ```
  *
@@ -214,9 +214,9 @@
  * requires both the small-terminal warning and restored frame before capture ends:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
+ * uv run --frozen python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
  *   --artifacts /tmp/render-evidence
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence --count 40 --color-mode 16
  * ```
  *
@@ -231,7 +231,7 @@
  * and again with an `-an -c:v copy` video-only copy to cover both decoder layouts.
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
+ * uv run --frozen python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
  *   --artifacts /tmp/render-evidence
  * ```
  *
@@ -305,9 +305,9 @@
  * before capability detection. Widget colors go through `colored_string()`;
  * `ui_text_color_prefix()` supports incremental formatting with the same policy.
  *
- * `tests/python/integration/tui_modes/test_shortcuts.py` covers help, logs, sync, stats and error
+ * `tests/python/tests/integration/tui_modes/test_shortcuts.py` covers help, logs, sync, stats and error
  * stacks in mirror and both server modes, with status screens enabled and disabled.
- * `tests/python/integration/native_ui/test_screens.py` covers prompts, identity warnings, update buttons, LAN
+ * `tests/python/tests/integration/native_ui/test_screens.py` covers prompts, identity warnings, update buttons, LAN
  * selection, notices, recording progress and splash, including size recovery.
  * Both can export terminal-cell screenshots and original ANSI streams.
  */

@@ -988,6 +988,68 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
+  /* Inspect the payload before any terminal presentation.  This is bounded
+   * diagnostics: it records shape/control-byte anomalies and a short tail,
+   * never the full webcam frame. */
+  {
+    size_t lines = 0, current = 0, min_line = SIZE_MAX, max_line = 0, last_line = 0;
+    unsigned control_bytes = 0, escape_bytes = 0;
+    for (size_t i = 0; i < frame_len; ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == '\n') {
+        min_line = MIN(min_line, current);
+        max_line = MAX(max_line, current);
+        last_line = current;
+        ++lines;
+        current = 0;
+      } else {
+        current++;
+        if (byte < 32 && byte != '\r' && byte != '\t')
+          ++control_bytes;
+        if (byte == 0x1b)
+          ++escape_bytes;
+      }
+    }
+    if (current) {
+      min_line = MIN(min_line, current);
+      max_line = MAX(max_line, current);
+      last_line = current;
+    }
+    char tail[64] = {0};
+    size_t tail_start = frame_len > 24 ? frame_len - 24 : 0;
+    size_t tail_used = 0;
+    for (size_t i = tail_start; i < frame_len && tail_used + 4 < sizeof(tail); ++i)
+      tail_used += (size_t)safe_snprintf(tail + tail_used, sizeof(tail) - tail_used, "%02X ", (unsigned char)ascii[i]);
+
+    // Also capture the actual glyphs in the final row.  Byte/line counts alone
+    // cannot distinguish a bad terminal write from a bad rendered frame.
+    size_t row_start = 0;
+    for (size_t i = 0; i < frame_len; ++i)
+      if (ascii[i] == '\n')
+        row_start = i + 1;
+    char last_row[192] = {0};
+    size_t row_used = 0;
+    for (size_t i = row_start; i < frame_len && row_used + 5 < sizeof(last_row); ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == 0x1b) {
+        ++i;
+        while (i < frame_len && !((ascii[i] >= '@' && ascii[i] <= 'Z') || (ascii[i] >= 'a' && ascii[i] <= 'z')))
+          ++i;
+        continue;
+      }
+      if (byte >= 32 && byte < 127)
+        last_row[row_used++] = (char)byte;
+      else if (byte == '\r' || byte == '\t')
+        last_row[row_used++] = ' ';
+      else
+        row_used += (size_t)safe_snprintf(last_row + row_used, sizeof(last_row) - row_used, "\\x%02X", byte);
+    }
+    log_debug_every(US_PER_SEC_INT,
+                    "FRAME_DATA: bytes=%zu lines=%zu line_bytes=%zu..%zu last=%zu controls=%u escapes=%u last_row=\"%s\" tail=%s",
+                    frame_len, lines, min_line == SIZE_MAX ? 0 : min_line, max_line, last_line, control_bytes,
+                    escape_bytes, last_row, tail);
+  }
+
   // Apply digital rain effect if enabled
   char *display_frame = (char *)ascii;
   char *rain_result = NULL;
@@ -1086,8 +1148,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     const char *cursor_home_sequence = "\033[H";
+    const char *erase_below_sequence = "\033[J";
     size_t cursor_seq_len = 3;
-    size_t total_size = cursor_seq_len + frame_len;
+    size_t erase_below_len = 3;
+    // The frame is shorter than the terminal in some configurations.  Erase
+    // from the final frame cursor to the bottom of the screen in the same
+    // submission so stale rows cannot survive a resize or a shorter frame.
+    size_t total_size = cursor_seq_len + frame_len + erase_below_len;
 
     if (ctx->tty_frame_capacity < total_size) {
       size_t capacity = ctx->tty_frame_capacity ? ctx->tty_frame_capacity : 4096;
@@ -1102,6 +1169,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+      memcpy(frame_buffer + cursor_seq_len + frame_len, erase_below_sequence, erase_below_len);
 
       log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout",
                       total_size, cursor_seq_len, frame_len);

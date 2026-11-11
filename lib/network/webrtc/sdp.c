@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <pcre2.h>
+#include <libplatform/util/string.h>
 
 /* ============================================================================
  * Utility Functions

@@ -58,6 +58,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/options/rcu.h> // RCU-based thread-safe options
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/parsers.h>
@@ -812,6 +813,21 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
   }
   SAFE_STRNCPY(log_filename_buf, log_filename_literal, sizeof(log_filename_buf) - 1);
   log_filename_buf[sizeof(log_filename_buf) - 1] = '\0';
+
+  /* options_init() runs before the tracked allocator is initialized.  Debug
+   * builds already have a stable checkout path, so avoid get_log_dir()'s
+   * allocation and path-validation work during this early phase. */
+#ifndef NDEBUG
+  const char *debug_log_dir = ASCIICHAT_SOURCE_ROOT;
+  if (debug_log_dir && *debug_log_dir) {
+    safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", debug_log_dir, PATH_SEPARATOR_STR,
+                  log_filename_buf);
+    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
+    SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+    result_buf[sizeof(result_buf) - 1] = '\0';
+    return result_buf;
+  }
+#endif
 
   char *log_dir = get_log_dir();
   if (log_dir) {

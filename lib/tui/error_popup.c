@@ -71,6 +71,14 @@ bool ui_error_popup_visible(void) {
   return errno_notifications_pending();
 }
 
+uint64_t ui_error_popup_revision(void) {
+  lock_state();
+  refresh_locked();
+  uint64_t revision = g_latest;
+  unlock_state();
+  return revision;
+}
+
 terminal_size_t ui_error_popup_minimum(void) {
   return (terminal_size_t){.cols = 60, .rows = 14};
 }
@@ -86,7 +94,10 @@ void ui_error_popup_key(keyboard_key_t key) {
   case 'q':
   case '\r':
   case '\n':
-    dismiss = g_displayed_latest;
+    /* The first key can arrive before the presentation thread has rendered
+     * the popup, so g_displayed_latest may still be zero.  Dismiss the
+     * latest notification in the snapshot instead of requiring a paint first. */
+    dismiss = g_count ? g_entries[g_count - 1].error_id : g_displayed_latest;
     break;
   case KEY_LEFT:
     if (g_selected)

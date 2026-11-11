@@ -301,7 +301,7 @@ fresh-clone: build
 	touch .env
 	cp web/.env.example web/.env
 	cd web && pnpm install && cd ..
-FORMAT_PYTHON ?= uv run --project tests/ascii_chat_tests --frozen python
+FORMAT_PYTHON ?= uv run --frozen python
 
 format-docs:
 	@$(FORMAT_PYTHON) scripts/format-repo.py docs
