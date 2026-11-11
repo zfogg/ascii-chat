@@ -17,6 +17,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/compiler.h>
+#include <libplatform/mutex.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/uthash.h>

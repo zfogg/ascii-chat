@@ -12,6 +12,7 @@
 
 #include <defer.h>
 #include <ascii-chat/options/manpage/parser.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <libplatform/util/string.h>
