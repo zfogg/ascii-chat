@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 /* Forward declarations for opaque types */
-typedef void h265_encoder_t;
 typedef void video_frame_t;
 typedef void acds_client_config_t;
 typedef void acds_client_t;
