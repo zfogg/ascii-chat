@@ -184,13 +184,13 @@ def test_environment(tmp_path):
 
 
 @pytest.fixture
-def ensure_can_render(binary, test_environment, tmp_path):
+def ensure_can_render(binary, test_environment):
     """Render mirror output in a PTY and require a reset plus palette glyphs."""
     def render(palette="standard", delay="1", *extra_args):
         palette_chars = ASCII_PALETTE_STANDARD if palette == "standard" else ASCII_PALETTE_GLYPH
         palette_arg = palette_chars.lstrip()
         term = Terminal(
-            cli_command(str(binary), "--log-file", str(tmp_path / "ascii-render.log"), "mirror", "-S", "-D", delay,
+            cli_command(str(binary), "mirror", "-S", "-D", delay,
                         "--test-pattern", "--palette-chars", palette_arg, *extra_args),
             rows=ASCII_RENDER_HEIGHT, cols=ASCII_RENDER_WIDTH, environment=test_environment)
         try:
