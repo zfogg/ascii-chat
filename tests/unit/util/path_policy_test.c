@@ -3,9 +3,41 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <stdio.h>
 #include <string.h>
 
 TestSuite(path_policy);
+
+Test(path_policy, normalizes_many_components_and_parent_transitions) {
+  char path[PLATFORM_MAX_PATH_LENGTH] = {0};
+  char output[PLATFORM_MAX_PATH_LENGTH];
+  char expected[64];
+
+  const size_t segments = (sizeof(path) - 64) / 5 < 500 ? (sizeof(path) - 64) / 5 : 500;
+  for (size_t i = 0; i < segments; ++i)
+    strcat(path, "a/");
+  for (size_t i = 0; i < segments; ++i)
+    strcat(path, "../");
+  strcat(path, "folder\\./item/../file");
+  cr_assert(path_normalize_copy(path, output, sizeof(output)));
+  snprintf(expected, sizeof(expected), "folder%cfile", PATH_DELIM);
+  cr_assert_str_eq(output, expected);
+
+  cr_assert(path_normalize_copy("a/../..", output, sizeof(output)));
+  cr_assert_str_eq(output, "..");
+  cr_assert(path_normalize_copy("a//b/../../c", output, sizeof(output)));
+  cr_assert_str_eq(output, "c");
+}
+
+Test(path_policy, preserves_component_length_limit) {
+  char path[320];
+  char output[PLATFORM_MAX_PATH_LENGTH];
+  memset(path, 'x', 300);
+  path[300] = '\0';
+  cr_assert(path_normalize_copy(path, output, sizeof(output)));
+  cr_assert_eq(strlen(output), 255);
+  cr_assert_str_eq(output + 250, "xxxxx");
+}
 
 Test(path_policy, normalized_containment_checks_component_boundaries_and_traversal) {
 #ifndef _WIN32

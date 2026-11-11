@@ -592,6 +592,12 @@ apply_sanitizers_to_target(client-web)
 # key-file loading and detecting input arrays that alias growable WASM memory.
 set(EXPORTED_RUNTIME_METHODS_CSV "HEAPU8,FS")
 
+# Emscripten's threaded modules contain passive TLS initialization segments.
+# Pack their zero ranges into memory.fill operations rather than embedding
+# large zero-filled buffers in every module. Emscripten supplies Binaryen's
+# zero-filled-memory assumption for these non-side-module links.
+set(ASCII_WEB_MEMORY_PACKING "-sBINARYEN_EXTRA_PASSES=memory-packing")
+
 # Emscripten writes declarations as a side effect of linking. Ninja must know
 # about them so a missing declaration causes the link to run again.
 add_custom_command(TARGET mirror-web POST_BUILD
@@ -620,6 +626,7 @@ target_link_options(mirror-web PRIVATE
     -sASSERTIONS=1
     -msimd128
     -O3
+    ${ASCII_WEB_MEMORY_PACKING}
     --no-entry
     -Wno-js-compiler
     -Wno-pthreads-mem-growth
@@ -644,6 +651,7 @@ target_link_options(client-web PRIVATE
     -sASSERTIONS=1
     -msimd128
     -O3
+    ${ASCII_WEB_MEMORY_PACKING}
     --no-entry
     -Wno-js-compiler
     -Wno-pthreads-mem-growth
@@ -713,7 +721,7 @@ target_link_options(renderer-web PRIVATE
     -lembind -sMODULARIZE=1 -sEXPORT_ES6=1 "-sEXPORT_NAME=RendererModule"
     "-sEXPORTED_FUNCTIONS=[]" "-sEXPORTED_RUNTIME_METHODS=HEAPU8,FS"
     -sENVIRONMENT=web,worker -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=32MB -sMAXIMUM_MEMORY=128MB
-    -sSTACK_SIZE=2097152 -sASSERTIONS=1 -msimd128 -O3 --no-entry -Wno-js-compiler -Wno-pthreads-mem-growth
+    -sSTACK_SIZE=2097152 -sASSERTIONS=1 -msimd128 -O3 ${ASCII_WEB_MEMORY_PACKING} --no-entry -Wno-js-compiler -Wno-pthreads-mem-growth
 )
 set_target_properties(renderer-web PROPERTIES OUTPUT_NAME "renderer")
 apply_sanitizers_to_target(renderer-web)

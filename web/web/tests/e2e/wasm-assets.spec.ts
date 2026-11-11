@@ -7,6 +7,16 @@ const version = createHash("sha256")
   .digest("hex")
   .slice(0, 32);
 
+test("published WASM does not embed oversized zero-filled buffers", () => {
+  const zeros = Buffer.alloc(64 * 1024);
+  for (const module of ["client", "mirror"]) {
+    const wasm = readFileSync(`src/wasm/dist/${module}.wasm`);
+    expect(wasm.indexOf(zeros), `${module} contains a large zero range`).toBe(
+      -1,
+    );
+  }
+});
+
 test("published WASM manifest declares module capabilities", async ({
   page,
 }) => {

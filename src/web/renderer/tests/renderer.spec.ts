@@ -2,6 +2,11 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
+test("renderer WASM does not embed oversized zero-filled buffers", () => {
+  const wasm = readFileSync("dist/renderer.wasm");
+  expect(wasm.indexOf(Buffer.alloc(64 * 1024))).toBe(-1);
+});
+
 test("rendering changes invalidate stabilization history", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
