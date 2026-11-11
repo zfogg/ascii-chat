@@ -188,9 +188,10 @@ def ensure_can_render(binary, test_environment, tmp_path):
     """Render mirror output in a PTY and require a reset plus palette glyphs."""
     def render(palette="standard", delay="1", *extra_args):
         palette_chars = ASCII_PALETTE_STANDARD if palette == "standard" else ASCII_PALETTE_GLYPH
+        palette_arg = palette_chars.lstrip()
         term = Terminal(
             cli_command(str(binary), "--log-file", str(tmp_path / "ascii-render.log"), "mirror", "-S", "-D", delay,
-                        "--test-pattern", "--audio=false", "--palette-chars", palette_chars,
+                        "--test-pattern", "--audio=false", "--palette-chars", palette_arg,
                         "--splash-screen=false", *extra_args),
             rows=ASCII_RENDER_HEIGHT, cols=ASCII_RENDER_WIDTH, environment=test_environment)
         try:
@@ -200,12 +201,16 @@ def ensure_can_render(binary, test_environment, tmp_path):
             deadline = time.monotonic() + max(8.0, float(delay) + 5.0)
             while time.monotonic() < deadline and term.process.isalive():
                 try:
-                    raw += term.output.get(timeout=0.1)
+                    chunk = term.output.get(timeout=0.1)
+                    raw += chunk
+                    term.stream.feed(chunk)
                 except queue.Empty:
                     continue
             while True:
                 try:
-                    raw += term.output.get_nowait()
+                    chunk = term.output.get_nowait()
+                    raw += chunk
+                    term.stream.feed(chunk)
                 except queue.Empty:
                     break
             frame_start = raw.find("\x1b[H")
@@ -213,7 +218,8 @@ def ensure_can_render(binary, test_environment, tmp_path):
             raw.encode("utf-8", errors="strict").decode("utf-8", errors="strict")
             assert frame_start >= 0, "mirror emitted no terminal frame reset"
             frame = raw[frame_start:]
-            present = set(frame) & set(palette_chars.replace(" ", ""))
+            visible = "\n".join(term.screen.display)
+            present = set(visible) & set(palette_chars.replace(" ", ""))
             minimum = 0.20 if palette == "standard" else 0.05
             assert len(present) / max(1, len(set(palette_chars.replace(" ", "")))) >= minimum
             return frame

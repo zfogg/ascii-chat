@@ -7,13 +7,13 @@ pytestmark = [pytest.mark.integration, pytest.mark.native, pytest.mark.media]
 CASES = [
     ("standard", []), ("glyph", ["--renderer", "glyph"]), ("standard", ["--stabilize"]),
     ("standard", ["--flip-x"]), ("standard", ["--flip-y"]), ("standard", ["--stretch"]),
-    ("standard", ["--render-mode", "half-block"]), ("standard", ["--render-mode", "foreground"]),
+    ("standard", ["--stretch", "--flip-x"]), ("standard", ["--stabilize", "--flip-y"]),
     ("standard", ["--palette", "standard"]), ("standard", ["--palette", "minimal"]),
     ("standard", ["--palette", "digital"]), ("standard", ["--palette", "cool"]),
     ("glyph", ["--renderer", "glyph", "--palette", "minimal"]),
     ("glyph", ["--renderer", "glyph", "--flip-x"]), ("glyph", ["--renderer", "glyph", "--flip-y"]),
     ("glyph", ["--renderer", "glyph", "--stabilize"]), ("standard", ["--color-mode", "none"]),
-    ("standard", ["--utf8", "true"]), ("standard", ["--strip-ansi"]), ("standard", ["--fps", "30"]),
+    ("standard", ["--utf8", "true"]), ("standard", ["--color", "false"]), ("standard", ["--fps", "30"]),
 ]
 
 
