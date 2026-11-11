@@ -1150,3 +1150,4 @@ static int asciichat_instr_write_full(int fd, const char *buffer, size_t len) {
   }
   return 0;
 }
+#include <ascii-chat/os/string.h>
