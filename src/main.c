@@ -632,8 +632,9 @@ int main(int argc, char *argv[]) {
   // Detect terminal capabilities early so colored help output works
   // Logging will be initialized by asciichat_shared_init() before options_init()
   log_redetect_terminal_capabilities();
-  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
-  caps = apply_color_mode_override(caps, options_terminal_settings());
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
+  apply_color_mode_override_into(&caps, options_terminal_settings(), &caps);
   platform_color_set_truecolor_supported(caps.color_level == TERM_COLOR_TRUECOLOR);
 
   // Warn if Release build was built from dirty working tree

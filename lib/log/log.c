@@ -1889,7 +1889,7 @@ void log_redetect_terminal_capabilities(void) {
   // Once we have reliable detection, never re-detect to keep colors consistent
   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
     g_log.terminal_caps_detecting = true;
-    g_log.terminal_caps = detect_terminal_capabilities(options_terminal_settings());
+  detect_terminal_capabilities_into(options_terminal_settings(), &g_log.terminal_caps);
     g_log.terminal_caps_detecting = false;
     g_log.terminal_caps_initialized = true;
 

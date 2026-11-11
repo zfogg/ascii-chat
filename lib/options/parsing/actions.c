@@ -237,7 +237,8 @@ static void execute_list_speakers(void) {
  * @brief Execute show capabilities immediately (for early binary-level execution)
  */
 void action_show_capabilities_immediate(void) {
-  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
 
   // Determine if we should use colored output
   bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
@@ -353,7 +354,8 @@ void action_check_update(void) {
  * and --height flags), then exits.
  */
 static void execute_show_capabilities(void) {
-  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
+  terminal_capabilities_t caps;
+  detect_terminal_capabilities_into(options_terminal_settings(), &caps);
 
   // Determine if we should use colored output
   bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
