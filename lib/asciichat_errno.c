@@ -807,8 +807,8 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
   log_plain("  %s%s", asciichat_error_format(context->context_message, context->code),
             context->message_truncated ? " [truncated]" : "");
   if (context->file)
-    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file, ASCIICHAT_OWNED_SOURCE_DIRS), context->line,
-              context->function ? context->function : "?");
+    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file, ASCIICHAT_OWNED_SOURCE_DIRS),
+              context->line, context->function ? context->function : "?");
   if (context->has_system_error)
     log_plain("  System error: %d", context->system_errno);
   if (context->has_wsa_error)
