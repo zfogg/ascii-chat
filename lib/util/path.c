@@ -143,6 +143,9 @@ const char *extract_project_relative_path(const char *file, const char *const *o
   if (!file) {
     return "unknown";
   }
+  if (!owned_dirs) {
+    return file;
+  }
 
   const char *root = NULL;
   size_t root_length = 0;
