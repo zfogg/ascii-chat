@@ -71,7 +71,7 @@
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
 // atomic_t is always defined in ascii-chat/atomic.h (wraps C11 _Atomic)
 #include <ascii-chat/common/limits.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

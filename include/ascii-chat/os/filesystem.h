@@ -793,7 +793,7 @@ char *platform_get_data_dir(void);
  * @note An unavailable platform directory is represented by an empty list.
  * @note Caller must release the list with platform_directory_list_destroy().
  */
-asciichat_error_t platform_get_data_dir_candidates(platform_directory_list_t *list_out);
+asciichat_error_t platform_get_data_dir_candidates(const char *install_prefix, platform_directory_list_t *list_out);
 
 /**
  * @brief Release paths returned by platform_get_data_dir_candidates()

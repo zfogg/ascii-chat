@@ -40,7 +40,7 @@
 #include <ascii-chat/os/keyboard.h>   // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -70,7 +70,7 @@ ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color
  */
 
 // Use atomic for thread-safe access to shutdown callback
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 static atomic_ptr_t g_shutdown_callback = {0};
 static atomic_t g_shutdown_requested = {0};
 
@@ -309,7 +309,7 @@ void asciichat_shared_destroy(void) {
 #endif
 
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  debug_memory_report();
+  debug_memory_report(GET_OPTION(color));
 #endif
 
   // 15. Color cleanup - free compiled ANSI strings (AFTER memory report)

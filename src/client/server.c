@@ -98,7 +98,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <sys/types.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 

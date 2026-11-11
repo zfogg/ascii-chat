@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
  * @brief Owned WebSocket frame queued for sending or reassembly

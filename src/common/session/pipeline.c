@@ -19,12 +19,12 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/os/keyboard.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/wakeup.h>
+#include <libplatform/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 

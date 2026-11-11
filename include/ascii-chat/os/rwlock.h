@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 #ifdef _WIN32
 #include "windows_compat.h"

@@ -39,7 +39,7 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
   va_list arguments, measure;
   va_start(arguments, format);
   va_copy(measure, arguments);
-  int length = platform_vsnprintf(NULL, 0, format, measure);
+  int length = safe_vsnprintf(NULL, 0, format, measure);
   va_end(measure);
   if (length < 0) {
     va_end(arguments);
@@ -50,7 +50,7 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
     va_end(arguments);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate option error message");
   }
-  int written = platform_vsnprintf(message, (size_t)length + 1, format, arguments);
+  int written = safe_vsnprintf(message, (size_t)length + 1, format, arguments);
   va_end(arguments);
   if (written != length) {
     SAFE_FREE(message);

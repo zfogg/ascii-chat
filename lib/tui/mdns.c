@@ -28,7 +28,7 @@
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/log.h>

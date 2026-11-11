@@ -1,5 +1,5 @@
 #include <ascii-chat/stats/stats.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/util/time.h>

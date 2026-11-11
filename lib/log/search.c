@@ -32,7 +32,7 @@
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Constants

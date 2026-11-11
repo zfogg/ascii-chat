@@ -3,9 +3,9 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <math.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

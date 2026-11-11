@@ -36,7 +36,7 @@
 #include <libplatform/system.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <libplatform/socket.h>
 #include <libplatform/thread.h>

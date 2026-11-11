@@ -15,7 +15,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

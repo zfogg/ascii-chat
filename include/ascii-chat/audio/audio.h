@@ -59,7 +59,7 @@
 
 #include <ascii-chat/audio/format.h>
 #include <stdbool.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <portaudio.h>
 #ifdef __linux__
 #include <sched.h>

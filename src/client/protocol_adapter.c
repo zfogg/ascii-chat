@@ -41,7 +41,7 @@
 
 #include "crypto.h"
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <stdio.h>

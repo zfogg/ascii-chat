@@ -8,7 +8,7 @@
 #include <string.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/tui/errno_stacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/keyboard.h>

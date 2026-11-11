@@ -131,7 +131,7 @@
  * @see packet_queue.c For queue performance metrics
  */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

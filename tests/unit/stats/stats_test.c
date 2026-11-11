@@ -4,8 +4,8 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/atomic.h>
+#include <libplatform/thread.h>
 #include <string.h>
 
 static stats_capabilities_t capabilities(void) {

@@ -2,7 +2,7 @@
 #include "datagram.h"
 
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <libplatform/cond.h>

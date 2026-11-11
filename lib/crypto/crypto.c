@@ -22,7 +22,7 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/lifecycle.h>
 

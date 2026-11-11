@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/atomic.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/tests/logging.h>

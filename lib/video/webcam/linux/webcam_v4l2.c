@@ -39,7 +39,7 @@
 #include <ascii-chat/util/image.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/log/io.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4

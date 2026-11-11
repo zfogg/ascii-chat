@@ -1241,7 +1241,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     if (!g_notice_text)
       session_log_buffer_append(g_history, msg_buffer);
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
-    platform_systemd_journal_log(level, msg_buffer, file, line, func);
+    platform_systemd_journal_log(level, msg_buffer, "ascii-chat", file, line, func);
 
     if (g_notice_text) {
       output_notice(level, file, line, func);
@@ -1322,7 +1322,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
-  platform_systemd_journal_log(level, log_buffer + header_len, file, line, func);
+  platform_systemd_journal_log(level, log_buffer + header_len, "ascii-chat", file, line, func);
 
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;

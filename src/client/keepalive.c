@@ -77,7 +77,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 
 /* ============================================================================

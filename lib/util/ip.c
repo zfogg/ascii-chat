@@ -167,30 +167,6 @@ asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, 
   return SET_ERRNO(ERROR_INVALID_PARAM, "Expected a numeric IPv4 or IPv6 address");
 }
 
-asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
-  if (!addr || !output || output_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
-  }
-
-  const void *ip_ptr = NULL;
-
-  if (family == AF_INET) {
-    const struct sockaddr_in *addr_in = (const struct sockaddr_in *)addr;
-    ip_ptr = &addr_in->sin_addr;
-  } else if (family == AF_INET6) {
-    const struct sockaddr_in6 *addr_in6 = (const struct sockaddr_in6 *)addr;
-    ip_ptr = &addr_in6->sin6_addr;
-  } else {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported address family: %d", family);
-  }
-
-  if (inet_ntop(family, ip_ptr, output, (socklen_t)output_size) == NULL) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to format IP address");
-  }
-
-  return ASCIICHAT_OK;
-}
-
 // Format IP address with port number
 asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size) {
   if (!ip || !output || output_size == 0) {

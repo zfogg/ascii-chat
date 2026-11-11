@@ -2,7 +2,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <libplatform/system.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <string.h>
 
 // A 2x2 RGB PNG with a zlib-compressed IDAT: red, green, blue, white.

@@ -29,7 +29,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 const char *ui_status_log_controls(void) {
   static _Thread_local char controls[512];

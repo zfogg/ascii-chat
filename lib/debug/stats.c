@@ -4,9 +4,10 @@
 #include <ascii-chat/options/options.h>
 #include <libplatform/thread.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>
+#include <ascii-chat/options/options.h>
 
 static atomic_t g_debug_stats_signal = {0};
 static atomic_t g_debug_stats_memory_signal = {0};
@@ -80,7 +81,7 @@ void debug_stats_poll(void) {
     debug_stats_print();
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
   if (memory || requested_memory)
-    debug_memory_report();
+    debug_memory_report(GET_OPTION(color));
 #else
   (void)memory;
 #endif

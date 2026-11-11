@@ -5,9 +5,9 @@
 #include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/util/ip.h>
 #include "../common/http_renderer.h"
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/util/string.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/otel.h>

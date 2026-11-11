@@ -108,8 +108,8 @@ ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
  * Also sets a compact main-thread/comm name: ascii:server, ascii:client,
  * ascii:mirror, ascii:discovery, or ascii:acds for discovery-service.
  */
-ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *mode, int argc, char **argv,
-                                                                int mode_arg_index);
+ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *prefix, const char *mode, int argc,
+                                                                char **argv, int mode_arg_index);
 
 /**
  * @brief Restore Unix argument storage and release title allocations.

@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h> // For acip_transport_t

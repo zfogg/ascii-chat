@@ -31,7 +31,7 @@
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/options/options.h"
 #include "ascii-chat/common.h"
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>

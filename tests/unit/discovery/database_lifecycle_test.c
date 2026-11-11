@@ -2,7 +2,7 @@
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/system.h>
 #include <stdatomic.h>
 #include <string.h>

@@ -23,7 +23,7 @@
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/tui/errno_stacks.h>
 #include <ascii-chat/tui/error_popup.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/tui/update_banner.h>

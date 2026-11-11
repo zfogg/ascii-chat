@@ -3,7 +3,7 @@
 #include <ascii-chat/options/options.h>
 #include <libplatform/thread.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>
 

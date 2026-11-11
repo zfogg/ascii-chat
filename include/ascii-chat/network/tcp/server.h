@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <ascii-chat/os/event.h>
-#include "../../atomic.h"
+#include <libplatform/atomic.h>
 #include "../../common.h"
 #include <libplatform/socket.h>
 #include <ascii-chat/uthash.h> // For UT_hash_handle

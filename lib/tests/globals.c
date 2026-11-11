@@ -4,7 +4,7 @@
  * @brief 🔗 Global symbol stubs for test executables to satisfy linker dependencies
  */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ascii-chat/options/options.h>

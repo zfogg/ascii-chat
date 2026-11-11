@@ -5,7 +5,7 @@
 #include "session/audio.h"
 #include "../../../src/discovery/session.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/media/source.h>

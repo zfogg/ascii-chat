@@ -4,11 +4,12 @@
 #define MCP_SERVER_MCP_ERROR_BUFFER_SIZE 2048
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/otel.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/mutex.h>
+#include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/network/http/server/server.h>
 #include "../common/http_renderer.h"
 #include <yyjson.h>

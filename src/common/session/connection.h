@@ -1,6 +1,6 @@
 #pragma once
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/establish.h>

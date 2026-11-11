@@ -5,7 +5,7 @@
  */
 
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <ascii-chat/log/log.h>
 

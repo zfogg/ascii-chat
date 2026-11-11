@@ -43,7 +43,7 @@
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 uint64_t ui_input_deadline(unsigned seconds) {
   return time_get_ns() + (uint64_t)seconds * NS_PER_SEC_INT;

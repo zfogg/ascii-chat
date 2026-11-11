@@ -10,7 +10,7 @@
 #include <ascii-chat/ui/table.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <libplatform/compiler.h>

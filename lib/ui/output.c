@@ -6,7 +6,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>
 static atomic_ptr_t g_writer;

@@ -14,6 +14,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#if 0 /* Shell escaping is provided by libplatform. */
 void escape_ascii(const char *str, const char *escape_char, char *out_buffer, size_t out_buffer_size) {
   if (escape_char == NULL || str == NULL || !out_buffer || out_buffer_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string or escape character or output buffer");
@@ -263,6 +264,7 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
 #endif
 }
+#endif
 
 // ============================================================================
 // String Formatting and Display

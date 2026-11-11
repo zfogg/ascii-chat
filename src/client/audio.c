@@ -98,7 +98,7 @@
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
 #include <libplatform/system.h> // For platform_memcpy
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 #include <string.h>
 #include <math.h>

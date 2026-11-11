@@ -2,7 +2,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 
 #include <errno.h>
 #include <inttypes.h>

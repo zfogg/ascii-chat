@@ -127,7 +127,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif

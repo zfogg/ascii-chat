@@ -1,11 +1,11 @@
 #include <criterion/criterion.h>
 #include <stdatomic.h>
 #include <ascii-chat/debug/mutex.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <string.h>
 

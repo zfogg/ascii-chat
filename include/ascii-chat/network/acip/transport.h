@@ -78,7 +78,7 @@
 #include <ascii-chat/network/acip/traffic.h>
 
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../crypto/crypto.h"

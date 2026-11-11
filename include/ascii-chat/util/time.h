@@ -58,7 +58,7 @@ using std::memory_order_relaxed;
 #define TIME_ATOMIC_UINT64 std::atomic<uint64_t>
 #define TIME_ATOMIC_UINT64_INIT(val) {val}
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 // Use atomic_t for rate-limiting counters
 #define TIME_ATOMIC_UINT64 atomic_t
 #define TIME_ATOMIC_UINT64_INIT(val) {0}

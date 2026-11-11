@@ -10,7 +10,7 @@
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>

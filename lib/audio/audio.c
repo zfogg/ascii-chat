@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdatomic.h>
 
 // PortAudio callbacks publish bounded, lock-free telemetry samples. The audio

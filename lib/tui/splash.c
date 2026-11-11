@@ -53,7 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>

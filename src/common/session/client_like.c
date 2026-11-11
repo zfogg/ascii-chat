@@ -39,7 +39,7 @@
 #include <ascii-chat/app_callbacks.h>
 
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // Forward declarations (implemented below)
 static bool client_like_capture_should_exit_adapter(void *user_data);

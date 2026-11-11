@@ -77,7 +77,7 @@
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #endif
 #include <stdint.h>
 #include <stdbool.h>

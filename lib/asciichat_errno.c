@@ -12,7 +12,7 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <libplatform/backtrace.h>
 #include <libplatform/thread.h>

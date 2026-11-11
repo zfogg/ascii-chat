@@ -1,6 +1,6 @@
 #include "worker.h"
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>

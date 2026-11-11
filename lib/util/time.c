@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <ctype.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // ============================================================================
 // Global State

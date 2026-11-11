@@ -13,7 +13,7 @@
 /* Media client state and render-worker ownership. The network runtime owns
  * establishment, packet reception, transport callbacks, and connection teardown. */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <stdio.h>
 #include <string.h>

@@ -3,7 +3,7 @@
 #include "server_internal.h"
 #include "http2.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <libplatform/thread.h>
 #include <libplatform/util/string.h>
 #include <ascii-chat/stats/runtime.h>

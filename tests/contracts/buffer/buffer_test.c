@@ -2,7 +2,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
@@ -11,7 +11,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <string.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/audio/audio.h>

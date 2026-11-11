@@ -26,7 +26,7 @@
 #include <ascii-chat/asciichat_errno.h>
 
 #include <stdarg.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 // Use atomic.h API for all platforms (C and C++)
 // atomic_t is available in both C and C++ contexts
 #define LOG_ATOMIC_UINT64 atomic_t

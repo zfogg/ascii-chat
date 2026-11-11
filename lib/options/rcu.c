@@ -23,7 +23,7 @@
 #include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32

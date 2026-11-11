@@ -15,7 +15,7 @@
 #include <libplatform/cpu.h>
 #include <time.h>
 #include <math.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set

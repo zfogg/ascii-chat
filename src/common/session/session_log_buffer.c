@@ -10,7 +10,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/common.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
  * @brief Thread-safe fixed-size history ring for session-screen log lines

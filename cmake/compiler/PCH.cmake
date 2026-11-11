@@ -21,7 +21,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         set(_ascii_chat_pch_targets
             ascii-chat-core
             ascii-chat-network
-            ascii-chat-platform
             ascii-chat-util
         )
 

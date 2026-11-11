@@ -7,7 +7,7 @@
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
@@ -52,7 +52,7 @@ asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *
   job->context = context;
   atomic_store_bool(&job->cancelled, false);
   atomic_store_bool(&job->done, false);
-  if (acthread_create(&job->thread, name ? name : "http-render", http_renderer_job_main, job))
+  if (platform_thread_create(&job->thread, name ? name : "http-render", http_renderer_job_main, job))
     return SET_ERRNO(ERROR_THREAD, "Cannot start renderer job");
   job->started = true;
   return ASCIICHAT_OK;
@@ -143,7 +143,7 @@ asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_ren
     job->request.max_output_bytes = renderer->config.max_output_bytes;
   atomic_store_bool(&job->cancelled, false);
   atomic_store_bool(&job->done, false);
-  if (acthread_create(&job->thread, "http-render", http_renderer_job_main, job)) {
+  if (platform_thread_create(&job->thread, "http-render", http_renderer_job_main, job)) {
     SAFE_FREE(job);
     mutex_unlock(&renderer->lock);
     return SET_ERRNO(ERROR_THREAD, "Cannot start HTTP renderer job");

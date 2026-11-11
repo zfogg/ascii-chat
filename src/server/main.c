@@ -155,7 +155,7 @@
 #include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Global State

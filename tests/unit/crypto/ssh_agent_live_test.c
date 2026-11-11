@@ -4,7 +4,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>
 #include <sodium.h>

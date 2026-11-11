@@ -13,7 +13,7 @@
 #include <libplatform/cond.h>
 #include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/platform/rwlock.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/tui/controller.h>

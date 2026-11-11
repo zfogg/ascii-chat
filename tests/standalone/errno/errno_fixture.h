@@ -6,14 +6,14 @@
 #include <ascii-chat/debug/sync.h>
 /** Native tests use the production library and platform threads, including on Windows. */
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <libplatform/system.h>
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>

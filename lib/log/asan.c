@@ -1,6 +1,6 @@
 /** Low-level sanitizer report sink. */
 #include <ascii-chat/log/asan.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <libplatform/filesystem.h>
 #include <string.h>
 

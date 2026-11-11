@@ -122,7 +122,7 @@
 #include <ascii-chat/audio/limits.h>
 #include <math.h>
 #include <stdarg.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

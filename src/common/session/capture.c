@@ -13,7 +13,7 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 /**
  * @file session/capture.c
  * @brief 📹 Unified media capture implementation
