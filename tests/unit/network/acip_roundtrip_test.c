@@ -230,6 +230,21 @@ Test(acip_roundtrip, shared_envelope_release_preserves_other_buffer_owner) {
   buffer_release(shared);
 }
 
+Test(acip_roundtrip, unique_envelope_release_wipes_initialized_bytes_before_pool_reuse) {
+  uint8_t *owned = buffer_alloc(NULL, 16);
+  cr_assert_not_null(owned);
+  memset(owned, 0xa5, 16);
+  packet_envelope_t envelope = {.allocated_buffer = owned, .allocated_size = 16};
+  packet_envelope_release(&envelope);
+
+  uint8_t *reused = buffer_alloc(NULL, 16);
+  cr_assert_not_null(reused);
+  cr_assert_eq(reused, owned);
+  uint8_t zeros[16] = {0};
+  cr_assert_arr_eq(reused, zeros, sizeof(zeros));
+  buffer_release(reused);
+}
+
 Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized_wire) {
   uint8_t *payload = buffer_alloc(NULL, MAX_PACKET_SIZE);
   uint8_t *wire = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE);
