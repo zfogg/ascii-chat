@@ -1,3 +1,4 @@
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/frame_validator.h>
 #include <string.h>
 #include <ascii-chat/log/log.h>

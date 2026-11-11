@@ -1,5 +1,4 @@
 #pragma once
-#include <ascii-chat/log/log.h>
 
 /**
  * @file util/string.h
