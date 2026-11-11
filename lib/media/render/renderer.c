@@ -19,7 +19,6 @@
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
 #include <ascii-chat/font.h>
-#include <libplatform/font.h>
 
 #define RENDER_AUTO_FONT_SIZE_PT 12.0
 #define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280
