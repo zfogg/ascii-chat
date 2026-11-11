@@ -191,8 +191,7 @@ def ensure_can_render(binary, test_environment, tmp_path):
         palette_arg = palette_chars.lstrip()
         term = Terminal(
             cli_command(str(binary), "--log-file", str(tmp_path / "ascii-render.log"), "mirror", "-S", "-D", delay,
-                        "--test-pattern", "--audio=false", "--palette-chars", palette_arg,
-                        "--splash-screen=false", *extra_args),
+                        "--test-pattern", "--palette-chars", palette_arg, *extra_args),
             rows=ASCII_RENDER_HEIGHT, cols=ASCII_RENDER_WIDTH, environment=test_environment)
         try:
             import queue

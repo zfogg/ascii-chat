@@ -15,8 +15,8 @@ def render(binary, tmp_path, test_environment):
     def invoke(font):
         output = tmp_path / "output.png"
         log = tmp_path / "render-font.log"
-        result = run_cli(binary, "mirror", "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
-                         "--splash-screen=false", "--width", "40", "--height", "20", "--render-font", str(font),
+        result = run_cli(binary, "mirror", "--test-pattern", "--snapshot", "--snapshot-delay", "0",
+                         "--width", "40", "--height", "20", "--render-font", str(font),
                          "--render-file", str(output), "--log-file", str(log), capture_output=True, timeout=45,
                          cwd=tmp_path, env=test_environment)
         return result, output, log
