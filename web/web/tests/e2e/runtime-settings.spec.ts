@@ -367,7 +367,9 @@ test("browser C host acknowledges atomic per-viewer updates and rejects invalid 
     palette_custom: " .+#",
     render_mode: 2,
     matrix_rain: true,
-    fps: 20,
+    // The first viewer advertises a 12 FPS capability, so the host clamps
+    // the requested 20 FPS to the negotiated maximum.
+    fps: 12,
   });
   expect(rejected.status).not.toBe(0);
   expect(rejected.values).toEqual(first.values);
@@ -377,6 +379,7 @@ test("browser C host acknowledges atomic per-viewer updates and rejects invalid 
     height: 24,
     color_mode: 3,
     color_filter: 3,
-    fps: 60,
+    // Browser hosting uses DEFAULT_MAX_FPS (12) as the per-viewer ceiling.
+    fps: 12,
   });
 });
