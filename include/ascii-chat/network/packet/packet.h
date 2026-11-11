@@ -1376,6 +1376,9 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
  */
 asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out);
 
+/** Wipe and release an envelope allocation, then clear the envelope. */
+void packet_envelope_release(packet_envelope_t *envelope);
+
 /** @} */
 
 /**

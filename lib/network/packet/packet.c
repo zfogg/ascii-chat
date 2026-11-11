@@ -688,9 +688,12 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) &&
       envelope->allocated_size >= plaintext_length) {
     memcpy(envelope->allocated_buffer, plaintext, plaintext_length);
+    sodium_memzero(plaintext, buffer_capacity(plaintext));
     buffer_release(plaintext);
     plaintext = envelope->allocated_buffer;
   } else {
+    if (envelope->allocated_buffer)
+      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
     buffer_release(envelope->allocated_buffer);
     envelope->allocated_size = buffer_capacity(plaintext);
   }
@@ -704,19 +707,18 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
 }
 
 asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out) {
-  if (!wire || !out || length < sizeof(packet_header_t))
+  if (!wire || !out || length < sizeof(packet_header_t) || length > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet envelope input");
   *out = (packet_envelope_t){0};
+  packet_header_t wire_header;
+  asciichat_error_t result = packet_validate(wire, length, 0, &wire_header);
+  if (result != ASCIICHAT_OK)
+    return result;
   void *owned = buffer_alloc(NULL, length);
   if (!owned)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate packet envelope");
   memcpy(owned, wire, length);
-  packet_header_t header;
-  asciichat_error_t result = packet_validate(owned, length, 0, &header);
-  if (result != ASCIICHAT_OK) {
-    buffer_release(owned);
-    return result;
-  }
+  packet_header_t header = wire_header;
   out->type = NET_TO_HOST_U16(header.type);
   out->data = (uint8_t *)owned + sizeof(header);
   out->len = length - sizeof(header);
@@ -724,10 +726,19 @@ asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *c
   out->allocated_size = buffer_capacity(owned);
   result = packet_decrypt_envelope(out, crypto_ctx);
   if (result != ASCIICHAT_OK) {
-    buffer_release(out->allocated_buffer);
-    *out = (packet_envelope_t){0};
+    packet_envelope_release(out);
   }
   return result;
+}
+
+void packet_envelope_release(packet_envelope_t *envelope) {
+  if (!envelope)
+    return;
+  if (envelope->allocated_buffer) {
+    sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
+    buffer_release(envelope->allocated_buffer);
+  }
+  *envelope = (packet_envelope_t){0};
 }
 
 size_t packet_format_error_stack(char *buffer, size_t size) {

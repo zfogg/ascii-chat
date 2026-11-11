@@ -137,18 +137,18 @@ asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, 
   result->encrypted = envelope.was_encrypted;
   result->consumed = envelope.consumed;
   if (envelope.consumed) {
-    buffer_release(envelope.allocated_buffer);
+    packet_envelope_release(&envelope);
     return ASCIICHAT_OK;
   }
   result->payload_length = envelope.len;
   if (result->payload_length > payload_capacity || (result->payload_length && !payload)) {
-    buffer_release(envelope.allocated_buffer);
+    packet_envelope_release(&envelope);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Browser client packet output is too small");
   }
   memcpy(&result->header, envelope.allocated_buffer, sizeof(result->header));
   if (result->payload_length)
     memcpy(payload, envelope.data, result->payload_length);
-  buffer_release(envelope.allocated_buffer);
+  packet_envelope_release(&envelope);
   return ASCIICHAT_OK;
 }
 

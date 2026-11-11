@@ -49,8 +49,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   asciichat_error_t result = acip_client_receive_packet(transport, &envelope);
   if (result == ASCIICHAT_OK)
     result = acip_client_dispatch_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
-  if (envelope.allocated_buffer)
-    buffer_release(envelope.allocated_buffer);
+  packet_envelope_release(&envelope);
   return result;
 }
 
@@ -91,8 +90,7 @@ asciichat_error_t acip_client_session_process_wire(acip_client_session_t *sessio
       packet_parse_envelope(wire, length, session->transport ? session->transport->crypto_ctx : NULL, &envelope);
   if (result == ASCIICHAT_OK && !envelope.consumed)
     result = acip_client_session_dispatch(session, envelope.type, envelope.data, envelope.len);
-  if (envelope.allocated_buffer)
-    buffer_release(envelope.allocated_buffer);
+  packet_envelope_release(&envelope);
   return result;
 }
 
