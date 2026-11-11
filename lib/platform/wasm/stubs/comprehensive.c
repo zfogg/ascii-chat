@@ -7,6 +7,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/fps.h>
@@ -24,7 +25,6 @@ typedef void acds_client_config_t;
 typedef void acds_client_t;
 typedef void audio_context_t;
 typedef void client_audio_pipeline_config_t;
-typedef void acip_client_callbacks_t;
 typedef void wav_writer_t;
 typedef void acds_session_lookup_result_t;
 
