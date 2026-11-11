@@ -71,6 +71,12 @@
  * | `--audio-pitch-correct`          | Experimental monophonic correction to the nearest semitone (capture only) |
  *
  * The normal `ASCII_CHAT_...` environment variables and registry configuration apply.
+ * The terminal FFT visualization is enabled with `--fft`. It uses the shared
+ * FFTW backend and defaults to a dB range of `-62:-6`, which is intended to
+ * keep ordinary speech/music visible while still showing quieter background
+ * audio. Use `--fft-scale linear`, `--fft-scale log`, or a custom dB range such
+ * as `--fft-scale -72:-3`; custom ranges must be between -120 and 0 dB and
+ * span at least 12 dB.
  * The FFT size is validated before audio startup. Effects are selected when creating
  * a pipeline; these are startup settings, not live controls.
  *

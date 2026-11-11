@@ -624,6 +624,7 @@ options_t options_t_new(void) {
   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
   opts.waveform = false;
   opts.fft = false;
+  SAFE_STRNCPY(opts.fft_scale, "-62:-6", sizeof(opts.fft_scale));
   opts.flip_x = OPT_FLIP_X_DEFAULT;
   opts.flip_y = OPT_FLIP_Y_DEFAULT;
 

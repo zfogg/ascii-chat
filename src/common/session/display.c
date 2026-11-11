@@ -379,6 +379,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK) {
+    session_display_destroy(ctx);
+    return NULL;
+  }
+
   display_sync_entries(ctx, true);
 
   // Initialize render-file unless media setup needs to determine its timing first.

@@ -62,6 +62,9 @@ int mirror_init(void) {
     return -1;
   }
 
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK)
+    return -1;
+
   // Honor parsed verbosity and let INFO use stdout (console.log).
   log_init(NULL, GET_OPTION(log_level), false, false);
   // Use debug-style format in WASM so browser console shows full log headers.
