@@ -244,7 +244,7 @@ Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized
   cr_assert_eq(packet_parse_envelope(wire, wire_length, NULL, &envelope), ASCIICHAT_OK);
   cr_assert_eq(envelope.type, PACKET_TYPE_PING);
   cr_assert_eq(envelope.len, MAX_PACKET_SIZE);
-  cr_assert_mem_eq(envelope.data, payload, MAX_PACKET_SIZE);
+  cr_assert_eq(memcmp(envelope.data, payload, MAX_PACKET_SIZE), 0);
   packet_envelope_release(&envelope);
   buffer_release(wire);
   buffer_release(payload);
