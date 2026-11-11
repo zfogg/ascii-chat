@@ -2398,7 +2398,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
   if (actions.show_version || actions.create_config || actions.create_manpage) {
-    return handle_fallback_actions(&opts, &actions);
+    result = handle_fallback_actions(&opts, &actions);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+    return ASCIICHAT_OK;
   }
 
   // Mode parsing owns the temporary argv and schema until the shared cleanup path.

@@ -316,7 +316,7 @@ static error_thread_t *register_current_locked(uint64_t id) {
 #ifndef EMSCRIPTEN_BUILD
   // Platform TLS creation/setters do not log or allocate through SAFE_MALLOC.
   if (!g_tls_ready) {
-    if (ascii_tls_key_create(&g_tls_key, error_thread_destructor) != 0)
+    if (platform_tls_key_create(&g_tls_key, error_thread_destructor) != 0)
       return NULL;
     g_tls_ready = true;
   }
@@ -326,7 +326,7 @@ static error_thread_t *register_current_locked(uint64_t id) {
       continue;
     thread = &g_threads[i];
 #ifndef EMSCRIPTEN_BUILD
-    if (ascii_tls_set(g_tls_key, thread) != 0)
+    if (platform_tls_set(g_tls_key, thread) != 0)
       return NULL;
 #endif
     thread->id = id;
@@ -729,7 +729,7 @@ void errno_destroy(void) {
   registry_lock();
 #ifndef EMSCRIPTEN_BUILD
   if (g_tls_ready)
-    ascii_tls_set(g_tls_key, NULL);
+    platform_tls_set(g_tls_key, NULL);
 #endif
   error_thread_t *thread = find_thread(id);
   if (thread)
@@ -755,7 +755,7 @@ void errno_shutdown(void) {
   registry_unlock();
 #ifndef EMSCRIPTEN_BUILD
   if (delete_key)
-    ascii_tls_key_delete(key);
+    platform_tls_key_delete(key);
 #endif
 }
 

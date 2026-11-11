@@ -161,7 +161,7 @@ static named_metadata_cache_t *metadata_snapshot(void) {
     if (!cache)
       return NULL;
     memset(cache, 0, sizeof(*cache));
-    if (ascii_tls_set(g_metadata_tls, cache) != 0) {
+    if (platform_tls_set(g_metadata_tls, cache) != 0) {
       metadata_cache_destroy(cache);
       return NULL;
     }
@@ -249,7 +249,7 @@ asciichat_error_t named_init(void) {
     return ASCIICHAT_OK; // Continue even if rwlock init fails
   }
 
-  g_metadata_tls_ready = ascii_tls_key_create(&g_metadata_tls, metadata_cache_destroy) == 0;
+  g_metadata_tls_ready = platform_tls_key_create(&g_metadata_tls, metadata_cache_destroy) == 0;
   atomic_fetch_add(&g_metadata_revision, 1);
   lifecycle_init_commit(&g_named_registry.lifecycle);
   return ASCIICHAT_OK;
@@ -278,9 +278,9 @@ void named_destroy(void) {
   rwlock_destroy(&g_named_registry.entries_lock);
   if (g_metadata_tls_ready) {
     void *cache = g_thread_metadata;
-    ascii_tls_set(g_metadata_tls, NULL);
+    platform_tls_set(g_metadata_tls, NULL);
     metadata_cache_destroy(cache);
-    ascii_tls_key_delete(g_metadata_tls);
+    platform_tls_key_delete(g_metadata_tls);
     g_metadata_tls_ready = false;
   }
 }
