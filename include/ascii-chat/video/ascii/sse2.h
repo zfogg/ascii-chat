@@ -1,5 +1,4 @@
 #pragma once
-#include <ascii-chat/os/string.h>
 
 /**
  * @file video/ascii/sse2.h

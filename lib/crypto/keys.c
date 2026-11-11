@@ -15,7 +15,6 @@
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/os/string.h>
 #include <defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>

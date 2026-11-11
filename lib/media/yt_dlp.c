@@ -13,7 +13,6 @@
 
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/os/string.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/asciichat_errno.h>

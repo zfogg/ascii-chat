@@ -124,7 +124,6 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     target_link_libraries(ascii-chat PRIVATE
         ascii-chat-util
         ascii-chat-data-structures
-        ascii-chat-platform
         ascii-chat-crypto
         ascii-chat-simd
         ascii-chat-video
@@ -132,6 +131,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
         ascii-chat-network
         ascii-chat-core
         ascii-chat-panic
+        ascii-chat-platform
     )
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})

@@ -21,7 +21,6 @@
 
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/os/string.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/filesystem.h>
