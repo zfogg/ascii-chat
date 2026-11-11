@@ -692,8 +692,6 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
     buffer_release(plaintext);
     plaintext = envelope->allocated_buffer;
   } else {
-    if (envelope->allocated_buffer)
-      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
     buffer_release(envelope->allocated_buffer);
     envelope->allocated_size = buffer_capacity(plaintext);
   }
@@ -707,7 +705,7 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
 }
 
 asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out) {
-  if (!wire || !out || length < sizeof(packet_header_t) || length > MAX_PACKET_SIZE)
+  if (!wire || !out || length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet envelope input");
   *out = (packet_envelope_t){0};
   packet_header_t wire_header;
@@ -735,7 +733,8 @@ void packet_envelope_release(packet_envelope_t *envelope) {
   if (!envelope)
     return;
   if (envelope->allocated_buffer) {
-    sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
+    if (buffer_is_unique(envelope->allocated_buffer))
+      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
     buffer_release(envelope->allocated_buffer);
   }
   *envelope = (packet_envelope_t){0};
