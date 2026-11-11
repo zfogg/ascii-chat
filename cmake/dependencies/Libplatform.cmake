@@ -4,6 +4,8 @@
 # builds use the static library unless the caller explicitly requests shared
 # dependencies. musl is always static because its release toolchain is static.
 
+include(FetchContent)
+
 if(USE_MUSL)
     set(_ascii_chat_libplatform_shared OFF)
 elseif(ASCIICHAT_SHARED_DEPS)
@@ -19,8 +21,44 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
-                 ${CMAKE_BINARY_DIR}/deps/libplatform)
+set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
+FetchContent_Declare(libplatform
+    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
+    GIT_TAG 6f39f12e5e16654dd3bd3d2c5bd1d14ba9df4ef0
+    SOURCE_DIR "${_ascii_chat_libplatform_source}")
+FetchContent_MakeAvailable(libplatform)
+
+target_include_directories(asciichat-project-includes INTERFACE
+    "${_ascii_chat_libplatform_source}/lib")
+
+# Apply the owned-directory source formatting contract to the active pinned
+# source cache while preserving its dependency-specific include layout.
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/symbols.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace_internal.h"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/backtrace.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/sync.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/memory.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/symbols.h"
+     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/backtrace.h"
+     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/debug/backtrace.h"
+     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform/debug")
+file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/windows/backtrace.c"
+     DESTINATION "${_ascii_chat_libplatform_source}/lib/windows")
+
+# libplatform owns the shared path/logging helpers, so give it the checkout
+# root that CMake already knows instead of letting it fall back to ".".
+string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
+target_compile_definitions(libplatform-objects PRIVATE
+    LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
@@ -38,3 +76,5 @@ if(UNIX AND NOT APPLE)
 endif()
 
 unset(_ascii_chat_libplatform_shared)
+unset(_ascii_chat_libplatform_source)
+unset(_ascii_chat_source_root)

@@ -32,6 +32,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <stdatomic.h>
@@ -71,6 +72,14 @@ bool ui_error_popup_visible(void) {
   return errno_notifications_pending();
 }
 
+uint64_t ui_error_popup_revision(void) {
+  lock_state();
+  refresh_locked();
+  uint64_t revision = g_latest;
+  unlock_state();
+  return revision;
+}
+
 terminal_size_t ui_error_popup_minimum(void) {
   return (terminal_size_t){.cols = 60, .rows = 14};
 }
@@ -86,7 +95,9 @@ void ui_error_popup_key(keyboard_key_t key) {
   case 'q':
   case '\r':
   case '\n':
-    dismiss = g_displayed_latest;
+    /* Dismiss all notifications currently shown.  The popup may receive the
+     * first key before its presentation-thread snapshot has been rendered. */
+    dismiss = UINT64_MAX;
     break;
   case KEY_LEFT:
     if (g_selected)
@@ -254,7 +265,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   if (error->has_wsa_error)
     frame_buffer_printf(body, "Socket error: %d\n", error->wsa_error);
 #ifdef ASCIICHAT_DIAGNOSTIC_UI
-  sanitize(file, sizeof(file), error->file ? extract_project_relative_path(error->file) : "?");
+  sanitize(file, sizeof(file), error->file ? extract_project_relative_path(error->file, ASCIICHAT_OWNED_SOURCE_DIRS) : "?");
   sanitize(function, sizeof(function), error->function);
   safe_snprintf(line, sizeof(line), "%d", error->line);
   frame_buffer_printf(body, "%sSource: %s %s:%s%s\n", grey, colors ? colored_string(LOG_COLOR_DEBUG, file) : file,
@@ -266,7 +277,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     trace.symbols = NULL;
     trace.tried_symbolize = false;
     if (trace.count) {
-      backtrace_symbolize(&trace);
+      backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
       if (trace.symbols)
         backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
                                 backtrace_filter_error_internal);

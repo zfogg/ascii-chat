@@ -15,7 +15,7 @@ Data sources:
 
 Requirements:
     pip install nltk
-    uv run --project tests/ascii_chat_tests --frozen python -c "import nltk; nltk.download('brown'); nltk.download('averaged_perceptron_tagger')"
+    uv run --frozen python -c "import nltk; nltk.download('brown'); nltk.download('averaged_perceptron_tagger')"
 """
 
 import re

@@ -55,6 +55,7 @@
 
 static void handle_ascii_frame_packet(client_connection_t *connection, const ascii_frame_packet_t *frame_header,
                                       const char *frame_data) {
+  bool snapshot_should_exit = false;
   ascii_frame_packet_t header = *frame_header;
   if (should_exit())
     return;
@@ -99,7 +100,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
 
       if (GET_OPTION(snapshot_delay) == 0) {
         log_debug("Snapshot captured immediately (delay=0)!");
-        signal_exit();
+        snapshot_should_exit = true;
       } else {
         log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
                   GET_OPTION(snapshot_delay));
@@ -122,7 +123,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
         char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s (target=%.3f)", duration_str, snapshot_delay);
-        signal_exit();
+        snapshot_should_exit = true;
       }
     }
   }
@@ -167,6 +168,12 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
                   frame_data, strlen(frame_data));
   display_render_frame(connection, frame_data);
   log_debug_every(US_PER_SEC_INT, "DISPLAY_RENDER_RETURNED: frame was rendered");
+
+  // The frame must be presented before snapshot shutdown is requested.  The
+  // reception thread is also responsible for rendering the packet, so exiting
+  // above would discard the very frame that satisfied the snapshot condition.
+  if (snapshot_should_exit)
+    signal_exit();
 }
 
 static bool handle_error_message_packet(client_connection_t *connection, const void *data, size_t len) {

@@ -4,6 +4,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/rgba/color_filter.h>
+#include <ascii-chat/video/anim/fft.h>
 /** Color filter names - must match color_filter_t enum exactly */
 static const char *COLOR_FILTER_NAMES[COLOR_FILTER_COUNT] = {
     "None",    // COLOR_FILTER_NONE = 0
@@ -246,6 +247,10 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
       return UI_ACTION_SETTINGS;
     }
     bool enabled = !GET_OPTION(fft);
+    if (enabled && audio_visualization_fft_init() != ASCIICHAT_OK) {
+      log_error("Unable to initialize FFTW frequency display");
+      return UI_ACTION_SETTINGS;
+    }
     if (options_toggle("fft") != ASCIICHAT_OK)
       return UI_ACTION_SETTINGS;
     log_info("Audio frequency display: %s", enabled ? "enabled" : "disabled");

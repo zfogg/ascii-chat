@@ -202,6 +202,8 @@
 
 #pragma once
 
+#include <ascii-chat/video/anim/fft.h>
+
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define OPTIONS_YT_DLP_OPTIONS_BUFFER_SIZE 512
 #define OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE 64
@@ -1120,6 +1122,7 @@ typedef struct options_state {
   audio_capture_source_t audio_capture_source; ///< Local capture/media selection policy
   bool waveform;                               ///< Replace the video image with a live audio waveform
   bool fft;                                    ///< Replace the video image with a live audio frequency spectrogram
+  char fft_scale[32];                          ///< Amplitude scale for the FFT visualization
   int microphone_channels;                     ///< Selected microphone channels: 1 (speech) or 2 (stereo)
   int microphone_channel;                      ///< First zero-based input channel; -1 downmixes all inputs
   int microphone_index;                        ///< Microphone device index (-1 = default)

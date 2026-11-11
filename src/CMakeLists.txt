@@ -460,7 +460,6 @@ if(USE_MUSL)
 
     # Link libwebsockets for WebSocket transport (musl-built static library - required)
     target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-
     # libdatachannel and its dependencies (must be linked explicitly for static builds)
     # The libdatachannel INTERFACE target's dependencies don't propagate through
     # the combined static library, so we link them directly here

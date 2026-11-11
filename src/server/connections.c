@@ -92,7 +92,10 @@ static asciichat_error_t server_connection_closing(network_connection_t *connect
   client->transport = NULL;
   client->network_connection = NULL;
   mutex_unlock(&client->send_mutex);
-  return stop_client_render_threads(client);
+  // Render-thread joins and client-buffer destruction are owned by
+  // server_connection_closed()->remove_client().  Doing that work here too
+  // races the closed callback and can tear down the same client twice.
+  return ASCIICHAT_OK;
 }
 static void server_connection_closed(network_connection_t *connection, void *arg) {
   server_connection_state_t *state = network_connection_context(connection);

@@ -93,6 +93,9 @@ void ui_controller_select_interactive(int screen);
  * Other terminal text is suppressed while a screen owns the terminal; non-TTY output remains synchronous.
  */
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len);
+
+/** Return the largest prefix of a chunk that does not end in a UTF-8 continuation byte. */
+size_t ui_controller_trim_utf8_chunk(const char *data, size_t length);
 /** Retire live screens and synchronously render final text before the caller exits. */
 void ui_controller_finish(int fd, const char *data, size_t len);
 

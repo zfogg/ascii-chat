@@ -54,7 +54,7 @@ cmake --preset default -B build-metrics -DCMAKE_BUILD_TYPE=Release \
   -DASCIICHAT_ENABLE_SANITIZERS=OFF -DASCIICHAT_ENABLE_COVERAGE=OFF \
   -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
 cmake --build build-metrics --target test-transport-metrics
-uv run --project tests/ascii_chat_tests --frozen python tests/benchmarks/transport_metrics.py \
+uv run --frozen python tests/benchmarks/transport_metrics.py \
   --binary build-metrics/bin/test-transport-metrics \
   --output build-metrics/measurements --netem --runs 3 \
   --transports tcp,webrtc,quic,quic-datagrams --source-revision "$(git rev-parse HEAD)"
@@ -84,34 +84,34 @@ two CPUs, approximately 4 GiB RAM, and Linux 6.10.14-linuxkit. Each table value
 is the median of three runs unless a range or maximum is identified. All 24
 32 KiB runs and both 64 KiB stress runs completed successfully.
 
-| Profile | Transport | Setup ms | Audio p95 ms | Audio gaps >60 ms | Control p95 ms | Visual p95 ms |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Clean | TCP | 145.03 | 2.41 | 0 | 2.35 | 5.29 |
-| Clean | WebRTC | 195.09 | 2.32 | 0 | 2.27 | 4.05 |
-| Clean | QUIC streams | 171.28 | 2.33 | 0 | 2.26 | 2.39 |
-| Clean | QUIC datagrams | 165.11 | 2.33 | 0 | 2.22 | 2.40 |
-| Impaired | TCP | 399.84 | 130.81 | 17 | 109.27 | 134.19 |
-| Impaired | WebRTC | 528.76 | 332.90 | 46 | 319.92 | 371.73 |
-| Impaired | QUIC streams | 583.30 | 53.99 | 3 | 39.61 | 2682.06 |
-| Impaired | QUIC datagrams | 636.21 | 37.61 | 0 | 35.89 | See below |
+| Profile  | Transport      | Setup ms | Audio p95 ms | Audio gaps >60 ms | Control p95 ms | Visual p95 ms |
+| -------- | -------------- | -------: | -----------: | ----------------: | -------------: | ------------: |
+| Clean    | TCP            |   145.03 |         2.41 |                 0 |           2.35 |          5.29 |
+| Clean    | WebRTC         |   195.09 |         2.32 |                 0 |           2.27 |          4.05 |
+| Clean    | QUIC streams   |   171.28 |         2.33 |                 0 |           2.26 |          2.39 |
+| Clean    | QUIC datagrams |   165.11 |         2.33 |                 0 |           2.22 |          2.40 |
+| Impaired | TCP            |   399.84 |       130.81 |                17 |         109.27 |        134.19 |
+| Impaired | WebRTC         |   528.76 |       332.90 |                46 |         319.92 |        371.73 |
+| Impaired | QUIC streams   |   583.30 |        53.99 |                 3 |          39.61 |       2682.06 |
+| Impaired | QUIC datagrams |   636.21 |        37.61 |                 0 |          35.89 |     See below |
 
-| Profile | Transport | Wire MB, whole run | CPU seconds, whole run | Maximum sampled queue bytes |
-| --- | --- | ---: | ---: | ---: |
-| Clean | TCP | 10.17 | 0.89 | 233804 |
-| Clean | WebRTC | 11.38 | 1.48 | 168268 |
-| Clean | QUIC streams | 10.89 | 1.06 | 68208 |
-| Clean | QUIC datagrams | 11.17 | 1.12 | 68000 |
-| Impaired | TCP | 9.16 | 0.82 | 304820 |
-| Impaired | WebRTC | 7.77 | 1.26 | 249376 |
-| Impaired | QUIC streams | 10.87 | 1.61 | 7281920 |
-| Impaired | QUIC datagrams | 7.44 | 1.44 | 264776 |
+| Profile  | Transport      | Wire MB, whole run | CPU seconds, whole run | Maximum sampled queue bytes |
+| -------- | -------------- | -----------------: | ---------------------: | --------------------------: |
+| Clean    | TCP            |              10.17 |                   0.89 |                      233804 |
+| Clean    | WebRTC         |              11.38 |                   1.48 |                      168268 |
+| Clean    | QUIC streams   |              10.89 |                   1.06 |                       68208 |
+| Clean    | QUIC datagrams |              11.17 |                   1.12 |                       68000 |
+| Impaired | TCP            |               9.16 |                   0.82 |                      304820 |
+| Impaired | WebRTC         |               7.77 |                   1.26 |                      249376 |
+| Impaired | QUIC streams   |              10.87 |                   1.61 |                     7281920 |
+| Impaired | QUIC datagrams |               7.44 |                   1.44 |                      264776 |
 
-| Transport | Audio recovery ms | Visual recovery ms |
-| --- | ---: | ---: |
-| TCP | 229.27 | 250.26 |
-| WebRTC | 225.80 | 228.14 |
-| QUIC streams | 39.39 | 102.30 |
-| QUIC datagrams | 98.60 | 164.99 |
+| Transport      | Audio recovery ms | Visual recovery ms |
+| -------------- | ----------------: | -----------------: |
+| TCP            |            229.27 |             250.26 |
+| WebRTC         |            225.80 |             228.14 |
+| QUIC streams   |             39.39 |             102.30 |
+| QUIC datagrams |             98.60 |             164.99 |
 
 QUIC streams kept control and audio responsive while the visual stream built
 up a substantial backlog. The 2.68-second visual p95 is a material tradeoff:

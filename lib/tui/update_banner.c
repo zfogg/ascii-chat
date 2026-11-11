@@ -28,6 +28,7 @@
  */
 
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/tui/controller.h>
@@ -299,6 +300,12 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     return false;
   bool update = false;
   while (!shutdown_is_requested()) {
+    /* The update prompt is synchronous, but a failed DNS check can put the
+     * error popup above it. Route keys to that modal until it is dismissed. */
+    if (ui_error_popup_visible()) {
+      (void)ui_input_wait_key(UI_SCREEN_ERROR, 100);
+      continue;
+    }
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
     if (g_update_overlay)
       return false;
@@ -513,7 +520,11 @@ static void *update_check_thread_func(void *arg) {
     errno_notifications_suppress(previous_notifications);
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   } else {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool previous_notifications = errno_notifications_suppress(true);
     err = force ? update_check_perform(&result) : update_check_startup(&result);
+    errno_notifications_suppress(previous_notifications);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   while (!shutdown_is_requested() && !atomic_load(&g_update_cancel_requested)) {
     uint64_t overlay_until = atomic_load(&g_update_visible_until_ns);
@@ -722,11 +733,15 @@ void update_banner_wait_for_check(void) {
   if (!g_update_thread_started) {
     return;
   }
-  int ret = thread_join_timeout(&g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+  // Shutdown must remain responsive after cancellation.  The worker checks
+  // g_update_cancel_requested and terminates its child process, so one second
+  // is sufficient for normal teardown while avoiding a multi-second Ctrl-C
+  // stall when a platform/network call is slow to unwind.
+  int ret = thread_join_timeout(&g_update_thread, NULL, 1LL * NS_PER_SEC_INT);
   if (ret != 0) {
     // Timeout — thread is still alive. Do a blocking join to avoid orphaning it.
     // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
-    log_warn("Update check thread did not finish within 5s, waiting for completion");
+    log_warn("Update check thread did not finish within 1s, waiting for completion");
     thread_join(&g_update_thread, NULL);
   }
   g_update_thread_started = false;

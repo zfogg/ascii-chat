@@ -1,7 +1,7 @@
 """Windows live TCP/WebSocket/WebRTC FPS regression using pywinpty.
 
-Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/network_fps_windows.py --binary build/bin/ascii-chat.exe --output build/network-fps
-Requires: uv sync --project tests/ascii_chat_tests
+Run: uv run --frozen python tests/integration/network_fps_windows.py --binary build/bin/ascii-chat.exe --output build/network-fps
+Requires: uv sync
 Measures the application's completed-presentation FPS overlay, with normal logging.
 """
 

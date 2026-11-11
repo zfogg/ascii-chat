@@ -16,11 +16,11 @@ coverage/report generation, CMake helpers, and code-generation/build helpers.
 - Use the latest repository-pinned Python minor version through `uv`; do not
   create a separate virtualenv or install project packages with `pip`.
 - Run test-suite Python from the test project:
-  `uv run --project tests/ascii_chat_tests --frozen python ...`.
+  `uv run --frozen python ...`.
 - Synchronize it with:
-  `uv sync --project tests/ascii_chat_tests --frozen`.
-- Keep dependency declarations in `tests/ascii_chat_tests/pyproject.toml` and
-  its lockfile synchronized. Update the lockfile with `uv lock`.
+  `uv sync --frozen`.
+- Keep dependency declarations in the root `pyproject.toml` and `uv.lock`
+  synchronized. Reusable test helpers live in `tests/python/ascii_chat_tests/`.
 - CMake must receive the interpreter from the `uv` environment when configuring
   Python-backed tests (for example, `-DPython3_EXECUTABLE=.../.venv/bin/python`).
   CTest launches the generated Python tests through `uv`; do not bypass that
@@ -47,6 +47,6 @@ coverage/report generation, CMake helpers, and code-generation/build helpers.
   test placement and test commands.
 - Python scripts should use structured exceptions and actionable failures; do
   not hide subprocess failures or silently accept malformed native data.
-- Keep reusable test fixtures in `tests/ascii_chat_tests`; keep repository
+- Keep reusable test fixtures in `tests/python/ascii_chat_tests`; keep repository
   utilities and build helpers in their existing `scripts/`, `cmake/`, or
   `.github/scripts/` locations.

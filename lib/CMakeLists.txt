@@ -187,7 +187,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
-
 if(WIN32)
     # The upstream TOML parser uses portable C stdio rather than MSVC's secure CRT extensions.
     set_source_files_properties(
@@ -412,6 +411,7 @@ add_library(ascii-chat-platform INTERFACE)
 target_link_libraries(ascii-chat-platform INTERFACE libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include
+    ${CMAKE_SOURCE_DIR}/deps/libplatform/lib
 )
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-platform INTERFACE ${ASCIICHAT_LIBUV_TARGET})
@@ -597,6 +597,7 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
+target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
     target_link_libraries(ascii-chat-platform INTERFACE ${FFMPEG_LIBRARIES})

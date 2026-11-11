@@ -15,6 +15,7 @@
 #include "ascii-chat/debug/named.h"
 #include "libplatform/rwlock.h"
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/source_root.h>
 #include "libplatform/thread.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
@@ -306,7 +307,7 @@ static void named_entry_init(named_entry_t *entry, const char *type, const char 
   entry->generation = ++named_generation;
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file, ASCIICHAT_OWNED_SOURCE_DIRS)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 }

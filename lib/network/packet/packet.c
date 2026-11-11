@@ -21,6 +21,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
@@ -752,7 +753,7 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
   size_t offset = 0;
   for (size_t i = 0; i < frame_count && offset < size - 1; ++i) {
     const asciichat_error_context_t *frame = &frames[i];
-    const char *file = extract_project_relative_path(frame->file);
+    const char *file = extract_project_relative_path(frame->file, ASCIICHAT_OWNED_SOURCE_DIRS);
 #ifdef NDEBUG
     int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "",
                            frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>");

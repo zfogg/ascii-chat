@@ -233,6 +233,7 @@ static const options_t g_default_options = (options_t){
     .audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT,
     .waveform = false,
     .fft = false,
+    .fft_scale = "-62:-6",
     .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
     .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
     .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,

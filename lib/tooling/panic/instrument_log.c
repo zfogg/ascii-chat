@@ -25,6 +25,7 @@
 #include <ascii-chat/common/sync.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/path.h>
 #include <libplatform/lifecycle.h>

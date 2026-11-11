@@ -35,6 +35,7 @@
 #include "os/filesystem.h" // platform file and descriptor helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
+#include <libplatform/util/string.h>
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
@@ -423,8 +424,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   do {                                                                                                               \
     size_t _safe_strncpy_size = (size);                                                                              \
     if (_safe_strncpy_size > 0) {                                                                                    \
-      strncpy((dst), (src), _safe_strncpy_size - 1);                                                                  \
-      (dst)[_safe_strncpy_size - 1] = '\0';                                                                          \
+      (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1);                              \
     }                                                                                                                \
   } while (0)
 

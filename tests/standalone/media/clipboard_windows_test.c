@@ -1,5 +1,5 @@
 /** Exercise native clipboard formats without changing the user's clipboard. */
-#include <ascii-chat/platform/clipboard.h>
+#include <libplatform/clipboard.h>
 #include <ascii-chat/common.h>
 #include <windows.h>
 #include <shellapi.h>
@@ -54,7 +54,7 @@ static UINT fake_query(HDROP drop, UINT index, LPWSTR output, UINT capacity) {
 #define GlobalLock fake_lock
 #define GlobalUnlock fake_unlock
 #define DragQueryFileW fake_query
-#include "../../../lib/platform/windows/clipboard.c"
+#include "../../../../deps/libplatform/lib/windows/clipboard.c"
 
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);

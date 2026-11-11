@@ -23,6 +23,7 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/path.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>

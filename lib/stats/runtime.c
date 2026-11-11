@@ -16,6 +16,7 @@
 #include <ascii-chat/stats/runtime.h>
 #include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/common/shutdown.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>

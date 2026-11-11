@@ -15,6 +15,7 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
 #include <ascii-chat/os/memory.h>
@@ -178,6 +179,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
     // 3. PLATFORM - Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+    }
+    if (socket_init() != 0) {
+      FATAL(ERROR_PLATFORM_INIT, "Failed to initialize sockets");
     }
 
     // 4. buffer domain - Initialize global shared buffer domain

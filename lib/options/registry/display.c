@@ -12,10 +12,13 @@
 
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
 
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <stdlib.h>
+#include <math.h>
 
 /** Parse an optional intensity; callback error strings follow the parser's SAFE_FREE() ownership contract. */
 static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
@@ -62,6 +65,39 @@ static bool parse_ascii_renderer(const char *arg, void *dest, char **error_msg) 
     *error_msg = platform_strdup("--renderer requires luminance or glyph");
   return false;
 }
+
+static bool parse_fft_scale(const char *arg, void *dest, char **error_msg) {
+  fft_scale_t parsed = {.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
+  if (!arg || !*arg) {
+    *error_msg = platform_strdup("--fft-scale requires linear, log, or MIN:MAX dB");
+    return false;
+  }
+  if (!strcmp(arg, "linear")) {
+    parsed.mode = FFT_SCALE_LINEAR;
+  } else if (!strcmp(arg, "log")) {
+    parsed.mode = FFT_SCALE_LOG;
+  } else {
+    char *end = NULL;
+    parsed.min_db = strtof(arg, &end);
+    if (end == arg || *end != ':')
+      goto invalid;
+    char *max_end = NULL;
+    parsed.max_db = strtof(end + 1, &max_end);
+    if (max_end == end + 1 || *max_end != '\0' || !isfinite(parsed.min_db) || !isfinite(parsed.max_db) ||
+        parsed.min_db < -120.0f || parsed.max_db > 0.0f || parsed.max_db - parsed.min_db < 12.0f ||
+        parsed.max_db <= parsed.min_db)
+      goto invalid;
+    parsed.mode = FFT_SCALE_DB;
+  }
+  SAFE_STRNCPY((char *)dest, arg, 32);
+  return true;
+invalid:
+  *error_msg =
+      platform_strdup("--fft-scale dB range must be MIN:MAX with -120 <= MIN < MAX <= 0 and at least 12 dB span");
+  return false;
+}
+
+static const char default_fft_scale[] = "-62:-6";
 
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
@@ -118,6 +154,24 @@ const registry_entry_t g_display_entries[] = {
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0},
+     NULL},
+    {"fft-scale",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, fft_scale),
+     &default_fft_scale,
+     0,
+     "FFT amplitude scale: linear, log, or MIN:MAX dB (default -62:-6).",
+     "DISPLAY",
+     "SCALE",
+     false,
+     "ASCII_CHAT_FFT_SCALE",
+     NULL,
+     parse_fft_scale,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.input_type = OPTION_INPUT_STRING},
      NULL},
     // DISPLAY GROUP (client, mirror, discovery)
     {"color-filter",

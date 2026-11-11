@@ -93,6 +93,8 @@ bool symbol_module_is_project(const char *module_name);
  * @brief Format a source path for a symbolized frame
  * @param module_name Module basename or path
  * @param source_path Source path reported by debug information
+ * @param owned_dirs NULL-terminated list of owned directory prefixes to strip
+ * @param owned_dirs NULL-terminated list of owned directory prefixes to strip
  * @param output Destination buffer
  * @param output_size Destination buffer size
  * @param external Output set to true when the source belongs to external code
@@ -102,7 +104,7 @@ bool symbol_module_is_project(const char *module_name);
  * most four parent directories and the filename.
  */
 asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output,
-                                            size_t output_size, bool *external);
+                                            size_t output_size, bool *external, const char *const *owned_dirs);
 
 /* ============================================================================
  * Symbol Cache Lifecycle
@@ -259,7 +261,7 @@ void symbol_cache_print_stats(void);
  *
  * @ingroup platform
  */
-char **symbol_cache_resolve_batch(void *const *buffer, int size);
+char **symbol_cache_resolve_batch(void *const *buffer, int size, const char *const *owned_dirs);
 
 /**
  * @brief Free symbol array returned by symbol_cache_resolve_batch

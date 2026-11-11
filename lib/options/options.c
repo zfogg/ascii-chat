@@ -58,6 +58,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/options/rcu.h> // RCU-based thread-safe options
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/parsers.h>
@@ -624,6 +625,7 @@ options_t options_t_new(void) {
   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
   opts.waveform = false;
   opts.fft = false;
+  SAFE_STRNCPY(opts.fft_scale, "-62:-6", sizeof(opts.fft_scale));
   opts.flip_x = OPT_FLIP_X_DEFAULT;
   opts.flip_y = OPT_FLIP_Y_DEFAULT;
 
@@ -811,6 +813,21 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
   }
   SAFE_STRNCPY(log_filename_buf, log_filename_literal, sizeof(log_filename_buf) - 1);
   log_filename_buf[sizeof(log_filename_buf) - 1] = '\0';
+
+  /* options_init() runs before the tracked allocator is initialized.  Debug
+   * builds already have a stable checkout path, so avoid get_log_dir()'s
+   * allocation and path-validation work during this early phase. */
+#ifndef NDEBUG
+  const char *debug_log_dir = ASCIICHAT_SOURCE_ROOT;
+  if (debug_log_dir && *debug_log_dir) {
+    safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", debug_log_dir, PATH_SEPARATOR_STR,
+                  log_filename_buf);
+    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
+    SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+    result_buf[sizeof(result_buf) - 1] = '\0';
+    return result_buf;
+  }
+#endif
 
   char *log_dir = get_log_dir();
   if (log_dir) {
@@ -1170,6 +1187,38 @@ static asciichat_error_t validate_binary_option_position(int argc, char **argv, 
                            argv[i], argv[mode_index]);
         }
       }
+    }
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Validate options that affect process-wide terminal setup before constructing
+ * the full options object.  This keeps malformed values on the normal usage
+ * error path instead of allowing startup initialization to run with invalid
+ * terminal state.
+ */
+static asciichat_error_t validate_early_color_mode(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    const char *value = NULL;
+    if (strcmp(argv[i], "--color-mode") == 0) {
+      if (i + 1 >= argc || argv[i + 1][0] == '-') {
+        return SET_ERRNO(ERROR_USAGE, "--color-mode requires a value (auto, none, 16, 256, or truecolor)");
+      }
+      value = argv[++i];
+    } else if (strncmp(argv[i], "--color-mode=", 13) == 0) {
+      value = argv[i] + 13;
+    }
+
+    if (value) {
+      terminal_color_mode_t parsed = TERM_COLOR_AUTO;
+      char *error_msg = NULL;
+      if (!parse_color_mode(value, &parsed, &error_msg)) {
+        asciichat_error_t result = SET_ERRNO(ERROR_USAGE, "%s", error_msg ? error_msg : "Invalid color mode");
+        SAFE_FREE(error_msg);
+        return result;
+      }
+      SAFE_FREE(error_msg);
     }
   }
   return ASCIICHAT_OK;
@@ -2396,6 +2445,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
   result = validate_binary_option_position(argc, argv, mode_index);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  result = validate_early_color_mode(argc, argv);
   if (result != ASCIICHAT_OK) {
     return result;
   }

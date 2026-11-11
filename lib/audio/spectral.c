@@ -1,6 +1,7 @@
 #include <ascii-chat/audio/spectral.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/sync.h>
+#include <ascii-chat/debug/named.h>
 #include <fftw3.h>
 #include <math.h>
 #include <string.h>
@@ -30,7 +31,7 @@ struct spectral_processor {
 };
 
 // FFTW execution is independent per instance; planning and destruction share state.
-static static_mutex_t planner_lock = STATIC_MUTEX_INIT;
+static_mutex_t audio_fftw_planner_lock = STATIC_MUTEX_INIT;
 
 spectral_config_t spectral_default_config(int sample_rate) {
   return (spectral_config_t){.sample_rate = sample_rate,
@@ -84,10 +85,11 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
   if (!p)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate spectral processor");
   p->config = *c;
-  static_mutex_lock_named(&planner_lock, "fftw_planner");
+  (void)NAMED_REGISTER_MUTEX(&audio_fftw_planner_lock, "audio.fftw_planner", NULL);
+  static_mutex_lock(&audio_fftw_planner_lock);
   p->forward = fftw_plan_dft_r2c_1d(c->fft_size, p->time, p->frequency, FFTW_ESTIMATE);
   p->inverse = fftw_plan_dft_c2r_1d(c->fft_size, p->frequency, p->restored, FFTW_ESTIMATE);
-  static_mutex_unlock(&planner_lock);
+  static_mutex_unlock(&audio_fftw_planner_lock);
   if (!p->forward || !p->inverse) {
     spectral_destroy(p);
     return SET_ERRNO(ERROR_MEMORY, "Cannot create FFTW plans");
@@ -102,12 +104,12 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
 void spectral_destroy(spectral_processor_t *p) {
   if (!p)
     return;
-  static_mutex_lock_named(&planner_lock, "fftw_planner");
+  static_mutex_lock(&audio_fftw_planner_lock);
   if (p->forward)
     fftw_destroy_plan(p->forward);
   if (p->inverse)
     fftw_destroy_plan(p->inverse);
-  static_mutex_unlock(&planner_lock);
+  static_mutex_unlock(&audio_fftw_planner_lock);
   SAFE_FREE(p);
 }
 

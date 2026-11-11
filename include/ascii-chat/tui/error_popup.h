@@ -6,6 +6,7 @@
 
 /** Error notifications are an overlay, independent of the selected application screen. */
 bool ui_error_popup_visible(void);
+uint64_t ui_error_popup_revision(void);
 terminal_size_t ui_error_popup_minimum(void);
 void ui_error_popup_render(frame_buffer_t *output, terminal_size_t size);
 void ui_error_popup_key(keyboard_key_t key);

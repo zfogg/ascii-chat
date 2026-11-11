@@ -73,7 +73,7 @@ cmake --build build --target ascii-chat test-backpressure test-backpressure-live
 build/bin/test-backpressure
 build/bin/test-network-events
 build/bin/test-webrtc-security
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
+uv run --frozen python -m pytest tests/python/tests/integration/backpressure --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
 # Add --backpressure-codecs raw,h264 on the Windows LGPL bundle.
 ```
 

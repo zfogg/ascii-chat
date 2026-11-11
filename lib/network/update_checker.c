@@ -105,6 +105,12 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   }
   defer(SAFE_FREE(cache_path));
 
+  /* A cache miss is expected on first launch.  Check existence through the
+   * platform layer before opening so Windows does not turn the missing file
+   * into a stale errno-stack notification. */
+  if (platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0)
+    return ASCIICHAT_OK;
+
   FILE *f = platform_fopen("file_stream", cache_path, "r");
   if (!f) {
     const char *error_msg = file_read_error_message(cache_path);
@@ -344,13 +350,6 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return ASCIICHAT_OK;
   }
 #endif
-
-  // Test DNS connectivity first
-  if (!dns_test_connectivity(GITHUB_API_HOSTNAME)) {
-    log_warn("No internet connectivity detected, skipping update check");
-    // Don't update cache - we'll retry when online
-    return SET_ERRNO(ERROR_NETWORK, "DNS connectivity test failed");
-  }
 
   // Fetch latest release from GitHub API
   log_info("Checking for updates from GitHub releases...");

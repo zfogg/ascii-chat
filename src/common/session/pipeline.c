@@ -686,7 +686,9 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
     // Check if help screen is active - if so, don't render ASCII frames
     int screen = ui_controller_current_screen();
-    bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_LOGS;
+    // Snapshot mode has no interactive prompt/log overlay.  Do not discard its
+    // only captured frame because startup UI state is still settling.
+    bool help_is_active = !GET_OPTION(snapshot_mode) && (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_LOGS);
 
     if (!help_is_active) {
       // Convert to ASCII

@@ -17,6 +17,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <libplatform/terminal.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <sys/stat.h>
 #include <libplatform/filesystem.h>

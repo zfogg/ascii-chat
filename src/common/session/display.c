@@ -379,6 +379,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK) {
+    session_display_destroy(ctx);
+    return NULL;
+  }
+
   display_sync_entries(ctx, true);
 
   // Initialize render-file unless media setup needs to determine its timing first.
@@ -983,6 +988,68 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
+  /* Inspect the payload before any terminal presentation.  This is bounded
+   * diagnostics: it records shape/control-byte anomalies and a short tail,
+   * never the full webcam frame. */
+  {
+    size_t lines = 0, current = 0, min_line = SIZE_MAX, max_line = 0, last_line = 0;
+    unsigned control_bytes = 0, escape_bytes = 0;
+    for (size_t i = 0; i < frame_len; ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == '\n') {
+        min_line = MIN(min_line, current);
+        max_line = MAX(max_line, current);
+        last_line = current;
+        ++lines;
+        current = 0;
+      } else {
+        current++;
+        if (byte < 32 && byte != '\r' && byte != '\t')
+          ++control_bytes;
+        if (byte == 0x1b)
+          ++escape_bytes;
+      }
+    }
+    if (current) {
+      min_line = MIN(min_line, current);
+      max_line = MAX(max_line, current);
+      last_line = current;
+    }
+    char tail[64] = {0};
+    size_t tail_start = frame_len > 24 ? frame_len - 24 : 0;
+    size_t tail_used = 0;
+    for (size_t i = tail_start; i < frame_len && tail_used + 4 < sizeof(tail); ++i)
+      tail_used += (size_t)safe_snprintf(tail + tail_used, sizeof(tail) - tail_used, "%02X ", (unsigned char)ascii[i]);
+
+    // Also capture the actual glyphs in the final row.  Byte/line counts alone
+    // cannot distinguish a bad terminal write from a bad rendered frame.
+    size_t row_start = 0;
+    for (size_t i = 0; i < frame_len; ++i)
+      if (ascii[i] == '\n')
+        row_start = i + 1;
+    char last_row[192] = {0};
+    size_t row_used = 0;
+    for (size_t i = row_start; i < frame_len && row_used + 5 < sizeof(last_row); ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == 0x1b) {
+        ++i;
+        while (i < frame_len && !((ascii[i] >= '@' && ascii[i] <= 'Z') || (ascii[i] >= 'a' && ascii[i] <= 'z')))
+          ++i;
+        continue;
+      }
+      if (byte >= 32 && byte < 127)
+        last_row[row_used++] = (char)byte;
+      else if (byte == '\r' || byte == '\t')
+        last_row[row_used++] = ' ';
+      else
+        row_used += (size_t)safe_snprintf(last_row + row_used, sizeof(last_row) - row_used, "\\x%02X", byte);
+    }
+    log_debug_every(US_PER_SEC_INT,
+                    "FRAME_DATA: bytes=%zu lines=%zu line_bytes=%zu..%zu last=%zu controls=%u escapes=%u last_row=\"%s\" tail=%s",
+                    frame_len, lines, min_line == SIZE_MAX ? 0 : min_line, max_line, last_line, control_bytes,
+                    escape_bytes, last_row, tail);
+  }
+
   // Apply digital rain effect if enabled
   char *display_frame = (char *)ascii;
   char *rain_result = NULL;
@@ -1068,7 +1135,11 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Output routing logic
-  bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
+  // A snapshot still needs terminal cursor framing when stdout is a real TTY.
+  // `terminal_is_interactive()` also depends on stdin, which is commonly false
+  // for scripted snapshot invocations even though the PTY can display output.
+  bool use_tty_control = ctx->has_tty ||
+                         (ctx->snapshot_mode && ctx->tty_info.fd >= 0 && platform_isatty(ctx->tty_info.fd));
 
   uint64_t frame_write_started_ns = time_get_ns();
 
@@ -1081,8 +1152,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     const char *cursor_home_sequence = "\033[H";
+    const char *erase_below_sequence = "\033[J";
     size_t cursor_seq_len = 3;
-    size_t total_size = cursor_seq_len + frame_len;
+    size_t erase_below_len = 3;
+    // The frame is shorter than the terminal in some configurations.  Erase
+    // from the final frame cursor to the bottom of the screen in the same
+    // submission so stale rows cannot survive a resize or a shorter frame.
+    size_t total_size = cursor_seq_len + frame_len + erase_below_len;
 
     if (ctx->tty_frame_capacity < total_size) {
       size_t capacity = ctx->tty_frame_capacity ? ctx->tty_frame_capacity : 4096;
@@ -1097,12 +1173,22 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+      memcpy(frame_buffer + cursor_seq_len + frame_len, erase_below_sequence, erase_below_len);
 
       log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout",
                       total_size, cursor_seq_len, frame_len);
-      asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
-          UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
-          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
+      int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
+      asciichat_error_t presented = ASCIICHAT_OK;
+      if (ctx->snapshot_mode) {
+        // Snapshot processes may exit immediately after the first frame. Write
+        // directly so teardown cannot discard a queued UI-controller update.
+        if (platform_write_all(output_fd, frame_buffer, total_size) != total_size)
+          presented = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write snapshot frame to terminal");
+      } else {
+        presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
+            UI_SCREEN_MEDIA, output_fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+            frame_buffer, total_size);
+      }
       if (was_first_frame && presented == ASCIICHAT_OK)
         ui_controller_remove(UI_SCREEN_SPLASH);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
@@ -1432,7 +1518,8 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
   }
 
   if (!ctx->render_file) {
-    log_warn("  -> render_file is NULL, cannot set duration");
+    // Terminal snapshots have no render-file encoder; their duration is
+    // governed by the capture loop and requires no additional action.
     return;
   }
 
