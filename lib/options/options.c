@@ -773,7 +773,7 @@ options_t options_t_new_preserve_binary(const options_t *source) {
   return opts;
 }
 
-static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
+static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t *opts) {
   // Use static buffers to avoid SAFE_MALLOC and malloc before memory tracking is initialized
   static char log_filename_buf[OPTIONS_LOG_FILENAME_BUFFER_SIZE];
   static char default_log_path_buf[PLATFORM_MAX_PATH_LENGTH];
@@ -821,11 +821,11 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     // Validate and normalize the path
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path_buf, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
       SAFE_FREE(normalized_default_log);
     } else {
       // Validation failed - use the path as-is (validation may fail in debug builds)
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
+      SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
     }
 
     // Free log_dir allocated by get_log_dir() using SAFE_MALLOC
@@ -1177,10 +1177,22 @@ static asciichat_error_t validate_binary_option_position(int argc, char **argv, 
 
 static void initialize_binary_options(options_t *opts, asciichat_mode_t detected_mode,
                                       const binary_actions_t *actions) {
+  log_debug("initialize_binary_options: before systemd");
   opts->no_check_update = actions->no_check_update_flag_seen || platform_systemd_is_managed();
+  log_debug("initialize_binary_options: after systemd");
   opts->detected_mode = detected_mode;
-  if (!platform_systemd_is_managed()) {
-    char *log_filename = options_get_log_filepath(detected_mode, (*opts));
+  if (actions->has_action) {
+    // Immediate output actions must not allocate or validate a log path before
+    // the diagnostic allocator has completed initialization.
+#ifdef _WIN32
+    SAFE_STRNCPY(opts->log_file, "NUL", sizeof(opts->log_file));
+#else
+    SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
+#endif
+  } else if (!platform_systemd_is_managed()) {
+    log_debug("initialize_binary_options: before log path");
+    char *log_filename = options_get_log_filepath(detected_mode, opts);
+    log_debug("initialize_binary_options: after log path");
     SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   } else {
     SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
@@ -2364,6 +2376,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
+  log_debug("options_init: state initialized");
 
   // Discover binary actions before mode parsing so help and early exits need no media setup.
   handle_help_option(argc, argv);
@@ -2372,6 +2385,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
+  log_debug("options_init: binary actions scanned");
   set_action_flag(actions.has_action);
 
   asciichat_mode_t detected_mode = MODE_DISCOVERY;
@@ -2387,7 +2401,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   options_t opts = options_t_new();
+  log_debug("options_init: options constructed");
   initialize_binary_options(&opts, detected_mode, &actions);
+  log_debug("options_init: binary options initialized");
   bool handled = false;
   result = handle_immediate_actions(&opts, &actions, &handled);
   if (result != ASCIICHAT_OK || handled) {
