@@ -71,6 +71,9 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITH_BUNDLED_ZLIB OFF)
     set(LWS_WITH_SOCKS5 OFF)
     set(LWS_WITH_SPAWN OFF CACHE BOOL "Disable libwebsockets subprocess support on iOS" FORCE)
+    if(PLATFORM_IOS)
+        set(LWS_WITH_STUB OFF CACHE BOOL "Disable libwebsockets IPC stubs on iOS" FORCE)
+    endif()
     set(LWS_WITHOUT_DAEMONIZE ON)
     set(LWS_IPV6 ON)
     FetchContent_Declare(asciichat_libwebsockets
@@ -95,9 +98,12 @@ function(asciichat_build_libwebsockets)
     endif()
     if(PLATFORM_IOS AND TARGET websockets)
         get_target_property(_lws_sources websockets SOURCES)
-        # Keep the basic spawn implementation for the core stub, but omit the
-        # macOS-specific process-tree helper, which is unavailable on iOS.
-        list(FILTER _lws_sources EXCLUDE REGEX "(^|/)unix-spawn-tree\\.c$")
+        # libwebsockets' unix-spawn.c still references the tree callback when
+        # LWS_WITH_SPAWN is disabled, while the tree implementation itself is
+        # unavailable on iOS.  iOS does not use libwebsockets subprocess
+        # support, so omit both translation units instead of supplying an
+        # ascii-chat-side symbol stub.
+        list(FILTER _lws_sources EXCLUDE REGEX "(^|/)(unix-spawn(-tree)?|stub)\\.c$")
         set_property(TARGET websockets PROPERTY SOURCES "${_lws_sources}")
     endif()
     # An OpenSSL package prefix can also contain installed copies of libraries
