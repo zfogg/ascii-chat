@@ -13,7 +13,7 @@
 #include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/core.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <sodium.h>
 #include <libavcodec/avcodec.h>
 #include <uv.h>

@@ -37,8 +37,8 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/endian.h>

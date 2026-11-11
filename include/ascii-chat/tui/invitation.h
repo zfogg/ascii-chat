@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /** Render the discovery invitation into a frame without writing to the terminal.
  * An empty string shows creation progress; joining shows connection progress.

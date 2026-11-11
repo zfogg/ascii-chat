@@ -3,8 +3,10 @@
 #define UI_OUTPUT_TEXT_BUFFER_SIZE 4096
 
 #include <ascii-chat/ui/output.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>
 static atomic_ptr_t g_writer;

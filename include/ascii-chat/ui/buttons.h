@@ -1,7 +1,7 @@
 #pragma once
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 typedef struct {
   const char *label;
   keyboard_key_t shortcut;

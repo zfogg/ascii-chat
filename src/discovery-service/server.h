@@ -32,7 +32,7 @@ extern const network_connection_callbacks_t acds_network_callbacks;
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/limits.h>

@@ -2,14 +2,16 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/thread.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <string.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/audio/audio.h>
@@ -178,10 +180,10 @@ static void concurrent_contracts(void) {
   buffer_domain_config_t config = {4 * 1024 * 1024, 2 * 1024 * 1024, 0, false};
   cr_assert_eq(buffer_domain_create(&config, &stress.domain), ASCIICHAT_OK);
   atomic_store_u64(&stress.running, 4);
-  asciichat_thread_t workers[4], trimmer;
-  cr_assert_eq(acthread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
+  platform_thread_t workers[4], trimmer;
+  cr_assert_eq(platform_thread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(acthread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
+    cr_assert_eq(platform_thread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
     cr_assert_eq(thread_join(&workers[i], NULL), 0);
   cr_assert_eq(thread_join(&trimmer, NULL), 0);
@@ -248,10 +250,10 @@ static void concurrent_queue_contracts(void) {
   cr_assert(stress->queue);
   atomic_store_u64(&stress->producers, 2);
   producer_t producers[2] = {{stress, 0}, {stress, 1000}};
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (unsigned i = 0; i < 2; i++) {
-    cr_assert_eq(acthread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
-    cr_assert_eq(acthread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
+    cr_assert_eq(platform_thread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
+    cr_assert_eq(platform_thread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
   }
   for (unsigned i = 0; i < 4; i++)
     cr_assert_eq(thread_join(&threads[i], NULL), 0);
@@ -427,9 +429,9 @@ static void concurrent_references(void) {
   void *data = buffer_alloc(NULL, 128);
   cr_assert(data);
   memset(data, 42, 128);
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (unsigned i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
   for (unsigned i = 0; i < 4; ++i)
     cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert(buffer_is_unique(data));
@@ -466,13 +468,13 @@ static void concurrent_cold_start(void) {
     _Atomic(unsigned) ready = 0;
     _Atomic(bool) start = false;
     cold_start_worker_t workers[WORKERS] = {0};
-    asciichat_thread_t threads[WORKERS];
+    platform_thread_t threads[WORKERS];
     for (unsigned i = 0; i < WORKERS; ++i) {
       workers[i].ready = &ready;
       workers[i].start = &start;
       workers[i].media_result = ERROR_INVALID_STATE;
       workers[i].control_result = ERROR_INVALID_STATE;
-      cr_assert_eq(acthread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]),
+      cr_assert_eq(platform_thread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]),
                    ASCIICHAT_OK);
     }
     uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;

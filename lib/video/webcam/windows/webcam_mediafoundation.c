@@ -17,7 +17,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/debug/named.h>
 #include <mfapi.h>
 #include <mfidl.h>

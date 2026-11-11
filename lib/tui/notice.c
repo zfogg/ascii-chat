@@ -2,9 +2,9 @@
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/invitation.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/question.h>
+#include <libplatform/filesystem.h>
+#include <ascii-chat/os/keyboard.h>
 #include <stdatomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
@@ -372,8 +372,8 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
   if (!text)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing notice text");
   bool tty = platform_isatty(STDERR_FILENO);
-  bool color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
-  bool unicode = tty && terminal_should_use_utf8();
+  bool color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO, options_terminal_settings());
+  bool unicode = tty && terminal_should_use_utf8(GET_OPTION(force_utf8));
   if (severity != UI_NOTICE_FATAL && tty && ui_controller_is_presenting() && !ui_controller_is_owner() &&
       !GET_OPTION(snapshot_mode)) {
     size_t text_bytes = strlen(text) + 1;
@@ -425,8 +425,8 @@ asciichat_error_t ui_notice_present_first_use(const char *title, const char *tex
   if (!snapshot)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate first-use notice");
   snapshot->severity = UI_NOTICE_INFO;
-  snapshot->unicode = terminal_should_use_utf8();
-  snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
+  snapshot->unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
+  snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO, options_terminal_settings());
   snapshot->started = time_get_ns();
   snapshot->title_offset = text_bytes;
   snapshot->marker_offset = text_bytes + title_bytes;
@@ -501,7 +501,7 @@ bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity
   g_prompt_kind = kind;
   ui_notice_severity_t previous = g_prompt_severity;
   g_prompt_severity = severity;
-  if (terminal_can_prompt_user())
+  if (terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
     log_msg(severity == UI_NOTICE_FATAL     ? LOG_FATAL
             : severity == UI_NOTICE_DANGER  ? LOG_ERROR
             : severity == UI_NOTICE_WARNING ? LOG_WARN

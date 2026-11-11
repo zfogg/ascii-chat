@@ -19,7 +19,7 @@
 include(InstallRequiredSystemLibraries)
 
 # Warn if trying to use this on Linux Release builds (should be musl static instead)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND PLATFORM_LINUX AND NOT USE_MUSL)
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND PLATFORM_LINUX AND NOT USE_MUSL)
     message(WARNING "${BoldYellow}Release build on Linux without USE_MUSL${ColorReset}")
     message(WARNING "  Linux releases should use musl static builds for portability")
     message(WARNING "  Use: ${BoldCyan}cmake -B build -DUSE_MUSL=ON -DCMAKE_BUILD_TYPE=Release${ColorReset}")
@@ -294,7 +294,7 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/"
 )
 
 # Install pkg-config files for both shared and static libraries
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Configure shared library .pc file (simple - no transitive deps needed)
     configure_file(
         "${CMAKE_SOURCE_DIR}/lib/pkgconfig/libasciichat.pc.in"

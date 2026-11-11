@@ -5,7 +5,7 @@
 #include <sodium.h>
 #include <uv.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/platform/systemd.h>
+#include <libplatform/systemd.h>
 #include <uv.h>
 
 static void mcp_stats_view(stats_view_t *view, void *data) {

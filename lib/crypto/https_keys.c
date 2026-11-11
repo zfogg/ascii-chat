@@ -14,9 +14,9 @@
 #include <ascii-chat/common.h>
 #include <defer.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/util/string.h>
+#include <libplatform/process.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/url.h> // For url_parse()
 #include <ascii-chat/network/http/client/client.h>
 #include <string.h>

@@ -8,13 +8,15 @@
  */
 
 #include <ascii-chat/terminal/fd/reader.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 
 typedef struct terminal_fd_reader_s {
   FILE *fp; // File pointer created from FD

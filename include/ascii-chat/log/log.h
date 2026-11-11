@@ -23,8 +23,10 @@
 
 #pragma once
 
+#include <ascii-chat/asciichat_errno.h>
+
 #include <stdarg.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 // Use atomic.h API for all platforms (C and C++)
 // atomic_t is available in both C and C++ contexts
 #define LOG_ATOMIC_UINT64 atomic_t
@@ -46,8 +48,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "../platform/socket.h"
-#include "../platform/system.h"
+#include <libplatform/socket.h>
+#include <libplatform/system.h>
 
 /* Forward declarations */
 struct crypto_context_t;
@@ -55,6 +57,7 @@ struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included
 typedef struct color_scheme_t color_scheme_t;
 struct session_log_buffer; /* Opaque - full definition in session/session_log_buffer.h */
 typedef struct session_log_buffer session_log_buffer_t;
+
 
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"

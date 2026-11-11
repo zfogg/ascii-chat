@@ -2,7 +2,7 @@
 #include <ascii-chat/network/http/server/server.h>
 #include <ascii-chat/stats/runtime.h>
 
-#include <ascii-chat/platform/string.h>
+#include <libplatform/util/string.h>
 #include <sodium.h>
 #include <string.h>
 

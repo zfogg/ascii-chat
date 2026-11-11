@@ -2,7 +2,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <portaudio.h>
 #include <string.h>

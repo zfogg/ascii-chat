@@ -21,13 +21,13 @@
 
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/mutex.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/system.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 
 #include <ctype.h>
@@ -200,7 +200,7 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
     }
   }
 
-  asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+  asciichat_instr_runtime_t *runtime = platform_tls_get(g_runtime_key);
   if (runtime != NULL) {
     return runtime;
   }
@@ -226,7 +226,7 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
 
   asciichat_instr_runtime_configure(runtime);
 
-  if (ascii_tls_set(g_runtime_key, runtime) != 0) {
+  if (platform_tls_set(g_runtime_key, runtime) != 0) {
     SAFE_FREE(runtime);
     return NULL;
   }
@@ -270,12 +270,12 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime) {
 void asciichat_instr_runtime_global_destroy(void) {
   if (lifecycle_shutdown(&g_runtime_lc)) {
     g_disable_write = true;
-    asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+    asciichat_instr_runtime_t *runtime = platform_tls_get(g_runtime_key);
     if (runtime != NULL) {
-      ascii_tls_set(g_runtime_key, NULL);
+      platform_tls_set(g_runtime_key, NULL);
       asciichat_instr_runtime_destroy(runtime);
     }
-    ascii_tls_key_delete(g_runtime_key);
+    platform_tls_key_delete(g_runtime_key);
     g_ticks_initialized = false;
     g_start_ns = 0;
     g_coverage_enabled = false;
@@ -470,7 +470,7 @@ void asciichat_instr_log_pc(uintptr_t program_counter) {
 
 static void asciichat_instr_runtime_init_once(void) {
   // Called by lifecycle_init_once winner
-  (void)ascii_tls_key_create(&g_runtime_key, asciichat_instr_runtime_tls_destructor);
+  (void)platform_tls_key_create(&g_runtime_key, asciichat_instr_runtime_tls_destructor);
   const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
   if (output_dir_env != NULL && output_dir_env[0] != '\0') {
     if (platform_is_directory(output_dir_env) && strlen(output_dir_env) < sizeof(g_output_dir)) {

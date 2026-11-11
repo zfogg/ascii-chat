@@ -67,7 +67,7 @@ static asciichat_error_t transaction_audio_start(audio_context_t *audio) {
   ++start_calls;
   return start_failure_at == start_calls ? ERROR_AUDIO : ASCIICHAT_OK;
 }
-static int transaction_thread_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
+static int transaction_thread_create(platform_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
   (void)thread;
   (void)name;
   ++loader_starts;
@@ -75,7 +75,7 @@ static int transaction_thread_create(asciichat_thread_t *thread, const char *nam
   loader_arg = arg;
   return 0;
 }
-static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
+static int transaction_thread_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   if (join_failures) {
@@ -92,7 +92,7 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
 #define media_source_read_audio transaction_audio_read
 #define audio_stop_duplex transaction_audio_stop
 #define audio_start_duplex transaction_audio_start
-#define acthread_create transaction_thread_create
+#define platform_thread_create transaction_thread_create
 #define thread_join transaction_thread_join
 #include "../../../src/common/session/capture.c"
 #undef media_source_create
@@ -103,7 +103,7 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
 #undef media_source_read_audio
 #undef audio_stop_duplex
 #undef audio_start_duplex
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 
 static char first_path[PLATFORM_MAX_PATH_LENGTH], second_path[PLATFORM_MAX_PATH_LENGTH];

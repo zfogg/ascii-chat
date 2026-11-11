@@ -18,9 +18,9 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/thread.h>
+#include <libplatform/process.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/log/log.h>
@@ -116,7 +116,7 @@ static atomic_ptr_t host;
 static atomic_uint readers;
 static atomic_bool stopping;
 static atomic_bool worker_done;
-static asciichat_thread_t worker;
+static platform_thread_t worker;
 static bool worker_started;
 static asciichat_error_t drain_result;
 static int minimum_log_level;
@@ -681,7 +681,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   atomic_store(&stopping, false);
   atomic_store(&exporter_queue_capacity, config.exporter.queue_capacity);
   atomic_store(&worker_done, false);
-  if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
+  if (platform_thread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
     gotel_command_args_destroy(&command_args);
     return SET_ERRNO(ERROR_THREAD, "Cannot start telemetry exporter");

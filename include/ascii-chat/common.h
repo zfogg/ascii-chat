@@ -31,7 +31,7 @@
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include "platform/api.h" // IWYU pragma: keep
+#include "os/api.h" // IWYU pragma: keep
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
@@ -132,8 +132,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  *   FATAL(ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
  */
 
-/* Include platform system header for platform_print_backtrace */
-#include "platform/system.h" // IWYU pragma: keep
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
@@ -468,7 +466,8 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #endif
 
 /* Platform-safe strerror */
-#include "platform/abstraction.h" // IWYU pragma: keep
+#include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */
@@ -528,7 +527,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
   do {                                                                                                                 \
-    if (acthread_create(&(thread), (func), (arg)) != 0) {                                                              \
+    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                              \
       log_error("Failed to create thread: %s", #func);                                                                 \
       return -1;                                                                                                       \
     }                                                                                                                  \

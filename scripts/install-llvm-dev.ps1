@@ -10,6 +10,17 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Get-FileSha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $digest = [System.Security.Cryptography.SHA256]::Create().ComputeHash($stream)
+        return ([System.BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Destination) {
     $suffix = if ($Architecture -eq 'x86_64') { '' } else { '-aarch64' }
@@ -84,12 +95,12 @@ if (-not (Test-Path -LiteralPath $archive)) {
             Start-Sleep -Seconds ([int](5 * $attempt))
         }
     }
-    if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash -ne $hash) {
+    if ((Get-FileSha256 $partial) -ne $hash.ToLowerInvariant()) {
         throw "LLVM development archive SHA-256 mismatch: $partial"
     }
     Move-Item -LiteralPath $partial -Destination $archive
 }
-if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $hash) {
+if ((Get-FileSha256 $archive) -ne $hash.ToLowerInvariant()) {
     throw "LLVM development archive SHA-256 mismatch: $archive"
 }
 $tar = Join-Path $env:SystemRoot 'System32/tar.exe'

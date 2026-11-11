@@ -10,7 +10,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

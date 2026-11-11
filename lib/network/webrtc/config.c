@@ -1,6 +1,8 @@
 #include <ascii-chat/network/webrtc/config.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
 

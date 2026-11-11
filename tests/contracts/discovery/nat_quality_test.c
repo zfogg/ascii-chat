@@ -131,8 +131,8 @@ Test(nat_quality, real_stun_probe_records_only_supported_observations_and_recove
     char endpoint[64];
     safe_snprintf(endpoint, sizeof(endpoint), "127.0.0.1:%u", ntohs(address.sin_port));
     response_t response = {.mode = mode};
-    asciichat_thread_t thread;
-    cr_assert_eq(acthread_create(&thread, "nat-stun-reply", stun_reply, &response), 0);
+    platform_thread_t thread;
+    cr_assert_eq(platform_thread_create(&thread, "nat-stun-reply", stun_reply, &response), 0);
     nat_quality_t quality;
     cr_assert_eq(nat_detect_quality(&quality, endpoint, 0), ASCIICHAT_OK);
     cr_assert_not(errno_notifications_pending(), "Recovered STUN failure must not notify the UI");

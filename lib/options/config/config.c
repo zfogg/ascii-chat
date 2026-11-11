@@ -25,11 +25,11 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>

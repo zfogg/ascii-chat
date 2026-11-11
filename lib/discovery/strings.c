@@ -28,7 +28,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/log/log.h>
 
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 // ============================================================================
 // Word Cache Implementation (Hashtable for O(1) validation)

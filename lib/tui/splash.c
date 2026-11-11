@@ -31,15 +31,17 @@
 #include "session/display.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>
@@ -51,7 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -142,7 +144,7 @@ static struct {
   atomic_t is_running;               // true while animation should continue
   atomic_t should_stop;              // set to true when splash should stop
   atomic_t thread_created;           // true if monitor thread was successfully created
-  asciichat_thread_t monitor_thread; // monitor thread handle
+  platform_thread_t monitor_thread; // monitor thread handle
   uint64_t start_time_ns;            // when splash was started (for minimum display time)
   atomic_t intro_done_time_ns;       // when splash_intro_done() was called
 } g_splash_state = {
@@ -285,7 +287,7 @@ static void splash_help(terminal_size_t size, const void *snapshot) {
 static void *splash_monitor_thread(void *arg) {
   (void)arg;
   bool keyboard_enabled = terminal_is_interactive();
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
   splash_header_ctx_t previous = {0};
   bool published = false;
   while (!atomic_load_bool(&g_splash_state.should_stop) && !shutdown_is_requested()) {
@@ -410,7 +412,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  int err = acthread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
+  int err = platform_thread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash monitor thread: error=%d", err);
     atomic_store_bool(&g_splash_state.thread_created, false);

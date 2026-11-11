@@ -25,9 +25,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/filesystem.h>
+#include <ascii-chat/os/question.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>
 

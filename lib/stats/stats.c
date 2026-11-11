@@ -1,11 +1,11 @@
 #include <ascii-chat/stats/stats.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdatomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 
 // Each duration recorder owns a shard. Readers use sequence checks to copy a
 // complete observation without making capture, conversion, and output contend.

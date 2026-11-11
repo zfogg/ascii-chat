@@ -91,7 +91,12 @@
 #define OPTIONS_COMMON_H
 
 #include "../options/options.h"
-#include "../platform/terminal.h"
+#ifdef _WIN32
+#include "../os/windows/getopt.h"
+#else
+#include <getopt.h>
+#endif
+#include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

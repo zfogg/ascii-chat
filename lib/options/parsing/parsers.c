@@ -254,7 +254,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  render_mode_t *render_mode = (render_mode_t *)dest;
+  terminal_render_mode_t *render_mode = (terminal_render_mode_t *)dest;
   char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 

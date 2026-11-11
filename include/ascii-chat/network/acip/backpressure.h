@@ -1,7 +1,7 @@
 #pragma once
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/traffic.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

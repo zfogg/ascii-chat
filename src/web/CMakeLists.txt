@@ -125,7 +125,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/wasm/lifecycle.c
     ${LIB_ROOT}/platform/process_title.c
     ${LIB_ROOT}/platform/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c

@@ -1,4 +1,7 @@
 #pragma once
+#include <ascii-chat/asciichat_errno.h>
+
+#include <ascii-chat/asciichat_errno.h>
 
 /**
  * @file util/time.h
@@ -43,6 +46,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <libplatform/time.h>
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
 // Include the appropriate header based on the compilation mode.
 #if defined(__cplusplus) && defined(_WIN32)
@@ -54,7 +58,7 @@ using std::memory_order_relaxed;
 #define TIME_ATOMIC_UINT64 std::atomic<uint64_t>
 #define TIME_ATOMIC_UINT64_INIT(val) {val}
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 // Use atomic_t for rate-limiting counters
 #define TIME_ATOMIC_UINT64 atomic_t
 #define TIME_ATOMIC_UINT64_INIT(val) {0}
@@ -69,7 +73,7 @@ using std::memory_order_relaxed;
 #include <ascii-chat-deps/sokol/sokol_time.h>
 
 // Include platform thread for thread ID in timer names
-#include "../platform/thread.h"
+#include <libplatform/thread.h>
 
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
@@ -98,7 +102,6 @@ using std::memory_order_relaxed;
  * uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
  * ```
  */
-uint64_t time_get_ns(void);
 
 /**
  * @brief Get current wall-clock (real) time in nanoseconds
@@ -113,7 +116,6 @@ uint64_t time_get_ns(void);
  * Note: This time can jump backward if system clock is adjusted. For measuring
  * elapsed time, use time_get_ns() instead.
  */
-uint64_t time_get_realtime_ns(void);
 
 /**
  * @brief Sleep for specified nanoseconds
@@ -886,4 +888,3 @@ uint64_t time_timespec_to_ns(const struct timespec *ts);
  *
  * Useful for nanosleep() or other system calls that require struct timespec.
  */
-void time_ns_to_timespec(uint64_t ns, struct timespec *ts);

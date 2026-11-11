@@ -82,8 +82,10 @@
 #include "session/keyboard_handler.h"
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/splash.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/ascii.h>
@@ -93,7 +95,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #ifndef _WIN32
 #include <unistd.h>

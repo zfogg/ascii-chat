@@ -1,6 +1,6 @@
 #include "errors.h"
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/path.h>
 #include <emscripten/emscripten.h>
 

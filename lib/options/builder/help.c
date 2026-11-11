@@ -23,7 +23,8 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/layout.h>
-#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/common/constants.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/log/log.h>
@@ -111,7 +112,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   if (!config)
     return 0;
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   int max_col_width = 0;
   char temp_buf[BUFFER_SIZE_MEDIUM];
@@ -251,7 +252,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
   }
 
   int max_width = 0;
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
   char temp_buf[BUFFER_SIZE_MEDIUM];
 
   if (strcmp(section_type, "usage") == 0) {
@@ -460,7 +461,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
     return;
   }
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
 
@@ -512,7 +513,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     return;
   }
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES"));
 
@@ -693,7 +694,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
  * @brief Print MODE-OPTIONS section programmatically
  */
 static void print_mode_options_section(FILE *stream, int term_width, int max_col_width) {
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   // Print section header with colored "MODE-OPTIONS:" label
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS"));

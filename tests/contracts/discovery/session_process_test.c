@@ -171,8 +171,8 @@ static void discovery_session_check_tcp(int scenario) {
     cr_assert_eq(session_host_destroy(host), ASCIICHAT_OK);
     return;
   }
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "discovery-test-server", discovery_session_server, &server), 0);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "discovery-test-server", discovery_session_server, &server), 0);
   asciichat_error_t result = discovery_session_step(&session, 0);
   cr_assert(session.participant_ctx);
   cr_assert(result != ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED && session.error == result);

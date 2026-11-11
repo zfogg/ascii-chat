@@ -1,5 +1,5 @@
 #pragma once
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 typedef struct {
   int body_row, body_rows, detail_row, footer_row;
 /**

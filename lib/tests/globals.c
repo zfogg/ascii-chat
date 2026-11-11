@@ -4,12 +4,12 @@
  * @brief 🔗 Global symbol stubs for test executables to satisfy linker dependencies
  */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 
 /**
  * @brief Test environment initialization (runs before main)

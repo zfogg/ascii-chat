@@ -13,10 +13,12 @@
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/grep.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
@@ -27,7 +29,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 const char *ui_status_log_controls(void) {
   static _Thread_local char controls[512];

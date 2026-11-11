@@ -86,20 +86,20 @@ static asciichat_error_t owner_advertise(asciichat_mdns_t *context, const asciic
   ++advertised;
   return fail_advertisement ? ERROR_NETWORK : ASCIICHAT_OK;
 }
-static int owner_thread(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *data) {
+static int owner_thread(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *data) {
   (void)thread;
   (void)name;
   (void)fn;
   (void)data;
   return fail_worker ? -1 : 0;
 }
-static int owner_join(asciichat_thread_t *thread, void **result) {
+static int owner_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   ++joined;
   return 0;
 }
-static int owner_join_timeout(asciichat_thread_t *thread, void **result, uint64_t timeout) {
+static int owner_join_timeout(platform_thread_t *thread, void **result, uint64_t timeout) {
   (void)timeout;
   return owner_join(thread, result);
 }
@@ -123,7 +123,7 @@ static void owner_status(const ui_status_t *status) {
 #define asciichat_mdns_init owner_mdns_init
 #define asciichat_mdns_destroy owner_mdns_destroy
 #define asciichat_mdns_advertise owner_advertise
-#define acthread_create owner_thread
+#define platform_thread_create owner_thread
 #define thread_join owner_join
 #define thread_join_timeout owner_join_timeout
 #define time_sleep_ns owner_sleep
@@ -144,7 +144,7 @@ static void owner_status(const ui_status_t *status) {
 #undef asciichat_mdns_init
 #undef asciichat_mdns_destroy
 #undef asciichat_mdns_advertise
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 #undef thread_join_timeout
 #undef time_sleep_ns
