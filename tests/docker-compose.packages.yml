@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Debian build service for DEB packages + tarball
   debian-release:
@@ -10,6 +8,8 @@ services:
     volumes:
       - ..:/app:rw
       - debian-deps:/deps:rw
+    cap_add:
+      - SYS_PTRACE
     working_dir: /app
     environment:
       - DEPS_CACHE_ROOT=/deps
@@ -31,6 +31,8 @@ services:
     volumes:
       - ..:/app:rw
       - fedora-deps:/deps:rw
+    cap_add:
+      - SYS_PTRACE
     working_dir: /app
     environment:
       - DEPS_CACHE_ROOT=/deps
