@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,6 +17,9 @@ asciichat_error_t ui_popup_frame_titled(frame_buffer_t *output, int row, int col
                                         log_color_t color, const char *title);
 
 /** A compact modal drawn over an already-rendered terminal frame. */
+/**
+ * @brief When code needs to work with ui popup, it keeps `title`, `lines`, `line_count`, `footer` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 typedef struct {
   const char *title;
   const char *const *lines;

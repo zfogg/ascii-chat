@@ -1,7 +1,7 @@
 #pragma once
 
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <stdbool.h>
 
 // Fatal Criterion assertions unwind to the test thread's jump buffer. Worker

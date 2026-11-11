@@ -50,6 +50,12 @@ static media_source_t *transaction_source_create(media_source_type_t type, const
     return media_source_create(MEDIA_SOURCE_TEST, NULL);
   return media_source_create(type, path);
 }
+static media_source_t *transaction_source_create_interruptible(media_source_type_t type, const char *path,
+                                                               bool (*cancel)(void *), void *data) {
+  (void)cancel;
+  (void)data;
+  return transaction_source_create(type, path);
+}
 static void transaction_source_destroy(media_source_t *source) {
   if (source)
     ++source_destroys;
@@ -80,7 +86,7 @@ static asciichat_error_t transaction_audio_start(audio_context_t *audio) {
   ++start_calls;
   return start_failure_at == start_calls ? ERROR_AUDIO : ASCIICHAT_OK;
 }
-static int transaction_thread_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
+static int transaction_thread_create(platform_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
   (void)thread;
   (void)name;
   ++loader_starts;
@@ -90,7 +96,7 @@ static int transaction_thread_create(asciichat_thread_t *thread, const char *nam
   loader_arg = arg;
   return 0;
 }
-static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
+static int transaction_thread_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   if (join_failures) {
@@ -100,13 +106,14 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
   return 0;
 }
 #define media_source_create transaction_source_create
+#define media_source_create_interruptible transaction_source_create_interruptible
 #define media_source_destroy transaction_source_destroy
 #define media_source_start_video transaction_video_start
 #define media_source_has_audio transaction_has_audio
 #define media_source_read_audio transaction_audio_read
 #define audio_stop_duplex transaction_audio_stop
 #define audio_start_duplex transaction_audio_start
-#define acthread_create transaction_thread_create
+#define platform_thread_create transaction_thread_create
 #define thread_join transaction_thread_join
 #define mutex_init transaction_mutex
 #define media_source_seek transaction_seek
@@ -122,13 +129,14 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
 #undef mutex_init
 #undef media_source_seek
 #undef media_source_create
+#undef media_source_create_interruptible
 #undef media_source_destroy
 #undef media_source_start_video
 #undef media_source_has_audio
 #undef media_source_read_audio
 #undef audio_stop_duplex
 #undef audio_start_duplex
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 
 static char first_path[PLATFORM_MAX_PATH_LENGTH], second_path[PLATFORM_MAX_PATH_LENGTH];

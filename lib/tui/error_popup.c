@@ -28,7 +28,9 @@
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
@@ -39,7 +41,7 @@
 static atomic_flag g_guard = ATOMIC_FLAG_INIT;
 static asciichat_error_context_t g_entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
 static size_t g_count, g_selected, g_scroll, g_body_rows = 1, g_page_rows = 1;
-static uint64_t g_latest, g_dropped;
+static uint64_t g_latest, g_displayed_latest, g_dropped;
 
 static void lock_state(void) {
   while (atomic_flag_test_and_set_explicit(&g_guard, memory_order_acquire)) {
@@ -84,7 +86,7 @@ void ui_error_popup_key(keyboard_key_t key) {
   case 'q':
   case '\r':
   case '\n':
-    dismiss = g_latest;
+    dismiss = g_displayed_latest;
     break;
   case KEY_LEFT:
     if (g_selected)
@@ -266,7 +268,8 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     if (trace.count) {
       backtrace_symbolize(&trace);
       if (trace.symbols)
-        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, NULL);
+        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
+                                backtrace_filter_error_internal);
       backtrace_t_free(&trace);
     }
   }
@@ -300,7 +303,7 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   lock_state();
   refresh_locked();
   size_t count = g_count, selected = g_selected;
-  uint64_t dropped = g_dropped;
+  uint64_t displayed_latest = g_latest, dropped = g_dropped;
   if (count)
     error = g_entries[selected];
   unlock_state();
@@ -312,7 +315,11 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
     ui_too_small_render(out, size, minimum);
     return;
   }
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+  lock_state();
+  g_displayed_latest = displayed_latest;
+  unlock_state();
+  bool colors = !GET_OPTION(strip_ansi) &&
+                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   int width = MIN(size.cols - 4, 100);
   int body_width = width - 6;
   if (g_cached_id != error.error_id || g_cached_width != body_width || g_cached_color != colors)
@@ -365,7 +372,7 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
 void ui_error_popup_reset(void) {
   lock_state();
   g_count = g_selected = g_scroll = 0;
-  g_latest = g_dropped = 0;
+  g_latest = g_displayed_latest = g_dropped = 0;
   unlock_state();
   g_cached_id = 0;
 }
@@ -384,8 +391,8 @@ void ui_error_popup_preserve(int fd, terminal_size_t size) {
   bool previous = errno_notifications_suppress(true);
   frame_buffer_t *output = frame_buffer_create(0, 0);
   if (output) {
-    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd);
-    bool unicode = terminal_should_use_utf8();
+    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd, options_terminal_settings());
+    bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
     int width = MIN(size.cols > 0 ? size.cols - 1 : 79, 100);
     width = MAX(width, 8);
     int body_width = width - 4;

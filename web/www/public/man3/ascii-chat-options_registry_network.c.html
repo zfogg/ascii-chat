@@ -1,618 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>network.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">network.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">network.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">network.c - Network protocol options.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const <b>registry_entry_t</b> <b>g_network_entries</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Network protocol options.</p>
-<p class="Pp">Options for controlling ports, compression, discovery, WebRTC, and
-    network connectivity.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>options/registry/network.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>registry_entry_t</b> g_network_entries[]</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file
-    <b>options/registry/network.c</b>.</p>
-<pre>21                                            {
-22     // NETWORK GROUP - port and client management
-23     {&quot;port&quot;,
-24      'p',
-25      OPTION_TYPE_CALLBACK,
-26      offsetof(options_t, port),
-27      NULL, // Use mode_default_getter instead
-28      sizeof(int),
-29      &quot;Port to host a server or discovery-service on, or port to connect to a server as a client (default: 27224 for &quot;
-30      &quot;server/client, 27225 for discovery-service).&quot;,
-31      &quot;NETWORK&quot;,
-32      NULL,
-33      false,
-34      &quot;ASCII_CHAT_PORT&quot;,
-35      NULL,
-36      parse_port_option,
-37      false,
-38      false,
-39      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-40      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
-41      get_default_port},
-42     {&quot;websocket-port&quot;,
-43      '\0',
-44      OPTION_TYPE_INT,
-45      offsetof(options_t, websocket_port),
-46      NULL, // Use mode_default_getter instead
-47      sizeof(int),
-48      &quot;WebSocket server port (default: 27226 for server, 27227 for discovery-service, 443 when TLS cert+key provided).&quot;,
-49      &quot;NETWORK&quot;,
-50      NULL,
-51      false,
-52      &quot;ASCII_CHAT_WEBSOCKET_PORT&quot;,
-53      NULL,
-54      NULL,
-55      false,
-56      false,
-57      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-58      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
-59      get_default_websocket_port},
-60     {&quot;websocket-tls-cert&quot;,
-61      '\0',
-62      OPTION_TYPE_STRING,
-63      offsetof(options_t, websocket_tls_cert),
-64      NULL,
-65      OPTIONS_BUFF_SIZE,
-66      &quot;WebSocket TLS certificate file path for WSS (secure WebSocket) support (server/discovery-service only).&quot;,
-67      &quot;NETWORK&quot;,
-68      NULL,
-69      false,
-70      &quot;ASCII_CHAT_WEBSOCKET_TLS_CERT&quot;,
-71      NULL,
-72      NULL,
-73      false,
-74      false,
-75      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-76      {.input_type = OPTION_INPUT_STRING},
-77      NULL},
-78     {&quot;websocket-tls-key&quot;,
-79      '\0',
-80      OPTION_TYPE_STRING,
-81      offsetof(options_t, websocket_tls_key),
-82      NULL,
-83      OPTIONS_BUFF_SIZE,
-84      &quot;WebSocket TLS private key file path for WSS (secure WebSocket) support (server/discovery-service only).&quot;,
-85      &quot;NETWORK&quot;,
-86      NULL,
-87      false,
-88      &quot;ASCII_CHAT_WEBSOCKET_TLS_KEY&quot;,
-89      NULL,
-90      NULL,
-91      false,
-92      false,
-93      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-94      {.input_type = OPTION_INPUT_STRING},
-95      NULL},
-96     {&quot;websocket-tls-key-password&quot;,
-97      '\0',
-98      OPTION_TYPE_STRING,
-99      offsetof(options_t, websocket_tls_key_password),
-100      NULL,
-101      OPTIONS_BUFF_SIZE,
-102      &quot;Password for password-protected WebSocket TLS private key (use ASCII_CHAT_WEBSOCKET_TLS_KEY_PASSWORD env var for &quot;
-103      &quot;security).&quot;,
-104      &quot;NETWORK&quot;,
-105      NULL,
-106      false,
-107      &quot;ASCII_CHAT_WEBSOCKET_TLS_KEY_PASSWORD&quot;,
-108      NULL,
-109      NULL,
-110      false,
-111      false,
-112      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-113      {.input_type = OPTION_INPUT_STRING},
-114      NULL},
-115     {&quot;max-clients&quot;,
-116      '\0',
-117      OPTION_TYPE_INT,
-118      offsetof(options_t, max_clients),
-119      &amp;default_max_clients_value,
-120      sizeof(int),
-121      &quot;Maximum concurrent clients.&quot;,
-122      &quot;NETWORK&quot;,
-123      NULL,
-124      false,
-125      &quot;ASCII_CHAT_MAX_CLIENTS&quot;,
-126      NULL,
-127      NULL,
-128      false,
-129      false,
-130      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-131      {.numeric_range = {1, 99, 1}, .examples = g_maxclients_examples, .input_type = OPTION_INPUT_NUMERIC},
-132      NULL},
-133     {&quot;reconnect-attempts&quot;,
-134      '\0',
-135      OPTION_TYPE_INT,
-136      offsetof(options_t, reconnect_attempts),
-137      &amp;default_reconnect_attempts_value,
-138      sizeof(int),
-139      &quot;Number of reconnection attempts before giving up (-1=infinite, 0=none).&quot;,
-140      &quot;NETWORK&quot;,
-141      NULL,
-142      false,
-143      &quot;ASCII_CHAT_RECONNECT_ATTEMPTS&quot;,
-144      NULL,
-145      NULL,
-146      false,
-147      false,
-148      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-149      {.numeric_range = {-1, 99, 1}, .examples = g_reconnect_examples, .input_type = OPTION_INPUT_NUMERIC},
-150      NULL},
-151     {&quot;port-forwarding&quot;,
-152      '\0',
-153      OPTION_TYPE_BOOL,
-154      offsetof(options_t, enable_upnp),
-155      &amp;default_enable_upnp_value,
-156      sizeof(bool),
-157      &quot;Use UPnP/NAT-PMP port mapping to open a port in your router to ascii-chat (might fail with some routers).&quot;,
-158      &quot;NETWORK&quot;,
-159      NULL,
-160      false,
-161      &quot;ASCII_CHAT_PORT_FORWARDING&quot;,
-162      NULL,
-163      NULL,
-164      false,
-165      false,
-166      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
-167      {0},
-168      NULL},
-169     {&quot;scan&quot;,
-170      '\0',
-171      OPTION_TYPE_BOOL,
-172      offsetof(options_t, lan_discovery),
-173      &amp;default_lan_discovery_value,
-174      sizeof(bool),
-175      &quot;Scan for servers on local network via mDNS.&quot;,
-176      &quot;NETWORK&quot;,
-177      NULL,
-178      false,
-179      &quot;ASCII_CHAT_SCAN&quot;,
-180      NULL,
-181      NULL,
-182      false,
-183      false,
-184      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-185      {0},
-186      NULL},
-187 
-188     // NETWORK GROUP - compression options
-189     {&quot;compression-level&quot;,
-190      '\0',
-191      OPTION_TYPE_INT,
-192      offsetof(options_t, compression_level),
-193      &amp;default_compression_level_value,
-194      sizeof(int),
-195      &quot;zstd compression level (1-9).&quot;,
-196      &quot;NETWORK&quot;,
-197      NULL,
-198      false,
-199      &quot;ASCII_CHAT_COMPRESSION_LEVEL&quot;,
-200      NULL,
-201      NULL,
-202      false,
-203      false,
-204      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-205      {.numeric_range = {1, 9, 1}, .examples = g_compression_examples, .input_type = OPTION_INPUT_NUMERIC},
-206      NULL},
-207     {&quot;no-compress&quot;,
-208      '\0',
-209      OPTION_TYPE_BOOL,
-210      offsetof(options_t, no_compress),
-211      &amp;default_no_compress_value,
-212      sizeof(bool),
-213      &quot;Disable compression.&quot;,
-214      &quot;NETWORK&quot;,
-215      NULL,
-216      false,
-217      &quot;ASCII_CHAT_NO_COMPRESS&quot;,
-218      NULL,
-219      NULL,
-220      false,
-221      false,
-222      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-223      {0},
-224      NULL},
-225 
-226     // NETWORK GROUP - discovery service options
-227     {&quot;discovery-service&quot;,
-228      '\0',
-229      OPTION_TYPE_STRING,
-230      offsetof(options_t, discovery_server),
-231      OPT_ENDPOINT_DISCOVERY_SERVICE,
-232      0,
-233      &quot;Discovery service endpoint (IP address or hostname).&quot;,
-234      &quot;NETWORK&quot;,
-235      NULL,
-236      false,
-237      &quot;ASCII_CHAT_DISCOVERY_SERVER&quot;,
-238      NULL,
-239      NULL,
-240      false,
-241      false,
-242      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-243      {0},
-244      NULL},
-245     {&quot;discovery-service-port&quot;,
-246      '\0',
-247      OPTION_TYPE_INT,
-248      offsetof(options_t, discovery_port),
-249      &amp;default_discovery_port_value,
-250      sizeof(int),
-251      &quot;Discovery service port (1-65535).&quot;,
-252      &quot;NETWORK&quot;,
-253      NULL,
-254      false,
-255      &quot;ASCII_CHAT_DISCOVERY_SERVICE_PORT&quot;,
-256      NULL,
-257      NULL,
-258      false,
-259      false,
-260      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-261      {0},
-262      NULL},
-263     {&quot;discovery-service-url&quot;,
-264      '\0',
-265      OPTION_TYPE_STRING,
-266      offsetof(options_t, discovery_service_url),
-267      NULL,
-268      OPTIONS_BUFF_SIZE,
-269      &quot;Discovery service WebSocket URL (ws:// or wss://). Mutually exclusive with --discovery-service-port.&quot;,
-270      &quot;NETWORK&quot;,
-271      NULL,
-272      false,
-273      &quot;ASCII_CHAT_DISCOVERY_SERVICE_URL&quot;,
-274      NULL,
-275      NULL,
-276      false,
-277      false,
-278      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-279      {0},
-280      NULL},
-281     {&quot;discovery-expose-ip&quot;,
-282      '\0',
-283      OPTION_TYPE_BOOL,
-284      offsetof(options_t, discovery_expose_ip),
-285      &amp;default_discovery_expose_ip_value,
-286      sizeof(bool),
-287      &quot;Allow public IP disclosure in discovery sessions (requires confirmation).&quot;,
-288      &quot;NETWORK&quot;,
-289      NULL,
-290      false,
-291      &quot;ASCII_CHAT_DISCOVERY_EXPOSE_IP&quot;,
-292      NULL,
-293      NULL,
-294      false,
-295      false,
-296      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-297      {0},
-298      NULL},
-299     {&quot;discovery&quot;,
-300      '\0',
-301      OPTION_TYPE_BOOL,
-302      offsetof(options_t, discovery),
-303      &amp;default_discovery_value,
-304      sizeof(bool),
-305      &quot;Enable discovery session registration.&quot;,
-306      &quot;NETWORK&quot;,
-307      NULL,
-308      false,
-309      &quot;ASCII_CHAT_DISCOVERY&quot;,
-310      NULL,
-311      NULL,
-312      false,
-313      false,
-314      OPTION_MODE_SERVER,
-315      {0},
-316      NULL},
-317 
-318     // NETWORK GROUP - WebRTC options
-319     {&quot;webrtc&quot;,
-320      '\0',
-321      OPTION_TYPE_BOOL,
-322      offsetof(options_t, webrtc),
-323      &amp;default_webrtc_value,
-324      sizeof(bool),
-325      &quot;Make calls using WebRTC p2p connections.&quot;,
-326      &quot;NETWORK&quot;,
-327      NULL,
-328      false,
-329      &quot;ASCII_CHAT_WEBRTC&quot;,
-330      NULL,
-331      NULL,
-332      false,
-333      false,
-334      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-335      {0},
-336      NULL},
-337     {&quot;no-webrtc&quot;,
-338      '\0',
-339      OPTION_TYPE_BOOL,
-340      offsetof(options_t, no_webrtc),
-341      &amp;default_no_webrtc_value,
-342      sizeof(bool),
-343      &quot;Disable WebRTC, use direct TCP only.&quot;,
-344      &quot;NETWORK&quot;,
-345      NULL,
-346      false,
-347      &quot;ASCII_CHAT_NO_WEBRTC&quot;,
-348      NULL,
-349      NULL,
-350      false,
-351      false,
-352      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-353      {0},
-354      NULL},
-355     {&quot;prefer-webrtc&quot;,
-356      '\0',
-357      OPTION_TYPE_BOOL,
-358      offsetof(options_t, prefer_webrtc),
-359      &amp;default_prefer_webrtc_value,
-360      sizeof(bool),
-361      &quot;Try WebRTC before direct TCP.&quot;,
-362      &quot;NETWORK&quot;,
-363      NULL,
-364      false,
-365      &quot;ASCII_CHAT_PREFER_WEBRTC&quot;,
-366      NULL,
-367      NULL,
-368      false,
-369      false,
-370      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-371      {0},
-372      NULL},
-373     {&quot;webrtc-skip-stun&quot;,
-374      '\0',
-375      OPTION_TYPE_BOOL,
-376      offsetof(options_t, webrtc_skip_stun),
-377      &amp;default_webrtc_skip_stun_value,
-378      sizeof(bool),
-379      &quot;Skip WebRTC+STUN stage, go straight to TURN relay.&quot;,
-380      &quot;NETWORK&quot;,
-381      NULL,
-382      false,
-383      &quot;ASCII_CHAT_WEBRTC_SKIP_STUN&quot;,
-384      NULL,
-385      NULL,
-386      false,
-387      false,
-388      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-389      {0},
-390      NULL},
-391     {&quot;webrtc-disable-turn&quot;,
-392      '\0',
-393      OPTION_TYPE_BOOL,
-394      offsetof(options_t, webrtc_disable_turn),
-395      &amp;default_webrtc_disable_turn_value,
-396      sizeof(bool),
-397      &quot;Disable WebRTC+TURN relay, use STUN only.&quot;,
-398      &quot;NETWORK&quot;,
-399      NULL,
-400      false,
-401      &quot;ASCII_CHAT_WEBRTC_DISABLE_TURN&quot;,
-402      NULL,
-403      NULL,
-404      false,
-405      false,
-406      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-407      {0},
-408      NULL},
-409     {&quot;webrtc-skip-host&quot;,
-410      '\0',
-411      OPTION_TYPE_BOOL,
-412      offsetof(options_t, webrtc_skip_host),
-413      &amp;default_webrtc_skip_host_value,
-414      sizeof(bool),
-415      &quot;Skip host candidates, force STUN/TURN (for testing).&quot;,
-416      &quot;NETWORK&quot;,
-417      NULL,
-418      false,
-419      &quot;ASCII_CHAT_WEBRTC_SKIP_HOST&quot;,
-420      NULL,
-421      NULL,
-422      false,
-423      false,
-424      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-425      {0},
-426      NULL},
-427     {&quot;webrtc-ice-timeout&quot;,
-428      '\0',
-429      OPTION_TYPE_INT,
-430      offsetof(options_t, webrtc_ice_timeout_ms),
-431      &amp;default_webrtc_ice_timeout_ms_value,
-432      sizeof(int),
-433      &quot;ICE gathering timeout in milliseconds.&quot;,
-434      &quot;NETWORK&quot;,
-435      NULL,
-436      false,
-437      &quot;ASCII_CHAT_WEBRTC_ICE_TIMEOUT&quot;,
-438      NULL,
-439      NULL,
-440      false,
-441      false,
-442      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-443      {0},
-444      NULL},
-445     {&quot;webrtc-reconnect-attempts&quot;,
-446      '\0',
-447      OPTION_TYPE_INT,
-448      offsetof(options_t, webrtc_reconnect_attempts),
-449      &amp;default_webrtc_reconnect_attempts_value,
-450      sizeof(int),
-451      &quot;Number of WebRTC connection retry attempts.&quot;,
-452      &quot;NETWORK&quot;,
-453      NULL,
-454      false,
-455      &quot;ASCII_CHAT_WEBRTC_RECONNECT_ATTEMPTS&quot;,
-456      NULL,
-457      NULL,
-458      false,
-459      false,
-460      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-461      {0},
-462      NULL},
-463     {&quot;stun-servers&quot;,
-464      '\0',
-465      OPTION_TYPE_STRING,
-466      offsetof(options_t, stun_servers),
-467      OPT_STUN_SERVERS_DEFAULT,
-468      0,
-469      &quot;Comma-separated list of WebRTC+STUN server URLs.&quot;,
-470      &quot;NETWORK&quot;,
-471      NULL,
-472      false,
-473      &quot;ASCII_CHAT_STUN_SERVERS&quot;,
-474      NULL,
-475      NULL,
-476      false,
-477      false,
-478      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-479      {0},
-480      NULL},
-481     {&quot;turn-servers&quot;,
-482      '\0',
-483      OPTION_TYPE_STRING,
-484      offsetof(options_t, turn_servers),
-485      OPT_TURN_SERVERS_DEFAULT,
-486      0,
-487      &quot;Comma-separated list of WebRTC+TURN server URLs.&quot;,
-488      &quot;NETWORK&quot;,
-489      NULL,
-490      false,
-491      &quot;ASCII_CHAT_TURN_SERVERS&quot;,
-492      NULL,
-493      NULL,
-494      false,
-495      false,
-496      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-497      {0},
-498      NULL},
-499     {&quot;turn-username&quot;,
-500      '\0',
-501      OPTION_TYPE_STRING,
-502      offsetof(options_t, turn_username),
-503      OPT_TURN_USERNAME_DEFAULT,
-504      0,
-505      &quot;Username for WebRTC+TURN authentication.&quot;,
-506      &quot;NETWORK&quot;,
-507      NULL,
-508      false,
-509      &quot;ASCII_CHAT_TURN_USERNAME&quot;,
-510      NULL,
-511      NULL,
-512      false,
-513      false,
-514      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-515      {0},
-516      NULL},
-517     {&quot;turn-credential&quot;,
-518      '\0',
-519      OPTION_TYPE_STRING,
-520      offsetof(options_t, turn_credential),
-521      OPT_TURN_CREDENTIAL_DEFAULT,
-522      0,
-523      &quot;Credential/password for WebRTC+TURN authentication.&quot;,
-524      &quot;NETWORK&quot;,
-525      NULL,
-526      false,
-527      &quot;ASCII_CHAT_TURN_CREDENTIAL&quot;,
-528      NULL,
-529      NULL,
-530      false,
-531      false,
-532      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-533      {0},
-534      NULL},
-535     {&quot;turn-secret&quot;,
-536      '\0',
-537      OPTION_TYPE_STRING,
-538      offsetof(options_t, turn_secret),
-539      &quot;&quot;,
-540      0,
-541      &quot;Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1).&quot;,
-542      &quot;NETWORK&quot;,
-543      NULL,
-544      false,
-545      &quot;ASCII_CHAT_TURN_SECRET&quot;,
-546      NULL,
-547      NULL,
-548      false,
-549      false,
-550      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
-551      {0},
-552      NULL},
-553 
-554     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>network.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">network.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">network.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">network.c - Network protocol options.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>registry_entry_t</b> <b>g_network_entries</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Network protocol options.</p>
+        <p class="Pp">
+          Options for controlling ports, compression, discovery, WebRTC, and
+          network connectivity.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>options/registry/network.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>registry_entry_t</b> g_network_entries[]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file
+            <b>options/registry/network.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

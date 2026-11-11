@@ -1,7 +1,9 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
 
 Test(crypto_policy, resolves_supported_combinations) {
   struct {
@@ -80,4 +82,12 @@ Test(crypto_policy, rejects_unknown_wire_modes) {
                  "Unknown wire mode %u must not bypass security policy", mode);
     CLEAR_ERRNO();
   }
+}
+
+Test(crypto_policy, protocol_version_packet_matches_authoritative_constants) {
+  protocol_version_packet_t version;
+  protocol_version_packet_init(&version, ACIP_CRYPTO_ENCRYPT);
+  cr_assert_eq(NET_TO_HOST_U16(version.protocol_version), PROTOCOL_VERSION_MAJOR);
+  cr_assert_eq(NET_TO_HOST_U16(version.protocol_revision), PROTOCOL_VERSION_MINOR);
+  cr_assert_eq(NET_TO_HOST_U16(version.protocol_patch), PROTOCOL_VERSION_PATCH);
 }

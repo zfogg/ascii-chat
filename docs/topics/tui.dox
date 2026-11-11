@@ -1,0 +1,58 @@
+/**
+ * @page topic_tui Terminal UI (TUI)
+ * @ingroup module_ui
+ * @brief The interactive terminal screens used by client, server, and tools.
+ *
+ * @section tui_runtime Runtime model
+ *
+ * The TUI is a snapshot-driven presentation layer. Session, server, media,
+ * discovery, and diagnostic workers publish state; `lib/tui/controller.c`
+ * chooses and renders the active screen. No producer should call `printf()` or
+ * write ANSI sequences directly while a live screen owns the terminal.
+ *
+ * @section tui_modes Main screens
+ *
+ * - Media: live ASCII video, audio visualizations, FPS, and playback controls.
+ * - Splash/status: startup, connection, discovery, and server state.
+ * - Help: generated from the same shortcut definitions used by dispatch.
+ * - Logs: level-filtered output with interactive search.
+ * - Statistics: runtime counters and rates.
+ * - Sync diagnostics: debug-only lock, condition, and atomic activity.
+ * - Prompts, notices, mDNS selection, update, and error screens: modal overlays.
+ *
+ * @section tui_controls Controls
+ *
+ * Press `?` from an interactive screen for context-sensitive help. The complete
+ * shortcut reference, including build-dependent controls, is in
+ * @ref topic_keyboard_shortcuts. Prompts use the shared UTF-8 line editor;
+ * Escape cancels and Enter accepts unless a screen documents a different action.
+ *
+ * @section tui_resize Resize and output
+ *
+ * Screens calculate their own minimum dimensions. A resize can occur without a
+ * new media frame, so the controller checks geometry on its presentation tick.
+ * Paused media retains its last frame and clips it after a smaller resize rather
+ * than resuming capture. Redirected and non-TTY output renders synchronously.
+ *
+ * @section tui_debug Diagnostics
+ *
+ * Debug builds can expose sync and errno-stack inspectors. These are sampled
+ * diagnostic views, not atomic snapshots of every application lock. Use
+ * `--sync-state`, `--log-file`, and `--grep` when investigating a hang; keep
+ * symbolization and logging out of realtime media loops.
+ *
+ * @section tui_testing Testing
+ *
+ * The PTY integration suite exercises startup-small, resize recovery, covered
+ * input, help restoration, prompts, recording, redirected snapshots, and
+ * shutdown:
+ * @code{.sh}
+ * uv run --project tests/ascii_chat_tests --frozen python -m pytest \
+ *   tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat
+ * @endcode
+ *
+ * @see topic_ui
+ * @see topic_keyboard_shortcuts
+ * @see md_docs_2session-tui.html
+ * @see md_docs_2terminal-ui.html
+ */

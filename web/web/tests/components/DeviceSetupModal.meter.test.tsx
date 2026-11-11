@@ -22,6 +22,7 @@ vi.mock("../../src/hooks/useVideoEncodings", () => ({
     loading: false,
     supportedEncodings: ["raw"],
     selectedEncoding: "raw",
+    preference: "auto",
     bestEncoding: "raw",
     selectEncoding: vi.fn(),
   }),
@@ -119,6 +120,10 @@ beforeEach(() => {
       resume = resume;
       close = closeAudio;
       createMediaStreamSource = vi.fn(() => source);
+      createChannelSplitter = vi.fn(() => ({
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      }));
       createAnalyser = vi.fn(() => ({
         fftSize: 512,
         getFloatTimeDomainData: (samples: Float32Array) =>

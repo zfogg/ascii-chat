@@ -1,6 +1,7 @@
 {
   "name": "web",
   "version": "0.3.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vp dev",
@@ -17,6 +18,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --config playwright.ci.config.ts",
     "test:e2e:ui": "playwright test --ui",
+    "test:webtransport:live": "node tests/network/webtransport-live.mjs",
     "wasm:build": "node scripts/wasm-build.mjs",
     "wasm:build:mirror": "cd ../.. && cmake --build build --target mirror-web",
     "wasm:build:client": "cd ../.. && cmake --build build --target client-web",
@@ -38,7 +40,6 @@
     "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.7.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -47,8 +48,6 @@
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.55.0",
-    "@typescript-eslint/parser": "^8.55.0",
     "@vitejs/plugin-legacy": "^7.2.1",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.24",
@@ -57,7 +56,6 @@
     "tailwindcss": "^4.1.18",
     "terser": "^5.46.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.55.0",
     "vite": "catalog:",
     "vite-plugin-sitemap": "^0.8.2",
     "vite-plus": "catalog:",

@@ -1,0 +1,507 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>error_popup.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">error_popup.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">error_popup.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">error_popup.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>ui_error_popup_visible</b> (void)
+            <br />
+            <b>terminal_size_t</b> <b>ui_error_popup_minimum</b> (void)
+            <br />
+            void <b>ui_error_popup_render</b> (<b>frame_buffer_t</b> *output,
+            <b>terminal_size_t</b> size)
+            <br />
+            void <b>ui_error_popup_key</b> (<b>keyboard_key_t</b> key)
+            <br />
+            void <b>ui_error_popup_reset</b> (void)
+            <br />
+            void <b>ui_error_popup_preserve</b> (int fd,
+            <b>terminal_size_t</b> size)
+            <br />
+            void <b>ui_error_popup_flush</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_flush_(void_)">
+            <a class="permalink" href="#void_ui_error_popup_flush_(void_)"
+              >void ui_error_popup_flush (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Write preserved terminal output after shutdown diagnostics, without
+            allocating or using options.
+          </p>
+          <p class="Pp">
+            Definition at line <b>444</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+444                                 {
+445   if (g_final_length)
+446     platform_write_all(g_final_fd, g_final_output, g_final_length);
+447   g_final_length = 0;
+448 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_write_all()</b>, and
+            <b>ui_error_popup_flush()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>, and
+            <b>ui_error_popup_flush()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_key_(">
+            <a class="permalink" href="#void_ui_error_popup_key_("
+              >void ui_error_popup_key (<b>keyboard_key_t</b> key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+76                                             {
+77   lock_state();
+78   refresh_locked();
+79   uint64_t dismiss = 0;
+80   size_t previous = g_selected;
+81   size_t previous_scroll = g_scroll;
+82   switch ((int)key) {
+83   case KEY_ESCAPE:
+84   case 'q':
+85   case '\r':
+86   case '\n':
+87     dismiss = g_displayed_latest;
+88     break;
+89   case KEY_LEFT:
+90     if (g_selected)
+91       --g_selected;
+92     break;
+93   case KEY_RIGHT:
+94     if (g_selected + 1 &lt; g_count)
+95       ++g_selected;
+96     break;
+97   case KEY_HOME:
+98     g_selected = 0;
+99     break;
+100   case KEY_END:
+101     g_selected = g_count ? g_count - 1 : 0;
+102     break;
+103   case KEY_UP:
+104     if (g_scroll)
+105       --g_scroll;
+106     break;
+107   case KEY_DOWN:
+108     ++g_scroll;
+109     break;
+110   case KEY_PAGEUP:
+111     g_scroll = g_scroll &gt; g_page_rows ? g_scroll - g_page_rows : 0;
+112     break;
+113   case KEY_PAGEDOWN:
+114     g_scroll += g_page_rows;
+115     break;
+116   default:
+117     break;
+118   }
+119   if (g_selected != previous)
+120     g_scroll = 0;
+121   size_t maximum = g_body_rows &gt; g_page_rows ? g_body_rows - g_page_rows : 0;
+122   if (g_scroll &gt; maximum)
+123     g_scroll = maximum;
+124   bool selection_changed = previous != g_selected;
+125   bool scrolled = previous_scroll != g_scroll &amp;&amp; !selection_changed;
+126   unlock_state();
+127   if (selection_changed)
+128     ascii_otel_ui_usage(&quot;error&quot;, &quot;selected&quot;, 0);
+129   if (scrolled)
+130     ascii_otel_ui_usage(&quot;error&quot;, &quot;details_scrolled&quot;, 0);
+131   if (dismiss)
+132     ascii_otel_ui_usage(&quot;error&quot;, &quot;dismissed&quot;, 0);
+133   if (dismiss)
+134     errno_notifications_dismiss(dismiss);
+135   ui_controller_redraw();
+136 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_ui_usage()</b>,
+            <b>errno_notifications_dismiss()</b>, <b>KEY_DOWN</b>,
+            <b>KEY_END</b>, <b>KEY_ESCAPE</b>, <b>KEY_HOME</b>, <b>KEY_LEFT</b>,
+            <b>KEY_PAGEDOWN</b>, <b>KEY_PAGEUP</b>, <b>KEY_RIGHT</b>,
+            <b>KEY_UP</b>, <b>ui_controller_redraw()</b>, and
+            <b>ui_error_popup_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_key()</b>, and
+            <b>ui_input_read_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_error_popup_minimum (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+72                                              {
+73   return (terminal_size_t){.cols = 60, .rows = 14};
+74 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_error_popup_minimum()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_state()</b>,
+            <b>ui_error_popup_minimum()</b>, and <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_preserve_(int_fd,_">
+            <a class="permalink" href="#void_ui_error_popup_preserve_(int_fd,_"
+              >void ui_error_popup_preserve (int fd,
+              <b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Preserve pending notifications using cached terminal dimensions
+            before queue retirement. Callers own an interactive terminal and
+            must prevent concurrent rendering. This formatter performs no
+            console queries and does not wait for input.
+          </p>
+          <p class="Pp">
+            Definition at line <b>381</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+381                                                            {
+382   if (!errno_notifications_pending())
+383     return;
+384   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
+385   size_t count = errno_notifications_snapshot(entries, ARRAY_SIZE(entries), NULL);
+386   if (!count)
+387     return;
+388   bool previous = errno_notifications_suppress(true);
+389   frame_buffer_t *output = frame_buffer_create(0, 0);
+390   if (output) {
+391     bool colors = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(fd);
+392     bool unicode = terminal_should_use_utf8();
+393     int width = MIN(size.cols &gt; 0 ? size.cols - 1 : 79, 100);
+394     width = MAX(width, 8);
+395     int body_width = width - 4;
+396     size_t first = count &gt; 4 ? count - 4 : 0;
+397     frame_buffer_append(output, &quot;\033[0m\033[?25h\r\n&quot;, 12);
+398     if (first)
+399       frame_buffer_printf(output, &quot;%zu pending notifications; showing the latest 4.\n&quot;, count);
+400     for (size_t i = first; i &lt; count; ++i) {
+401       char cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE], code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE];
+402       const char *side = unicode ? &quot;&#x2502;&quot; : &quot;|&quot;;
+403       ui_popup_rule(output, width, UI_POPUP_TOP, false, unicode, LOG_COLOR_RESET);
+404       frame_buffer_append(output, &quot;\n&quot;, 1);
+405       ui_text_cell(cell, sizeof(cell), &quot;ERROR&quot;, body_width, UI_ALIGN_LEFT);
+406       frame_buffer_printf(output, &quot;%s %s %s\n&quot;, side, colors ? colored_string(LOG_COLOR_ERROR, cell) : cell, side);
+407       format_error_heading(code, sizeof(code), &amp;entries[i]);
+408       ui_text_cell(cell, sizeof(cell), code, body_width, UI_ALIGN_LEFT);
+409       frame_buffer_printf(output, &quot;%s %s %s\n&quot;, side, cell, side);
+410       build_body(&amp;entries[i], body_width, colors);
+411       for (size_t line = 0; line &lt; g_line_count; ++line) {
+412         const char *start = g_wrapped + g_lines[line];
+413         const char *end = strchr(start, '\n');
+414         char line_text[TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE];
+415         size_t length = end ? (size_t)(end - start) : strlen(start);
+416         length = MIN(length, sizeof(line_text) - 1);
+417         memcpy(line_text, start, length);
+418         line_text[length] = '\0';
+419         ui_text_cell(cell, sizeof(cell), line_text, body_width, UI_ALIGN_LEFT);
+420         frame_buffer_printf(output, &quot;%s %s%s %s\n&quot;, side, cell, colors ? &quot;\033[0m&quot; : &quot;&quot;, side);
+421       }
+422       ui_popup_rule(output, width, UI_POPUP_BOTTOM, false, unicode, LOG_COLOR_RESET);
+423       frame_buffer_append(output, &quot;\n&quot;, 1);
+424     }
+425     if (frame_buffer_get_length(output) &lt;= sizeof(g_final_output)) {
+426       g_final_length = frame_buffer_get_length(output);
+427       memcpy(g_final_output, frame_buffer_get_content(output), g_final_length);
+428       g_final_fd = fd;
+429     } else {
+430       char message[ASCIICHAT_ERRNO_MESSAGE_MAX];
+431       sanitize(message, sizeof(message), entries[count - 1].context_message);
+432       int length = safe_snprintf(g_final_output, sizeof(g_final_output), &quot;\nERROR\n%s (%d): %s\nDetails: %s\n&quot;,
+433                                  asciichat_error_name(entries[count - 1].code), entries[count - 1].code,
+434                                  asciichat_error_string(entries[count - 1].code), message);
+435       g_final_length = length &gt; 0 ? MIN((size_t)length, sizeof(g_final_output) - 1) : 0;
+436       g_final_fd = fd;
+437     }
+438   }
+439   if (output)
+440     frame_buffer_destroy(output);
+441   errno_notifications_suppress(previous);
+442 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+            <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>, <b>errno_notifications_pending()</b>,
+            <b>errno_notifications_snapshot()</b>,
+            <b>errno_notifications_suppress()</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_RESET</b>, <b>MAX</b>,
+            <b>MIN</b>, <b>safe_snprintf()</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_error_popup_preserve()</b>, <b>UI_POPUP_BOTTOM</b>,
+            <b>ui_popup_rule()</b>, <b>UI_POPUP_TOP</b>, and
+            <b>ui_text_cell()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>, and
+            <b>ui_error_popup_preserve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_render_(">
+            <a class="permalink" href="#void_ui_error_popup_render_("
+              >void ui_error_popup_render (<b>frame_buffer_t</b> * output,
+              <b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>299</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+299                                                                       {
+300   asciichat_error_context_t error;
+301   lock_state();
+302   refresh_locked();
+303   size_t count = g_count, selected = g_selected;
+304   uint64_t displayed_latest = g_latest, dropped = g_dropped;
+305   if (count)
+306     error = g_entries[selected];
+307   unlock_state();
+308   if (!count)
+309     return;
+310   terminal_size_t minimum = ui_error_popup_minimum();
+311   frame_buffer_append(out, &quot;\033[0m\033[?25l&quot;, 10);
+312   if (ui_too_small(size, minimum)) {
+313     ui_too_small_render(out, size, minimum);
+314     return;
+315   }
+316   lock_state();
+317   g_displayed_latest = displayed_latest;
+318   unlock_state();
+319   bool colors = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(frame_buffer_get_screen_output_fd());
+320   int width = MIN(size.cols - 4, 100);
+321   int body_width = width - 6;
+322   if (g_cached_id != error.error_id || g_cached_width != body_width || g_cached_color != colors)
+323     build_body(&amp;error, body_width, colors);
+324   size_t desired_rows = g_trace_start ? MIN(g_line_count, g_trace_start + 12) : g_line_count;
+325   int body_rows = MIN(size.rows - 8, MIN(22, (int)desired_rows));
+326   size_t fixed_rows = g_trace_start &amp;&amp; g_trace_start &lt; (size_t)body_rows ? g_trace_start : 0;
+327   if (g_trace_start &amp;&amp; !fixed_rows)
+328     body_rows = MIN(body_rows, 12);
+329   int height = body_rows + 6;
+330   int top = (size.rows - height) / 2 + 1, left = (size.cols - width) / 2 + 1;
+331   size_t scroll_rows = g_line_count - fixed_rows;
+332   size_t page_rows = (size_t)body_rows - fixed_rows;
+333   lock_state();
+334   g_body_rows = scroll_rows;
+335   g_page_rows = page_rows;
+336   size_t maximum = scroll_rows &gt; page_rows ? scroll_rows - page_rows : 0;
+337   g_scroll = MIN(g_scroll, maximum);
+338   size_t scroll = g_scroll;
+339   unlock_state();
+340   ui_popup_frame(out, top, left, width, height, LOG_COLOR_RESET);
+341   char title[TUI_ERROR_POPUP_TITLE_BUFFER_SIZE];
+342   safe_snprintf(title, sizeof(title), &quot;Error (%zu)   %zu of %zu%s&quot;, count, selected + 1, count,
+343                 dropped ? &quot; [older errors dropped]&quot; : &quot;&quot;);
+344   char heading[TUI_ERROR_POPUP_HEADING_BUFFER_SIZE];
+345   ui_text_cell(heading, sizeof(heading), title, width - 4, UI_ALIGN_LEFT);
+346   frame_buffer_printf(out, &quot;\033[%d;%dH%s&quot;, top + 1, left + 2,
+347                       colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
+348   char code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE], cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE];
+349   format_error_heading(code, sizeof(code), &amp;error);
+350   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
+351   frame_buffer_printf(out, &quot;\033[%d;%dH%s&quot;, top + 2, left + 2, cell);
+352   for (int i = 0; i &lt; body_rows; ++i) {
+353     size_t index = (size_t)i &lt; fixed_rows ? (size_t)i : (size_t)i + scroll;
+354     if (index &gt;= g_line_count)
+355       break;
+356     const char *start = g_wrapped + g_lines[index];
+357     const char *end = strchr(start, '\n');
+358     frame_buffer_printf(out, &quot;\033[%d;%dH%.*s\033[0m&quot;, top + 4 + i, left + 2,
+359                         (int)(end ? end - start : (ptrdiff_t)strlen(start)), start);
+360   }
+361   ui_scrollbar_render(out, top + 4 + (int)fixed_rows, left + width - 3, (int)page_rows, scroll_rows, page_rows, scroll);
+362   const char *orange = colors ? ui_text_color_prefix(LOG_COLOR_DEV) : &quot;&quot;;
+363   const char *reset = colors ? &quot;\033[0m&quot; : &quot;&quot;;
+364   frame_buffer_printf(out, &quot;\033[%d;%dH%s?%s Help&quot;, top + height - 2, left + 2, orange, reset);
+365   ui_button_t button = {.label = &quot;Dismiss all&quot;, .shortcut = '\r'};
+366   ui_buttons_render(out, top + height - 2, left + 10, width - 20, &amp;button, 1, 0);
+367 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>asciichat_error_context_t::error_id</b>,
+            <b>frame_buffer_append()</b>,
+            <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
+            <b>LOG_COLOR_RESET</b>, <b>MIN</b>, <b>terminal_size_t::rows</b>,
+            <b>safe_snprintf()</b>, <b>terminal_should_color_output()</b>,
+            <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_HEADING_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_TITLE_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_buttons_render()</b>, <b>ui_error_popup_minimum()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_popup_frame()</b>,
+            <b>ui_scrollbar_render()</b>, <b>ui_text_cell()</b>,
+            <b>ui_text_color_prefix()</b>, <b>ui_too_small()</b>, and
+            <b>ui_too_small_render()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_reset_(void_)">
+            <a class="permalink" href="#void_ui_error_popup_reset_(void_)"
+              >void ui_error_popup_reset (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>369</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+369                                 {
+370   lock_state();
+371   g_count = g_selected = g_scroll = 0;
+372   g_latest = g_displayed_latest = g_dropped = 0;
+373   unlock_state();
+374   g_cached_id = 0;
+375 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_error_popup_reset()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>, and
+            <b>ui_error_popup_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_error_popup_visible (void )</h2>
+          <p class="Pp">
+            Error notifications are an overlay, independent of the selected
+            application screen.
+          </p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+68                                   {
+69   return errno_notifications_pending();
+70 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>errno_notifications_pending()</b>, and
+            <b>ui_error_popup_visible()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_current_screen()</b>,
+            <b>ui_error_popup_visible()</b>, and <b>ui_input_read_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

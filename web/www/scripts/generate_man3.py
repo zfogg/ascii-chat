@@ -2,6 +2,7 @@
 """Generate pages.json index from Doxygen man3 HTML files."""
 
 import json
+import os
 import sys
 from pathlib import Path
 import re
@@ -143,8 +144,8 @@ def check_duplicates(pages):
 
 def main():
     """Generate pages.json from Doxygen man3 HTML files."""
-    man3_dir = Path("public/man3")
-    build_man3_dir = Path("../../build_release/share/man/man3")
+    man3_dir = Path(os.environ.get("MAN3_HTML_DIR", "public/man3"))
+    build_man3_dir = Path(os.environ.get("BUILD_DIR", "../../build_release")) / "share/man/man3"
     repo_root = Path("../../").resolve()
 
     if not man3_dir.exists():
@@ -203,7 +204,7 @@ def main():
         return False
 
     # Write pages.json
-    with open("public/man3/pages.json", "w") as f:
+    with (man3_dir / "pages.json").open("w", encoding="utf-8") as f:
         json.dump(pages, f, indent=2)
 
     print(f"Generated pages.json with {len(pages)} entries")

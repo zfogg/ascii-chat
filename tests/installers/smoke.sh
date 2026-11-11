@@ -15,6 +15,8 @@ bash "$installer"
 binary="$ASCII_CHAT_INSTALL_PREFIX/bin/ascii-chat"
 "$binary" --version
 test -L "$binary"
+yt-dlp --version
+deno --version
 test -f "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/.ascii-chat-installer"
 touch "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/obsolete-file"
 touch "$ASCII_CHAT_INSTALL_PREFIX/unrelated-file"
@@ -25,6 +27,8 @@ for requested_version in "${release_tag#v}" "$release_tag"; do
   cat "$installer" | bash
   test "$(cat "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/.ascii-chat-installer")" = "$release_tag"
 done
+yt-dlp --version
+deno --version
 test ! -e "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/obsolete-file"
 test -f "$ASCII_CHAT_INSTALL_PREFIX/unrelated-file"
 test -z "$(find "$ASCII_CHAT_INSTALL_PREFIX/lib" -name '.ascii-chat-install.*' -print)"

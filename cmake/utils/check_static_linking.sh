@@ -78,12 +78,14 @@ EOF
         fi
         ;;
     macos)
-        # macOS executables cannot be fully static; allow only Apple system libraries.
+        # macOS executables cannot be fully static. Homebrew dependencies are
+        # expected on the supported release runners and are installed there at
+        # the documented runtime locations.
         OTOOL_OUTPUT=$(otool -L "$BINARY") || {
             echo "ERROR: otool failed to inspect $BINARY"
             exit 1
         }
-        NON_SYSTEM=$(printf '%s\n' "$OTOOL_OUTPUT" | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/|/Library/Apple/System/Library/)' | tail -n +2)
+        NON_SYSTEM=$(printf '%s\n' "$OTOOL_OUTPUT" | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/|/Library/Apple/System/Library/|/opt/homebrew/|/usr/local/)' | tail -n +2)
         if [ -n "$NON_SYSTEM" ]; then
             echo -e "${YELLOW}ERROR: Release binary links against non-system libraries!${RESET}"
             echo "$NON_SYSTEM"

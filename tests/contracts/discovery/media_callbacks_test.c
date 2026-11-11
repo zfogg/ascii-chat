@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/util/time.h>
 #include "../../../src/discovery/session.h"
 #include "session/client_like.h"
 #include <ascii-chat/audio/client_pipeline.h>
@@ -29,7 +30,7 @@ static asciichat_error_t media_audio_start(session_audio_ctx_t *audio) {
   cr_assert_not_null(audio);
   return audio_failure == 2 ? ERROR_AUDIO : ASCIICHAT_OK;
 }
-static asciichat_error_t media_thread_create(asciichat_thread_t *thread, const char *name, void *(*fn)(void *),
+static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *),
                                              void *arg) {
   (void)thread;
   (void)name;
@@ -37,7 +38,7 @@ static asciichat_error_t media_thread_create(asciichat_thread_t *thread, const c
   (void)arg;
   return ERROR_THREAD;
 }
-static asciichat_error_t media_join(asciichat_thread_t *thread, void **result) {
+static asciichat_error_t media_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   ++joins;
@@ -83,10 +84,15 @@ static void media_stop(discovery_session_t *s) {
   ++stops;
   discovery_session_stop(s);
 }
+static uint64_t media_clock_ns(void) {
+  static uint64_t now;
+  return now += 100;
+}
+#define time_get_ns media_clock_ns
 #define session_capture_read_frame media_read_frame
 #define session_audio_create media_audio_create
 #define session_audio_start_capture media_audio_start
-#define acthread_create media_thread_create
+#define platform_thread_create media_thread_create
 #define thread_join media_join
 #define audio_write_samples media_write
 #define platform_sleep_ns media_sleep_ns
@@ -97,10 +103,11 @@ static void media_stop(discovery_session_t *s) {
 #define discovery_session_create media_create
 #define discovery_session_stop media_stop
 #include "../../../src/discovery/main.c"
+#undef time_get_ns
 #undef session_capture_read_frame
 #undef session_audio_create
 #undef session_audio_start_capture
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 #undef audio_write_samples
 #undef platform_sleep_ns

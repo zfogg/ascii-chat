@@ -92,7 +92,7 @@ function(generate_compilation_database)
     endif()
 
     # On macOS, detect and pass SDK path for proper system header resolution
-    # The defer tool (ascii-instr-defer) uses libclang which needs the SDK path
+    # Clang tooling needs the SDK path
     # to find system headers like stdbool.h
     if(APPLE)
         # First, try to use the SDK path saved by LLVM.cmake (before it was cleared)

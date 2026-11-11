@@ -20,8 +20,8 @@
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/tui/mdns.h> // For ui_mdns_server_t struct only
 #include <ascii-chat/network/acip/acds_client.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/thread.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/util/time.h>
@@ -35,6 +35,10 @@
 // ============================================================================
 
 /**
+ * @brief Context for ACDS discovery thread
+ * @brief Thread-safe result sharing between discovery threads
+ * @brief Context for mDNS discovery thread
+ * @brief Internal state for collecting discovered services
  * @brief Thread-safe result sharing between discovery threads
  */
 typedef struct {
@@ -569,7 +573,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
   }
 
   // Spawn mDNS thread
-  asciichat_thread_t mdns_thread;
+  platform_thread_t mdns_thread;
   thread_init(&mdns_thread);
 
   if (use_mdns) {
@@ -585,7 +589,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     mdns_ctx->state = &state;
     mdns_ctx->expected_pubkey = config->expected_pubkey;
 
-    int thread_err = acthread_create(&mdns_thread, "mdns", mdns_thread_fn, mdns_ctx);
+    int thread_err = platform_thread_create(&mdns_thread, "mdns", mdns_thread_fn, mdns_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn mDNS thread");
       SAFE_FREE(mdns_ctx);
@@ -594,7 +598,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
   }
 
   // Spawn ACDS thread
-  asciichat_thread_t acds_thread;
+  platform_thread_t acds_thread;
   thread_init(&acds_thread);
 
   if (use_acds) {
@@ -613,7 +617,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     acds_ctx->state = &state;
     acds_ctx->config = config;
 
-    int thread_err = acthread_create(&acds_thread, "acds_client", acds_thread_fn, acds_ctx);
+    int thread_err = platform_thread_create(&acds_thread, "acds_client", acds_thread_fn, acds_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn ACDS thread");
       SAFE_FREE(acds_ctx);

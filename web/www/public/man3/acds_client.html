@@ -61,22 +61,32 @@
         <p class="Pp">acds_client - Acds_client</p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
-        <p class="Pp">Client-side ACIP (ascii-chat IP Protocol) implementation for:</p>
+        <p class="Pp">
+          Client-side ACIP (ascii-chat IP Protocol) implementation for:
+        </p>
         <ul class="Bl-bullet">
-          <li>Session discovery and management (create, lookup, join, leave)</li>
+          <li>
+            Session discovery and management (create, lookup, join, leave)
+          </li>
           <li>WebRTC signaling relay (SDP, ICE candidates)</li>
           <li>String reservation (future feature)</li>
         </ul>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="ACDS_Client_Protocol">
-          <a class="permalink" href="#ACDS_Client_Protocol">ACDS Client Protocol</a>
+          <a class="permalink" href="#ACDS_Client_Protocol"
+            >ACDS Client Protocol</a
+          >
         </h1>
         <section class="Ss">
           <h2 class="Ss" id="Protocol_Overview">
@@ -89,9 +99,13 @@
               <b>Packet Format</b>: <b>packet_header_t</b> + payload (see
               <b>network/acip/protocol.h</b>)
             </li>
-            <li><b>Authentication</b>: Ed25519 digital signatures (ECDSA alternative available)</li>
             <li>
-              <b>Encryption</b>: Optional TLS or application-level encryption via
+              <b>Authentication</b>: Ed25519 digital signatures (ECDSA
+              alternative available)
+            </li>
+            <li>
+              <b>Encryption</b>: Optional TLS or application-level encryption
+              via
               <b>crypto_context_t</b>
             </li>
             <li><b>Validation</b>: CRC32 checksum on every packet payload</li>
@@ -105,27 +119,46 @@
           </h2>
           <dl class="Bl-tag">
             <dt>1.</dt>
-            <dd><b>Discovery</b> (Optional): Lookup existing session by string</dd>
+            <dd>
+              <b>Discovery</b> (Optional): Lookup existing session by string
+            </dd>
             <dt>&#x2022;</dt>
             <dd>Send: SESSION_LOOKUP packet with session_string</dd>
             <dt>&#x2022;</dt>
-            <dd>Recv: SESSION_INFO packet with session metadata (no connection details)</dd>
+            <dd>
+              Recv: SESSION_INFO packet with session metadata (no connection
+              details)
+            </dd>
             <dt>2.</dt>
             <dd><b>Creation</b> (Host): Create new session and become host</dd>
             <dt>&#x2022;</dt>
-            <dd>Send: SESSION_CREATE packet with host public key + signature</dd>
+            <dd>
+              Send: SESSION_CREATE packet with host public key + signature
+            </dd>
             <dt>&#x2022;</dt>
-            <dd>Recv: SESSION_CREATED packet with session_id, participant_id, STUN/TURN servers</dd>
+            <dd>
+              Recv: SESSION_CREATED packet with session_id, participant_id,
+              STUN/TURN servers
+            </dd>
             <dt>&#x2022;</dt>
-            <dd>Server assigns participant ID and tracks session in database</dd>
+            <dd>
+              Server assigns participant ID and tracks session in database
+            </dd>
             <dt>3.</dt>
             <dd><b>Join</b> (Guest): Connect to existing session</dd>
             <dt>&#x2022;</dt>
-            <dd>Send: SESSION_JOIN packet with credentials (password or identity)</dd>
+            <dd>
+              Send: SESSION_JOIN packet with credentials (password or identity)
+            </dd>
             <dt>&#x2022;</dt>
-            <dd>Recv: SESSION_JOINED packet with server address, TURN credentials</dd>
+            <dd>
+              Recv: SESSION_JOINED packet with server address, TURN credentials
+            </dd>
             <dt>&#x2022;</dt>
-            <dd>Server verifies credentials and reveals IP:port to authenticated client</dd>
+            <dd>
+              Server verifies credentials and reveals IP:port to authenticated
+              client
+            </dd>
             <dt>4.</dt>
             <dd><b>P2P Negotiation</b> (Discovery Mode):</dd>
             <dt>&#x2022;</dt>
@@ -144,7 +177,9 @@
         </section>
         <section class="Ss">
           <h2 class="Ss" id="Packet_Type_Summary">
-            <a class="permalink" href="#Packet_Type_Summary">Packet Type Summary</a>
+            <a class="permalink" href="#Packet_Type_Summary"
+              >Packet Type Summary</a
+            >
           </h2>
           <ul class="Bl-bullet">
             <li>SESSION_CREATE (6000): Host creates new session</li>
@@ -161,7 +196,9 @@
         </section>
         <section class="Ss">
           <h2 class="Ss" id="Connection_Configuration">
-            <a class="permalink" href="#Connection_Configuration">Connection Configuration</a>
+            <a class="permalink" href="#Connection_Configuration"
+              >Connection Configuration</a
+            >
           </h2>
           <p class="Pp">The <b>acds_client_config_t</b> structure specifies:</p>
           <ul class="Bl-bullet">
@@ -176,16 +213,18 @@
             <li>Packet-based with CRC32 validation</li>
             <li>Ed25519 identity signatures (alternative to password auth)</li>
             <li>Optional password protection</li>
-            <li>UUID identifiers for sessions and participants (16 bytes each)</li>
+            <li>
+              UUID identifiers for sessions and participants (16 bytes each)
+            </li>
           </ul>
           <p class="Pp">
-            <b>Primary Use Case:</b> Connecting to ACDS (ascii-chat Discovery Service) servers for
-            session discovery and WebRTC peer coordination.
+            <b>Primary Use Case:</b> Connecting to ACDS (ascii-chat Discovery
+            Service) servers for session discovery and WebRTC peer coordination.
           </p>
           <p class="Pp"></p>
           <p class="Pp">
-            <b>Integration:</b> This library is part of libasciichat and can be used by any
-            application needing ACIP/ACDS integration.
+            <b>Integration:</b> This library is part of libasciichat and can be
+            used by any application needing ACIP/ACDS integration.
           </p>
           <p class="Pp"></p>
           <p class="Pp"><b>See also</b></p>
@@ -193,10 +232,13 @@
             <b>network/acip/acds.h</b> for ACDS message structures
             <p class="Pp"></p>
             <p class="Pp">
-              <b>network/acip/protocol.h</b> for ACIP packet types and protocol version
+              <b>network/acip/protocol.h</b> for ACIP packet types and protocol
+              version
             </p>
             <p class="Pp"></p>
-            <p class="Pp"><b>network/acip/transport.h</b> for transport abstraction layer</p>
+            <p class="Pp">
+              <b>network/acip/transport.h</b> for transport abstraction layer
+            </p>
           </div>
           <p class="Pp"><b>Author</b></p>
           <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
@@ -207,8 +249,13 @@
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

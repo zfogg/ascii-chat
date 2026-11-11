@@ -231,9 +231,7 @@ export function useMirrorWebcam({
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
       console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
       console.log(
-        `[Mirror] Stream received after ${
-          performance.now() - clickTime
-        }ms from button click`,
+        `[Mirror] Stream received after ${performance.now() - clickTime}ms from button click`,
       );
 
       streamRef.current?.getTracks().forEach((track) => {

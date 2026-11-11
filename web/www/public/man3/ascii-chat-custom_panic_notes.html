@@ -1,0 +1,1114 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_panic_notes(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_panic_notes(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_panic_notes(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_panic_notes - Panic Tool Initial Notes</p>
+        <section class="Ss">
+          <h2 class="Ss" id="My_Convo_with_ChatGPT">
+            <a class="permalink" href="#My_Convo_with_ChatGPT"
+              >My Convo with ChatGPT</a
+            >
+          </h2>
+          <p class="Pp">
+            I had this convo with him on Nov 7, 2025, and I talked to Cursor
+            too.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="@zfogg">
+            <a class="permalink" href="#@zfogg">@zfogg</a>
+          </h2>
+          <p class="Pp">
+            chatgpt i just had a chaotic idea. what if use code analysis libs,
+            like for llvm for example (libclang?) to write code that would panic
+            insert logs after every line of code in your source? you could just
+            log each line of the user&#x2019;s source code for example, so for
+            each line of code, log that line of code.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            If your program has a bug and you run it, literally the last line of
+            code that prints out is the line that&#x2019;s crashing. because it
+            was printing the logs you inserted for every line of code, then it
+            crashed, so you can see the last thing it printed. and we&#x2019;re
+            printing the source code, so that&#x2019;s the bug.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">literally this can find any bug in any source code.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            insert logs to print every line of source code. the last line that
+            prints has a bug. i have this idea because i&#x2019;m writing
+            ascii-chat and it&#x2019;s a C program and sometimes it crashes and
+            i don&#x2019;t have logs at the exact line of code it&#x2019;s
+            printing and it went into a different function and crashed there and
+            i didn&#x2019;t know that, so i spent hours debugging if the binary
+            suddenly started printing logs of its source code, i would see the
+            last line that prints out C programs crash without error messages
+            &#x1F615; what do you think. is this incredibly brilliant but also
+            really simple (spam your terminal with logs -- we could also use |
+            tail -n1 though and that's the offending line of code).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            can threads ruin this? and processes? obviously if a thread crashes
+            then the last line of code printed might not be the offending line,
+            right? how could we solve for that? we're at least closer to the
+            answer because we could have each thread print its thread id in its
+            logs and would could see if any threads crash and find their last
+            printed log which is the offending line of code. solved.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            so... good idea? if it's such a brilliant idea (i think it's really
+            smart) why hasn't anyone done this before? people just type printf()
+            with their keyboards to find bugs when they might not even be in the
+            right function yet and we could script writing printf 50thousand
+            times in 1 second if we use llvm code manipulation libs.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="@ChatGPT">
+            <a class="permalink" href="#@ChatGPT">@ChatGPT</a>
+          </h2>
+          <p class="Pp">
+            This is a great idea &#x2014; gloriously simple and very practical.
+            Short answer: yes, it&#x2019;s brilliant and it will often work.
+            Long answer: it&#x2019;s also messy in edge cases (preprocessor,
+            multi-line statements, buffering, threads, side-effects /
+            Heisenbugs), and there are a bunch of engineering details you should
+            handle to make it reliable and useful. Below I&#x2019;ll explain
+            <i>why</i> it works, <i>how</i> to build it (two practical
+            approaches), what breaks it, and concrete engineering choices (to
+            make the logs reliable in the face of crashes/threads). I&#x2019;ll
+            finish with a compact, copy-pasteable prototype pattern you can use
+            for C.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Why_the_idea_works">
+          <a class="permalink" href="#Why_the_idea_works">Why the idea works</a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            If you print the <i>source text</i> of each executed line right
+            before it executes, then in a crash the last printed line is
+            (usually) the last executed <i>instrumented</i> line &#x2014; that
+            gives you the exact source line context at the moment of failure.
+          </li>
+          <li>
+            Printing the source text avoids having to write bespoke printf()
+            calls by hand: you automatically get file/line/content.
+          </li>
+          <li>
+            Doing this automatically saves the hours of manual printf-surgery
+            you described.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Two_practical_approaches">
+          <a class="permalink" href="#Two_practical_approaches"
+            >Two practical approaches</a
+          >
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd><b>Source-to-source transformation (recommended for C)</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Parse the source (Clang/libTooling or libclang), find statement
+            boundaries (or tokens/lines), and insert a logging call before each
+            statement or line.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Write out a transformed source tree, compile, and run.</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Pros: you keep source semantics mostly intact (if you&#x2019;re
+            careful), you can embed the original source string, and you control
+            exactly where logs go. Works cross-platform with clang.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Cons: you must handle macros, preprocessor directives, multi-line
+            statements, and not change evaluation order.
+          </dd>
+          <dt>2.</dt>
+          <dd><b>IR-level instrumentation / LLVM pass</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Compile to LLVM IR and insert a runtime call before every
+            instruction or at statement boundaries mapped via debug info
+            (DWARF). Or run a custom LLVM pass that instruments at the IR level.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Pros: you don&#x2019;t touch preprocessor output, can instrument
+            optimized code (but mapping back to source lines requires good debug
+            info), lower-level power.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Cons: mapping IR instructions precisely back to the exact textual
+            source line is tricky, and inserting instrumentation can change
+            optimization and timing; implementing an LLVM pass is heavier.
+          </dd>
+        </dl>
+        <p class="Pp">
+          For a C program like your ascii-chat, the
+          <b>Clang/libTooling source-to-source transform</b> is the fastest to
+          get correct and readable results.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1
+          class="Sh"
+          id="Important_implementation_details_&amp;_pitfalls_(the_"
+        >
+          <a
+            class="permalink"
+            href="#Important_implementation_details_&amp;_pitfalls_(the_"
+            >Important implementation details &amp; pitfalls (the &#x201C;why
+            it&#x2019;s tricky&#x201D;)</a
+          >
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd><b>Preprocessor &amp; macros</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            #define macros, multi-line macros, and code generated by includes
+            are tricky. If you instrument <i>after</i> preprocessing (i.e., on
+            the preprocessed file), you lose the original line text. If you
+            instrument source-before-preprocessing, you must not break macros.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Practical approach: run libTooling on the final translation unit
+            (after preprocessing but with Clang's AST); insert calls at AST
+            statement nodes but use the original source file lines (Clang has
+            SourceManager to locate exact source text for an AST node).
+          </dd>
+          <dt>2.</dt>
+          <dd><b>Multi-line statements</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            One C statement may span multiple lines (continued \ or long
+            expressions). You can choose to instrument by
+            <b>statement</b> (safer) rather than naive &#x201C;per textual
+            line.&#x201D; If the user specifically wants a log for every
+            physical line, you can still insert logs at line boundaries &#x2014;
+            but statement-level is less noisy and less likely to change
+            semantics.
+          </dd>
+          <dt>3.</dt>
+          <dd><b>Side-effects &amp; evaluation order</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            If your logging code evaluates any variables or expressions, it can
+            change program behavior. So the logging statement must
+            <b>not</b> touch program state, nor cause evaluation of expressions.
+            Best: print only a string literal (the source text) and some runtime
+            metadata (thread id, sequence number) without reading program
+            variables.
+          </dd>
+          <dt>4.</dt>
+          <dd><b>Performance / log volume</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Printing every line is noisy and slow. Terminal spam aside, massive
+            I/O may change timing and mask race conditions. You&#x2019;ll want
+            options to:
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Instrument only a file or function set.</dd>
+          <dt>&#x2022;</dt>
+          <dd>Throttle logs.</dd>
+          <dt>&#x2022;</dt>
+          <dd>Write logs to a file (one per-run) rather than terminal.</dd>
+          <dt>5.</dt>
+          <dd><b>Buffering and crash visibility</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Use an async-signal-safe approach (see below) so that logs are
+            durably visible even if the program crashes without a chance to
+            flush stdio buffers.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            stderr is unbuffered on terminals but not always for redirects;
+            write(2) is best for atomic, unbuffered writes.
+          </dd>
+          <dt>6.</dt>
+          <dd><b>Threads and processes</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Threads: the &#x201C;last printed line&#x201D; globally may be from
+            another thread. Mitigations:
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Include thread id (and per-thread sequence numbers) in every log
+            line. Then, when a thread crashes, inspect the last log line with
+            that thread id.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Optionally create one file per thread to avoid interleaving.</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Processes: If the program forks, child logs may intermix &#x2014;
+            again include PID.
+          </dd>
+          <dt>7.</dt>
+          <dd><b>Atomicity</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Use a single write() syscall per log line so the OS does atomic
+            write up to PIPE_BUF (typically 4096 bytes) &#x2014; avoids
+            interleaved fragments between threads.
+          </dd>
+          <dt>8.</dt>
+          <dd><b>Signal safety</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            If you want logs to be useful when a crash happens (SIGSEGV), make
+            sure each log is already written (no stdio buffering) or that your
+            signal handler only uses async-signal-safe functions (e.g.,
+            write()). Don&#x2019;t call printf() in signal handlers.
+          </dd>
+          <dt>9.</dt>
+          <dd><b>Heisenbugs</b></dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Any instrumentation can change program timing and hide/fix bugs (or
+            create new ones). Use this as a debugging tool, not a production
+            feature.
+          </dd>
+          <dt>10.</dt>
+          <dd><b>Why not widely used?</b></dd>
+        </dl>
+        <ul class="Bl-bullet">
+          <li>
+            Tools exist that solve many debugging needs (ASan, Valgrind, gdb/rr,
+            core dumps + addr2line). People often prefer
+            breakpoint/backtrace-based methods.
+          </li>
+          <li>
+            Massive log spam is noisy and expensive; many prefer deterministic
+            record/replay (rr) or sanitizers to reproduce the crash.
+          </li>
+          <li>
+            But for cases where a program crashes with no useful trace
+            (especially C programs without symbols or on embedded systems), your
+            approach is extremely pragmatic and underused.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1
+          class="Sh"
+          id="Concrete_engineering_plan_(source-to-source,_Clang/libTooling)"
+        >
+          <a
+            class="permalink"
+            href="#Concrete_engineering_plan_(source-to-source,_Clang/libTooling)"
+            >Concrete engineering plan (source-to-source, Clang/libTooling)</a
+          >
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>
+            Use Clang libTooling / ASTMatchers to find nodes you want to
+            instrument:
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            CompoundStmt, IfStmt, ReturnStmt, Expr statements &#x2014; or
+            instrument at Stmt level.
+          </dd>
+          <dt>2.</dt>
+          <dd>For each node:</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Use SourceManager to extract the exact source text corresponding to
+            the node (or the first line of it).
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Insert a call __log_src_line(&quot;file&quot;, line, &quot;source
+            snippet&quot;) before the node&#x2019;s start.
+          </dd>
+          <dt>3.</dt>
+          <dd>Implement __log_src_line() in a small runtime helper library:</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Format prefix (PID, TID, filename, lineno, optional sequence) into a
+            buffer.
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Append the literal source snippet (escaped when generating).</dd>
+          <dt>&#x2022;</dt>
+          <dd>Perform one write() syscall to STDOUT/STDERR.</dd>
+          <dt>4.</dt>
+          <dd>
+            Produce an instrumented tree (copy original sources), compile with
+            -g -O0 -fno-omit-frame-pointer (so debugging is easier), run.
+          </dd>
+          <dt>5.</dt>
+          <dd>
+            When it crashes, check last log lines (or tail -n 1), or filter by
+            TID for threads.
+          </dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Minimal_C_runtime_logging_helper_(copy/paste)">
+          <a
+            class="permalink"
+            href="#Minimal_C_runtime_logging_helper_(copy/paste)"
+            >Minimal C runtime logging helper (copy/paste)</a
+          >
+        </h1>
+        <p class="Pp">
+          This is a pragmatic log_line() implementation to pair with your
+          instrumentation. It prints file:line, pid, tid, then the instrumented
+          source text &#x2014; and uses a single write() to avoid partial
+          interleaving.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>// instrumentation_log.h
+#ifndef INSTR_LOG_H
+#define INSTR_LOG_H
+#include &lt;unistd.h&gt;
+#include &lt;sys/syscall.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;time.h&gt;
+#include &lt;pthread.h&gt;
+// Convert integer to ascii (decimal), returns number of bytes written into buf
+static inline int utoa_dec(uint64_t v, char *buf) {
+<br/>
+    char tmp[32];
+<br/>
+    int pos = 0;
+<br/>
+    if (v == 0) { buf[0] = '0'; return 1; }
+<br/>
+    while (v) { tmp[pos++] = '0' + (v % 10); v /= 10; }
+<br/>
+    int i;
+<br/>
+    for (i = 0; i &lt; pos; ++i) buf[i] = tmp[pos - 1 - i];
+<br/>
+    return pos;
+}
+static inline pid_t gettid_sys() {
+#ifdef SYS_gettid
+<br/>
+    return (pid_t)syscall(SYS_gettid);
+#else
+<br/>
+    return (pid_t)pthread_self(); // fallback (not ideal)
+#endif
+}
+// Write a single log line (async-signal-safe write)
+static inline void __log_src_line(const char *file, int line, const char *srcline) {
+<br/>
+    char buf[4096];
+<br/>
+    int pos = 0;
+<br/>
+    // prefix: &quot;PID:&lt;pid&gt; TID:&lt;tid&gt; FILE:&lt;file&gt; LINE:&lt;line&gt; | &quot;
+<br/>
+    buf[pos++] = 'P'; buf[pos++] = 'I'; buf[pos++] = 'D'; buf[pos++] = ':';
+<br/>
+    pos += utoa_dec((uint64_t)getpid(), buf + pos);
+<br/>
+    buf[pos++] = ' ';
+<br/>
+    buf[pos++] = 'T'; buf[pos++] = 'I'; buf[pos++] = 'D'; buf[pos++] = ':';
+<br/>
+    pos += utoa_dec((uint64_t)gettid_sys(), buf + pos);
+<br/>
+    buf[pos++] = ' ';
+<br/>
+    buf[pos++] = 'F'; buf[pos++] = ':'; // short file label
+<br/>
+    int n = strlen(file);
+<br/>
+    if (pos + n &lt; (int)sizeof(buf) - 2) { memcpy(buf + pos, file, n); pos += n; }
+<br/>
+    buf[pos++] = ':'; buf[pos++] = 'L';
+<br/>
+    pos += utoa_dec((uint64_t)line, buf + pos);
+<br/>
+    buf[pos++] = ' ';
+<br/>
+    buf[pos++] = '|';
+<br/>
+    buf[pos++] = ' ';
+<br/>
+    // append srcline (trim newline)
+<br/>
+    int s = 0;
+<br/>
+    while (srcline[s] &amp;&amp; srcline[s] != '\n' &amp;&amp; pos &lt; (int)sizeof(buf) - 2) {
+<br/>
+        buf[pos++] = srcline[s++];
+<br/>
+    }
+<br/>
+    buf[pos++] = '\n';
+<br/>
+    // single syscall write to avoid interleaving
+<br/>
+    ssize_t r = write(STDERR_FILENO, buf, pos);
+<br/>
+    (void)r;
+}
+#endif // INSTR_LOG_H</pre>
+        <p class="Pp"><b>Notes:</b></p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            The utoa_dec() is tiny and safe. We avoid snprintf() to reduce
+            dependencies and avoid extra buffers.
+          </li>
+          <li>
+            We write to STDERR_FILENO so logs are unbuffered in many contexts
+            and separate from stdout.
+          </li>
+          <li>
+            Keep lines &lt; PIPE_BUF (4096) to ensure atomic writes on pipes.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1
+          class="Sh"
+          id="Example_of_the_generated_instrumentation_code_(before_each_statement)"
+        >
+          <a
+            class="permalink"
+            href="#Example_of_the_generated_instrumentation_code_(before_each_statement)"
+            >Example of the generated instrumentation code (before each
+            statement)</a
+          >
+        </h1>
+        <p class="Pp">Your instrumenter inserts calls like:</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+__log_src_line(&quot;src/foo.c&quot;, 123, &quot;x = foo(y);&quot;);
+x = foo(y);</pre>
+        <p class="Pp">
+          When inserting the string, escape &quot; and backslashes in the
+          literal you inject.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Handling_threads_&amp;_crashes_in_practice">
+          <a
+            class="permalink"
+            href="#Handling_threads_&amp;_crashes_in_practice"
+            >Handling threads &amp; crashes in practice</a
+          >
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Include PID/TID per log line (shown above).</li>
+          <li>
+            After a crash, use tail -n 100 logs | grep
+            &quot;TID:&lt;tid&gt;&quot; | tail -n 1 to find the last line from
+            the crashing thread.
+          </li>
+          <li>
+            Optionally have the instrumenter write per-thread files:
+            open(&quot;/tmp/instr-&lt;pid&gt;-&lt;tid&gt;.log&quot;,
+            O_APPEND|O_WRONLY|O_CREAT, 0644) and write there (still via single
+            write() calls). That completely eliminates interleaving.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1
+          class="Sh"
+          id="Alternative_/_complementary_tools_you_should_also_consider"
+        >
+          <a
+            class="permalink"
+            href="#Alternative_/_complementary_tools_you_should_also_consider"
+            >Alternative / complementary tools you should also consider</a
+          >
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            addr2line or eu-addr2line on the core file to map crash address to
+            source line (requires debug symbols).
+          </li>
+          <li>
+            gdb --batch -ex 'run' -ex 'bt' or automated coredump backtrace
+            collection.
+          </li>
+          <li>
+            rr (Mozilla) record/replay &#x2013; deterministic replay and exact
+            instruction-level reproduction.
+          </li>
+          <li>Sanitizers:</li>
+        </ul>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>
+            AddressSanitizer (-fsanitize=address) for memory bugs (buffer
+            overflows, use-after-free).
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>UndefinedBehaviorSanitizer (-fsanitize=undefined).</dd>
+        </dl>
+        <ul class="Bl-bullet">
+          <li>
+            -finstrument-functions for function-entry/exit tracing (less
+            granular).
+          </li>
+          <li>
+            Dynamic binary instrumentation (DynamoRIO / PIN) to instrument at
+            runtime (heavier weight).
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Limitations_and_gotchas_(be_explicit)">
+          <a class="permalink" href="#Limitations_and_gotchas_(be_explicit)"
+            >Limitations and gotchas (be explicit)</a
+          >
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            <b>You may not always get the exact offending statement.</b> If the
+            crash occurs in another function called by your instrumented line,
+            the last printed line may be the caller&#x2019;s last instrumented
+            line &#x2014; but that&#x2019;s still highly useful to know the
+            path. If crash is inside inline assembly, you might lose mapping.
+          </li>
+          <li>
+            <b>Instrumentation can change timing/race conditions.</b> It can
+            hide or expose bugs. Always interpret results thoughtfully.
+          </li>
+          <li>
+            <b>Huge IO cost.</b> Printing every line will slow the program
+            dramatically. Use targeted instrumentation for suspect modules, or a
+            mode that instruments only a percentage of lines.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Quick_roadmap_you_can_follow_right_now">
+          <a class="permalink" href="#Quick_roadmap_you_can_follow_right_now"
+            >Quick roadmap you can follow right now</a
+          >
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Build a small Clang libTooling program that:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Visits Stmt nodes you want instrumented.</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Extracts source snippet for that Stmt via SourceManager (e.g., the
+            first line or the whole stmt).
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Emit __log_src_line(&quot;file&quot;, lineno,
+            &quot;escaped_src&quot;); before the original node.
+          </dd>
+          <dt>2.</dt>
+          <dd>
+            Add the small runtime helper above into the instrumented project
+            (link it).
+          </dd>
+          <dt>3.</dt>
+          <dd>
+            Compile: clang -g -O0 -fno-omit-frame-pointer and run the binary.
+          </dd>
+          <dt>4.</dt>
+          <dd>
+            When crash happens, use tail / grep per tid to find last printed
+            statement.
+          </dd>
+        </dl>
+        <p class="Pp">If you want, I can:</p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>produce a small Clang libTooling prototype (C++), or</li>
+          <li>
+            produce a simpler brute-force Perl/Python tool that instruments by
+            naive line-insertion (less correct, but quick), or
+          </li>
+          <li>
+            write a tiny patch that instruments only function entries using
+            -finstrument-functions.
+          </li>
+        </ul>
+        <p class="Pp">
+          Tell me which one you want and I&#x2019;ll produce code you can run
+          right away (libTooling C++ or a simple file-level replacer). I can
+          also make the Clang tool insert
+          <i>statement-level</i> instrumentation (safer) rather than raw
+          physical line inserts.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Bottom line: this is
+          <b>clever, practical, and surprisingly powerful</b> &#x2014;
+          especially when combined with the right low-level I/O strategy (single
+          write() per log, PID/TID, per-thread files) and AST-aware
+          instrumentation. It won&#x2019;t replace sanitizers / rr / core-dumps
+          for all cases, but it&#x2019;s an excellent addition to your debug
+          toolbox for those maddening silent crashes. Want the libTooling
+          prototype next?
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="@zfogg~2">
+            <a class="permalink" href="#@zfogg~2">@zfogg</a>
+          </h2>
+          <p class="Pp">
+            copy their src dir. transform the code. compile it and run it. get
+            the last line. bug found You said: To your first set of points:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              what if i just do both? log the macro call line and log the
+              transformed-from-a-macro code lines too, so each macro would have
+              at least two logs. cover all the bases.
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              i could just transform them into a single line statement and then
+              log it. that's good enough for a developer to get real value out
+              of the printf transform tool
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              i literally planed to print a string of metadata of things like
+              the filename and line number and like whether it's a transformed
+              macro call or not, and the code itself. printf(&quot;timestamp
+              file line func macro_or_not code&quot;);
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              i'll compile in logging code that has filters so you can set an
+              environment variable to only print code in the file or function
+              you think has a bug. that could get noisy with millions of logs on
+              a massive project, especially if my code transforms a project's
+              dependencies to find a bug too. so i'll compile in a small logging
+              system that writes to a file and stdout and has filters and lets
+              you configure it with environment variables. i'll have to have one
+              file per thread and use their thread id in the filename
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              i'll also write to a file so it should be fine because i'll insert
+              the logs BEFORE each line of code, not after, so the write() call
+              that outputs the source code of the line to a file will have
+              succeeded before the line that crashes even runs
+            </dd>
+            <dt>6.</dt>
+            <dd>
+              can write a script that greps the logs and finds the last logs
+              from each thread. they'll all be timestamped and marked with a
+              thread id so we can find each thread's latest log and check them
+              all. that's not that difficult and will be majorly useful in
+              debugging.
+            </dd>
+            <dt>7.</dt>
+            <dd>of course</dd>
+            <dt>8.</dt>
+            <dd>
+              good point, i'll have to detect signal handler functions
+              automatically. if that's difficult i could require the user mark
+              it with an empty #define. then i can detect the #define and decide
+              not to transform any function marked by the SIGNAL_HANDLER_FUN
+              #define.
+            </dd>
+            <dt>9.</dt>
+            <dd>i don't know what this means.</dd>
+            <dt>10.</dt>
+            <dd>
+              i still don't know why this isn't a tool that already exists. it
+              could be standard development practice for c/c++. tens of
+              thousands, hundreds of thousands of developers have wasted
+              collective 100s of years debugging by now. when we could just log
+              the source code itself and see the last line that logs. i'm going
+              to code it and see if it will be useful for my project because
+              i've spent a lot of time debugging ascii-chat trying to find out
+              where to call printf() so i can see what's crashing.
+            </dd>
+          </dl>
+          <p class="Pp">
+            i see the rest of your message, you think this can be built and is
+            smart. do a search online and see if anyone has ever built it before
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="@ChatGPT~2">
+            <a class="permalink" href="#@ChatGPT~2">@ChatGPT</a>
+          </h2>
+          <p class="Pp">
+            Short answer: your idea is real, useful,
+            and&#x2014;unsurprisingly&#x2014;nearby things already exist. The
+            <i>exact</i> &#x201C;print the source text before every
+            statement&#x201D; isn&#x2019;t a common off-the-shelf tool, but
+            several families of tools do 80&#x2013;100% of what you want:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Compiler-inserted callbacks at every basic block/edge</b>
+              (LLVM&#x2019;s <i>SanitizerCoverage</i>). You can hook a tiny
+              function that runs <i>before</i> each edge and record the program
+              counter (PC). After a crash, &#x201C;the last PC for each
+              thread&#x201D; is effectively &#x201C;the last executed source
+              location.&#x201D; This is widely used by fuzzers (AFL++,
+              libFuzzer, etc.). You can map those PCs back to file:line with
+              debug info. (clang.llvm.org)
+            </li>
+            <li>
+              <b>Source-to-source rewriting with Clang/libTooling.</b> People
+              regularly write rewriters/rewriters that inject statements; the
+              infra is well documented and there are examples of &#x201C;insert
+              cout at each line/stmt.&#x201D; That&#x2019;s basically your
+              approach. (clang.llvm.org)
+            </li>
+            <li>
+              <b>Dynamic binary instrumentation</b> (DynamoRIO/Pin/TinyInst).
+              You can log every executed basic block (or instruction) at runtime
+              without rebuilding, then symbolize addresses to source. Tools like
+              drcov already dump executed blocks; WinAFL/TinyInst show how to
+              harvest coverage. (dynamorio.org)
+            </li>
+            <li>
+              <b>Function-level tracing</b> (-finstrument-functions, uftrace)
+              gives &#x201C;last function per thread&#x201D; but not per-line.
+              Still handy, far cheaper. (Ubuntu Manpages)
+            </li>
+          </ul>
+          <p class="Pp">
+            So why isn&#x2019;t &#x201C;print every source line&#x201D;
+            standard? Mostly:
+            <b
+              >overhead, log volume, perturbation (Heisenbugs), and great
+              existing alternatives</b
+            >
+            (sanitizers, record-replay like rr, core dumps + addr2line). Those
+            tend to be more targeted and less intrusive. (rr-project.org)
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="On_your_1">
+            <a class="permalink" href="#On_your_1"
+              >On your 1&#x2013;10 points (quick takes + concrete tweaks)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Macros</b> &#x2014; Logging both the macro use-site and the
+              expanded code is smart. With libTooling you can recover original
+              spelling locations (macro call site) <i>and</i> the expansion
+              range; just tag both in your log. (clang.llvm.org)
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Multi-line statements</b> &#x2014; Collapsing to a single-line
+              snippet is fine. In practice, <i>statement-level</i> insertion
+              (before each Stmt) is robust; &#x201C;every physical line&#x201D;
+              is doable but fragile around continuations/comments. (Stack
+              Overflow)
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Metadata</b> &#x2014; Yes: timestamp pid tid file line func
+              [macro=Y/N] code&#x2026;. Prefer one <b>single </b>write(2)<b>
+                call</b
+              >
+              per record to keep logs atomic across threads and signal-safe.
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Filters</b> &#x2014; Make the backend honor env vars like
+              SRCLOG_INCLUDE=file.c:foo bar.c and SRCLOG_EXCLUDE=third_party/.
+              For huge projects, also add rate=N (every Nth statement) and
+              &#x201C;only files matching regex.&#x201D; (This is exactly how
+              coverage &amp; tracing tools keep noise under control. )
+              (clang.llvm.org)
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>&#x201C;Before the crashing line&#x201D;</b> &#x2014; Correct,
+              <i>if</i> your write path is unbuffered and async-signal-safe.
+              Avoid fprintf; use write(2) to per-thread files
+              (/tmp/srclog.&lt;pid&gt;.&lt;tid&gt;.log). Atomic up to PIPE_BUF
+              so lines don&#x2019;t interleave. (This is the standard trick
+              tracing tools use.) (dynamorio.org)
+            </dd>
+            <dt>6.</dt>
+            <dd>
+              <b>Postmortem grep</b> &#x2014; Exactly. Script: find crashed
+              thread&#x2019;s TID (from a core or signal handler), then grep
+              &quot; TID:&lt;tid&gt; &quot; | tail -n1. If you go the
+              SanitizerCoverage route, you can log PCs and post-symbolize to
+              file:line with addr2line/llvm-symbolizer. (clang.llvm.org)
+            </dd>
+            <dt>7.</dt>
+            <dd><b>&#x201C;Of course&#x201D;</b> &#x2014; &#x1F44D;</dd>
+            <dt>8.</dt>
+            <dd>
+              <b>Signal handlers</b> &#x2014; You can heuristically detect
+              handlers by scanning for signal()/sigaction() usage in the AST and
+              tagging the referenced functions. But it&#x2019;s not bulletproof
+              (handlers passed via pointers/structs). Your #define
+              SIGNAL_HANDLER_FUN opt-in is a good pragmatic switch.
+            </dd>
+            <dt>9.</dt>
+            <dd>
+              <b>Heisenbugs clarified</b> &#x2014; Any logging shifts
+              timing/memory/layout (I/O latency, cache). Races may
+              disappear/appear. That&#x2019;s why record-replay (rr) and
+              sanitizers are beloved&#x2014;they alter timing <i>less</i> or
+              give you precise faults without heavy I/O. Use your tool to
+              localize; confirm with ASan/UBSan/rr. (rr-project.org)
+            </dd>
+            <dt>10.</dt>
+            <dd>
+              <b>Why not common practice?</b> &#x2014; Because the
+              <i>cheapest</i> signals (backtrace/sanitizers/coverage) already
+              tell you &#x201C;where&#x201D; with far less overhead and churn,
+              and teams worry about leaking proprietary source into logs. But
+              that doesn&#x2019;t mean your tool isn&#x2019;t
+              valuable&#x2014;especially for &#x201C;silent segfault in
+              release-ish builds with minimal symbols.&#x201D;
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Two_fast_MVPs_you_can_ship_this_week">
+            <a class="permalink" href="#Two_fast_MVPs_you_can_ship_this_week"
+              >Two fast MVPs you can ship this week</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="A)_Zero_source_rewriting_(piggyback_SanitizerCoverage)"
+          >
+            <a
+              class="permalink"
+              href="#A)_Zero_source_rewriting_(piggyback_SanitizerCoverage)"
+              >A) Zero source rewriting (piggyback SanitizerCoverage)</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Build with: clang -O0 -g -fsanitize=address -fsanitize=undefined
+              -fsanitize-coverage=trace-pc-guard
+            </li>
+            <li>
+              Implement the callback:
+              <p class="Pp"></p>
+            </li>
+          </ul>
+          <p class="Pp"></p>
+          <pre>// gets called on &#x201C;every edge&#x201D;
+void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
+<br/>
+    // cheap fast path: if (!*guard) return; // optional
+<br/>
+    void *pc = __builtin_return_address(0);
+<br/>
+    // write TID + PC to a per-thread buffer or log via one write()
+}</pre>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              On crash (or end), run llvm-symbolizer/addr2line on the
+              <b>last PCs per TID</b> to get file:line. If you want the
+              <b>exact source text</b>, resolve file:line and read that line
+              from disk. This gives you your &#x201C;last printed line,&#x201D;
+              without transforming the code at all. (Fuzzers use this daily.)
+              (clang.llvm.org)
+            </dd>
+          </dl>
+          <p class="Pp">
+            <b>Pros:</b> minimal engineering, robust with macros, threads fine
+            (include TID), tiny runtime cost vs printf-everywhere.
+            <b>Cons:</b> you log addresses, not literal source text (but you can
+            reconstruct that from files).
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="B)_Your_original_libTooling_rewriter_(statement-level)"
+          >
+            <a
+              class="permalink"
+              href="#B)_Your_original_libTooling_rewriter_(statement-level)"
+              >B) Your original libTooling rewriter (statement-level)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Use LibTooling to visit each Stmt and insert:
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+__log_src_line(&quot;file.c&quot;, &lt;line&gt;, &quot;escaped one-line snippet&quot;);</pre>
+          <ul class="Bl-bullet">
+            <li>
+              Include a tiny runtime that writes one line via write(2) with
+              pid/tid/file/line/snippet.
+            </li>
+            <li>Add filters via env vars.</li>
+            <li>Skip functions marked SIGNAL_HANDLER_FUN.</li>
+          </ul>
+          <p class="Pp">
+            LibTooling docs + community snippets are plentiful. There are even
+            threads about &#x201C;put a cout at each line&#x201D; as a learning
+            exercise&#x2014;close to your target. (clang.llvm.org)
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Extra_pointers_you_might_like">
+            <a class="permalink" href="#Extra_pointers_you_might_like"
+              >Extra pointers you might like</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Address &#x2194; line mapping realities:</b> debug locations
+              can be approximate; one source line often maps to several
+              instructions (and vice-versa). Coverage tools discuss this nuance;
+              expect occasional &#x201C;partial line&#x201D; mappings. (Stack
+              Overflow)
+            </li>
+            <li>
+              <b>Function-only tracing</b> if you want a cheap mode:
+              -finstrument-functions + uftrace to get the &#x201C;last function
+              per thread&#x201D; baseline. (Ubuntu Manpages)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Bottom_line">
+            <a class="permalink" href="#Bottom_line">Bottom line</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Your idea is <b>good</b> and there&#x2019;s a well-trodden path to
+              make it practical.
+            </li>
+            <li>
+              If you want results fast with crash-proof logs per thread: start
+              with
+              <b>SanitizerCoverage</b> (MVP A). You&#x2019;ll get &#x201C;the
+              last executed source line per thread&#x201D; with trivial code and
+              no rewriting. Later, add your <b>libTooling</b> rewriter for the
+              deluxe &#x201C;print the literal source text&#x201D; mode.
+              (clang.llvm.org)
+            </li>
+          </ul>
+          <p class="Pp">
+            If you want, I&#x2019;ll sketch the exact
+            <b>__sanitizer_cov_trace_pc_guard</b
+            ><b>
+              logger + a 20-line post-processor that prints, for each TID, the </b
+            ><i>last</i><b> </b>file:line:source<b> before the crash.</b>
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date"><b>Version 0.14.7</b></td>
+        <td class="foot-os"><b>ascii-chat</b></td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -6,11 +6,12 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--binary", type=Path, required=True)
@@ -22,9 +23,9 @@ args = ap.parse_args()
 root = args.artifacts.resolve()
 for i in range(args.count):
     name = "startup-stress-" + str(i)
-    p = Pane(name, [str(args.binary.resolve()), "--no-check-update", "--log-file", str(root/name/"application.log"),
+    p = Pane(name, cli_command(str(args.binary.resolve()), "--log-file", str(root/name/"application.log"),
                    "--log-level", args.log_level, "mirror", "--file", str(root/"media.mp4"), "--loop",
-                   "--audio=false", "--splash-screen=false", "--fps", "10", "--color-mode", args.color_mode], root)
+                   "--audio=false", "--splash-screen=false", "--fps", "10", "--color-mode", args.color_mode), root)
     try:
         p.expect(lambda s: "Terminal too small" in s, "small")
     except Exception:

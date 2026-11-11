@@ -17,6 +17,10 @@ try {
     $binary = Join-Path $env:ASCII_CHAT_INSTALL_DIR 'bin\ascii-chat.exe'
     $version = & $binary --version
     Assert ($LASTEXITCODE -eq 0) 'Installed binary failed'
+    & (Join-Path $env:ASCII_CHAT_INSTALL_DIR 'bin\yt-dlp.exe') --version
+    Assert ($LASTEXITCODE -eq 0) 'Installed yt-dlp failed'
+    & (Join-Path $env:ASCII_CHAT_INSTALL_DIR 'bin\deno.exe') --version
+    Assert ($LASTEXITCODE -eq 0) 'Installed Deno failed'
     $bin = Split-Path -Parent $binary
     Assert ($bin -in ($env:Path -split ';')) 'Session PATH missing'
     Assert ($bin -in ([Environment]::GetEnvironmentVariable('Path', $scope) -split ';')) 'Persistent PATH missing'

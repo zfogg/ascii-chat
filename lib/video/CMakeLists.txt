@@ -4,6 +4,8 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c
     ${CMAKE_CURRENT_SOURCE_DIR}/face_follow_image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/anim/test_pattern.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/anim/waveform.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/anim/fft.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/video_frame.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/color_filter.c
@@ -27,6 +29,14 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/zalgo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/frame_validator.c
 )
+
+if(WIN32)
+    list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/windows/webcam_mediafoundation.c)
+elseif(APPLE)
+    list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/macos/webcam_avfoundation.m)
+elseif(UNIX)
+    list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/linux/webcam_v4l2.c)
+endif()
 
 # Media source files (only when FFmpeg is available)
 if(FFMPEG_FOUND)

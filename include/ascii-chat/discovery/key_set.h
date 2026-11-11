@@ -3,6 +3,7 @@
 #include <ascii-chat/common/limits.h>
 
 /** Connection-local ordered Ed25519 create sequence. Never persists partial sets.
+ * @brief The useful part of acds create key set is in `request`, `count`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * request and reserved_string are adjacent to preserve the legacy trailing name. */
 typedef struct {
   acip_session_create_t request;

@@ -12,7 +12,9 @@ async function upload(page: Page, name: string) {
     .setInputFiles(path.resolve("tests/fixtures/media", name));
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 90_000 });
+  ).toBeVisible({
+    timeout: 90_000,
+  });
   await expect
     .poll(() =>
       page.evaluate(

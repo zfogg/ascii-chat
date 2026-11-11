@@ -1,0 +1,302 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>errors.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">errors.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">errors.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">errors.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> size_t <b>wasm_error_snapshot</b>
+            (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> int <b>wasm_error_code</b> (size_t
+            index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char *
+            <b>wasm_error_message</b> (size_t index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char *
+            <b>wasm_error_file</b> (size_t index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char *
+            <b>wasm_error_full_file</b> (size_t index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char *
+            <b>wasm_error_function</b> (size_t index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> int <b>wasm_error_line</b> (size_t
+            index)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_error_dismiss</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_error_code (size_t index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+20                                                        {
+21   const asciichat_error_context_t *frame = browser_error_at(index);
+22   return frame ? frame-&gt;code : ASCIICHAT_OK;
+23 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>asciichat_error_context_t::code</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            and <b>wasm_error_code()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_code()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_error_dismiss (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+55                                                    {
+56   errno_clear_all();
+57   browser_error_count = 0;
+58 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>errno_clear_all()</b>,
+            and <b>wasm_error_dismiss()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_dismiss()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * wasm_error_file (size_t
+            index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+30                                                                {
+31   const asciichat_error_context_t *frame = browser_error_at(index);
+32   return frame &amp;&amp; frame-&gt;file ? extract_project_relative_path(frame-&gt;file) : &quot;&quot;;
+33 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>extract_project_relative_path()</b>,
+            <b>asciichat_error_context_t::file</b>, and
+            <b>wasm_error_file()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_file()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * wasm_error_full_file
+            (size_t index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+35                                                                     {
+36 #ifdef NDEBUG
+37   (void)index;
+38   return &quot;&quot;;
+39 #else
+40   const asciichat_error_context_t *frame = browser_error_at(index);
+41   return frame &amp;&amp; frame-&gt;file ? frame-&gt;file : &quot;&quot;;
+42 #endif
+43 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>asciichat_error_context_t::file</b>, and
+            <b>wasm_error_full_file()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_full_file()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * wasm_error_function (size_t
+            index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+45                                                                    {
+46   const asciichat_error_context_t *frame = browser_error_at(index);
+47   return frame &amp;&amp; frame-&gt;function ? frame-&gt;function : &quot;&quot;;
+48 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>asciichat_error_context_t::function</b>, and
+            <b>wasm_error_function()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_function()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_error_line (size_t index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+50                                                        {
+51   const asciichat_error_context_t *frame = browser_error_at(index);
+52   return frame ? frame-&gt;line : 0;
+53 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>asciichat_error_context_t::line</b>, and
+            <b>wasm_error_line()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_line()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * wasm_error_message (size_t
+            index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+25                                                                   {
+26   const asciichat_error_context_t *frame = browser_error_at(index);
+27   return frame ? frame-&gt;context_message : &quot;&quot;;
+28 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_context_t::context_message</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>wasm_error_message()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> size_t wasm_error_snapshot (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>src/web/common/errors.c</b>.
+          </p>
+          <pre>
+9                                                       {
+10   asciichat_errno_snapshot_t snapshot =
+11       errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+12   browser_error_count = snapshot.copied;
+13   return snapshot.total;
+14 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
+            <b>asciichat_errno_snapshot_t::copied</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, <b>errno_snapshot()</b>,
+            <b>thread_current_id()</b>,
+            <b>asciichat_errno_snapshot_t::total</b>, and
+            <b>wasm_error_snapshot()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_error_snapshot()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

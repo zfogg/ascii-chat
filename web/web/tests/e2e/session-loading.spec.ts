@@ -105,7 +105,9 @@ for (const viewport of [
       }
       await expect(
         page.getByText("Preparing your view", { exact: true }),
-      ).not.toBeVisible({ timeout: 45000 });
+      ).not.toBeVisible({
+        timeout: 45000,
+      });
     });
   }
 }

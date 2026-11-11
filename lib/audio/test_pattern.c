@@ -9,8 +9,11 @@ void audio_test_pattern(float *output, size_t count, uint64_t position, uint32_t
   if (!output || !sample_rate)
     return;
   const uint64_t period = (uint64_t)sample_rate * 20;
+  uint64_t current = position;
   for (size_t i = 0; i < count; ++i) {
-    double t = (double)((position + i) % period) / sample_rate;
+    uint64_t phase = current % period;
+    current = current == UINT64_MAX ? 0 : current + 1;
+    double t = (double)phase / sample_rate;
     int section = (int)(t / 4);
     double u = t - section * 4;
     double value = 0;
@@ -32,9 +35,9 @@ void audio_test_pattern(float *output, size_t count, uint64_t position, uint32_t
       value = 0.12 * sin(6.283185307179586 * 150 * (exp(k * u) - 1) / k);
     } else if (section == 3) {
       // Deterministic broadband noise bursts, with a low level and soft edges.
-      uint64_t n = (position + i) % period;
-      uint32_t hash = (uint32_t)n * 747796405u + 2891336453u;
-      hash = ((hash >> ((hash >> 28) + 4)) ^ hash) * 277803737u;
+      // The hash uses the low 32 bits of each product and sum.
+      uint32_t hash = (uint32_t)((uint64_t)(uint32_t)phase * 747796405u + 2891336453u);
+      hash = (uint32_t)((uint64_t)((hash >> ((hash >> 28) + 4)) ^ hash) * 277803737u);
       hash = (hash >> 22) ^ hash;
       double noise = (double)hash / 2147483648.0 - 1;
       double beat = fmod(u, 1.0);

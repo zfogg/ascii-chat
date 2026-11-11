@@ -1,0 +1,282 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_protocol(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_protocol(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_protocol(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client_protocol - Client Handler</p>
+        <p class="Pp">
+          <br />
+          - &#x1F4E1; Client-side packet processing and data reception thread
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4E1; Client-side packet processing and data reception thread
+        </p>
+        <p class="Pp">Client Protocol README</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The protocol handler manages the data reception thread, processes
+          incoming packets from the server, and dispatches them to appropriate
+          handlers based on packet type.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Implementation</b>: src/client/protocol.c, src/client/protocol.h
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Data_Reception_Thread">
+          <a class="permalink" href="#Data_Reception_Thread"
+            >Data Reception Thread</a
+          >
+        </h1>
+        <pre>static void *data_reception_thread(void *arg)
+{
+<br/>
+  (void)arg;
+<br/>
+  socket_t sockfd = server_connection_get_socket();
+<br/>
+  const crypto_context_t *crypto_ctx = crypto_client_get_context();
+<br/>
+  while (!should_exit() &amp;&amp; server_connection_is_active()) {
+<br/>
+    packet_header_t header;
+<br/>
+    void *payload = NULL;
+<br/>
+    size_t payload_len = 0;
+<br/>
+    // Receive and decrypt packet
+<br/>
+    int result = receive_packet(sockfd, crypto_ctx, &amp;header, &amp;payload, &amp;payload_len);
+<br/>
+    if (result &lt; 0) {
+<br/>
+      log_debug(&quot;receive_packet failed - connection lost&quot;);
+<br/>
+      server_connection_lost();
+<br/>
+      break;
+<br/>
+    }
+<br/>
+    // Dispatch based on packet type
+<br/>
+    handle_packet(&amp;header, payload, payload_len);
+<br/>
+    if (payload) {
+<br/>
+      free(payload);
+<br/>
+      payload = NULL;
+<br/>
+    }
+<br/>
+  }
+<br/>
+  atomic_store(&amp;g_data_thread_exited, true);
+<br/>
+  return NULL;
+}</pre>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Packet_Handlers">
+          <a class="permalink" href="#Packet_Handlers">Packet Handlers</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="ASCII_Frame_Handler">
+            <a class="permalink" href="#ASCII_Frame_Handler"
+              >ASCII Frame Handler</a
+            >
+          </h2>
+          <pre>static void handle_ascii_frame(const void *payload, size_t payload_len)
+{
+<br/>
+  // Render ASCII frame to terminal
+<br/>
+  display_render_frame((const char *)payload, opt_snapshot);
+<br/>
+  // Snapshot mode: exit after displaying frame
+<br/>
+  if (opt_snapshot) {
+<br/>
+    signal_exit();
+<br/>
+  }
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Audio_Batch_Handler">
+            <a class="permalink" href="#Audio_Batch_Handler"
+              >Audio Batch Handler</a
+            >
+          </h2>
+          <pre>static void handle_audio_batch(const void *payload, size_t payload_len)
+{
+<br/>
+  const float *samples = (const float *)payload;
+<br/>
+  int num_samples = payload_len / sizeof(float);
+<br/>
+  // Process received audio samples
+<br/>
+  audio_process_received_samples(samples, num_samples);
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Pong_Handler">
+            <a class="permalink" href="#Pong_Handler">Pong Handler</a>
+          </h2>
+          <pre>static void handle_pong(void)
+{
+<br/>
+  // Update last pong time for keepalive timeout tracking
+<br/>
+  keepalive_record_pong();
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Clear_Console_Handler">
+            <a class="permalink" href="#Clear_Console_Handler"
+              >Clear Console Handler</a
+            >
+          </h2>
+          <pre>static void handle_clear_console(void)
+{
+<br/>
+  // Server requests terminal clear
+<br/>
+  display_full_reset();
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Server_State_Handler">
+            <a class="permalink" href="#Server_State_Handler"
+              >Server State Handler</a
+            >
+          </h2>
+          <pre>static void handle_server_state(const void *payload, size_t payload_len)
+{
+<br/>
+  // Log server state information
+<br/>
+  log_debug(&quot;Received server state update&quot;);
+}</pre>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Connection_Loss_Detection">
+          <a class="permalink" href="#Connection_Loss_Detection"
+            >Connection Loss Detection</a
+          >
+        </h1>
+        <p class="Pp"><b>Loss triggers in protocol thread</b>:</p>
+        <ul class="Bl-bullet">
+          <li><b>receive_packet()</b><b> returns error</b></li>
+          <li>Socket read error (connection closed by server)</li>
+          <li>Decryption failure (corrupted stream)</li>
+          <li>Invalid packet magic number</li>
+        </ul>
+        <p class="Pp"></p>
+        <pre>if (receive_packet(...) &lt; 0) {
+<br/>
+  server_connection_lost();  // Signal connection loss
+<br/>
+  break;                     // Exit thread
+}</pre>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          src/client/protocol.c
+          <p class="Pp"></p>
+          <p class="Pp">src/client/protocol.h</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Client Overview</b></p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

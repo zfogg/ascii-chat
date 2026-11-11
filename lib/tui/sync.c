@@ -41,10 +41,12 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/thread.h>
+#include <libplatform/cond.h>
+#include <libplatform/rwlock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
@@ -67,14 +69,26 @@ typedef struct {
   int line;
   unsigned waiters;
   bool cycle, wait_known;
+  /**
+   */
 } sync_row_t;
 
+/**
+ * @brief sync row keeps the values that move through the subsystem: `key`, `owner`, `waiter`, `generation`. Some
+ * members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather
+ * than the struct copy itself.
+ */
 typedef struct {
   atomic_flag busy;
   sync_row_t *rows;
   size_t count, capacity;
   uint64_t sampled_ns;
   bool waits_complete, limited;
+  /**
+   * @brief This is the handoff point for sync sample. Callers fill `busy`, `rows`, `count`, `capacity` before passing
+   * it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } sync_sample_t;
 
 static sync_sample_t g_sync_samples[3] = {
@@ -86,7 +100,7 @@ static _Atomic int g_sync_total;
 static _Atomic bool g_sync_stop;
 static atomic_flag g_sync_starting = ATOMIC_FLAG_INIT;
 static bool g_sync_started;
-static asciichat_thread_t g_sync_thread;
+static platform_thread_t g_sync_thread;
 static int g_sync_fd = -1;
 static _Thread_local bool g_sync_use_color, g_sync_use_utf8;
 
@@ -138,13 +152,13 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   } else if (!strcmp(type, "rwlock")) {
     const rwlock_t *m = (const rwlock_t *)key;
     r->owner = m->write_held_by_key;
-    r->value = atomic_load(&m->read_lock_count.impl);
+    r->value = atomic_load(&m->read_lock_count);
     r->locks = m->rdlock_count + m->wrlock_count;
     r->unlocks = m->unlock_count;
     r->last_ns = m->last_wrlock_time_ns;
   } else if (!strcmp(type, "cond")) {
     const cond_t *m = (const cond_t *)key;
-    r->value = atomic_load(&m->waiting_count.impl);
+    r->value = atomic_load(&m->waiting_count);
     r->locks = m->wait_count;
     r->unlocks = m->signal_count + m->broadcast_count;
     r->last_ns = m->last_wait_time_ns;
@@ -295,8 +309,8 @@ static void *sync_collect_main(void *unused) {
 }
 
 asciichat_error_t ui_sync_start(int fd) {
-  if (atomic_flag_test_and_set(&g_sync_starting))
-    return ASCIICHAT_OK;
+  while (atomic_flag_test_and_set(&g_sync_starting))
+    platform_sleep_ms(1);
   asciichat_error_t result = ASCIICHAT_OK;
   if (!g_sync_started && platform_isatty(fd) && platform_isatty(STDIN_FILENO)) {
     g_sync_fd = platform_dup(fd);
@@ -307,7 +321,7 @@ asciichat_error_t ui_sync_start(int fd) {
       g_sync_fd = -1;
     } else {
       atomic_store(&g_sync_stop, false);
-      result = acthread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
+      result = platform_thread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
       if (result == ASCIICHAT_OK) {
         g_sync_started = true;
       } else {
@@ -471,11 +485,11 @@ static void sync_separator(int columns, int *measure) {
 
 void ui_sync_render(terminal_size_t size) {
   colored_string_set_output_fd(ui_sync_output_fd() >= 0 ? ui_sync_output_fd() : STDOUT_FILENO);
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   terminal_color_mode_t mode = GET_OPTION(color_mode);
   g_sync_use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
                      (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
-  g_sync_use_utf8 = terminal_should_use_utf8();
+  g_sync_use_utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
   sync_row_t rows[SYNC_ROW_CAPACITY];
@@ -650,10 +664,11 @@ void ui_sync_render(terminal_size_t size) {
                sync_color(LOG_COLOR_RESET));
       snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate,
                sync_color(LOG_COLOR_RESET));
-      const ui_table_column_t columns[] = {{"Type", 8, UI_ALIGN_LEFT},         {"Name", name_width, UI_ALIGN_LEFT},
-                                           {"State/value", 13, UI_ALIGN_LEFT}, {"Total Actions", 13, UI_ALIGN_RIGHT},
-                                           {"L/s", 6, UI_ALIGN_RIGHT},         {"U/s", 6, UI_ALIGN_RIGHT},
-                                           {"Change/s", 7, UI_ALIGN_RIGHT},    {"Total Wait", 12, UI_ALIGN_RIGHT}};
+      const ui_table_column_t columns[] = {
+          {"Type", 8, UI_ALIGN_LEFT, false},         {"Name", name_width, UI_ALIGN_LEFT, false},
+          {"State/value", 13, UI_ALIGN_LEFT, false}, {"Total Actions", 13, UI_ALIGN_RIGHT, false},
+          {"L/s", 6, UI_ALIGN_RIGHT, false},         {"U/s", 6, UI_ALIGN_RIGHT, false},
+          {"Change/s", 7, UI_ALIGN_RIGHT, false},    {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
       const char *cells[] = {r->type, name, padded_state, actions, locks, unlocks, changes, colored_wait};
       ui_table_row(line, sizeof(line), columns, cells, 8, name_width + 83, true, (int)i == selected);
       sync_write_line(line, size.cols, true, measure);

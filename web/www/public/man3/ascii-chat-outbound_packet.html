@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>outbound_packet(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">outbound_packet(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">outbound_packet(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">outbound_packet</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>outbound_packet</b> * <b>next</b>
+            <br />
+            <b>uint8_t</b> * <b>data</b>
+            <br />
+            size_t <b>size</b>
+            <br />
+            size_t <b>cost</b>
+            <br />
+            <b>uint64_t</b> <b>created</b>
+            <br />
+            <b>uint16_t</b> <b>type</b>
+            <br />
+            <b>uint32_t</b> <b>stream</b>
+            <br />
+            <b>bool</b> <b>video</b>
+            <br />
+            <b>bool</b> <b>encoded</b>
+            <br />
+            <b>bool</b> <b>keyframe</b>
+            <br />
+            <b>bool</b> <b>audio</b>
+            <br />
+            <b>bool</b> <b>wait</b>
+            <br />
+            <b>bool</b> <b>done</b>
+            <br />
+            <b>asciichat_error_t</b> <b>result</b>
+            <br />
+            gotel_context_t <b>telemetry_context</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>17</b> of file <b>backpressure.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::audio</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_outbound_packet::cost">
+            <a class="permalink" href="#size_t_outbound_packet::cost"
+              >size_t outbound_packet::cost</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> outbound_packet::created</h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_snapshot()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b>* outbound_packet::data</h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::done</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::encoded</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::keyframe</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>outbound_packet</b>* outbound_packet::next</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_destroy()</b>,
+            <b>acip_outbound_snapshot()</b>, and <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> outbound_packet::result</h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_outbound_packet::size">
+            <a class="permalink" href="#size_t_outbound_packet::size"
+              >size_t outbound_packet::size</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>backpressure.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> outbound_packet::stream</h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="gotel_context_t_outbound_packet::telemetry_context"
+          >
+            <a
+              class="permalink"
+              href="#gotel_context_t_outbound_packet::telemetry_context"
+              >gotel_context_t outbound_packet::telemetry_context</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint16_t</b> outbound_packet::type</h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::video</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_snapshot()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> outbound_packet::wait</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

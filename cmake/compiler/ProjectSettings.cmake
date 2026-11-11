@@ -37,6 +37,12 @@ function(asciichat_apply_project_settings directory)
             # Generated public headers must precede source public includes,
             # including legacy ignored headers from older build configurations.
             target_include_directories("${_target}" BEFORE PRIVATE "${PROJECT_BINARY_DIR}/generated")
+            # Defer-transformed sources include the standalone marker header
+            # directly. Keep this on every project-owned target as well as the
+            # shared interface target so the transformer sees the same include
+            # search path as the compiler.
+            target_include_directories("${_target}" PRIVATE
+                "${PROJECT_SOURCE_DIR}/deps/defer/cpp/include")
             if(ASCIICHAT_ENABLE_IPO)
                 # Preserve target opt-outs, including Criterion test registration.
                 get_property(_ipo_default_set TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION SET)

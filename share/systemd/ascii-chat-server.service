@@ -8,8 +8,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
-ExecStart=/usr/bin/ascii-chat server 0.0.0.0 ::
+Type=notify
+ExecStart=@ASCII_CHAT_EXECUTABLE@ server 0.0.0.0 ::
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -25,9 +25,12 @@ MemoryDenyWriteExecute=yes
 LockPersonality=yes
 
 # Logging
-StandardOutput=journal
-StandardError=journal
+StandardOutput=null
+StandardError=null
 SyslogIdentifier=ascii-chat-server
+WatchdogSec=30s
+CPUQuota=200%
+MemoryMax=1G
 
 # Resource limits
 LimitNOFILE=4096

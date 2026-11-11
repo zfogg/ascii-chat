@@ -10,6 +10,8 @@ import {
 import {
   isWasmReady,
   convertFrameToAscii,
+  resetRenderStabilizer,
+  cleanupRenderSession,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
   renderAudioVisualizationFrame,
@@ -75,6 +77,9 @@ export function useMirrorRenderLoop({
   contentFit = "contain",
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
+  useLayoutEffect(() => {
+    cleanupRenderSession();
+  }, [mediaRevision]);
   // A media element may be connected to only one Web Audio source. Retain its
   // graph across resize, render-mode changes and media/webcam toggles.
   const mediaAudioRef = useRef<{
@@ -433,6 +438,7 @@ export function useMirrorRenderLoop({
     const captureCameraTrack = () => {
       const track = cameraStream?.getVideoTracks()[0];
       if (track === cameraTrack) return;
+      resetRenderStabilizer();
       cameraTrack = track;
       void trackReader?.cancel().catch(() => {});
       trackReader = null;
@@ -441,7 +447,9 @@ export function useMirrorRenderLoop({
         window as Window & {
           MediaStreamTrackProcessor?: new (options: {
             track: MediaStreamTrack;
-          }) => { readable: ReadableStream<VideoFrame> };
+          }) => {
+            readable: ReadableStream<VideoFrame>;
+          };
         }
       ).MediaStreamTrackProcessor;
       if (!track || !Processor || !canvasRef.current) return;
@@ -549,6 +557,7 @@ export function useMirrorRenderLoop({
       if (videoHandle) clockVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
+      cleanupRenderSession();
     };
   }, [
     externalAudio,

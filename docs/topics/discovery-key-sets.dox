@@ -1,0 +1,79 @@
+/**
+ * @page md_docs_2discovery-key-sets Discovery session authentication keys
+ * @ingroup module_network
+ *
+ * Migrated from docs/discovery-key-sets.md into the rendered Doxygen topic set.
+ *
+ * # Discovery session authentication keys
+ *
+ * ACDS stores session identity as a set of `(key_type, public_key)` identities.
+ * The current ACIP create/join packets carry only 32-byte Ed25519 identities;
+ * `key_type` is therefore explicitly `ed25519`. X25519 encryption keys, GPG key
+ * identifiers, fingerprints and textual SSH key encodings are not interchangeable
+ * with these identities. Other key types require a future protocol change.
+ *
+ * ## Admission policy
+ *
+ * - Existing database sessions and creates with `total_keys` equal to zero (legacy)
+ *   or one retain the existing admission policy: the session name and any required
+ *   password permit a join, subject to the service's identity requirements. Their
+ *   stored host identity is not a guest allowlist.
+ * - A create with `total_keys > 1` explicitly creates a restricted session. Each
+ *   supplied identity must provide its own valid Ed25519 create signature and a
+ *   timestamp within the existing five-minute window. Anonymous and duplicate
+ *   keys are rejected. The creator must possess every registered private key;
+ *   this protocol does not delegate registration of arbitrary third-party keys.
+ * - Any active member of that restricted set may join, including multiple devices
+ *   using different listed keys. Every join must provide a current signature for
+ *   that key over the existing join message, even when service-wide identity
+ *   verification is optional. An unlisted, revoked, forged or stale identity is
+ *   rejected before participant insertion or connection details are returned.
+ * - Password checks remain additional requirements. Revoking every member leaves a
+ *   restricted session closed; re-adding a revoked key does not reactivate it.
+ *   The existing key-management C APIs are trusted database administration APIs;
+ *   this change adds no network key-management command.
+ *
+ * This policy does not change media authentication, key algorithms, host election,
+ * or notification behavior. Lookup continues to advertise the original primary
+ * host key for wire compatibility; it does not publish the full authorization set.
+ *
+ * ## Create sequence
+ *
+ * On one connection, send exactly `total_keys` SESSION_CREATE packets, with indexes
+ * `0..total_keys-1`. The first packet supplies the session configuration. Each later
+ * packet supplies its own key, timestamp and signature, with the same total,
+ * capabilities and participant limit as the first packet. Later session settings
+ * are not applied. Each signature uses the existing ACIP create signing format;
+ * the set is assembled on one connection under the existing transport crypto
+ * policy. No new signing algorithm or signature format is introduced. The final packet commits the set
+ * and returns one SESSION_CREATED. A legacy `total_keys=0` request completes
+ * immediately. Zero-key terminators were unreachable legacy server code and are
+ * not part of the counted protocol.
+ *
+ * Missing, reordered, repeated, oversized or changed-count sequences fail and
+ * clear the pending state. Partial sets are connection-local and never persisted.
+ * Disconnecting discards them. Requests with truncated reserved names or
+ * unterminated fixed string fields are rejected before callbacks read them.
+ *
+ * ## Storage migration
+ *
+ * Startup runs an idempotent SQLite transaction creating `session_key_policy` and
+ * `session_identity_keys`. It copies the existing rotation keys (including their
+ * versions, timestamps and revocations), then backfills each non-anonymous host
+ * key without overriding a pre-existing revocation. Existing sessions get an
+ * unrestricted policy row. Session IDs, names, passwords, participants, timestamps
+ * and host state remain in their original tables. The old untyped `session_keys`
+ * table, when present, remains available for inspection; new key APIs use the typed
+ * table. Fresh databases no longer create the superseded table or its indexes.
+ *
+ * Policy rows mark migrated sessions. Reopening the database does not recopy stale
+ * legacy keys or resurrect a revoked key. Foreign keys cascade key sets and policy
+ * rows when a session is deleted. New session creation, policy and all member keys
+ * commit in one savepoint; storage failure rolls back the whole session. SQLite's
+ * connection mutex protects these multi-statement operations on the shared handle.
+ * Password verification runs outside that mutex so Argon2 work cannot block other
+ * clients' database operations. Restricted admission is checked before password
+ * verification and checked again with fresh capacity, session identity and password
+ * state inside the insertion transaction. Changes during password verification
+ * therefore reject the join or require a retry without rehashing under the lock.
+ */

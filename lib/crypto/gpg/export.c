@@ -20,9 +20,10 @@
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/process.h>
+#include <ascii-chat/os/pipe.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -63,7 +64,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   // Use gpg --export to export the public key in binary format
   const char *argv[] = {"gpg", "--batch", "--yes", "--output", temp_path, "--export", key_id, NULL};
   int result = 0;
-  LOG_IO("gpg", { result = platform_execute_subprocess("gpg", argv, NULL, 0); });
+  LOG_IO("gpg", { result = platform_execute_subprocess("gpg", argv, NULL, 0, NULL, NULL); });
   if (result != 0) {
     log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);
     platform_delete_temp_file(temp_path);

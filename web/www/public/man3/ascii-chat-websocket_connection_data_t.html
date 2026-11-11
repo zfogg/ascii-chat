@@ -1,155 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>websocket_connection_data_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">websocket_connection_data_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">websocket_connection_data_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">websocket_connection_data_t - Per-connection user data.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>websocket_server_t</b> * <b>server</b>
-  <br/>
-  Back-reference to server. <b>acip_transport_t</b> * <b>transport</b>
-  <br/>
-  ACIP transport for this connection. <b>asciichat_thread_t</b>
-    <b>handler_thread</b>
-  <br/>
-  Client handler thread. <b>bool</b> <b>handler_started</b>
-  <br/>
-  True if handler thread was started. <b>bool</b> <b>cleaning_up</b>
-  <br/>
-  True if cleanup is in progress (prevents race with remove_client).
-    <b>uint8_t</b> * <b>pending_send_data</b>
-  <br/>
-  Current message being sent. size_t <b>pending_send_len</b>
-  <br/>
-  Total length of message being sent. size_t <b>pending_send_offset</b>
-  <br/>
-  Current offset in message (bytes already sent). <b>bool</b>
-    <b>has_pending_send</b>
-  <br/>
-  True if there's an in-progress message.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Per-connection user data.</p>
-<p class="Pp">Stored in libwebsockets per-session user data (wsi user
-  pointer).</p>
-<p class="Pp">Definition at line <b>51</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> websocket_connection_data_t::cleaning_up</h2>
-<p class="Pp">True if cleanup is in progress (prevents race with
-  remove_client).</p>
-<p class="Pp">Definition at line <b>56</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> websocket_connection_data_t::handler_started</h2>
-<p class="Pp">True if handler thread was started.</p>
-<p class="Pp">Definition at line <b>55</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b>
-  websocket_connection_data_t::handler_thread</h2>
-<p class="Pp">Client handler thread.</p>
-<p class="Pp">Definition at line <b>54</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> websocket_connection_data_t::has_pending_send</h2>
-<p class="Pp">True if there's an in-progress message.</p>
-<p class="Pp">Definition at line <b>62</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>*
-  websocket_connection_data_t::pending_send_data</h2>
-<p class="Pp">Current message being sent.</p>
-<p class="Pp">Definition at line <b>59</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_websocket_connection_data_t::pending_send_len"><a class="permalink" href="#size_t_websocket_connection_data_t::pending_send_len">size_t
-  websocket_connection_data_t::pending_send_len</a></h2>
-<p class="Pp">Total length of message being sent.</p>
-<p class="Pp">Definition at line <b>60</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_websocket_connection_data_t::pending_send_offset"><a class="permalink" href="#size_t_websocket_connection_data_t::pending_send_offset">size_t
-  websocket_connection_data_t::pending_send_offset</a></h2>
-<p class="Pp">Current offset in message (bytes already sent).</p>
-<p class="Pp">Definition at line <b>61</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>websocket_server_t</b>*
-  websocket_connection_data_t::server</h2>
-<p class="Pp">Back-reference to server.</p>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b>*
-  websocket_connection_data_t::transport</h2>
-<p class="Pp">ACIP transport for this connection.</p>
-<p class="Pp">Definition at line <b>53</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>websocket_connection_data_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">websocket_connection_data_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">websocket_connection_data_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          websocket_connection_data_t - Per-connection user data.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>websocket_server_t</b> * <b>server</b>
+            <br />
+            Back-reference to server. <b>acip_transport_t</b> * <b>transport</b>
+            <br />
+            ACIP transport for this connection. <b>asciichat_thread_t</b>
+            <b>handler_thread</b>
+            <br />
+            Client handler thread. <b>bool</b> <b>handler_started</b>
+            <br />
+            True if handler thread was started. <b>bool</b> <b>cleaning_up</b>
+            <br />
+            True if cleanup is in progress (prevents race with remove_client).
+            <b>uint8_t</b> * <b>pending_send_data</b>
+            <br />
+            Current message being sent. size_t <b>pending_send_len</b>
+            <br />
+            Total length of message being sent. size_t
+            <b>pending_send_offset</b>
+            <br />
+            Current offset in message (bytes already sent). <b>bool</b>
+            <b>has_pending_send</b>
+            <br />
+            True if there's an in-progress message.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Per-connection user data.</p>
+        <p class="Pp">
+          Stored in libwebsockets per-session user data (wsi user pointer).
+        </p>
+        <p class="Pp">
+          Definition at line <b>60</b> of file
+          <b>lib/network/websocket/server.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> websocket_connection_data_t::cleaning_up
+          </h2>
+          <p class="Pp">
+            True if cleanup is in progress (prevents race with remove_client).
+          </p>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> websocket_connection_data_t::handler_started
+          </h2>
+          <p class="Pp">True if handler thread was started.</p>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b>
+            websocket_connection_data_t::handler_thread
+          </h2>
+          <p class="Pp">Client handler thread.</p>
+          <p class="Pp">
+            Definition at line <b>63</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> websocket_connection_data_t::has_pending_send
+          </h2>
+          <p class="Pp">True if there's an in-progress message.</p>
+          <p class="Pp">
+            Definition at line <b>71</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b>* websocket_connection_data_t::pending_send_data
+          </h2>
+          <p class="Pp">Current message being sent.</p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_websocket_connection_data_t::pending_send_len"
+          >
+            <a
+              class="permalink"
+              href="#size_t_websocket_connection_data_t::pending_send_len"
+              >size_t websocket_connection_data_t::pending_send_len</a
+            >
+          </h2>
+          <p class="Pp">Total length of message being sent.</p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_websocket_connection_data_t::pending_send_offset"
+          >
+            <a
+              class="permalink"
+              href="#size_t_websocket_connection_data_t::pending_send_offset"
+              >size_t websocket_connection_data_t::pending_send_offset</a
+            >
+          </h2>
+          <p class="Pp">Current offset in message (bytes already sent).</p>
+          <p class="Pp">
+            Definition at line <b>70</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>websocket_server_t</b>* websocket_connection_data_t::server
+          </h2>
+          <p class="Pp">Back-reference to server.</p>
+          <p class="Pp">
+            Definition at line <b>61</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b>* websocket_connection_data_t::transport
+          </h2>
+          <p class="Pp">ACIP transport for this connection.</p>
+          <p class="Pp">
+            Definition at line <b>62</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

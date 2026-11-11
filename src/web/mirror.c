@@ -1,24 +1,25 @@
+#include "common/font.h"
+#include "mirror.h"
 /**
  * @file mirror_wasm.c
  * @brief WASM entry point for ascii-chat mirror mode
  */
 
-#include "buffer_sizes.h"
 #include <emscripten.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/init.h"
 #include "session/frame_validation.h"
 #include <ascii-chat/util/utf8.h>
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
+#include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -28,6 +29,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/visualization.h>
+#include <ascii-chat/video/anim/waveform.h>
+#include <ascii-chat/video/anim/fft.h>
 
 // Global digital rain effect context
 static digital_rain_t *g_digital_rain = NULL;
@@ -35,35 +38,25 @@ static double g_last_rain_update_time = 0.0;
 
 // Frame counter for time-based effects (emscripten_get_now is unreliable in pthreads builds)
 static uint32_t g_frame_count = 0;
+static ascii_stabilizer_t g_stabilizer;
 
 // ============================================================================
 // Initialization
 // ============================================================================
 
 /**
- * Initialize mirror mode with command-line style arguments
- * @param args_json JSON array of argument strings, e.g. ["mirror", "--width", "80", "--height", "40"]
+ * Initialize mirror mode with native defaults.
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
-int mirror_init_with_args(const char *args_json) {
+int mirror_init(void) {
   // Initialize platform layer
   asciichat_error_t err = platform_init();
   if (err != ASCIICHAT_OK) {
     return -1;
   }
 
-  // Parse space-separated arguments
-  char *args_copy = NULL;
-  char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
-  if (argc < 0) {
-    return -1;
-  }
-
-  // Initialize options (sets up RCU, defaults, etc.)
-  err = options_init(argc, argv);
-  free(args_copy);
+  char *argv[] = {"mirror", NULL};
+  err = options_init(1, argv);
 
   if (err != ASCIICHAT_OK) {
     return -1;
@@ -75,7 +68,7 @@ int mirror_init_with_args(const char *args_json) {
   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
 
   // Log option values after initialization
-  log_info("After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));
+  log_info("Mirror options initialized");
 
   // Initialize ANSI color code generation (dec3 cache for RGB values)
   ansi_fast_init();
@@ -83,13 +76,23 @@ int mirror_init_with_args(const char *args_json) {
   return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE
-void mirror_cleanup(void) {
-  errno_destroy();
+void session_render_reset_stabilizer(void) {
+  ascii_stabilizer_reset(&g_stabilizer);
+}
+
+void session_render_cleanup(void) {
+  session_render_reset_stabilizer();
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;
   }
+  g_last_rain_update_time = 0.0;
+  g_frame_count = 0;
+}
+
+void mirror_cleanup(void) {
+  session_render_cleanup();
+  errno_destroy();
   options_state_destroy();
   buffer_system_cleanup();
   platform_destroy();
@@ -99,9 +102,9 @@ void mirror_cleanup(void) {
 // Frame Conversion API
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, int contain) {
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser frame pixels or dimensions");
     return NULL;
   }
 
@@ -114,8 +117,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   float time_seconds = (float)g_frame_count / (float)target_fps;
 
   // Get current settings from options or terminal detection
-  int dst_width = (int)terminal_get_effective_width();
-  int dst_height = (int)terminal_get_effective_height();
+  int dst_width = (int)terminal_get_effective_width(GET_OPTION(width), 80);
+  int dst_height = (int)terminal_get_effective_height(GET_OPTION(height), 24);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (g_frame_count <= 3 || g_frame_count % 120 == 0) {
@@ -138,7 +141,10 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
                                                       : 16777216;
   caps.utf8_support = true;
   caps.detection_reliable = true;
-  caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  caps.render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
+  caps.text_renderer = GET_OPTION(renderer);
+  caps.stabilize = GET_OPTION(stabilize);
+  caps.palette_explicit = GET_OPTION(palette_explicit);
   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
   caps.wants_padding = true;
   caps.palette_type = palette_type;
@@ -148,6 +154,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
   if (!rgb_pixels) {
+    SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser frame pixels");
     return NULL;
   }
 
@@ -207,8 +214,11 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   }
 
   // Convert to ASCII using capability-aware function
-  char *ascii_output = ascii_convert_with_capabilities_fit(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
-                                                           stretch, palette_chars, contain != 0);
+  char *ascii_output = ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
+                                                             stretch, palette_chars, contain != 0, NULL, NULL,
+                                                             caps.stabilize ? &g_stabilizer : NULL);
+  if (!caps.stabilize)
+    ascii_stabilizer_reset(&g_stabilizer);
 
   // Clean up
   SAFE_FREE(rgb_pixels);
@@ -267,7 +277,11 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
 
 validate_output:
   if (ascii_output) {
-    if ((size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
+    bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode != RENDER_MODE_HALF_BLOCK &&
+                       dst_width > 0 && dst_height > 0 && dst_width <= IMAGE_MAX_WIDTH / 8 &&
+                       dst_height <= IMAGE_MAX_HEIGHT / 8 &&
+                       (!caps.palette_explicit || ascii_glyph_palette_supported(palette_chars));
+    if (!glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
       ascii_frame_source_t source = {.frame_data = ascii_output, .frame_size = strlen(ascii_output)};
       size_t normalized_size;
       char *rectangular = ascii_create_grid(&source, 1, dst_width, dst_height, &normalized_size);
@@ -277,7 +291,11 @@ validate_output:
     if (!ascii_output)
       return NULL;
     acip_render_settings_t rendering = {.caps = caps};
-    SAFE_STRNCPY(rendering.palette, palette_chars, sizeof(rendering.palette));
+    const char *contract_palette =
+        glyph_match && !caps.palette_explicit
+            ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+            : palette_chars;
+    SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = matrix_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
     if (session_frame_validate_contract(ascii_output, strlen(ascii_output), dst_width, dst_height, &rendering,
                                         effects) != ASCIICHAT_OK) {
@@ -288,7 +306,6 @@ validate_output:
   return ascii_output;
 }
 
-EMSCRIPTEN_KEEPALIVE
 void mirror_submit_audio_samples(const float *samples, int count, int source) {
   if (!samples || count <= 0 || count > 8192)
     return;
@@ -297,7 +314,6 @@ void mirror_submit_audio_samples(const float *samples, int count, int source) {
                              samples, (size_t)count);
 }
 
-EMSCRIPTEN_KEEPALIVE
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
   audio_visualization_source_t audio_source =
       source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
@@ -314,33 +330,6 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
   return text;
 }
 
-EMSCRIPTEN_KEEPALIVE
 void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
-
-#ifndef BUILD_WASM_CLIENT
-// Embedded font data (defined in generated/data/fonts/default.c and matrix.c)
-extern const unsigned char g_font_default[];
-extern const size_t g_font_default_size;
-extern const unsigned char g_font_matrix_resurrected[];
-extern const size_t g_font_matrix_resurrected_size;
-
-/**
- * Get the pointer to the embedded default font data
- * @return Pointer to font data
- */
-EMSCRIPTEN_KEEPALIVE
-const unsigned char *get_font_default_ptr(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return matrix ? g_font_matrix_resurrected : g_font_default;
-}
-
-/** Selection 0 follows settings, 1 selects the default font, 2 selects Matrix. */
-EMSCRIPTEN_KEEPALIVE
-unsigned int get_font_default_size(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
-}
-
-#endif

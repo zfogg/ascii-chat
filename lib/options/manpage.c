@@ -32,8 +32,8 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,17 +52,16 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return NULL;
   }
 
-  if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & 0x1F)) {
-    return "global";
-  }
-
   option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
                                           (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY) |
                                           (1 << MODE_MCP_SERVER);
+  if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & user_modes_mask)) {
+    return "global";
+  }
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     // If all user modes are set, check if binary-level is also set
     if (mode_bitmask & OPTION_MODE_BINARY) {
-      return "global, client, server, mirror, discovery-service";
+      return "global, client, server, mirror, discovery-service, mcp-server";
     }
     return "all modes";
   }
@@ -91,6 +90,10 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   }
   if (mode_bitmask & (1 << MODE_DISCOVERY_SERVICE)) {
     pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
+  }
+
+  if (mode_bitmask & (1 << MODE_MCP_SERVER)) {
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smcp-server", pos > 0 ? ", " : "");
   }
 
   return pos > 0 ? mode_str : NULL;
@@ -249,6 +252,11 @@ typedef struct {
   const char **manual_env_descs;
   size_t manual_env_count;
   size_t manual_env_capacity;
+  /**
+   * @brief This is the handoff point for manpage merge state. Callers fill `in_auto_section`, `found_section_header`,
+   * `in_merge_section`, `merge_content_generated` before passing it on; consumers read the values during the operation
+   * and return ownership only where the member contract explicitly says they do.
+   */
 } manpage_merge_state_t;
 
 static asciichat_error_t manpage_open_merged_output(const char *output_path, FILE **output, bool *close_output) {

@@ -1,639 +1,501 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>nat.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">nat.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">nat.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">nat.c - NAT quality detection for discovery mode host
-  selection.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>BANDWIDTH_OVERRIDE_RATIO</b> 10
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>nat_quality_init</b> (<b>nat_quality_t</b> *quality)
-  <br/>
-  Initialize NAT quality structure with defaults. int <b>nat_compute_tier</b>
-    (const <b>nat_quality_t</b> *quality)
-  <br/>
-  Compute NAT tier for host selection (0=best, 4=worst). int
-    <b>nat_compare_quality</b> (const <b>nat_quality_t</b> *ours, const
-    <b>nat_quality_t</b> *theirs, <b>bool</b> we_are_initiator)
-  <br/>
-  Compare two NAT qualities and determine who should host.
-    <b>asciichat_error_t</b> <b>nat_detect_quality</b> (<b>nat_quality_t</b>
-    *quality, const char *stun_server, <b>uint16_t</b> local_port)
-  <br/>
-  Detect NAT quality using all available methods. <b>asciichat_error_t</b>
-    <b>nat_measure_bandwidth</b> (<b>nat_quality_t</b> *quality, <b>socket_t</b>
-    acds_socket)
-  <br/>
-  Measure upload bandwidth to ACDS server. void <b>nat_quality_to_acip</b>
-    (const <b>nat_quality_t</b> *quality, const <b>uint8_t</b>
-    <b>session_id</b>[16], const <b>uint8_t</b> <b>participant_id</b>[16],
-    <b>acip_nat_quality_t</b> *out)
-  <br/>
-  Convert <b>nat_quality_t</b> to acip_nat_quality_t for network transmission.
-    void <b>nat_quality_from_acip</b> (const <b>acip_nat_quality_t</b> *acip,
-    <b>nat_quality_t</b> *out)
-  <br/>
-  Convert acip_nat_quality_t to <b>nat_quality_t</b>. const char *
-    <b>nat_type_to_string</b> (<b>acip_nat_type_t</b> type)
-  <br/>
-  Get human-readable description of NAT type.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">NAT quality detection for discovery mode host selection.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>nat.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BANDWIDTH_OVERRIDE_RATIO___10"><a class="permalink" href="#_define_BANDWIDTH_OVERRIDE_RATIO___10">#define
-  BANDWIDTH_OVERRIDE_RATIO 10</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>nat.c</b>.</p>
-<p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_nat_compare_quality_(const_"><a class="permalink" href="#int_nat_compare_quality_(const_">int
-  nat_compare_quality (const <b>nat_quality_t</b> * ours, const
-  <b>nat_quality_t</b> * theirs, <b>bool</b> we_are_initiator)</a></h2>
-<p class="Pp">Compare two NAT qualities and determine who should host. Algorithm
-    is deterministic - both sides get the same result. Uses NAT tier priority
-    with bandwidth as tiebreaker.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ours</i> Our NAT quality
-<br/>
-<i>theirs</i> Peer's NAT quality
-<br/>
-<i>we_are_initiator</i> True if we started the session</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">-1 = we host, 0 = equal (initiator wins), 1 = they
-  host</div>
-<p class="Pp">Definition at line <b>54</b> of file <b>nat.c</b>.</p>
-<pre>54                                                                                                        {
-55   if (!ours || !theirs) {
-56     return we_are_initiator ? -1 : 1;
-57   }
-58 
-59   int our_tier = nat_compute_tier(ours);
-60   int their_tier = nat_compute_tier(theirs);
-61 
-62   // Check for bandwidth override: massive bandwidth advantage can override NAT tier
-63   if (ours-&gt;upload_kbps &gt; 0 &amp;&amp; theirs-&gt;upload_kbps &gt; 0) {
-64     if (ours-&gt;upload_kbps &gt;= theirs-&gt;upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
-65       log_debug(&quot;NAT compare: we win by bandwidth override (%u vs %u kbps)&quot;, ours-&gt;upload_kbps, theirs-&gt;upload_kbps);
-66       return -1;
-67     }
-68     if (theirs-&gt;upload_kbps &gt;= ours-&gt;upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
-69       log_debug(&quot;NAT compare: they win by bandwidth override (%u vs %u kbps)&quot;, theirs-&gt;upload_kbps, ours-&gt;upload_kbps);
-70       return 1;
-71     }
-72   }
-73 
-74   // Compare NAT tiers (lower = better)
-75   if (our_tier &lt; their_tier) {
-76     log_debug(&quot;NAT compare: we win by tier (%d vs %d)&quot;, our_tier, their_tier);
-77     return -1;
-78   }
-79   if (our_tier &gt; their_tier) {
-80     log_debug(&quot;NAT compare: they win by tier (%d vs %d)&quot;, our_tier, their_tier);
-81     return 1;
-82   }
-83 
-84   // Same tier - bandwidth is tiebreaker
-85   if (ours-&gt;upload_kbps &gt; theirs-&gt;upload_kbps) {
-86     log_debug(&quot;NAT compare: we win by bandwidth (%u vs %u kbps)&quot;, ours-&gt;upload_kbps, theirs-&gt;upload_kbps);
-87     return -1;
-88   }
-89   if (ours-&gt;upload_kbps &lt; theirs-&gt;upload_kbps) {
-90     log_debug(&quot;NAT compare: they win by bandwidth (%u vs %u kbps)&quot;, theirs-&gt;upload_kbps, ours-&gt;upload_kbps);
-91     return 1;
-92   }
-93 
-94   // Same bandwidth - latency is tiebreaker
-95   if (ours-&gt;rtt_to_acds_ns &lt; theirs-&gt;rtt_to_acds_ns) {
-96     log_debug(&quot;NAT compare: we win by latency (%lu ns vs %lu ns)&quot;, ours-&gt;rtt_to_acds_ns, theirs-&gt;rtt_to_acds_ns);
-97     return -1;
-98   }
-99   if (ours-&gt;rtt_to_acds_ns &gt; theirs-&gt;rtt_to_acds_ns) {
-100     log_debug(&quot;NAT compare: they win by latency (%lu ns vs %lu ns)&quot;, theirs-&gt;rtt_to_acds_ns, ours-&gt;rtt_to_acds_ns);
-101     return 1;
-102   }
-103 
-104   // Everything equal - initiator hosts
-105   log_debug(&quot;NAT compare: equal quality, initiator wins (we_are_initiator=%d)&quot;, we_are_initiator);
-106   return we_are_initiator ? -1 : 1;
-107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BANDWIDTH_OVERRIDE_RATIO</b>, <b>log_debug</b>,
-    <b>nat_compute_tier()</b>, <b>nat_quality_t::rtt_to_acds_ns</b>, and
-    <b>nat_quality_t::upload_kbps</b>.</p>
-<p class="Pp">Referenced by <b>negotiate_determine_result()</b>, and
-    <b>negotiate_elect_future_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_nat_compute_tier_(const_"><a class="permalink" href="#int_nat_compute_tier_(const_">int
-  nat_compute_tier (const <b>nat_quality_t</b> * quality)</a></h2>
-<p class="Pp">Compute NAT tier for host selection (0=best, 4=worst).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> NAT quality</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Tier value</div>
-<p class="Pp">Definition at line <b>39</b> of file <b>nat.c</b>.</p>
-<pre>39                                                    {
-40   if (!quality)
-41     return 4;
-42 
-43   if (quality-&gt;lan_reachable)
-44     return 0; // LAN - best
-45   if (quality-&gt;has_public_ip)
-46     return 1; // Public IP
-47   if (quality-&gt;upnp_available)
-48     return 2; // UPnP mapping
-49   if (quality-&gt;nat_type &lt;= ACIP_NAT_TYPE_RESTRICTED)
-50     return 3; // STUN hole-punchable
-51   return 4;   // TURN relay required
-52 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_RESTRICTED</b>,
-    <b>nat_quality_t::has_public_ip</b>, <b>nat_quality_t::lan_reachable</b>,
-    <b>nat_quality_t::nat_type</b>, and
-  <b>nat_quality_t::upnp_available</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>discovery_session_process()</b>, <b>nat_compare_quality()</b>,
-    <b>nat_detect_quality()</b>, and
-  <b>negotiate_receive_peer_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> nat_detect_quality (<b>nat_quality_t</b>
-  * quality, const char * stun_server, <b>uint16_t</b> local_port)</h2>
-<p class="Pp">Detect NAT quality using all available methods. Runs STUN probe,
-    UPnP check, and gathers ICE candidates in parallel. Results are stored in
-    the provided <b>nat_quality_t</b> structure.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Output structure for results
-<br/>
-<i>stun_server</i> STUN server URL (e.g.,
-  &quot;stun:stun.l.google.com:19302&quot;)
-<br/>
-<i>local_port</i> Local port to use for detection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>293</b> of file <b>nat.c</b>.</p>
-<pre>293                                                                                                            {
-294   if (!quality) {
-295     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;quality is NULL&quot;);
-296   }
-297 
-298   nat_quality_init(quality);
-299   log_info(&quot;Starting NAT quality detection (local_port=%u)&quot;, local_port);
-300 
-301   // Try UPnP/NAT-PMP first
-302   nat_upnp_context_t *upnp = NULL;
-303   asciichat_error_t upnp_result = nat_upnp_open(local_port, &quot;ascii-chat&quot;, &amp;upnp);
-304   if (upnp_result == ASCIICHAT_OK &amp;&amp; upnp &amp;&amp; nat_upnp_is_active(upnp)) {
-305     quality-&gt;upnp_available = true;
-306     quality-&gt;upnp_mapped_port = upnp-&gt;mapped_port;
-307 
-308     char addr_buf[64];
-309     if (nat_upnp_get_address(upnp, addr_buf, sizeof(addr_buf)) == ASCIICHAT_OK) {
-310       // Parse IP:port
-311       char *colon = strchr(addr_buf, ':');
-312       if (colon) {
-313         size_t ip_len = (size_t)(colon - addr_buf);
-314         if (ip_len &lt; sizeof(quality-&gt;public_address)) {
-315           memcpy(quality-&gt;public_address, addr_buf, ip_len);
-316           quality-&gt;public_address[ip_len] = '\0';
-317         }
-318       } else {
-319         SAFE_STRNCPY(quality-&gt;public_address, addr_buf, sizeof(quality-&gt;public_address));
-320       }
-321     }
-322 
-323     log_info(&quot;UPnP: mapped port %u, external IP %s&quot;, quality-&gt;upnp_mapped_port, quality-&gt;public_address);
-324     quality-&gt;nat_type = ACIP_NAT_TYPE_FULL_CONE; // UPnP implies at least full-cone equivalent
-325   } else {
-326     log_debug(&quot;UPnP: not available or mapping failed&quot;);
-327   }
-328 
-329   // Try STUN probe if provided and UPnP didn't succeed
-330   if (!quality-&gt;upnp_available &amp;&amp; stun_server &amp;&amp; stun_server[0]) {
-331     asciichat_error_t stun_result = nat_stun_probe(quality, stun_server, local_port);
-332     if (stun_result == ASCIICHAT_OK) {
-333       // Successfully got reflexive address via STUN
-334       quality-&gt;has_srflx_candidates = true;
-335 
-336       // If reflexive address is not private range, we have public IP
-337       // Private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-338       if (quality-&gt;public_address[0] &amp;&amp; strncmp(quality-&gt;public_address, &quot;10.&quot;, 3) != 0 &amp;&amp;
-339           strncmp(quality-&gt;public_address, &quot;172.16.&quot;, 7) != 0 &amp;&amp; strncmp(quality-&gt;public_address, &quot;192.168.&quot;, 8) != 0) {
-340         quality-&gt;has_public_ip = true;
-341         quality-&gt;nat_type = ACIP_NAT_TYPE_OPEN;
-342       } else {
-343         // Reflexive address is still private - behind symmetric NAT
-344         quality-&gt;nat_type = ACIP_NAT_TYPE_SYMMETRIC;
-345       }
-346     } else {
-347       log_debug(&quot;STUN probe failed, falling back to symmetric NAT assumption&quot;);
-348     }
-349   }
-350 
-351   // Set ICE candidate flags based on what we found
-352   quality-&gt;has_host_candidates = true; // We always have local IP
-353   quality-&gt;has_srflx_candidates = quality-&gt;upnp_available || quality-&gt;has_public_ip || quality-&gt;has_srflx_candidates;
-354 
-355   // Check if TURN relay servers are available (configured via options or ACDS)
-356   const options_t *opts = options_get();
-357   const char *turn_servers = opts ? opts-&gt;turn_servers : NULL;
-358   quality-&gt;has_relay_candidates = (turn_servers &amp;&amp; turn_servers[0] != '\0');
-359   if (quality-&gt;has_relay_candidates) {
-360     log_debug(&quot;TURN relay servers configured: %s&quot;, turn_servers);
-361   }
-362 
-363   quality-&gt;detection_complete = true;
-364   log_info(&quot;NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s&quot;, nat_compute_tier(quality),
-365            quality-&gt;upnp_available, quality-&gt;has_public_ip, nat_type_to_string(quality-&gt;nat_type));
-366 
-367   if (upnp) {
-368     // Keep UPnP mapping active for the session
-369     // Don't close it here - caller is responsible for cleanup
-370   }
-371 
-372   return ASCIICHAT_OK;
-373 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_FULL_CONE</b>,
-    <b>ACIP_NAT_TYPE_OPEN</b>, <b>ACIP_NAT_TYPE_SYMMETRIC</b>,
-    <b>ASCIICHAT_OK</b>, <b>nat_quality_t::detection_complete</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>nat_quality_t::has_host_candidates</b>,
-    <b>nat_quality_t::has_public_ip</b>,
-    <b>nat_quality_t::has_relay_candidates</b>,
-    <b>nat_quality_t::has_srflx_candidates</b>, <b>log_debug</b>,
-    <b>log_info</b>, <b>nat_upnp_context::mapped_port</b>,
-    <b>nat_compute_tier()</b>, <b>nat_quality_init()</b>,
-    <b>nat_quality_t::nat_type</b>, <b>nat_type_to_string()</b>,
-    <b>nat_upnp_get_address()</b>, <b>nat_upnp_is_active()</b>,
-    <b>nat_upnp_open()</b>, <b>options_get()</b>,
-    <b>nat_quality_t::public_address</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>options_state::turn_servers</b>, <b>nat_quality_t::upnp_available</b>,
-    and <b>nat_quality_t::upnp_mapped_port</b>.</p>
-<p class="Pp">Referenced by <b>negotiate_start_detection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> nat_measure_bandwidth
-  (<b>nat_quality_t</b> * quality, <b>socket_t</b> acds_socket)</h2>
-<p class="Pp">Measure upload bandwidth to ACDS server. Uploads a test payload
-    and measures throughput.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Structure to update with bandwidth results
-<br/>
-<i>acds_socket</i> Connected socket to ACDS</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>375</b> of file <b>nat.c</b>.</p>
-<pre>375                                                                                       {
-376   if (!quality) {
-377     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;quality is NULL&quot;);
-378   }
-379   if (acds_socket == INVALID_SOCKET_VALUE) {
-380     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid socket&quot;);
-381   }
-382 
-383   // Prepare bandwidth test packet
-384   acip_bandwidth_test_t test_msg = {0};
-385   memset(test_msg.session_id, 0, sizeof(test_msg.session_id)); // Anonymous test
-386   memset(test_msg.participant_id, 0, sizeof(test_msg.participant_id));
-387   test_msg.test_size_bytes = 65536; // 64KB test payload
-388   test_msg.client_send_time_ns = time_get_ns();
-389 
-390   // Send BANDWIDTH_TEST packet
-391   asciichat_error_t result = packet_send(acds_socket, PACKET_TYPE_ACIP_BANDWIDTH_TEST, &amp;test_msg, sizeof(test_msg));
-392   if (result != ASCIICHAT_OK) {
-393     log_warn(&quot;Failed to send bandwidth test packet&quot;);
-394     return result;
-395   }
-396 
-397   // Send test payload (64KB of data)
-398   uint8_t *test_data = SAFE_MALLOC(test_msg.test_size_bytes, uint8_t *);
-399   if (!test_data) {
-400     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate bandwidth test payload&quot;);
-401   }
-402   memset(test_data, 0xAA, test_msg.test_size_bytes); // Fill with pattern
-403 
-404   ssize_t sent = send(acds_socket, (const char *)test_data, test_msg.test_size_bytes, 0);
-405   SAFE_FREE(test_data);
-406 
-407   if (sent != (ssize_t)test_msg.test_size_bytes) {
-408     log_warn(&quot;Failed to send bandwidth test payload: sent=%zd, expected=%u&quot;, sent, test_msg.test_size_bytes);
-409     return SET_ERRNO(ERROR_NETWORK, &quot;Bandwidth test payload send failed&quot;);
-410   }
-411 
-412   log_debug(&quot;Sent bandwidth test with %u bytes&quot;, test_msg.test_size_bytes);
-413 
-414   // Set socket timeout for response (5 seconds)
-415   if (socket_set_timeout(acds_socket, 5 * NS_PER_SEC_INT) != 0) {
-416     log_warn(&quot;Failed to set socket timeout for bandwidth test&quot;);
-417     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to set socket timeout&quot;);
-418   }
-419 
-420   // Wait for BANDWIDTH_RESULT response
-421   packet_type_t response_type;
-422   void *response_data = NULL;
-423   size_t response_len = 0;
-424 
-425   result = packet_receive(acds_socket, &amp;response_type, &amp;response_data, &amp;response_len);
-426 
-427   if (result != ASCIICHAT_OK) {
-428     log_warn(&quot;Bandwidth test timeout or receive failed&quot;);
-429     return SET_ERRNO(ERROR_NETWORK_TIMEOUT, &quot;No bandwidth test response from ACDS&quot;);
-430   }
-431 
-432   if (response_type != PACKET_TYPE_ACIP_BANDWIDTH_RESULT) {
-433     POOL_FREE(response_data, response_len);
-434     log_warn(&quot;Unexpected packet type %d (expected BANDWIDTH_RESULT)&quot;, response_type);
-435     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Wrong packet type in bandwidth test response&quot;);
-436   }
-437 
-438   if (response_len != sizeof(acip_bandwidth_result_t)) {
-439     POOL_FREE(response_data, response_len);
-440     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid bandwidth result size&quot;);
-441   }
-442 
-443   // Parse results
-444   acip_bandwidth_result_t *results = (acip_bandwidth_result_t *)response_data;
-445   quality-&gt;upload_kbps = results-&gt;measured_upload_kbps;
-446   quality-&gt;download_kbps = results-&gt;measured_download_kbps;
-447   quality-&gt;rtt_to_acds_ns = results-&gt;rtt_ns;
-448   quality-&gt;jitter_ns = results-&gt;jitter_ns;
-449   quality-&gt;packet_loss_pct = results-&gt;packet_loss_pct;
-450 
-451   POOL_FREE(response_data, response_len);
-452 
-453   log_debug(&quot;Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%lu ns&quot;, quality-&gt;upload_kbps,
-454             quality-&gt;download_kbps, quality-&gt;rtt_to_acds_ns);
-455 
-456   return ASCIICHAT_OK;
-457 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_bandwidth_result_t</b>,
-    <b>acip_bandwidth_test_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>nat_quality_t::download_kbps</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>ERROR_NETWORK_TIMEOUT</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>nat_quality_t::jitter_ns</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>NS_PER_SEC_INT</b>, <b>nat_quality_t::packet_loss_pct</b>,
-    <b>packet_receive()</b>, <b>packet_send()</b>,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b>,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b>, <b>POOL_FREE</b>,
-    <b>nat_quality_t::rtt_to_acds_ns</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>socket_set_timeout()</b>, <b>time_get_ns()</b>, and
-    <b>nat_quality_t::upload_kbps</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_nat_quality_from_acip_(const_"><a class="permalink" href="#void_nat_quality_from_acip_(const_">void
-  nat_quality_from_acip (const <b>acip_nat_quality_t</b> * acip,
-  <b>nat_quality_t</b> * out)</a></h2>
-<p class="Pp">Convert acip_nat_quality_t to <b>nat_quality_t</b>.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acip</b><i></i><b> ACIP message structure</b>
-<br/>
-<i>out</i> Output local NAT quality structure</div>
-<p class="Pp">Definition at line <b>497</b> of file <b>nat.c</b>.</p>
-<pre>497                                                                                {
-498   if (!acip || !out)
-499     return;
-500 
-501   nat_quality_init(out);
-502 
-503   out-&gt;has_public_ip = acip-&gt;has_public_ip != 0;
-504   out-&gt;upnp_available = acip-&gt;upnp_available != 0;
-505   out-&gt;upnp_mapped_port = ((uint16_t)acip-&gt;upnp_mapped_port[0] &lt;&lt; 8) | acip-&gt;upnp_mapped_port[1];
-506   out-&gt;nat_type = (acip_nat_type_t)acip-&gt;stun_nat_type;
-507   out-&gt;lan_reachable = acip-&gt;lan_reachable != 0;
-508   out-&gt;stun_latency_ns = acip-&gt;stun_latency_ns;
-509 
-510   out-&gt;upload_kbps = acip-&gt;upload_kbps;
-511   out-&gt;download_kbps = acip-&gt;download_kbps;
-512   out-&gt;rtt_to_acds_ns = acip-&gt;rtt_to_acds_ns;
-513   out-&gt;jitter_ns = acip-&gt;jitter_ns;
-514   out-&gt;packet_loss_pct = acip-&gt;packet_loss_pct;
-515 
-516   SAFE_STRNCPY(out-&gt;public_address, acip-&gt;public_address, sizeof(out-&gt;public_address));
-517   out-&gt;public_port = acip-&gt;public_port;
-518 
-519   out-&gt;has_host_candidates = (acip-&gt;ice_candidate_types &amp; 1) != 0;
-520   out-&gt;has_srflx_candidates = (acip-&gt;ice_candidate_types &amp; 2) != 0;
-521   out-&gt;has_relay_candidates = (acip-&gt;ice_candidate_types &amp; 4) != 0;
-522 
-523   out-&gt;detection_complete = true;
-524 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_nat_quality_t</b>,
-    <b>nat_quality_t::detection_complete</b>,
-    <b>nat_quality_t::download_kbps</b>,
-    <b>nat_quality_t::has_host_candidates</b>,
-    <b>nat_quality_t::has_public_ip</b>,
-    <b>nat_quality_t::has_relay_candidates</b>,
-    <b>nat_quality_t::has_srflx_candidates</b>, <b>nat_quality_t::jitter_ns</b>,
-    <b>nat_quality_t::lan_reachable</b>, <b>nat_quality_init()</b>,
-    <b>nat_quality_t::nat_type</b>, <b>nat_quality_t::packet_loss_pct</b>,
-    <b>nat_quality_t::public_address</b>, <b>nat_quality_t::public_port</b>,
-    <b>nat_quality_t::rtt_to_acds_ns</b>, <b>SAFE_STRNCPY</b>,
-    <b>nat_quality_t::stun_latency_ns</b>, <b>nat_quality_t::upload_kbps</b>,
-    <b>nat_quality_t::upnp_available</b>, and
-    <b>nat_quality_t::upnp_mapped_port</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>negotiate_elect_future_host()</b>, and
-    <b>negotiate_receive_peer_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_nat_quality_init_("><a class="permalink" href="#void_nat_quality_init_(">void
-  nat_quality_init (<b>nat_quality_t</b> * quality)</a></h2>
-<p class="Pp">Initialize NAT quality structure with defaults.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Structure to initialize</div>
-<p class="Pp">Definition at line <b>32</b> of file <b>nat.c</b>.</p>
-<pre>32                                               {
-33   if (!quality)
-34     return;
-35   memset(quality, 0, sizeof(nat_quality_t));
-36   quality-&gt;nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Assume worst case
-37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_SYMMETRIC</b>, and
-    <b>nat_quality_t::nat_type</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>negotiate_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_nat_quality_to_acip_(const_"><a class="permalink" href="#void_nat_quality_to_acip_(const_">void
-  nat_quality_to_acip (const <b>nat_quality_t</b> * quality, const
-  <b>uint8_t</b> session_id[16], const <b>uint8_t</b> participant_id[16],
-  <b>acip_nat_quality_t</b> * out)</a></h2>
-<p class="Pp">Convert <b>nat_quality_t</b> to acip_nat_quality_t for network
-    transmission.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Local NAT quality
-<br/>
-<i></i><b>session_id</b><i></i><b> Session UUID</b>
-<br/>
-<i></i><b>participant_id</b><i></i><b> Participant UUID</b>
-<br/>
-<i>out</i> Output ACIP message structure</div>
-<p class="Pp">Definition at line <b>459</b> of file <b>nat.c</b>.</p>
-<pre>460                                                   {
-461   if (!quality || !out)
-462     return;
-463 
-464   memset(out, 0, sizeof(acip_nat_quality_t));
-465 
-466   if (session_id)
-467     memcpy(out-&gt;session_id, session_id, 16);
-468   if (participant_id)
-469     memcpy(out-&gt;participant_id, participant_id, 16);
-470 
-471   out-&gt;has_public_ip = quality-&gt;has_public_ip ? 1 : 0;
-472   out-&gt;upnp_available = quality-&gt;upnp_available ? 1 : 0;
-473   out-&gt;upnp_mapped_port[0] = (uint8_t)(quality-&gt;upnp_mapped_port &gt;&gt; 8);
-474   out-&gt;upnp_mapped_port[1] = (uint8_t)(quality-&gt;upnp_mapped_port &amp; 0xFF);
-475   out-&gt;stun_nat_type = (uint8_t)quality-&gt;nat_type;
-476   out-&gt;lan_reachable = quality-&gt;lan_reachable ? 1 : 0;
-477   out-&gt;stun_latency_ns = quality-&gt;stun_latency_ns;
-478 
-479   out-&gt;upload_kbps = quality-&gt;upload_kbps;
-480   out-&gt;download_kbps = quality-&gt;download_kbps;
-481   out-&gt;rtt_to_acds_ns = quality-&gt;rtt_to_acds_ns;
-482   out-&gt;jitter_ns = quality-&gt;jitter_ns;
-483   out-&gt;packet_loss_pct = quality-&gt;packet_loss_pct;
-484 
-485   SAFE_STRNCPY(out-&gt;public_address, quality-&gt;public_address, sizeof(out-&gt;public_address));
-486   out-&gt;public_port = quality-&gt;public_port;
-487 
-488   out-&gt;ice_candidate_types = 0;
-489   if (quality-&gt;has_host_candidates)
-490     out-&gt;ice_candidate_types |= 1;
-491   if (quality-&gt;has_srflx_candidates)
-492     out-&gt;ice_candidate_types |= 2;
-493   if (quality-&gt;has_relay_candidates)
-494     out-&gt;ice_candidate_types |= 4;
-495 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_nat_quality_t</b>,
-    <b>nat_quality_t::download_kbps</b>,
-    <b>nat_quality_t::has_host_candidates</b>,
-    <b>nat_quality_t::has_public_ip</b>,
-    <b>nat_quality_t::has_relay_candidates</b>,
-    <b>nat_quality_t::has_srflx_candidates</b>, <b>nat_quality_t::jitter_ns</b>,
-    <b>nat_quality_t::lan_reachable</b>, <b>nat_quality_t::nat_type</b>,
-    <b>nat_quality_t::packet_loss_pct</b>, <b>participant_id</b>,
-    <b>nat_quality_t::public_address</b>, <b>nat_quality_t::public_port</b>,
-    <b>nat_quality_t::rtt_to_acds_ns</b>, <b>SAFE_STRNCPY</b>,
-    <b>session_id</b>, <b>nat_quality_t::stun_latency_ns</b>,
-    <b>nat_quality_t::upload_kbps</b>, <b>nat_quality_t::upnp_available</b>, and
-    <b>nat_quality_t::upnp_mapped_port</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_nat_type_to_string_("><a class="permalink" href="#const_char_*_nat_type_to_string_(">const
-  char * nat_type_to_string (<b>acip_nat_type_t</b> type)</a></h2>
-<p class="Pp">Get human-readable description of NAT type.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>type</i> NAT type</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">String description</div>
-<p class="Pp">Definition at line <b>526</b> of file <b>nat.c</b>.</p>
-<pre>526                                                      {
-527   switch (type) {
-528   case ACIP_NAT_TYPE_OPEN:
-529     return &quot;Open (Public IP)&quot;;
-530   case ACIP_NAT_TYPE_FULL_CONE:
-531     return &quot;Full Cone&quot;;
-532   case ACIP_NAT_TYPE_RESTRICTED:
-533     return &quot;Restricted Cone&quot;;
-534   case ACIP_NAT_TYPE_PORT_RESTRICTED:
-535     return &quot;Port Restricted&quot;;
-536   case ACIP_NAT_TYPE_SYMMETRIC:
-537     return &quot;Symmetric&quot;;
-538   default:
-539     return &quot;Unknown&quot;;
-540   }
-541 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_FULL_CONE</b>,
-    <b>ACIP_NAT_TYPE_OPEN</b>, <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b>,
-    <b>ACIP_NAT_TYPE_RESTRICTED</b>, and <b>ACIP_NAT_TYPE_SYMMETRIC</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>nat.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">nat.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">nat.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          nat.c - NAT quality detection for discovery mode host selection.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_NAT_PORT_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>STUN_BINDING_HEADER_SIZE</b> 20
+            <br />
+            #define <b>STUN_PROBE_RESPONSE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>BANDWIDTH_OVERRIDE_RATIO</b> 10
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>nat_quality_init</b> (<b>nat_quality_t</b> *quality)
+            <br />
+            Initialize NAT quality structure with defaults. int
+            <b>nat_compute_tier</b> (const <b>nat_quality_t</b> *quality)
+            <br />
+            Compute NAT tier for host selection (0=best, 4=worst). int
+            <b>nat_compare_quality</b> (const <b>nat_quality_t</b> *ours, const
+            <b>nat_quality_t</b> *theirs, <b>bool</b> we_are_initiator)
+            <br />
+            Compare two NAT qualities and determine who should host.
+            <b>asciichat_error_t</b> <b>nat_detect_quality</b> (<b
+              >nat_quality_t</b
+            >
+            *quality, const char *stun_server, <b>uint16_t</b> local_port)
+            <br />
+            Detect NAT quality using all available methods. const char *
+            <b>nat_type_to_string</b> (<b>acip_nat_type_t</b> type)
+            <br />
+            Get human-readable description of NAT type.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          NAT quality detection for discovery mode host selection.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>nat.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BANDWIDTH_OVERRIDE_RATIO___10">
+            <a class="permalink" href="#_define_BANDWIDTH_OVERRIDE_RATIO___10"
+              >#define BANDWIDTH_OVERRIDE_RATIO 10</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>35</b> of file <b>nat.c</b>.</p>
+          <p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16"
+              >#define DISCOVERY_NAT_PORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>8</b> of file <b>nat.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_BINDING_HEADER_SIZE___20">
+            <a class="permalink" href="#_define_STUN_BINDING_HEADER_SIZE___20"
+              >#define STUN_BINDING_HEADER_SIZE 20</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>11</b> of file <b>nat.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512"
+              >#define STUN_PROBE_RESPONSE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>12</b> of file <b>nat.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_nat_compare_quality_(const_">
+            <a class="permalink" href="#int_nat_compare_quality_(const_"
+              >int nat_compare_quality (const <b>nat_quality_t</b> * ours, const
+              <b>nat_quality_t</b> * theirs, <b>bool</b> we_are_initiator)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compare two NAT qualities and determine who should host. Algorithm
+            is deterministic - both sides get the same result. Uses NAT tier
+            priority with bandwidth as tiebreaker.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ours</i> Our NAT quality
+            <br />
+            <i>theirs</i> Peer's NAT quality
+            <br />
+            <i>we_are_initiator</i> True if we started the session
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            -1 = we host, 0 = equal (initiator wins), 1 = they host
+          </div>
+          <p class="Pp">Definition at line <b>59</b> of file <b>nat.c</b>.</p>
+          <pre>
+59                                                                                                        {
+60   if (!ours || !theirs) {
+61     return we_are_initiator ? -1 : 1;
+62   }
+63
+64   int our_tier = nat_compute_tier(ours);
+65   int their_tier = nat_compute_tier(theirs);
+66
+67   // Check for bandwidth override: massive bandwidth advantage can override NAT tier
+68   if (ours-&gt;upload_kbps &gt; 0 &amp;&amp; theirs-&gt;upload_kbps &gt; 0) {
+69     if ((uint64_t)ours-&gt;upload_kbps &gt;= (uint64_t)theirs-&gt;upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
+70       log_debug(&quot;NAT compare: we win by bandwidth override (%u vs %u kbps)&quot;, ours-&gt;upload_kbps, theirs-&gt;upload_kbps);
+71       return -1;
+72     }
+73     if ((uint64_t)theirs-&gt;upload_kbps &gt;= (uint64_t)ours-&gt;upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
+74       log_debug(&quot;NAT compare: they win by bandwidth override (%u vs %u kbps)&quot;, theirs-&gt;upload_kbps, ours-&gt;upload_kbps);
+75       return 1;
+76     }
+77   }
+78
+79   // Compare NAT tiers (lower = better)
+80   if (our_tier &lt; their_tier) {
+81     log_debug(&quot;NAT compare: we win by tier (%d vs %d)&quot;, our_tier, their_tier);
+82     return -1;
+83   }
+84   if (our_tier &gt; their_tier) {
+85     log_debug(&quot;NAT compare: they win by tier (%d vs %d)&quot;, our_tier, their_tier);
+86     return 1;
+87   }
+88
+89   // Same tier - bandwidth is tiebreaker
+90   if (ours-&gt;upload_kbps &gt; theirs-&gt;upload_kbps) {
+91     log_debug(&quot;NAT compare: we win by bandwidth (%u vs %u kbps)&quot;, ours-&gt;upload_kbps, theirs-&gt;upload_kbps);
+92     return -1;
+93   }
+94   if (ours-&gt;upload_kbps &lt; theirs-&gt;upload_kbps) {
+95     log_debug(&quot;NAT compare: they win by bandwidth (%u vs %u kbps)&quot;, theirs-&gt;upload_kbps, ours-&gt;upload_kbps);
+96     return 1;
+97   }
+98
+99   // Same bandwidth - latency is tiebreaker
+100   if (ours-&gt;rtt_to_acds_ns &lt; theirs-&gt;rtt_to_acds_ns) {
+101     log_debug(&quot;NAT compare: we win by latency (%lu ns vs %lu ns)&quot;, ours-&gt;rtt_to_acds_ns, theirs-&gt;rtt_to_acds_ns);
+102     return -1;
+103   }
+104   if (ours-&gt;rtt_to_acds_ns &gt; theirs-&gt;rtt_to_acds_ns) {
+105     log_debug(&quot;NAT compare: they win by latency (%lu ns vs %lu ns)&quot;, theirs-&gt;rtt_to_acds_ns, ours-&gt;rtt_to_acds_ns);
+106     return 1;
+107   }
+108
+109   // Everything equal - initiator hosts
+110   log_debug(&quot;NAT compare: equal quality, initiator wins (we_are_initiator=%d)&quot;, we_are_initiator);
+111   return we_are_initiator ? -1 : 1;
+112 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BANDWIDTH_OVERRIDE_RATIO</b>, <b>log_debug</b>,
+            <b>nat_compare_quality()</b>, <b>nat_compute_tier()</b>,
+            <b>nat_quality_t::rtt_to_acds_ns</b>, and
+            <b>nat_quality_t::upload_kbps</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_compare_quality()</b>, and
+            <b>negotiate_determine_result()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_nat_compute_tier_(const_">
+            <a class="permalink" href="#int_nat_compute_tier_(const_"
+              >int nat_compute_tier (const <b>nat_quality_t</b> * quality)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compute NAT tier for host selection (0=best, 4=worst).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>quality</i> NAT quality</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Tier value</div>
+          <p class="Pp">Definition at line <b>44</b> of file <b>nat.c</b>.</p>
+          <pre>
+44                                                    {
+45   if (!quality)
+46     return 4;
+47
+48   if (quality-&gt;lan_reachable)
+49     return 0; // LAN - best
+50   if (quality-&gt;has_public_ip)
+51     return 1; // Public IP
+52   if (quality-&gt;upnp_available)
+53     return 2; // UPnP mapping
+54   if (quality-&gt;nat_type &lt;= ACIP_NAT_TYPE_RESTRICTED)
+55     return 3; // STUN hole-punchable
+56   return 4;   // TURN relay required
+57 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_RESTRICTED</b>,
+            <b>nat_quality_t::has_public_ip</b>,
+            <b>nat_quality_t::lan_reachable</b>, <b>nat_compute_tier()</b>,
+            <b>nat_quality_t::nat_type</b>, and
+            <b>nat_quality_t::upnp_available</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_compare_quality()</b>,
+            <b>nat_compute_tier()</b>, and <b>nat_detect_quality()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> nat_detect_quality (<b>nat_quality_t</b> *
+            quality, const char * stun_server, <b>uint16_t</b> local_port)
+          </h2>
+          <p class="Pp">
+            Detect NAT quality using all available methods. Runs an
+            observational STUN probe and records configured candidate support.
+            Does not create router mappings; those belong to the listening
+            server. Results are stored in the provided
+            <b>nat_quality_t</b> structure.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>quality</i> Output structure for results
+            <br />
+            <i>stun_server</i> STUN server URL (e.g.,
+            &quot;stun:stun.l.google.com:19302&quot;)
+            <br />
+            <i>local_port</i> Local port to use for detection
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>302</b> of file <b>nat.c</b>.</p>
+          <pre>
+302                                                                                                            {
+303   if (!quality) {
+304     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;quality is NULL&quot;);
+305   }
+306
+307   nat_quality_init(quality);
+308   log_info(&quot;Starting NAT quality detection (local_port=%u)&quot;, local_port);
+309
+310   // Quality probes run before a listener exists (often with port zero).
+311   // Only the listening server lifecycle may create, renew, and remove mappings.
+312
+313   // Probe STUN when configured.
+314   if (stun_server &amp;&amp; stun_server[0]) {
+315     // A failed probe is an expected fallback; retain diagnostics without
+316     // publishing a fatal-looking notification for a successful detection.
+317     asciichat_errno_scope_t probe_scope = errno_scope_begin();
+318     bool notifications_were_suppressed = errno_notifications_suppress(true);
+319     asciichat_error_t stun_result = nat_stun_probe(quality, stun_server, local_port);
+320     errno_notifications_suppress(notifications_were_suppressed);
+321     errno_scope_end(probe_scope, stun_result == ASCIICHAT_OK ? ASCIICHAT_ERRNO_HANDLED : ASCIICHAT_ERRNO_DISMISSED);
+322     if (stun_result == ASCIICHAT_OK) {
+323       // Successfully got reflexive address via STUN
+324       quality-&gt;has_srflx_candidates = true;
+325
+326       // A server-reflexive address demonstrates STUN reachability, not a public
+327       // interface or NAT classification. Those require separate observations.
+328       quality-&gt;has_public_ip = false;
+329
+330     } else {
+331       log_debug(&quot;STUN probe failed, falling back to symmetric NAT assumption&quot;);
+332     }
+333   }
+334
+335   // Set ICE candidate flags based on what we found
+336   quality-&gt;has_host_candidates = true; // We always have local IP
+337   quality-&gt;has_srflx_candidates = quality-&gt;upnp_available || quality-&gt;has_public_ip || quality-&gt;has_srflx_candidates;
+338
+339   // Check if TURN relay servers are available (configured via options or ACDS)
+340   const options_t *opts = options_get();
+341   const char *turn_servers = opts ? opts-&gt;turn_servers : NULL;
+342   quality-&gt;has_relay_candidates = (turn_servers &amp;&amp; turn_servers[0] != '\0');
+343   if (quality-&gt;has_relay_candidates) {
+344     log_debug(&quot;TURN relay servers configured: %s&quot;, turn_servers);
+345   }
+346
+347   quality-&gt;detection_complete = true;
+348   log_info(&quot;NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s&quot;, nat_compute_tier(quality),
+349            quality-&gt;upnp_available, quality-&gt;has_public_ip, nat_type_to_string(quality-&gt;nat_type));
+350
+351   return ASCIICHAT_OK;
+352 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+            <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
+            <b>nat_quality_t::detection_complete</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>nat_quality_t::has_host_candidates</b>,
+            <b>nat_quality_t::has_public_ip</b>,
+            <b>nat_quality_t::has_relay_candidates</b>,
+            <b>nat_quality_t::has_srflx_candidates</b>, <b>log_debug</b>,
+            <b>log_info</b>, <b>nat_compute_tier()</b>,
+            <b>nat_detect_quality()</b>, <b>nat_quality_init()</b>,
+            <b>nat_quality_t::nat_type</b>, <b>nat_type_to_string()</b>,
+            <b>options_get()</b>, <b>SET_ERRNO</b>,
+            <b>options_state::turn_servers</b>, and
+            <b>nat_quality_t::upnp_available</b>.
+          </p>
+          <p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_nat_quality_init_(">
+            <a class="permalink" href="#void_nat_quality_init_("
+              >void nat_quality_init (<b>nat_quality_t</b> * quality)</a
+            >
+          </h2>
+          <p class="Pp">Initialize NAT quality structure with defaults.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>quality</i> Structure to initialize</div>
+          <p class="Pp">Definition at line <b>37</b> of file <b>nat.c</b>.</p>
+          <pre>
+37                                               {
+38   if (!quality)
+39     return;
+40   memset(quality, 0, sizeof(nat_quality_t));
+41   quality-&gt;nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Assume worst case
+42 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_SYMMETRIC</b>,
+            <b>nat_quality_init()</b>, and <b>nat_quality_t::nat_type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_detect_quality()</b>,
+            <b>nat_quality_init()</b>, and <b>negotiate_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_nat_type_to_string_(">
+            <a class="permalink" href="#const_char_*_nat_type_to_string_("
+              >const char * nat_type_to_string (<b>acip_nat_type_t</b> type)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable description of NAT type.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>type</i> NAT type</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">String description</div>
+          <p class="Pp">Definition at line <b>354</b> of file <b>nat.c</b>.</p>
+          <pre>
+354                                                      {
+355   switch (type) {
+356   case ACIP_NAT_TYPE_OPEN:
+357     return &quot;Open (Public IP)&quot;;
+358   case ACIP_NAT_TYPE_FULL_CONE:
+359     return &quot;Full Cone&quot;;
+360   case ACIP_NAT_TYPE_RESTRICTED:
+361     return &quot;Restricted Cone&quot;;
+362   case ACIP_NAT_TYPE_PORT_RESTRICTED:
+363     return &quot;Port Restricted&quot;;
+364   case ACIP_NAT_TYPE_SYMMETRIC:
+365     return &quot;Symmetric&quot;;
+366   default:
+367     return &quot;Unknown&quot;;
+368   }
+369 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_FULL_CONE</b>,
+            <b>ACIP_NAT_TYPE_OPEN</b>, <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b>,
+            <b>ACIP_NAT_TYPE_RESTRICTED</b>, <b>ACIP_NAT_TYPE_SYMMETRIC</b>, and
+            <b>nat_type_to_string()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_detect_quality()</b>, and
+            <b>nat_type_to_string()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

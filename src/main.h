@@ -14,7 +14,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /**
  * Global exit flag used by all modes

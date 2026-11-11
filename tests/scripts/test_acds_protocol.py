@@ -142,7 +142,7 @@ def test_session_create(sock: socket.socket):
     session_string = session_string[:string_len].decode('utf-8')
     session_id_hex = session_id.hex()
 
-    print(f"✓ Session created successfully!")
+    print("✓ Session created successfully!")
     print(f"  Session string: {session_string}")
     print(f"  Session ID: {session_id_hex}")
     print(f"  Expires at: {expires_at}")
@@ -158,7 +158,7 @@ def test_session_lookup(sock: socket.socket, session_string: str):
     string_bytes = session_string.encode('utf-8')
     string_len = len(string_bytes)
 
-    payload = struct.pack(f'<B48s', string_len, string_bytes.ljust(48, b'\x00'))
+    payload = struct.pack('<B48s', string_len, string_bytes.ljust(48, b'\x00'))
 
     send_packet(sock, PACKET_TYPE_ACIP_SESSION_LOOKUP, payload)
 
@@ -174,14 +174,14 @@ def test_session_lookup(sock: socket.socket, session_string: str):
         '<B16s32sBBBBQQ', resp_payload[:93])
 
     if found:
-        print(f"✓ Session found!")
+        print("✓ Session found!")
         print(f"  Session ID: {session_id.hex()}")
         print(f"  Capabilities: 0x{capabilities:02X}")
         print(f"  Participants: {curr_p}/{max_p}")
         print(f"  Password protected: {'yes' if has_pw else 'no'}")
         return True
     else:
-        print(f"✗ Session not found")
+        print("✗ Session not found")
         return False
 
 def test_session_join(sock: socket.socket, session_string: str):
@@ -221,7 +221,7 @@ def test_session_join(sock: socket.socket, session_string: str):
         '<BB128s16s16s', resp_payload[:162])
 
     if success:
-        print(f"✓ Joined session successfully!")
+        print("✓ Joined session successfully!")
         print(f"  Participant ID: {participant_id.hex()}")
         print(f"  Session ID: {session_id.hex()}")
         return True

@@ -55,7 +55,9 @@ test("native CLI producer and browser WebSocket client render near 60 FPS", asyn
     await expect
       .poll(
         () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
-        { timeout: 15_000 },
+        {
+          timeout: 15_000,
+        },
       )
       .toBeGreaterThan(10);
 

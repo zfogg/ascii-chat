@@ -5,6 +5,7 @@
 #include <ascii-chat/asciichat_errno.h>
 
 /** Transport-independent inputs shared by native, WASM, and mobile callers.
+ * @brief The useful part of crypto policy is in `transport_secure`, `encrypt`, `no_encrypt`, `no_auth`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * TLS/DTLS protect the transport. Keys request authentication, not encryption.
  * Explicit no-encrypt wins over the password default, enabling auth-only.
  */

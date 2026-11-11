@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ui_table_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ui_table_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ui_table_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ui_table_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/ui/table.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>ui_table_column_t</b> * <b>columns</b>
+            <br />
+            size_t <b>column_count</b>
+            <br />
+            size_t <b>row_count</b>
+            <br />
+            <b>ui_viewport_t</b> <b>viewport</b>
+            <br />
+            <b>ui_table_cells_fn</b> <b>cells</b>
+            <br />
+            void * <b>data</b>
+            <br />
+            <b>bool</b> <b>selectable</b>
+            <br />
+            <b>bool</b> <b>header</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>16</b> of file <b>table.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_table_cells_fn</b> ui_table_t::cells</h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ui_table_t::column_count">
+            <a class="permalink" href="#size_t_ui_table_t::column_count"
+              >size_t ui_table_t::column_count</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>ui_table_column_t</b>* ui_table_t::columns</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_ui_table_t::data">
+            <a class="permalink" href="#void*_ui_table_t::data"
+              >void* ui_table_t::data</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>21</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_table_t::header</h2>
+          <p class="Pp">Definition at line <b>22</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ui_table_t::row_count">
+            <a class="permalink" href="#size_t_ui_table_t::row_count"
+              >size_t ui_table_t::row_count</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_table_t::selectable</h2>
+          <p class="Pp">Definition at line <b>22</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_viewport_t</b> ui_table_t::viewport</h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>table.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

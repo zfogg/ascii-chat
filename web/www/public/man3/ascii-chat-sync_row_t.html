@@ -1,0 +1,349 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sync_row_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sync_row_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sync_row_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">sync_row_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            uintptr_t <b>key</b>
+            <br />
+            uintptr_t <b>owner</b>
+            <br />
+            uintptr_t <b>waiter</b>
+            <br />
+            <b>uint64_t</b> <b>generation</b>
+            <br />
+            <b>uint64_t</b> <b>value</b>
+            <br />
+            <b>uint64_t</b> <b>locks</b>
+            <br />
+            <b>uint64_t</b> <b>unlocks</b>
+            <br />
+            <b>uint64_t</b> <b>changes</b>
+            <br />
+            <b>uint64_t</b> <b>actions</b>
+            <br />
+            <b>uint64_t</b> <b>last_ns</b>
+            <br />
+            <b>uint64_t</b> <b>wait_ns</b>
+            <br />
+            double <b>lock_rate</b>
+            <br />
+            double <b>unlock_rate</b>
+            <br />
+            double <b>change_rate</b>
+            <br />
+            double <b>total_score</b>
+            <br />
+            char <b>name</b> [256]
+            <br />
+            char <b>type</b> [24]
+            <br />
+            char <b>file</b> [160]
+            <br />
+            int <b>line</b>
+            <br />
+            unsigned <b>waiters</b>
+            <br />
+            <b>bool</b> <b>cycle</b>
+            <br />
+            <b>bool</b> <b>wait_known</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>62</b> of file <b>tui/sync.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::actions</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_sync_row_t::change_rate">
+            <a class="permalink" href="#double_sync_row_t::change_rate"
+              >double sync_row_t::change_rate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::changes</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> sync_row_t::cycle</h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_sync_row_t::file_160_">
+            <a class="permalink" href="#char_sync_row_t::file_160_"
+              >char sync_row_t::file[160]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::generation</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uintptr_t_sync_row_t::key">
+            <a class="permalink" href="#uintptr_t_sync_row_t::key"
+              >uintptr_t sync_row_t::key</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::last_ns</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_sync_row_t::line">
+            <a class="permalink" href="#int_sync_row_t::line"
+              >int sync_row_t::line</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_sync_row_t::lock_rate">
+            <a class="permalink" href="#double_sync_row_t::lock_rate"
+              >double sync_row_t::lock_rate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::locks</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_sync_row_t::name_256_">
+            <a class="permalink" href="#char_sync_row_t::name_256_"
+              >char sync_row_t::name[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uintptr_t_sync_row_t::owner">
+            <a class="permalink" href="#uintptr_t_sync_row_t::owner"
+              >uintptr_t sync_row_t::owner</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_sync_row_t::total_score">
+            <a class="permalink" href="#double_sync_row_t::total_score"
+              >double sync_row_t::total_score</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_sync_row_t::type_24_">
+            <a class="permalink" href="#char_sync_row_t::type_24_"
+              >char sync_row_t::type[24]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_sync_row_t::unlock_rate">
+            <a class="permalink" href="#double_sync_row_t::unlock_rate"
+              >double sync_row_t::unlock_rate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::unlocks</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::value</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> sync_row_t::wait_known</h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> sync_row_t::wait_ns</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uintptr_t_sync_row_t::waiter">
+            <a class="permalink" href="#uintptr_t_sync_row_t::waiter"
+              >uintptr_t sync_row_t::waiter</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_sync_row_t::waiters">
+            <a class="permalink" href="#unsigned_sync_row_t::waiters"
+              >unsigned sync_row_t::waiters</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>tui/sync.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

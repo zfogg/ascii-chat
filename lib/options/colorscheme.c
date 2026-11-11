@@ -12,20 +12,22 @@
 #define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
 #define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
 
+#include <defer.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/stat.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <sys/stat.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdatomic.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 
 /* ============================================================================
  * Global State
@@ -718,11 +720,10 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
     if (!fp) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
     }
+    defer(fclose(fp));
     if (fputs(toml_content, fp) < 0) {
-      fclose(fp);
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to %s", file_path);
     }
-    fclose(fp);
   } else {
     /* Write to stdout */
     if (fputs(toml_content, stdout) < 0) {
@@ -904,7 +905,7 @@ static terminal_background_t current_background(void) {
     if (keyboard) {
       // Rendering and logging must never wait for an unsupported terminal.
       // Its normal input pump decodes the reply and publishes the new RGB.
-      (void)platform_write_all(STDERR_FILENO, "\033]11;?\033\\", 8);
+      (void)keyboard_request_background();
     }
 #else
     atomic_store(&g_live_background, detect_terminal_background());

@@ -6,8 +6,8 @@
 
 asciichat_error_t refresh_probe(nat_quality_t *quality, const char *host, uint16_t port);
 
-int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg);
-int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout);
+int refresh_create(platform_thread_t *thread, const char *name, void *(*worker)(void *), void *arg);
+int refresh_join(platform_thread_t *thread, void **result, uint64_t timeout);
 
 /* Exercise the production worker lifecycle with deterministic network/thread
  * boundaries. No camera, public STUN server, or scheduler timing is required. */
@@ -39,11 +39,11 @@ static asciichat_error_t refresh_ice(webrtc_peer_manager_t *manager, const acip_
 #define webrtc_peer_manager_handle_sdp refresh_sdp
 #define webrtc_peer_manager_handle_ice refresh_ice
 #define nat_detect_quality refresh_probe
-#define acthread_create refresh_create
+#define platform_thread_create refresh_create
 #define thread_join_timeout refresh_join
 #include "../../../src/discovery/session.c"
 #undef thread_join_timeout
-#undef acthread_create
+#undef platform_thread_create
 #undef nat_detect_quality
 #undef webrtc_peer_manager_create
 #undef webrtc_peer_manager_handle_sdp
@@ -73,7 +73,7 @@ asciichat_error_t refresh_probe(nat_quality_t *quality, const char *host, uint16
   return probe_result;
 }
 /** @brief Schedule a controllable fake detector, or inject a thread-start failure. */
-int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
+int refresh_create(platform_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
   (void)thread;
   (void)name;
   launches++;
@@ -83,7 +83,7 @@ int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)
   }
   return create_result;
 }
-int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout) {
+int refresh_join(platform_thread_t *thread, void **result, uint64_t timeout) {
   (void)thread;
   (void)result;
   cr_assert_eq(timeout, 0, "Refresh must not block on a detector doing network I/O");
@@ -471,9 +471,12 @@ Test(nat_refresh, explicit_identity_configuration_is_copied_and_cancelled_start_
   cr_assert_eq(discovery_session_start(created), ASCIICHAT_OK);
   cr_assert_null(created->acds_connection);
   cr_assert_eq(created->state, DISCOVERY_STATE_INIT);
+  uint64_t before_waiting = time_get_ns();
   set_state(created, DISCOVERY_STATE_WAITING_PEER);
+  uint64_t after_waiting = time_get_ns();
   cr_assert_eq(last_state, DISCOVERY_STATE_WAITING_PEER);
-  cr_assert_gt(created->waiting_peer_start_ns, 0);
+  cr_assert_geq(created->waiting_peer_start_ns, before_waiting);
+  cr_assert_leq(created->waiting_peer_start_ns, after_waiting);
   set_error(created, ERROR_NETWORK, "recovery failed");
   cr_assert_eq(error_calls, 1);
   cr_assert_eq(last_state, DISCOVERY_STATE_FAILED);

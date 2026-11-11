@@ -13,7 +13,7 @@
 
 #include <ascii-chat/options/manpage/formatter.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

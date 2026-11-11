@@ -32,7 +32,7 @@ extern const network_connection_callbacks_t acds_network_callbacks;
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/limits.h>
@@ -43,6 +43,7 @@ extern const network_connection_callbacks_t acds_network_callbacks;
 #include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and participant storage
 
 /**
+ * @brief Network statistics for both TCP and WebSocket connections
  * @brief Per-client connection data
  *
  * Stored in network connection registry to track which session and
@@ -61,6 +62,8 @@ typedef struct {
   network_negotiation_t negotiation;
 
   // Multi-key session creation state
+  uint8_t create_transport_metadata[521];
+  size_t create_transport_length;
   acds_create_key_set_t create_keys; ///< Pending connection-local key set
 
   // Transport abstraction
@@ -68,9 +71,14 @@ typedef struct {
 
   // Protocol state
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
+  /**
+   */
 } acds_client_data_t;
 
 /**
+ * @brief For acds client data, this is the live record that ties `joined_session`, `negotiation`,
+ * `create_transport_length`, `create_keys` together. The owning code creates it, updates it while work is active, and
+ * releases its handles and pointed-to storage before freeing the record.
  * @brief Network statistics for both TCP and WebSocket connections
  */
 typedef struct {
@@ -113,9 +121,14 @@ typedef struct {
   // Configuration
   acds_config_t config;           ///< Runtime configuration
   bool handoff_mutex_initialized; ///< Whether shutdown owns the handoff mutex
+  /**
+   */
 } acds_server_t;
 
 /**
+ * @brief acds server is intentionally a small, concrete record. Fields such as `network_server`, `handoff_mutex`,
+ * `handoffs`, `db` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+ * the surrounding subsystem—not independently managed.
  * @brief Initialize discovery server
  *
  * Loads or generates identity keys, opens database, creates session
@@ -140,3 +153,7 @@ void acds_server_shutdown(acds_server_t *server);
 // Host authority delivery; the transport must carry its joined connection identity.
 void acds_on_host_announcement(const acip_host_announcement_t *, acip_transport_t *, const char *, void *);
 void acds_send_current_host(acds_server_t *, acip_transport_t *, const uint8_t[16]);
+
+void acds_on_host_announcement_ex(const acip_host_announcement_t *announcement, const void *metadata,
+                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
+                                  void *app_ctx);

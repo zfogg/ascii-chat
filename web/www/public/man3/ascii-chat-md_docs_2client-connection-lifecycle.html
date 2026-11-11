@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2client-connection-lifecycle(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2client-connection-lifecycle(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2client-connection-lifecycle(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2client-connection-lifecycle - Shared connection ownership
+        </p>
+        <p class="Pp">
+          <b>src/client/connection.c</b
+          ><b>
+            owns one native connection attempt, including dialing, handshake
+            state, transport/client handle, worker pool, outbound audio queue,
+            video encoder, audio pipeline, and protocol/snapshot state. Each
+            retry allocates a fresh owner. Capture devices, media sources,
+            terminal UI, and reconnect policy belong to the application and may
+            outlive an attempt. WebSocket clients also retain one application
+            runtime context: libwebsockets 4.5 tears down process TLS when its
+            last context is destroyed, so an application reference keeps TLS
+            alive across retries. It is released after the final connection and
+            application media cleanup. See </b
+          >the upstream TLS destructor<b>.</b>
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Startup moves from STARTING to RUNNING. Acquisition failures, peer
+          disconnects, and application shutdown all leave through
+          <b>client_connection_destroy()</b
+          ><b
+            >. Startup records initialized synchronization objects separately
+            from workers so partial queue initialization also unwinds. No
+            &quot;all workers started&quot; flag gates cleanup.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The reusable state machine lives in
+          <b>src/common/session/connection.c</b
+          ><b
+            >. It owns startup/stop state and the controlling-thread boundary,
+            and enforces interruption, joining, then release. Mode adapters
+            supply resource-specific operations. Native client attempts,
+            discovery participants, and discovery WebRTC media workers all use
+            that sequence. Discovery still coordinates signaling, host control,
+            media transport switching, and host migration.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Workers, ACIP callbacks, and crypto negotiation receive their
+          connection context explicitly. There is no current-connection
+          singleton or thread-local replacement. Each attempt holds its own
+          crypto callbacks and user data. Multiple owners can coexist on one
+          thread or in one program. Application media devices, capture, and
+          display are borrowed explicitly; applications must provide distinct
+          resources when running independent media sessions. The CLI still runs
+          one interactive session. Signal handlers publish exit/resize requests
+          without walking owners.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Shutdown publishes STOPPING, interrupts network I/O without taking the
+          send mutex, and wakes the audio sender before joining workers. Worker
+          join failure retains the owner and all dependencies; the controlling
+          thread keeps waiting before allowing application cleanup or reconnect.
+          Queue synchronization, encoders, audio pipeline, and crypto state are
+          released only after their users stop. The embedded connection handle
+          remains the sole transport/client owner throughout startup and
+          teardown.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The audio device context persists, but its pipeline and buffered
+          samples are reset for each connection. Snapshot teardown interrupts
+          I/O before joining capture. The former encoder flush allocated and
+          logged buffered output without transmitting it; teardown no longer
+          runs that operation concurrently with capture.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Validation">
+          <a class="permalink" href="#Validation">Validation</a>
+        </h1>
+        <p class="Pp">Build with the default Debug preset and run:</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/client_connection --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat</pre>
+        <p class="Pp">
+          Use ascii-chat.exe on Windows. The new suite also registers as the
+          Debug CTest client-connection-lifecycle. It injects failures after 13
+          acquisition stages, repeats partial-startup failures in one process,
+          reconnects one live client three times over both TCP and WebSocket,
+          and races abrupt peer loss with local interrupt. It verifies each
+          attempt releases its workers and a fresh attempt starts with empty
+          protocol state. These cases use test video and software test audio
+          with playback disabled, exercising the audio pipeline, capture, and
+          sender without webcam or audio hardware.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          ASCII_CHAT_TEST_CLIENT_FAIL_STAGE selects an acquisition checkpoint in
+          Debug builds only. It has no effect in release builds.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The Criterion-free session-connections test runs two live TCP owners
+          with blocked receive workers, stops one while checking that the other
+          keeps receiving, injects a failed join, checks controlling-thread
+          cleanup, and unwinds partial startup. participant-media exercises
+          discovery participant failures, repeated media lifecycles, transport
+          transfer, recovery, and host-control preservation.
+          discovery-session-process covers production discovery state
+          transitions. Discovery media teardown also retains its stack
+          dependencies until worker joins succeed; NAT-worker join failures
+          retain the discovery session for a safe retry.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

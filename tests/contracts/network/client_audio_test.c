@@ -292,8 +292,8 @@ Test(client_audio_contract, capture_worker_encodes_oversized_input_and_flushes_a
   cr_assert_eq(audio_ring_buffer_write(audio_connection.audio_context->capture_buffer, pcm, ARRAY_SIZE(pcm)),
                ASCIICHAT_OK);
   stop_after = 1;
-  asciichat_thread_t worker;
-  cr_assert_eq(acthread_create(&worker, "audio-contract-capture", audio_capture_thread_func, &audio_connection),
+  platform_thread_t worker;
+  cr_assert_eq(platform_thread_create(&worker, "audio-contract-capture", audio_capture_thread_func, &audio_connection),
                ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + 3 * NS_PER_SEC_INT;
   while (!atomic_load_bool(&audio_connection.audio_capture_thread_exited) && time_get_ns() < deadline)

@@ -1,10 +1,16 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
+import {
+  cleanupRenderSession,
+  resetRenderStabilizer,
+} from "../../../packages/shared/src/wasm/mirror";
 import { useMirrorRenderLoop } from "../../../packages/shared/src/hooks/useMirrorRenderLoop";
 
 const convert = vi.hoisted(() => vi.fn());
 vi.mock("../../../packages/shared/src/wasm/mirror", () => ({
   isWasmReady: () => true,
+  resetRenderStabilizer: vi.fn(),
+  cleanupRenderSession: vi.fn(),
   convertFrameToAscii: convert,
 }));
 vi.mock("../../../packages/shared/src/hooks/useTestPattern", () => ({
@@ -15,6 +21,8 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   convert.mockReset();
+  vi.mocked(resetRenderStabilizer).mockReset();
+  vi.mocked(cleanupRenderSession).mockReset();
 });
 
 test.each([30, 33, 60, 120, 144])(
@@ -318,4 +326,49 @@ test("camera video callbacks also convert once per arrival when direct capture i
   }
   expect(convert).toHaveBeenCalledTimes(10);
   expect(writeFrame).toHaveBeenCalledTimes(10);
+});
+
+test("resets session rendering when the media revision changes", () => {
+  const params = {
+    isWebcamRunning: false,
+    terminalDimensions: { cols: 80, rows: 30 },
+    captureFrame: () => null,
+    canvasRef: { current: null },
+    rendererRef: { current: null },
+    debugCountRef: { current: 0 },
+    firstFrameTimeRef: { current: null },
+    frameIntervalRef: { current: 16 },
+    streamRef: { current: null },
+  };
+  const { rerender } = renderHook(
+    ({ revision }) =>
+      useMirrorRenderLoop({ ...params, mediaRevision: revision }),
+    { initialProps: { revision: 1 } },
+  );
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(1);
+  rerender({ revision: 1 });
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(1);
+  rerender({ revision: 2 });
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(2);
+});
+
+test("cleans up session rendering when the active loop stops", () => {
+  vi.stubGlobal("requestAnimationFrame", () => 1);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  const { unmount } = renderHook(() =>
+    useMirrorRenderLoop({
+      isWebcamRunning: true,
+      terminalDimensions: { cols: 80, rows: 30 },
+      captureFrame: () => null,
+      canvasRef: { current: null },
+      rendererRef: { current: null },
+      debugCountRef: { current: 0 },
+      firstFrameTimeRef: { current: null },
+      frameIntervalRef: { current: 16 },
+      streamRef: { current: null },
+    }),
+  );
+  expect(cleanupRenderSession).toHaveBeenCalledOnce();
+  unmount();
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(2);
 });

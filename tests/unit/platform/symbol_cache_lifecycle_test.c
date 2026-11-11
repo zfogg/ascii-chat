@@ -4,7 +4,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/pcre2.h>
 #include <stdlib.h>
 
@@ -27,7 +27,6 @@ static void fallback_cleanup(void) {
   if (fallback_directory[0])
     platform_rmdir_recursive(fallback_directory);
   log_destroy();
-  asciichat_pcre2_cleanup_all();
 }
 static void fallback_setup(void) {
   log_init(NULL, LOG_FATAL, false, false);

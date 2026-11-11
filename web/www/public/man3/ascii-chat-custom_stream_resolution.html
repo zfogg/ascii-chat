@@ -1,0 +1,475 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_stream_resolution(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_stream_resolution(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_stream_resolution(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_stream_resolution - Generic Stream Resolution Design
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Generic_Stream_Resolution_Design">
+          <a class="permalink" href="#Generic_Stream_Resolution_Design"
+            >Generic Stream Resolution Design</a
+          >
+        </h1>
+        <p class="Pp">
+          <b>Date:</b> 2026-02-15 <b>Author:</b> Claude Code
+          <b>Status:</b> Approved
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            Replace YouTube-specific URL handling with a generic stream resolver
+            that supports any URL yt-dlp can handle, plus direct FFmpeg streams.
+            The resolver intelligently routes between FFmpeg (for direct
+            streams) and yt-dlp (for complex sites), with fallback between them.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Problem_Statement">
+            <a class="permalink" href="#Problem_Statement">Problem Statement</a>
+          </h2>
+          <p class="Pp">
+            Currently, ascii-chat only supports YouTube URLs via youtube.c/h.
+            This limits users to YouTube and requires maintaining
+            YouTube-specific code. The new design:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Supports thousands of sites that yt-dlp handles</li>
+            <li>Removes YouTube-specific code and options</li>
+            <li>Allows arbitrary yt-dlp options via --yt-dlp-options flag</li>
+            <li>Avoids unnecessary subprocess overhead for direct streams</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="New_Module:_">
+            <a class="permalink" href="#New_Module:_"
+              >New Module: <b>lib/media/yt_dlp.c</b>/h<b></b
+            ></a>
+          </h2>
+          <p class="Pp">
+            Encapsulates all yt-dlp subprocess logic. This is a reusable module
+            for any yt-dlp extraction needs.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Public API:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+asciichat_error_t yt_dlp_extract_stream_url(
+<br/>
+    const char *url,
+<br/>
+    const char *yt_dlp_options,
+<br/>
+    char *output_url,
+<br/>
+    size_t output_size
+);
+bool yt_dlp_is_available(void);</pre>
+          <p class="Pp"><b>Implementation notes:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Move existing YouTube extraction logic from youtube.c</li>
+            <li>Reuse 30-second cache from existing code</li>
+            <li>
+              Accept arbitrary --yt-dlp-options string and pass to subprocess
+            </li>
+            <li>
+              Log errors via <b>log_error()</b
+              ><b> when yt-dlp subprocess fails</b>
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Updated_Module:_">
+            <a class="permalink" href="#Updated_Module:_"
+              >Updated Module: <b>lib/media/source.c</b><b></b
+            ></a>
+          </h2>
+          <p class="Pp">
+            Add smart routing function to determine which resolver to use first:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+static asciichat_error_t media_source_resolve_url(
+<br/>
+    const char *url,
+<br/>
+    const char *yt_dlp_options,
+<br/>
+    char *output_url,
+<br/>
+    size_t output_size
+);</pre>
+          <p class="Pp"><b>Resolution algorithm:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Check cache (existing 30-second cache)</dd>
+            <dt>2.</dt>
+            <dd>Detect if URL is &quot;direct stream&quot;:</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              File extension is FFmpeg-native (.mp4, .mkv, .webm, .mov, .avi,
+              .flv, .ogg, .m3u8, .mp3, .wav, .flac, etc.)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>OR protocol is rtsp:// or rtmp://</dd>
+            <dt>3.</dt>
+            <dd>Route based on type:</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>Direct stream</b>: Try FFmpeg probe &#x2192; if fails, fall
+              back to yt-dlp
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>Complex site</b> (no extension, unknown extension): Try yt-dlp
+              &#x2192; if fails, fall back to FFmpeg
+            </dd>
+            <dt>4.</dt>
+            <dd>Log errors at each failure point with context</dd>
+            <dt>5.</dt>
+            <dd>Cache successful result (30 seconds)</dd>
+          </dl>
+          <p class="Pp"><b>Error logging flow:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>log_debug()</b><b> when starting each resolution attempt</b>
+            </li>
+            <li>
+              <b>log_debug()</b><b> on probe success (FFmpeg can handle)</b>
+            </li>
+            <li><b>log_error()</b><b> when each resolver fails</b></li>
+            <li><b>log_error()</b><b> with full URL if all methods fail</b></li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Removed_Files">
+            <a class="permalink" href="#Removed_Files">Removed Files</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>lib/media/youtube.c - replaced by <b>yt_dlp.c</b></li>
+            <li>
+              include/ascii-chat/media/youtube.h - replaced by <b>yt_dlp.h</b>
+            </li>
+            <li>tests/unit/youtube_test.c - replaced by yt_dlp_test.c</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Removed_Options">
+            <a class="permalink" href="#Removed_Options">Removed Options</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              --cookies-from-browser - use
+              --yt-dlp-options=&quot;--cookies-from-browser=...&quot;
+            </li>
+            <li>
+              --no-cookies-from-browser - use
+              --yt-dlp-options=&quot;--no-cookies-from-browser&quot;
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="New_Option">
+            <a class="permalink" href="#New_Option">New Option</a>
+          </h2>
+          <pre>--yt-dlp-options=&quot;OPTION_STRING&quot;</pre>
+          <p class="Pp">
+            Passes arbitrary yt-dlp options to the subprocess. Examples:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>--yt-dlp-options=&quot;--cookies-from-browser=chrome&quot;</li>
+            <li>
+              --yt-dlp-options=&quot;--no-cookies-from-browser
+              --embed-subs&quot;
+            </li>
+            <li>
+              --yt-dlp-options=&quot;--proxy socks5://127.0.0.1:1080&quot;
+            </li>
+          </ul>
+          <p class="Pp">
+            This option is global (not mode-specific) and applies to all stream
+            resolution attempts.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="FFmpeg-Native_Formats">
+            <a class="permalink" href="#FFmpeg-Native_Formats"
+              >FFmpeg-Native Formats</a
+            >
+          </h2>
+          <p class="Pp">
+            When detecting &quot;direct streams&quot;, check for these file
+            extensions (case-insensitive):
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Video containers:</b> mp4, mkv, webm, mov, avi, flv, ogv, ts,
+            m2ts, mts, mxf, gxf, 3gp, 3g2, f4v, asf, wmv, quicktime, matroska
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Audio containers:</b> ogg, oga, wma, wav, flac, aac, m4a, m4b,
+            mp3, aiff, au
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Streaming:</b> m3u8 (HLS), mpd (DASH)</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Streaming protocols:</b> rtsp://, rtmp://</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Error_Handling">
+            <a class="permalink" href="#Error_Handling">Error Handling</a>
+          </h2>
+          <p class="Pp">Each failure point logs an error with context:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>Direct stream attempt:
+<br/>
+  FFmpeg probe failed &#x2192; log_debug(&quot;FFmpeg probe failed for direct stream, falling back to yt-dlp&quot;)
+yt-dlp attempt:
+<br/>
+  Subprocess failed &#x2192; log_error(&quot;yt-dlp extraction failed: [error details]&quot;)
+FFmpeg fallback attempt:
+<br/>
+  Probe failed &#x2192; log_error(&quot;FFmpeg fallback also failed&quot;)
+Final failure:
+<br/>
+  log_error(&quot;Failed to resolve URL - all extraction methods failed: [url]&quot;)
+<br/>
+  return ERROR_STREAM_RESOLUTION_FAILED</pre>
+          <p class="Pp">
+            User sees the final error message clearly indicating what went
+            wrong.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Examples">
+            <a class="permalink" href="#Usage_Examples">Usage Examples</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="YouTube_with_cookies">
+            <a class="permalink" href="#YouTube_with_cookies"
+              >YouTube with cookies</a
+            >
+          </h2>
+          <pre>
+./ascii-chat mirror --yt-dlp-options=&quot;--cookies-from-browser=chrome&quot;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Direct_MP4_stream_(no_yt-dlp_subprocess_overhead)">
+            <a
+              class="permalink"
+              href="#Direct_MP4_stream_(no_yt-dlp_subprocess_overhead)"
+              >Direct MP4 stream (no yt-dlp subprocess overhead)</a
+            >
+          </h2>
+          <pre>
+./ascii-chat mirror &quot;https://example.com/video.mp4&quot;
+# Tries FFmpeg directly, bypasses yt-dlp</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Complex_site_with_custom_proxy">
+            <a class="permalink" href="#Complex_site_with_custom_proxy"
+              >Complex site with custom proxy</a
+            >
+          </h2>
+          <pre>
+./ascii-chat mirror --yt-dlp-options=&quot;--proxy socks5://127.0.0.1:1080&quot;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Direct_RTSP_stream">
+            <a class="permalink" href="#Direct_RTSP_stream"
+              >Direct RTSP stream</a
+            >
+          </h2>
+          <pre>
+./ascii-chat mirror rtsp://camera.local/stream
+# Tries FFmpeg directly, bypasses yt-dlp</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing_Strategy">
+            <a class="permalink" href="#Testing_Strategy">Testing Strategy</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Unit tests</b> (tests/unit/yt_dlp_test.c):</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test yt-dlp extraction with various URL types</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test cache hit/miss</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test error handling and logging</dd>
+            <dt>&#x2022;</dt>
+            <dd>Mock yt-dlp subprocess failures</dd>
+            <dt>2.</dt>
+            <dd><b>Integration tests</b>:</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test <b>source.c</b> resolution with direct streams</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test <b>source.c</b> resolution with complex sites</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test fallback behavior</dd>
+            <dt>&#x2022;</dt>
+            <dd>Test FFmpeg-native format detection</dd>
+            <dt>3.</dt>
+            <dd><b>Manual testing</b>:</dd>
+            <dt>&#x2022;</dt>
+            <dd>YouTube URL with various options</dd>
+            <dt>&#x2022;</dt>
+            <dd>Direct HTTP video (.mp4, .mkv, .webm)</dd>
+            <dt>&#x2022;</dt>
+            <dd>RTSP stream</dd>
+            <dt>&#x2022;</dt>
+            <dd>Invalid URLs</dd>
+            <dt>&#x2022;</dt>
+            <dd>yt-dlp unavailable scenario</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Migration_Guide">
+            <a class="permalink" href="#Migration_Guide">Migration Guide</a>
+          </h2>
+          <p class="Pp">For users:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Replace --cookies-from-browser=chrome with
+              --yt-dlp-options=&quot;--cookies-from-browser=chrome&quot;
+            </li>
+            <li>
+              Replace --no-cookies-from-browser with
+              --yt-dlp-options=&quot;--no-cookies-from-browser&quot;
+            </li>
+            <li>
+              All other functionality remains the same, now supports any URL
+              yt-dlp handles
+            </li>
+          </ul>
+          <p class="Pp">For developers:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              youtube_is_youtube_url() &#x2192; no longer needed, routing
+              handled in <b>source.c</b>
+            </li>
+            <li>
+              youtube_extract_stream_url() &#x2192; use
+              media_source_resolve_url() instead
+            </li>
+            <li>
+              Direct yt-dlp calls &#x2192; use <b>yt_dlp_extract_stream_url()</b
+              ><b> from </b><b>yt_dlp.c</b><b></b>
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Extensibility">
+            <a class="permalink" href="#Future_Extensibility"
+              >Future Extensibility</a
+            >
+          </h2>
+          <p class="Pp">
+            The <b>yt_dlp.c</b>/h<b>
+              module is reusable for any future yt-dlp-based features:</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Format selection</li>
+            <li>Subtitle extraction</li>
+            <li>Quality preferences</li>
+            <li>etc.</li>
+          </ul>
+          <p class="Pp">
+            The routing logic in <b>source.c</b> can be extended to support
+            other resolvers (ffmpeg native support, direct HTTP streaming,
+            etc.).
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

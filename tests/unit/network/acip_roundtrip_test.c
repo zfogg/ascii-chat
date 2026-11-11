@@ -3,6 +3,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/crc32.h>
+#include <ascii-chat/crypto/session.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
@@ -32,6 +33,8 @@ static asciichat_error_t recv_wire(acip_transport_t *transport, void **data, siz
   wire_t *wire = transport->user_data;
   if (wire->failure)
     return wire->failure;
+  if (!wire->connected)
+    return ERROR_NETWORK;
   *allocated = buffer_alloc(NULL, wire->length ? wire->length : 1);
   cr_assert_not_null(*allocated);
   memcpy(*allocated, wire->wire, wire->length);
@@ -43,12 +46,18 @@ static asciichat_error_t recv_wire(acip_transport_t *transport, void **data, siz
 static bool connected(acip_transport_t *transport) {
   return ((wire_t *)transport->user_data)->connected;
 }
+static bool pending(acip_transport_t *transport) {
+  return ((wire_t *)transport->user_data)->length != 0;
+}
 static socket_t no_socket(acip_transport_t *transport) {
   (void)transport;
   return INVALID_SOCKET_VALUE;
 }
-static const acip_transport_methods_t methods = {
-    .send = send_wire, .recv = recv_wire, .is_connected = connected, .get_socket = no_socket};
+static const acip_transport_methods_t methods = {.send = send_wire,
+                                                 .recv = recv_wire,
+                                                 .is_connected = connected,
+                                                 .has_pending_data = pending,
+                                                 .get_socket = no_socket};
 
 static void client_ping(void *context) {
   ((wire_t *)context)->callbacks++;
@@ -72,6 +81,7 @@ Test(acip_roundtrip, authenticated_envelopes_validate_inner_boundaries_before_di
   cr_assert_eq(crypto_get_public_key(&receiver, receiver_key), CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&sender, receiver_key), CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&receiver, sender_key), CRYPTO_OK);
+  sender.handshake_complete = receiver.handshake_complete = true;
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire, .crypto_ctx = &receiver};
   acip_client_callbacks_t client = {.on_ping = client_ping, .app_ctx = &wire};
@@ -81,13 +91,18 @@ Test(acip_roundtrip, authenticated_envelopes_validate_inner_boundaries_before_di
       uint8_t plaintext[sizeof(packet_header_t) + 4] = {0};
       packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                                 .type = HOST_TO_NET_U16(PACKET_TYPE_PING),
-                                .length = HOST_TO_NET_U32(scenario == 2 ? UINT32_MAX : 4)};
+                                .length = HOST_TO_NET_U32(scenario == 2 ? UINT32_MAX : 4),
+                                .crc32 = HOST_TO_NET_U32(asciichat_crc32(plaintext + sizeof(header), 4))};
       memcpy(plaintext, &header, sizeof(header));
       uint8_t ciphertext[2048];
       size_t ciphertext_length;
       size_t length = scenario == 1 ? sizeof(header) - 1 : sizeof(plaintext);
-      cr_assert_eq(crypto_encrypt(&sender, plaintext, length, ciphertext, sizeof(ciphertext), &ciphertext_length),
-                   CRYPTO_OK);
+      crypto_session_t *session = NULL;
+      cr_assert_eq(crypto_session_lock(&sender, &session), ASCIICHAT_OK);
+      cr_assert_eq(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, CRYPTO_RECORD_RELIABLE, plaintext,
+                                           length, ciphertext, sizeof(ciphertext), &ciphertext_length),
+                   ASCIICHAT_OK);
+      crypto_session_unlock(session);
       if (scenario == 3)
         ciphertext[ciphertext_length - 1] ^= 1;
       cr_assert_eq(packet_send_via_transport(&transport, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_length, 0),
@@ -95,7 +110,8 @@ Test(acip_roundtrip, authenticated_envelopes_validate_inner_boundaries_before_di
       wire.callbacks = 0;
       asciichat_error_t result = peer ? acip_server_receive_and_dispatch(&transport, &wire, &server)
                                       : acip_client_receive_and_dispatch(&transport, &client);
-      cr_assert_eq(result, scenario ? ERROR_CRYPTO : ASCIICHAT_OK, "peer %u scenario %u", peer, scenario);
+      asciichat_error_t expected = !scenario ? ASCIICHAT_OK : scenario == 3 ? ERROR_CRYPTO : ERROR_NETWORK_PROTOCOL;
+      cr_assert_eq(result, expected, "peer %u scenario %u result %d", peer, scenario, result);
       cr_assert_eq(wire.callbacks, scenario ? 0 : 1);
     }
   }
@@ -166,6 +182,17 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   cr_assert_eq(wire.callbacks, 1);
 }
 
+Test(acip_roundtrip, client_drains_queued_packet_after_disconnect) {
+  wire_t wire = {.connected = true};
+  acip_transport_t transport = {.methods = &methods, .user_data = &wire};
+  cr_assert_eq(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 0, 0), ASCIICHAT_OK);
+  wire.connected = false;
+  packet_envelope_t envelope;
+  cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ASCIICHAT_OK);
+  cr_assert_eq(envelope.type, PACKET_TYPE_PING);
+  buffer_release(envelope.allocated_buffer);
+}
+
 Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch) {
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
@@ -174,9 +201,9 @@ Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch)
   packet_envelope_t envelope;
   for (size_t length = 0; length < sizeof(packet_header_t); ++length) {
     wire.length = length;
-    cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ERROR_NETWORK);
+    cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ERROR_NETWORK_PROTOCOL);
     cr_assert_null(envelope.allocated_buffer);
-    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK);
+    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK_PROTOCOL);
   }
   uint32_t payload = HOST_TO_NET_U32(3);
   cr_assert_eq(acip_send_stream_start(&transport, 3), ASCIICHAT_OK);
@@ -186,8 +213,8 @@ Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch)
   for (size_t i = 0; i < sizeof(wrong_lengths) / sizeof(wrong_lengths[0]); ++i) {
     header.length = HOST_TO_NET_U32(wrong_lengths[i]);
     memcpy(wire.wire, &header, sizeof(header));
-    cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ERROR_NETWORK);
-    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK);
+    cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ERROR_NETWORK_PROTOCOL);
+    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK_PROTOCOL);
     cr_assert_eq(wire.callbacks, 0);
   }
   cr_assert_eq(packet_send_via_transport(&transport, (packet_type_t)0xffff, &payload, sizeof(payload), 0),
@@ -215,7 +242,7 @@ Test(acip_roundtrip, missing_context_disconnection_and_backend_errors) {
   for (size_t i = 0; i < sizeof(failures) / sizeof(failures[0]); ++i) {
     wire.failure = failures[i];
     cr_assert_eq(acip_client_receive_and_dispatch(&transport, &client), failures[i]);
-    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK);
+    cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), failures[i]);
     cr_assert_eq(acip_send_stream_start(&transport, 3), failures[i]);
     cr_assert_eq(wire.sends, 0);
     cr_assert_eq(wire.callbacks, 0);

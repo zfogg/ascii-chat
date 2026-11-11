@@ -69,6 +69,7 @@ Test(option_validation_boundaries, numeric_ranges_and_error_messages) {
   cr_assert_eq(validate_opt_positive_int("1", error, sizeof(error)), 1);
   cr_assert_eq(validate_opt_non_negative_int("0", error, sizeof(error)), 0);
   cr_assert_eq(validate_opt_positive_int("0", error, sizeof(error)), -1);
+  cr_assert_eq(validate_opt_fps("0", error, sizeof(error)), 0);
   cr_assert_eq(validate_opt_fps("144", error, sizeof(error)), 144);
   cr_assert_eq(validate_opt_fps("145", error, sizeof(error)), -1);
   cr_assert_eq(validate_opt_compression_level("9", error, sizeof(error)), 9);

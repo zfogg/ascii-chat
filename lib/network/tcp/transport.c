@@ -15,7 +15,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
@@ -25,6 +25,9 @@
 #include <ascii-chat/options/options.h>
 
 /**
+ * @brief tcp transport data is intentionally a small, concrete record. Fields such as `sockfd`, `owns_socket`,
+ * `is_connected`, `zerocopy_disabled` give callers the identity and current value they need. It is normally borrowed
+ * from, or owned by, the surrounding subsystem—not independently managed.
  * @brief TCP transport implementation data
  */
 typedef struct {
@@ -163,6 +166,10 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
     }
   }
 
+  if (envelope.consumed) {
+    buffer_release(envelope.allocated_buffer);
+    return ERROR_NETWORK_INCOMPLETE;
+  }
   *buffer = envelope.data;
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;

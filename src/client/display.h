@@ -23,7 +23,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /* Forward declarations */
 typedef struct session_display_ctx session_display_ctx_t;

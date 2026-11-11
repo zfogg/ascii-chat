@@ -253,7 +253,7 @@
  * int create_client_render_threads(client_info_t *client) {
  *   // Create video render thread
  *   atomic_store(&client->video_render_thread_running, true);
- *   if (acthread_create(&client->video_render_thread,
+ *   if (platform_thread_create(&client->video_render_thread,
  *                           video_render_thread_func,
  *                           (void *)(uintptr_t)client->client_id) != 0) {
  *     return -1;
@@ -261,7 +261,7 @@
  *
  *   // Create audio render thread
  *   atomic_store(&client->audio_render_thread_running, true);
- *   if (acthread_create(&client->audio_render_thread,
+ *   if (platform_thread_create(&client->audio_render_thread,
  *                           audio_render_thread_func,
  *                           (void *)(uintptr_t)client->client_id) != 0) {
  *     // Cleanup video thread on failure
@@ -407,4 +407,3 @@
  * @see topic_mixer
  * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
  */
-

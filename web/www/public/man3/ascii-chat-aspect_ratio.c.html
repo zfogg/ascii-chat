@@ -1,128 +1,197 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>aspect_ratio.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">aspect_ratio.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">aspect_ratio.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">aspect_ratio.c - &#x1F4D0; Terminal cell aspect ratio calculations
-    for accurate image dimension scaling</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>CHAR_ASPECT</b> 2.0f
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum { <b>MIN_DIMENSION</b> = 1 }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>aspect_ratio</b> (const ssize_t img_w, const ssize_t
-    img_h, const ssize_t width, const ssize_t height, const <b>bool</b> stretch,
-    ssize_t *out_width, ssize_t *out_height)
-  <br/>
-  Calculate aspect ratio with terminal character correction. void
-    <b>aspect_ratio2</b> (const ssize_t img_w, const ssize_t img_h, const
-    ssize_t target_w, const ssize_t target_h, ssize_t *out_width, ssize_t
-    *out_height)
-  <br/>
-  Simple aspect ratio calculation without terminal character correction. void
-    <b>calculate_fit_dimensions_pixel</b> (int img_width, int img_height, int
-    max_width, int max_height, int *out_width, int *out_height)
-  <br/>
-  Calculate fit dimensions for pixel-based images.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4D0; Terminal cell aspect ratio calculations for accurate
-    image dimension scaling</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>aspect_ratio.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CHAR_ASPECT___2"><a class="permalink" href="#_define_CHAR_ASPECT___2">#define
-  CHAR_ASPECT 2.0f</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>aspect_ratio.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="anonymous_enum"><a class="permalink" href="#anonymous_enum">anonymous
-  enum</a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="MIN_DIMENSION"><a class="permalink" href="#MIN_DIMENSION"><b><i>MIN_DIMENSION
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>13</b> of file <b>aspect_ratio.c</b>.</p>
-<pre>13      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>aspect_ratio.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">aspect_ratio.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">aspect_ratio.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          aspect_ratio.c - &#x1F4D0; Terminal cell aspect ratio calculations for
+          accurate image dimension scaling
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CHAR_ASPECT</b> 2.0f
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>enum </b>{ <b>MIN_DIMENSION</b> = 1 }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>aspect_ratio</b> (const ssize_t img_w, const ssize_t img_h,
+            const ssize_t width, const ssize_t height, const
+            <b>bool</b> stretch, ssize_t *out_width, ssize_t *out_height)
+            <br />
+            Calculate aspect ratio with terminal character correction. void
+            <b>aspect_ratio2</b> (const ssize_t img_w, const ssize_t img_h,
+            const ssize_t target_w, const ssize_t target_h, ssize_t *out_width,
+            ssize_t *out_height)
+            <br />
+            Simple aspect ratio calculation without terminal character
+            correction. void
+            <b>calculate_fit_dimensions_pixel</b> (int img_width, int
+            img_height, int max_width, int max_height, int *out_width, int
+            *out_height)
+            <br />
+            Calculate fit dimensions for pixel-based images.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4D0; Terminal cell aspect ratio calculations for accurate image
+          dimension scaling
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>aspect_ratio.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CHAR_ASPECT___2">
+            <a class="permalink" href="#_define_CHAR_ASPECT___2"
+              >#define CHAR_ASPECT 2.0f</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>aspect_ratio.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="anonymous_enum">
+            <a class="permalink" href="#anonymous_enum">anonymous enum</a>
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="MIN_DIMENSION">
+              <a class="permalink" href="#MIN_DIMENSION"
+                ><b><i>MIN_DIMENSION </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>aspect_ratio.c</b>.
+          </p>
+          <pre>
+13      {
 14   MIN_DIMENSION = 1 // minimum width/height to prevent zero dimensions
 15 };</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

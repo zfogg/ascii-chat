@@ -55,6 +55,14 @@ export default function FramerateSection() {
             "# Enable FPS counter\nascii-chat mirror --fps-counter\n\n# Combine with target FPS\nascii-chat mirror --fps 60 --fps-counter\n\n# Via environment\nexport ASCII_CHAT_FPS_COUNTER=true"
           }
         </CodeBlock>
+        <div className="info-box-info mt-3 border-l-4 border-purple-400">
+          <p className="text-gray-300 text-sm">
+            <strong className="text-purple-300">⌨ Runtime shortcut:</strong>{" "}
+            press <code className="text-purple-300">-</code> to toggle the live
+            FPS counter overlay. This does not change the target FPS set with{" "}
+            <code>--fps</code>.
+          </p>
+        </div>
       </div>
     </section>
   );

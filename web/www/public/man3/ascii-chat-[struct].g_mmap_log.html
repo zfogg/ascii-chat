@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>[struct].g_mmap_log(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">[struct].g_mmap_log(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">[struct].g_mmap_log(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">[struct].g_mmap_log</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>platform_mmap_t</b> <b>mmap</b>
+            <br />
+            char * <b>text_region</b>
+            <br />
+            size_t <b>text_capacity</b>
+            <br />
+            <b>atomic_t</b> <b>write_pos</b>
+            <br />
+            <b>bool</b> <b>initialized</b>
+            <br />
+            char <b>file_path</b> [4096]
+            <br />
+            <b>atomic_t</b> <b>bytes_written</b>
+            <br />
+            <b>atomic_t</b> <b>wrap_count</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>36</b> of file <b>mmap.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">atomic_t <b>[struct].g_mmap_log</b> bytes_written</h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_">
+            <a class="permalink" href="#char_"
+              >char <b>[struct].g_mmap_log</b>[4096]</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="bool_">
+            <a class="permalink" href="#bool_"
+              >bool <b>[struct].g_mmap_log</b> initialized</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="platform_mmap_t_">
+            <a class="permalink" href="#platform_mmap_t_"
+              >platform_mmap_t <b>[struct].g_mmap_log</b> mmap</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_">
+            <a class="permalink" href="#size_t_"
+              >size_t <b>[struct].g_mmap_log</b> text_capacity</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_">
+            <a class="permalink" href="#char*_"
+              >char* <b>[struct].g_mmap_log</b> text_region</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">atomic_t <b>[struct].g_mmap_log</b> wrap_count</h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">atomic_t <b>[struct].g_mmap_log</b> write_pos</h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

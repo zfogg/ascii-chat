@@ -91,7 +91,7 @@
  *
  * **Server with Logging**:
  * @code{.sh}
- * ./ascii-chat server --log-file /var/log/ascii-chat.log --log-level 1
+ * ./ascii-chat --log-file /var/log/ascii-chat.log --log-level INFO server
  * @endcode
  *
  * @subsection options_client_examples Client Examples
@@ -118,12 +118,19 @@
  *
  * **Snapshot Mode**:
  * @code{.sh}
- * ./ascii-chat client --snapshot --snapshot-delay 5
+ * ./ascii-chat client --snapshot --snapshot-delay 0 > frame.txt
  * @endcode
  *
  * **Client with Server Verification**:
  * @code{.sh}
  * ./ascii-chat client --server-key github:zfogg
+ * @endcode
+ *
+ * **Media and playlist examples**:
+ * @code{.sh}
+ * ./ascii-chat mirror --file "first.mp4" --file "second.webm" --loop
+ * ./ascii-chat mirror --url "https://example.com/live.m3u8" --pause
+ * ffmpeg -i input.mp4 -f matroska - | ./ascii-chat mirror --file -
  * @endcode
  *
  *

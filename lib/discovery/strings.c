@@ -28,14 +28,18 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/log/log.h>
 
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 // ============================================================================
 // Word Cache Implementation (Hashtable for O(1) validation)
 // ============================================================================
 
 /**
- * @brief Hashtable entry for cached word lookups
+ * @brief One owned word in the adjective or noun validation hash table
+ * @brief One owned word in the adjective or noun validation hash table.
+ *
+ * `word` is the hash key and heap-allocated copy; `hh` links the entry into
+ * uthash. The cache frees both the word and entry during shared shutdown.
  */
 typedef struct {
   char *word;        ///< The word string (key)

@@ -88,23 +88,26 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>
 #include <ascii-chat/util/time.h> // For timing instrumentation
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 
 #include <ascii-chat/audio/audio.h>           // lib/audio/audio.h for PortAudio wrapper
 #include <ascii-chat/audio/client_pipeline.h> // Unified audio processing pipeline
 #include <ascii-chat/audio/wav_writer.h>      // WAV file dumping for debugging
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>     // For RCU-based options access
-#include <ascii-chat/platform/system.h> // For platform_memcpy
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <libplatform/system.h>     // For platform_memcpy
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 #include <string.h>
 #include <math.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
 #include <ascii-chat/thread_pool.h>
 
 /* ============================================================================
@@ -207,9 +210,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
   memcpy(packet->data, opus_data, opus_size);
   packet->size = opus_size;
   packet->frame_count = frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
-#endif
   for (int i = 0; i < frame_count && i < MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
@@ -258,10 +259,10 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Dequeue packet
     audio_send_packet_t packet = connection->audio_send_queue[connection->audio_send_queue_tail];
-    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
     connection->audio_send_queue_tail = (connection->audio_send_queue_tail + 1) % AUDIO_SEND_QUEUE_SIZE;
 
     mutex_unlock(&connection->audio_send_queue_mutex);
+    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
     asciichat_errno_scope_t send_scope = errno_scope_begin();
@@ -319,7 +320,8 @@ asciichat_error_t audio_sender_init(client_connection_t *connection) {
   lifecycle_init(&connection->audio_send_queue_lc, "audio_queue");
   if (client_connection_checkpoint("audio-queue") != ASCIICHAT_OK)
     return ERROR_THREAD;
-  if (connection->transport && connection->transport->outbound) {
+  acip_transport_t *transport = atomic_ptr_load(&connection->transport);
+  if (transport && transport->outbound) {
     // Admission copies bounded audio into the transport queue without socket I/O.
     connection->audio_send_direct = true;
     atomic_store_bool(&connection->audio_sender_exited, true);
@@ -458,7 +460,7 @@ void audio_process_received_samples(client_connection_t *connection, const float
   // Log latency after writing to playback buffer
   if (connection->audio_context->playback_buffer) {
     size_t buffer_samples = audio_ring_buffer_available_read(connection->audio_context->playback_buffer);
-    float buffer_latency_ms = (float)buffer_samples / 48.0f;
+    float buffer_latency_ms = (float)buffer_samples * 1000.0f / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS);
     log_dev_every(500 * US_PER_MS_INT, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)",
                   buffer_latency_ms, buffer_samples);
   }
@@ -537,7 +539,7 @@ static void *audio_capture_thread_func(void *arg) {
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
+#define BATCH_TIMEOUT_NS (320LL * NS_PER_MS_INT) // Flush at most sixteen 20 ms Opus frames (bounded 320 ms latency)
   uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
   int batch_frame_count = 0;
@@ -741,7 +743,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Queue batch for async sending (non-blocking - sender thread handles network I/O)
-      if (batch_frame_count >= 2 ||
+      if (batch_frame_count >= MAX_BATCH_FRAMES ||
           (batch_frame_count > 0 && time_get_ns() - batch_start_time_ns >= BATCH_TIMEOUT_NS)) {
         batch_send_count++;
 

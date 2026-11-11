@@ -26,7 +26,7 @@ static ringbuffer_t *fault_ring(size_t element, size_t capacity) {
 static int fault_mutex(mutex_t *mutex, const char *name) {
   return fail_mutex ? ERROR_THREAD : mutex_init(mutex, name);
 }
-static int fault_thread(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
+static int fault_thread(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   (void)thread;
   (void)name;
   (void)fn;
@@ -34,7 +34,7 @@ static int fault_thread(asciichat_thread_t *thread, const char *name, void *(*fn
   ++thread_starts;
   return fail_thread ? -1 : 0;
 }
-static int fault_join(asciichat_thread_t *thread, void **result) {
+static int fault_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   ++thread_joins;
@@ -46,7 +46,7 @@ static int fault_join(asciichat_thread_t *thread, void **result) {
 #define image_new fault_image
 #define ringbuffer_create fault_ring
 #define mutex_init fault_mutex
-#define acthread_create fault_thread
+#define platform_thread_create fault_thread
 #define thread_join fault_join
 #include "../../../src/common/session/host.c"
 #undef terminal_is_interactive
@@ -55,7 +55,7 @@ static int fault_join(asciichat_thread_t *thread, void **result) {
 #undef image_new
 #undef ringbuffer_create
 #undef mutex_init
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 static session_host_t *owner;
 static void admitted(session_host_t *host, uint32_t id, void *data) {

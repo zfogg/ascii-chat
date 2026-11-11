@@ -1,0 +1,477 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>backends.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">backends.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">backends.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">backends.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>digital_rain_render_at</b> (<b>digital_rain_t</b> *rain,
+            const char *frame, float seconds)
+            <br />
+            char * <b>rainbow_render_ansi_at</b> (const char *frame, float
+            seconds)
+            <br />
+            <b>asciichat_error_t</b> <b>test_pattern_render_at</b> (struct
+            <b>test_pattern</b> *pattern, int index, double time_ms, <b>bool</b>
+            cadence)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_digital_rain_render_at_(">
+            <a class="permalink" href="#char_*_digital_rain_render_at_("
+              >char * digital_rain_render_at (<b>digital_rain_t</b> * rain,
+              const char * frame, float seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>382</b> of file <b>digital_rain.c</b>.
+          </p>
+          <pre>
+382                                                                                      {
+383   if (!rain || !frame) {
+384     log_error(&quot;NULL parameter&quot;);
+385     return NULL;
+386   }
+387
+388   if (!isfinite(seconds) || seconds &lt; 0)
+389     return NULL;
+390   float elapsed = fmaxf(0.0f, seconds - rain-&gt;time);
+391   rain-&gt;time = seconds;
+392   float sim_time = seconds;
+393   // brightness_decay retains its meaning as a blend factor at 60 Hz.
+394   float decay = fminf(1.0f, fmaxf(0.0f, rain-&gt;brightness_decay));
+395   float alpha = elapsed &gt; 0 ? 1.0f - powf(1.0f - decay, elapsed * 60.0f) : 0.0f;
+396
+397   if (rain-&gt;rainbow_mode)
+398     color_filter_calculate_rainbow(sim_time, &amp;rain-&gt;color_r, &amp;rain-&gt;color_g, &amp;rain-&gt;color_b);
+399
+400   size_t input_len = strlen(frame);
+401   if (input_len &gt; (SIZE_MAX - 1024) / 48)
+402     return NULL;
+403   size_t output_capacity = input_len * 48 + 1024;
+404   char *output = SAFE_MALLOC(output_capacity, char *);
+405   if (!output)
+406     return NULL;
+407
+408   const char *src = frame;
+409   char *dst = output;
+410   size_t remaining = output_capacity;
+411   int col = 0, row = 0;
+412   float foreground_luminance = 1.0f, background_luminance = 0.0f;
+413   bool has_background = false;
+414   bool colored = false;
+415
+416   while (*src &amp;&amp; remaining &gt; 100) {
+417     if (*src == '\033') {
+418       int r, g, b;
+419       bool foreground;
+420       const char *after = parse_ansi_color(src, &amp;r, &amp;g, &amp;b, &amp;foreground);
+421       if (after) {
+422         float luminance = fminf(1.0f, fmaxf(0.0f, (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f));
+423         if (foreground)
+424           foreground_luminance = luminance;
+425         else {
+426           background_luminance = luminance;
+427           has_background = true;
+428         }
+429         src = after;
+430       } else {
+431         after = skip_ansi_sequence(src);
+432         size_t count = (size_t)(after - src);
+433         if ((count == 4 &amp;&amp; memcmp(src, &quot;\033[0m&quot;, 4) == 0) || (count == 3 &amp;&amp; memcmp(src, &quot;\033[m&quot;, 3) == 0)) {
+434           foreground_luminance = 1.0f;
+435           has_background = false;
+436         }
+437         memcpy(dst, src, count);
+438         dst += count;
+439         remaining -= count;
+440         src = after;
+441       }
+442       continue;
+443     }
+444     if (*src == '\n' || *src == '\r') {
+445       if (*src == '\n')
+446         row++;
+447       col = 0;
+448       *dst++ = *src++;
+449       remaining--;
+450       continue;
+451     }
+452
+453     float head;
+454     float brightness = get_rain_brightness(rain, col, row, sim_time, &amp;head);
+455     // Update once per cell, independently of how many ANSI sequences precede it.
+456     if (row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
+457       size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
+458       if (!rain-&gt;first_frame)
+459         brightness = rain-&gt;previous_brightness[idx] + (brightness - rain-&gt;previous_brightness[idx]) * alpha;
+460       rain-&gt;previous_brightness[idx] = brightness;
+461     }
+462     int count = generate_rain_color(dst, remaining, rain, brightness, head, foreground_luminance, true);
+463     colored = true;
+464     dst += count;
+465     remaining -= (size_t)count;
+466     if (has_background) {
+467       count = generate_rain_color(dst, remaining, rain, brightness, head, background_luminance, false);
+468       dst += count;
+469       remaining -= (size_t)count;
+470     }
+471     uint32_t codepoint;
+472     int bytes = utf8_decode((const uint8_t *)src, &amp;codepoint);
+473     if (bytes &lt;= 0) {
+474       bytes = 1;
+475       codepoint = (uint8_t)*src;
+476     }
+477     if (bytes == 1 &amp;&amp; codepoint &gt; 32 &amp;&amp; codepoint &lt; 127) {
+478       *dst++ = (char)mutate_glyph(codepoint, col, row, sim_time);
+479       src++;
+480       remaining--;
+481     } else {
+482       memcpy(dst, src, (size_t)bytes);
+483       dst += bytes;
+484       src += bytes;
+485       remaining -= (size_t)bytes;
+486     }
+487     col++;
+488   }
+489   // Monochrome input has no trailing SGR reset to copy. The effect introduces
+490   // colors itself, so every colored result must restore terminal attributes.
+491   if (colored) {
+492     const char reset[] = &quot;\033[0m&quot;;
+493     if (remaining &lt; sizeof(reset)) {
+494       SAFE_FREE(output);
+495       return NULL;
+496     }
+497     memcpy(dst, reset, sizeof(reset));
+498   } else {
+499     *dst = '\0';
+500   }
+501   rain-&gt;first_frame = false;
+502   return output;
+503 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>digital_rain::brightness_decay</b>,
+            <b>digital_rain::color_b</b>,
+            <b>color_filter_calculate_rainbow()</b>,
+            <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
+            <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
+            <b>log_error</b>, <b>digital_rain::num_columns</b>,
+            <b>digital_rain::previous_brightness</b>,
+            <b>digital_rain::rainbow_mode</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
+            <b>utf8_decode()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>digital_rain_render_at()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)"
+          >
+            <a
+              class="permalink"
+              href="#char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)"
+              >char * rainbow_render_ansi_at (const char * frame, float
+              seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>color_filter.c</b>.
+          </p>
+          <pre>
+365                                                                           {
+366   if (!ansi_string) {
+367     return NULL;
+368   }
+369
+370   // Calculate rainbow color once for this frame
+371   uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
+372   color_filter_calculate_rainbow(time_seconds, &amp;rainbow_r, &amp;rainbow_g, &amp;rainbow_b);
+373
+374   // Build the replacement ANSI code string once
+375   char rainbow_code[VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE];
+376   snprintf(rainbow_code, sizeof(rainbow_code), &quot;\x1b[38;2;%d;%d;%dm&quot;, rainbow_r, rainbow_g, rainbow_b);
+377   size_t rainbow_code_len = strlen(rainbow_code);
+378
+379   // Check if there are any ANSI codes to replace
+380   if (!strstr(ansi_string, &quot;\x1b[38;2;&quot;)) {
+381     return NULL; // No ANSI codes found, no replacement needed
+382   }
+383
+384   size_t input_len = strlen(ansi_string);
+385   size_t replacements = 0;
+386   const char *scan = ansi_string;
+387   while ((scan = strstr(scan, &quot;\x1b[38;2;&quot;)) != NULL) {
+388     const char *end = strchr(scan + 7, 'm');
+389     if (!end)
+390       break;
+391     replacements++;
+392     scan = end + 1;
+393   }
+394   if (input_len == SIZE_MAX || replacements &gt; (SIZE_MAX - input_len - 1) / rainbow_code_len)
+395     return NULL;
+396   char *new_result = SAFE_MALLOC(input_len + replacements * rainbow_code_len + 1, char *);
+397   if (!new_result) {
+398     return NULL;
+399   }
+400
+401   // Replace all RGB color codes with rainbow color
+402   const char *src = ansi_string;
+403   char *dst = new_result;
+404
+405   while (*src) {
+406     const char *ansi_start = strstr(src, &quot;\x1b[38;2;&quot;);
+407     if (ansi_start) {
+408       // Copy everything before this ANSI code
+409       size_t before_len = (size_t)(ansi_start - src);
+410       memcpy(dst, src, before_len);
+411       dst += before_len;
+412
+413       // Skip the old ANSI code (find the 'm' that ends it)
+414       const char *ansi_end = strchr(ansi_start + 7, 'm');
+415       if (ansi_end) {
+416         // Copy the rainbow replacement code
+417         // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+418         memcpy(dst, rainbow_code, rainbow_code_len);
+419         dst += rainbow_code_len;
+420
+421         // Move source past the old code
+422         src = ansi_end + 1;
+423       } else {
+424         // Preserve a malformed trailing sequence without duplicating the prefix.
+425         size_t remaining = strlen(ansi_start);
+426         memcpy(dst, ansi_start, remaining);
+427         dst += remaining;
+428         break;
+429       }
+430     } else {
+431       // No more ANSI codes, copy the rest
+432       size_t remaining = strlen(src);
+433       memcpy(dst, src, remaining);
+434       dst += remaining;
+435       break;
+436     }
+437   }
+438   *dst = '\0';
+439
+440   return new_result;
+441 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_filter_calculate_rainbow()</b>,
+            <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
+            <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>rainbow_render_ansi_at()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> test_pattern_render_at (struct
+            <b>test_pattern</b> * pattern, int index, double time_ms,
+            <b>bool</b> cadence)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>155</b> of file
+            <b>lib/video/anim/test_pattern.c</b>.
+          </p>
+          <pre>
+155                                                                                                      {
+156   if (!p || !p-&gt;image || index &lt; 0 || index &gt; 1 || !isfinite(time_ms) || time_ms &lt; 0)
+157     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid test pattern frame parameters&quot;);
+158   int w = p-&gt;image-&gt;w, h = p-&gt;image-&gt;h;
+159   double phase = fmod(time_ms, index ? 4000 : 10000) / (index ? 4000 : 10000);
+160   rgb_pixel_t dark = {16, 24, 32}, white = {255, 255, 255};
+161   rgb_pixel_t first = hue(phase * 360, 0.5), last = hue(fmod(phase + 0.5, 1) * 360, 0.5);
+162   double box = fmin(fmax(32, fmin(w, h) / 4.0), fmin(w, h) / 2.0);
+163   double bx = fmod(time_ms / 11, w + box) - box, by = fmod(time_ms / 17, h + box) - box;
+164   double stripe = w / 12.0, offset = phase * w;
+165   int first_stripe = (int)ceil(-offset / stripe);
+166   double radius = fmin(fmax(12, fmin(w, h) / 8.0), fmin(w, h) / 4.0);
+167   double cx = w + radius - phase * (w + radius * 2), cy = h / 2.0 + sin(phase * 12.566370614359172) * h / 4.0;
+168   rgb_pixel_t colors[12];
+169   for (int i = 0; i &lt; 12; i++)
+170     colors[i] = hue(i * 30, 0.55);
+171   uint32_t frame = (uint32_t)fmod(floor(time_ms / (1000.0 / 60)), 512);
+172   uint32_t code = frame ^ (frame &gt;&gt; 1);
+173   const int slots[8] = {6, 4, 2, 0, 1, 3, 5, 7};
+174   rgb_pixel_t *pixels = p-&gt;image-&gt;pixels;
+175   if (index == 1) {
+176     // The background is constant down each column. Rasterize one row, then copy.
+177     for (int x = 0; x &lt; w; x++) {
+178       rgb_pixel_t pixel = dark;
+179       if (cadence) {
+180         int slot = (int)(x / fmax(2, w / 8.0));
+181         if (slot &lt; 8)
+182           pixel = (code &amp; (1u &lt;&lt; slots[slot])) ? white : (rgb_pixel_t){0, 0, 0};
+183       } else {
+184         int k = (int)floor((x - offset) / stripe) + 1;
+185         for (int j = k; j &lt;= k + 1; j++)
+186           if (j &gt;= first_stripe &amp;&amp; j &lt;= first_stripe + 12)
+187             blend(&amp;pixel, colors[(j % 12 + 12) % 12], overlap(x, j * stripe + offset - stripe, j * stripe + offset));
+188       }
+189       pixels[x] = pixel;
+190     }
+191     for (int y = 1; y &lt; h; y++)
+192       memcpy(pixels + (size_t)y * w, pixels, (size_t)w * sizeof(*pixels));
+193     if (cadence)
+194       return ASCIICHAT_OK;
+195     int top = (int)fmax(0, floor(cy - radius - 1)), bottom = (int)fmin(h, ceil(cy + radius + 1));
+196     int left = (int)fmax(0, floor(cx - radius - 1)), right = (int)fmin(w, ceil(cx + radius + 1));
+197     for (int y = top; y &lt; bottom; y++)
+198       for (int x = left; x &lt; right; x++) {
+199         double dx0 = x + 0.5 - cx, dy0 = y + 0.5 - cy, d2 = dx0 * dx0 + dy0 * dy0;
+200         if (d2 &gt; (radius + 0.75) * (radius + 0.75))
+201           continue;
+202         double coverage = 1;
+203         if (d2 &gt; (radius - 0.75) * (radius - 0.75)) {
+204           int inside = 0;
+205           for (int sy = 0; sy &lt; 4; sy++)
+206             for (int sx = 0; sx &lt; 4; sx++) {
+207               double dx = x + (sx + 0.5) / 4 - cx, dy = y + (sy + 0.5) / 4 - cy;
+208               if (dx * dx + dy * dy &lt; radius * radius)
+209                 inside++;
+210             }
+211           coverage = inside / 16.0;
+212         }
+213         blend(&amp;pixels[(size_t)y * w + x], white, coverage);
+214       }
+215   } else {
+216     // A fixed-point ramp avoids three floating-point conversions per source
+217     // pixel. 4096 intervals keep rounding within one RGB level of Canvas.
+218     rgb_pixel_t gradient[TEST_PATTERN_GRADIENT_INTERVALS + 1];
+219     for (int i = 0; i &lt;= TEST_PATTERN_GRADIENT_INTERVALS; i++) {
+220       double t = i / (double)TEST_PATTERN_GRADIENT_INTERVALS;
+221       gradient[i] = (rgb_pixel_t){(uint8_t)(first.r * (1 - t) + last.r * t + 0.5),
+222                                   (uint8_t)(first.g * (1 - t) + last.g * t + 0.5),
+223                                   (uint8_t)(first.b * (1 - t) + last.b * t + 0.5)};
+224     }
+225     double scale = (double)TEST_PATTERN_GRADIENT_INTERVALS * 65536 / ((double)w * w + (double)h * h);
+226     uint32_t step = (uint32_t)(w * scale + 0.5);
+227     for (int y = 0; y &lt; h; y++) {
+228       uint32_t position = (uint32_t)((0.5 * w + (y + 0.5) * h) * scale + 0.5);
+229       for (int x = 0; x &lt; w; x++, position += step)
+230         pixels[(size_t)y * w + x] = gradient[position &gt;&gt; 16];
+231     }
+232     int top = (int)fmax(0, floor(by)), bottom = (int)fmin(h, ceil(by + box));
+233     int left = (int)fmax(0, floor(bx)), right = (int)fmin(w, ceil(bx + box));
+234     for (int y = top; y &lt; bottom; y++)
+235       for (int x = left; x &lt; right; x++)
+236         blend(&amp;pixels[(size_t)y * w + x], white, 0.8 * overlap(x, bx, bx + box) * overlap(y, by, by + box));
+237   }
+238   render_test_label(p-&gt;image);
+239   return ASCIICHAT_OK;
+240 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>rgb_pixel_t::g</b>,
+            <b>image_t::h</b>, <b>test_pattern::image</b>,
+            <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>, <b>SET_ERRNO</b>,
+            <b>TEST_PATTERN_GRADIENT_INTERVALS</b>,
+            <b>test_pattern_render_at()</b>, and <b>image_t::w</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>test_pattern_render_at()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -62,7 +62,9 @@
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
         <p class="Pp">#include &lt;include/ascii-chat/crypto/pem.h&gt;</p>
         <section class="Ss">
           <h2 class="Ss" id="Data_Fields">
@@ -82,33 +84,44 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">Vector type for trust anchors.</p>
         <p class="Pp">
-          Dynamic array of trust anchors, used to accumulate root CA certificates for TLS
-          validation. Trust anchors are loaded from system CA certificate store.
+          Dynamic array of trust anchors, used to accumulate root CA
+          certificates for TLS validation. Trust anchors are loaded from system
+          CA certificate store.
         </p>
         <p class="Pp"></p>
         <p class="Pp"><b>Note</b></p>
         <div class="Bd-indent">
           Structure fields:
           <ul class="Bl-bullet">
-            <li>buf: Pointer to array of trust anchors (dynamically allocated)</li>
+            <li>
+              buf: Pointer to array of trust anchors (dynamically allocated)
+            </li>
             <li>ptr: Current number of trust anchors in array</li>
             <li>len: Total capacity of array (may be larger than ptr)</li>
           </ul>
           <p class="Pp">
-            Memory management: buf must be allocated with malloc() and freed with free(). Each trust
-            anchor must be freed with <b>free_ta_contents()</b> before freeing buf.
+            Memory management: buf must be allocated with malloc() and freed
+            with free(). Each trust anchor must be freed with
+            <b>free_ta_contents()</b> before freeing buf.
           </p>
         </div>
         <p class="Pp">Definition at line <b>78</b> of file <b>pem.h</b>.</p>
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

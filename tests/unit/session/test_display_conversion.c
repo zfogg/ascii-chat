@@ -2,6 +2,7 @@
 #include "common/session/display.h"
 #include "common/session/frame_validation.h"
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/runtime.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <string.h>
@@ -93,6 +94,24 @@ Test(session_display_conversion, reused_output_can_be_followed_by_owned_output_a
   cr_assert_str_eq(reused, owned);
   session_display_release_ascii(display, reused);
   SAFE_FREE(owned);
+}
+
+Test(session_display_conversion, runtime_renderer_and_palette_change_together) {
+  cr_assert_eq(options_set_int("palette_type", PALETTE_DIGITAL), ASCIICHAT_OK);
+  char *before = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(before);
+  session_display_release_ascii(display, before);
+  options_edit_t edits[] = {
+      {.name = "renderer", .type = OPTIONS_VALUE_INT, .value.integer = ASCII_RENDERER_GLYPH},
+      {.name = "palette_type", .type = OPTIONS_VALUE_INT, .value.integer = PALETTE_CUSTOM},
+      {.name = "palette_custom", .type = OPTIONS_VALUE_STRING, .value.string = "@#"},
+  };
+  options_patch_t patch = {.edits = edits, .count = 3, .expected_revision = OPTIONS_REVISION_ANY};
+  cr_assert_eq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
+  char *after = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(after);
+  cr_assert_not_null(strpbrk(after, "@#"));
+  session_display_release_ascii(display, after);
 }
 
 Test(session_display_conversion, filters_and_dynamic_rain_leave_the_source_image_intact) {

@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <math.h>
 #include <limits.h>
 #include <ascii-chat/audio/wav_writer.h>

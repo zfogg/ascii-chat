@@ -15,7 +15,7 @@ import ctypes as c
 import os
 from pathlib import Path
 
-from terminal_ui import CaptureScreen, CaptureStream
+from ascii_chat_tests.terminal import CaptureScreen, CaptureStream
 
 
 def main():

@@ -32,75 +32,27 @@ export default function Mcp() {
               Context Protocol client.
             </p>
           </header>
-          <section className="docs-section-spacing">
-            <Heading level={2} className="heading-2 text-cyan-400">
-              Connect your assistant
-            </Heading>
-            <p className="docs-paragraph">
-              Install ascii-chat and make sure the command is on your PATH. Add
-              a configuration below to your assistant, then restart it or
-              reconnect the server. Your assistant starts the server as needed;
-              no network port is opened. Use the full executable path if needed.
+          <section className="mb-12 overflow-hidden rounded-3xl border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-950 via-indigo-950 to-cyan-950 p-6 shadow-2xl shadow-fuchsia-950/30 sm:p-10">
+            <p className="mb-3 text-sm font-bold uppercase tracking-widest text-cyan-300">
+              The official hosted MCP server
             </p>
-            <CodeBlock language="bash">{`ascii-chat mcp-server --transport stdio`}</CodeBlock>
-            <p className="docs-paragraph">
-              Add this Codex configuration to ~/.codex/config.toml:
-            </p>
-            <CodeBlock language="text">{`[mcp_servers.ascii_chat]
-command = "ascii-chat"
-args = ["mcp-server", "--transport", "stdio"]
-tool_timeout_sec = 70`}</CodeBlock>
-            <Heading level={3} className="text-xl font-semibold mb-3">
-              Claude Code configuration
+            <Heading
+              level={2}
+              className="mb-4 text-2xl font-bold text-white sm:text-3xl"
+            >
+              mcp.ascii-chat.com
             </Heading>
-            <p className="docs-paragraph">
-              Add this to your project’s .mcp.json and approve the server when
-              prompted. Use /mcp to inspect the connection:
+            <p className="mb-4 text-lg font-semibold text-fuchsia-200">
+              ASCII art for images and videos, wherever your agent works.
             </p>
-            <CodeBlock language="json">
-              {JSON.stringify(
-                {
-                  mcpServers: {
-                    ascii_chat: {
-                      type: "stdio",
-                      command: "ascii-chat",
-                      args: ["mcp-server", "--transport", "stdio"],
-                    },
-                  },
-                },
-                null,
-                2,
-              )}
-            </CodeBlock>
-            <Heading level={3} className="text-xl font-semibold mb-3">
-              OpenCode configuration
-            </Heading>
-            <p className="docs-paragraph">Add this to opencode.json:</p>
-            <CodeBlock language="json">
-              {JSON.stringify(
-                {
-                  $schema: "https://opencode.ai/config.json",
-                  mcp: {
-                    ascii_chat: {
-                      type: "local",
-                      command: [
-                        "ascii-chat",
-                        "mcp-server",
-                        "--transport",
-                        "stdio",
-                      ],
-                      enabled: true,
-                      timeout: 70000,
-                    },
-                  },
-                },
-                null,
-                2,
-              )}
-            </CodeBlock>
-            <p className="docs-paragraph">
-              Once connected, ask your assistant to render a picture, a video
-              frame, a webcam view, or an audio visualization as ASCII art.
+            <p className="mb-4 max-w-3xl leading-relaxed text-indigo-100">
+              Our vision is simple: any agent can turn any image or video into
+              ASCII art. The hosted service is planned to return creations as
+              temporary download links hosted on the server.
+            </p>
+            <p className="rounded-xl border border-cyan-400/30 bg-gray-950/40 px-4 py-3 text-sm text-cyan-100">
+              The hosted server cannot access your webcam. Use the local server
+              below for webcam captures.
             </p>
           </section>
           <section className="docs-section-spacing">
@@ -249,6 +201,77 @@ tool_timeout_sec = 70`}</CodeBlock>
             <p className="docs-paragraph">
               The response includes the ASCII result and paths of saved files.
               Use a new filename for each export.
+            </p>
+          </section>
+          <section className="docs-section-spacing">
+            <Heading level={2} className="heading-2 text-cyan-400">
+              Connect your assistant
+            </Heading>
+            <p className="docs-paragraph">
+              Install ascii-chat and make sure the command is on your PATH. Add
+              a configuration below to your assistant, then restart it or
+              reconnect the server. Your assistant starts the server as needed;
+              no network port is opened. Use the full executable path if needed.
+            </p>
+            <CodeBlock language="bash">{`ascii-chat mcp-server --transport stdio`}</CodeBlock>
+            <p className="docs-paragraph">
+              Add this Codex configuration to ~/.codex/config.toml:
+            </p>
+            <CodeBlock language="text">{`[mcp_servers.ascii_chat]
+command = "ascii-chat"
+args = ["mcp-server", "--transport", "stdio"]
+tool_timeout_sec = 70`}</CodeBlock>
+            <Heading level={3} className="text-xl font-semibold mb-3">
+              Claude Code configuration
+            </Heading>
+            <p className="docs-paragraph">
+              Add this to your project’s .mcp.json and approve the server when
+              prompted. Use /mcp to inspect the connection:
+            </p>
+            <CodeBlock language="json">
+              {JSON.stringify(
+                {
+                  mcpServers: {
+                    ascii_chat: {
+                      type: "stdio",
+                      command: "ascii-chat",
+                      args: ["mcp-server", "--transport", "stdio"],
+                    },
+                  },
+                },
+                null,
+                2,
+              )}
+            </CodeBlock>
+            <Heading level={3} className="text-xl font-semibold mb-3">
+              OpenCode configuration
+            </Heading>
+            <p className="docs-paragraph">Add this to opencode.json:</p>
+            <CodeBlock language="json">
+              {JSON.stringify(
+                {
+                  $schema: "https://opencode.ai/config.json",
+                  mcp: {
+                    ascii_chat: {
+                      type: "local",
+                      command: [
+                        "ascii-chat",
+                        "mcp-server",
+                        "--transport",
+                        "stdio",
+                      ],
+                      enabled: true,
+                      timeout: 70000,
+                    },
+                  },
+                },
+                null,
+                2,
+              )}
+            </CodeBlock>
+            <p className="docs-paragraph">
+              Once connected, ask your assistant to render a picture, a video
+              frame, a webcam view, or an audio visualization as ASCII art.
             </p>
           </section>
           <section className="docs-section-spacing">

@@ -17,8 +17,8 @@
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
 #include <ascii-chat/options/actions.h> // For deferred action tests
 #include <ascii-chat/tests/common.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
 
 TestSuite(options);
@@ -127,6 +127,26 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
   cr_assert_eq(opts->flip_x, false);
   cr_assert(opts->flip_x_explicit);
   cr_assert_eq(opts->flip_y, true);
+}
+
+Test(options, test_pattern_defaults_to_unflipped) {
+  char *argv[] = {"program", "mirror", "--test-pattern", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert(opts->test_pattern);
+  cr_assert_not(opts->flip_x);
+  cr_assert_not(opts->flip_x_explicit);
+}
+
+Test(options, test_pattern_respects_explicit_flip) {
+  char *argv[] = {"program", "mirror", "--test-pattern", "--flip-x=true", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(4, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert(opts->test_pattern);
+  cr_assert(opts->flip_x);
+  cr_assert(opts->flip_x_explicit);
 }
 
 Test(options, default_values) {
@@ -1421,4 +1441,18 @@ Test(options, url_first_playlist_does_not_gain_file_priority) {
   cr_assert_eq(opts->media_playlist.count, 2);
   cr_assert_str_eq(opts->media_url, "https://example.com/first.webm");
   cr_assert_str_empty(opts->media_file);
+}
+
+Test(options, rejected_glyph_palette_is_not_published) {
+  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
+  options_t *before = SAFE_MALLOC(sizeof(*before), options_t *);
+  *before = *options_get();
+  char *argv[] = {"program", "mirror", "--renderer=glyph", "--palette=digital", NULL};
+  optind = 1;
+  cr_assert_neq(options_init(4, argv), ASCIICHAT_OK);
+  cr_assert_eq(options_get()->renderer, before->renderer);
+  cr_assert_eq(options_get()->palette_type, before->palette_type);
+  SAFE_FREE(before);
+  CLEAR_ERRNO_ALL();
+  options_state_destroy();
 }

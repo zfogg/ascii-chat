@@ -1,209 +1,288 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>cond_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">cond_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">cond_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">cond_t - Condition variable type (POSIX: pthread_cond_t with debug
-    tracking).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/platform/cond.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">pthread_cond_t <b>impl</b>
-  <br/>
-  Underlying POSIX condition variable. const char * <b>name</b>
-  <br/>
-  Human-readable name for named registry (all builds). <b>atomic_t</b>
-    <b>waiting_count</b>
-  <br/>
-  Number of threads currently waiting (functional - needed for all builds).
-    <b>uint64_t</b> <b>last_signal_time_ns</b>
-  <br/>
-  Timestamp of last signal (nanoseconds). <b>uint64_t</b>
-    <b>last_broadcast_time_ns</b>
-  <br/>
-  Timestamp of last broadcast (nanoseconds). <b>uint64_t</b>
-    <b>last_wait_time_ns</b>
-  <br/>
-  Timestamp of last wait (nanoseconds). uintptr_t <b>last_waiting_key</b>
-  <br/>
-  Registry key of most recent waiter. <b>mutex_t</b> * <b>last_wait_mutex</b>
-  <br/>
-  Associated mutex at most recent wait (for deadlock detection). const char *
-    <b>last_wait_file</b>
-  <br/>
-  Callsite file of most recent cond_wait (for deadlock detection). int
-    <b>last_wait_line</b>
-  <br/>
-  Callsite line of most recent cond_wait (for deadlock detection). const char *
-    <b>last_wait_func</b>
-  <br/>
-  Callsite function of most recent cond_wait (for deadlock detection).
-    <b>uint64_t</b> <b>wait_count</b>
-  <br/>
-  Total wait calls. <b>uint64_t</b> <b>signal_count</b>
-  <br/>
-  Total signal calls. <b>uint64_t</b> <b>broadcast_count</b>
-  <br/>
-  Total broadcast calls.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Condition variable type (POSIX: pthread_cond_t with debug
-    tracking).</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>cond.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::broadcast_count</h2>
-<p class="Pp">Total broadcast calls.</p>
-<p class="Pp">Definition at line <b>78</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_broadcast()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="pthread_cond_t_cond_t::impl"><a class="permalink" href="#pthread_cond_t_cond_t::impl">pthread_cond_t
-  cond_t::impl</a></h2>
-<p class="Pp">Underlying POSIX condition variable.</p>
-<p class="Pp">Definition at line <b>64</b> of file <b>cond.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::last_broadcast_time_ns</h2>
-<p class="Pp">Timestamp of last broadcast (nanoseconds).</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_broadcast()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::last_signal_time_ns</h2>
-<p class="Pp">Timestamp of last signal (nanoseconds).</p>
-<p class="Pp">Definition at line <b>68</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_signal()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_cond_t::last_wait_file"><a class="permalink" href="#const_char*_cond_t::last_wait_file">const
-  char* cond_t::last_wait_file</a></h2>
-<p class="Pp">Callsite file of most recent cond_wait (for deadlock
-  detection).</p>
-<p class="Pp">Definition at line <b>73</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_cond_t::last_wait_func"><a class="permalink" href="#const_char*_cond_t::last_wait_func">const
-  char* cond_t::last_wait_func</a></h2>
-<p class="Pp">Callsite function of most recent cond_wait (for deadlock
-    detection).</p>
-<p class="Pp">Definition at line <b>75</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_cond_t::last_wait_line"><a class="permalink" href="#int_cond_t::last_wait_line">int
-  cond_t::last_wait_line</a></h2>
-<p class="Pp">Callsite line of most recent cond_wait (for deadlock
-  detection).</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b>* cond_t::last_wait_mutex</h2>
-<p class="Pp">Associated mutex at most recent wait (for deadlock detection).</p>
-<p class="Pp">Definition at line <b>72</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::last_wait_time_ns</h2>
-<p class="Pp">Timestamp of last wait (nanoseconds).</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uintptr_t_cond_t::last_waiting_key"><a class="permalink" href="#uintptr_t_cond_t::last_waiting_key">uintptr_t
-  cond_t::last_waiting_key</a></h2>
-<p class="Pp">Registry key of most recent waiter.</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_cond_t::name"><a class="permalink" href="#const_char*_cond_t::name">const
-  char* cond_t::name</a></h2>
-<p class="Pp">Human-readable name for named registry (all builds).</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>cond.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::signal_count</h2>
-<p class="Pp">Total signal calls.</p>
-<p class="Pp">Definition at line <b>77</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_signal()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> cond_t::wait_count</h2>
-<p class="Pp">Total wait calls.</p>
-<p class="Pp">Definition at line <b>76</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>, and
-    <b>cond_on_wait()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> cond_t::waiting_count</h2>
-<p class="Pp">Number of threads currently waiting (functional - needed for all
-    builds).</p>
-<p class="Pp">Definition at line <b>66</b> of file <b>cond.h</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>,
-    <b>cond_on_broadcast()</b>, <b>cond_on_signal()</b>, and
-    <b>cond_on_wait()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>cond_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">cond_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">cond_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          cond_t - Condition variable type (POSIX: pthread_cond_t with debug
+          tracking).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/platform/cond.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Public_Member_Functions">
+            <a class="permalink" href="#Public_Member_Functions"
+              >Public Member Functions</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>_Atomic</b> (<b>uint64_t</b>) last_signal_time_ns
+            <br />
+            Timestamp of last signal (nanoseconds).
+            <b>_Atomic</b> (<b>uint64_t</b>) last_broadcast_time_ns
+            <br />
+            Timestamp of last broadcast (nanoseconds).
+            <b>_Atomic</b> (<b>uint64_t</b>) last_wait_time_ns
+            <br />
+            Timestamp of last wait (nanoseconds). <b>_Atomic</b> (uintptr_t)
+            last_waiting_key
+            <br />
+            Registry key of most recent waiter. <b>_Atomic</b> (<b>mutex_t</b>
+            *) last_wait_mutex
+            <br />
+            Associated mutex at most recent wait (for deadlock detection).
+            <b>_Atomic</b>
+            (const char *) last_wait_file
+            <br />
+            Callsite file of most recent cond_wait (for deadlock detection).
+            <b>_Atomic</b> (int) last_wait_line
+            <br />
+            Callsite line of most recent cond_wait (for deadlock detection).
+            <b>_Atomic</b> (const char *) last_wait_func
+            <br />
+            Callsite function of most recent cond_wait (for deadlock detection).
+            <b>_Atomic</b> (<b>uint64_t</b>) total_wait_ns
+            <br />
+            Completed wall-clock intervals with at least one waiter.
+            <b>_Atomic</b>
+            (<b>uint64_t</b>) wait_started_ns
+            <br />
+            Start of the current nonempty waiter interval. <b>_Atomic</b>
+            (<b>uint64_t</b>) wait_revision
+            <br />
+            Consistent nonblocking timing snapshots.
+            <b>_Atomic</b> (<b>uint64_t</b>) wait_count
+            <br />
+            Total wait calls. <b>_Atomic</b> (<b>uint64_t</b>) signal_count
+            <br />
+            Total signal calls. <b>_Atomic</b> (<b>uint64_t</b>) broadcast_count
+            <br />
+            Total broadcast calls.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            pthread_cond_t <b>impl</b>
+            <br />
+            Underlying POSIX condition variable. const char * <b>name</b>
+            <br />
+            Human-readable name for named registry (all builds). <b>atomic_t</b>
+            <b>waiting_count</b>
+            <br />
+            Number of threads currently waiting (functional - needed for all
+            builds).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Condition variable type (POSIX: pthread_cond_t with debug tracking).
+        </p>
+        <p class="Pp">Definition at line <b>66</b> of file <b>cond.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Member_Function_Documentation">
+          <a class="permalink" href="#Member_Function_Documentation"
+            >Member Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (const char * )</h2>
+          <p class="Pp">
+            Callsite file of most recent cond_wait (for deadlock detection).
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (const char * )</h2>
+          <p class="Pp">
+            Callsite function of most recent cond_wait (for deadlock detection).
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="cond_t::_Atomic_(int_)">
+            <a class="permalink" href="#cond_t::_Atomic_(int_)"
+              >cond_t::_Atomic (int )</a
+            >
+          </h2>
+          <p class="Pp">
+            Callsite line of most recent cond_wait (for deadlock detection).
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>mutex_t</b> * )</h2>
+          <p class="Pp">
+            Associated mutex at most recent wait (for deadlock detection).
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Total broadcast calls.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Timestamp of last broadcast (nanoseconds).</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Timestamp of last signal (nanoseconds).</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Timestamp of last wait (nanoseconds).</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Total signal calls.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">
+            Completed wall-clock intervals with at least one waiter.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Total wait calls.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Consistent nonblocking timing snapshots.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">cond_t::_Atomic (<b>uint64_t</b> )</h2>
+          <p class="Pp">Start of the current nonempty waiter interval.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="cond_t::_Atomic_(uintptr_t_)">
+            <a class="permalink" href="#cond_t::_Atomic_(uintptr_t_)"
+              >cond_t::_Atomic (uintptr_t )</a
+            >
+          </h2>
+          <p class="Pp">Registry key of most recent waiter.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="pthread_cond_t_cond_t::impl">
+            <a class="permalink" href="#pthread_cond_t_cond_t::impl"
+              >pthread_cond_t cond_t::impl</a
+            >
+          </h2>
+          <p class="Pp">Underlying POSIX condition variable.</p>
+          <p class="Pp">Definition at line <b>67</b> of file <b>cond.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_cond_t::name">
+            <a class="permalink" href="#const_char*_cond_t::name"
+              >const char* cond_t::name</a
+            >
+          </h2>
+          <p class="Pp">Human-readable name for named registry (all builds).</p>
+          <p class="Pp">Definition at line <b>68</b> of file <b>cond.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> cond_t::waiting_count</h2>
+          <p class="Pp">
+            Number of threads currently waiting (functional - needed for all
+            builds).
+          </p>
+          <p class="Pp">Definition at line <b>69</b> of file <b>cond.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>cond_format_state()</b>, <b>cond_on_wait()</b>, and
+            <b>cond_on_wait_end()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

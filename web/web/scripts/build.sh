@@ -10,7 +10,7 @@ vp run type-check
 echo "Formatting check..."
 vp run format:check
 
-echo "Linting with eslint..."
+echo "Linting with Oxlint..."
 vp run lint
 
 echo "Building WASM..."

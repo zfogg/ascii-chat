@@ -44,7 +44,10 @@ export function deviceSetupTests(site: "www" | "web") {
         await page.evaluate(async () => ({
           probe: { ...(window as any).deviceProbe, tracks: undefined },
           devices: (await navigator.mediaDevices.enumerateDevices()).map(
-            (d) => ({ id: d.deviceId, kind: d.kind }),
+            (d) => ({
+              id: d.deviceId,
+              kind: d.kind,
+            }),
           ),
           saved: localStorage.getItem("ascii-chat.media-devices"),
         })),
@@ -180,7 +183,10 @@ export function deviceSetupTests(site: "www" | "web") {
           requests: p.requests,
           failures: p.failures,
           devices: (await navigator.mediaDevices.enumerateDevices()).map(
-            (d) => ({ id: d.deviceId, kind: d.kind }),
+            (d) => ({
+              id: d.deviceId,
+              kind: d.kind,
+            }),
           ),
           live: p.tracks.filter(
             (t: MediaStreamTrack) => t.readyState === "live",

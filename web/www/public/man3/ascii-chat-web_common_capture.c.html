@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>capture.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">capture.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">capture.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">capture.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int
+            <b>wasm_capture_transform_required</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> int
+            <b>wasm_capture_transform_rgba</b> (<b>uint8_t</b>
+            *pixels, int width, int height)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_capture_transform_required
+            (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>web/common/capture.c</b>.
+          </p>
+          <pre>
+7                                                                {
+8   return GET_OPTION(flip_x) || GET_OPTION(flip_y);
+9 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>GET_OPTION</b>, and
+            <b>wasm_capture_transform_required()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>wasm_capture_transform_required()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_capture_transform_rgba (<b
+              >uint8_t</b
+            >
+            * pixels, int width, int height)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>web/common/capture.c</b>.
+          </p>
+          <pre>
+11                                                                                              {
+12   if (!pixels || width &lt;= 0 || height &lt;= 0 || (size_t)width &gt; SIZE_MAX / (size_t)height / 4)
+13     return -1;
+14   bool flip_x = GET_OPTION(flip_x), flip_y = GET_OPTION(flip_y);
+15   if (!flip_x &amp;&amp; !flip_y)
+16     return 0;
+17   size_t count = (size_t)width * (size_t)height;
+18   for (size_t i = 0; i &lt; count; ++i) {
+19     size_t x = i % (size_t)width, y = i / (size_t)width;
+20     size_t target = (flip_y ? (size_t)height - 1 - y : y) * (size_t)width + (flip_x ? (size_t)width - 1 - x : x);
+21     if (i &gt;= target)
+22       continue;
+23     for (size_t channel = 0; channel &lt; 4; ++channel) {
+24       uint8_t value = pixels[i * 4 + channel];
+25       pixels[i * 4 + channel] = pixels[target * 4 + channel];
+26       pixels[target * 4 + channel] = value;
+27     }
+28   }
+29   return 0;
+30 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>GET_OPTION</b>, and
+            <b>wasm_capture_transform_rgba()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_capture_transform_rgba()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -11,6 +11,24 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+
+# This script is commonly invoked as `sudo ./scripts/install-deps.sh`. Keep
+# repository and user-owned dependency operations under the invoking user's
+# identity; only the platform package-manager operations should run as root.
+run_as_user() {
+  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] && command -v sudo >/dev/null 2>&1; then
+    sudo -H -u "$SUDO_USER" -- "$@"
+  else
+    "$@"
+  fi
+}
+
+run_git_as_user() {
+  run_as_user git -C "$PROJECT_ROOT" "$@"
+}
+
 # Parse arguments
 DANGEROUSLY_DELETE_CONFLICTS=false
 for arg in "$@"; do
@@ -34,7 +52,7 @@ echo "=== ascii-chat Dependency Installer ==="
 echo ""
 
 echo "Getting submodules..."
-if ! git submodule update --recursive --init --depth 1; then
+if ! run_git_as_user submodule update --recursive --init --depth 1; then
   echo "WARNING: git submodule update failed with exit code $?, continuing anyway"
 fi
 
@@ -53,6 +71,54 @@ fi
 echo "Detected platform: $PLATFORM"
 echo ""
 
+run_uv() {
+  run_as_user "$(command -v uv)" "$@"
+}
+
+sync_python_tooling() {
+  command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
+  run_uv sync --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python
+}
+
+verify_llvm_for_defer() {
+  local compiler="$1" compiler_dir resolved_dir major libdir library found=0
+  if [ ! -x "$compiler" ]; then
+    echo >&2 "ERROR: LLVM 19-23 Clang was not found at $compiler"
+    exit 1
+  fi
+  major="$("$compiler" --version | sed -n 's/.*clang version \([0-9][0-9]*\).*/\1/p' | head -n 1)"
+  if [ -z "$major" ] || [ "$major" -lt 19 ]; then
+    echo >&2 "ERROR: $compiler must be LLVM 19 or newer and provide matching libclang"
+    exit 1
+  fi
+  compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
+  resolved_dir="$(dirname "$(run_uv run --project "${PROJECT_ROOT}/tests/ascii_chat_tests" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
+  libdir="${compiler_dir}/../lib"
+  for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major" \
+      "$resolved_dir/../lib/libclang.dylib" "$resolved_dir/../lib/libclang.so" "$resolved_dir/../lib/libclang.so.$major"; do
+    if [ -f "$library" ]; then found=1; break; fi
+  done
+  if [ "$found" -ne 1 ]; then
+    echo >&2 "ERROR: libclang for $compiler was not found in $libdir; install the matching LLVM development package"
+    exit 1
+  fi
+  local llvm_config=''
+  for candidate in "${resolved_dir}/llvm-config" "${compiler_dir}/llvm-config"; do
+    if [ -x "$candidate" ]; then llvm_config="$candidate"; break; fi
+  done
+  if [ -z "$llvm_config" ]; then
+    echo >&2 "ERROR: llvm-config for $compiler was not found; install the matching LLVM development package"
+    exit 1
+  fi
+  local llvm_include
+  llvm_include="$("$llvm_config" --includedir)"
+  if [ ! -f "$llvm_include/llvm/Support/CommandLine.h" ] || [ ! -f "$llvm_include/clang-c/Index.h" ]; then
+    echo >&2 "ERROR: LLVM and libclang development headers are missing from $llvm_include"
+    exit 1
+  fi
+  "$llvm_config" --libs support --system-libs >/dev/null
+}
+
 # macOS: Use Homebrew
 if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v brew &>/dev/null; then
@@ -65,22 +131,26 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
     ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
-    libvterm freetype fontconfig expat \
+    libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
 
+  # uv is required by the Python development tools.
+  if ! command -v uv &>/dev/null; then
+    brew install uv
+  fi
+  run_uv python install 3.15
+  run_uv tool install --upgrade "yt-dlp[default]"
+  sync_python_tooling
+  verify_llvm_for_defer "$(brew --prefix llvm)/bin/clang"
   echo "Homebrew packages: installation attempt completed"
-
-  echo ""
-  echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
-      bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+    bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
   fi
 
   if command -v apt-get &>/dev/null; then
@@ -132,17 +202,18 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     fi
 
     apt-get update
+    apt-get install -y python3 python3-venv
 
     uname -a
 
     # Install non-LLVM dependencies first
     apt-get install -y \
       pkg-config make autoconf automake libtool ccache gperf \
-      cmake ninja-build \
+      cmake ninja-build golang-go \
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
-      libcriterion-dev libffi-dev libsqlite3-dev \
+      libcriterion-dev libffi-dev libsqlite3-dev libpcre2-dev \
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
@@ -151,26 +222,37 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libx264-dev libx265-dev \
       emscripten \
       doxygen \
+      mandoc \
       dpkg-dev rpm \
       yt-dlp \
-      libwebsockets-dev libuv1-dev libicu-dev  \
+      libwebsockets-dev libuv1-dev libicu-dev libnghttp2-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       curl unzip \
       || true
+    # Keep the shared HTTP/2 server dependency independent from the optional
+    # package set above: one unavailable package must not hide nghttp2.
+    apt-get install -y libnghttp2-dev
     #yyjson-dev \
 
     # INFO: DO THIS - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     #brew install yyjson
 
-    curl -fsSL https://bun.com/install | bash
+    for attempt in 1 2 3; do
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash -s -- bun-v1.3.9; then
+        break
+      fi
+      if [ "$attempt" -eq 3 ]; then
+        echo >&2 "WARNING: Failed to install bun after ${attempt} attempts; continuing without it"
+      fi
+      sleep $((attempt * 10))
+    done
 
-    # Try LLVM versions in order from newest to oldest
-    LLVM_VERSIONS="23 22 21 20 19 18"
+    # The source transformer requires LLVM 19 or newer libclang.
+    LLVM_VERSIONS="23 22 21 20 19"
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."
-      # libclang-cpp$ver-dev provides the shared libclang-cpp.so needed by the defer tool
-      # libclang-common-$ver-dev provides Clang AST headers (clang/AST/*.h) needed for defer tool compilation
+      # Development headers and libraries are needed by the other Clang tools.
       # libclang1-$ver provides the libclang runtime library
       # libclang-rt-$ver-dev provides compiler runtime (sanitizers, builtins)
       # libc++-$ver-dev and libc++abi-$ver-dev provide LLVM C++ standard library (required for musl builds)
@@ -302,10 +384,10 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
     yum install -y \
-      pkg-config make autoconf automake libtool \
-      clang llvm lld \
+      pkg-config make autoconf automake libtool python3 python3-pip \
+      clang clang-devel llvm llvm-devel lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build \
+      cmake ninja-build golang \
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -323,20 +405,26 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       rpm-build \
       libvterm-devel freetype-devel fontconfig-devel libicu-devel
 
-    python3 -m pip install -U "yt-dlp[default]"
-
-    curl -fsSL https://bun.com/install | bash
+    for attempt in 1 2 3; do
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash -s -- bun-v1.3.9; then
+        break
+      fi
+      if [ "$attempt" -eq 3 ]; then
+        echo >&2 "WARNING: Failed to install bun after ${attempt} attempts; continuing without it"
+      fi
+      sleep $((attempt * 10))
+    done
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
     echo "Installing dependencies..."
     pacman -S --needed \
-      pkg-config autoconf automake libtool \
+      pkg-config autoconf automake libtool python python-pip \
       ccache \
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
-      cmake ninja make \
+      cmake ninja make go \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       x264 x265 \
@@ -349,7 +437,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv icu \
+      libwebsockets libuv icu libnghttp2 \
       libvterm freetype2 fontconfig
 
   else
@@ -373,7 +461,30 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     exit 1
   fi
 
+  if ! command -v uv &>/dev/null; then
+    if [ "$(id -u)" -eq 0 ]; then
+      uv_install_dir=/usr/local/bin
+    else
+      uv_install_dir="${HOME}/.local/bin"
+    fi
+    echo "Installing uv to ${uv_install_dir}..."
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${uv_install_dir}" sh
+    export PATH="${uv_install_dir}:${PATH}"
+    echo "Ensure ${uv_install_dir} is on PATH in future shells."
+  fi
+  command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
+  # uv owns the Python interpreter and project environment. Keep the required
+  # minor version in one place so system Python versions do not affect tests.
+  run_uv python install 3.15
+  run_uv tool install --upgrade "yt-dlp[default]"
+  sync_python_tooling
+
   echo ""
+  if [ -n "${LLVM_VERSION:-}" ]; then
+    verify_llvm_for_defer "/usr/lib/llvm-${LLVM_VERSION}/bin/clang"
+  else
+    verify_llvm_for_defer "$(command -v clang || true)"
+  fi
   echo "Dependencies installed successfully!"
   echo "You can now run: cmake --build --preset debug"
 
@@ -381,5 +492,70 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   echo "  ./scripts/install-deps.ps1"
+  exit 1
+fi
+
+# Go 1.21 and later automatically download the version specified by mmmbed's
+# go.mod. On older distributions, use Go's versioned toolchain launcher in
+# the configured GOBIN (or GOPATH/bin) without replacing the system Go.
+if ! command -v go >/dev/null 2>&1; then
+  if [[ "$PLATFORM" == "macos" ]]; then
+    brew install go
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y golang-go
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y golang
+  elif command -v pacman >/dev/null 2>&1; then
+    pacman -S --needed --noconfirm go
+  fi
+fi
+command -v go >/dev/null 2>&1 || { echo >&2 "ERROR: Go installation failed"; exit 1; }
+mmmbed_go_mod="$(dirname "$0")/../deps/ascii-chat-deps/mmmbed/go.mod"
+if [ ! -f "$mmmbed_go_mod" ]; then
+  echo >&2 "ERROR: mmmbed source is missing; run git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed"
+  exit 1
+fi
+go_tool_version=$(sed -n 's/^go //p' "$mmmbed_go_mod")
+[ -n "$go_tool_version" ] || { echo >&2 "ERROR: mmmbed/go.mod does not specify a Go version"; exit 1; }
+go_installed=$(go version | sed -n 's/^go version go\([0-9][0-9.]*\).*/\1/p')
+go_switch=$(go env GOTOOLCHAIN 2>/dev/null || true)
+go_automatic=0
+case "$go_switch" in auto|path|*+auto|*+path) go_automatic=1;; esac
+if [ -z "$go_switch" ] || { [ "$go_automatic" = 0 ] &&
+  awk -v have="$go_installed" -v need="$go_tool_version" 'BEGIN { split(have,h,"."); split(need,n,"."); for (i=1;i<=3;i++) { if (h[i]+0<n[i]+0) exit 0; if (h[i]+0>n[i]+0) exit 1 } exit 1 }'; }; then
+  go_bin=$(go env GOBIN)
+  if [ -z "$go_bin" ]; then
+    go_bin=$(go env GOPATH)
+    go_bin="${go_bin%%:*}/bin"
+  fi
+  run_as_user mkdir -p "$go_bin"
+  run_as_user env GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
+  run_as_user "$go_bin/go${go_tool_version}" download
+fi
+echo ""
+echo "Dependencies installed successfully!"
+echo "You can now run: cmake --build --preset debug"
+
+# Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
+if ! command -v vp >/dev/null 2>&1; then
+  # Install Vite+ as the invoking user.  On CI this script may be run through
+  # sudo; installing as root makes vp unavailable to the subsequent user-owned
+  # dependency steps.
+  run_as_user bash -c 'curl -fsSL https://vite.plus | bash'
+fi
+if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v vp >/dev/null 2>&1' 2>/dev/null; then
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT"
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT/web"
+else
+  echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
+fi
+
+if command -v corepack >/dev/null 2>&1; then
+  run_as_user corepack enable
+fi
+if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v pnpm >/dev/null 2>&1' 2>/dev/null; then
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && pnpm install --frozen-lockfile' bash "$PROJECT_ROOT"
+else
+  echo >&2 "pnpm is unavailable after dependency setup"
   exit 1
 fi

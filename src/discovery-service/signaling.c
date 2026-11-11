@@ -25,6 +25,8 @@ static bool is_broadcast_uuid(const uint8_t uuid[SESSION_ID_SIZE]) {
 }
 
 /**
+ * @brief Context for broadcasting to session participants
+ * @brief Context for finding client by participant_id
  * @brief Helper: Compare two UUIDs for equality
  */
 static bool uuid_equals(const uint8_t a[SESSION_ID_SIZE], const uint8_t b[SESSION_ID_SIZE]) {

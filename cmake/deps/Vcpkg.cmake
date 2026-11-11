@@ -70,8 +70,8 @@ endif()
 # Triplet selection
 # =============================================================================
 
-# Priority: VCPKG_TARGET_TRIPLET env var > auto-detect
-if(DEFINED ENV{VCPKG_TARGET_TRIPLET})
+# Preserve the triplet selected before project() by the toolchain or caller.
+if(NOT DEFINED VCPKG_TARGET_TRIPLET AND DEFINED ENV{VCPKG_TARGET_TRIPLET})
     set(VCPKG_TARGET_TRIPLET "$ENV{VCPKG_TARGET_TRIPLET}")
     message(STATUS "vcpkg: Triplet from environment: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
 elseif(NOT DEFINED VCPKG_TARGET_TRIPLET)

@@ -1,116 +1,224 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>query.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">query.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">query.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">query.c - Query tool runtime library implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>HEALTH_CHECK_TIMEOUT_NS</b> (10000LL *
-    <b>NS_PER_MS_INT</b>)
-  <br/>
-  #define <b>HEALTH_CHECK_INTERVAL_NS</b> (100LL * <b>NS_PER_MS_INT</b>)
-  <br/>
-  #define <b>HEALTH_CHECK_CONNECT_TIMEOUT_NS</b> (500LL * <b>NS_PER_MS_INT</b>)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>query_init</b> (int preferred_port)
-  <br/>
-  Initialize the query tool by spawning the controller process. void
-    <b>query_destroy</b> (void)
-  <br/>
-  Shutdown the query tool and terminate the controller process. <b>bool</b>
-    <b>query_is_active</b> (void)
-  <br/>
-  Check if the query tool controller is currently active. int
-    <b>query_get_port</b> (void)
-  <br/>
-  Get the port number of the active query server.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Query tool runtime library implementation.</p>
-<p class="Pp">This provides the QUERY_INIT/QUERY_SHUTDOWN macros that
-    applications use to auto-spawn the query controller process.</p>
-<p class="Pp"></p>
-<p class="Pp">Platform support:</p>
-<ul class="Bl-bullet">
-  <li>Unix (macOS/Linux): Uses fork/exec to spawn controller</li>
-  <li>Windows: Uses CreateProcess to spawn controller</li>
-</ul>
-<p class="Pp">Definition in file <b>query.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_"><a class="permalink" href="#_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_">#define
-  HEALTH_CHECK_CONNECT_TIMEOUT_NS (500LL * <b>NS_PER_MS_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>query.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_"><a class="permalink" href="#_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_">#define
-  HEALTH_CHECK_INTERVAL_NS (100LL * <b>NS_PER_MS_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>query.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_"><a class="permalink" href="#_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_">#define
-  HEALTH_CHECK_TIMEOUT_NS (10000LL * <b>NS_PER_MS_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>query.c</b>.</p>
-<p class="Pp">Referenced by <b>query_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>query.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">query.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">query.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">query.c - Query tool runtime library implementation.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TOOLING_QUERY_CMDLINE_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>TOOLING_QUERY_PORT_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>TOOLING_QUERY_PID_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>HEALTH_CHECK_TIMEOUT_NS</b> (10000LL *
+            <b>NS_PER_MS_INT</b>)
+            <br />
+            #define <b>HEALTH_CHECK_INTERVAL_NS</b> (100LL *
+            <b>NS_PER_MS_INT</b>)
+            <br />
+            #define <b>HEALTH_CHECK_CONNECT_TIMEOUT_NS</b> (500LL *
+            <b>NS_PER_MS_INT</b>)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>query_init</b> (int preferred_port)
+            <br />
+            Initialize the query tool by spawning the controller process. void
+            <b>query_destroy</b> (void)
+            <br />
+            Shutdown the query tool and terminate the controller process.
+            <b>bool</b> <b>query_is_active</b> (void)
+            <br />
+            Check if the query tool controller is currently active. int
+            <b>query_get_port</b> (void)
+            <br />
+            Get the port number of the active query server.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Query tool runtime library implementation.</p>
+        <p class="Pp">
+          This provides the QUERY_INIT/QUERY_SHUTDOWN macros that applications
+          use to auto-spawn the query controller process.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Platform support:</p>
+        <ul class="Bl-bullet">
+          <li>Unix (macOS/Linux): Uses fork/exec to spawn controller</li>
+          <li>Windows: Uses CreateProcess to spawn controller</li>
+        </ul>
+        <p class="Pp">Definition in file <b>query.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_"
+          >
+            <a
+              class="permalink"
+              href="#_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_"
+              >#define HEALTH_CHECK_CONNECT_TIMEOUT_NS (500LL *
+              <b>NS_PER_MS_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>47</b> of file <b>query.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_">
+            <a
+              class="permalink"
+              href="#_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_"
+              >#define HEALTH_CHECK_INTERVAL_NS (100LL *
+              <b>NS_PER_MS_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>46</b> of file <b>query.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_">
+            <a
+              class="permalink"
+              href="#_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_"
+              >#define HEALTH_CHECK_TIMEOUT_NS (10000LL *
+              <b>NS_PER_MS_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>45</b> of file <b>query.c</b>.</p>
+          <p class="Pp">Referenced by <b>query_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TOOLING_QUERY_CMDLINE_BUFFER_SIZE___2048">
+            <a
+              class="permalink"
+              href="#_define_TOOLING_QUERY_CMDLINE_BUFFER_SIZE___2048"
+              >#define TOOLING_QUERY_CMDLINE_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>query.c</b>.</p>
+          <p class="Pp">Referenced by <b>query_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TOOLING_QUERY_PID_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_TOOLING_QUERY_PID_BUFFER_SIZE___16"
+              >#define TOOLING_QUERY_PID_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>query.c</b>.</p>
+          <p class="Pp">Referenced by <b>query_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TOOLING_QUERY_PORT_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_TOOLING_QUERY_PORT_BUFFER_SIZE___16"
+              >#define TOOLING_QUERY_PORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>query.c</b>.</p>
+          <p class="Pp">Referenced by <b>query_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

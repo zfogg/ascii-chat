@@ -21,13 +21,15 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,20 +40,23 @@
 #include <ctype.h>
 
 #include <ascii-chat/log/log.h>
+
+int terminal_choose_log_fd(int level);
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
+#include <libplatform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/thread.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/backtrace.h>
+#include <ascii-chat/debug/backtrace.h>
 
 // Readers pin the session buffer until unregister has drained their appends.
 static atomic_t g_session_log_readers = {0};
@@ -600,7 +605,11 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store_bool(&g_log.level_manually_set, false);
   atomic_store_u64(&g_log.current_size, 0);
 
-  if (filename) {
+  if (filename && strcmp(filename, "/dev/null") == 0) {
+    g_log.filename[0] = '\0';
+    atomic_store_int(&g_log.file, -1);
+    atomic_store_bool(&g_log.terminal_output_enabled, false);
+  } else if (filename) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
 
     if (use_mmap) {
@@ -936,7 +945,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
   // Captured session logs still need formatting, but detecting the console
   // again would block their producer behind the presentation worker's writes.
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  bool use_colors =
+      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting)
     atomic_store(&g_terminal_log_colors, use_colors);
 
@@ -1184,7 +1194,7 @@ void ui_notice_announce(const char *file, int line, const char *func, const char
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
   va_list telemetry_args;
   va_start(telemetry_args, fmt);
   ascii_otel_log((int)level, file, line, func, fmt, telemetry_args);
@@ -1232,6 +1242,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     if (!g_notice_text)
       session_log_buffer_append(g_history, msg_buffer);
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
+    platform_systemd_journal_log(level, msg_buffer, "ascii-chat", file, line, func);
 
     if (g_notice_text) {
       output_notice(level, file, line, func);
@@ -1248,7 +1259,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       // Choose output stream using unified routing logic
       int fd = terminal_choose_log_fd(level);
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-      bool use_colors = terminal_should_color_output(fd);
+      bool use_colors = terminal_should_color_output(fd, options_terminal_settings());
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
@@ -1312,6 +1323,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
+  platform_systemd_journal_log(level, log_buffer + header_len, "ascii-chat", file, line, func);
 
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;
@@ -1406,7 +1418,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
 
   bool presenting = ui_controller_is_presenting();
   int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  bool use_colors =
+      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting) {
     atomic_store(&g_terminal_log_colors, use_colors);
   }
@@ -1570,7 +1583,7 @@ void log_plain_msg(const char *fmt, ...) {
     FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
 
     // Apply colorization for TTY output
-    if (terminal_should_color_output(fd)) {
+    if (terminal_should_color_output(fd, options_terminal_settings())) {
       const char *colorized_msg = colorize_log_message(log_buffer);
       log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", colorized_msg);
     } else {
@@ -1876,7 +1889,7 @@ void log_redetect_terminal_capabilities(void) {
   // Once we have reliable detection, never re-detect to keep colors consistent
   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
     g_log.terminal_caps_detecting = true;
-    g_log.terminal_caps = detect_terminal_capabilities();
+    detect_terminal_capabilities_into(options_terminal_settings(), &g_log.terminal_caps);
     g_log.terminal_caps_detecting = false;
     g_log.terminal_caps_initialized = true;
 

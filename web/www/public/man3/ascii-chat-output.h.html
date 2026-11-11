@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>output.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">output.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">output.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">output.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>asciichat_error_t</b>(*) <b>ui_output_write_fn</b>(int
+            fd, const char *data, size_t length)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_output_set_writer</b> (<b>ui_output_write_fn</b>
+            writer)
+            <br />
+            <b>asciichat_error_t</b> <b>ui_output_write</b> (int fd, const char
+            *data, size_t length)
+            <br />
+            <b>asciichat_error_t</b> <b>ui_output_printf</b> (int fd, const char
+            *format,...)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_">
+            <a class="permalink" href="#typedef_"
+              >typedef <b>asciichat_error_t</b>(*) ui_output_write_fn(int fd,
+              const char *data, size_t length)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>output.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ui_output_printf (int fd, const char *
+            format, ...)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>output.c</b>.
+          </p>
+          <pre>
+24                                                                     {
+25   if (!format)
+26     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;UI output format is NULL&quot;);
+27   char text[UI_OUTPUT_TEXT_BUFFER_SIZE];
+28   va_list args;
+29   va_start(args, format);
+30   int n = vsnprintf(text, sizeof(text), format, args);
+31   va_end(args);
+32   if (n &lt; 0 || (size_t)n &gt;= sizeof(text))
+33     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;UI formatted output exceeds capacity&quot;);
+34   return ui_output_write(fd, text, (size_t)n);
+35 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_BUFFER_OVERFLOW</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>SET_ERRNO</b>, <b>ui_output_printf()</b>,
+            <b>UI_OUTPUT_TEXT_BUFFER_SIZE</b>, and <b>ui_output_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>fps_counter_render()</b>,
+            <b>ui_output_printf()</b>, and <b>ui_output_set_writer()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_output_set_writer_(">
+            <a class="permalink" href="#void_ui_output_set_writer_("
+              >void ui_output_set_writer (<b>ui_output_write_fn</b> writer)</a
+            >
+          </h2>
+          <p class="Pp">
+            The presenter installs a sink; standalone widgets use platform
+            output.
+          </p>
+          <p class="Pp">
+            References <b>ui_output_printf()</b>, <b>ui_output_set_writer()</b>,
+            and <b>ui_output_write()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_output_set_writer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ui_output_write (int fd, const char * data,
+            size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>output.c</b>.
+          </p>
+          <pre>
+14                                                                            {
+15   if (fd &lt; 0 || (!data &amp;&amp; length))
+16     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid UI output descriptor or text&quot;);
+17   ui_output_write_fn writer = atomic_load(&amp;g_writer);
+18   if (writer)
+19     return writer(fd, data, length);
+20   return platform_write_all(fd, data, length) == length
+21              ? ASCIICHAT_OK
+22              : SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Cannot write complete UI output&quot;);
+23 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_FILE_OPERATION</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>platform_write_all()</b>,
+            <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and
+            <b>ui_output_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_flush()</b>,
+            <b>ui_output_printf()</b>, <b>ui_output_set_writer()</b>, and
+            <b>ui_output_write()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

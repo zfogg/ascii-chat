@@ -5,14 +5,14 @@
  */
 
 #include <stdint.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <ascii-chat/log/log.h>
 
 #ifndef _WIN32
 // POSIX-only test utilities for redirecting stdout/stderr
 
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

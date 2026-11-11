@@ -86,7 +86,9 @@ export function drawFaceFollow(
   if (!capture.worker) {
     const worker = new Worker(
       new URL("./faceFollow.worker.ts", import.meta.url),
-      { type: "module" },
+      {
+        type: "module",
+      },
     );
     capture.worker = worker;
     worker.onmessage = (

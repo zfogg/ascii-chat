@@ -87,14 +87,17 @@ static asciichat_error_t server_connection_closing(network_connection_t *connect
     return ASCIICHAT_OK;
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->event_ready, false);
+  /* Keep transport teardown serialized with the media/control senders. */
+  mutex_lock(&client->send_mutex);
+  client->transport = NULL;
+  client->network_connection = NULL;
+  mutex_unlock(&client->send_mutex);
   return stop_client_render_threads(client);
 }
 static void server_connection_closed(network_connection_t *connection, void *arg) {
   server_connection_state_t *state = network_connection_context(connection);
   client_info_t *client = state ? atomic_ptr_load(&state->client) : NULL;
   if (client) {
-    client->transport = NULL;
-    client->network_connection = NULL;
     atomic_store_bool(&client->event_cleanup, true);
     remove_client(arg, client->client_id);
   }
@@ -106,12 +109,9 @@ const network_connection_callbacks_t server_network_callbacks = {server_connecti
 
 void server_send_video(client_info_t *client, acip_frame_workspace_t *workspace, const char *data, size_t length,
                        uint32_t width, uint32_t height, int sources, const acip_render_settings_t *rendering) {
-  mutex_lock(&client->client_state_mutex);
   mutex_lock(&client->send_mutex);
   acip_transport_t *transport = client->transport;
   if (transport && !atomic_load_bool(&client->shutting_down) && atomic_load_bool(&client->event_ready)) {
-    if (client->crypto_initialized && crypto_handshake_should_rekey(client->crypto_handshake_ctx))
-      crypto_handshake_rekey_request(client->crypto_handshake_ctx, transport);
     if (sources > 0 && atomic_load_u64(&client->last_sent_grid_sources) != (uint64_t)sources) {
       acip_send_clear_console(transport);
       atomic_store_u64(&client->last_sent_grid_sources, (uint64_t)sources);
@@ -123,17 +123,14 @@ void server_send_video(client_info_t *client, acip_frame_workspace_t *workspace,
       atomic_fetch_add_u64(&client->frames_sent_count, 1);
   }
   mutex_unlock(&client->send_mutex);
-  mutex_unlock(&client->client_state_mutex);
 }
 
 asciichat_error_t server_send_audio(client_info_t *client, const void *data, size_t length) {
-  mutex_lock(&client->client_state_mutex);
   mutex_lock(&client->send_mutex);
   asciichat_error_t result = ASCIICHAT_OK;
   if (client->transport && !atomic_load_bool(&client->shutting_down) && atomic_load_bool(&client->event_ready))
     result = packet_send_via_transport(client->transport, PACKET_TYPE_AUDIO_OPUS_BATCH, data, length,
                                        fnv1a_hash_string(client->client_id));
   mutex_unlock(&client->send_mutex);
-  mutex_unlock(&client->client_state_mutex);
   return result;
 }

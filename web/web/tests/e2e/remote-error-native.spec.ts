@@ -54,7 +54,9 @@ for (const encryption of [false, true]) {
       await expect
         .poll(
           () => page.evaluate(() => window.__nativeErrorConnection!.getState()),
-          { timeout: 20000 },
+          {
+            timeout: 20000,
+          },
         )
         .toBe(3);
       await page.evaluate(async () => {
@@ -83,7 +85,9 @@ for (const encryption of [false, true]) {
         .poll(
           () =>
             waiting.evaluate(() => window.__nativeErrorConnection!.getState()),
-          { timeout: 20000 },
+          {
+            timeout: 20000,
+          },
         )
         .toBe(3);
       await waiting.evaluate(() =>

@@ -211,7 +211,7 @@
 #include <stdbool.h>
 #include <ascii-chat/media/playlist.h>
 #include <stdio.h>
-#include "../platform/terminal.h"
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include "../discovery/strings.h"
 #include "explicit.h"
@@ -226,6 +226,7 @@
 #define COLOR_MODE_TRUECOLOR TERM_COLOR_TRUECOLOR ///< 24-bit truecolor mode
 
 /**
+ * @brief For options state, this is the live record that ties `detected_mode`, `mode_arg_index`, `help`, `version` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Color output setting (--color flag values)
  *
  * Enumeration for the --color option which controls color output behavior:
@@ -468,7 +469,7 @@ typedef enum {
 #define OPT_STRETCH_DEFAULT false
 
 /** @brief Default FPS (frames per second) */
-#define OPT_FPS_DEFAULT 60
+#define OPT_FPS_DEFAULT 0
 
 /** @brief Default snapshot mode flag (false = continuous) */
 #define OPT_SNAPSHOT_MODE_DEFAULT false
@@ -767,7 +768,7 @@ typedef enum {
 #define OPT_RENDER_FILE_DEFAULT ""
 #define OPT_RENDER_THEME_DEFAULT 0 // 0=dark, 1=light, 2=auto
 #define OPT_RENDER_FONT_DEFAULT ""
-#define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
+#define OPT_RENDER_FONT_SIZE_DEFAULT 0.0
 
 // ============================================================================
 // Static Default Value Variables
@@ -851,7 +852,6 @@ static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 static const double default_debug_errno_stacks_time_value = 0.0;
-static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
@@ -919,6 +919,7 @@ typedef enum {
   MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
   MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
   MODE_MCP_SERVER,        ///< Model Context Protocol rendering server
+  MODE_API_SERVER,        ///< Image-to-ASCII HTTP API server
   MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
@@ -936,8 +937,9 @@ typedef enum {
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
   OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
+  OPTION_MODE_API_SERVER = (1 << MODE_API_SERVER),
   OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
+  OPTION_MODE_ALL = 0x7F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -956,6 +958,19 @@ typedef enum {
  *
  * All options from the scattered extern globals are now in a single struct.
  * This struct is immutable once published via RCU - modifications create a new copy.
+ */
+typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+#define ASCII_RENDERER_DEFAULT ASCII_RENDERER_GLYPH
+
+/**
+ * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
+ *
+ * The fields cover mode selection, terminal and media rendering, audio,
+ * network and discovery endpoints, authentication and encryption policy,
+ * logging, and the explicit-value markers used while merging defaults. Readers
+ * borrow the current snapshot through `options_get()`; updates allocate and
+ * publish a replacement instead of mutating a snapshot that another thread may
+ * still be using.
  */
 typedef struct options_state {
   // ============================================================================
@@ -989,9 +1004,20 @@ typedef struct options_state {
   char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
   int port;                                   ///< Server port number
   int websocket_port;                         ///< WebSocket server port (server/discovery-service only)
-  char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
-  char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
-  char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char tls_cert[OPTIONS_BUFF_SIZE]; ///< Shared TLS certificate file path for secure network listeners
+  char tls_key[OPTIONS_BUFF_SIZE];  ///< Shared TLS private key file path for secure network listeners
+  char tls_key_password[OPTIONS_BUFF_SIZE]; ///< Shared TLS private key password
+  char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
+  char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
+  char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
+  char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
+  char tls_ca_file[OPTIONS_BUFF_SIZE];                ///< Shared TLS client trust anchors; empty uses system trust.
+  bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
+  bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
+  bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
+  char webtransport_public_url[OPTIONS_BUFF_SIZE];    ///< Public HTTPS WebTransport endpoint advertised through ACDS.
+  int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
+  int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
@@ -1002,15 +1028,14 @@ typedef struct options_state {
   bool discovery;                           ///< Enable discovery session registration (default: false)
   char discovery_server[OPTIONS_BUFF_SIZE]; ///< discovery server address (default: 127.0.0.1)
   // MCP HTTP transport
-  bool mcp_server_restricted;                    ///< Restrict MCP capabilities for cloud deployment
-  char mcp_transport[OPTIONS_BUFF_SIZE];         ///< MCP transport: stdio or http
-  char http_origin[OPTIONS_BUFF_SIZE];           ///< Allowed HTTP Origin
-  char http_tls_cert[OPTIONS_BUFF_SIZE];         ///< HTTP TLS certificate path
-  char http_tls_key[OPTIONS_BUFF_SIZE];          ///< HTTP TLS key path
-  char http_tls_key_password[OPTIONS_BUFF_SIZE]; ///< HTTP TLS key password
-  int discovery_port;                            ///< discovery server port (default: 27225)
-  char discovery_service_url[OPTIONS_BUFF_SIZE]; ///< discovery server WebSocket URL (ws:// or wss://, mutually
-                                                 ///< exclusive with discovery_port)
+  bool mcp_server_restricted;                       ///< Restrict MCP capabilities for cloud deployment
+  char mcp_downloads_dir[OPTIONS_BUFF_SIZE];        ///< Hosted download directory override
+  char mcp_downloads_url_prefix[OPTIONS_BUFF_SIZE]; ///< Public HTTP origin for download links
+  char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
+  char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
+  int discovery_port;                               ///< discovery server port (default: 27225)
+  char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
+                                                    ///< exclusive with discovery_port)
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
   bool webrtc; ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
@@ -1063,11 +1088,11 @@ typedef struct options_state {
   terminal_color_mode_t color_mode; ///< Color mode (auto/none/16/256/truecolor)
   color_filter_t color_filter;      ///< Monochromatic color filter (none/black/white/green/etc)
   char color_scheme_name[OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE]; ///< Color scheme name (e.g., "pastel", "nord")
-  render_mode_t render_mode;                                     ///< Render mode (foreground/background/half-block)
+  terminal_render_mode_t render_mode;                            ///< Render mode (foreground/background/half-block)
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                 ///< Target framerate (1-144, default: 60)
+  int fps;                 ///< Target framerate (0 = auto, 1-144)
   bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
   bool face_follow;        ///< Automatically frame and follow the selected face
   bool face_follow_debug;  ///< Developer diagnostic face outline
@@ -1105,6 +1130,9 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  bool stabilize;                                    ///< Reduce frame-to-frame character flicker
+  bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
+  ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
@@ -1196,6 +1224,7 @@ typedef struct options_state {
   palette_type_t palette_type;                             ///< Selected palette type
   char palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE]; ///< Custom palette characters
   bool palette_custom_set;                                 ///< True if custom palette was set
+  bool palette_explicit;                                   ///< Palette explicitly selected
 
   // ============================================================================
   // Splash Screen Options
@@ -1227,7 +1256,7 @@ typedef struct options_state {
 #endif
   int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
-  double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
+  double render_font_size;             ///< Font size in points (0 selects an automatic size)
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals
@@ -1249,6 +1278,17 @@ typedef struct options_state {
  * @return Pointer to current options (never NULL after options_init())
  */
 const options_t *options_get(void);
+
+const terminal_options_t *options_terminal_settings_ptr(void);
+
+/*
+ * Keep terminal settings out of the Windows DLL return-value ABI.  The
+ * terminal_options_t record is larger than the register return size, so
+ * returning it by value across asciichat.dll/libplatform.dll requires a
+ * hidden return-buffer argument.  Expose a stable settings record instead,
+ * and pass its address through the platform API.
+ */
+#define options_terminal_settings() options_terminal_settings_ptr()
 
 /**
  * @brief Safely get a specific option field (lock-free read)

@@ -2,6 +2,7 @@
 
 /**
  * @defgroup os OS Abstractions
+ * @ingroup module_abstractions
  *
  * @defgroup webcam Webcam Module
  * @ingroup os
@@ -9,6 +10,7 @@
  */
 
 /**
+ * @brief This is the handoff point for webcam device info. Callers fill `index` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @file os/webcam.h
  * @brief Operating system specific functionality (webcam capture, etc.)
  * @ingroup webcam
@@ -280,5 +282,8 @@ image_t *webcam_read_async(webcam_context_t *ctx);
  * @ingroup webcam
  */
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
+
+/** Return the negotiated capture rate, or 0 when unavailable. */
+double webcam_get_fps(webcam_context_t *ctx);
 
 /** @} */

@@ -30,6 +30,14 @@ using pid_t = lldb::pid_t;
 namespace ascii_query {
 
 /**
+ * @brief This is the handoff point for ThreadInfo. Callers fill its members before passing it on; consumers read the
+ * values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief The useful part of FrameInfo is in its fields: together they describe what is pending, who owns it, and how
+ * much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief Variable information (from LLDB SBValue)
+ * @brief When code needs to work with BreakpointInfo, it keeps the associated state here instead of scattering it
+ * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread,
+ * or callback context recorded in those fields.
  * @brief Process state enumeration
  */
 enum class ProcessState {

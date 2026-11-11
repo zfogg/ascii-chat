@@ -25,17 +25,17 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
+#include <ascii-chat/os/question.h>
+#include <sys/stat.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/version.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
@@ -45,6 +45,10 @@
 #include <sys/stat.h>
 
 /**
+ * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned
+ * output allocation, while `overflow` records an overrun; callers finish by taking the built buffer through the builder
+ * API.
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type
  * @name Internal Macros
  * @{
  */
@@ -128,7 +132,12 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
 // type-specific logic and special case handling.
 
 /**
- * @brief Union holding all possible parsed option values
+ * @brief Scratch storage for the scalar value produced while parsing one option.
+ *
+ * The active member is selected by the option type: strings use the bounded
+ * `str_value` array, numeric options use an integer or floating-point member,
+ * and boolean flags use `bool_value`. The config parser copies the selected
+ * value into `options_t`; this union is never retained after that write.
  */
 typedef union {
   char str_value[OPTIONS_BUFF_SIZE]; // STRING type
@@ -139,7 +148,7 @@ typedef union {
 } option_parsed_value_t;
 
 /**
- * @brief Type handler - encapsulates all 4 operations for one option type
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type.
  *
  * Each operation is a stage in the config parsing pipeline:
  * 1. Extract: TOML datum → intermediate (value_str, int_val, etc)
@@ -648,6 +657,11 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
     return;
   }
 
+  if (meta && meta->field_offset == offsetof(options_t, renderer)) {
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", int_value == ASCII_RENDERER_GLYPH ? "glyph" : "luminance");
+    return;
+  }
+
   if (meta && meta->field_offset == offsetof(options_t, render_mode)) {
     const char *name = OPT_RENDER_MODE_FOREGROUND;
     if (int_value == RENDER_MODE_BACKGROUND) {
@@ -717,6 +731,23 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
     return;
   }
 
+  if (meta->field_offset == offsetof(options_t, zalgo)) {
+    int level = *(const int *)field_ptr;
+    SAFE_SNPRINTF(buf, bufsize, "%d", level > 0 ? level : 7);
+    return;
+  }
+  if (meta->field_offset == offsetof(options_t, audio_source)) {
+    static const char *const names[] = {"all", "call", "mic", "media"};
+    int value = *(const int *)field_ptr;
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", value >= 0 && (size_t)value < ARRAY_SIZE(names) ? names[value] : "all");
+    return;
+  }
+  if (meta->field_offset == offsetof(options_t, audio_capture_source)) {
+    static const char *const names[] = {"auto", "mic", "media", "both", "remote"};
+    int value = *(const int *)field_ptr;
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", value >= 0 && (size_t)value < ARRAY_SIZE(names) ? names[value] : "auto");
+    return;
+  }
   if (meta->field_offset == offsetof(options_t, test_pattern)) {
     const options_t *opts = (const options_t *)(field_ptr - offsetof(options_t, test_pattern));
     if (opts->test_pattern)
@@ -808,10 +839,6 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
 
       if (!applies_to_mode) {
         log_debug("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
-        if (strict) {
-          SAFE_FREE(option_set_flags);
-          return SET_ERRNO(ERROR_CONFIG, "Option '%s' is not supported for this mode", meta->toml_key);
-        }
         continue;
       }
     }
@@ -862,6 +889,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           SAFE_STRNCPY(opts->palette_custom, chars_str, sizeof(opts->palette_custom));
           opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
           opts->palette_custom_set = true;
+          opts->palette_explicit = true;
           opts->palette_type = PALETTE_CUSTOM;
           option_set_flags[i] = true;
         } else {
@@ -912,8 +940,16 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     option_parsed_value_t parsed = {0};
     asciichat_error_t parse_result = ASCIICHAT_OK;
 
-    // Handle CALLBACK types using their custom parse function
-    if (meta->type == OPTION_TYPE_CALLBACK) {
+    // MCP bind strings have a CLI parser that also validates address families.
+    // Keep their string schema, but apply that parser to TOML values as well.
+    bool mcp_bind =
+        detected_mode == MODE_MCP_SERVER && meta->type == OPTION_TYPE_STRING && meta->parse_fn &&
+        (meta->field_offset == offsetof(options_t, address) || meta->field_offset == offsetof(options_t, address6));
+    if (meta->type == OPTION_TYPE_CALLBACK || mcp_bind) {
+      // Unified generated configs use "localhost"; the bind parser accepts
+      // numeric addresses, so preserve that loopback default for MCP.
+      if (mcp_bind && meta->field_offset == offsetof(options_t, address) && !strcmp(value_str, "localhost"))
+        SAFE_STRNCPY(value_str, "127.0.0.1", BUFFER_SIZE_MEDIUM);
       if (meta->parse_fn) {
         // Use custom parse function for callbacks (e.g., port parsing)
         void *field_ptr = (char *)opts + meta->field_offset;
@@ -1166,11 +1202,9 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // So we need to format the error message ourselves here
       char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
-      toml_free(result); // Explicit cleanup before return (defer transformation not applied)
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
-    toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
     return ASCIICHAT_OK; // Non-fatal error
   }
 
@@ -1179,7 +1213,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
 
   if (schema_result != ASCIICHAT_OK && strict) {
-    toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
   if (strict && schema_result == ASCIICHAT_OK)
@@ -1208,7 +1241,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
   errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
 
-  toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
 }
 
@@ -1257,11 +1289,11 @@ static bool config_key_should_be_commented(const char *toml_key) {
     return false;
   }
 
-  return strcmp(toml_key, "logging.log_file") == 0 || strcmp(toml_key, "security.password") == 0 ||
-         strcmp(toml_key, "security.key") == 0 || strcmp(toml_key, "security.server_key") == 0 ||
-         strcmp(toml_key, "security.client_keys") == 0 || strcmp(toml_key, "media.file") == 0 ||
-         strcmp(toml_key, "media.url") == 0 || strcmp(toml_key, "media.yt_dlp_options") == 0 ||
-         strcmp(toml_key, "network.turn_secret") == 0;
+  return strcmp(toml_key, "display.zalgo") == 0 || strcmp(toml_key, "logging.log_file") == 0 ||
+         strcmp(toml_key, "security.password") == 0 || strcmp(toml_key, "security.key") == 0 ||
+         strcmp(toml_key, "security.server_key") == 0 || strcmp(toml_key, "security.client_keys") == 0 ||
+         strcmp(toml_key, "media.file") == 0 || strcmp(toml_key, "media.url") == 0 ||
+         strcmp(toml_key, "media.yt_dlp_options") == 0 || strcmp(toml_key, "network.turn_secret") == 0;
 }
 
 /**
@@ -1283,6 +1315,8 @@ static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bit
     return MODE_DISCOVERY;
   if (mode_bitmask == OPTION_MODE_MCP_SERVER)
     return MODE_MCP_SERVER;
+  if (mode_bitmask == OPTION_MODE_API_SERVER)
+    return MODE_API_SERVER;
   // Bitmask has zero or multiple bits set
   return MODE_INVALID;
 }
@@ -1343,9 +1377,10 @@ asciichat_error_t config_create_default(const char *config_path) {
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
   {
-    const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+    options_config_t *unified_config = options_preset_unified(NULL, NULL);
     if (unified_config) {
-      (void)config_schema_build_from_configs(&unified_config, 1);
+      const options_config_t *schema_config = unified_config;
+      (void)config_schema_build_from_configs(&schema_config, 1);
       options_config_destroy(unified_config);
       metadata = config_schema_get_all(&metadata_count);
     }
@@ -1599,7 +1634,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
-    config_file_list_destroy(&config_files);
     return search_result;
   }
 
@@ -1640,6 +1674,5 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     }
   }
 
-  config_file_list_destroy(&config_files);
   return result;
 }

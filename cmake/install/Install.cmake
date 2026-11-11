@@ -19,7 +19,7 @@
 include(InstallRequiredSystemLibraries)
 
 # Warn if trying to use this on Linux Release builds (should be musl static instead)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND PLATFORM_LINUX AND NOT USE_MUSL)
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND PLATFORM_LINUX AND NOT USE_MUSL)
     message(WARNING "${BoldYellow}Release build on Linux without USE_MUSL${ColorReset}")
     message(WARNING "  Linux releases should use musl static builds for portability")
     message(WARNING "  Use: ${BoldCyan}cmake -B build -DUSE_MUSL=ON -DCMAKE_BUILD_TYPE=Release${ColorReset}")
@@ -294,7 +294,7 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/"
 )
 
 # Install pkg-config files for both shared and static libraries
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Configure shared library .pc file (simple - no transitive deps needed)
     configure_file(
         "${CMAKE_SOURCE_DIR}/lib/pkgconfig/libasciichat.pc.in"
@@ -706,20 +706,18 @@ endif()
 # Users must enable with: systemctl --user enable ascii-chat-server
 # Or system-wide: sudo systemctl enable ascii-chat-server
 if(UNIX AND NOT APPLE)
-    set(_server_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
-    #set(_discovery_service_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-discovery-service.service")
-
-    # Install to user systemd directory
-    install(FILES "${_server_systemd_service}"
-        DESTINATION lib/systemd/user
-        COMPONENT Runtime
-    )
-    #install(FILES "${_discovery_service_systemd_service}"
-    #    DESTINATION lib/systemd/user
-    #    COMPONENT Runtime
-    #)
-
-    message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
+    file(GLOB _systemd_services "${CMAKE_SOURCE_DIR}/share/systemd/*.service")
+    set(_systemd_install_dir "${CMAKE_CURRENT_BINARY_DIR}/systemd")
+    file(MAKE_DIRECTORY "${_systemd_install_dir}")
+    set(ASCII_CHAT_EXECUTABLE "${CMAKE_INSTALL_FULL_BINDIR}/ascii-chat")
+    foreach(_systemd_service IN LISTS _systemd_services)
+        get_filename_component(_systemd_name "${_systemd_service}" NAME)
+        configure_file("${_systemd_service}" "${_systemd_install_dir}/${_systemd_name}" @ONLY)
+        install(FILES "${_systemd_install_dir}/${_systemd_name}" DESTINATION lib/systemd/system COMPONENT Runtime)
+    endforeach()
+    install(FILES "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat.sysusers"
+        DESTINATION lib/sysusers.d COMPONENT Runtime)
+    message(STATUS "${BoldGreen}Configured${ColorReset} ascii-chat systemd services → ${BoldYellow}lib/systemd/system/${ColorReset}")
 endif()
 
 # =============================================================================
@@ -968,6 +966,10 @@ ascii-chat [mode] --help  # Show all options (or for [mode])")
         if(UNIX AND NOT APPLE)
             set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsodium23, libzstd1, libportaudio2, libopus0, libpcre2-8-0, libsqlite3-0, libfreetype6 | libfreetype-dev, libfontconfig1, libssl3 | libssl3t64, libminiupnpc17, libwebsockets19 | libwebsockets19t64, libuv1 | libuv1t64")
             set(CPACK_RPM_PACKAGE_REQUIRES "libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, libuv")
+            if(NOT USE_MUSL)
+                string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", libfftw3-double3")
+                string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", fftw-libs-double")
+            endif()
             if(ICU_VERSION AND NOT USE_MUSL)
                 string(REGEX MATCH "^[0-9]+" _icu_major "${ICU_VERSION}")
                 string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", libicu${_icu_major}")

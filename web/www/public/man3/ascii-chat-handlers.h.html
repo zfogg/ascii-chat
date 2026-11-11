@@ -1,90 +1,139 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>handlers.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">handlers.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">handlers.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">handlers.h - ACIP protocol packet handlers
-  (transport-agnostic).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_client_callbacks_t</b>
-  <br/>
-  Client-side packet handler callbacks. struct <b>acip_server_callbacks_t</b>
-  <br/>
-  Server-side packet handler callbacks.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_handle_client_packet</b>
-    (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> type, const void
-    *payload, size_t payload_len, const <b>acip_client_callbacks_t</b>
-    *callbacks)
-  <br/>
-  Handle incoming packet on client side. <b>asciichat_error_t</b>
-    <b>acip_handle_server_packet</b> (<b>acip_transport_t</b> *transport,
-    <b>packet_type_t</b> type, const void *payload, size_t payload_len, void
-    *client_ctx, const <b>acip_server_callbacks_t</b> *callbacks)
-  <br/>
-  Handle incoming packet on server side.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ACIP protocol packet handlers (transport-agnostic).</p>
-<p class="Pp">Provides handler functions for all ACIP packet types (6000-6199).
-    Handlers are transport-agnostic - they work with any
-    <b>acip_transport_t</b>.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DESIGN_PATTERN:"><a class="permalink" href="#DESIGN_PATTERN:">DESIGN
-  PATTERN: </a></h1>
-<p class="Pp">Handlers use callback pattern to decouple protocol logic from
-    application logic. Applications register callbacks for events they care
-    about.</p>
-<p class="Pp"></p>
-<p class="Pp">Example usage:</p>
-<p class="Pp"></p>
-<pre>// Define application callbacks
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>handlers.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">handlers.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">handlers.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          handlers.h - ACIP protocol packet handlers (transport-agnostic).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_client_callbacks_t</b>
+            <br />
+            Client-side packet handler callbacks. struct
+            <b>acip_server_callbacks_t</b>
+            <br />
+            Server-side packet handler callbacks.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_handle_client_packet</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>packet_type_t</b> type, const void *payload, size_t
+            payload_len, const
+            <b>acip_client_callbacks_t</b>
+            *callbacks)
+            <br />
+            Handle incoming packet on client side. <b>asciichat_error_t</b>
+            <b>acip_handle_server_packet</b> (<b>acip_transport_t</b>
+            *transport, <b>packet_type_t</b> type, const void *payload, size_t
+            payload_len, void *client_ctx, const
+            <b>acip_server_callbacks_t</b> *callbacks)
+            <br />
+            Handle incoming packet on server side.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ACIP protocol packet handlers (transport-agnostic).</p>
+        <p class="Pp">
+          Provides handler functions for all ACIP packet types (6000-6199).
+          Handlers are transport-agnostic - they work with any
+          <b>acip_transport_t</b>.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="DESIGN_PATTERN:">
+          <a class="permalink" href="#DESIGN_PATTERN:">DESIGN PATTERN: </a>
+        </h1>
+        <p class="Pp">
+          Handlers use callback pattern to decouple protocol logic from
+          application logic. Applications register callbacks for events they
+          care about.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Example usage:</p>
+        <p class="Pp"></p>
+        <pre>// Define application callbacks
 void my_on_ascii_frame(const ascii_frame_packet_t *frame, const void *data, size_t len, void *ctx) {
 <br/>
   // Render frame to terminal
@@ -99,130 +148,190 @@ acip_client_callbacks_t callbacks = {
 // Process incoming packet
 acip_handle_client_packet(transport, type, payload, payload_len, &amp;callbacks);
 </pre>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>handlers.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_client_packet
-  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
-  payload, size_t payload_len, const <b>acip_client_callbacks_t</b> *
-  callbacks)</h2>
-<p class="Pp">Handle incoming packet on client side. Dispatches packet to
-    appropriate callback based on type. Transport-agnostic - works with TCP,
-    WebSocket, etc.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>type</i> Packet type
-<br/>
-<i>payload</i> Packet payload
-<br/>
-<i>payload_len</i> Payload length
-<br/>
-<i>callbacks</i> Application callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>200</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-<pre>201                                                                                                           {
-202   if (!transport || !callbacks) {
-203     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-204   }
-205   (void)transport;
-206 
-207   // O(1) dispatch via hash table lookup
-208   int idx = handler_hash_lookup(g_client_handler_hash, type);
-209   if (idx &lt; 0) {
-210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>handlers.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_handle_client_packet (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>packet_type_t</b> type, const void * payload, size_t
+            payload_len, const <b>acip_client_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            Handle incoming packet on client side. Dispatches packet to
+            appropriate callback based on type. Transport-agnostic - works with
+            TCP, WebSocket, etc.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>type</i> Packet type
+            <br />
+            <i>payload</i> Packet payload
+            <br />
+            <i>payload_len</i> Payload length
+            <br />
+            <i>callbacks</i> Application callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>206</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+207                                                                                                           {
+208   stats_runtime_packet(transport ? transport-&gt;stats_peer : NULL, type, payload_len, false, true);
+209   if (!transport || !callbacks) {
+210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
 211   }
-212 
-213   return g_client_handlers[idx](payload, payload_len, callbacks);
-214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_server_packet
-  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
-  payload, size_t payload_len, void * client_ctx, const
-  <b>acip_server_callbacks_t</b> * callbacks)</h2>
-<p class="Pp">Handle incoming packet on server side. Dispatches packet to
-    appropriate callback based on type. Transport-agnostic - works with TCP,
-    WebSocket, etc.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>type</i> Packet type
-<br/>
-<i>payload</i> Packet payload
-<br/>
-<i>payload_len</i> Payload length
-<br/>
-<i>client_ctx</i> Per-client context (e.g., client_info_t*)
-<br/>
-<i>callbacks</i> Application callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>702</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-<pre>704                                                                                       {
-705   if (!transport || !callbacks) {
-706     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-707   }
-708   (void)transport;
-709 
-710   // DEBUG: Log all packet types received
-711   log_info(&quot;ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu&quot;, type, type, payload_len);
-712 
-713   // O(1) dispatch via hash table lookup
-714   int idx = handler_hash_lookup(g_server_handler_hash, type);
-715   if (idx &lt; 0) {
-716     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
-717               g_packet_type_name(type));
-718     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
-719   }
-720 
-721   log_info(&quot;&#x1F4E5; [HANDLER_DISPATCH] Calling handler: type=%d (%s), handler_idx=%d, payload=%zu bytes, client_ctx=%p&quot;,
-722            type, g_packet_type_name(type), idx, payload_len, client_ctx);
-723   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
-724 
-725   if (result != ASCIICHAT_OK) {
-726     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d&quot;, type, g_packet_type_name(type), result);
-727   } else {
-728     log_info(&quot;&#x2705; [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed&quot;, type,
-729              g_packet_type_name(type), payload_len);
-730   }
-731 
-732   return result;
-733 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_error</b>, <b>log_info</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>, and
-    <b>client_dispatch_thread()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+212   (void)transport;
+213
+214   // ACDS broadcasts participant lifecycle notifications to peers. The generic
+215   // client callback set does not expose them, so ignore them while keeping the
+216   // signaling receive loop alive for subsequent SDP and ICE packets.
+217   if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED || type == PACKET_TYPE_ACIP_PARTICIPANT_LEFT) {
+218     return ASCIICHAT_OK;
+219   }
+220
+221   // O(1) dispatch via hash table lookup
+222   int idx = handler_hash_lookup(g_client_handler_hash, type);
+223   if (idx &lt; 0) {
+224     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
+225   }
+226
+227   return g_client_handlers[idx](payload, payload_len, callbacks);
+228 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_client_packet()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b>, <b>SET_ERRNO</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_packet()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_client_receive_and_dispatch()</b>,
+            <b>acip_handle_client_packet()</b>, and
+            <b>session_protocol_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_handle_server_packet (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>packet_type_t</b> type, const void * payload, size_t
+            payload_len, void * client_ctx, const
+            <b>acip_server_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            Handle incoming packet on server side. Dispatches packet to
+            appropriate callback based on type. Transport-agnostic - works with
+            TCP, WebSocket, etc.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>type</i> Packet type
+            <br />
+            <i>payload</i> Packet payload
+            <br />
+            <i>payload_len</i> Payload length
+            <br />
+            <i>client_ctx</i> Per-client context (e.g., client_info_t*)
+            <br />
+            <i>callbacks</i> Application callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>823</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+825                                                                                       {
+826   stats_runtime_packet(transport ? transport-&gt;stats_peer : NULL, type, payload_len, false, true);
+827   if (!transport || !callbacks) {
+828     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
+829   }
+830   (void)transport;
+831
+832   // DEBUG: Log all packet types received
+833   log_dev(&quot;ACIP_HANDLE: type=%d payload_len=%zu&quot;, type, payload_len);
+834
+835   // O(1) dispatch via hash table lookup
+836   int idx = handler_hash_lookup(g_server_handler_hash, type);
+837   if (idx &lt; 0) {
+838     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
+839               acip_packet_type_name(type));
+840     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
+841   }
+842
+843   log_dev(&quot;HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes&quot;, type, acip_packet_type_name(type), idx,
+844           payload_len);
+845   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+846
+847   if (result != ASCIICHAT_OK) {
+848     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s&quot;, type, acip_packet_type_name(type),
+849               asciichat_error_format(NULL, result));
+850   } else {
+851     log_dev(&quot;HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes&quot;, type, acip_packet_type_name(type), payload_len);
+852   }
+853
+854   return result;
+855 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_server_packet()</b>,
+            <b>acip_packet_type_name()</b>, <b>asciichat_error_format()</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_dev</b>,
+            <b>log_error</b>, <b>SET_ERRNO</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_packet()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_handle_server_packet()</b>,
+            <b>acip_server_receive_and_dispatch()</b>,
+            <b>handle_image_frame_h264_packet()</b>, and
+            <b>server_dispatch_packet()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

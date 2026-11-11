@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <stddef.h>
 #include <ascii-chat/video/anim/controller.h>
 
@@ -49,6 +49,7 @@ void ui_controller_title_render(ui_title_render_t phase);
 void ui_controller_title_ready(void);
 typedef enum {
   UI_TITLE_ACTIVITY_IDLE,
+  UI_TITLE_LOADING_URL,
   UI_TITLE_CONNECTING,
   UI_TITLE_RECONNECTING,
   UI_TITLE_CREATING_SESSION,
@@ -110,6 +111,8 @@ asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, ter
 
 /** Carry the acquisition start time with the next media snapshot on this producer thread. */
 void ui_controller_frame_acquired_at(uint64_t started_ns);
+/** Set the target FPS displayed by the media overlay. */
+void ui_controller_set_effective_fps(unsigned int fps);
 
 /** Start terminal interaction without publishing a background screen. */
 asciichat_error_t ui_controller_start_terminal(int fd);

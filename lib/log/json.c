@@ -13,7 +13,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/utf8.h>
@@ -167,7 +169,7 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
   if (json_str && json_len > 0) {
     // Include the delimiter in the same write so concurrent records stay on separate lines.
     json_str[json_len] = '\n';
-    platform_write(fd, (const uint8_t *)json_str, json_len + 1);
+    platform_write_all(fd, (const uint8_t *)json_str, json_len + 1);
 
     /* Free serialized JSON string */
     free(json_str);

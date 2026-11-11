@@ -1,517 +1,684 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>schema.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">schema.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">schema.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">schema.h - Schema metadata for config file options.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>config_option_metadata_t</b>
-  <br/>
-  Option metadata for config file parsing.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>bool</b>(* <b>builder_validate_fn_t</b>) (const void
-    *options_struct, char **error_msg)
-  <br/>
-  Validation function from options builder.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>option_context_t</b> { <b>OPTION_CONTEXT_CLI</b>,
-    <b>OPTION_CONTEXT_CONFIG</b>, <b>OPTION_CONTEXT_BOTH</b> }
-  <br/>
-  Context where an option can appear.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const <b>config_option_metadata_t</b> *
-    <b>config_schema_get_by_toml_key</b> (const char *toml_key)
-  <br/>
-  Get option metadata by TOML key. const <b>config_option_metadata_t</b> **
-    <b>config_schema_get_by_category</b> (const char *category, size_t *count)
-  <br/>
-  Get all option metadata for a category. const <b>config_option_metadata_t</b>
-    * <b>config_schema_get_all</b> (size_t *count)
-  <br/>
-  Get all option metadata. <b>asciichat_error_t</b>
-    <b>config_schema_build_from_configs</b> (const <b>options_config_t</b>
-    **configs, size_t num_configs)
-  <br/>
-  Build schema dynamically from options builder configs. void
-    <b>config_schema_destroy</b> (void)
-  <br/>
-  Clean up dynamically allocated schema resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Schema metadata for config file options.</p>
-<p class="Pp">This module provides declarative metadata for all configurable
-    options that can appear in TOML configuration files. The schema drives the
-    generic config parser, eliminating duplicate validation code.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is separate from <b>builder.h</b>'s
-  <b>option_descriptor_t</b> which is for CLI parsing. This schema is
-  specifically for TOML config files.</div>
-<p class="Pp">Definition in file <b>schema.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>bool</b>(* builder_validate_fn_t) (const void *options_struct, char
-  **error_msg)</a></h2>
-<p class="Pp">Validation function from options builder. This is the same
-    validation function signature used by the options builder. It receives the
-    full options struct and can perform cross-field validation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>options_struct</i> Full options struct (cast to void*
-  for generic use)
-<br/>
-<i>error_msg</i> Output: error message (allocated by validator, caller
-  frees)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if valid, false if invalid</div>
-<p class="Pp">Definition at line <b>41</b> of file <b>schema.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>option_context_t</b></a></h2>
-<p class="Pp">Context where an option can appear.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="OPTION_CONTEXT_CLI"><a class="permalink" href="#OPTION_CONTEXT_CLI"><b><i>OPTION_CONTEXT_CLI
-    </i></b></a></dt>
-  <dd>CLI-only option (cannot appear in config).</dd>
-  <dt id="OPTION_CONTEXT_CONFIG"><a class="permalink" href="#OPTION_CONTEXT_CONFIG"><b><i>OPTION_CONTEXT_CONFIG
-    </i></b></a></dt>
-  <dd>Config-only option (never on CLI).</dd>
-  <dt id="OPTION_CONTEXT_BOTH"><a class="permalink" href="#OPTION_CONTEXT_BOTH"><b><i>OPTION_CONTEXT_BOTH
-    </i></b></a></dt>
-  <dd>Can appear in both CLI and config.</dd>
-</dl>
-<p class="Pp">Definition at line <b>25</b> of file <b>schema.h</b>.</p>
-<pre>25              {
-26   OPTION_CONTEXT_CLI,    
-27   OPTION_CONTEXT_CONFIG, 
-28   OPTION_CONTEXT_BOTH,   
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>schema.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">schema.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">schema.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">schema.h - Schema metadata for config file options.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>config_option_metadata_t</b>
+            <br />
+            Option metadata for config file parsing.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>bool</b>(*) <b>builder_validate_fn_t</b>(const void
+            *options_struct)
+            <br />
+            Validation function from options builder.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>option_context_t</b> { <b>OPTION_CONTEXT_CLI</b>,
+            <b>OPTION_CONTEXT_CONFIG</b>, <b>OPTION_CONTEXT_BOTH</b> }
+            <br />
+            Context where an option can appear.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>config_option_metadata_t</b> *
+            <b>config_schema_get_by_toml_key</b> (const char *toml_key)
+            <br />
+            Get option metadata by TOML key. const
+            <b>config_option_metadata_t</b> **
+            <b>config_schema_get_by_category</b> (const char *category, size_t
+            *count)
+            <br />
+            Get all option metadata for a category. const
+            <b>config_option_metadata_t</b> *
+            <b>config_schema_get_all</b> (size_t *count)
+            <br />
+            Get all option metadata. <b>asciichat_error_t</b>
+            <b>config_schema_build_from_configs</b> (const
+            <b>options_config_t</b>
+            **configs, size_t num_configs)
+            <br />
+            Build schema dynamically from options builder configs. void
+            <b>config_schema_destroy</b> (void)
+            <br />
+            Clean up dynamically allocated schema resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Schema metadata for config file options.</p>
+        <p class="Pp">
+          This module provides declarative metadata for all configurable options
+          that can appear in TOML configuration files. The schema drives the
+          generic config parser, eliminating duplicate validation code.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This is separate from <b>builder.h</b>'s
+          <b>option_descriptor_t</b> which is for CLI parsing. This schema is
+          specifically for TOML config files.
+        </div>
+        <p class="Pp">Definition in file <b>schema.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_">
+            <a class="permalink" href="#typedef_"
+              >typedef <b>bool</b>(*) builder_validate_fn_t(const void
+              *options_struct)</a
+            >
+          </h2>
+          <p class="Pp">
+            Validation function from options builder. This is the same
+            validation function signature used by the options builder. It
+            receives the full options struct and can perform cross-field
+            validation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>options_struct</i> Full options struct (cast to void* for generic
+            use)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if valid, false after setting error context with
+            <b>SET_ERRNO()</b> if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>schema.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_">enum <b>option_context_t</b></a>
+          </h2>
+          <p class="Pp">Context where an option can appear.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="OPTION_CONTEXT_CLI">
+              <a class="permalink" href="#OPTION_CONTEXT_CLI"
+                ><b><i>OPTION_CONTEXT_CLI </i></b></a
+              >
+            </dt>
+            <dd>CLI-only option (cannot appear in config).</dd>
+            <dt id="OPTION_CONTEXT_CONFIG">
+              <a class="permalink" href="#OPTION_CONTEXT_CONFIG"
+                ><b><i>OPTION_CONTEXT_CONFIG </i></b></a
+              >
+            </dt>
+            <dd>Config-only option (never on CLI).</dd>
+            <dt id="OPTION_CONTEXT_BOTH">
+              <a class="permalink" href="#OPTION_CONTEXT_BOTH"
+                ><b><i>OPTION_CONTEXT_BOTH </i></b></a
+              >
+            </dt>
+            <dd>Can appear in both CLI and config.</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>schema.h</b>.
+          </p>
+          <pre>
+25              {
+26   OPTION_CONTEXT_CLI,
+27   OPTION_CONTEXT_CONFIG,
+28   OPTION_CONTEXT_BOTH,
 29 } option_context_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> config_schema_build_from_configs (const
-  <b>options_config_t</b> ** configs, size_t num_configs)</h2>
-<p class="Pp">Build schema dynamically from options builder configs. This
-    function builds the config schema by merging all mode configs (server,
-    client, mirror, etc.). It generates TOML keys, CLI flags, categories, and
-    types from the builder's option descriptors.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>configs</i> Array of option configs (can contain NULL
-  entries)
-<br/>
-<i>num_configs</i> Number of configs in the array</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This should be called once during initialization before
-  any config parsing</div>
-<p class="Pp">Definition at line <b>240</b> of file <b>schema.c</b>.</p>
-<pre>240                                                                                                          {
-241   // Free existing dynamic schema if any
-242   if (g_dynamic_schema) {
-243     SAFE_FREE(g_dynamic_schema);
-244     g_dynamic_schema = NULL;
-245     g_dynamic_schema_count = 0;
-246   }
-247 
-248   // Free existing string storage
-249   if (g_dynamic_strings) {
-250     for (size_t i = 0; i &lt; g_dynamic_strings_count; i++) {
-251       SAFE_FREE(g_dynamic_strings[i]);
-252     }
-253     SAFE_FREE(g_dynamic_strings);
-254     g_dynamic_strings = NULL;
-255     g_dynamic_strings_count = 0;
-256     g_dynamic_strings_capacity = 0;
-257   }
-258 
-259   // Count total unique descriptors (by offset) across all configs
-260   // Use a simple approach: collect all descriptors, then deduplicate by offset
-261   const option_descriptor_t *all_descriptors[256] = {0}; // Max expected options
-262   size_t descriptor_count = 0;
-263 
-264   // Collect descriptors from all configs
-265   for (size_t cfg_idx = 0; cfg_idx &lt; num_configs; cfg_idx++) {
-266     const options_config_t *config = configs[cfg_idx];
-267     if (!config) {
-268       log_debug(&quot;Config %zu is NULL, skipping&quot;, cfg_idx);
-269       continue;
-270     }
-271 
-272     if (!config-&gt;descriptors || config-&gt;num_descriptors == 0) {
-273       log_debug(&quot;Config %zu has no descriptors&quot;, cfg_idx);
-274       continue;
-275     }
-276 
-277     for (size_t i = 0; i &lt; config-&gt;num_descriptors &amp;&amp; descriptor_count &lt; 256; i++) {
-278       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-279       if (!desc) {
-280         log_warn(&quot;Descriptor at index %zu in config %zu is NULL&quot;, i, cfg_idx);
-281         continue;
-282       }
-283       if (should_add_descriptor(desc, all_descriptors, descriptor_count)) {
-284         all_descriptors[descriptor_count++] = desc;
-285       }
-286     }
-287   }
-288 
-289   // Allocate schema array
-290   g_dynamic_schema = SAFE_MALLOC(descriptor_count * sizeof(config_option_metadata_t), config_option_metadata_t *);
-291   if (!g_dynamic_schema) {
-292     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dynamic schema&quot;);
-293   }
-294 
-295   // Build schema entries
-296   g_dynamic_schema_count = 0;
-297   char toml_key_buffer[BUFFER_SIZE_SMALL];
-298   char cli_flag_buffer[256];
-299   char category_buffer[64];
-300 
-301   for (size_t i = 0; i &lt; descriptor_count; i++) {
-302     const option_descriptor_t *desc = all_descriptors[i];
-303     if (!desc || !desc-&gt;long_name || !desc-&gt;group) {
-304       continue;
-305     }
-306 
-307     config_option_metadata_t *meta = &amp;g_dynamic_schema[g_dynamic_schema_count++];
-308     // Zero-initialize the metadata struct to ensure all fields are initialized
-309     memset(meta, 0, sizeof(*meta));
-310 
-311     // Use builder's type directly
-312     meta-&gt;type = desc-&gt;type;
-313 
-314     // Generate category: lowercase the group name from builder
-315     SAFE_STRNCPY(category_buffer, desc-&gt;group, sizeof(category_buffer) - 1);
-316     category_buffer[sizeof(category_buffer) - 1] = '\0';
-317     str_tolower(category_buffer);
-318 
-319     // Generate TOML key: &quot;category.field_name&quot; (category is lowercase group, field_name is long_name with
-320     // dashes-&gt;underscores)
-321     if (!generate_toml_key(category_buffer, desc-&gt;long_name, toml_key_buffer, sizeof(toml_key_buffer))) {
-322       g_dynamic_schema_count--; // Skip this entry
-323       continue;
-324     }
-325 
-326     // Store generated strings (allocate and store)
-327     meta-&gt;toml_key = store_dynamic_string(toml_key_buffer);
-328     meta-&gt;category = store_dynamic_string(category_buffer);
-329     if (!meta-&gt;toml_key || !meta-&gt;category) {
-330       // Failed to allocate strings, skip this entry
-331       g_dynamic_schema_count--;
-332       continue;
-333     }
-334 
-335     // Generate CLI flag: &quot;--long-name&quot;
-336     if (generate_cli_flag(desc-&gt;long_name, cli_flag_buffer, sizeof(cli_flag_buffer))) {
-337       meta-&gt;cli_flag = store_dynamic_string(cli_flag_buffer);
-338       if (!meta-&gt;cli_flag) {
-339         // Failed to allocate, but continue (cli_flag can be NULL)
-340       }
-341     } else {
-342       meta-&gt;cli_flag = NULL;
-343     }
-344 
-345     // Set other fields
-346     meta-&gt;context = OPTION_CONTEXT_BOTH; // Most options can appear in both CLI and config
-347     meta-&gt;field_offset = desc-&gt;offset;
-348     meta-&gt;field_size = get_field_size(meta-&gt;type, desc-&gt;offset);
-349     // Use builder's validate function directly - it receives the full options struct
-350     meta-&gt;validate_fn = desc-&gt;validate;
-351     // Use builder's parse function for CALLBACK types
-352     meta-&gt;parse_fn = desc-&gt;parse_fn;
-353     meta-&gt;description = desc-&gt;help_text;
-354 
-355     // Set mode_bitmask from option descriptor
-356     // The descriptor should have mode_bitmask set from the registry
-357     meta-&gt;mode_bitmask = desc-&gt;mode_bitmask;
-358 
-359     // Copy mode_default_getter function pointer
-360     meta-&gt;mode_default_getter = desc-&gt;mode_default_getter;
-361 
-362     // Copy constraints from descriptor's metadata
-363     // For integer types, copy numeric_range to int_range (always copy, even if min is 0)
-364     memset(&amp;meta-&gt;constraints, 0, sizeof(meta-&gt;constraints));
-365     // Always copy numeric_range if descriptor has it (check max or min)
-366     if (desc &amp;&amp; desc-&gt;metadata.numeric_range.max &gt; 0) {
-367       meta-&gt;constraints.int_range.min = desc-&gt;metadata.numeric_range.min;
-368       meta-&gt;constraints.int_range.max = desc-&gt;metadata.numeric_range.max;
-369     }
-370   }
-371 
-372   g_schema_built = true;
-373   return ASCIICHAT_OK;
-374 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>config_option_metadata_t::category</b>,
-    <b>config_option_metadata_t::cli_flag</b>,
-    <b>config_option_metadata_t::constraints</b>,
-    <b>config_option_metadata_t::context</b>,
-    <b>config_option_metadata_t::description</b>,
-    <b>options_config_t::descriptors</b>, <b>ERROR_MEMORY</b>,
-    <b>config_option_metadata_t::field_offset</b>,
-    <b>config_option_metadata_t::field_size</b>,
-    <b>option_descriptor_t::group</b>, <b>option_descriptor_t::help_text</b>,
-    <b>config_option_metadata_t::int_range</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>option_descriptor_t::long_name</b>,
-    <b>config_option_metadata_t::max</b>, <b>option_metadata_t::max</b>,
-    <b>option_descriptor_t::metadata</b>, <b>config_option_metadata_t::min</b>,
-    <b>option_metadata_t::min</b>,
-    <b>config_option_metadata_t::mode_bitmask</b>,
-    <b>option_descriptor_t::mode_bitmask</b>,
-    <b>config_option_metadata_t::mode_default_getter</b>,
-    <b>option_descriptor_t::mode_default_getter</b>,
-    <b>options_config_t::num_descriptors</b>,
-    <b>option_metadata_t::numeric_range</b>, <b>option_descriptor_t::offset</b>,
-    <b>OPTION_CONTEXT_BOTH</b>, <b>config_option_metadata_t::parse_fn</b>,
-    <b>option_descriptor_t::parse_fn</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>config_option_metadata_t::toml_key</b>,
-    <b>config_option_metadata_t::type</b>, <b>option_descriptor_t::type</b>,
-    <b>option_descriptor_t::validate</b>, and
-    <b>config_option_metadata_t::validate_fn</b>.</p>
-<p class="Pp">Referenced by <b>action_create_config()</b>, and
-    <b>options_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_config_schema_destroy_(void_)"><a class="permalink" href="#void_config_schema_destroy_(void_)">void
-  config_schema_destroy (void )</a></h2>
-<p class="Pp">Clean up dynamically allocated schema resources. Frees all memory
-    allocated by <b>config_schema_build_from_configs()</b>, including the
-    dynamic schema array and all associated strings. Safe to call multiple times
-    or if schema was never built.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This should be called during shutdown to prevent memory
-  leaks</div>
-<p class="Pp">Definition at line <b>454</b> of file <b>schema.c</b>.</p>
-<pre>454                                  {
-455   if (!g_schema_built) {
-456     return; // Nothing to clean up
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> config_schema_build_from_configs (const
+            <b>options_config_t</b> ** configs, size_t num_configs)
+          </h2>
+          <p class="Pp">
+            Build schema dynamically from options builder configs. This function
+            builds the config schema by merging all mode configs (server,
+            client, mirror, etc.). It generates TOML keys, CLI flags,
+            categories, and types from the builder's option descriptors.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>configs</i> Array of option configs (can contain NULL entries)
+            <br />
+            <i>num_configs</i> Number of configs in the array
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This should be called once during initialization before any config
+            parsing
+          </div>
+          <p class="Pp">
+            Definition at line <b>252</b> of file <b>schema.c</b>.
+          </p>
+          <pre>
+252                                                                                                          {
+253   // Free existing dynamic schema if any
+254   if (g_dynamic_schema) {
+255     SAFE_FREE(g_dynamic_schema);
+256     g_dynamic_schema = NULL;
+257     g_dynamic_schema_count = 0;
+258   }
+259
+260   // Free existing string storage
+261   if (g_dynamic_strings) {
+262     for (size_t i = 0; i &lt; g_dynamic_strings_count; i++) {
+263       SAFE_FREE(g_dynamic_strings[i]);
+264     }
+265     SAFE_FREE(g_dynamic_strings);
+266     g_dynamic_strings = NULL;
+267     g_dynamic_strings_count = 0;
+268     g_dynamic_strings_capacity = 0;
+269   }
+270
+271   // Count total unique descriptors (by offset) across all configs
+272   // Use a simple approach: collect all descriptors, then deduplicate by offset
+273   const option_descriptor_t *all_descriptors[SCHEMA_OPTION_CAPACITY] = {0}; // Max expected options
+274   size_t descriptor_count = 0;
+275
+276   // Collect descriptors from all configs
+277   for (size_t cfg_idx = 0; cfg_idx &lt; num_configs; cfg_idx++) {
+278     const options_config_t *config = configs[cfg_idx];
+279     if (!config) {
+280       log_debug(&quot;Config %zu is NULL, skipping&quot;, cfg_idx);
+281       continue;
+282     }
+283
+284     if (!config-&gt;descriptors || config-&gt;num_descriptors == 0) {
+285       log_debug(&quot;Config %zu has no descriptors&quot;, cfg_idx);
+286       continue;
+287     }
+288
+289     for (size_t i = 0; i &lt; config-&gt;num_descriptors &amp;&amp; descriptor_count &lt; SCHEMA_OPTION_CAPACITY; i++) {
+290       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+291       if (!desc) {
+292         log_warn(&quot;Descriptor at index %zu in config %zu is NULL&quot;, i, cfg_idx);
+293         continue;
+294       }
+295       if (should_add_descriptor(desc, all_descriptors, descriptor_count)) {
+296         all_descriptors[descriptor_count++] = desc;
+297       }
+298     }
+299   }
+300
+301   // Allocate schema array
+302   g_dynamic_schema = SAFE_MALLOC(descriptor_count * sizeof(config_option_metadata_t), config_option_metadata_t *);
+303   if (!g_dynamic_schema) {
+304     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dynamic schema&quot;);
+305   }
+306
+307   // Build schema entries
+308   g_dynamic_schema_count = 0;
+309   char toml_key_buffer[BUFFER_SIZE_SMALL];
+310   char cli_flag_buffer[OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE];
+311   char category_buffer[OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE];
+312
+313   for (size_t i = 0; i &lt; descriptor_count; i++) {
+314     const option_descriptor_t *desc = all_descriptors[i];
+315     if (!desc || !desc-&gt;long_name || !desc-&gt;group) {
+316       continue;
+317     }
+318
+319     config_option_metadata_t *meta = &amp;g_dynamic_schema[g_dynamic_schema_count++];
+320     // Zero-initialize the metadata struct to ensure all fields are initialized
+321     memset(meta, 0, sizeof(*meta));
+322
+323     // Use builder's type directly
+324     meta-&gt;type = desc-&gt;type;
+325
+326     // Generate category: lowercase the group name from builder
+327     SAFE_STRNCPY(category_buffer, desc-&gt;group, sizeof(category_buffer) - 1);
+328     category_buffer[sizeof(category_buffer) - 1] = '\0';
+329     str_tolower(category_buffer);
+330
+331     // Generate TOML key: &quot;category.field_name&quot; (category is lowercase group, field_name is long_name with
+332     // dashes-&gt;underscores)
+333     const char *field_name = desc-&gt;long_name;
+334     if (strcmp(category_buffer, &quot;otel&quot;) == 0 &amp;&amp; strncmp(field_name, &quot;otel-&quot;, 5) == 0)
+335       field_name += 5;
+336     if (!generate_toml_key(category_buffer, field_name, toml_key_buffer, sizeof(toml_key_buffer))) {
+337       g_dynamic_schema_count--; // Skip this entry
+338       continue;
+339     }
+340
+341     // Store generated strings (allocate and store)
+342     meta-&gt;toml_key = store_dynamic_string(toml_key_buffer);
+343     meta-&gt;category = store_dynamic_string(category_buffer);
+344     if (!meta-&gt;toml_key || !meta-&gt;category) {
+345       // Failed to allocate strings, skip this entry
+346       g_dynamic_schema_count--;
+347       continue;
+348     }
+349
+350     // Generate CLI flag: &quot;--long-name&quot;
+351     if (generate_cli_flag(desc-&gt;long_name, cli_flag_buffer, sizeof(cli_flag_buffer))) {
+352       meta-&gt;cli_flag = store_dynamic_string(cli_flag_buffer);
+353       if (!meta-&gt;cli_flag) {
+354         // Failed to allocate, but continue (cli_flag can be NULL)
+355       }
+356     } else {
+357       meta-&gt;cli_flag = NULL;
+358     }
+359
+360     // Set other fields
+361     meta-&gt;context = OPTION_CONTEXT_BOTH; // Most options can appear in both CLI and config
+362     meta-&gt;field_offset = desc-&gt;offset;
+363     meta-&gt;field_size = get_field_size(meta-&gt;type, desc-&gt;offset);
+364     // Use builder's validate function directly - it receives the full options struct
+365     meta-&gt;validate_fn = desc-&gt;validate;
+366     // Use builder's parse function for CALLBACK types
+367     meta-&gt;parse_fn = desc-&gt;parse_fn;
+368     meta-&gt;description = desc-&gt;help_text;
+369
+370     // Set mode_bitmask from option descriptor
+371     // The descriptor should have mode_bitmask set from the registry
+372     meta-&gt;mode_bitmask = desc-&gt;mode_bitmask;
+373
+374     // Copy mode_default_getter function pointer
+375     meta-&gt;mode_default_getter = desc-&gt;mode_default_getter;
+376
+377     // Copy constraints from descriptor's metadata
+378     // For integer types, copy numeric_range to int_range (always copy, even if min is 0)
+379     memset(&amp;meta-&gt;constraints, 0, sizeof(meta-&gt;constraints));
+380     // Always copy numeric_range if descriptor has it (check max or min)
+381     if (desc &amp;&amp; desc-&gt;metadata.numeric_range.max &gt; 0) {
+382       meta-&gt;constraints.int_range.min = desc-&gt;metadata.numeric_range.min;
+383       meta-&gt;constraints.int_range.max = desc-&gt;metadata.numeric_range.max;
+384     }
+385   }
+386
+387   g_schema_built = true;
+388   return ASCIICHAT_OK;
+389 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>config_option_metadata_t::category</b>,
+            <b>config_option_metadata_t::cli_flag</b>,
+            <b>config_schema_build_from_configs()</b>,
+            <b>config_option_metadata_t::constraints</b>,
+            <b>config_option_metadata_t::context</b>,
+            <b>config_option_metadata_t::description</b>,
+            <b>options_config_t::descriptors</b>, <b>ERROR_MEMORY</b>,
+            <b>config_option_metadata_t::field_offset</b>,
+            <b>config_option_metadata_t::field_size</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>option_descriptor_t::long_name</b>,
+            <b>option_descriptor_t::metadata</b>,
+            <b>config_option_metadata_t::mode_bitmask</b>,
+            <b>option_descriptor_t::mode_bitmask</b>,
+            <b>config_option_metadata_t::mode_default_getter</b>,
+            <b>option_descriptor_t::mode_default_getter</b>,
+            <b>options_config_t::num_descriptors</b>,
+            <b>option_metadata_t::numeric_range</b>,
+            <b>option_descriptor_t::offset</b>, <b>OPTION_CONTEXT_BOTH</b>,
+            <b>OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE</b>,
+            <b>OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE</b>,
+            <b>config_option_metadata_t::parse_fn</b>,
+            <b>option_descriptor_t::parse_fn</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+            <b>SCHEMA_OPTION_CAPACITY</b>, <b>SET_ERRNO</b>,
+            <b>config_option_metadata_t::toml_key</b>,
+            <b>config_option_metadata_t::type</b>,
+            <b>option_descriptor_t::type</b>,
+            <b>option_descriptor_t::validate</b>, and
+            <b>config_option_metadata_t::validate_fn</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>action_create_config()</b>,
+            <b>config_create_default()</b>, and
+            <b>config_schema_build_from_configs()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_config_schema_destroy_(void_)">
+            <a class="permalink" href="#void_config_schema_destroy_(void_)"
+              >void config_schema_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up dynamically allocated schema resources. Frees all memory
+            allocated by
+            <b>config_schema_build_from_configs()</b>, including the dynamic
+            schema array and all associated strings. Safe to call multiple times
+            or if schema was never built.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This should be called during shutdown to prevent memory leaks
+          </div>
+          <p class="Pp">
+            Definition at line <b>469</b> of file <b>schema.c</b>.
+          </p>
+          <pre>
+469                                  {
+470   if (!g_schema_built) {
+471     return; // Nothing to clean up
+472   }
+473
+474   // Free all dynamically allocated strings (toml_key, cli_flag, category)
+475   if (g_dynamic_strings) {
+476     for (size_t i = 0; i &lt; g_dynamic_strings_count; i++) {
+477       SAFE_FREE(g_dynamic_strings[i]);
+478     }
+479     SAFE_FREE(g_dynamic_strings);
+480     g_dynamic_strings = NULL;
+481     g_dynamic_strings_count = 0;
+482     g_dynamic_strings_capacity = 0;
+483   }
+484
+485   // Free the schema array itself
+486   if (g_dynamic_schema) {
+487     SAFE_FREE(g_dynamic_schema);
+488     g_dynamic_schema = NULL;
+489     g_dynamic_schema_count = 0;
+490   }
+491
+492   g_schema_built = false;
+493 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>config_schema_destroy()</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_schema_destroy()</b>,
+            <b>options_cleanup_schema()</b>, and <b>options_state_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>config_option_metadata_t</b> * config_schema_get_all
+            (size_t * count)
+          </h2>
+          <p class="Pp">Get all option metadata.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>count</i> Output: total number of options
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Array of all metadata (NULL-terminated)</div>
+          <p class="Pp">
+            Definition at line <b>449</b> of file <b>schema.c</b>.
+          </p>
+          <pre>
+449                                                                      {
+450   // Schema must be built before use
+451   if (!g_schema_built || !g_dynamic_schema) {
+452     if (count) {
+453       *count = 0;
+454     }
+455     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
+456     return NULL;
 457   }
-458 
-459   // Free all dynamically allocated strings (toml_key, cli_flag, category)
-460   if (g_dynamic_strings) {
-461     for (size_t i = 0; i &lt; g_dynamic_strings_count; i++) {
-462       SAFE_FREE(g_dynamic_strings[i]);
-463     }
-464     SAFE_FREE(g_dynamic_strings);
-465     g_dynamic_strings = NULL;
-466     g_dynamic_strings_count = 0;
-467     g_dynamic_strings_capacity = 0;
-468   }
-469 
-470   // Free the schema array itself
-471   if (g_dynamic_schema) {
-472     SAFE_FREE(g_dynamic_schema);
-473     g_dynamic_schema = NULL;
-474     g_dynamic_schema_count = 0;
-475   }
-476 
-477   g_schema_built = false;
-478 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>options_cleanup_schema()</b>, and
-    <b>options_state_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>config_option_metadata_t</b> * config_schema_get_all
-  (size_t * count)</h2>
-<p class="Pp">Get all option metadata.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>count</i> Output: total number of options</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Array of all metadata (NULL-terminated)</div>
-<p class="Pp">Definition at line <b>434</b> of file <b>schema.c</b>.</p>
-<pre>434                                                                      {
-435   // Schema must be built before use
-436   if (!g_schema_built || !g_dynamic_schema) {
-437     if (count) {
-438       *count = 0;
-439     }
-440     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
-441     return NULL;
-442   }
-443 
-444   if (count) {
-445     *count = g_dynamic_schema_count;
-446   }
-447   return g_dynamic_schema;
-448 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_STATE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>config_option_metadata_t</b> **
-  config_schema_get_by_category (const char * category, size_t * count)</h2>
-<p class="Pp">Get all option metadata for a category.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>category</i> Category name (e.g., &quot;network&quot;)
-<br/>
-<i>count</i> Output: number of options in category</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Array of metadata pointers (NULL-terminated)</div>
-<p class="Pp">Definition at line <b>401</b> of file <b>schema.c</b>.</p>
-<pre>401                                                                                                     {
-402   static const config_option_metadata_t *results[64]; // Max options per category
-403   size_t result_count = 0;
-404 
-405   if (!category) {
-406     if (count) {
-407       *count = 0;
-408     }
-409     return NULL;
-410   }
-411 
-412   // Schema must be built before use
-413   if (!g_schema_built || !g_dynamic_schema) {
-414     if (count) {
-415       *count = 0;
-416     }
-417     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
-418     return NULL;
-419   }
-420 
-421   for (size_t i = 0; i &lt; g_dynamic_schema_count &amp;&amp; result_count &lt; 64; i++) {
-422     if (g_dynamic_schema[i].category &amp;&amp; strcmp(g_dynamic_schema[i].category, category) == 0) {
-423       results[result_count++] = &amp;g_dynamic_schema[i];
-424     }
+458
+459   if (count) {
+460     *count = g_dynamic_schema_count;
+461   }
+462   return g_dynamic_schema;
+463 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>config_schema_get_all()</b>,
+            <b>ERROR_INVALID_STATE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_create_default()</b>, and
+            <b>config_schema_get_all()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>config_option_metadata_t</b> **
+            config_schema_get_by_category (const char * category, size_t *
+            count)
+          </h2>
+          <p class="Pp">Get all option metadata for a category.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>category</i> Category name (e.g., &quot;network&quot;)
+            <br />
+            <i>count</i> Output: number of options in category
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of metadata pointers (NULL-terminated)
+          </div>
+          <p class="Pp">
+            Definition at line <b>416</b> of file <b>schema.c</b>.
+          </p>
+          <pre>
+416                                                                                                     {
+417   static const config_option_metadata_t *results[SCHEMA_CATEGORY_OPTION_CAPACITY]; // Max options per category
+418   size_t result_count = 0;
+419
+420   if (!category) {
+421     if (count) {
+422       *count = 0;
+423     }
+424     return NULL;
 425   }
-426 
-427   if (count) {
-428     *count = result_count;
-429   }
-430 
-431   return (result_count &gt; 0) ? results : NULL;
-432 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_STATE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>config_option_metadata_t</b> *
-  config_schema_get_by_toml_key (const char * toml_key)</h2>
-<p class="Pp">Get option metadata by TOML key.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>toml_key</i> TOML key path (e.g.,
-  &quot;network.port&quot;)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to metadata or NULL if not found</div>
-<p class="Pp">Definition at line <b>380</b> of file <b>schema.c</b>.</p>
-<pre>380                                                                                     {
-381   if (!toml_key) {
-382     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments for config_schema_get_by_toml_key&quot;);
-383     return NULL;
-384   }
-385 
-386   // Schema must be built before use
-387   if (!g_schema_built || !g_dynamic_schema) {
-388     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
-389     return NULL;
-390   }
-391 
-392   for (size_t i = 0; i &lt; g_dynamic_schema_count; i++) {
-393     if (g_dynamic_schema[i].toml_key &amp;&amp; strcmp(g_dynamic_schema[i].toml_key, toml_key) == 0) {
-394       return &amp;g_dynamic_schema[i];
-395     }
-396   }
-397 
-398   return NULL;
-399 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    and <b>SET_ERRNO</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+426
+427   // Schema must be built before use
+428   if (!g_schema_built || !g_dynamic_schema) {
+429     if (count) {
+430       *count = 0;
+431     }
+432     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
+433     return NULL;
+434   }
+435
+436   for (size_t i = 0; i &lt; g_dynamic_schema_count &amp;&amp; result_count &lt; SCHEMA_CATEGORY_OPTION_CAPACITY; i++) {
+437     if (g_dynamic_schema[i].category &amp;&amp; strcmp(g_dynamic_schema[i].category, category) == 0) {
+438       results[result_count++] = &amp;g_dynamic_schema[i];
+439     }
+440   }
+441
+442   if (count) {
+443     *count = result_count;
+444   }
+445
+446   return (result_count &gt; 0) ? results : NULL;
+447 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>config_schema_get_by_category()</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>SCHEMA_CATEGORY_OPTION_CAPACITY</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_create_default()</b>, and
+            <b>config_schema_get_by_category()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>config_option_metadata_t</b> *
+            config_schema_get_by_toml_key (const char * toml_key)
+          </h2>
+          <p class="Pp">Get option metadata by TOML key.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>toml_key</i> TOML key path (e.g., &quot;network.port&quot;)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to metadata or NULL if not found</div>
+          <p class="Pp">
+            Definition at line <b>395</b> of file <b>schema.c</b>.
+          </p>
+          <pre>
+395                                                                                     {
+396   if (!toml_key) {
+397     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments&quot;);
+398     return NULL;
+399   }
+400
+401   // Schema must be built before use
+402   if (!g_schema_built || !g_dynamic_schema) {
+403     SET_ERRNO(ERROR_INVALID_STATE, &quot;Schema not built&quot;);
+404     return NULL;
+405   }
+406
+407   for (size_t i = 0; i &lt; g_dynamic_schema_count; i++) {
+408     if (g_dynamic_schema[i].toml_key &amp;&amp; strcmp(g_dynamic_schema[i].toml_key, toml_key) == 0) {
+409       return &amp;g_dynamic_schema[i];
+410     }
+411   }
+412
+413   return NULL;
+414 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>config_schema_get_by_toml_key()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_schema_get_by_toml_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

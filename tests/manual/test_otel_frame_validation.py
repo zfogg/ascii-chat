@@ -1,5 +1,5 @@
 """Exercise native rendered-frame rejection telemetry without a camera.
-Run: python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
 Optional FRAME_VALIDATION_REPLAY_ENDPOINT forwards captured payloads to Spaniel.
 """
 

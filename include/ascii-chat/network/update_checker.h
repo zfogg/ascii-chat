@@ -32,6 +32,7 @@
 #include "../common.h"
 
 /**
+ * @brief update check result keeps the values that move through the subsystem: `update_available`, `last_check_time`, `dismissed_until`, `check_succeeded`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Update check result data
  */
 typedef struct {
@@ -111,6 +112,9 @@ bool update_check_is_dismissed(const update_check_result_t *result);
  * @return true if cache is < 7 days old, false otherwise
  */
 bool update_check_is_cache_fresh(const update_check_result_t *result);
+
+/** Load a fresh cached result without treating a cache miss as an error. */
+bool update_check_try_fresh_cache(update_check_result_t *result);
 
 /**
  * @brief Detect installation method

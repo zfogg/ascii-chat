@@ -1,242 +1,461 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>instrument_log.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">instrument_log.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">instrument_log.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">instrument_log.c - Debug instrumentation logging runtime
-    implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>asciichat_instr_only_selector</b>
-  <br/>
-  Selector for filtering instrumentation output by file, function, or module.
-    struct <b>asciichat_instr_only_list</b>
-  <br/>
-  Dynamic array of instrumentation selectors for filtering output. struct
-    <b>asciichat_instr_runtime</b>
-  <br/>
-  Per-thread instrumentation runtime state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX</b> 1
-  <br/>
-  #define <b>posix_write</b> write
-  <br/>
-  #define <b>ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME</b> 'ascii-instr'
-  <br/>
-  #define <b>ASCII_INSTR_SOURCE_PRINT_MAX_LINE</b> 4096
-  <br/>
-  #define <b>ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET</b> 2048
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef enum <b>asciichat_instr_selector_type</b>
-    <b>asciichat_instr_selector_type_t</b>
-  <br/>
-  typedef struct <b>asciichat_instr_only_selector</b>
-    <b>asciichat_instr_only_selector_t</b>
-  <br/>
-  Selector for filtering instrumentation output by file, function, or module.
-    typedef struct <b>asciichat_instr_only_list</b>
-    <b>asciichat_instr_only_list_t</b>
-  <br/>
-  Dynamic array of instrumentation selectors for filtering output. typedef
-    struct <b>asciichat_instr_runtime</b> <b>asciichat_instr_runtime_t</b>
-  <br/>
-  Per-thread instrumentation runtime state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>asciichat_instr_selector_type</b> {
-    <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING</b> = 0,
-    <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB</b> = 1,
-    <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB</b> = 2,
-    <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE</b> = 3 }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_instr_runtime_t</b> *
-    <b>asciichat_instr_runtime_get</b> (void)
-  <br/>
-  Get or create the thread-local runtime context. void
-    <b>asciichat_instr_runtime_destroy</b> (<b>asciichat_instr_runtime_t</b>
-    *runtime)
-  <br/>
-  Destroy a runtime context and release resources. void
-    <b>asciichat_instr_runtime_global_destroy</b> (void)
-  <br/>
-  Global shutdown of the instrumentation system. void
-    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
-    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
-    <b>uint8_t</b> is_macro_expansion)
-  <br/>
-  Log a source line execution event. <b>bool</b>
-    <b>asciichat_instr_coverage_enabled</b> (void)
-  <br/>
-  Check if coverage logging is enabled. void <b>asciichat_instr_log_pc</b>
-    (uintptr_t program_counter)
-  <br/>
-  Log a program counter for coverage analysis.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Debug instrumentation logging runtime implementation.</p>
-<p class="Pp">Implements the runtime logging infrastructure for source-code
-    instrumentation. Captures execution traces with filtering, rate limiting,
-    and coverage analysis. See
-    <b>include/ascii-chat/tooling/panic/instrument_log.h</b> for the public
-  API.</p>
-<p class="Pp">Definition in file <b>instrument_log.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii">#define
-  ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME 'ascii-instr'</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>instrument_log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1">#define
-  ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 1</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>instrument_log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096">#define
-  ASCII_INSTR_SOURCE_PRINT_MAX_LINE 4096</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>instrument_log.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048">#define
-  ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET 2048</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>instrument_log.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_posix_write___write"><a class="permalink" href="#_define_posix_write___write">#define
-  posix_write write</a></h2>
-<p class="Pp">Definition at line <b>63</b> of file <b>instrument_log.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>asciichat_instr_only_list</b>
-  <b>asciichat_instr_only_list_t</b></h2>
-<p class="Pp">Dynamic array of instrumentation selectors for filtering
-  output.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>asciichat_instr_only_selector</b>
-  <b>asciichat_instr_only_selector_t</b></h2>
-<p class="Pp">Selector for filtering instrumentation output by file, function,
-    or module.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_enum_"><a class="permalink" href="#typedef_enum_">typedef
-  enum <b>asciichat_instr_selector_type</b>
-  <b>asciichat_instr_selector_type_t</b></a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>asciichat_instr_selector_type</b></a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING"><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB"><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB"><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE"><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>78</b> of file <b>instrument_log.c</b>.</p>
-<pre>78                                            {
-79   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
-80   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
-81   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
-82   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
-83 } asciichat_instr_selector_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>instrument_log.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">instrument_log.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">instrument_log.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          instrument_log.c - Debug instrumentation logging runtime
+          implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>asciichat_instr_only_selector</b>
+            <br />
+            Selector for filtering instrumentation output by file, function, or
+            module. struct
+            <b>asciichat_instr_only_list</b>
+            <br />
+            Dynamic array of instrumentation selectors for filtering output.
+            struct
+            <b>asciichat_instr_runtime</b>
+            <br />
+            Per-thread instrumentation runtime state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE</b>
+            32
+            <br />
+            #define <b>TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>INSTRUMENT_LOG_KEY_BUFFER_SIZE</b> 8
+            <br />
+            #define <b>ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX</b> 1
+            <br />
+            #define <b>posix_write</b> write
+            <br />
+            #define
+            <b>ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME</b> 'ascii-instr'
+            <br />
+            #define <b>ASCII_INSTR_SOURCE_PRINT_MAX_LINE</b> 4096
+            <br />
+            #define <b>ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef enum <b>asciichat_instr_selector_type</b>
+            <b>asciichat_instr_selector_type_t</b>
+            <br />
+            typedef struct <b>asciichat_instr_only_selector</b>
+            <b>asciichat_instr_only_selector_t</b>
+            <br />
+            Selector for filtering instrumentation output by file, function, or
+            module. typedef struct <b>asciichat_instr_only_list</b>
+            <b>asciichat_instr_only_list_t</b>
+            <br />
+            Dynamic array of instrumentation selectors for filtering output.
+            typedef struct
+            <b>asciichat_instr_runtime</b> <b>asciichat_instr_runtime_t</b>
+            <br />
+            Per-thread instrumentation runtime state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>asciichat_instr_selector_type</b> {
+            <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING</b> = 0,
+            <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB</b> = 1,
+            <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB</b> = 2,
+            <b>ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE</b> = 3 }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_instr_runtime_t</b> *
+            <b>asciichat_instr_runtime_get</b> (void)
+            <br />
+            Get or create the thread-local runtime context. void
+            <b>asciichat_instr_runtime_destroy</b> (<b
+              >asciichat_instr_runtime_t</b
+            >
+            *runtime)
+            <br />
+            Destroy a runtime context and release resources. void
+            <b>asciichat_instr_runtime_global_destroy</b> (void)
+            <br />
+            Global shutdown of the instrumentation system. void
+            <b>asciichat_instr_log_line</b> (const char *file_path,
+            <b>uint32_t</b> line_number, const char *function_name, const char
+            *snippet, <b>uint8_t</b>
+            is_macro_expansion)
+            <br />
+            Log a source line execution event. <b>bool</b>
+            <b>asciichat_instr_coverage_enabled</b> (void)
+            <br />
+            Check if coverage logging is enabled. void
+            <b>asciichat_instr_log_pc</b>
+            (uintptr_t program_counter)
+            <br />
+            Log a program counter for coverage analysis.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Debug instrumentation logging runtime implementation.</p>
+        <p class="Pp">
+          Implements the runtime logging infrastructure for source-code
+          instrumentation. Captures execution traces with filtering, rate
+          limiting, and coverage analysis. See
+          <b>include/ascii-chat/tooling/panic/instrument_log.h</b> for the
+          public API.
+        </p>
+        <p class="Pp">Definition in file <b>instrument_log.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii"
+              >#define ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME
+              'ascii-instr'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>instrument_log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1">
+            <a
+              class="permalink"
+              href="#_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1"
+              >#define ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 1</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>instrument_log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096">
+            <a
+              class="permalink"
+              href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096"
+              >#define ASCII_INSTR_SOURCE_PRINT_MAX_LINE 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>80</b> of file <b>instrument_log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048"
+              >#define ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>instrument_log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_INSTRUMENT_LOG_KEY_BUFFER_SIZE___8">
+            <a
+              class="permalink"
+              href="#_define_INSTRUMENT_LOG_KEY_BUFFER_SIZE___8"
+              >#define INSTRUMENT_LOG_KEY_BUFFER_SIZE 8</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>instrument_log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_posix_write___write">
+            <a class="permalink" href="#_define_posix_write___write"
+              >#define posix_write write</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>instrument_log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE___64"
+              >#define TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>instrument_log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE___32"
+              >#define TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>instrument_log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE___32"
+              >#define TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>instrument_log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>asciichat_instr_only_list</b>
+            <b>asciichat_instr_only_list_t</b>
+          </h2>
+          <p class="Pp">
+            Dynamic array of instrumentation selectors for filtering output.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>asciichat_instr_only_selector</b>
+            <b>asciichat_instr_only_selector_t</b>
+          </h2>
+          <p class="Pp">
+            Selector for filtering instrumentation output by file, function, or
+            module.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_enum_">
+            <a class="permalink" href="#typedef_enum_"
+              >typedef enum <b>asciichat_instr_selector_type</b>
+              <b>asciichat_instr_selector_type_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>asciichat_instr_selector_type</b></a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING">
+              <a
+                class="permalink"
+                href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING"
+                ><b
+                  ><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING </i></b
+                ></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB">
+              <a
+                class="permalink"
+                href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB"
+                ><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB">
+              <a
+                class="permalink"
+                href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB"
+                ><b
+                  ><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB </i></b
+                ></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE">
+              <a
+                class="permalink"
+                href="#ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE"
+                ><b><i>ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>instrument_log.c</b>.
+          </p>
+          <pre>
+87                                            {
+88   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
+89   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
+90   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
+91   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
+92 } asciichat_instr_selector_type_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

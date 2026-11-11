@@ -1,144 +1,238 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>layout.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">layout.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">layout.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">layout.h - Two-column layout helpers for help text and option
-    formatting.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LAYOUT_COLUMN_WIDTH</b> 75
-  <br/>
-  #define <b>LAYOUT_DESCRIPTION_START_COL</b> 79
-  <br/>
-  #define <b>LAYOUT_NARROW_TERMINAL_THRESHOLD</b> 55
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>layout_print_wrapped_description</b> (FILE *stream, const
-    char *text, int indent_width, int term_width, int continuation_indent_extra)
-  <br/>
-  Print text with wrapping and proper indentation. void
-    <b>layout_print_two_column_row</b> (FILE *stream, const char *first_column,
-    const char *second_column, int first_col_len, int term_width, int
-    continuation_indent_extra)
-  <br/>
-  Print two-column row with automatic wrapping.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Two-column layout helpers for help text and option formatting.</p>
-<p class="Pp">Provides reusable functions for formatting two-column layouts with
-    proper alignment and text wrapping. Used by both mode-level help and
-    binary-level help.</p>
-<p class="Pp">Definition in file <b>layout.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LAYOUT_COLUMN_WIDTH___75"><a class="permalink" href="#_define_LAYOUT_COLUMN_WIDTH___75">#define
-  LAYOUT_COLUMN_WIDTH 75</a></h2>
-<p class="Pp">Maximum width for first column before description moves to next
-    line</p>
-<p class="Pp">Definition at line <b>19</b> of file <b>layout.h</b>.</p>
-<p class="Pp">Referenced by <b>options_config_calculate_max_col_width()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LAYOUT_DESCRIPTION_START_COL___79"><a class="permalink" href="#_define_LAYOUT_DESCRIPTION_START_COL___79">#define
-  LAYOUT_DESCRIPTION_START_COL 79</a></h2>
-<p class="Pp">Starting column for description text (column 79 = 2 spaces + 75
-    chars + 2 spacing)</p>
-<p class="Pp">Definition at line <b>22</b> of file <b>layout.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LAYOUT_NARROW_TERMINAL_THRESHOLD___55"><a class="permalink" href="#_define_LAYOUT_NARROW_TERMINAL_THRESHOLD___55">#define
-  LAYOUT_NARROW_TERMINAL_THRESHOLD 55</a></h2>
-<p class="Pp">Terminal width threshold for switching to vertical layout</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>layout.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)"><a class="permalink" href="#void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)">void
-  layout_print_two_column_row (FILE * stream, const char * first_column, const
-  char * second_column, int first_col_len, int term_width, int
-  continuation_indent_extra)</a></h2>
-<p class="Pp">Print two-column row with automatic wrapping. Prints first column
-    text, then second column description with proper alignment. If first column
-    is too long (&gt;45 chars), description moves to next line. Second column
-    wraps at description start column.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> Output file stream
-<br/>
-<i>first_column</i> Text for first column
-<br/>
-<i>second_column</i> Description for second column
-<br/>
-<i>first_col_len</i> Length of first column text (excluding ANSI codes)
-<br/>
-<i>term_width</i> Terminal width
-<br/>
-<i>continuation_indent_extra</i> Extra spaces for continuation lines (0 for
-  none, 2 for options)</div>
-<p class="Pp">Definition at line <b>220</b> of file <b>layout.c</b>.</p>
-<pre>221                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>layout.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">layout.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">layout.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          layout.h - Two-column layout helpers for help text and option
+          formatting.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LAYOUT_COLUMN_WIDTH</b> 75
+            <br />
+            #define <b>LAYOUT_DESCRIPTION_START_COL</b> 79
+            <br />
+            #define <b>LAYOUT_NARROW_TERMINAL_THRESHOLD</b> 55
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>layout_print_wrapped_description</b> (FILE *stream, const
+            char *text, int indent_width, int term_width, int
+            continuation_indent_extra)
+            <br />
+            Print text with wrapping and proper indentation. void
+            <b>layout_print_two_column_row</b> (FILE *stream, const char
+            *first_column, const char *second_column, int first_col_len, int
+            term_width, int continuation_indent_extra)
+            <br />
+            Print two-column row with automatic wrapping.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Two-column layout helpers for help text and option formatting.
+        </p>
+        <p class="Pp">
+          Provides reusable functions for formatting two-column layouts with
+          proper alignment and text wrapping. Used by both mode-level help and
+          binary-level help.
+        </p>
+        <p class="Pp">Definition in file <b>layout.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LAYOUT_COLUMN_WIDTH___75">
+            <a class="permalink" href="#_define_LAYOUT_COLUMN_WIDTH___75"
+              >#define LAYOUT_COLUMN_WIDTH 75</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum width for first column before description moves to next line
+          </p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>layout.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_calculate_max_col_width()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LAYOUT_DESCRIPTION_START_COL___79">
+            <a
+              class="permalink"
+              href="#_define_LAYOUT_DESCRIPTION_START_COL___79"
+              >#define LAYOUT_DESCRIPTION_START_COL 79</a
+            >
+          </h2>
+          <p class="Pp">
+            Starting column for description text (column 79 = 2 spaces + 75
+            chars + 2 spacing)
+          </p>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>layout.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LAYOUT_NARROW_TERMINAL_THRESHOLD___55">
+            <a
+              class="permalink"
+              href="#_define_LAYOUT_NARROW_TERMINAL_THRESHOLD___55"
+              >#define LAYOUT_NARROW_TERMINAL_THRESHOLD 55</a
+            >
+          </h2>
+          <p class="Pp">
+            Terminal width threshold for switching to vertical layout
+          </p>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>layout.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)"
+          >
+            <a
+              class="permalink"
+              href="#void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)"
+              >void layout_print_two_column_row (FILE * stream, const char *
+              first_column, const char * second_column, int first_col_len, int
+              term_width, int continuation_indent_extra)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print two-column row with automatic wrapping. Prints first column
+            text, then second column description with proper alignment. If first
+            column is too long (&gt;45 chars), description moves to next line.
+            Second column wraps at description start column.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> Output file stream
+            <br />
+            <i>first_column</i> Text for first column
+            <br />
+            <i>second_column</i> Description for second column
+            <br />
+            <i>first_col_len</i> Length of first column text (excluding ANSI
+            codes)
+            <br />
+            <i>term_width</i> Terminal width
+            <br />
+            <i>continuation_indent_extra</i> Extra spaces for continuation lines
+            (0 for none, 2 for options)
+          </div>
+          <p class="Pp">
+            Definition at line <b>220</b> of file <b>layout.c</b>.
+          </p>
+          <pre>
+221                                                                                 {
 222   if (!stream || !first_column || !second_column)
 223     return;
-224 
+224
 225   // Strip ANSI escape codes before calculating display width
 226   char *stripped = ansi_strip_escapes(first_column, strlen(first_column));
-227 
+227
 228   // Calculate actual display width of first column (accounts for UTF-8, excluding ANSI codes)
 229   int display_width = utf8_display_width(stripped ? stripped : first_column);
 230   if (display_width &lt; 0)
 231     display_width = first_col_len; // Fallback to provided value if available
-232 
+232
 233   SAFE_FREE(stripped);
-234 
+234
 235   // Use calculated first_col_len if provided (accounts for UTF-8 and ANSI codes),
 236   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
 237   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
@@ -149,25 +243,25 @@
 242   if (fixed_first_col_width &gt; max_first_col_width) {
 243     fixed_first_col_width = max_first_col_width;
 244   }
-245 
+245
 246   // Second column starts after first column (with 2 spaces padding)
 247   // This allows descriptions to be quite wide for wrapping
 248   int second_col_start = 2 + fixed_first_col_width + 2;
-249 
+249
 250   // At narrow terminal widths, force single-column layout
 251   bool force_single_column = (term_width &lt;= 90);
-252 
+252
 253   // Position where first column ends (including leading spaces)
 254   int first_col_end = 2 + display_width;
-255 
+255
 256   // Check if first column fits within the fixed width
 257   bool fits_in_first_column_width = (display_width &lt;= fixed_first_col_width);
-258 
+258
 259   // If first column fits within its width and we're not forcing single column, try same-line layout
 260   if (fits_in_first_column_width &amp;&amp; !force_single_column) {
 261     // Print first column
 262     fprintf(stream, &quot;  %s&quot;, first_column);
-263 
+263
 264     // Pad to second column start position
 265     int padding = second_col_start - first_col_end;
 266     if (padding &gt; 0) {
@@ -175,20 +269,20 @@
 268     } else {
 269       fprintf(stream, &quot; &quot;);
 270     }
-271 
+271
 272     // Print description with wrapping at second column position
 273     layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
 274     fprintf(stream, &quot;\n&quot;);
 275   } else if (force_single_column) {
 276     // Terminal too narrow, put description on next line with indent
 277     fprintf(stream, &quot;  %s\n&quot;, first_column);
-278 
+278
 279     // Only print description if it exists
 280     if (second_column &amp;&amp; second_column[0] != '\0') {
 281       int description_indent = 4;
 282       for (int i = 0; i &lt; description_indent; i++)
 283         fprintf(stream, &quot; &quot;);
-284 
+284
 285       layout_print_wrapped_description(stream, second_column, description_indent, term_width,
 286                                        continuation_indent_extra);
 287       fprintf(stream, &quot;\n&quot;);
@@ -197,7 +291,7 @@
 290     // First column overflows its fixed width - bump description to next line
 291     // Print first column as-is (it will overflow)
 292     fprintf(stream, &quot;  %s\n&quot;, first_column);
-293 
+293
 294     // Only print description if it exists
 295     if (second_column &amp;&amp; second_column[0] != '\0') {
 296       // Print description on next line at second column position, with wide wrapping
@@ -208,44 +302,64 @@
 301     }
 302   }
 303 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_strip_escapes()</b>, <b>display_width()</b>,
-    <b>layout_print_wrapped_description()</b>, <b>SAFE_FREE</b>, and
-    <b>utf8_display_width()</b>.</p>
-<p class="Pp">Referenced by
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, and
-    <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)"><a class="permalink" href="#void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)">void
-  layout_print_wrapped_description (FILE * stream, const char * text, int
-  indent_width, int term_width, int continuation_indent_extra)</a></h2>
-<p class="Pp">Print text with wrapping and proper indentation. Wraps text to fit
-    within terminal width, maintaining specified indentation for wrapped lines.
-    Applies color formatting to metadata labels.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> Output file stream
-<br/>
-<i>text</i> Plain text to print (may contain wrapping markers)
-<br/>
-<i>indent_width</i> Number of spaces to indent wrapped lines
-<br/>
-<i>term_width</i> Terminal width (0 for default 80)
-<br/>
-<i>continuation_indent_extra</i> Extra spaces to add to continuation lines (0
-  for none, 2 for options)</div>
-<p class="Pp">Definition at line <b>98</b> of file <b>layout.c</b>.</p>
-<pre>99                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_strip_escapes()</b>, <b>display_width()</b>,
+            <b>layout_print_wrapped_description()</b>, <b>SAFE_FREE</b>, and
+            <b>utf8_display_width()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_config_print_usage()</b>, and
+            <b>options_print_help_for_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)"
+          >
+            <a
+              class="permalink"
+              href="#void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)"
+              >void layout_print_wrapped_description (FILE * stream, const char
+              * text, int indent_width, int term_width, int
+              continuation_indent_extra)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print text with wrapping and proper indentation. Wraps text to fit
+            within terminal width, maintaining specified indentation for wrapped
+            lines. Applies color formatting to metadata labels.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> Output file stream
+            <br />
+            <i>text</i> Plain text to print (may contain wrapping markers)
+            <br />
+            <i>indent_width</i> Number of spaces to indent wrapped lines
+            <br />
+            <i>term_width</i> Terminal width (0 for default 80)
+            <br />
+            <i>continuation_indent_extra</i> Extra spaces to add to continuation
+            lines (0 for none, 2 for options)
+          </div>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>layout.c</b>.
+          </p>
+          <pre>
+99                                                                      {
 100   if (!text || !stream)
 101     return;
-102 
+102
 103   // Default terminal width if not specified
 104   if (term_width &lt;= 0)
 105     term_width = 80;
-106 
+106
 107   // Available width for text after indentation, capped at 130 for readability
 108   // Account for continuation lines having extra indent, so reduce available width accordingly
 109   // This allows the description column itself to be up to 130 chars wide,
@@ -256,12 +370,12 @@
 114     available_width = 130;
 115   if (available_width &lt; 20)
 116     available_width = 20;
-117 
+117
 118   const char *line_start = text;
 119   const char *last_space = NULL;
 120   const char *p = text;
 121   bool inside_metadata = false;
-122 
+122
 123   while (*p) {
 124     // Check for explicit newline
 125     if (*p == '\n') {
@@ -272,7 +386,7 @@
 130         SAFE_STRNCPY(seg, line_start, text_len + 1);
 131         layout_print_colored_segment(stream, seg);
 132       }
-133 
+133
 134       fprintf(stream, &quot;\n&quot;);
 135       if (*(p + 1)) {
 136         // Continuation lines get extra indent if specified
@@ -286,19 +400,19 @@
 144       inside_metadata = false;
 145       continue;
 146     }
-147 
+147
 148     // Check for start of metadata blocks (must check before space tracking)
 149     // Use helper that accounts for ANSI codes in the metadata
 150     if (!inside_metadata &amp;&amp; is_metadata_start(p)) {
 151       inside_metadata = true;
 152     }
-153 
+153
 154     // Check for end of metadata blocks - always exit on )
 155     // We'll re-enter when we see the next metadata marker
 156     if (inside_metadata &amp;&amp; *p == ')') {
 157       inside_metadata = false;
 158     }
-159 
+159
 160     // Track spaces for word wrapping, including inside metadata blocks
 161     // Prefer breaks before metadata blocks by updating last_space even if we already have one
 162     if (*p == ' ') {
@@ -310,21 +424,21 @@
 168         last_space = p;
 169       }
 170     }
-171 
+171
 172     // Decode UTF-8 character length
 173     int char_bytes = utf8_next_char_bytes(p, strlen(p));
-174 
+174
 175     if (char_bytes &lt;= 0) {
 176       // Invalid UTF-8 or end of string, stop
 177       break;
 178     }
-179 
+179
 180     // Advance to next character first
 181     p += char_bytes;
-182 
+182
 183     // Calculate actual display width from line_start to current position (excluding ANSI codes)
 184     int actual_width = calculate_segment_display_width(line_start, p - line_start);
-185 
+185
 186     // Check if we need to wrap
 187     if (actual_width &gt;= available_width &amp;&amp; last_space &amp;&amp; last_space &gt; line_start) {
 188       // Print text up to break point with colors applied
@@ -332,20 +446,20 @@
 190       char seg[BUFFER_SIZE_MEDIUM];
 191       SAFE_STRNCPY(seg, line_start, text_len + 1);
 192       layout_print_colored_segment(stream, seg);
-193 
+193
 194       fprintf(stream, &quot;\n&quot;);
 195       // Continuation lines get extra indent if specified
 196       int continuation_indent = indent_width + continuation_indent_extra;
 197       for (int i = 0; i &lt; continuation_indent; i++)
 198         fprintf(stream, &quot; &quot;);
-199 
+199
 200       p = last_space + 1;
 201       line_start = p;
 202       last_space = NULL;
 203       continue;
 204     }
 205   }
-206 
+206
 207   // Print remaining text
 208   if (p &gt; line_start) {
 209     char seg[BUFFER_SIZE_MEDIUM];
@@ -354,24 +468,30 @@
 212     layout_print_colored_segment(stream, seg);
 213   }
 214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_MEDIUM</b>, <b>SAFE_STRNCPY</b>, and
-    <b>utf8_next_char_bytes()</b>.</p>
-<p class="Pp">Referenced by <b>layout_print_two_column_row()</b>, and
-    <b>options_print_help_for_mode()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BUFFER_SIZE_MEDIUM</b>, <b>SAFE_STRNCPY</b>, and
+            <b>utf8_next_char_bytes()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>layout_print_two_column_row()</b>, and
+            <b>options_print_help_for_mode()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

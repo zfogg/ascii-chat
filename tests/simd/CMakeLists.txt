@@ -10,7 +10,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
     set(ASCIICHAT_IS_ARM64 TRUE)
     add_compile_options(-march=armv8-a)
 endif()
+add_library(asciichat-project-options INTERFACE)
 include("${REPO_ROOT}/cmake/compiler/SIMD.cmake")
+link_libraries(asciichat-project-options)
 add_executable(simd-test test_dispatch.c
     "${REPO_ROOT}/lib/platform/cpu.c"
     "${REPO_ROOT}/lib/video/ascii/simd/dispatch.c")
@@ -58,7 +60,7 @@ if(TEST_EMISSION)
         lib/video/ascii/ascii.c
         lib/video/terminal/ansi.c
         lib/video/ascii/simd/dispatch.c lib/platform/cpu.c
-        lib/lifecycle.c lib/atomic.c lib/platform/rwlock.c
+        deps/libplatform/lib/atomic.c lib/platform/rwlock.c
         lib/platform/posix/rwlock.c lib/platform/posix/mutex.c
         lib/platform/posix/string.c lib/platform/posix/system.c lib/platform/system.c lib/util/time.c)
     foreach(source IN LISTS emission_sources)
@@ -98,6 +100,12 @@ if(TEST_EMISSION)
     add_executable(emission-benchmark benchmark_emission.c emission_runtime.c)
     get_target_property(emission_target_sources emission-test SOURCES)
     list(FILTER emission_target_sources EXCLUDE REGEX "ascii_emission_test.c|emission_runtime.c")
+    add_executable(glyph-benchmark benchmark_glyph.c emission_runtime.c ${emission_target_sources})
+    target_include_directories(glyph-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+    target_compile_definitions(glyph-benchmark PRIVATE NDEBUG _GNU_SOURCE)
+    target_compile_options(glyph-benchmark PRIVATE -ffunction-sections -fdata-sections)
+    target_link_options(glyph-benchmark PRIVATE -Wl,--gc-sections)
+    target_link_libraries(glyph-benchmark PRIVATE m pthread)
     add_executable(halfblock-benchmark benchmark_halfblock.c emission_runtime.c ${emission_target_sources})
     target_include_directories(halfblock-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
     target_compile_definitions(halfblock-benchmark PRIVATE NDEBUG _GNU_SOURCE)

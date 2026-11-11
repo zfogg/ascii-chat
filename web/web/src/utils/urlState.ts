@@ -45,6 +45,12 @@ function readFields(
             );
     } else {
       result[name] = readScalar(params.get(key), initial);
+      if (
+        name === "renderer" &&
+        result[name] !== "luminance" &&
+        result[name] !== "glyph"
+      )
+        result[name] = initial;
       if (name === "zalgo" || name === "renderMode") {
         const level = result[name];
         if (
@@ -152,6 +158,9 @@ export function migrateLegacyUrlState(): void {
       "colorMode",
       "renderMode",
       "colorFilter",
+      "renderer",
+      "stabilize",
+      "paletteExplicit",
       "palette",
       "paletteChars",
       "matrixRain",

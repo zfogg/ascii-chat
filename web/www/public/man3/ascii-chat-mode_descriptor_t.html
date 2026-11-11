@@ -1,111 +1,173 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mode_descriptor_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mode_descriptor_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mode_descriptor_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mode_descriptor_t - Metadata for a mode.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include
-    &lt;include/ascii-chat/options/registry/mode_defaults.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">const char * <b>name</b>
-  <br/>
-  const char * <b>description</b>
-  <br/>
-  <b>mode_entry_point_t</b> <b>entry_point</b>
-  <br/>
-  <b>asciichat_mode_t</b> <b>mode</b>
-  <br/>
-  const char * <b>group</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Metadata for a mode.</p>
-<p class="Pp">Describes a mode including its name, user-friendly description,
-    and category grouping (server-like or client-like).</p>
-<p class="Pp">Definition at line <b>366</b> of file <b>main.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_mode_descriptor_t::description"><a class="permalink" href="#const_char_*_mode_descriptor_t::description">const
-  char * mode_descriptor_t::description</a></h2>
-<p class="Pp">Definition at line <b>368</b> of file <b>main.c</b>.</p>
-<p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mode_entry_point_t</b> mode_descriptor_t::entry_point</h2>
-<p class="Pp">Definition at line <b>369</b> of file <b>main.c</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_mode_descriptor_t::group"><a class="permalink" href="#const_char*_mode_descriptor_t::group">const
-  char* mode_descriptor_t::group</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>mode_defaults.h</b>.</p>
-<p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mode_t</b> mode_descriptor_t::mode</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>mode_defaults.h</b>.</p>
-<p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_mode_descriptor_t::name"><a class="permalink" href="#const_char_*_mode_descriptor_t::name">const
-  char * mode_descriptor_t::name</a></h2>
-<p class="Pp">Definition at line <b>367</b> of file <b>main.c</b>.</p>
-<p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mode_descriptor_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mode_descriptor_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mode_descriptor_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mode_descriptor_t - Metadata for a mode.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/options/registry/mode_defaults.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>name</b>
+            <br />
+            const char * <b>description</b>
+            <br />
+            <b>mode_entry_point_t</b> <b>entry_point</b>
+            <br />
+            <b>asciichat_mode_t</b> <b>mode</b>
+            <br />
+            const char * <b>group</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Metadata for a mode.</p>
+        <p class="Pp">
+          Describes a mode including its name, user-friendly description, and
+          category grouping (server-like or client-like).
+        </p>
+        <p class="Pp">Definition at line <b>391</b> of file <b>main.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_mode_descriptor_t::description">
+            <a
+              class="permalink"
+              href="#const_char_*_mode_descriptor_t::description"
+              >const char * mode_descriptor_t::description</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>393</b> of file <b>main.c</b>.</p>
+          <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>mode_entry_point_t</b> mode_descriptor_t::entry_point
+          </h2>
+          <p class="Pp">Definition at line <b>394</b> of file <b>main.c</b>.</p>
+          <p class="Pp">Referenced by <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_mode_descriptor_t::group">
+            <a class="permalink" href="#const_char*_mode_descriptor_t::group"
+              >const char* mode_descriptor_t::group</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>mode_defaults.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_mode_t</b> mode_descriptor_t::mode</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>mode_defaults.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_mode_descriptor_t::name">
+            <a class="permalink" href="#const_char_*_mode_descriptor_t::name"
+              >const char * mode_descriptor_t::name</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>392</b> of file <b>main.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>get_modes_by_group()</b>, and <b>main()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

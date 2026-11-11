@@ -7,6 +7,8 @@ import {
 } from "../../../packages/shared/src/wasm/mirror";
 vi.mock("../../../packages/shared/src/wasm/mirror", () => ({
   isWasmReady: () => true,
+  resetRenderStabilizer: vi.fn(),
+  cleanupRenderSession: vi.fn(),
   convertFrameToAscii: vi.fn(() => "rain"),
   renderAudioVisualization: vi.fn(() => "silence"),
   submitAudioVisualizationSamples: vi.fn(),

@@ -1,1367 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>crypto.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">crypto.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">crypto.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">crypto.h - ascii-chat Client Cryptography Handler Interface</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>client_crypto_set_mode</b> (<b>uint8_t</b> mode)
-  <br/>
-  Set crypto mode for handshake (encryption + authentication). int
-    <b>client_crypto_init</b> (void)
-  <br/>
-  Initialize client crypto handshake. int <b>client_crypto_handshake</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  Perform crypto handshake with server. <b>bool</b>
-    <b>crypto_client_is_ready</b> (void)
-  <br/>
-  Check if crypto handshake is ready. const <b>crypto_context_t</b> *
-    <b>crypto_client_get_context</b> (void)
-  <br/>
-  Get crypto context for encryption/decryption. int
-    <b>crypto_client_encrypt_packet</b> (const <b>uint8_t</b> *plaintext, size_t
-    plaintext_len, <b>uint8_t</b> *ciphertext, size_t ciphertext_size, size_t
-    *ciphertext_len)
-  <br/>
-  Encrypt a packet for transmission. int <b>crypto_client_decrypt_packet</b>
-    (const <b>uint8_t</b> *ciphertext, size_t ciphertext_len, <b>uint8_t</b>
-    *plaintext, size_t plaintext_size, size_t *plaintext_len)
-  <br/>
-  Decrypt a received packet. void <b>crypto_client_cleanup</b> (void)
-  <br/>
-  Cleanup crypto client resources. <b>bool</b> <b>crypto_client_should_rekey</b>
-    (void)
-  <br/>
-  Check if session rekeying should be triggered. int
-    <b>crypto_client_initiate_rekey</b> (void)
-  <br/>
-  Initiate session rekeying (client-initiated). int
-    <b>crypto_client_process_rekey_request</b> (const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  Process received REKEY_REQUEST packet from server. int
-    <b>crypto_client_send_rekey_response</b> (void)
-  <br/>
-  Send REKEY_RESPONSE packet to server. int
-    <b>crypto_client_process_rekey_response</b> (const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  Process received REKEY_RESPONSE packet from server. int
-    <b>crypto_client_send_rekey_complete</b> (void)
-  <br/>
-  Send REKEY_COMPLETE packet to server and commit to new key.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Client Cryptography Handler Interface</p>
-<p class="Pp">Provides client-side cryptographic handshake coordination, key
-    loading, and encryption context management for secure server
-  communication.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Cryptographic_Protocol"><a class="permalink" href="#Cryptographic_Protocol">Cryptographic
-  Protocol</a></h2>
-<p class="Pp"><b>Key Exchange</b>: X25519 elliptic curve Diffie-Hellman
-    (ephemeral key pairs) <b>Encryption</b>: XSalsa20-Poly1305 AEAD cipher
-    (authenticated encryption) <b>Authentication</b>: Ed25519 digital signatures
-    (optional, can be passwordless) <b>KDF</b>: Argon2i (password-based key
-    derivation, if using password auth)</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Authentication_Modes"><a class="permalink" href="#Authentication_Modes">Authentication
-  Modes</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Ephemeral DH</b> (default): Encrypted but no identity verification</dd>
-  <dt>2.</dt>
-  <dd><b>Password Authentication</b>: Shared password + PBKDF &#x2192; session
-      key</dd>
-  <dt>3.</dt>
-  <dd><b>SSH Key Authentication</b>: Ed25519 signatures + known_hosts
-      verification</dd>
-  <dt>4.</dt>
-  <dd><b>Passwordless ECDH</b>: Encryption only, no authentication</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Handshake_Flow"><a class="permalink" href="#Handshake_Flow">Handshake
-  Flow</a></h2>
-<pre>Client                                  Server
-<br/>
-  |------ CLIENT_HELLO (pubkey) -------&gt;|
-<br/>
-  |                                      |
-<br/>
-  |&lt;----- SERVER_HELLO (pubkey) --------|
-<br/>
-  |                                      |
-<br/>
-  | [Derive shared secret via ECDH]      |
-<br/>
-  |                                      |
-<br/>
-  |&lt;---- SERVER_AUTH (signature) -------|
-<br/>
-  |                                      |
-<br/>
-  |--- CLIENT_AUTH (signature/pass) ---&gt;|
-<br/>
-  |                                      |
-<br/>
-  |&lt;---- SERVER_READY (encrypted) ------|
-<br/>
-  |                                      |
-<br/>
-  | [Encryption ready for payload]      |</pre>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">topic_client_crypto &quot;Cryptography Details&quot;
-<p class="Pp"></p>
-<p class="Pp">topic_client_connection &quot;Connection Management (which calls
-    handshake)&quot;</p>
-</div>
-<p class="Pp">Definition in file <b>src/client/crypto.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_client_crypto_handshake_("><a class="permalink" href="#int_client_crypto_handshake_(">int
-  client_crypto_handshake (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Perform crypto handshake with server. Executes the complete
-    cryptographic handshake protocol with the server, including protocol
-    negotiation, key exchange, and authentication.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Handshake Steps</b>:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Send CLIENT_HELLO with ephemeral public key</dd>
-  <dt>2.</dt>
-  <dd>Receive SERVER_HELLO with server's ephemeral public key</dd>
-  <dt>3.</dt>
-  <dd>Derive shared secret using ECDH (both sides)</dd>
-  <dt>4.</dt>
-  <dd>Receive SERVER_AUTH (server's identity proof)</dd>
-  <dt>5.</dt>
-  <dd>Verify server's signature against known_hosts or provided key</dd>
-  <dt>6.</dt>
-  <dd>Send CLIENT_AUTH (client's identity proof or password)</dd>
-  <dt>7.</dt>
-  <dd>Server verifies client authentication</dd>
-  <dt>8.</dt>
-  <dd>Encryption keys ready for payload exchange</dd>
-</dl>
-<p class="Pp"><b>Error Handling</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>Protocol Error</b>: Invalid format, timeout, socket error &#x2192;
-      CONNECTION_ERROR_GENERIC</li>
-  <li><b>Auth Failure</b>: Invalid password, wrong signature &#x2192;
-      CONNECTION_ERROR_AUTH_FAILED</li>
-  <li><b>Host Key Failure</b>: Server key not in known_hosts &#x2192;
-      CONNECTION_ERROR_HOST_KEY_FAILED</li>
-</ul>
-<p class="Pp"><b>Retryability</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>CONNECTION_ERROR_GENERIC</b><b>: Retryable (network issue)</b></li>
-  <li><b>CONNECTION_ERROR_AUTH_FAILED</b><b>: Non-retryable (wrong
-      password/key)</b></li>
-  <li><b>CONNECTION_ERROR_HOST_KEY_FAILED</b><b>: Non-retryable (need
-      known_hosts update)</b></li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>socket</i> Connected TCP socket to server (must be
-  connected before calling)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Connection status:
-<ul class="Bl-bullet">
-  <li>0: Handshake successful, encryption ready</li>
-  <li>CONNECTION_ERROR_GENERIC: Network or protocol error (retryable)</li>
-  <li>CONNECTION_ERROR_AUTH_FAILED: Authentication failed (non-retryable)</li>
-  <li>CONNECTION_ERROR_HOST_KEY_FAILED: Host key verification failed
-      (non-retryable)</li>
-</ul>
-</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Called by <b>server_connection_establish()</b> after TCP
-  connection succeeds. If this fails with AUTH_FAILED or HOST_KEY_FAILED, the
-  connection attempt is abandoned and the main thread does NOT retry.</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>client_crypto_init</b> &quot;Initialize crypto
-  context&quot;
-<p class="Pp"></p>
-<p class="Pp"><b>server_connection_establish</b> &quot;Which calls this
-    handshake&quot;</p>
-</div>
-<p class="Pp">Perform crypto handshake with server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Client's persistent transport (wraps the
-  connected socket)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>435</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>435                                                          {
-436   // If client has --no-encrypt, skip handshake entirely
-437   if (GET_OPTION(no_encrypt)) {
-438     log_debug(&quot;Client has --no-encrypt, skipping crypto handshake&quot;);
-439     return 0;
-440   }
-441 
-442   // If we reach here, crypto must be initialized for encryption
-443   if (!lifecycle_is_initialized(&amp;g_crypto_lc)) {
-444     log_error(&quot;Crypto not initialized but server requires encryption&quot;);
-445     log_error(&quot;Server requires encrypted connection but client has no encryption configured&quot;);
-446     log_error(&quot;Use --key to specify a client key or --password for password authentication&quot;);
-447     return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
-448   }
-449 
-450   log_debug(&quot;Starting crypto handshake with server...&quot;);
-451 
-452   START_TIMER(&quot;client_crypto_handshake&quot;);
-453 
-454   // Step 0a: Send protocol version to server
-455   protocol_version_packet_t client_version = {0};
-456   client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
-457   client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-458   client_version.supports_encryption = g_crypto_mode;    // Send crypto mode bitmask
-459   client_version.compression_algorithms = 0;             // No compression for now
-460   client_version.compression_threshold = 0;
-461   client_version.feature_flags = 0;
-462 
-463   int result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &amp;client_version,
-464                                           sizeof(client_version), 0);
-465   if (result != 0) {
-466     log_error(&quot;Failed to send protocol version to server&quot;);
-467     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-468     return -1;
-469   }
-470   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Protocol version sent successfully&quot;);
-471 
-472   // Step 0b: Receive server's protocol version
-473   packet_type_t packet_type;
-474   void *payload = NULL;
-475   void *alloc_buffer = NULL;
-476   size_t payload_len = 0;
-477 
-478   result = packet_receive_via_transport(transport, &amp;packet_type, &amp;payload, &amp;payload_len, &amp;alloc_buffer);
-479   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-480     log_error(&quot;Failed to receive server protocol version (got type %u)&quot;, packet_type);
-481     log_error(&quot;Packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)&quot;, packet_type, packet_type,
-482               PACKET_TYPE_PROTOCOL_VERSION, PACKET_TYPE_PROTOCOL_VERSION);
-483     log_error(&quot;This suggests a protocol mismatch or packet corruption&quot;);
-484     log_error(&quot;Raw packet type bytes: %02x %02x %02x %02x&quot;, (packet_type &gt;&gt; 0) &amp; 0xFF, (packet_type &gt;&gt; 8) &amp; 0xFF,
-485               (packet_type &gt;&gt; 16) &amp; 0xFF, (packet_type &gt;&gt; 24) &amp; 0xFF);
-486     if (alloc_buffer) {
-487       buffer_pool_free(NULL, alloc_buffer, 0);
-488     }
-489     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-490     return -1;
-491   }
-492 
-493   if (payload_len != sizeof(protocol_version_packet_t)) {
-494     log_error(&quot;Invalid protocol version packet size: %zu, expected %zu&quot;, payload_len,
-495               sizeof(protocol_version_packet_t));
-496     buffer_pool_free(NULL, alloc_buffer, 0);
-497     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-498     return -1;
-499   }
-500 
-501   protocol_version_packet_t server_version;
-502   memcpy(&amp;server_version, payload, sizeof(protocol_version_packet_t));
-503   buffer_pool_free(NULL, alloc_buffer, 0);
-504 
-505   // Convert from network byte order
-506   uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
-507   uint16_t server_proto_revision = NET_TO_HOST_U16(server_version.protocol_revision);
-508   uint8_t server_mode = server_version.supports_encryption;
-509 
-510   log_info(&quot;Server protocol version: %u.%u (crypto mode: 0x%02x)&quot;, server_proto_version, server_proto_revision,
-511            server_mode);
-512 
-513   // Verify server echoed our mode
-514   if (server_mode != g_crypto_mode) {
-515     log_error(&quot;Server mode mismatch: got 0x%02x, expected 0x%02x&quot;, server_mode, g_crypto_mode);
-516     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-517     return CONNECTION_ERROR_AUTH_FAILED;
-518   }
-519 
-520   // Step 0c: Send crypto capabilities to server
-521   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Sending crypto capabilities&quot;);
-522   crypto_capabilities_packet_t client_caps = {0};
-523   client_caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
-524   client_caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
-525   client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
-526   client_caps.requires_verification = 0; // Client doesn't require server verification (uses known_hosts)
-527   client_caps.preferred_kex = KEX_ALGO_X25519;
-528   client_caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
-529   client_caps.preferred_cipher =
-530       ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
-531 
-532   result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &amp;client_caps,
-533                                      sizeof(client_caps), 0);
-534   if (result != 0) {
-535     log_error(&quot;Failed to send crypto capabilities to server&quot;);
-536     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-537     return -1;
-538   }
-539   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Crypto capabilities sent successfully&quot;);
-540 
-541   // Step 0d: Receive server's crypto parameters
-542   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Receiving server crypto parameters&quot;);
-543   payload = NULL;
-544   alloc_buffer = NULL;
-545   payload_len = 0;
-546 
-547   result = packet_receive_via_transport(transport, &amp;packet_type, &amp;payload, &amp;payload_len, &amp;alloc_buffer);
-548   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
-549     log_error(&quot;Failed to receive server crypto parameters (got type %u)&quot;, packet_type);
-550     if (alloc_buffer) {
-551       buffer_pool_free(NULL, alloc_buffer, 0);
-552     }
-553     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-554     return -1;
-555   }
-556 
-557   if (payload_len != sizeof(crypto_parameters_packet_t)) {
-558     log_error(&quot;Invalid crypto parameters packet size: %zu, expected %zu&quot;, payload_len,
-559               sizeof(crypto_parameters_packet_t));
-560     buffer_pool_free(NULL, alloc_buffer, 0);
-561     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-562     return -1;
-563   }
-564 
-565   crypto_parameters_packet_t server_params;
-566   memcpy(&amp;server_params, payload, sizeof(crypto_parameters_packet_t));
-567   buffer_pool_free(NULL, alloc_buffer, 0);
-568 
-569   // Convert from network byte order
-570   uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
-571   uint16_t auth_pubkey_size = NET_TO_HOST_U16(server_params.auth_public_key_size);
-572   uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
-573   uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
-574 
-575   log_debug(&quot;Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, &quot;
-576             &quot;secret_size=%u, verification=%u)&quot;,
-577             server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
-578             auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
-579   log_debug(&quot;Raw server_params.kex_public_key_size = %u (network byte order)&quot;, server_params.kex_public_key_size);
-580 
-581   // Set the crypto parameters in the handshake context
-582   result = crypto_handshake_set_parameters(&amp;g_crypto_ctx, &amp;server_params);
-583   if (result != ASCIICHAT_OK) {
-584     FATAL(result, &quot;Failed to set crypto parameters&quot;);
-585   }
-586 
-587   // Store verification flag - server will verify client identity (whitelist check)
-588   // This is independent of whether server provides its own identity
-589   if (server_params.verification_enabled) {
-590     g_crypto_ctx.server_uses_client_auth = true;
-591     g_crypto_ctx.require_client_auth = true;
-592     log_info(&quot;Server will verify client identity (whitelist enabled)&quot;);
-593   }
-594 
-595   // Validate that server chose algorithms we support
-596   if (server_params.selected_kex != KEX_ALGO_X25519) {
-597     log_error(&quot;Server selected unsupported KEX algorithm: %u&quot;, server_params.selected_kex);
-598     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-599     return CONNECTION_ERROR_AUTH_FAILED;
-600   }
-601 
-602   // Validate cipher selection based on negotiated mode
-603   bool expect_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
-604   if (expect_cipher &amp;&amp; server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
-605     log_error(&quot;Server selected unsupported cipher algorithm: %u&quot;, server_params.selected_cipher);
-606     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-607     return CONNECTION_ERROR_AUTH_FAILED;
-608   }
-609   if (!expect_cipher &amp;&amp; server_params.selected_cipher != CIPHER_ALGO_NONE) {
-610     log_error(&quot;Server chose cipher %u but client requested no encryption&quot;, server_params.selected_cipher);
-611     STOP_TIMER(&quot;client_crypto_handshake&quot;);
-612     return CONNECTION_ERROR_AUTH_FAILED;
-613   }
-614 
-615   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully&quot;);
-616 
-617   // Step 0.5: Send CRYPTO_CLIENT_HELLO with expected server key (multi-key support)
-618   // This allows the server to select the correct identity key from g_server_identity_keys[]
-619   if (g_crypto_ctx.verify_server_key &amp;&amp; strlen(g_crypto_ctx.expected_server_key) &gt; 0) {
-620     log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Sending expected server key to support multi-key selection&quot;);
-621 
-622     // Parse expected server key to get the Ed25519 public key
-623     public_key_t expected_keys[MAX_CLIENTS];
-624     size_t num_expected_keys = 0;
-625 
-626     if (parse_public_keys(g_crypto_ctx.expected_server_key, expected_keys, &amp;num_expected_keys, MAX_CLIENTS) == 0 &amp;&amp;
-627         num_expected_keys &gt; 0) {
-628       // Send the first expected key (client should only have one expected server key)
-629       // Format: 32-byte Ed25519 public key
-630       log_debug(&quot;Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection&quot;);
-631       result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key,
-632                                          ED25519_PUBLIC_KEY_SIZE, 0);
-633 
-634       if (result != ASCIICHAT_OK) {
-635         FATAL(result, &quot;Failed to send CRYPTO_CLIENT_HELLO packet&quot;);
-636       }
-637 
-638       // Log the key fingerprint for debugging
-639       char hex_key[65];
-640       pubkey_to_hex(expected_keys[0].key, hex_key);
-641       log_debug(&quot;Sent expected server key: %s&quot;, hex_key);
-642     } else {
-643       log_warn(&quot;Failed to parse expected server key '%s' - server will use default key&quot;,
-644                g_crypto_ctx.expected_server_key);
-645     }
-646   }
-647 
-648   // Step 1: Receive server's public key and send our public key
-649   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Starting key exchange&quot;);
-650   {
-651     packet_type_t packet_type;
-652     void *payload = NULL;
-653     void *alloc_buffer = NULL;
-654     size_t payload_len = 0;
-655     int recv_result = packet_receive_via_transport(transport, &amp;packet_type, &amp;payload, &amp;payload_len, &amp;alloc_buffer);
-656     if (recv_result != ASCIICHAT_OK) {
-657       if (alloc_buffer) {
-658         buffer_pool_free(NULL, alloc_buffer, 0);
-659       }
-660       FATAL(recv_result, &quot;Failed to receive KEY_EXCHANGE_INIT from server&quot;);
-661     }
-662     // Client handshake functions consume the received payload buffer
-663     result = crypto_handshake_client_key_exchange(&amp;g_crypto_ctx, transport, packet_type, payload, payload_len);
-664     buffer_pool_free(NULL, alloc_buffer, 0);
-665   }
-666   if (result != ASCIICHAT_OK) {
-667 #ifdef _WIN32
-668     // On Windows: Cleanup capture resources before exiting to prevent Media Foundation threads from hanging exit()
-669     // Media Foundation creates background COM threads that can block exit() if not properly shut down
-670     capture_cleanup();
-671 #endif
-672     FATAL(result, &quot;Crypto key exchange failed&quot;);
-673   }
-674   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully&quot;);
-675 
-676   // SECURITY: Warn when server requires client verification but client has no identity key
-677   bool client_has_identity = (g_crypto_ctx.client_public_key.type == KEY_TYPE_ED25519);
-678 
-679   if (g_crypto_ctx.require_client_auth &amp;&amp; !client_has_identity) {
-680     // Server requires client verification but client has no identity key
-681     log_warn(&quot;Server requires client verification but client has no identity key&quot;);
-682 
-683     // Check if we're running interactively (stdin is a terminal)
-684     // In debug builds with CLAUDECODE, skip interactive prompts (LLM can't type)
-685 #ifndef NDEBUG
-686     bool skip_interactive = platform_getenv(&quot;CLAUDECODE&quot;) != NULL;
-687 #else
-688     bool skip_interactive = false;
-689 #endif
-690     if (!skip_interactive &amp;&amp; platform_is_interactive()) {
-691       // Interactive mode - prompt user for confirmation
-692       // Lock terminal for the warning message
-693       bool previous_terminal_state = log_lock_terminal();
-694 
-695       log_plain(&quot;\n&quot;
-696                 &quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
-697                 &quot;@  WARNING: CLIENT AUTHENTICATION REQUIRED                                    @\n&quot;
-698                 &quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
-699                 &quot;\n&quot;
-700                 &quot;The server requires client authentication (--client-keys enabled),\n&quot;
-701                 &quot;but you have not provided a client identity key with --key.\n&quot;
-702                 &quot;\n&quot;
-703                 &quot;To connect to this server, you need to:\n&quot;
-704                 &quot;  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n&quot;
-705                 &quot;  2. Add the public key to the server's --client-keys list\n&quot;
-706                 &quot;  3. Connect with: ascii-chat client --key /path/to/private/key\n&quot;);
-707 
-708       // Unlock before prompt (prompt_yes_no handles its own terminal locking)
-709       log_unlock_terminal(previous_terminal_state);
-710 
-711       // Prompt user - default is No since this will likely fail
-712       if (!platform_prompt_yes_no(&quot;Do you want to continue anyway (this will likely fail)&quot;, false)) {
-713         log_plain(&quot;Connection aborted by user.&quot;);
-714         exit(0); // User declined - exit cleanly
-715       }
-716 
-717       log_plain(&quot;Warning: Continuing without client identity key (connection may fail).\n&quot;);
-718     } else {
-719       // Non-interactive mode (background/script) - just log warning and continue
-720       log_warn(&quot;Non-interactive mode: Continuing without client identity key (connection may fail)&quot;);
-721     }
-722   }
-723 
-724   // Step 2: Receive auth challenge and send response
-725   log_debug(&quot;CLIENT_CRYPTO: Sending auth response to server...&quot;);
-726   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Starting auth response&quot;);
-727   {
-728     packet_type_t packet_type;
-729     void *payload = NULL;
-730     void *alloc_buffer = NULL;
-731     size_t payload_len = 0;
-732     int recv_result = packet_receive_via_transport(transport, &amp;packet_type, &amp;payload, &amp;payload_len, &amp;alloc_buffer);
-733     if (recv_result != ASCIICHAT_OK) {
-734       if (alloc_buffer) {
-735         buffer_pool_free(NULL, alloc_buffer, 0);
-736       }
-737       FATAL(recv_result, &quot;Failed to receive auth challenge from server&quot;);
-738     }
-739     // Client handshake functions consume the received payload buffer
-740     result = crypto_handshake_client_auth_response(&amp;g_crypto_ctx, transport, packet_type, payload, payload_len);
-741     buffer_pool_free(NULL, alloc_buffer, 0);
-742   }
-743   if (result != ASCIICHAT_OK) {
-744     FATAL(result, &quot;Crypto authentication failed&quot;);
-745   }
-746   log_debug(&quot;CLIENT_CRYPTO: Auth response sent successfully&quot;);
-747   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Auth response completed successfully&quot;);
-748 
-749   // Check if handshake completed during auth response (no authentication needed)
-750   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
-751     // Propagate encryption flag to crypto context
-752     g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
-753     // Set crypto context on the persistent transport now that handshake is complete
-754     transport-&gt;crypto_ctx = (crypto_context_t *)crypto_client_get_context();
-755     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, &quot;client_crypto_handshake&quot;,
-756                        &quot;Crypto handshake completed successfully (no authentication)&quot;);
-757     return 0;
-758   }
-759 
-760   // Step 3: Receive handshake complete message
-761   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message&quot;);
-762   {
-763     packet_type_t packet_type;
-764     void *payload = NULL;
-765     void *alloc_buffer = NULL;
-766     size_t payload_len = 0;
-767     int recv_result = packet_receive_via_transport(transport, &amp;packet_type, &amp;payload, &amp;payload_len, &amp;alloc_buffer);
-768     if (recv_result != ASCIICHAT_OK) {
-769       if (alloc_buffer) {
-770         buffer_pool_free(NULL, alloc_buffer, 0);
-771       }
-772       FATAL(recv_result, &quot;Failed to receive handshake completion from server&quot;);
-773     }
-774     // Client handshake functions consume the received payload buffer
-775     result = crypto_handshake_client_complete(&amp;g_crypto_ctx, transport, packet_type, payload, payload_len);
-776     buffer_pool_free(NULL, alloc_buffer, 0);
-777   }
-778   if (result != ASCIICHAT_OK) {
-779     FATAL(result, &quot;Crypto handshake completion failed&quot;);
-780   }
-781 
-782   // Propagate encryption flag to crypto context
-783   g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
-784   // Set crypto context on the persistent transport now that handshake is complete
-785   transport-&gt;crypto_ctx = (crypto_context_t *)crypto_client_get_context();
-786 
-787   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, &quot;client_crypto_handshake&quot;, &quot;Crypto handshake completed successfully&quot;);
-788   log_debug(&quot;CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d&quot;, g_crypto_ctx.state);
-789   return 0;
-790 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CRYPTO_HAS_AUTH</b>,
-    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ASCIICHAT_OK</b>,
-    <b>AUTH_ALGO_ED25519</b>, <b>AUTH_ALGO_NONE</b>,
-    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
-    <b>buffer_pool_free()</b>, <b>capture_cleanup()</b>,
-    <b>CIPHER_ALGO_NONE</b>, <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
-    <b>protocol_version_packet_t::compression_algorithms</b>,
-    <b>protocol_version_packet_t::compression_threshold</b>,
-    <b>CONNECTION_ERROR_AUTH_FAILED</b>, <b>crypto_client_get_context()</b>,
-    <b>acip_transport::crypto_ctx</b>,
-    <b>crypto_handshake_client_auth_response()</b>,
-    <b>crypto_handshake_client_complete()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>CRYPTO_HANDSHAKE_READY</b>, <b>crypto_handshake_set_parameters()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>FATAL</b>,
-    <b>protocol_version_packet_t::feature_flags</b>, <b>g_crypto_ctx</b>,
-    <b>GET_OPTION</b>, <b>HOST_TO_NET_U16</b>, <b>KEX_ALGO_X25519</b>,
-    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>lifecycle_is_initialized()</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>log_lock_terminal()</b>, <b>log_plain</b>, <b>log_unlock_terminal()</b>,
-    <b>log_warn</b>, <b>MAX_CLIENTS</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NS_PER_MS_INT</b>, <b>packet_receive_via_transport()</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
-    <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
-    <b>parse_public_keys()</b>, <b>platform_getenv()</b>,
-    <b>platform_is_interactive()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>crypto_capabilities_packet_t::preferred_auth</b>,
-    <b>crypto_capabilities_packet_t::preferred_cipher</b>,
-    <b>crypto_capabilities_packet_t::preferred_kex</b>,
-    <b>protocol_version_packet_t::protocol_revision</b>,
-    <b>protocol_version_packet_t::protocol_version</b>, <b>pubkey_to_hex()</b>,
-    <b>crypto_capabilities_packet_t::requires_verification</b>,
-    <b>crypto_parameters_packet_t::selected_auth</b>,
-    <b>crypto_parameters_packet_t::selected_cipher</b>,
-    <b>crypto_parameters_packet_t::selected_kex</b>,
-    <b>crypto_parameters_packet_t::shared_secret_size</b>,
-    <b>crypto_parameters_packet_t::signature_size</b>, <b>START_TIMER</b>,
-    <b>STOP_TIMER</b>, <b>STOP_TIMER_AND_LOG</b>,
-    <b>crypto_capabilities_packet_t::supported_auth_algorithms</b>,
-    <b>crypto_capabilities_packet_t::supported_cipher_algorithms</b>,
-    <b>crypto_capabilities_packet_t::supported_kex_algorithms</b>,
-    <b>protocol_version_packet_t::supports_encryption</b>, and
-    <b>crypto_parameters_packet_t::verification_enabled</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>connection_attempt_tcp()</b>, and
-  <b>server_connection_establish()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_crypto_init_(void_)"><a class="permalink" href="#int_client_crypto_init_(void_)">int
-  client_crypto_init (void )</a></h2>
-<p class="Pp">Initialize client crypto handshake. Sets up the client-side
-    cryptographic context with authentication credentials and generates
-    ephemeral key pair for key exchange.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Options affecting initialization</b>:</p>
-<ul class="Bl-bullet">
-  <li>--client-key &lt;path&gt;: SSH private key for Ed25519 authentication</li>
-  <li>--server-key &lt;path|url&gt;: Server public key for verification</li>
-  <li>--password &lt;pass&gt;: Password for authentication (stored in
-    options)</li>
-</ul>
-<p class="Pp"><b>Supported Key Types</b>:</p>
-<ul class="Bl-bullet">
-  <li>OpenSSH Ed25519 private keys (encrypted or plaintext)</li>
-  <li>OpenSSH RSA private keys (converted to Ed25519)</li>
-  <li>GitHub/GitLab user keys (fetched via HTTPS)</li>
-  <li>Agent-based keys (ssh-agent or gpg-agent)</li>
-</ul>
-<p class="Pp"><b>Key Decryption</b>:</p>
-<ul class="Bl-bullet">
-  <li>Encrypted OpenSSH keys: Uses bcrypt_pbkdf + AES-256-CTR</li>
-  <li>Environment variable: $ASCII_CHAT_KEY_PASSWORD</li>
-  <li>SSH agent: $SSH_AUTH_SOCK (automatic fallback)</li>
-  <li>GPG agent: $GPG_AGENT_INFO (automatic fallback)</li>
-</ul>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure:
-<ul class="Bl-bullet">
-  <li>Key file not found</li>
-  <li>Key decryption failed (wrong password)</li>
-  <li>Invalid key format</li>
-</ul>
-</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is called before the handshake, during connection
-  setup. Failures here are fatal and non-retryable.</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>client_crypto_handshake</b> &quot;Perform actual
-  handshake&quot;</div>
-<p class="Pp">Initialize client crypto handshake</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>210</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>210                              {
-211   log_debug(&quot;CLIENT_CRYPTO_INIT: Starting crypto initialization&quot;);
-212 
-213   // Reset if already initialized (allows reinit on reconnection)
-214   if (lifecycle_reset(&amp;g_crypto_lc)) {
-215     log_debug(&quot;CLIENT_CRYPTO_INIT: Already initialized, resetting for reinit&quot;);
-216     crypto_handshake_destroy(&amp;g_crypto_ctx);
-217   }
-218 
-219   log_debug(&quot;CLIENT_CRYPTO_INIT: Initializing crypto handshake context&quot;);
-220   log_debug(&quot;CLIENT_CRYPTO_INIT: crypto_mode=%d (NONE=0, ENCRYPT=1, AUTH=2, FULL=3)&quot;, g_crypto_mode);
-221 
-222   // Check if we have an SSH key, password, or neither
-223   int result;
-224   bool is_ssh_key = false;
-225   private_key_t private_key;
-226 
-227   // Get string options safely
-228   const options_t *opts = options_get();
-229   const char *encrypt_key = opts &amp;&amp; opts-&gt;encrypt_key[0] != '\0' ? opts-&gt;encrypt_key : &quot;&quot;;
-230   const char *password = opts &amp;&amp; opts-&gt;password[0] != '\0' ? opts-&gt;password : &quot;&quot;;
-231   const char *address = opts &amp;&amp; opts-&gt;address[0] != '\0' ? opts-&gt;address : &quot;localhost&quot;;
-232   int port = opts ? opts-&gt;port : OPT_PORT_INT_DEFAULT;
-233   const char *server_key = opts &amp;&amp; opts-&gt;server_key[0] != '\0' ? opts-&gt;server_key : &quot;&quot;;
-234 
-235   // Load client private key if provided via --key
-236   if (strlen(encrypt_key) &gt; 0) {
-237     // --key supports file-based authentication (SSH keys, GPG keys via gpg:keyid)
-238 
-239     // For SSH key files (not gpg:keyid format), validate the file exists
-240     if (strncmp(encrypt_key, &quot;gpg:&quot;, 4) != 0) {
-241       if (validate_ssh_key_file(encrypt_key) != 0) {
-242         return -1;
-243       }
-244     }
-245 
-246     // Parse key (handles SSH files and gpg:keyid format)
-247     log_debug(&quot;CLIENT_CRYPTO_INIT: Loading private key for authentication: %s&quot;, encrypt_key);
-248     if (parse_private_key(encrypt_key, &amp;private_key) == ASCIICHAT_OK) {
-249       log_debug(&quot;Successfully parsed SSH private key&quot;);
-250       log_debug(&quot;CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d&quot;, private_key.type, KEY_TYPE_ED25519);
-251       is_ssh_key = true;
-252     } else {
-253       log_error(&quot;Failed to parse SSH key file: %s&quot;, encrypt_key);
-254       log_error(&quot;This may be due to:&quot;);
-255       log_error(&quot;  - Wrong password for encrypted key&quot;);
-256       log_error(&quot;  - Unsupported key type (only Ed25519 is currently supported)&quot;);
-257       log_error(&quot;  - Corrupted key file&quot;);
-258       log_error(&quot;&quot;);
-259       log_error(&quot;Note: RSA and ECDSA keys are not yet supported&quot;);
-260       log_error(&quot;To generate an Ed25519 key: ssh-keygen -t ed25519&quot;);
-261       return -1;
-262     }
-263   }
-264 
-265   if (is_ssh_key) {
-266     // Use SSH private key for authentication
-267     log_debug(&quot;CLIENT_CRYPTO_INIT: Using SSH key for authentication&quot;);
-268 
-269     // Initialize crypto context (generates ephemeral X25519 keys)
-270     result = crypto_handshake_init(&quot;crypto_client_local&quot;, &amp;g_crypto_ctx, false); // false = client
-271     if (result != ASCIICHAT_OK) {
-272       FATAL(result, &quot;Failed to initialize crypto handshake&quot;);
-273     }
-274 
-275     // Store the Ed25519 keys for authentication
-276     memcpy(&amp;g_crypto_ctx.client_private_key, &amp;private_key, sizeof(private_key_t));
-277 
-278     // Extract Ed25519 public key from private key
-279     g_crypto_ctx.client_public_key.type = KEY_TYPE_ED25519;
-280     memcpy(g_crypto_ctx.client_public_key.key, private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
-281     SAFE_STRNCPY(g_crypto_ctx.client_public_key.comment, private_key.key_comment,
-282                  sizeof(g_crypto_ctx.client_public_key.comment) - 1);
-283 
-284     // Extract GPG key ID if this is a GPG key (format: &quot;gpg:KEYID&quot;)
-285     if (strncmp(encrypt_key, &quot;gpg:&quot;, 4) == 0) {
-286       const char *key_id = encrypt_key + 4;
-287       size_t key_id_len = strlen(key_id);
-288       // Accept 8, 16, or 40 character GPG key IDs (short/long/full fingerprint)
-289       if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
-290         SAFE_STRNCPY(g_crypto_ctx.client_gpg_key_id, key_id, sizeof(g_crypto_ctx.client_gpg_key_id));
-291         log_debug(&quot;CLIENT_CRYPTO_INIT: Extracted client GPG key ID (%zu chars): %s&quot;, key_id_len,
-292                   g_crypto_ctx.client_gpg_key_id);
-293       } else {
-294         log_warn(&quot;CLIENT_CRYPTO_INIT: Invalid GPG key ID length: %zu (expected 8, 16, or 40)&quot;, key_id_len);
-295         g_crypto_ctx.client_gpg_key_id[0] = '\0';
-296       }
-297     } else {
-298       // Not a GPG key, clear the field
-299       g_crypto_ctx.client_gpg_key_id[0] = '\0';
-300     }
-301 
-302     // SSH key is already configured in the handshake context above
-303     // No additional setup needed - SSH keys are used only for authentication
-304 
-305     // Clear the temporary private_key variable (we've already copied it to g_crypto_ctx)
-306     sodium_memzero(&amp;private_key, sizeof(private_key));
-307 
-308     // If password is also provided, derive password key for dual authentication
-309     if (strlen(password) &gt; 0) {
-310       log_debug(&quot;CLIENT_CRYPTO_INIT: Password also provided, deriving password key&quot;);
-311       crypto_result_t crypto_result = crypto_derive_password_key(&amp;g_crypto_ctx.crypto_ctx, password);
-312       if (crypto_result != CRYPTO_OK) {
-313         log_error(&quot;Failed to derive password key: %s&quot;, crypto_result_to_string(crypto_result));
-314         return -1;
-315       }
-316       g_crypto_ctx.crypto_ctx.has_password = true;
-317       log_debug(&quot;Password authentication enabled alongside SSH key&quot;);
-318     }
-319 
-320   } else if (strlen(GET_OPTION(password)) &gt; 0) {
-321     // Password provided - use password-based initialization
-322     log_debug(&quot;CLIENT_CRYPTO_INIT: Using password authentication&quot;);
-323     result = crypto_handshake_init_with_password(&quot;crypto_client_local&quot;, &amp;g_crypto_ctx, false,
-324                                                  GET_OPTION(password)); // false = client
-325     if (result != ASCIICHAT_OK) {
-326       FATAL(result, &quot;Failed to initialize crypto handshake with password&quot;);
-327     }
-328   } else {
-329     // No password or SSH key - use standard initialization with random keys
-330     log_debug(&quot;CLIENT_CRYPTO_INIT: Using standard initialization&quot;);
-331     result = crypto_handshake_init(&quot;crypto_client_local&quot;, &amp;g_crypto_ctx, false); // false = client
-332     if (result != ASCIICHAT_OK) {
-333       FATAL(result, &quot;Failed to initialize crypto handshake&quot;);
-334     }
-335   }
-336 
-337   log_debug(&quot;CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded&quot;);
-338 
-339   // Set up server connection info for known_hosts
-340   SAFE_STRNCPY(g_crypto_ctx.server_hostname, address, sizeof(g_crypto_ctx.server_hostname) - 1);
-341   const char *server_ip = server_connection_get_ip();
-342   log_debug(&quot;CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'&quot;, server_ip ? server_ip : &quot;NULL&quot;);
-343   SAFE_STRNCPY(g_crypto_ctx.server_ip, server_ip ? server_ip : &quot;&quot;, sizeof(g_crypto_ctx.server_ip) - 1);
-344 
-345   // Use port from server_connection_set_port() if available (e.g., from WebSocket URL),
-346   // otherwise use the port from options (TCP/default path)
-347   int connection_port = server_connection_get_port();
-348   g_crypto_ctx.server_port = (uint16_t)(connection_port &gt; 0 ? connection_port : port);
-349   log_debug(&quot;CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u&quot;, g_crypto_ctx.server_ip, g_crypto_ctx.server_port);
-350 
-351   // Configure server key verification if specified
-352   if (strlen(server_key) &gt; 0) {
-353     g_crypto_ctx.verify_server_key = true;
-354     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
-355     log_debug(&quot;Server key verification enabled: %s&quot;, server_key);
-356   }
-357 
-358   // If --require-client-verify is set, perform ACDS session lookup for server identity
-359   if (GET_OPTION(require_client_verify) &amp;&amp; strlen(GET_OPTION(session_string)) &gt; 0) {
-360     log_debug(&quot;--require-client-verify enabled: performing ACDS session lookup for '%s'&quot;, GET_OPTION(session_string));
-361 
-362     // Connect to ACDS server (configurable via --acds-server and --acds-port options)
-363     acds_client_config_t acds_config;
-364     acds_client_config_init_defaults(&amp;acds_config);
-365     SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
-366     acds_config.server_port = GET_OPTION(discovery_port);
-367     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
-368 
-369     // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
-370     if (strlen(GET_OPTION(discovery_service_key)) &gt; 0) {
-371       log_debug(&quot;Verifying ACDS server key for %s...&quot;, acds_config.server_address);
-372       uint8_t acds_pubkey[32];
-373       asciichat_error_t verify_result =
-374           discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
-375       if (verify_result != ASCIICHAT_OK) {
-376         log_error(&quot;ACDS key verification failed for %s&quot;, acds_config.server_address);
-377         return -1;
-378       }
-379       log_debug(&quot;ACDS server key verified successfully&quot;);
-380     }
-381 #ifndef NDEBUG
-382     else {
-383       log_debug(&quot;Skipping ACDS key verification (debug build, no --discovery-service-key provided)&quot;);
-384     }
-385 #endif
-386 
-387     acds_client_t acds_client;
-388     asciichat_error_t acds_result = acds_client_connect(&amp;acds_client, &amp;acds_config);
-389     if (acds_result != ASCIICHAT_OK) {
-390       log_error(&quot;Failed to connect to ACDS server at %s:%d&quot;, acds_config.server_address, acds_config.server_port);
-391       return -1;
-392     }
-393 
-394     // Perform SESSION_LOOKUP to get server's identity
-395     acds_session_lookup_result_t lookup_result;
-396     acds_result = acds_session_lookup(&amp;acds_client, GET_OPTION(session_string), &amp;lookup_result);
-397     acds_client_disconnect(&amp;acds_client);
-398 
-399     if (acds_result != ASCIICHAT_OK || !lookup_result.found) {
-400       log_error(&quot;ACDS session lookup failed for '%s': %s&quot;, GET_OPTION(session_string),
-401                 lookup_result.found ? &quot;session not found&quot; : &quot;lookup error&quot;);
-402       return -1;
-403     }
-404 
-405     // Convert server's Ed25519 public key (32 bytes) to hex string
-406     char server_key_hex[65]; // 32 bytes * 2 + null terminator
-407     for (size_t i = 0; i &lt; 32; i++) {
-408       SAFE_SNPRINTF(&amp;server_key_hex[i * 2], 3, &quot;%02x&quot;, lookup_result.host_pubkey[i]);
-409     }
-410     server_key_hex[64] = '\0';
-411 
-412     // Set expected server key for verification during handshake
-413     g_crypto_ctx.verify_server_key = true;
-414     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key_hex, sizeof(g_crypto_ctx.expected_server_key) - 1);
-415     log_debug(&quot;ACDS session lookup succeeded - server identity will be verified&quot;);
-416     log_debug(&quot;Expected server key (from ACDS): %s&quot;, server_key_hex);
-417   }
-418 
-419   // Mark initialization as complete
-420   lifecycle_init(&amp;g_crypto_lc, &quot;client_crypto&quot;);
-421 
-422   log_debug(&quot;Client crypto handshake initialized&quot;);
-423   log_debug(&quot;CLIENT_CRYPTO_INIT: Initialization complete&quot;);
-424   return 0;
-425 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_client_config_init_defaults()</b>,
-    <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
-    <b>acds_session_lookup()</b>, <b>options_state::address</b>,
-    <b>ASCIICHAT_OK</b>, <b>crypto_derive_password_key()</b>,
-    <b>crypto_handshake_destroy()</b>, <b>crypto_handshake_init()</b>,
-    <b>crypto_handshake_init_with_password()</b>, <b>CRYPTO_OK</b>,
-    <b>crypto_result_to_string()</b>, <b>discovery_keys_verify()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>options_state::encrypt_key</b>,
-    <b>FATAL</b>, <b>acds_session_lookup_result_t::found</b>,
-    <b>g_crypto_ctx</b>, <b>GET_OPTION</b>,
-    <b>acds_session_lookup_result_t::host_pubkey</b>,
-    <b>private_key_t::key_comment</b>, <b>KEY_TYPE_ED25519</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>MS_PER_SEC_INT</b>,
-    <b>OPT_PORT_INT_DEFAULT</b>, <b>options_get()</b>,
-    <b>parse_private_key()</b>, <b>options_state::password</b>,
-    <b>options_state::port</b>, <b>private_key_t::public_key</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
-    <b>acds_client_config_t::server_address</b>,
-    <b>server_connection_get_ip()</b>, <b>server_connection_get_port()</b>,
-    <b>options_state::server_key</b>, <b>acds_client_config_t::server_port</b>,
-    <b>acds_client_config_t::timeout_ms</b>, <b>private_key_t::type</b>, and
-    <b>validate_ssh_key_file()</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>connection_attempt_tcp()</b>, <b>connection_attempt_websocket()</b>, and
-    <b>server_connection_establish()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_client_crypto_set_mode_("><a class="permalink" href="#void_client_crypto_set_mode_(">void
-  client_crypto_set_mode (<b>uint8_t</b> mode)</a></h2>
-<p class="Pp">Set crypto mode for handshake (encryption + authentication). Sets
-    the crypto mode bitmask (ACIP_CRYPTO_*) to negotiate with server. Determines
-    which security levels are requested in the handshake. Must be called before
-    <b>client_crypto_init()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Supported Modes</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>ACIP_CRYPTO_NONE</b><b>: No encryption (insecure, testing
-    only)</b></li>
-  <li><b>ACIP_CRYPTO_ENCRYPT</b><b>: Encryption only, no authentication</b></li>
-  <li><b>ACIP_CRYPTO_AUTH</b><b>: Authentication only (unusual)</b></li>
-  <li><b>ACIP_CRYPTO_FULL</b><b>: Both encryption AND authentication
-      (recommended)</b></li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mode</i> Crypto mode bitmask to request</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The final negotiated mode is the intersection of client
-  and server requests. Both must agree on encryption level or handshake
-  fails.</div>
-<p class="Pp">Set crypto mode for handshake (encryption + authentication)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mode</i> Crypto mode bitmask (ACIP_CRYPTO_*)</div>
-<p class="Pp">Definition at line <b>198</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>198                                           {
-199   log_debug(&quot;CLIENT_CRYPTO: Setting crypto mode to 0x%02x&quot;, mode);
-200   g_crypto_mode = mode;
-201 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>, and
-    <b>connection_attempt_tcp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_crypto_client_cleanup_(void_)"><a class="permalink" href="#void_crypto_client_cleanup_(void_)">void
-  crypto_client_cleanup (void )</a></h2>
-<p class="Pp">Cleanup crypto client resources. Cleanup crypto client
-  resources</p>
-<p class="Pp">Definition at line <b>863</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>863                                  {
-864   // Shutdown if initialized
-865   if (lifecycle_shutdown(&amp;g_crypto_lc)) {
-866     crypto_handshake_destroy(&amp;g_crypto_ctx);
-867     log_debug(&quot;Client crypto handshake cleaned up&quot;);
-868   }
-869 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_destroy()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_shutdown()</b>, and <b>log_debug</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_decrypt_packet_(const_"><a class="permalink" href="#int_crypto_client_decrypt_packet_(const_">int
-  crypto_client_decrypt_packet (const <b>uint8_t</b> * ciphertext, size_t
-  ciphertext_len, <b>uint8_t</b> * plaintext, size_t plaintext_size, size_t *
-  plaintext_len)</a></h2>
-<p class="Pp">Decrypt a received packet.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ciphertext</i> Encrypted data to decrypt
-<br/>
-<i>ciphertext_len</i> Length of encrypted data
-<br/>
-<i>plaintext</i> Output buffer for decrypted data
-<br/>
-<i>plaintext_size</i> Size of output buffer
-<br/>
-<i>plaintext_len</i> Output length of decrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Decrypt a received packet</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ciphertext</i> Encrypted data to decrypt
-<br/>
-<i>ciphertext_len</i> Length of encrypted data
-<br/>
-<i>plaintext</i> Output buffer for decrypted data
-<br/>
-<i>plaintext_size</i> Size of output buffer
-<br/>
-<i>plaintext_len</i> Output length of decrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>852</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>853                                                                                {
-854   return crypto_decrypt_packet_or_passthrough(&amp;g_crypto_ctx, crypto_client_is_ready(), ciphertext, ciphertext_len,
-855                                               plaintext, plaintext_size, plaintext_len);
-856 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_encrypt_packet_(const_"><a class="permalink" href="#int_crypto_client_encrypt_packet_(const_">int
-  crypto_client_encrypt_packet (const <b>uint8_t</b> * plaintext, size_t
-  plaintext_len, <b>uint8_t</b> * ciphertext, size_t ciphertext_size, size_t *
-  ciphertext_len)</a></h2>
-<p class="Pp">Encrypt a packet for transmission.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>plaintext</i> Plaintext data to encrypt
-<br/>
-<i>plaintext_len</i> Length of plaintext data
-<br/>
-<i>ciphertext</i> Output buffer for encrypted data
-<br/>
-<i>ciphertext_size</i> Size of output buffer
-<br/>
-<i>ciphertext_len</i> Output length of encrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Encrypt a packet for transmission</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>plaintext</i> Plaintext data to encrypt
-<br/>
-<i>plaintext_len</i> Length of plaintext data
-<br/>
-<i>ciphertext</i> Output buffer for encrypted data
-<br/>
-<i>ciphertext_size</i> Size of output buffer
-<br/>
-<i>ciphertext_len</i> Output length of encrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>834</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>835                                                                                  {
-836   return crypto_encrypt_packet_or_passthrough(&amp;g_crypto_ctx, crypto_client_is_ready(), plaintext, plaintext_len,
-837                                               ciphertext, ciphertext_size, ciphertext_len);
-838 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
-    <b>crypto_encrypt_packet_or_passthrough()</b>, and <b>g_crypto_ctx</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>crypto_context_t</b> * crypto_client_get_context (void )</a></h2>
-<p class="Pp">Get crypto context for encryption/decryption.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">crypto context or NULL if not ready</div>
-<p class="Pp">Get crypto context for encryption/decryption</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">crypto context or NULL if not ready</div>
-<p class="Pp">Definition at line <b>814</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>814                                                         {
-815   if (!crypto_client_is_ready()) {
-816     return NULL;
-817   }
-818 
-819   return crypto_handshake_get_context(&amp;g_crypto_ctx);
-820 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_initiate_rekey_(void_)"><a class="permalink" href="#int_crypto_client_initiate_rekey_(void_)">int
-  crypto_client_initiate_rekey (void )</a></h2>
-<p class="Pp">Initiate session rekeying (client-initiated).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Initiate session rekeying (client-initiated)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>896</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>896                                        {
-897   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-898     log_error(&quot;Cannot initiate rekey: crypto not initialized or not ready&quot;);
-899     return -1;
-900   }
-901 
-902   acip_transport_t *transport = server_connection_get_transport();
-903   if (!transport) {
-904     log_error(&quot;Cannot initiate rekey: invalid transport&quot;);
-905     return -1;
-906   }
-907 
-908   asciichat_error_t result = crypto_handshake_rekey_request(&amp;g_crypto_ctx, transport);
-909   if (result != ASCIICHAT_OK) {
-910     log_error(&quot;Failed to send REKEY_REQUEST: %d&quot;, result);
-911     return -1;
-912   }
-913 
-914   return 0;
-915 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_rekey_request()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_error</b>, and
-    <b>server_connection_get_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> crypto_client_is_ready (void )</h2>
-<p class="Pp">Check if crypto handshake is ready.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if encryption is ready, false otherwise</div>
-<p class="Pp">Check if crypto handshake is ready</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if encryption is ready, false otherwise</div>
-<p class="Pp">Definition at line <b>799</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>799                                   {
-800   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || GET_OPTION(no_encrypt)) {
-801     return false;
-802   }
-803 
-804   return crypto_handshake_is_ready(&amp;g_crypto_ctx);
-805 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_process_rekey_request_(const_"><a class="permalink" href="#int_crypto_client_process_rekey_request_(const_">int
-  crypto_client_process_rekey_request (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
-<p class="Pp">Process received REKEY_REQUEST packet from server.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Process received REKEY_REQUEST packet from server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>926</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>926                                                                                   {
-927   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-928     log_error(&quot;Cannot process rekey request: crypto not initialized or not ready&quot;);
-929     return -1;
-930   }
-931 
-932   asciichat_error_t result = crypto_handshake_process_rekey_request(&amp;g_crypto_ctx, packet, packet_len);
-933   if (result != ASCIICHAT_OK) {
-934     log_error(&quot;Failed to process REKEY_REQUEST: %d&quot;, result);
-935     return -1;
-936   }
-937 
-938   return 0;
-939 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_process_rekey_request()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, and <b>log_error</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_process_rekey_response_(const_"><a class="permalink" href="#int_crypto_client_process_rekey_response_(const_">int
-  crypto_client_process_rekey_response (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
-<p class="Pp">Process received REKEY_RESPONSE packet from server.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Process received REKEY_RESPONSE packet from server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>978</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>978                                                                                    {
-979   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-980     log_error(&quot;Cannot process rekey response: crypto not initialized or not ready&quot;);
-981     return -1;
-982   }
-983 
-984   asciichat_error_t result = crypto_handshake_process_rekey_response(&amp;g_crypto_ctx, packet, packet_len);
-985   if (result != ASCIICHAT_OK) {
-986     log_error(&quot;Failed to process REKEY_RESPONSE: %d&quot;, result);
-987     return -1;
-988   }
-989 
-990   return 0;
-991 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_process_rekey_response()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, and <b>log_error</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_send_rekey_complete_(void_)"><a class="permalink" href="#int_crypto_client_send_rekey_complete_(void_)">int
-  crypto_client_send_rekey_complete (void )</a></h2>
-<p class="Pp">Send REKEY_COMPLETE packet to server and commit to new key.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Send REKEY_COMPLETE packet to server and commit to new key</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>1000</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>1000                                             {
-1001   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-1002     log_error(&quot;Cannot send rekey complete: crypto not initialized or not ready&quot;);
-1003     return -1;
-1004   }
-1005 
-1006   acip_transport_t *transport = server_connection_get_transport();
-1007   if (!transport) {
-1008     log_error(&quot;Cannot send rekey complete: invalid transport&quot;);
-1009     return -1;
-1010   }
-1011 
-1012   asciichat_error_t result = crypto_handshake_rekey_complete(&amp;g_crypto_ctx, transport);
-1013   if (result != ASCIICHAT_OK) {
-1014     log_error(&quot;Failed to send REKEY_COMPLETE: %d&quot;, result);
-1015     return -1;
-1016   }
-1017 
-1018   return 0;
-1019 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_rekey_complete()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_error</b>, and
-    <b>server_connection_get_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_client_send_rekey_response_(void_)"><a class="permalink" href="#int_crypto_client_send_rekey_response_(void_)">int
-  crypto_client_send_rekey_response (void )</a></h2>
-<p class="Pp">Send REKEY_RESPONSE packet to server.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Send REKEY_RESPONSE packet to server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>948</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>948                                             {
-949   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-950     log_error(&quot;Cannot send rekey response: crypto not initialized or not ready&quot;);
-951     return -1;
-952   }
-953 
-954   acip_transport_t *transport = server_connection_get_transport();
-955   if (!transport) {
-956     log_error(&quot;Cannot send rekey response: invalid transport&quot;);
-957     return -1;
-958   }
-959 
-960   asciichat_error_t result = crypto_handshake_rekey_response(&amp;g_crypto_ctx, transport);
-961   if (result != ASCIICHAT_OK) {
-962     log_error(&quot;Failed to send REKEY_RESPONSE: %d&quot;, result);
-963     return -1;
-964   }
-965 
-966   return 0;
-967 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_rekey_response()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_error</b>, and
-    <b>server_connection_get_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> crypto_client_should_rekey (void )</h2>
-<p class="Pp">Check if session rekeying should be triggered.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if rekey should be initiated, false otherwise</div>
-<p class="Pp">Check if session rekeying should be triggered</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if rekey should be initiated, false otherwise</div>
-<p class="Pp">Definition at line <b>882</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>882                                       {
-883   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || !crypto_client_is_ready()) {
-884     return false;
-885   }
-886   return crypto_handshake_should_rekey(&amp;g_crypto_ctx);
-887 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_should_rekey()</b>, <b>g_crypto_ctx</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">crypto.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>client_crypto_init</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const char *password)
+            <br />
+            <b>bool</b> <b>crypto_client_should_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>crypto_client_initiate_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_request</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_response</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_response</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_complete</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_crypto_init (<b
+              >client_connection_t</b
+            >
+            * connection, const char * password)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+14                                                                                             {
+15   asciichat_error_t result = network_connection_prepare_security(connection-&gt;network, false, password);
+16   if (result != ASCIICHAT_OK)
+17     return result;
+18   connection-&gt;crypto_ctx = network_connection_handshake(connection-&gt;network);
+19   connection-&gt;crypto_mode = network_connection_crypto_mode(connection-&gt;network);
+20   result = client_connection_checkpoint(&quot;crypto&quot;);
+21   if (result != ASCIICHAT_OK)
+22     return result;
+23   // If --require-client-verify is set, perform ACDS session lookup for server identity
+24   if (GET_OPTION(require_client_verify) &amp;&amp; strlen(GET_OPTION(session_string)) &gt; 0) {
+25     log_debug(&quot;--require-client-verify enabled: performing ACDS session lookup for '%s'&quot;, GET_OPTION(session_string));
+26
+27     // Connect to ACDS server (configurable via --acds-server and --acds-port options)
+28     acds_client_config_t acds_config;
+29     acds_client_config_init_defaults(&amp;acds_config);
+30     SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
+31     acds_config.server_port = GET_OPTION(discovery_port);
+32     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
+33     acds_config.identity_key = GET_OPTION(encrypt_key);
+34
+35     // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
+36     if (strlen(GET_OPTION(discovery_service_key)) &gt; 0) {
+37       log_debug(&quot;Verifying ACDS server key for %s...&quot;, acds_config.server_address);
+38       uint8_t acds_pubkey[ED25519_PUBLIC_KEY_SIZE];
+39       asciichat_error_t verify_result =
+40           discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
+41       if (verify_result != ASCIICHAT_OK) {
+42         NOTICE(DANGER, &quot;ACDS VERIFICATION FAILED&quot;, &quot;ACDS key verification failed for %s&quot;, acds_config.server_address);
+43         return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Cannot verify discovery host identity&quot;);
+44       }
+45       log_debug(&quot;ACDS server key verified successfully&quot;);
+46     }
+47 #ifndef NDEBUG
+48     else {
+49       log_debug(&quot;Skipping ACDS key verification (debug build, no --discovery-service-key provided)&quot;);
+50     }
+51 #endif
+52
+53     acds_client_t acds_client;
+54     asciichat_error_t acds_result = acds_client_connect(&amp;acds_client, &amp;acds_config);
+55     if (acds_result != ASCIICHAT_OK) {
+56       log_error(&quot;Failed to connect to ACDS server at %s:%d&quot;, acds_config.server_address, acds_config.server_port);
+57       return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Cannot verify discovery host identity&quot;);
+58     }
+59
+60     // Perform SESSION_LOOKUP to get server's identity
+61     acds_session_lookup_result_t lookup_result;
+62     acds_result = acds_session_lookup(&amp;acds_client, GET_OPTION(session_string), &amp;lookup_result);
+63     acds_client_disconnect(&amp;acds_client);
+64
+65     if (acds_result != ASCIICHAT_OK || !lookup_result.found) {
+66       log_error(&quot;ACDS session lookup failed for '%s': %s&quot;, GET_OPTION(session_string),
+67                 lookup_result.found ? &quot;session not found&quot; : &quot;lookup error&quot;);
+68       return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Cannot verify discovery host identity&quot;);
+69     }
+70
+71     // Convert server's Ed25519 public key (32 bytes) to hex string
+72     char server_key_hex[HEX_STRING_SIZE_32]; // 32 bytes * 2 + null terminator
+73     for (size_t i = 0; i &lt; 32; i++) {
+74       SAFE_SNPRINTF(&amp;server_key_hex[i * 2], 3, &quot;%02x&quot;, lookup_result.host_pubkey[i]);
+75     }
+76     server_key_hex[64] = '\0';
+77
+78     // Set expected server key for verification during handshake
+79     connection-&gt;crypto_ctx-&gt;verify_server_key = true;
+80     SAFE_STRNCPY(connection-&gt;crypto_ctx-&gt;expected_server_key, server_key_hex,
+81                  sizeof(connection-&gt;crypto_ctx-&gt;expected_server_key) - 1);
+82     log_debug(&quot;ACDS session lookup succeeded - server identity will be verified&quot;);
+83     log_debug(&quot;Expected server key (from ACDS): %s&quot;, server_key_hex);
+84   }
+85
+86   return ASCIICHAT_OK;
+87 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_client_config_init_defaults()</b>,
+            <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
+            <b>acds_session_lookup()</b>, <b>ASCIICHAT_OK</b>,
+            <b>client_connection_checkpoint()</b>, <b>client_crypto_init()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>client_connection::crypto_mode</b>,
+            <b>discovery_keys_verify()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO_AUTH</b>,
+            <b>crypto_handshake_context_t::expected_server_key</b>,
+            <b>acds_session_lookup_result_t::found</b>, <b>GET_OPTION</b>,
+            <b>HEX_STRING_SIZE_32</b>,
+            <b>acds_session_lookup_result_t::host_pubkey</b>,
+            <b>acds_client_config_t::identity_key</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>MS_PER_SEC_INT</b>,
+            <b>client_connection::network</b>,
+            <b>network_connection_crypto_mode()</b>,
+            <b>network_connection_handshake()</b>,
+            <b>network_connection_prepare_security()</b>, <b>NOTICE</b>,
+            <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>acds_client_config_t::server_address</b>,
+            <b>acds_client_config_t::server_port</b>, <b>SET_ERRNO</b>,
+            <b>acds_client_config_t::timeout_ms</b>, and
+            <b>crypto_handshake_context_t::verify_server_key</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

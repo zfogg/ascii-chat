@@ -130,17 +130,18 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "Navigation & Control:",
       "─────────────────────",
       "?      Toggle this help screen TUI",
-      "Esc    Close overlay / Quit app",
+      "q / Esc  Quit ascii-chat (Shift+Key to panic exit)",
       browser ? NULL : "v      Open from clipboard",
       browser ? NULL : "Paste  Queue dropped/pasted media",
       browser ? NULL : "< / >  Previous/next media (restart)",
       has_media ? "Space  Play/Pause (files only)" : NULL,
       has_media ? "[      Toggle Media Playback" : NULL,
-      has_media ? (terminal_should_use_utf8() ? "← / →  Seek backward/forward 30s"
-                                              : "Left / Right  Seek backward/forward 30s")
+      has_media ? (terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "← / →  Seek backward/forward 30s"
+                                                                    : "Left / Right  Seek backward/forward 30s")
                 : NULL,
       "m / M  Mute/Unmute audio",
-      terminal_should_use_utf8() ? "↑ / ↓  Volume up/down (10%)" : "Up / Down  Volume up/down (10%)",
+      terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)"
+                                                       : "Up / Down  Volume up/down (10%)",
       "c / C  Cycle color mode",
       "f / F  Cycle color filter",
       "x / X  Flip webcam horizontally",
@@ -148,9 +149,6 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "w / W  Toggle Face Follow",
       "r / R  Cycle render mode",
       "-      FPS counter",
-#ifndef NDEBUG
-      browser ? NULL : "`      Print current sync primitive state",
-#endif
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",
 #endif

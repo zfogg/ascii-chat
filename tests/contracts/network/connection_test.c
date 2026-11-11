@@ -170,12 +170,13 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
                                     .max_connections = 4,
                                     .handshake_timeout_ms = 250,
                                     .partial_timeout_ms = 250,
+                                    .idle_timeout_ms = stall && rtc ? 250 : 0,
                                     .callbacks = {opened, packet, closing, closed},
                                     .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
   platform_sleep_ms(50);
   char endpoint[128];
   safe_snprintf(endpoint, sizeof(endpoint), "%s://%s:%u%s", websocket ? "ws" : "tcp",
@@ -207,6 +208,21 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   if (backend >= 3)
     cr_assert_str_eq(network_connection_peer(client), "localhost");
   wait_count(&f.opened, 1);
+  if (rtc && (reject || stall)) {
+    acip_transport_t *transport = network_connection_transport(client);
+    transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    packet_type_t type;
+    void *data = NULL, *allocation = NULL;
+    size_t length = 0;
+    cr_assert_eq(packet_receive_via_transport(transport, &type, &data, &length, &allocation), ASCIICHAT_OK);
+    cr_expect_eq(type, PACKET_TYPE_ERROR_MESSAGE);
+    asciichat_error_t code = ASCIICHAT_OK;
+    char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+    cr_expect_eq(packet_parse_error_message(data, length, &code, message, sizeof(message), NULL), ASCIICHAT_OK);
+    cr_expect_eq(code, ERROR_INTERNAL);
+    cr_expect_null(strstr(message, "Injected partial startup failure"));
+    buffer_release(allocation);
+  }
   uint64_t partial_started = time_get_ns();
   if (!reject && !stall) {
     uint64_t payload = 42;
@@ -398,8 +414,8 @@ Test(network_connections, tcp_packet_rejection_is_delivered_before_close) {
                                     .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
-  asciichat_thread_t thread;
-  cr_assert_eq(acthread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
+  platform_thread_t thread;
+  cr_assert_eq(platform_thread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
   char endpoint[64];
   safe_snprintf(endpoint, sizeof(endpoint), "tcp://127.0.0.1:%u", port);
   network_connection_t *client = NULL;
@@ -520,13 +536,13 @@ Test(network_connections, websocket_concurrent_close) {
   ws->service_running = false;
   // Keep a replacement thread blocked: concurrent close calls must return
   // without trying to join this owner-managed service thread.
-  cr_assert_eq(acthread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
+  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
   ws->service_running = true;
-  asciichat_thread_t threads[8];
+  platform_thread_t threads[8];
   concurrent_close_worker_t workers[8];
   for (size_t i = 0; i < 8; ++i) {
     workers[i] = (concurrent_close_worker_t){.fixture = &fixture, .index = i};
-    cr_assert_eq(acthread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
+    cr_assert_eq(platform_thread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
                  ASCIICHAT_OK);
   }
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
@@ -557,6 +573,12 @@ Test(network_connections, webrtc_echo) {
 Test(network_connections, webrtc_reject) {
   cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
   scenario(2, true, false, 0, false);
+  webrtc_destroy();
+}
+
+Test(network_connections, webrtc_idle_timeout_reports_error) {
+  cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
+  scenario(2, false, true, 0, false);
   webrtc_destroy();
 }
 

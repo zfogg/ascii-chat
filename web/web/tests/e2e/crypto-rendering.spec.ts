@@ -108,7 +108,10 @@ class LoggedProcess {
     this.child = spawn(
       binaryPath(),
       ["--log-level", "debug", "--log-file", logPath, ...args],
-      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
     for (const stream of [this.child.stdout, this.child.stderr]) {
       stream?.on("data", (chunk: Buffer) => {
@@ -143,7 +146,7 @@ class LoggedProcess {
 type AuthCase = "authorized-key" | "unauthorized-key" | "password";
 type Mode = "client" | "discovery";
 
-function seedCryptoSettings(
+async function seedCryptoSettings(
   page: Page,
   options: {
     identity: string;
@@ -152,7 +155,7 @@ function seedCryptoSettings(
     password?: string;
   },
 ): Promise<void> {
-  return page.addInitScript((settings) => {
+  await page.addInitScript((settings) => {
     localStorage.setItem(
       "ascii-chat.crypto-settings.v1",
       JSON.stringify({

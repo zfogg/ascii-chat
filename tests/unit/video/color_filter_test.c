@@ -7,8 +7,10 @@
 #include <criterion/criterion.h>
 #include <stdint.h>
 #include <string.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/tests/logging.h>
+#include "../../../lib/video/anim/backends.h"
 
 /**
  * @brief Test grayscale conversion accuracy
@@ -216,4 +218,18 @@ Test(color_filter, metadata_colors) {
     cr_assert_eq(meta->g, expected[i].g, "%s green should be %d, got %d", expected[i].name, expected[i].g, meta->g);
     cr_assert_eq(meta->b, expected[i].b, "%s blue should be %d, got %d", expected[i].name, expected[i].b, meta->b);
   }
+}
+
+Test(color_filter, rainbow_ansi_terminates_and_preserves_malformed_suffix) {
+  const char *prefix = "\033[38;2;1;2;3m";
+  char *frame = rainbow_render_ansi_at(prefix, 0.0f);
+  cr_assert_not_null(frame);
+  cr_assert_eq(frame[strlen(frame) - 1], 'm');
+  SAFE_FREE(frame);
+
+  frame = rainbow_render_ansi_at("A\033[38;2;1;2;3mB\033[38;2;broken", 0.0f);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "B\033[38;2;broken"));
+  cr_assert_eq(frame[0], 'A');
+  SAFE_FREE(frame);
 }

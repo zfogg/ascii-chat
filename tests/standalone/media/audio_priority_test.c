@@ -22,10 +22,8 @@ int main(void) {
     SAFE_STRNCPY(options.otel_endpoint, endpoint, sizeof(options.otel_endpoint));
   CHECK(options_state_init() == ASCIICHAT_OK);
   CHECK(options_state_set(&options) == ASCIICHAT_OK);
-#ifdef ASCIICHAT_WITH_OTEL
   char *args[] = {"audio-fixture"};
   CHECK(ascii_otel_init("audio-fixture", 1, args) == ASCIICHAT_OK);
-#endif
   float *samples = SAFE_CALLOC(AUDIO_RING_BUFFER_SIZE, sizeof(float), float *);
   audio_ring_buffer_t *playback = audio_ring_buffer_create();
   CHECK(audio_ring_buffer_write(playback, samples, 4096) == ASCIICHAT_OK);
@@ -44,10 +42,8 @@ int main(void) {
   audio_destroy(audio);
   SAFE_FREE(audio);
   audio_terminate_portaudio_final();
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_exit(0);
   ascii_otel_shutdown();
-#endif
   options_state_destroy();
   return 0;
 }

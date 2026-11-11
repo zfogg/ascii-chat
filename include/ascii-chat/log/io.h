@@ -20,13 +20,19 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Opaque handle for IO capture state
+ * @brief Saved descriptors and temporary file used during stdout/stderr capture
+ * @brief Saved descriptors and temporary file used during stdout/stderr capture
+ *
+ * `log_io_start()` redirects both standard streams and stores their original
+ * descriptors here. `output` receives the captured bytes and is closed by
+ * `log_io_stop()`, which also restores the descriptors.
  */
 typedef struct {
   int saved_stdout_fd; ///< Saved stdout file descriptor
@@ -80,12 +86,22 @@ void log_io_stop(log_io_t capture, const char *prefix);
  * @note Prefix and block are only evaluated once
  * @note Variables in the enclosing scope are accessible in the block
  */
-#define LOG_IO(prefix, block)                                                                                          \
+/**
+ * @brief Capture a block only when condition is true; execute the block once either way.
+ * @note The condition is evaluated once, before executing the block.
+ */
+#define LOG_IO_IF(condition, prefix, block)                                                                            \
   do {                                                                                                                 \
-    log_io_t _log_io = log_io_start();                                                                                 \
+    bool _log_io_enabled = (condition);                                                                                \
+    log_io_t _log_io = {0};                                                                                            \
+    if (_log_io_enabled)                                                                                               \
+      _log_io = log_io_start();                                                                                        \
     block;                                                                                                             \
-    log_io_stop(_log_io, (prefix));                                                                                    \
+    if (_log_io_enabled)                                                                                               \
+      log_io_stop(_log_io, (prefix));                                                                                  \
   } while (0)
+
+#define LOG_IO(prefix, block) LOG_IO_IF(true, prefix, block)
 
 #ifdef __cplusplus
 }

@@ -48,7 +48,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "../platform/network.h"
+#include "../os/network.h"
 
 /**
  * Convert a 32-bit value from host byte order to network byte order.

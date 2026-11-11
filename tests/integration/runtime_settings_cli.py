@@ -9,6 +9,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import os
 import re
@@ -18,7 +21,7 @@ import sys
 import tempfile
 import time
 
-from server_lifecycle import Service, free_port, interrupt, server_options
+from ascii_chat_tests.process import Service, free_port, interrupt, server_options
 
 
 def console_key(pid, key):
@@ -69,12 +72,12 @@ def check(binary,directory,websocket):
         server.wait_for("Server accepting connections")
         log=directory/("settings-client-"+str(websocket)+".log")
         startup=subprocess.STARTUPINFO(); startup.dwFlags=subprocess.STARTF_USESHOWWINDOW; startup.wShowWindow=0
-        env={key:value for key,value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+        env=clean_environment()
         env.update(CLAUDECODE="1",XDG_CONFIG_HOME=str(directory),APPDATA=str(directory))
         destination=f"ws://127.0.0.1:{ws}" if websocket else f"127.0.0.1:{tcp}"
-        client=subprocess.Popen([str(binary),"--no-check-update","--log-file",str(log),"--log-level","debug","client",destination,
+        client=start_cli(str(binary), "--log-file",str(log),"--log-level","debug","client",destination,
           "--test-pattern","--video-codec","raw","--audio=false","--width","40","--height","12","--fps","10",
-          "--color-mode","truecolor","--splash-screen=false"],cwd=directory,env=env,startupinfo=startup,
+          "--color-mode","truecolor","--splash-screen=false",cwd=directory,env=env,startupinfo=startup,
           creationflags=subprocess.CREATE_NEW_CONSOLE)
         wait_log(log,lambda text:"Remote rendering update accepted" in text,client)
         cases=[("c","Color mode:","color=0"),("c","Color mode:","color=1"),("c","Color mode:","color=2"),
@@ -107,13 +110,13 @@ def check_snapshots(binary, directory):
         ("truecolor", "custom", "half-block", " .+#"),
         ("truecolor", "standard", "foreground", None),
     ]
-    env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", XDG_CONFIG_HOME=str(directory), APPDATA=str(directory))
     for index, (color, palette, rendering, custom) in enumerate(cases):
-        command = [str(binary), "--no-check-update", "--log-level", "error", "--log-file", str(directory/f"mirror-{index}.log"),
+        command = cli_command(str(binary), "--log-level", "error", "--log-file", str(directory/f"mirror-{index}.log"),
                    "mirror", "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
                    "--width", "32", "--height", "12", "--color-mode", color, "--palette", palette,
-                   "--render-mode", rendering, "--utf8", "true", "--splash-screen=false"]
+                   "--render-mode", rendering, "--utf8", "true", "--splash-screen=false")
         if custom: command += ["--palette-chars", custom]
         result = subprocess.run(command, cwd=directory, env=env, capture_output=True, timeout=30)
         assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")

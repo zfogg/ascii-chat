@@ -131,7 +131,12 @@ set(CMAKE_SKIP_RPATH ON)
 # when building for iOS in the main project's deps cache
 
 if(DEFINED IOS_DEPS_CACHE_DIR)
-    set(_OPENSSL_ROOT_DIR "${IOS_DEPS_CACHE_DIR}/openssl")
+    if(BUILD_IOS_SIM OR CMAKE_OSX_SYSROOT MATCHES "iphonesimulator")
+        set(_OPENSSL_IOS_VARIANT "sim")
+    else()
+        set(_OPENSSL_IOS_VARIANT "device")
+    endif()
+    set(_OPENSSL_ROOT_DIR "${IOS_DEPS_CACHE_DIR}/openssl-3.6.0-${_OPENSSL_IOS_VARIANT}")
     set(_OPENSSL_INCLUDE_DIR "${_OPENSSL_ROOT_DIR}/include")
     set(_OPENSSL_LIB_DIR "${_OPENSSL_ROOT_DIR}/lib")
 

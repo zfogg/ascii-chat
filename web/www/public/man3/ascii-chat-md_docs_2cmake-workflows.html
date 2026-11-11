@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2cmake-workflows(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2cmake-workflows(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2cmake-workflows(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">md_docs_2cmake-workflows - CMake workflows</p>
+        <p class="Pp">
+          Use Clang and Ninja on every platform. default keeps the usual build/
+          directory, and release keeps build_release/ for existing packaging
+          scripts. Other build variants get distinct directories under
+          build/&lt;preset&gt;/, except presets with explicit CI or tooling
+          paths. The directory convention is the same on Windows, Linux and
+          macOS.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+cmake --workflow --preset check-default
+cmake --workflow --preset check-shared
+cmake --workflow --preset check-static</pre>
+        <p class="Pp">
+          These workflows configure, build the executable and run its --version
+          smoke test. shared explicitly selects system libc and shared
+          dependencies. static uses the release platform policy, including musl
+          on supported Linux hosts. Static and shared library targets remain
+          available independently of the executable's dependency policy.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          On Criterion-supported systems, cmake --workflow --preset tests builds
+          the test target and runs the complete suite. The unit, integration and
+          performance test presets use the tests-enabled configuration. Windows
+          does not support Criterion; use the executable smoke workflows there.
+          On Intel macOS, run Criterion tests through Docker as described in
+          AGENTS.md.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Dependency source downloads can be shared. New configurations keep
+          legacy dependency build/install outputs inside their own binary
+          directories. Explicit cache-directory overrides remain supported. Once
+          configured, a build tree rejects changes to compiler, target ABI, CRT
+          or static/shared dependency policy; select another preset or use cmake
+          --fresh to change those settings.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Musl_toolchain">
+          <a class="permalink" href="#Musl_toolchain">Musl toolchain</a>
+        </h1>
+        <p class="Pp">
+          USE_MUSL=ON selects cmake/toolchains/Musl.cmake before project(). It
+          selects Clang's target triple, musl headers and CRT startup files and
+          keeps host package searches out of the target build. Programs such as
+          Perl and Make still run on the host. ASCIICHAT_MUSL_SYSROOT can select
+          a complete target SDK; otherwise the toolchain discovers the
+          distribution's packaged musl paths.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The platform module stages the matching Alpine C++ runtime and
+          non-CMake libraries. Source dependencies use the same compiler/header
+          settings through MuslFlags.cmake. Project C++ sources use those
+          runtime headers as well. Use a fresh configuration when adopting the
+          toolchain in a pre-existing musl build tree. A separate shared/glibc
+          preset produces libraries for glibc hosts.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Installed_SDK">
+          <a class="permalink" href="#Installed_SDK">Installed SDK</a>
+        </h1>
+        <p class="Pp">
+          Build static-lib and/or shared-lib, then install the Development
+          component. Both find_package(asciichat CONFIG REQUIRED) and
+          find_package(ascii-chat CONFIG REQUIRED) are supported. The package
+          version tracks the library ABI (lib/v*), independently of the
+          executable's version. For the current 0.x ABI, version compatibility
+          is restricted to the same minor.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Use COMPONENTS shared or COMPONENTS static to require a particular
+          variant. The targets are asciichat::shared and asciichat::static, with
+          the existing ascii-chat::* spellings retained. asciichat::asciichat
+          selects an available shared library first. A shared-only consumer does
+          not resolve static link requirements. Archives built with IPO
+          propagate Clang ThinLTO linker options (including LLD on Linux).
+          Static consumers need pkg-config and the required development
+          packages; missing dependencies fail during configuration. Config files
+          and selected source-built support libraries relocate with the
+          installed prefix.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Windows consumers can match the SDK's CRT with the target property
+          MSVC_RUNTIME_LIBRARY=${asciichat_MSVC_RUNTIME_LIBRARY}. The
+          installed-SDK smoke project demonstrates this without changing the
+          consumer's global flags.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Formatting">
+          <a class="permalink" href="#Formatting">Formatting</a>
+        </h1>
+        <p class="Pp">
+          cmake --<b>Build System</b> <b>Build System</b> --target format<b>
+            formats all owned C, C++, Objective-C, headers and C-family
+            templates, including public headers and every test type. </b
+          >format-check<b> checks the same inventory; </b>clang-format<b>
+            and </b
+          >clang-format-check<b>
+            are aliases. Git checkouts include tracked and newly created
+            nonignored source files while excluding submodules and generated
+            outputs. Source archives use the authored source directories
+            instead. The inventory is collected when the target runs and passed
+            through a response file, so Windows command-line limits and new test
+            files are handled consistently. Run </b
+          >vp format<b> from </b>web/<b> for frontend code.</b>
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date"><b>Version 0.14.7</b></td>
+        <td class="foot-os"><b>ascii-chat</b></td>
+      </tr>
+    </table>
+  </body>
+</html>

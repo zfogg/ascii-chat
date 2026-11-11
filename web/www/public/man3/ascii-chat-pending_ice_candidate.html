@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pending_ice_candidate(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pending_ice_candidate(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pending_ice_candidate(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">pending_ice_candidate</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint8_t</b> <b>participant_id</b> [16]
+            <br />
+            char * <b>candidate</b>
+            <br />
+            char * <b>mid</b>
+            <br />
+            struct <b>pending_ice_candidate</b> * <b>next</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>56</b> of file <b>peer_manager.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_pending_ice_candidate::candidate">
+            <a class="permalink" href="#char*_pending_ice_candidate::candidate"
+              >char* pending_ice_candidate::candidate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>peer_manager.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_pending_ice_candidate::mid">
+            <a class="permalink" href="#char*_pending_ice_candidate::mid"
+              >char* pending_ice_candidate::mid</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>peer_manager.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>pending_ice_candidate</b>*
+              pending_ice_candidate::next</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>peer_manager.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_peer_manager_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b> pending_ice_candidate::participant_id[16]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>peer_manager.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

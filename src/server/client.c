@@ -13,7 +13,7 @@
 /* Media client state and render-worker ownership. The network runtime owns
  * establishment, packet reception, transport callbacks, and connection teardown. */
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <stdio.h>
 #include <string.h>
@@ -59,9 +59,11 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/util/string.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/log.h>
 #include <ascii-chat/log/io.h>
@@ -171,6 +173,7 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
 }
 
 /**
+ * @brief Hash table entry for client packet dispatch
  * @brief Global client manager singleton - central coordination point
  *
  * This is the primary data structure for managing all connected clients.
@@ -224,6 +227,7 @@ static void initialize_default_render_capabilities(client_info_t *client) {
   client->terminal_caps.color_level = TERM_COLOR_NONE;
   client->terminal_caps.color_count = 2;
   client->terminal_caps.render_mode = RENDER_MODE_FOREGROUND;
+  client->terminal_caps.text_renderer = ASCII_RENDERER_DEFAULT;
   client->terminal_caps.palette_type = PALETTE_STANDARD;
   client->terminal_caps.desired_fps = VIDEO_RENDER_FPS;
   client->terminal_caps.wants_padding = false;
@@ -505,6 +509,10 @@ error_cleanup_transport:
 typedef struct {
   client_info_t *client;
   char display_name[MAX_DISPLAY_NAME_LEN];
+  /**
+   * @brief For server client removal, this is the live record that ties `client` together. The owning code creates it,
+   * updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+   */
 } server_client_removal_t;
 
 static asciichat_error_t server_client_begin_removal(server_context_t *server_ctx, const char *client_id,
@@ -857,6 +865,7 @@ void cleanup_client_packet_queues(client_info_t *client) {
  * @param client Client to clean up
  */
 static inline void cleanup_client_all_buffers(client_info_t *client) {
+  ascii_stabilizer_reset(&client->render_stabilizer);
   cleanup_client_media_buffers(client);
   cleanup_client_packet_queues(client);
 }
@@ -893,12 +902,6 @@ static void acip_server_on_pong(void *client_ctx, void *app_ctx);
 static void acip_server_on_error(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
 static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
                                       void *app_ctx);
-static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                void *app_ctx);
-static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx);
-static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx);
 
 /**
  * @brief Global ACIP server callbacks structure
@@ -924,9 +927,7 @@ static const acip_server_callbacks_t g_acip_server_callbacks = {
     .on_pong = acip_server_on_pong,
     .on_error = acip_server_on_error,
     .on_remote_log = acip_server_on_remote_log,
-    .on_crypto_rekey_request = acip_server_on_crypto_rekey_request,
-    .on_crypto_rekey_response = acip_server_on_crypto_rekey_response,
-    .on_crypto_rekey_complete = acip_server_on_crypto_rekey_complete,
+
     .app_ctx = NULL // Not used - client context passed per-call
 };
 
@@ -1090,13 +1091,14 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug("Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id,
+                      frame->sequence_number, total_size);
     } else {
-      log_warn("FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame,
-               frame ? (void *)frame->data : NULL, data_len);
+      log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu",
+                     client->client_id, (void *)frame, frame ? (void *)frame->data : NULL, data_len);
     }
   } else {
-    log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
+    log_warn_every(NS_PER_SEC_INT * 3, "NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
 }
 
@@ -1131,21 +1133,17 @@ static asciichat_error_t video_decoder_ensure_initialized(client_info_t *client,
 static int server_receive_decoded_frame(AVCodecContext *ctx, AVFrame *frame) {
   ASCII_OTEL_SCOPE(FFMPEG_FRAME_RECEIVE);
   int result = avcodec_receive_frame(ctx, frame);
-#ifdef ASCIICHAT_WITH_OTEL
   if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
     ascii_otel_error("FFmpeg server frame receive failed");
-#endif
   return result;
 }
 
 static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_t flags, const void *data,
                                          size_t data_len, void *client_ctx, enum AVCodecID codec_id) {
   ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_scope_int(&otel_scope, "media.codec.id", codec_id);
   ascii_otel_scope_int(&otel_scope, "video.width", width);
   ascii_otel_scope_int(&otel_scope, "video.height", height);
-#endif
   client_info_t *client = client_ctx;
   video_codec_t capability = codec_id == AV_CODEC_ID_H264 ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265;
   if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, capability) || width == 0 || height == 0 ||
@@ -1174,10 +1172,8 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
   {
     ASCII_OTEL_SCOPE(FFMPEG_PACKET_SEND);
     result = avcodec_send_packet(ctx, packet);
-#ifdef ASCIICHAT_WITH_OTEL
     if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
       ascii_otel_error("FFmpeg server packet send failed");
-#endif
   }
   av_packet_free(&packet);
   if (result < 0) {
@@ -1211,10 +1207,8 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
       ASCII_OTEL_SCOPE(FFMPEG_SCALE);
       rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data,
                        rgb->linesize);
-#ifdef ASCIICHAT_WITH_OTEL
       if (rows != frame->height)
         ascii_otel_error("FFmpeg server frame scale failed");
-#endif
     }
     if (rows == frame->height) {
       atomic_store_bool(&client->is_sending_video, true);
@@ -1457,110 +1451,6 @@ static void acip_server_on_remote_log(const remote_log_packet_t *header, const c
 
   handle_remote_log_packet_from_client(client, full_packet, total_len);
   SAFE_FREE(full_packet);
-}
-
-static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_REQUEST from client %s", client->client_id);
-
-  // Process the client's rekey request
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_request(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_REQUEST from client %s: %d", client->client_id, crypto_result);
-    return;
-  }
-
-  // Send REKEY_RESPONSE
-  mutex_lock(&client->client_state_mutex);
-  // Get transport reference briefly to avoid deadlock on transport buffers
-  mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-    mutex_unlock(&client->send_mutex);
-    mutex_unlock(&client->client_state_mutex);
-    return; // Client is shutting down
-  }
-  acip_transport_t *rekey_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_response(client->crypto_handshake_ctx, rekey_transport);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_RESPONSE to client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Sent REKEY_RESPONSE to client %s", client->client_id);
-  }
-}
-
-static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_RESPONSE from client %s", client->client_id);
-
-  // Process the client's rekey response
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_response(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_RESPONSE from client %s: %d", client->client_id, crypto_result);
-    return;
-  }
-
-  // Send REKEY_COMPLETE to confirm and activate new key
-  mutex_lock(&client->client_state_mutex);
-  // Get transport reference briefly to avoid deadlock on transport buffers
-  mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-    mutex_unlock(&client->send_mutex);
-    mutex_unlock(&client->client_state_mutex);
-    return; // Client is shutting down
-  }
-  acip_transport_t *complete_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_complete(client->crypto_handshake_ctx, complete_transport);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_COMPLETE to client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Sent REKEY_COMPLETE to client %s - session rekeying complete", client->client_id);
-  }
-}
-
-static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_COMPLETE from client %s", client->client_id);
-
-  // Process and commit to new key
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_complete(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_COMPLETE from client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Session rekeying completed successfully with client %s", client->client_id);
-    // Notify client that rekeying is complete (new keys now active on both sides)
-    log_info_client(client, "Session rekey complete - new encryption keys active");
-  }
 }
 
 /**

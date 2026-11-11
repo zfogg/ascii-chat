@@ -3,18 +3,20 @@
 #define UI_OUTPUT_TEXT_BUFFER_SIZE 4096
 
 #include <ascii-chat/ui/output.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <stdatomic.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>
-static _Atomic(ui_output_write_fn) g_writer;
+static atomic_ptr_t g_writer;
 void ui_output_set_writer(ui_output_write_fn writer) {
-  atomic_store(&g_writer, writer);
+  atomic_ptr_store(&g_writer, (void *)writer);
 }
 asciichat_error_t ui_output_write(int fd, const char *data, size_t length) {
   if (fd < 0 || (!data && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI output descriptor or text");
-  ui_output_write_fn writer = atomic_load(&g_writer);
+  ui_output_write_fn writer = (ui_output_write_fn)atomic_ptr_load(&g_writer);
   if (writer)
     return writer(fd, data, length);
   return platform_write_all(fd, data, length) == length

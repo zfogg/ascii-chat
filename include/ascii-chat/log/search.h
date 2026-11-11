@@ -22,7 +22,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -179,13 +179,13 @@ bool log_search_get_global_highlight(void);
 
 /**
  * @brief Get the compiled regex pattern for interactive grep (internal use)
- * @return Opaque PCRE2 singleton for the current pattern, or NULL if inactive/no pattern
+ * @return Owned PCRE2 code copy for the current pattern, or NULL if inactive/no pattern
  *
  * Internal function used by filter highlighting code to enable global match
  * highlighting in interactive grep mode. Returns NULL when not in active mode
  * or if pattern is fixed string type (no regex compilation).
  */
-void *log_search_get_pattern_singleton(void);
+void *log_search_copy_pattern(void);
 
 /* ============================================================================
  * Signal-Safe Interface

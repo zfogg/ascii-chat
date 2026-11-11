@@ -37,8 +37,13 @@ typedef struct {
   uint8_t capabilities; /* 1 = native TCP, 2 = WebRTC host */
   uint8_t nat_tier;     /* 255 = unknown */
   uint16_t port;
+/**
+ */
 } consensus_handoff_message_t;
 
+/**
+ * @brief consensus handoff message is intentionally a small, concrete record. Fields such as `kind`, `generation`, `sequence`, `upload_kbps` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct {
   uint8_t id[SESSION_ID_SIZE];
   uint8_t capabilities;
@@ -54,6 +59,8 @@ typedef struct {
   bool measuring;
   bool valid;
   bool rejected;
+/**
+ */
 } consensus_handoff_peer_t;
 
 typedef struct {
@@ -72,6 +79,10 @@ typedef struct {
   bool monitoring;
   consensus_handoff_peer_t peers[MAX_SESSION_PARTICIPANTS];
   size_t count;
+/**
+ * @brief For consensus handoff peer, this is the live record that ties `capabilities`, `nat_tier`, `port`, `pending_capabilities` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief consensus handoff keeps the values that move through the subsystem: `generation`, `round`, `host_sequence`, `prepare_deadline_ms`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 } consensus_handoff_t;
 
 asciichat_error_t consensus_handoff_decode(const void *data, size_t length, consensus_handoff_message_t *out);

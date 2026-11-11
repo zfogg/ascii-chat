@@ -381,9 +381,19 @@ char *rainbow_render_ansi_at(const char *ansi_string, float time_seconds) {
     return NULL; // No ANSI codes found, no replacement needed
   }
 
-  // Allocate buffer for result (2x size for safety with many replacements)
   size_t input_len = strlen(ansi_string);
-  char *new_result = SAFE_MALLOC(input_len * 2, char *);
+  size_t replacements = 0;
+  const char *scan = ansi_string;
+  while ((scan = strstr(scan, "\x1b[38;2;")) != NULL) {
+    const char *end = strchr(scan + 7, 'm');
+    if (!end)
+      break;
+    replacements++;
+    scan = end + 1;
+  }
+  if (input_len == SIZE_MAX || replacements > (SIZE_MAX - input_len - 1) / rainbow_code_len)
+    return NULL;
+  char *new_result = SAFE_MALLOC(input_len + replacements * rainbow_code_len + 1, char *);
   if (!new_result) {
     return NULL;
   }
@@ -411,15 +421,21 @@ char *rainbow_render_ansi_at(const char *ansi_string, float time_seconds) {
         // Move source past the old code
         src = ansi_end + 1;
       } else {
-        // Malformed ANSI code, just copy it
-        *dst++ = *src++;
+        // Preserve a malformed trailing sequence without duplicating the prefix.
+        size_t remaining = strlen(ansi_start);
+        memcpy(dst, ansi_start, remaining);
+        dst += remaining;
+        break;
       }
     } else {
       // No more ANSI codes, copy the rest
-      memcpy(dst, src, strlen(src) + 1);
+      size_t remaining = strlen(src);
+      memcpy(dst, src, remaining);
+      dst += remaining;
       break;
     }
   }
+  *dst = '\0';
 
   return new_result;
 }

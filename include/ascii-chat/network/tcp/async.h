@@ -1,5 +1,5 @@
 #pragma once
-#include <ascii-chat/platform/event.h>
+#include <ascii-chat/os/event.h>
 #include <ascii-chat/network/acip/transport.h>
 
 /** Outbound ACIP adapter. Incoming packets are delivered by the connection's

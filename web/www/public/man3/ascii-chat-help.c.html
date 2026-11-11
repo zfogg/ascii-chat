@@ -1,1155 +1,1577 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>help.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">help.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">help.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">help.c - Help text generation and formatting for options.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>options_config_calculate_max_col_width</b> (const
-    <b>options_config_t</b> *config)
-  <br/>
-  Calculate global max column width across all help sections. void
-    <b>options_config_print_usage</b> (const <b>options_config_t</b> *config,
-    FILE *stream)
-  <br/>
-  Print usage/help text. void <b>options_config_print_usage_section</b> (const
-    <b>options_config_t</b> *config, FILE *stream)
-  <br/>
-  Print only the USAGE section. void
-    <b>options_config_print_options_sections_with_width</b> (const
-    <b>options_config_t</b> *config, FILE *stream, int max_col_width,
-    <b>asciichat_mode_t</b> mode)
-  <br/>
-  Print everything except the USAGE section. void
-    <b>options_config_print_options_sections</b> (const <b>options_config_t</b>
-    *config, FILE *stream, <b>asciichat_mode_t</b> mode)
-  <br/>
-  Print everything except the USAGE section (backward compatibility wrapper).
-    void <b>options_print_help_for_mode</b> (const <b>options_config_t</b>
-    *config, <b>asciichat_mode_t</b> mode, const char *program_name, const char
-    *description, FILE *desc)
-  <br/>
-  Print help for a specific mode or binary level. void
-    <b>options_struct_destroy</b> (const <b>options_config_t</b> *config, void
-    *options_struct)
-  <br/>
-  Clean up memory owned by options struct.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Help text generation and formatting for options.</p>
-<p class="Pp">Implements all help/usage text generation functions including
-    programmatic section printers and unified help output.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>help.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_options_config_calculate_max_col_width_(const_"><a class="permalink" href="#int_options_config_calculate_max_col_width_(const_">int
-  options_config_calculate_max_col_width (const <b>options_config_t</b> *
-  config)</a></h2>
-<p class="Pp">Calculate global max column width across all help sections.
-    Calculate global max column width for help output alignment.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculates the maximum width needed for proper alignment across
-    USAGE, EXAMPLES, OPTIONS, and MODES sections.</p>
-<p class="Pp">Definition at line <b>77</b> of file <b>help.c</b>.</p>
-<pre>77                                                                            {
-78   if (!config)
-79     return 0;
-80 
-81   const char *binary_name = PLATFORM_BINARY_NAME;
-82 
-83   int max_col_width = 0;
-84   char temp_buf[BUFFER_SIZE_MEDIUM];
-85 
-86   // Check USAGE entries (capped at 45 chars for max first column)
-87   for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
-88     const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
-89     int len = 0;
-90 
-91     len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot;%s&quot;, binary_name);
-92 
-93     if (usage-&gt;mode) {
-94       const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage-&gt;mode);
-95       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_mode);
-96     }
-97 
-98     if (usage-&gt;positional) {
-99       const char *colored_pos = colored_string(LOG_COLOR_INFO, usage-&gt;positional);
-100       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_pos);
-101     }
-102 
-103     if (usage-&gt;show_options) {
-104       const char *options_text =
-105           (usage-&gt;mode &amp;&amp; strcmp(usage-&gt;mode, &quot;&lt;mode&gt;&quot;) == 0) ? &quot;[mode-options...]&quot; : &quot;[options...]&quot;;
-106       const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
-107       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_opts);
-108     }
-109 
-110     int w = utf8_display_width(temp_buf);
-111     if (w &gt; LAYOUT_COLUMN_WIDTH) {
-112       w = LAYOUT_COLUMN_WIDTH;
-113     }
-114     if (w &gt; max_col_width)
-115       max_col_width = w;
-116   }
-117 
-118   // Check EXAMPLES entries
-119   for (size_t i = 0; i &lt; config-&gt;num_examples; i++) {
-120     const example_descriptor_t *example = &amp;config-&gt;examples[i];
-121     int len = 0;
-122 
-123     // Only prepend program name if this is not a utility command
-124     if (!example-&gt;is_utility_command) {
-125       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot;%s&quot;, binary_name);
-126 
-127       // Programmatically add mode name based on mode_bitmask
-128       const char *mode_name = get_mode_name_from_bitmask(example-&gt;mode_bitmask);
-129       if (mode_name) {
-130         len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, mode_name);
-131       }
-132     }
-133 
-134     if (example-&gt;args) {
-135       const char *colored_args = colored_string(LOG_COLOR_INFO, example-&gt;args);
-136       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_args);
-137     }
-138 
-139     int w = utf8_display_width(temp_buf);
-140     if (w &gt; LAYOUT_COLUMN_WIDTH) {
-141       w = LAYOUT_COLUMN_WIDTH;
-142     }
-143     if (w &gt; max_col_width)
-144       max_col_width = w;
-145   }
-146 
-147   // Check MODES entries (capped at 45 chars)
-148   for (size_t i = 0; i &lt; config-&gt;num_modes; i++) {
-149     const char *colored_name = colored_string(LOG_COLOR_FATAL, config-&gt;modes[i].name);
-150     int w = utf8_display_width(colored_name);
-151     if (w &gt; LAYOUT_COLUMN_WIDTH) {
-152       w = LAYOUT_COLUMN_WIDTH;
-153     }
-154     if (w &gt; max_col_width)
-155       max_col_width = w;
-156   }
-157 
-158   // Check OPTIONS entries (from descriptors)
-159   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-160     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-161     if (desc-&gt;hide_from_mode_help || desc-&gt;hide_from_binary_help || !desc-&gt;group)
-162       continue;
-163 
-164     // Build option display string with separate coloring for short and long flags
-165     char opts_buf[BUFFER_SIZE_SMALL];
-166     if (desc-&gt;short_name &amp;&amp; desc-&gt;short_name != '\0') {
-167       char short_flag[16];
-168       safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
-169       char long_flag[BUFFER_SIZE_SMALL];
-170       safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-171       // Color short flag, add comma, color long flag
-172       safe_snprintf(opts_buf, sizeof(opts_buf), &quot;%s, %s&quot;, colored_string(LOG_COLOR_WARN, short_flag),
-173                     colored_string(LOG_COLOR_WARN, long_flag));
-174     } else {
-175       char long_flag[BUFFER_SIZE_SMALL];
-176       safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-177       safe_snprintf(opts_buf, sizeof(opts_buf), &quot;%s&quot;, colored_string(LOG_COLOR_WARN, long_flag));
-178     }
-179     const char *colored_opts = opts_buf;
-180 
-181     int w = utf8_display_width(colored_opts);
-182     if (w &gt; LAYOUT_COLUMN_WIDTH) {
-183       w = LAYOUT_COLUMN_WIDTH;
-184     }
-185     if (w &gt; max_col_width)
-186       max_col_width = w;
-187   }
-188 
-189   // Enforce maximum column width of 45 characters
-190   if (max_col_width &gt; 45) {
-191     max_col_width = 45;
-192   }
-193 
-194   return max_col_width;
-195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>example_descriptor_t::args</b>,
-    <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>colored_string()</b>, <b>options_config_t::descriptors</b>,
-    <b>options_config_t::examples</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::hide_from_binary_help</b>,
-    <b>option_descriptor_t::hide_from_mode_help</b>,
-    <b>example_descriptor_t::is_utility_command</b>, <b>LAYOUT_COLUMN_WIDTH</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
-    <b>option_descriptor_t::long_name</b>,
-    <b>example_descriptor_t::mode_bitmask</b>, <b>options_config_t::modes</b>,
-    <b>help_mode_descriptor_t::name</b>,
-    <b>options_config_t::num_descriptors</b>,
-    <b>options_config_t::num_examples</b>, <b>options_config_t::num_modes</b>,
-    <b>options_config_t::num_usage_lines</b>, <b>PLATFORM_BINARY_NAME</b>,
-    <b>safe_snprintf()</b>, <b>option_descriptor_t::short_name</b>,
-    <b>usage()</b>, <b>options_config_t::usage_lines</b>, and
-    <b>utf8_display_width()</b>.</p>
-<p class="Pp">Referenced by
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage_section()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_options_sections_(const_"><a class="permalink" href="#void_options_config_print_options_sections_(const_">void
-  options_config_print_options_sections (const <b>options_config_t</b> * config,
-  FILE * stream, <b>asciichat_mode_t</b> mode)</a></h2>
-<p class="Pp">Print everything except the USAGE section (backward compatibility
-    wrapper). Print everything except the USAGE section (backward
-    compatibility).</p>
-<p class="Pp"></p>
-<p class="Pp">Calls options_config_print_options_sections_with_width with
-    auto-calculation.</p>
-<p class="Pp">Definition at line <b>1085</b> of file <b>help.c</b>.</p>
-<pre>1085                                                                                                                 {
-1086   options_config_print_options_sections_with_width(config, stream, 0, mode);
-1087 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References
-    <b>options_config_print_options_sections_with_width()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_options_sections_with_width_(const_"><a class="permalink" href="#void_options_config_print_options_sections_with_width_(const_">void
-  options_config_print_options_sections_with_width (const
-  <b>options_config_t</b> * config, FILE * stream, int max_col_width,
-  <b>asciichat_mode_t</b> mode)</a></h2>
-<p class="Pp">Print everything except the USAGE section. Prints MODES,
-    MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
-    options_config_print_usage_section to allow custom content in between.</p>
-<p class="Pp">Definition at line <b>890</b> of file <b>help.c</b>.</p>
-<pre>891                                                                              {
-892   if (!config || !stream) {
-893     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or stream is NULL&quot;);
-894     return;
-895   }
-896 
-897   // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
-898   int term_width = 80;
-899   terminal_size_t term_size;
-900   if (terminal_get_size(&amp;term_size) == ASCIICHAT_OK &amp;&amp; term_size.cols &gt; 40) {
-901     term_width = term_size.cols;
-902   } else {
-903     const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
-904     if (cols_env) {
-905       char *endptr;
-906       errno = 0;
-907       long cols = strtol(cols_env, &amp;endptr, 10);
-908       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
-909         term_width = (int)cols;
-910       else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
-911         log_error(&quot;options_config_print_*: Invalid COLUMNS value: %s&quot;, cols_env);
-912     }
-913   }
-914 
-915   // Calculate column width if not provided
-916   if (max_col_width &lt;= 0) {
-917     max_col_width = options_config_calculate_max_col_width(config);
-918   }
-919 
-920   // CAP max_col_width: 86 if terminal wide, otherwise 45 for narrow first column
-921   int max_col_cap = (term_width &gt; 170) ? 86 : 45;
-922   if (max_col_width &gt; max_col_cap) {
-923     max_col_width = max_col_cap;
-924   }
-925 
-926   // Determine if this is binary-level help
-927   // Discovery mode IS the binary-level help (shows binary options + discovery options)
-928   // Other modes show only mode-specific options
-929   bool for_binary_help = (mode == MODE_DISCOVERY);
-930   // Build list of unique groups in order of first appearance
-931   const char **unique_groups = SAFE_MALLOC(config-&gt;num_descriptors * sizeof(const char *), const char **);
-932   size_t num_unique_groups = 0;
-933 
-934   // For binary-level help, we now use a two-pass system to order groups,
-935   // ensuring binary-level option groups appear before discovery-mode groups.
-936   if (for_binary_help) {
-937     // Pass 1: Add GENERAL first, then LOGGING if present
-938     bool general_added = false;
-939     bool logging_added = false;
-940     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-941       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-942       if (desc-&gt;group) {
-943         if (!general_added &amp;&amp; strcmp(desc-&gt;group, &quot;GENERAL&quot;) == 0) {
-944           unique_groups[num_unique_groups++] = &quot;GENERAL&quot;;
-945           general_added = true;
-946         }
-947         if (!logging_added &amp;&amp; strcmp(desc-&gt;group, &quot;LOGGING&quot;) == 0) {
-948           unique_groups[num_unique_groups++] = &quot;LOGGING&quot;;
-949           logging_added = true;
-950         }
-951         if (general_added &amp;&amp; logging_added) {
-952           break;
-953         }
-954       }
-955     }
-956 
-957     // Pass 2: Collect all other groups that apply for binary help (all modes), if not already added.
-958     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-959       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-960       // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
-961       if (option_applies_to_mode(desc, mode, for_binary_help) &amp;&amp; desc-&gt;group) {
-962         // Skip GENERAL and LOGGING groups if we already added them (for binary help)
-963         if (strcmp(desc-&gt;group, &quot;GENERAL&quot;) == 0 || strcmp(desc-&gt;group, &quot;LOGGING&quot;) == 0) {
-964           continue;
-965         }
-966 
-967         bool group_exists = false;
-968         for (size_t j = 0; j &lt; num_unique_groups; j++) {
-969           if (strcmp(unique_groups[j], desc-&gt;group) == 0) {
-970             group_exists = true;
-971             break;
-972           }
-973         }
-974         if (!group_exists) {
-975           unique_groups[num_unique_groups++] = desc-&gt;group;
-976         }
-977       } else if (desc-&gt;group) {
-978       }
-979     }
-980   } else {
-981     // Original logic for other modes
-982     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-983       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-984       if (option_applies_to_mode(desc, mode, for_binary_help) &amp;&amp; desc-&gt;group) {
-985         bool group_exists = false;
-986         for (size_t j = 0; j &lt; num_unique_groups; j++) {
-987           if (strcmp(unique_groups[j], desc-&gt;group) == 0) {
-988             group_exists = true;
-989             break;
-990           }
-991         }
-992         if (!group_exists) {
-993           unique_groups[num_unique_groups++] = desc-&gt;group;
-994         }
-995       }
-996     }
-997   }
-998 
-999   // Print options grouped by category
-1000   for (size_t gi = 0; gi &lt; num_unique_groups; gi++) {
-1001     const char *current_group = unique_groups[gi];
-1002     // Add newline before each group except the first
-1003     if (gi &gt; 0) {
-1004       fprintf(stream, &quot;\n&quot;);
-1005     }
-1006     fprintf(stream, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, current_group));
-1007 
-1008     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1009       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1010       if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc-&gt;group ||
-1011           strcmp(desc-&gt;group, current_group) != 0) {
-1012         continue;
-1013       }
-1014 
-1015       // Build option string (flag part) with separate coloring for short and long flags
-1016       char colored_option_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
-1017       int colored_len = 0;
-1018 
-1019       // Short name and long name with separate coloring
-1020       if (desc-&gt;short_name) {
-1021         char short_flag[16];
-1022         safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
-1023         char long_flag[BUFFER_SIZE_SMALL];
-1024         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-1025         // Color short flag, plain comma-space, color long flag
-1026         colored_len +=
-1027             safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s, %s&quot;,
-1028                           colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
-1029       } else {
-1030         char long_flag[BUFFER_SIZE_SMALL];
-1031         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-1032         colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s&quot;,
-1033                                      colored_string(LOG_COLOR_WARN, long_flag));
-1034       }
-1035 
-1036       // Value placeholder (colored green)
-1037       if (desc-&gt;type != OPTION_TYPE_BOOL &amp;&amp; desc-&gt;type != OPTION_TYPE_ACTION) {
-1038         colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot; &quot;);
-1039         const char *placeholder = get_option_help_placeholder_str(desc);
-1040         if (placeholder[0] != '\0') {
-1041           colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s&quot;,
-1042                                        colored_string(LOG_COLOR_INFO, placeholder));
-1043         }
-1044       }
-1045 
-1046       // Build description with defaults and env vars
-1047       char desc_str[1024] = &quot;&quot;;
-1048       int desc_len = 0;
-1049 
-1050       if (desc-&gt;help_text) {
-1051         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot;%s&quot;, desc-&gt;help_text);
-1052       }
-1053 
-1054       // Skip adding default if the description already mentions it
-1055       bool description_has_default =
-1056           desc-&gt;help_text &amp;&amp; (strstr(desc-&gt;help_text, &quot;(default:&quot;) || strstr(desc-&gt;help_text, &quot;=default)&quot;));
-1057 
-1058       if (desc-&gt;default_value &amp;&amp; !description_has_default) {
-1059         char default_buf[256];
-1060         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
-1061         if (default_len &gt; 0) {
-1062           desc_len +=
-1063               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; (%s %s)&quot;,
-1064                             colored_string(LOG_COLOR_FATAL, &quot;default:&quot;), colored_string(LOG_COLOR_FATAL, default_buf));
-1065         }
-1066       }
-1067 
-1068       if (desc-&gt;required) {
-1069         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; [REQUIRED]&quot;);
-1070       }
-1071 
-1072       layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width, 2);
-1073     }
-1074   }
-1075 
-1076   // Cleanup
-1077   SAFE_FREE(unique_groups);
-1078 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>BUFFER_SIZE_SMALL</b>, <b>colored_string()</b>,
-    <b>terminal_size_t::cols</b>, <b>option_descriptor_t::default_value</b>,
-    <b>options_config_t::descriptors</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>format_option_default_value_str()</b>,
-    <b>get_option_help_placeholder_str()</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::help_text</b>, <b>layout_print_two_column_row()</b>,
-    <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
-    <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
-    <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
-    <b>options_config_t::num_descriptors</b>, <b>option_applies_to_mode()</b>,
-    <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_BOOL</b>,
-    <b>options_config_calculate_max_col_width()</b>,
-    <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
-    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
-    <b>option_descriptor_t::short_name</b>, <b>terminal_get_size()</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_config_print_options_sections()</b>, and
-    <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_usage_(const_"><a class="permalink" href="#void_options_config_print_usage_(const_">void
-  options_config_print_usage (const <b>options_config_t</b> * config, FILE *
-  stream)</a></h2>
-<p class="Pp">Print usage/help text. Generates formatted help with grouped
-    options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
-<br/>
-<i>stream</i> Output stream (stdout or stderr)</div>
-<p class="Pp">Definition at line <b>706</b> of file <b>help.c</b>.</p>
-<pre>706                                                                               {
-707   if (!config || !stream)
-708     return;
-709 
-710   // Detect terminal width from COLUMNS env var or use default
-711   int term_width = 80;
-712   const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
-713   if (cols_env) {
-714     char *endptr;
-715     errno = 0;
-716     long cols = strtol(cols_env, &amp;endptr, 10);
-717     if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
-718       term_width = (int)cols;
-719     else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
-720       log_error(&quot;options_config_print_binary_help: Invalid COLUMNS value: %s&quot;, cols_env);
-721   }
-722 
-723   // Binary-level help uses MODE_DISCOVERY internally
-724   asciichat_mode_t mode = MODE_DISCOVERY;
-725   bool for_binary_help = true;
-726 
-727   // Calculate per-section column widths (each section is independent, capped at 75)
-728   int usage_max_col_width = calculate_section_max_col_width(config, &quot;usage&quot;, mode, for_binary_help);
-729   int modes_max_col_width = calculate_section_max_col_width(config, &quot;modes&quot;, mode, for_binary_help);
-730   int examples_max_col_width = calculate_section_max_col_width(config, &quot;examples&quot;, mode, for_binary_help);
-731   int options_max_col_width = calculate_section_max_col_width(config, &quot;options&quot;, mode, for_binary_help);
-732 
-733   // Print programmatically generated sections (USAGE, MODES, MODE-OPTIONS, EXAMPLES)
-734   print_usage_section(config, stream, term_width, usage_max_col_width);
-735   print_modes_section(config, stream, term_width, modes_max_col_width);
-736   print_mode_options_section(stream, term_width, 40); // Keep reasonable width for mode-options
-737   print_examples_section(config, stream, term_width, examples_max_col_width, MODE_SERVER, true);
-738 
-739   // Build list of unique groups in order of first appearance
-740 
-741   const char **unique_groups = SAFE_MALLOC(config-&gt;num_descriptors * sizeof(const char *), const char **);
-742   size_t num_unique_groups = 0;
-743 
-744   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-745     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-746     // Filter by mode_bitmask - for binary help, show binary options
-747     if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc-&gt;group) {
-748       continue;
-749     }
-750 
-751     // Check if this group is already in the list
-752     bool group_exists = false;
-753     for (size_t j = 0; j &lt; num_unique_groups; j++) {
-754       if (unique_groups[j] &amp;&amp; strcmp(unique_groups[j], desc-&gt;group) == 0) {
-755         group_exists = true;
-756         break;
-757       }
-758     }
-759 
-760     // Add new group to list
-761     if (!group_exists &amp;&amp; num_unique_groups &lt; config-&gt;num_descriptors) {
-762       unique_groups[num_unique_groups++] = desc-&gt;group;
-763     }
-764   }
-765 
-766   // Print options grouped by group name
-767   for (size_t g = 0; g &lt; num_unique_groups; g++) {
-768     const char *current_group = unique_groups[g];
-769     // Only add leading newline for groups after the first one
-770     if (g &gt; 0) {
-771       fprintf(stream, &quot;\n&quot;);
-772     }
-773     fprintf(stream, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, current_group));
-774 
-775     // Print all options in this group
-776     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-777       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-778 
-779       // Skip if not in current group or if doesn't apply to mode
-780       if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc-&gt;group ||
-781           strcmp(desc-&gt;group, current_group) != 0) {
-782         continue;
-783       }
-784 
-785       // Build option string with separate coloring for short and long flags
-786       char option_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
-787       int option_len = 0;
-788 
-789       // Short name and long name with separate coloring
-790       if (desc-&gt;short_name) {
-791         char short_flag[16];
-792         safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
-793         char long_flag[BUFFER_SIZE_SMALL];
-794         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-795         // Color short flag, plain comma-space, color long flag
-796         option_len +=
-797             safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s, %s&quot;,
-798                           colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
-799       } else {
-800         char long_flag[BUFFER_SIZE_SMALL];
-801         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
-802         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s&quot;,
-803                                     colored_string(LOG_COLOR_WARN, long_flag));
-804       }
-805 
-806       // Value placeholder (colored green)
-807       if (desc-&gt;type != OPTION_TYPE_BOOL &amp;&amp; desc-&gt;type != OPTION_TYPE_ACTION) {
-808         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot; &quot;);
-809         const char *placeholder = get_option_help_placeholder_str(desc);
-810         if (placeholder[0] != '\0') {
-811           option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s&quot;,
-812                                       colored_string(LOG_COLOR_INFO, placeholder));
-813         }
-814       }
-815 
-816       // Build description string (plain text, colors applied when printing)
-817       char desc_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
-818       int desc_len = 0;
-819 
-820       if (desc-&gt;help_text) {
-821         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot;%s&quot;, desc-&gt;help_text);
-822       }
-823 
-824       // Skip adding default if the description already mentions it
-825       bool description_has_default =
-826           desc-&gt;help_text &amp;&amp; (strstr(desc-&gt;help_text, &quot;(default:&quot;) || strstr(desc-&gt;help_text, &quot;=default)&quot;));
-827 
-828       if (desc-&gt;default_value &amp;&amp; !description_has_default) {
-829         char default_buf[256];
-830         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
-831         if (default_len &gt; 0) {
-832           desc_len +=
-833               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; (%s %s)&quot;,
-834                             colored_string(LOG_COLOR_FATAL, &quot;default:&quot;), colored_string(LOG_COLOR_FATAL, default_buf));
-835         }
-836       }
-837 
-838       if (desc-&gt;required) {
-839         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; [REQUIRED]&quot;);
-840       }
-841 
-842       // Use layout function with section-specific column width for consistent alignment
-843       // option_str already contains colored_string() results, so pass it directly
-844       layout_print_two_column_row(stream, option_str, desc_str, options_max_col_width, term_width, 2);
-845     }
-846   }
-847 
-848   // Cleanup
-849   SAFE_FREE(unique_groups);
-850 
-851   fprintf(stream, &quot;\n&quot;);
-852 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>colored_string()</b>, <b>option_descriptor_t::default_value</b>,
-    <b>options_config_t::descriptors</b>, <b>errno</b>,
-    <b>format_option_default_value_str()</b>,
-    <b>get_option_help_placeholder_str()</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::help_text</b>, <b>layout_print_two_column_row()</b>,
-    <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
-    <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
-    <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_SERVER</b>, <b>options_config_t::num_descriptors</b>,
-    <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
-    <b>OPTION_TYPE_BOOL</b>, <b>option_descriptor_t::required</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>,
-    <b>safe_snprintf()</b>, <b>option_descriptor_t::short_name</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_usage_section_(const_"><a class="permalink" href="#void_options_config_print_usage_section_(const_">void
-  options_config_print_usage_section (const <b>options_config_t</b> * config,
-  FILE * stream)</a></h2>
-<p class="Pp">Print only the USAGE section. Splits usage printing from other
-    sections to allow custom content (like positional argument examples) to be
-    inserted between USAGE and other sections.</p>
-<p class="Pp">Definition at line <b>860</b> of file <b>help.c</b>.</p>
-<pre>860                                                                                       {
-861   if (!config || !stream)
-862     return;
-863 
-864   // Detect terminal width from COLUMNS env var or use default
-865   int term_width = 80;
-866   const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
-867   if (cols_env) {
-868     char *endptr;
-869     errno = 0;
-870     long cols = strtol(cols_env, &amp;endptr, 10);
-871     if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
-872       term_width = (int)cols;
-873     else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
-874       log_error(&quot;options_config_print_binary_help: Invalid COLUMNS value: %s&quot;, cols_env);
-875   }
-876 
-877   // Calculate global max column width across all sections for consistent alignment
-878   int max_col_width = options_config_calculate_max_col_width(config);
-879 
-880   // Print only USAGE section
-881   print_usage_section(config, stream, term_width, max_col_width);
-882 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>errno</b>, <b>log_error</b>,
-    <b>options_config_calculate_max_col_width()</b>, and <b>SAFE_GETENV</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_print_help_for_mode_(const_"><a class="permalink" href="#void_options_print_help_for_mode_(const_">void
-  options_print_help_for_mode (const <b>options_config_t</b> * config,
-  <b>asciichat_mode_t</b> mode, const char * program_name, const char *
-  description, FILE * desc)</a></h2>
-<p class="Pp">Print help for a specific mode or binary level. Print help for a
-    specific mode or binary level (unified function).</p>
-<p class="Pp"></p>
-<p class="Pp">This is the single unified function for all help output (binary
-    level and all modes). It handles common layout logic, terminal detection,
-    and section printing.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options config with
-  all options (binary + all modes)</b>
-<br/>
-<i>mode</i> Mode to show help for (use -1 for binary-level help)
-<br/>
-<i>program_name</i> Full program name with mode (e.g., &quot;ascii-chat
-  server&quot;)
-<br/>
-<i>description</i> Brief description of the mode/binary
-<br/>
-<i>desc</i> Output file stream (usually stdout)</div>
-<p class="Pp">Definition at line <b>1105</b> of file <b>help.c</b>.</p>
-<pre>1106                                                                       {
-1107   if (!config || !desc) {
-1108     if (desc) {
-1109       fprintf(desc, &quot;Error: Failed to create options config\n&quot;);
-1110     } else {
-1111       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or desc is NULL&quot;);
-1112     }
-1113     return;
-1114   }
-1115 
-1116   // Detect terminal width early so we can decide whether to show ASCII art
-1117   int term_width = 80;
-1118   terminal_size_t term_size;
-1119   if (terminal_get_size(&amp;term_size) == ASCIICHAT_OK &amp;&amp; term_size.cols &gt; 40) {
-1120     term_width = term_size.cols;
-1121   } else {
-1122     const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
-1123     if (cols_env) {
-1124       char *endptr;
-1125       errno = 0;
-1126       long cols = strtol(cols_env, &amp;endptr, 10);
-1127       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
-1128         term_width = (int)cols;
-1129       else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
-1130         log_error(&quot;options_config_print_*: Invalid COLUMNS value: %s&quot;, cols_env);
-1131     }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>help.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">help.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">help.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          help.c - Help text generation and formatting for options.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b> 1024
+            <br />
+            #define
+            <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>options_config_calculate_max_col_width</b> (const
+            <b>options_config_t</b> *config)
+            <br />
+            Calculate global max column width across all help sections. void
+            <b>options_config_print_usage</b> (const
+            <b>options_config_t</b> *config, FILE *stream)
+            <br />
+            Print usage/help text. void
+            <b>options_config_print_usage_section</b> (const
+            <b>options_config_t</b> *config, FILE *stream)
+            <br />
+            Print only the USAGE section. void
+            <b>options_config_print_options_sections_with_width</b> (const
+            <b>options_config_t</b> *config, FILE *stream, int max_col_width,
+            <b>asciichat_mode_t</b> mode)
+            <br />
+            Print everything except the USAGE section. void
+            <b>options_config_print_options_sections</b> (const
+            <b>options_config_t</b> *config, FILE *stream,
+            <b>asciichat_mode_t</b> mode)
+            <br />
+            Print everything except the USAGE section (backward compatibility
+            wrapper). void
+            <b>options_print_help_for_mode</b> (const
+            <b>options_config_t</b> *config, <b>asciichat_mode_t</b> mode, const
+            char *program_name, const char *description, FILE *desc)
+            <br />
+            Print help for a specific mode or binary level. void
+            <b>options_struct_destroy</b> (const
+            <b>options_config_t</b> *config, void *options_struct)
+            <br />
+            Clean up memory owned by options struct.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Help text generation and formatting for options.</p>
+        <p class="Pp">
+          Implements all help/usage text generation functions including
+          programmatic section printers and unified help output.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>help.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256"
+              >#define OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE
+              256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048"
+              >#define OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512"
+              >#define OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256"
+              >#define OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024"
+              >#define OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by
+            <b>options_config_print_options_sections_with_width()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16"
+              >#define OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512"
+              >#define OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>help.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_options_config_calculate_max_col_width_(const_"
+          >
+            <a
+              class="permalink"
+              href="#int_options_config_calculate_max_col_width_(const_"
+              >int options_config_calculate_max_col_width (const
+              <b>options_config_t</b> * config)</a
+            >
+          </h2>
+          <p class="Pp">
+            Calculate global max column width across all help sections.
+            Calculate global max column width for help output alignment.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculates the maximum width needed for proper alignment across
+            USAGE, EXAMPLES, OPTIONS, and MODES sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculate global max column width across all help sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculates the maximum width needed for proper alignment across all
+            help sections (USAGE, EXAMPLES, OPTIONS, MODES).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Options configuration</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Maximum column width needed for alignment</div>
+          <p class="Pp">Definition at line <b>90</b> of file <b>help.c</b>.</p>
+          <pre>
+90                                                                            {
+91   if (!config)
+92     return 0;
+93
+94   const char *binary_name = PLATFORM_BINARY_NAME;
+95
+96   int max_col_width = 0;
+97   char temp_buf[BUFFER_SIZE_MEDIUM];
+98
+99   // Check USAGE entries (capped at 45 chars for max first column)
+100   for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
+101     const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
+102     int len = 0;
+103
+104     len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot;%s&quot;, binary_name);
+105
+106     if (usage-&gt;mode) {
+107       const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage-&gt;mode);
+108       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_mode);
+109     }
+110
+111     if (usage-&gt;positional) {
+112       const char *colored_pos = colored_string(LOG_COLOR_INFO, usage-&gt;positional);
+113       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_pos);
+114     }
+115
+116     if (usage-&gt;show_options) {
+117       const char *options_text =
+118           (usage-&gt;mode &amp;&amp; strcmp(usage-&gt;mode, &quot;&lt;mode&gt;&quot;) == 0) ? &quot;[mode-options...]&quot; : &quot;[options...]&quot;;
+119       const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
+120       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_opts);
+121     }
+122
+123     int w = utf8_display_width(temp_buf);
+124     if (w &gt; LAYOUT_COLUMN_WIDTH) {
+125       w = LAYOUT_COLUMN_WIDTH;
+126     }
+127     if (w &gt; max_col_width)
+128       max_col_width = w;
+129   }
+130
+131   // Check EXAMPLES entries
+132   for (size_t i = 0; i &lt; config-&gt;num_examples; i++) {
+133     const example_descriptor_t *example = &amp;config-&gt;examples[i];
+134     int len = 0;
+135
+136     // Only prepend program name if this is not a utility command
+137     if (!example-&gt;is_utility_command) {
+138       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot;%s&quot;, binary_name);
+139
+140       // Programmatically add mode name based on mode_bitmask
+141       const char *mode_name = get_mode_name_from_bitmask(example-&gt;mode_bitmask);
+142       if (mode_name) {
+143         len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, mode_name);
+144       }
+145     }
+146
+147     if (example-&gt;args) {
+148       const char *colored_args = colored_string(LOG_COLOR_INFO, example-&gt;args);
+149       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, &quot; %s&quot;, colored_args);
+150     }
+151
+152     int w = utf8_display_width(temp_buf);
+153     if (w &gt; LAYOUT_COLUMN_WIDTH) {
+154       w = LAYOUT_COLUMN_WIDTH;
+155     }
+156     if (w &gt; max_col_width)
+157       max_col_width = w;
+158   }
+159
+160   // Check MODES entries (capped at 45 chars)
+161   for (size_t i = 0; i &lt; config-&gt;num_modes; i++) {
+162     const char *colored_name = colored_string(LOG_COLOR_FATAL, config-&gt;modes[i].name);
+163     int w = utf8_display_width(colored_name);
+164     if (w &gt; LAYOUT_COLUMN_WIDTH) {
+165       w = LAYOUT_COLUMN_WIDTH;
+166     }
+167     if (w &gt; max_col_width)
+168       max_col_width = w;
+169   }
+170
+171   // Check OPTIONS entries (from descriptors)
+172   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+173     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+174     if (desc-&gt;hide_from_mode_help || desc-&gt;hide_from_binary_help || !desc-&gt;group)
+175       continue;
+176
+177     // Build option display string with separate coloring for short and long flags
+178     char opts_buf[BUFFER_SIZE_SMALL];
+179     if (desc-&gt;short_name &amp;&amp; desc-&gt;short_name != '\0') {
+180       char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
+181       safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
+182       char long_flag[BUFFER_SIZE_SMALL];
+183       safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+184       // Color short flag, add comma, color long flag
+185       safe_snprintf(opts_buf, sizeof(opts_buf), &quot;%s, %s&quot;, colored_string(LOG_COLOR_WARN, short_flag),
+186                     colored_string(LOG_COLOR_WARN, long_flag));
+187     } else {
+188       char long_flag[BUFFER_SIZE_SMALL];
+189       safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+190       safe_snprintf(opts_buf, sizeof(opts_buf), &quot;%s&quot;, colored_string(LOG_COLOR_WARN, long_flag));
+191     }
+192     const char *colored_opts = opts_buf;
+193
+194     int w = utf8_display_width(colored_opts);
+195     if (w &gt; LAYOUT_COLUMN_WIDTH) {
+196       w = LAYOUT_COLUMN_WIDTH;
+197     }
+198     if (w &gt; max_col_width)
+199       max_col_width = w;
+200   }
+201
+202   // Enforce maximum column width of 45 characters
+203   if (max_col_width &gt; 45) {
+204     max_col_width = 45;
+205   }
+206
+207   return max_col_width;
+208 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>example_descriptor_t::args</b>,
+            <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>colored_string()</b>, <b>options_config_t::descriptors</b>,
+            <b>options_config_t::examples</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::hide_from_binary_help</b>,
+            <b>option_descriptor_t::hide_from_mode_help</b>,
+            <b>example_descriptor_t::is_utility_command</b>,
+            <b>LAYOUT_COLUMN_WIDTH</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
+            <b>option_descriptor_t::long_name</b>,
+            <b>example_descriptor_t::mode_bitmask</b>,
+            <b>options_config_t::modes</b>, <b>help_mode_descriptor_t::name</b>,
+            <b>options_config_t::num_descriptors</b>,
+            <b>options_config_t::num_examples</b>,
+            <b>options_config_t::num_modes</b>,
+            <b>options_config_t::num_usage_lines</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>PLATFORM_BINARY_NAME</b>, <b>safe_snprintf()</b>,
+            <b>option_descriptor_t::short_name</b>, <b>usage()</b>,
+            <b>options_config_t::usage_lines</b>, and
+            <b>utf8_display_width()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage_section()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_options_config_print_options_sections_(const_"
+          >
+            <a
+              class="permalink"
+              href="#void_options_config_print_options_sections_(const_"
+              >void options_config_print_options_sections (const
+              <b>options_config_t</b> * config, FILE * stream,
+              <b>asciichat_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print everything except the USAGE section (backward compatibility
+            wrapper). Print everything except the USAGE section (backward
+            compatibility).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calls options_config_print_options_sections_with_width with
+            auto-calculation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Print everything except the USAGE section (backward compatibility
+            wrapper).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Wrapper for options_config_print_options_sections_with_width with
+            auto-calculation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+            <br />
+            <i>mode</i> Optional mode to filter by (if provided, filters by
+            mode_bitmask)
+          </div>
+          <p class="Pp">
+            Definition at line <b>1103</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1103                                                                                                                 {
+1104   options_config_print_options_sections_with_width(config, stream, 0, mode);
+1105 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_config_print_options_sections()</b>, and
+            <b>options_config_print_options_sections_with_width()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_options_sections()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_options_config_print_options_sections_with_width_(const_"
+          >
+            <a
+              class="permalink"
+              href="#void_options_config_print_options_sections_with_width_(const_"
+              >void options_config_print_options_sections_with_width (const
+              <b>options_config_t</b> * config, FILE * stream, int
+              max_col_width, <b>asciichat_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print everything except the USAGE section. Prints MODES,
+            MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
+            options_config_print_usage_section to allow custom content in
+            between.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used
+            with options_config_print_usage_section to allow custom content in
+            between.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration (should be unified preset with
+            all options)
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+            <br />
+            <i>max_col_width</i> Optional pre-calculated column width (0 =
+            auto-calculate)
+            <br />
+            <i>mode</i> Optional mode to filter by (if MODE_SERVER, MODE_CLIENT,
+            etc., filters by mode_bitmask) If NULL or invalid, shows all options
+            (for binary-level help)
+          </div>
+          <p class="Pp">Definition at line <b>906</b> of file <b>help.c</b>.</p>
+          <pre>
+907                                                                              {
+908   if (!config || !stream) {
+909     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or stream is NULL&quot;);
+910     return;
+911   }
+912
+913   // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
+914   int term_width = 80;
+915   terminal_size_t term_size;
+916   if (terminal_get_size(&amp;term_size) == ASCIICHAT_OK &amp;&amp; term_size.cols &gt; 40) {
+917     term_width = term_size.cols;
+918   } else {
+919     const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
+920     if (cols_env) {
+921       char *endptr;
+922       errno = 0;
+923       long cols = strtol(cols_env, &amp;endptr, 10);
+924       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
+925         term_width = (int)cols;
+926       else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
+927         log_error(&quot;options_config_print_*: Invalid COLUMNS value: %s&quot;, cols_env);
+928     }
+929   }
+930
+931   // Calculate column width if not provided
+932   if (max_col_width &lt;= 0) {
+933     max_col_width = options_config_calculate_max_col_width(config);
+934   }
+935
+936   // CAP max_col_width: 86 if terminal wide, otherwise 45 for narrow first column
+937   int max_col_cap = (term_width &gt; 170) ? 86 : 45;
+938   if (max_col_width &gt; max_col_cap) {
+939     max_col_width = max_col_cap;
+940   }
+941
+942   // Determine if this is binary-level help
+943   // Discovery mode IS the binary-level help (shows binary options + discovery options)
+944   // Other modes show only mode-specific options
+945   bool for_binary_help = (mode == MODE_DISCOVERY);
+946   // Build list of unique groups in order of first appearance
+947   const char **unique_groups = SAFE_MALLOC(config-&gt;num_descriptors * sizeof(const char *), const char **);
+948   size_t num_unique_groups = 0;
+949
+950   // For binary-level help, we now use a two-pass system to order groups,
+951   // ensuring binary-level option groups appear before discovery-mode groups.
+952   if (for_binary_help) {
+953     // Pass 1: Add GENERAL first, then LOGGING if present
+954     bool general_added = false;
+955     bool logging_added = false;
+956     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+957       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+958       if (desc-&gt;group) {
+959         if (!general_added &amp;&amp; strcmp(desc-&gt;group, &quot;GENERAL&quot;) == 0) {
+960           unique_groups[num_unique_groups++] = &quot;GENERAL&quot;;
+961           general_added = true;
+962         }
+963         if (!logging_added &amp;&amp; strcmp(desc-&gt;group, &quot;LOGGING&quot;) == 0) {
+964           unique_groups[num_unique_groups++] = &quot;LOGGING&quot;;
+965           logging_added = true;
+966         }
+967         if (general_added &amp;&amp; logging_added) {
+968           break;
+969         }
+970       }
+971     }
+972
+973     // Pass 2: Collect all other groups that apply for binary help (all modes), if not already added.
+974     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+975       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+976       // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
+977       if (option_applies_to_mode(desc, mode, for_binary_help) &amp;&amp; desc-&gt;group) {
+978         // Skip GENERAL and LOGGING groups if we already added them (for binary help)
+979         if (strcmp(desc-&gt;group, &quot;GENERAL&quot;) == 0 || strcmp(desc-&gt;group, &quot;LOGGING&quot;) == 0) {
+980           continue;
+981         }
+982
+983         bool group_exists = false;
+984         for (size_t j = 0; j &lt; num_unique_groups; j++) {
+985           if (strcmp(unique_groups[j], desc-&gt;group) == 0) {
+986             group_exists = true;
+987             break;
+988           }
+989         }
+990         if (!group_exists) {
+991           unique_groups[num_unique_groups++] = desc-&gt;group;
+992         }
+993       } else if (desc-&gt;group) {
+994       }
+995     }
+996   } else {
+997     // Original logic for other modes
+998     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+999       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1000       if (option_applies_to_mode(desc, mode, for_binary_help) &amp;&amp; desc-&gt;group) {
+1001         bool group_exists = false;
+1002         for (size_t j = 0; j &lt; num_unique_groups; j++) {
+1003           if (strcmp(unique_groups[j], desc-&gt;group) == 0) {
+1004             group_exists = true;
+1005             break;
+1006           }
+1007         }
+1008         if (!group_exists) {
+1009           unique_groups[num_unique_groups++] = desc-&gt;group;
+1010         }
+1011       }
+1012     }
+1013   }
+1014
+1015   // Print options grouped by category
+1016   for (size_t gi = 0; gi &lt; num_unique_groups; gi++) {
+1017     const char *current_group = unique_groups[gi];
+1018     // Add newline before each group except the first
+1019     if (gi &gt; 0) {
+1020       fprintf(stream, &quot;\n&quot;);
+1021     }
+1022     fprintf(stream, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, current_group));
+1023
+1024     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1025       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1026       if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc-&gt;group ||
+1027           strcmp(desc-&gt;group, current_group) != 0) {
+1028         continue;
+1029       }
+1030
+1031       // Build option string (flag part) with separate coloring for short and long flags
+1032       char colored_option_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
+1033       int colored_len = 0;
+1034
+1035       // Short name and long name with separate coloring
+1036       if (desc-&gt;short_name) {
+1037         char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
+1038         safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
+1039         char long_flag[BUFFER_SIZE_SMALL];
+1040         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+1041         // Color short flag, plain comma-space, color long flag
+1042         colored_len +=
+1043             safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s, %s&quot;,
+1044                           colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+1045       } else {
+1046         char long_flag[BUFFER_SIZE_SMALL];
+1047         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+1048         colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s&quot;,
+1049                                      colored_string(LOG_COLOR_WARN, long_flag));
+1050       }
+1051
+1052       // Value placeholder (colored green)
+1053       if (desc-&gt;type != OPTION_TYPE_BOOL &amp;&amp; desc-&gt;type != OPTION_TYPE_ACTION) {
+1054         colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot; &quot;);
+1055         const char *placeholder = get_option_help_placeholder_str(desc);
+1056         if (placeholder[0] != '\0') {
+1057           colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, &quot;%s&quot;,
+1058                                        colored_string(LOG_COLOR_INFO, placeholder));
+1059         }
+1060       }
+1061
+1062       // Build description with defaults and env vars
+1063       char desc_str[OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE] = &quot;&quot;;
+1064       int desc_len = 0;
+1065
+1066       if (desc-&gt;help_text) {
+1067         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot;%s&quot;, desc-&gt;help_text);
+1068       }
+1069
+1070       // Skip adding default if the description already mentions it
+1071       bool description_has_default =
+1072           desc-&gt;help_text &amp;&amp; (strstr(desc-&gt;help_text, &quot;(default:&quot;) || strstr(desc-&gt;help_text, &quot;=default)&quot;));
+1073
+1074       if (desc-&gt;default_value &amp;&amp; !description_has_default) {
+1075         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
+1076         int default_len = mode == MODE_MCP_SERVER &amp;&amp; !strcmp(desc-&gt;long_name, &quot;max-clients&quot;)
+1077                               ? safe_snprintf(default_buf, sizeof(default_buf), &quot;available CPUs&quot;)
+1078                               : format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+1079         if (default_len &gt; 0) {
+1080           desc_len +=
+1081               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; (%s %s)&quot;,
+1082                             colored_string(LOG_COLOR_FATAL, &quot;default:&quot;), colored_string(LOG_COLOR_FATAL, default_buf));
+1083         }
+1084       }
+1085
+1086       if (desc-&gt;required) {
+1087         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; [REQUIRED]&quot;);
+1088       }
+1089
+1090       layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width, 2);
+1091     }
+1092   }
+1093
+1094   // Cleanup
+1095   SAFE_FREE(unique_groups);
+1096 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>BUFFER_SIZE_SMALL</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>,
+            <b>option_descriptor_t::default_value</b>,
+            <b>options_config_t::descriptors</b>, <b>errno</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>format_option_default_value_str()</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>,
+            <b>layout_print_two_column_row()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_MCP_SERVER</b>, <b>options_config_t::num_descriptors</b>,
+            <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
+            <b>OPTION_TYPE_BOOL</b>,
+            <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, <b>option_descriptor_t::short_name</b>,
+            <b>terminal_get_size()</b>, and <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_options_sections()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_print_help_for_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_config_print_usage_(const_">
+            <a class="permalink" href="#void_options_config_print_usage_(const_"
+              >void options_config_print_usage (const <b>options_config_t</b> *
+              config, FILE * stream)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print usage/help text. Generates formatted help with grouped
+            options.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+          </div>
+          <p class="Pp">Definition at line <b>722</b> of file <b>help.c</b>.</p>
+          <pre>
+722                                                                               {
+723   if (!config || !stream)
+724     return;
+725
+726   // Detect terminal width from COLUMNS env var or use default
+727   int term_width = 80;
+728   const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
+729   if (cols_env) {
+730     char *endptr;
+731     errno = 0;
+732     long cols = strtol(cols_env, &amp;endptr, 10);
+733     if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
+734       term_width = (int)cols;
+735     else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
+736       log_error(&quot;Invalid COLUMNS value: %s&quot;, cols_env);
+737   }
+738
+739   // Binary-level help uses MODE_DISCOVERY internally
+740   asciichat_mode_t mode = MODE_DISCOVERY;
+741   bool for_binary_help = true;
+742
+743   // Calculate per-section column widths (each section is independent, capped at 75)
+744   int usage_max_col_width = calculate_section_max_col_width(config, &quot;usage&quot;, mode, for_binary_help);
+745   int modes_max_col_width = calculate_section_max_col_width(config, &quot;modes&quot;, mode, for_binary_help);
+746   int examples_max_col_width = calculate_section_max_col_width(config, &quot;examples&quot;, mode, for_binary_help);
+747   int options_max_col_width = calculate_section_max_col_width(config, &quot;options&quot;, mode, for_binary_help);
+748
+749   // Print programmatically generated sections (USAGE, MODES, MODE-OPTIONS, EXAMPLES)
+750   print_usage_section(config, stream, term_width, usage_max_col_width);
+751   print_modes_section(config, stream, term_width, modes_max_col_width);
+752   print_mode_options_section(stream, term_width, 40); // Keep reasonable width for mode-options
+753   print_examples_section(config, stream, term_width, examples_max_col_width, MODE_SERVER, true);
+754
+755   // Build list of unique groups in order of first appearance
+756
+757   const char **unique_groups = SAFE_MALLOC(config-&gt;num_descriptors * sizeof(const char *), const char **);
+758   size_t num_unique_groups = 0;
+759
+760   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+761     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+762     // Filter by mode_bitmask - for binary help, show binary options
+763     if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc-&gt;group) {
+764       continue;
+765     }
+766
+767     // Check if this group is already in the list
+768     bool group_exists = false;
+769     for (size_t j = 0; j &lt; num_unique_groups; j++) {
+770       if (unique_groups[j] &amp;&amp; strcmp(unique_groups[j], desc-&gt;group) == 0) {
+771         group_exists = true;
+772         break;
+773       }
+774     }
+775
+776     // Add new group to list
+777     if (!group_exists &amp;&amp; num_unique_groups &lt; config-&gt;num_descriptors) {
+778       unique_groups[num_unique_groups++] = desc-&gt;group;
+779     }
+780   }
+781
+782   // Print options grouped by group name
+783   for (size_t g = 0; g &lt; num_unique_groups; g++) {
+784     const char *current_group = unique_groups[g];
+785     // Only add leading newline for groups after the first one
+786     if (g &gt; 0) {
+787       fprintf(stream, &quot;\n&quot;);
+788     }
+789     fprintf(stream, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, current_group));
+790
+791     // Print all options in this group
+792     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+793       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+794
+795       // Skip if not in current group or if doesn't apply to mode
+796       if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc-&gt;group ||
+797           strcmp(desc-&gt;group, current_group) != 0) {
+798         continue;
+799       }
+800
+801       // Build option string with separate coloring for short and long flags
+802       char option_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
+803       int option_len = 0;
+804
+805       // Short name and long name with separate coloring
+806       if (desc-&gt;short_name) {
+807         char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
+808         safe_snprintf(short_flag, sizeof(short_flag), &quot;-%c&quot;, desc-&gt;short_name);
+809         char long_flag[BUFFER_SIZE_SMALL];
+810         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+811         // Color short flag, plain comma-space, color long flag
+812         option_len +=
+813             safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s, %s&quot;,
+814                           colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+815       } else {
+816         char long_flag[BUFFER_SIZE_SMALL];
+817         safe_snprintf(long_flag, sizeof(long_flag), &quot;--%s&quot;, desc-&gt;long_name);
+818         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s&quot;,
+819                                     colored_string(LOG_COLOR_WARN, long_flag));
+820       }
+821
+822       // Value placeholder (colored green)
+823       if (desc-&gt;type != OPTION_TYPE_BOOL &amp;&amp; desc-&gt;type != OPTION_TYPE_ACTION) {
+824         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot; &quot;);
+825         const char *placeholder = get_option_help_placeholder_str(desc);
+826         if (placeholder[0] != '\0') {
+827           option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, &quot;%s&quot;,
+828                                       colored_string(LOG_COLOR_INFO, placeholder));
+829         }
+830       }
+831
+832       // Build description string (plain text, colors applied when printing)
+833       char desc_str[BUFFER_SIZE_MEDIUM] = &quot;&quot;;
+834       int desc_len = 0;
+835
+836       if (desc-&gt;help_text) {
+837         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot;%s&quot;, desc-&gt;help_text);
+838       }
+839
+840       // Skip adding default if the description already mentions it
+841       bool description_has_default =
+842           desc-&gt;help_text &amp;&amp; (strstr(desc-&gt;help_text, &quot;(default:&quot;) || strstr(desc-&gt;help_text, &quot;=default)&quot;));
+843
+844       if (desc-&gt;default_value &amp;&amp; !description_has_default) {
+845         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
+846         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+847         if (default_len &gt; 0) {
+848           desc_len +=
+849               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; (%s %s)&quot;,
+850                             colored_string(LOG_COLOR_FATAL, &quot;default:&quot;), colored_string(LOG_COLOR_FATAL, default_buf));
+851         }
+852       }
+853
+854       if (desc-&gt;required) {
+855         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, &quot; [REQUIRED]&quot;);
+856       }
+857
+858       // Use layout function with section-specific column width for consistent alignment
+859       // option_str already contains colored_string() results, so pass it directly
+860       layout_print_two_column_row(stream, option_str, desc_str, options_max_col_width, term_width, 2);
+861     }
+862   }
+863
+864   // Cleanup
+865   SAFE_FREE(unique_groups);
+866
+867   fprintf(stream, &quot;\n&quot;);
+868 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>colored_string()</b>, <b>option_descriptor_t::default_value</b>,
+            <b>options_config_t::descriptors</b>, <b>errno</b>,
+            <b>format_option_default_value_str()</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>,
+            <b>layout_print_two_column_row()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_SERVER</b>, <b>options_config_t::num_descriptors</b>,
+            <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
+            <b>OPTION_TYPE_BOOL</b>,
+            <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_print_usage()</b>,
+            <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>option_descriptor_t::short_name</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_config_print_usage()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_config_print_usage_section_(const_">
+            <a
+              class="permalink"
+              href="#void_options_config_print_usage_section_(const_"
+              >void options_config_print_usage_section (const
+              <b>options_config_t</b> * config, FILE * stream)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print only the USAGE section. Splits usage printing from other
+            sections to allow custom content (like positional argument examples)
+            to be inserted between USAGE and other sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Prints just the USAGE section. Useful for inserting other content
+            (like positional argument examples) between USAGE and other
+            sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+          </div>
+          <p class="Pp">Definition at line <b>876</b> of file <b>help.c</b>.</p>
+          <pre>
+876                                                                                       {
+877   if (!config || !stream)
+878     return;
+879
+880   // Detect terminal width from COLUMNS env var or use default
+881   int term_width = 80;
+882   const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
+883   if (cols_env) {
+884     char *endptr;
+885     errno = 0;
+886     long cols = strtol(cols_env, &amp;endptr, 10);
+887     if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
+888       term_width = (int)cols;
+889     else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
+890       log_error(&quot;Invalid COLUMNS value: %s&quot;, cols_env);
+891   }
+892
+893   // Calculate global max column width across all sections for consistent alignment
+894   int max_col_width = options_config_calculate_max_col_width(config);
+895
+896   // Print only USAGE section
+897   print_usage_section(config, stream, term_width, max_col_width);
+898 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>errno</b>, <b>log_error</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_usage_section()</b>, and <b>SAFE_GETENV</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_usage_section()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_print_help_for_mode_(const_">
+            <a
+              class="permalink"
+              href="#void_options_print_help_for_mode_(const_"
+              >void options_print_help_for_mode (const <b>options_config_t</b> *
+              config, <b>asciichat_mode_t</b> mode, const char * program_name,
+              const char * description, FILE * desc)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print help for a specific mode or binary level. Print help for a
+            specific mode or binary level (unified function).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This is the single unified function for all help output (binary
+            level and all modes). It handles common layout logic, terminal
+            detection, and section printing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options config with all options (binary + all modes)
+            <br />
+            <i>mode</i> Mode to show help for (use -1 for binary-level help)
+            <br />
+            <i>program_name</i> Full program name with mode (e.g.,
+            &quot;ascii-chat server&quot;)
+            <br />
+            <i>description</i> Brief description of the mode/binary
+            <br />
+            <i>desc</i> Output file stream (usually stdout)
+          </div>
+          <p class="Pp">Print help for a specific mode or binary level.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This is the single unified function for all help output (binary
+            level and all modes). It handles all layout logic, terminal
+            detection, and section printing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options config with all options
+            <br />
+            <i>mode</i> Mode to show help for (-1 for binary-level help)
+            <br />
+            <i>program_name</i> Full program name (e.g., &quot;ascii-chat
+            server&quot;)
+            <br />
+            <i>description</i> Brief description
+            <br />
+            <i>desc</i> Output file stream
+          </div>
+          <p class="Pp">
+            Definition at line <b>1123</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1124                                                                       {
+1125   if (!config || !desc) {
+1126     if (desc) {
+1127       fprintf(desc, &quot;Error: Failed to create options config\n&quot;);
+1128     } else {
+1129       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or desc is NULL&quot;);
+1130     }
+1131     return;
 1132   }
-1133 
-1134   // Print ASCII art logo only if terminal is wide enough (ASCII art is ~52 chars wide)
-1135   if (term_width &gt;= 60) {
-1136     (void)fprintf(desc, &quot;  __ _ ___  ___(_|_)       ___| |__   __ _| |_ \n&quot;);
-1137     (void)fprintf(desc, &quot; / _` / __|/ __| | |_____ / __| '_ \\ / _` | __|\n&quot;);
-1138     (void)fprintf(desc, &quot;| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ \n&quot;);
-1139     (void)fprintf(desc, &quot; \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__|\n&quot;);
-1140     (void)fprintf(desc, &quot;\n&quot;);
-1141   }
-1142 
-1143   // Print program name and description (color mode name magenta if it's a mode-specific help)
-1144   if (program_name) {
-1145     const char *space = strchr(program_name, ' ');
-1146     if (space &amp;&amp; mode &gt;= 0) {
-1147       // Mode-specific help: color the mode name
-1148       int binary_len = space - program_name;
-1149       (void)fprintf(desc, &quot;%.*s %s - %s\n\n&quot;, binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1),
-1150                     description);
-1151     } else {
-1152       // Binary-level help: use colored_string for the program name too
-1153       (void)fprintf(desc, &quot;%s - %s\n\n&quot;, colored_string(LOG_COLOR_FATAL, program_name), description);
-1154     }
-1155   }
-1156 
-1157   // Print project links
-1158   print_project_links(desc);
-1159   (void)fprintf(desc, &quot;\n&quot;);
-1160 
-1161   // Determine if this is binary-level help (called for 'ascii-chat --help')
-1162   // Binary help uses MODE_DISCOVERY as the mode value
-1163   bool for_binary_help = (mode == MODE_DISCOVERY);
-1164 
-1165   // Calculate column widths for USAGE upfront (before printing) for alignment
-1166   int usage_max_col_width = calculate_section_max_col_width(config, &quot;usage&quot;, mode, for_binary_help);
-1167   // Use USAGE width for both USAGE and EXAMPLES sections for consistent alignment
-1168   // (don't let long examples push column too far right)
-1169   int usage_examples_col_width = usage_max_col_width;
-1170 
-1171   // Print USAGE section (with section-specific column width and mode filtering)
-1172   fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, &quot;USAGE&quot;));
-1173   if (config-&gt;num_usage_lines &gt; 0) {
-1174     // Get mode name for filtering usage lines
-1175     const char *mode_name = NULL;
-1176     switch (mode) {
-1177     case MODE_SERVER:
-1178       mode_name = &quot;server&quot;;
-1179       break;
-1180     case MODE_CLIENT:
-1181       mode_name = &quot;client&quot;;
-1182       break;
-1183     case MODE_MIRROR:
-1184       mode_name = &quot;mirror&quot;;
-1185       break;
-1186     case MODE_DISCOVERY_SERVICE:
-1187       mode_name = &quot;discovery-service&quot;;
-1188       break;
-1189     case MODE_DISCOVERY:
-1190     default:
-1191       mode_name = NULL; // Binary help shows all usage lines
-1192       break;
-1193     }
-1194 
-1195     for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
-1196       const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
-1197 
-1198       // Filter usage lines by mode
-1199       if (!for_binary_help) {
-1200         // For mode-specific help, show the current mode's usage line and the generic [mode] --help line
-1201         bool is_current_mode = (usage-&gt;mode &amp;&amp; mode_name &amp;&amp; strcmp(usage-&gt;mode, mode_name) == 0);
-1202         bool is_generic_help_line =
-1203             (!usage-&gt;mode &amp;&amp; usage-&gt;positional &amp;&amp; strcmp(usage-&gt;positional, &quot;[mode] --help&quot;) == 0);
-1204 
-1205         if (!is_current_mode &amp;&amp; !is_generic_help_line) {
-1206           continue;
-1207         }
-1208       }
-1209 
-1210       char usage_buf[BUFFER_SIZE_MEDIUM];
-1211       int len = 0;
-1212 
-1213       len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot;ascii-chat&quot;);
-1214 
-1215       // For mode-specific help, use [mode] placeholder when showing --help usage
-1216       if (usage-&gt;mode) {
-1217         if (!for_binary_help &amp;&amp; usage-&gt;positional &amp;&amp; strcmp(usage-&gt;positional, &quot;--help&quot;) == 0) {
-1218           // Mode-specific help: show [mode] --help as generic placeholder
-1219           len +=
-1220               safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;, colored_string(LOG_COLOR_FATAL, &quot;[mode]&quot;));
-1221         } else {
-1222           // Binary help or non-help usage: show actual mode name
-1223           len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
-1224                                colored_string(LOG_COLOR_FATAL, usage-&gt;mode));
-1225         }
-1226       }
-1227 
-1228       if (usage-&gt;positional) {
-1229         len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
-1230                              colored_string(LOG_COLOR_INFO, usage-&gt;positional));
-1231       }
-1232 
-1233       if (usage-&gt;show_options) {
-1234         const char *options_text =
-1235             (usage-&gt;mode &amp;&amp; strcmp(usage-&gt;mode, &quot;&lt;mode&gt;&quot;) == 0) ? &quot;[mode-options...]&quot; : &quot;[options...]&quot;;
-1236         len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
-1237                              colored_string(LOG_COLOR_WARN, options_text));
-1238       }
-1239 
-1240       layout_print_two_column_row(desc, usage_buf, usage-&gt;description, usage_examples_col_width, term_width, 0);
-1241     }
-1242   }
-1243   fprintf(desc, &quot;\n&quot;);
-1244 
-1245   // Print MODES section (only for binary-level help)
-1246   if (for_binary_help &amp;&amp; config-&gt;num_modes &gt; 0) {
-1247     int modes_max_col_width = calculate_section_max_col_width(config, &quot;modes&quot;, mode, for_binary_help);
-1248     print_modes_section(config, desc, term_width, modes_max_col_width);
-1249   }
-1250 
-1251   // Print positional argument examples (with mode filtering and section-specific column width)
-1252   if (config-&gt;num_positional_args &gt; 0) {
-1253     // First, check if any positional args apply to this mode
-1254     option_mode_bitmask_t current_mode_bitmask = 1U &lt;&lt; mode;
-1255     bool has_applicable_positional_args = false;
-1256 
-1257     for (size_t pa_idx = 0; pa_idx &lt; config-&gt;num_positional_args; pa_idx++) {
-1258       const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[pa_idx];
-1259 
-1260       // Filter by mode_bitmask (matching the parsing code logic)
-1261       if (pos_arg-&gt;mode_bitmask != 0 &amp;&amp; !(pos_arg-&gt;mode_bitmask &amp; current_mode_bitmask)) {
-1262         continue;
-1263       }
-1264 
-1265       if (pos_arg-&gt;section_heading &amp;&amp; pos_arg-&gt;examples &amp;&amp; pos_arg-&gt;num_examples &gt; 0) {
-1266         has_applicable_positional_args = true;
-1267         break;
-1268       }
-1269     }
-1270 
-1271     // Only print the section if there are applicable positional args
-1272     if (has_applicable_positional_args) {
-1273       int positional_max_col_width = calculate_section_max_col_width(config, &quot;positional&quot;, mode, false);
-1274 
-1275       for (size_t pa_idx = 0; pa_idx &lt; config-&gt;num_positional_args; pa_idx++) {
-1276         const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[pa_idx];
-1277 
-1278         // Filter by mode_bitmask (matching the parsing code logic)
-1279         if (pos_arg-&gt;mode_bitmask != 0 &amp;&amp; !(pos_arg-&gt;mode_bitmask &amp; current_mode_bitmask)) {
-1280           continue;
-1281         }
-1282 
-1283         if (pos_arg-&gt;section_heading &amp;&amp; pos_arg-&gt;examples &amp;&amp; pos_arg-&gt;num_examples &gt; 0) {
-1284           (void)fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, pos_arg-&gt;section_heading));
-1285 
-1286           for (size_t i = 0; i &lt; pos_arg-&gt;num_examples; i++) {
-1287             const char *example = pos_arg-&gt;examples[i];
-1288             const char *p = example;
-1289             const char *desc_start = NULL;
-1290 
-1291             while (*p == ' ')
-1292               p++;
-1293             const char *first_part = p;
-1294 
-1295             while (*p &amp;&amp; !(*p == ' ' &amp;&amp; *(p + 1) == ' '))
-1296               p++;
-1297             int first_len_bytes = (int)(p - first_part);
-1298 
-1299             while (*p == ' ')
-1300               p++;
-1301             if (*p) {
-1302               desc_start = p;
-1303             }
-1304 
-1305             char colored_first_part[256];
-1306             safe_snprintf(colored_first_part, sizeof(colored_first_part), &quot;%.*s&quot;, first_len_bytes, first_part);
-1307             char colored_result[512];
-1308             safe_snprintf(colored_result, sizeof(colored_result), &quot;%s&quot;,
-1309                           colored_string(LOG_COLOR_INFO, colored_first_part));
-1310 
-1311             layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : &quot;&quot;, positional_max_col_width,
-1312                                         term_width, 0);
-1313           }
-1314           (void)fprintf(desc, &quot;\n&quot;);
-1315         }
-1316       }
-1317     }
-1318   }
-1319 
-1320   // Print EXAMPLES section (using USAGE column width for alignment)
-1321   print_examples_section(config, desc, term_width, usage_examples_col_width, mode, for_binary_help);
-1322 
-1323   // Print custom sections (after EXAMPLES, before OPTIONS)
-1324   if (config-&gt;num_custom_sections &gt; 0) {
-1325     option_mode_bitmask_t current_mode_bitmask = 1U &lt;&lt; mode;
-1326     for (size_t i = 0; i &lt; config-&gt;num_custom_sections; i++) {
-1327       const custom_section_descriptor_t *section = &amp;config-&gt;custom_sections[i];
-1328 
-1329       // Filter by mode_bitmask
-1330       if (section-&gt;mode_bitmask != 0 &amp;&amp; !(section-&gt;mode_bitmask &amp; current_mode_bitmask)) {
-1331         continue;
-1332       }
-1333 
-1334       if (section-&gt;heading) {
-1335         fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, section-&gt;heading));
-1336       }
-1337 
-1338       if (section-&gt;content) {
-1339         // Special handling for KEYBINDINGS section: colorize keybindings and wrap to 70 chars
-1340         if (section-&gt;heading &amp;&amp; strcmp(section-&gt;heading, &quot;KEYBINDINGS&quot;) == 0) {
-1341           // Build colored version with proper keybinding colorization
-1342           char colored_output[2048] = &quot;&quot;;
-1343           const char *src = section-&gt;content;
-1344           char *dst = colored_output;
-1345           size_t remaining = sizeof(colored_output) - 1;
-1346 
-1347           while (*src &amp;&amp; remaining &gt; 0) {
-1348             // Colorize ? that don't end sentences
-1349             if (*src == '?' &amp;&amp; *(src + 1) != '\n' &amp;&amp; *(src + 1) != '\0') {
-1350               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;?&quot;);
-1351               size_t len = strlen(colored);
-1352               if (len &lt;= remaining) {
-1353                 memcpy(dst, colored, len);
-1354                 dst += len;
-1355                 remaining -= len;
-1356                 src += 1;
-1357               } else {
-1358                 break;
-1359               }
-1360             } else if (strncmp(src, &quot;Space&quot;, 5) == 0 &amp;&amp;
-1361                        (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' '))) {
-1362               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;Space&quot;);
-1363               size_t len = strlen(colored);
-1364               if (len &lt;= remaining) {
-1365                 memcpy(dst, colored, len);
-1366                 dst += len;
-1367                 remaining -= len;
-1368                 src += 5;
-1369               } else {
-1370                 break;
-1371               }
-1372             } else if (strncmp(src, &quot;arrows&quot;, 6) == 0 &amp;&amp;
-1373                        (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' '))) {
-1374               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;arrows&quot;);
-1375               size_t len = strlen(colored);
-1376               if (len &lt;= remaining) {
-1377                 memcpy(dst, colored, len);
-1378                 dst += len;
-1379                 remaining -= len;
-1380                 src += 6;
-1381               } else {
-1382                 break;
-1383               }
-1384             } else if (*src == 'm' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
-1385                        (*(src + 1) == ',' || *(src + 1) == ')')) {
-1386               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;m&quot;);
-1387               size_t len = strlen(colored);
-1388               if (len &lt;= remaining) {
-1389                 memcpy(dst, colored, len);
-1390                 dst += len;
-1391                 remaining -= len;
-1392                 src += 1;
-1393               } else {
-1394                 break;
-1395               }
-1396             } else if (*src == 'c' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
-1397                        (*(src + 1) == ',' || *(src + 1) == ')')) {
-1398               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;c&quot;);
-1399               size_t len = strlen(colored);
-1400               if (len &lt;= remaining) {
-1401                 memcpy(dst, colored, len);
-1402                 dst += len;
-1403                 remaining -= len;
-1404                 src += 1;
-1405               } else {
-1406                 break;
-1407               }
-1408             } else if (*src == 'f' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
-1409                        (*(src + 1) == ',' || *(src + 1) == ')')) {
-1410               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;f&quot;);
-1411               size_t len = strlen(colored);
-1412               if (len &lt;= remaining) {
-1413                 memcpy(dst, colored, len);
-1414                 dst += len;
-1415                 remaining -= len;
-1416                 src += 1;
-1417               } else {
-1418                 break;
-1419               }
-1420             } else if (*src == 'r' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
-1421                        (*(src + 1) == ')')) {
-1422               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;r&quot;);
-1423               size_t len = strlen(colored);
-1424               if (len &lt;= remaining) {
-1425                 memcpy(dst, colored, len);
-1426                 dst += len;
-1427                 remaining -= len;
-1428                 src += 1;
-1429               } else {
-1430                 break;
-1431               }
-1432             } else {
-1433               *dst++ = *src++;
-1434               remaining--;
-1435             }
-1436           }
-1437           *dst = '\0';
-1438           // Print with 2-space indent, wrapping at min(terminal width, 90)
-1439           fprintf(desc, &quot;  &quot;);
-1440           int keybindings_wrap_width = term_width &lt; 90 ? term_width : 90;
-1441           layout_print_wrapped_description(desc, colored_output, 2, keybindings_wrap_width, 0);
-1442           fprintf(desc, &quot;\n&quot;);
-1443         } else {
-1444           fprintf(desc, &quot;%s\n&quot;, section-&gt;content);
-1445         }
-1446       }
-1447 
-1448       fprintf(desc, &quot;\n&quot;);
-1449     }
-1450   }
-1451 
-1452   // Print options sections (with section-specific column width for options)
-1453   int options_max_col_width = calculate_section_max_col_width(config, &quot;options&quot;, mode, for_binary_help);
-1454   options_config_print_options_sections_with_width(config, desc, options_max_col_width, mode);
-1455 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
-    <b>custom_section_descriptor_t::content</b>,
-    <b>options_config_t::custom_sections</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>positional_arg_descriptor_t::examples</b>,
-    <b>custom_section_descriptor_t::heading</b>,
-    <b>layout_print_two_column_row()</b>,
-    <b>layout_print_wrapped_description()</b>, <b>LOG_COLOR_DEBUG</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
-    <b>log_error</b>, <b>custom_section_descriptor_t::mode_bitmask</b>,
-    <b>positional_arg_descriptor_t::mode_bitmask</b>, <b>MODE_CLIENT</b>,
-    <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MIRROR</b>,
-    <b>MODE_SERVER</b>, <b>options_config_t::num_custom_sections</b>,
-    <b>positional_arg_descriptor_t::num_examples</b>,
-    <b>options_config_t::num_modes</b>,
-    <b>options_config_t::num_positional_args</b>,
-    <b>options_config_t::num_usage_lines</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_t::positional_args</b>, <b>print_project_links()</b>,
-    <b>SAFE_GETENV</b>, <b>safe_snprintf()</b>,
-    <b>positional_arg_descriptor_t::section_heading</b>, <b>SET_ERRNO</b>,
-    <b>terminal_get_size()</b>, <b>usage()</b>, and
-    <b>options_config_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_struct_destroy_(const_"><a class="permalink" href="#void_options_struct_destroy_(const_">void
-  options_struct_destroy (const <b>options_config_t</b> * config, void *
-  options_struct)</a></h2>
-<p class="Pp">Clean up memory owned by options struct. Frees all auto-duplicated
-    strings and sets pointers to NULL. Call this before freeing the options
-    struct.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
-<br/>
-<i>options_struct</i> Options struct to clean up</div>
-<p class="Pp">Definition at line <b>1457</b> of file <b>help.c</b>.</p>
-<pre>1457                                                                                   {
-1458   if (!config || !options_struct)
-1459     return;
-1460 
-1461   // Free all owned strings
-1462   for (size_t i = 0; i &lt; config-&gt;num_owned_strings; i++) {
-1463     free(config-&gt;owned_strings[i]);
-1464   }
-1465 
-1466   // Reset owned strings tracking
-1467   ((options_config_t *)config)-&gt;num_owned_strings = 0;
-1468 
-1469   // NULL out string fields
-1470   char *base = (char *)options_struct;
-1471   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1472     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1473     if (desc-&gt;type == OPTION_TYPE_STRING &amp;&amp; desc-&gt;owns_memory) {
-1474       char **field = (char **)(base + desc-&gt;offset);
-1475       *field = NULL;
-1476     }
-1477   }
-1478 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_config_t::descriptors</b>,
-    <b>options_config_t::num_descriptors</b>,
-    <b>options_config_t::num_owned_strings</b>,
-    <b>option_descriptor_t::offset</b>, <b>OPTION_TYPE_STRING</b>,
-    <b>options_config_t::owned_strings</b>,
-    <b>option_descriptor_t::owns_memory</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+1133
+1134   // Detect terminal width early so we can decide whether to show ASCII art
+1135   int term_width = 80;
+1136   terminal_size_t term_size;
+1137   if (terminal_get_size(&amp;term_size) == ASCIICHAT_OK &amp;&amp; term_size.cols &gt; 40) {
+1138     term_width = term_size.cols;
+1139   } else {
+1140     const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
+1141     if (cols_env) {
+1142       char *endptr;
+1143       errno = 0;
+1144       long cols = strtol(cols_env, &amp;endptr, 10);
+1145       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; cols &gt; 40 &amp;&amp; cols &lt;= INT_MAX)
+1146         term_width = (int)cols;
+1147       else if (*endptr != '\0' || errno != 0 || cols &lt;= 40)
+1148         log_error(&quot;options_config_print_*: Invalid COLUMNS value: %s&quot;, cols_env);
+1149     }
+1150   }
+1151
+1152   // Print ASCII art logo only if terminal is wide enough (ASCII art is ~52 chars wide)
+1153   if (term_width &gt;= 60) {
+1154     (void)fprintf(desc, &quot;  __ _ ___  ___(_|_)       ___| |__   __ _| |_ \n&quot;);
+1155     (void)fprintf(desc, &quot; / _` / __|/ __| | |_____ / __| '_ \\ / _` | __|\n&quot;);
+1156     (void)fprintf(desc, &quot;| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ \n&quot;);
+1157     (void)fprintf(desc, &quot; \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__|\n&quot;);
+1158     (void)fprintf(desc, &quot;\n&quot;);
+1159   }
+1160
+1161   // Print program name and description (color mode name magenta if it's a mode-specific help)
+1162   if (program_name) {
+1163     const char *space = strchr(program_name, ' ');
+1164     if (space &amp;&amp; mode &gt;= 0) {
+1165       // Mode-specific help: color the mode name
+1166       int binary_len = space - program_name;
+1167       (void)fprintf(desc, &quot;%.*s %s - %s\n\n&quot;, binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1),
+1168                     description);
+1169     } else {
+1170       // Binary-level help: use colored_string for the program name too
+1171       (void)fprintf(desc, &quot;%s - %s\n\n&quot;, colored_string(LOG_COLOR_FATAL, program_name), description);
+1172     }
+1173   }
+1174
+1175   // Print project links
+1176   print_project_links(desc);
+1177   (void)fprintf(desc, &quot;\n&quot;);
+1178
+1179   // Determine if this is binary-level help (called for 'ascii-chat --help')
+1180   // Binary help uses MODE_DISCOVERY as the mode value
+1181   bool for_binary_help = (mode == MODE_DISCOVERY);
+1182
+1183   // Calculate column widths for USAGE upfront (before printing) for alignment
+1184   int usage_max_col_width = calculate_section_max_col_width(config, &quot;usage&quot;, mode, for_binary_help);
+1185   // Use USAGE width for both USAGE and EXAMPLES sections for consistent alignment
+1186   // (don't let long examples push column too far right)
+1187   int usage_examples_col_width = usage_max_col_width;
+1188
+1189   // Print USAGE section (with section-specific column width and mode filtering)
+1190   fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, &quot;USAGE&quot;));
+1191   if (config-&gt;num_usage_lines &gt; 0) {
+1192     // Get mode name for filtering usage lines
+1193     const char *mode_name = NULL;
+1194     switch (mode) {
+1195     case MODE_MCP_SERVER:
+1196       mode_name = &quot;mcp-server&quot;;
+1197       break;
+1198     case MODE_SERVER:
+1199       mode_name = &quot;server&quot;;
+1200       break;
+1201     case MODE_CLIENT:
+1202       mode_name = &quot;client&quot;;
+1203       break;
+1204     case MODE_MIRROR:
+1205       mode_name = &quot;mirror&quot;;
+1206       break;
+1207     case MODE_DISCOVERY_SERVICE:
+1208       mode_name = &quot;discovery-service&quot;;
+1209       break;
+1210     case MODE_DISCOVERY:
+1211     default:
+1212       mode_name = NULL; // Binary help shows all usage lines
+1213       break;
+1214     }
+1215
+1216     for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
+1217       const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
+1218
+1219       // Filter usage lines by mode
+1220       if (!for_binary_help) {
+1221         // For mode-specific help, show the current mode's usage line and the generic [mode] --help line
+1222         bool is_current_mode = (usage-&gt;mode &amp;&amp; mode_name &amp;&amp; strcmp(usage-&gt;mode, mode_name) == 0);
+1223         bool is_generic_help_line =
+1224             (!usage-&gt;mode &amp;&amp; usage-&gt;positional &amp;&amp; strcmp(usage-&gt;positional, &quot;[mode] --help&quot;) == 0);
+1225
+1226         if (!is_current_mode &amp;&amp; !is_generic_help_line) {
+1227           continue;
+1228         }
+1229       }
+1230
+1231       char usage_buf[BUFFER_SIZE_MEDIUM];
+1232       int len = 0;
+1233
+1234       len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot;ascii-chat&quot;);
+1235
+1236       // For mode-specific help, use [mode] placeholder when showing --help usage
+1237       if (usage-&gt;mode) {
+1238         if (!for_binary_help &amp;&amp; usage-&gt;positional &amp;&amp; strcmp(usage-&gt;positional, &quot;--help&quot;) == 0) {
+1239           // Mode-specific help: show [mode] --help as generic placeholder
+1240           len +=
+1241               safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;, colored_string(LOG_COLOR_FATAL, &quot;[mode]&quot;));
+1242         } else {
+1243           // Binary help or non-help usage: show actual mode name
+1244           len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
+1245                                colored_string(LOG_COLOR_FATAL, usage-&gt;mode));
+1246         }
+1247       }
+1248
+1249       if (usage-&gt;positional) {
+1250         len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
+1251                              colored_string(LOG_COLOR_INFO, usage-&gt;positional));
+1252       }
+1253
+1254       if (usage-&gt;show_options) {
+1255         const char *options_text =
+1256             (usage-&gt;mode &amp;&amp; strcmp(usage-&gt;mode, &quot;&lt;mode&gt;&quot;) == 0) ? &quot;[mode-options...]&quot; : &quot;[options...]&quot;;
+1257         len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, &quot; %s&quot;,
+1258                              colored_string(LOG_COLOR_WARN, options_text));
+1259       }
+1260
+1261       layout_print_two_column_row(desc, usage_buf, usage-&gt;description, usage_examples_col_width, term_width, 0);
+1262     }
+1263   }
+1264   fprintf(desc, &quot;\n&quot;);
+1265
+1266   // Print MODES section (only for binary-level help)
+1267   if (for_binary_help &amp;&amp; config-&gt;num_modes &gt; 0) {
+1268     int modes_max_col_width = calculate_section_max_col_width(config, &quot;modes&quot;, mode, for_binary_help);
+1269     print_modes_section(config, desc, term_width, modes_max_col_width);
+1270   }
+1271
+1272   // Print positional argument examples (with mode filtering and section-specific column width)
+1273   if (config-&gt;num_positional_args &gt; 0) {
+1274     // First, check if any positional args apply to this mode
+1275     option_mode_bitmask_t current_mode_bitmask = 1U &lt;&lt; mode;
+1276     bool has_applicable_positional_args = false;
+1277
+1278     for (size_t pa_idx = 0; pa_idx &lt; config-&gt;num_positional_args; pa_idx++) {
+1279       const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[pa_idx];
+1280
+1281       // Filter by mode_bitmask (matching the parsing code logic)
+1282       if (pos_arg-&gt;mode_bitmask != 0 &amp;&amp; !(pos_arg-&gt;mode_bitmask &amp; current_mode_bitmask)) {
+1283         continue;
+1284       }
+1285
+1286       if (pos_arg-&gt;section_heading &amp;&amp; pos_arg-&gt;examples &amp;&amp; pos_arg-&gt;num_examples &gt; 0) {
+1287         has_applicable_positional_args = true;
+1288         break;
+1289       }
+1290     }
+1291
+1292     // Only print the section if there are applicable positional args
+1293     if (has_applicable_positional_args) {
+1294       int positional_max_col_width = calculate_section_max_col_width(config, &quot;positional&quot;, mode, false);
+1295
+1296       for (size_t pa_idx = 0; pa_idx &lt; config-&gt;num_positional_args; pa_idx++) {
+1297         const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[pa_idx];
+1298
+1299         // Filter by mode_bitmask (matching the parsing code logic)
+1300         if (pos_arg-&gt;mode_bitmask != 0 &amp;&amp; !(pos_arg-&gt;mode_bitmask &amp; current_mode_bitmask)) {
+1301           continue;
+1302         }
+1303
+1304         if (pos_arg-&gt;section_heading &amp;&amp; pos_arg-&gt;examples &amp;&amp; pos_arg-&gt;num_examples &gt; 0) {
+1305           (void)fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, pos_arg-&gt;section_heading));
+1306
+1307           for (size_t i = 0; i &lt; pos_arg-&gt;num_examples; i++) {
+1308             const char *example = pos_arg-&gt;examples[i];
+1309             const char *p = example;
+1310             const char *desc_start = NULL;
+1311
+1312             while (*p == ' ')
+1313               p++;
+1314             const char *first_part = p;
+1315
+1316             while (*p &amp;&amp; !(*p == ' ' &amp;&amp; *(p + 1) == ' '))
+1317               p++;
+1318             int first_len_bytes = (int)(p - first_part);
+1319
+1320             while (*p == ' ')
+1321               p++;
+1322             if (*p) {
+1323               desc_start = p;
+1324             }
+1325
+1326             char colored_first_part[OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE];
+1327             safe_snprintf(colored_first_part, sizeof(colored_first_part), &quot;%.*s&quot;, first_len_bytes, first_part);
+1328             char colored_result[OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE];
+1329             safe_snprintf(colored_result, sizeof(colored_result), &quot;%s&quot;,
+1330                           colored_string(LOG_COLOR_INFO, colored_first_part));
+1331
+1332             layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : &quot;&quot;, positional_max_col_width,
+1333                                         term_width, 0);
+1334           }
+1335           (void)fprintf(desc, &quot;\n&quot;);
+1336         }
+1337       }
+1338     }
+1339   }
+1340
+1341   // Print EXAMPLES section (using USAGE column width for alignment)
+1342   print_examples_section(config, desc, term_width, usage_examples_col_width, mode, for_binary_help);
+1343
+1344   // Print custom sections (after EXAMPLES, before OPTIONS)
+1345   if (config-&gt;num_custom_sections &gt; 0) {
+1346     option_mode_bitmask_t current_mode_bitmask = 1U &lt;&lt; mode;
+1347     for (size_t i = 0; i &lt; config-&gt;num_custom_sections; i++) {
+1348       const custom_section_descriptor_t *section = &amp;config-&gt;custom_sections[i];
+1349
+1350       // Filter by mode_bitmask
+1351       if (section-&gt;mode_bitmask != 0 &amp;&amp; !(section-&gt;mode_bitmask &amp; current_mode_bitmask)) {
+1352         continue;
+1353       }
+1354
+1355       if (section-&gt;heading) {
+1356         fprintf(desc, &quot;%s\n&quot;, colored_string(LOG_COLOR_DEBUG, section-&gt;heading));
+1357       }
+1358
+1359       if (section-&gt;content) {
+1360         // Special handling for KEYBINDINGS section: colorize keybindings and wrap to 70 chars
+1361         if (section-&gt;heading &amp;&amp; strcmp(section-&gt;heading, &quot;KEYBINDINGS&quot;) == 0) {
+1362           // Build colored version with proper keybinding colorization
+1363           char colored_output[OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE] = &quot;&quot;;
+1364           const char *src = section-&gt;content;
+1365           char *dst = colored_output;
+1366           size_t remaining = sizeof(colored_output) - 1;
+1367
+1368           while (*src &amp;&amp; remaining &gt; 0) {
+1369             // Colorize ? that don't end sentences
+1370             if (*src == '?' &amp;&amp; *(src + 1) != '\n' &amp;&amp; *(src + 1) != '\0') {
+1371               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;?&quot;);
+1372               size_t len = strlen(colored);
+1373               if (len &lt;= remaining) {
+1374                 memcpy(dst, colored, len);
+1375                 dst += len;
+1376                 remaining -= len;
+1377                 src += 1;
+1378               } else {
+1379                 break;
+1380               }
+1381             } else if (strncmp(src, &quot;Space&quot;, 5) == 0 &amp;&amp;
+1382                        (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' '))) {
+1383               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;Space&quot;);
+1384               size_t len = strlen(colored);
+1385               if (len &lt;= remaining) {
+1386                 memcpy(dst, colored, len);
+1387                 dst += len;
+1388                 remaining -= len;
+1389                 src += 5;
+1390               } else {
+1391                 break;
+1392               }
+1393             } else if (strncmp(src, &quot;arrows&quot;, 6) == 0 &amp;&amp;
+1394                        (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' '))) {
+1395               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;arrows&quot;);
+1396               size_t len = strlen(colored);
+1397               if (len &lt;= remaining) {
+1398                 memcpy(dst, colored, len);
+1399                 dst += len;
+1400                 remaining -= len;
+1401                 src += 6;
+1402               } else {
+1403                 break;
+1404               }
+1405             } else if (*src == 'm' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
+1406                        (*(src + 1) == ',' || *(src + 1) == ')')) {
+1407               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;m&quot;);
+1408               size_t len = strlen(colored);
+1409               if (len &lt;= remaining) {
+1410                 memcpy(dst, colored, len);
+1411                 dst += len;
+1412                 remaining -= len;
+1413                 src += 1;
+1414               } else {
+1415                 break;
+1416               }
+1417             } else if (*src == 'c' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
+1418                        (*(src + 1) == ',' || *(src + 1) == ')')) {
+1419               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;c&quot;);
+1420               size_t len = strlen(colored);
+1421               if (len &lt;= remaining) {
+1422                 memcpy(dst, colored, len);
+1423                 dst += len;
+1424                 remaining -= len;
+1425                 src += 1;
+1426               } else {
+1427                 break;
+1428               }
+1429             } else if (*src == 'f' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
+1430                        (*(src + 1) == ',' || *(src + 1) == ')')) {
+1431               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;f&quot;);
+1432               size_t len = strlen(colored);
+1433               if (len &lt;= remaining) {
+1434                 memcpy(dst, colored, len);
+1435                 dst += len;
+1436                 remaining -= len;
+1437                 src += 1;
+1438               } else {
+1439                 break;
+1440               }
+1441             } else if (*src == 'r' &amp;&amp; (src &gt; section-&gt;content &amp;&amp; (*(src - 1) == ',' || *(src - 1) == ' ')) &amp;&amp;
+1442                        (*(src + 1) == ')')) {
+1443               const char *colored = colored_string(LOG_COLOR_FATAL, &quot;r&quot;);
+1444               size_t len = strlen(colored);
+1445               if (len &lt;= remaining) {
+1446                 memcpy(dst, colored, len);
+1447                 dst += len;
+1448                 remaining -= len;
+1449                 src += 1;
+1450               } else {
+1451                 break;
+1452               }
+1453             } else {
+1454               *dst++ = *src++;
+1455               remaining--;
+1456             }
+1457           }
+1458           *dst = '\0';
+1459           // Print with 2-space indent, wrapping at min(terminal width, 90)
+1460           fprintf(desc, &quot;  &quot;);
+1461           int keybindings_wrap_width = term_width &lt; 90 ? term_width : 90;
+1462           layout_print_wrapped_description(desc, colored_output, 2, keybindings_wrap_width, 0);
+1463           fprintf(desc, &quot;\n&quot;);
+1464         } else {
+1465           fprintf(desc, &quot;%s\n&quot;, section-&gt;content);
+1466         }
+1467       }
+1468
+1469       fprintf(desc, &quot;\n&quot;);
+1470     }
+1471   }
+1472
+1473   // Print options sections (with section-specific column width for options)
+1474   int options_max_col_width = calculate_section_max_col_width(config, &quot;options&quot;, mode, for_binary_help);
+1475   options_config_print_options_sections_with_width(config, desc, options_max_col_width, mode);
+1476 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>custom_section_descriptor_t::content</b>,
+            <b>options_config_t::custom_sections</b>, <b>errno</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>positional_arg_descriptor_t::examples</b>,
+            <b>custom_section_descriptor_t::heading</b>,
+            <b>layout_print_two_column_row()</b>,
+            <b>layout_print_wrapped_description()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>custom_section_descriptor_t::mode_bitmask</b>,
+            <b>positional_arg_descriptor_t::mode_bitmask</b>,
+            <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MCP_SERVER</b>,
+            <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
+            <b>options_config_t::num_custom_sections</b>,
+            <b>positional_arg_descriptor_t::num_examples</b>,
+            <b>options_config_t::num_modes</b>,
+            <b>options_config_t::num_positional_args</b>,
+            <b>options_config_t::num_usage_lines</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_print_help_for_mode()</b>,
+            <b>options_config_t::positional_args</b>,
+            <b>print_project_links()</b>, <b>SAFE_GETENV</b>,
+            <b>safe_snprintf()</b>,
+            <b>positional_arg_descriptor_t::section_heading</b>,
+            <b>SET_ERRNO</b>, <b>terminal_get_size()</b>, <b>usage()</b>, and
+            <b>options_config_t::usage_lines</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_print_help_for_mode()</b>, and
+            <b>usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_struct_destroy_(const_">
+            <a class="permalink" href="#void_options_struct_destroy_(const_"
+              >void options_struct_destroy (const <b>options_config_t</b> *
+              config, void * options_struct)</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up memory owned by options struct. Frees all auto-duplicated
+            strings and sets pointers to NULL. Call this before freeing the
+            options struct.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>options_struct</i> Options struct to clean up
+          </div>
+          <p class="Pp">
+            Definition at line <b>1478</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1478                                                                                   {
+1479   if (!config || !options_struct)
+1480     return;
+1481
+1482   // Free all owned strings
+1483   for (size_t i = 0; i &lt; config-&gt;num_owned_strings; i++) {
+1484     SAFE_FREE(config-&gt;owned_strings[i]);
+1485   }
+1486
+1487   // Reset owned strings tracking
+1488   ((options_config_t *)config)-&gt;num_owned_strings = 0;
+1489
+1490   // NULL out string fields
+1491   char *base = (char *)options_struct;
+1492   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1493     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1494     if (desc-&gt;type == OPTION_TYPE_STRING &amp;&amp; desc-&gt;owns_memory) {
+1495       char **field = (char **)(base + desc-&gt;offset);
+1496       *field = NULL;
+1497     }
+1498   }
+1499 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_config_t::descriptors</b>,
+            <b>options_config_t::num_descriptors</b>,
+            <b>options_config_t::num_owned_strings</b>,
+            <b>option_descriptor_t::offset</b>, <b>OPTION_TYPE_STRING</b>,
+            <b>options_struct_destroy()</b>,
+            <b>options_config_t::owned_strings</b>,
+            <b>option_descriptor_t::owns_memory</b>, <b>SAFE_FREE</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_struct_destroy()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

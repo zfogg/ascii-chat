@@ -5,15 +5,16 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
 from pathlib import Path
 import re
-import subprocess
 import tempfile
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 from sync_tui_modes import capture
 
 
@@ -38,16 +39,14 @@ def main():
                 del os.environ[key]
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root))
         media = root / 'sample.mkv'
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=size=160x90:rate=15',
-                        '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '5',
-                        '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'pcm_f32le', str(media)], check=True)
+        lavfi_fixture(['color=size=160x90:rate=15', 'sine=frequency=440:sample_rate=48000'], str(media), ffmpeg_options=['-v', 'error', '-y'], output_options=['-t', '5', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'pcm_f32le'])
         try:
             for mode, audio in [('truecolor', True), ('truecolor', False), ('none', False)]:
                 name = f'stats-{mode}-audio-{audio}'
-                term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(root / (name + '.log')),
+                term = Terminal(cli_command(str(args.binary.resolve()), '--log-file', str(root / (name + '.log')),
                                  'mirror', '--file', str(media), '--loop', '--audio=' + str(audio).lower(),
                                  '--volume', '0', '--microphone-volume', '0', '--splash-screen=false',
-                                 '--color-mode', mode], rows=40, cols=104)
+                                 '--color-mode', mode), rows=40, cols=104)
                 try:
                     term.pump(2)
                     term.write('=')

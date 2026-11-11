@@ -2,31 +2,150 @@
   "version": 1,
   "no_duplicate_span_ids": true,
   "counts": [
-    {"name": "bounded-http", "select": {"name": "ascii-chat.http.request"}, "min": 1, "max": 1},
-    {"name": "bounded-media-child", "select": {"name": "ascii-chat.ffmpeg.video.decode"}, "min": 1, "max": 1},
-    {"name": "retained-crypto", "select": {"name": "ascii-chat.failure.crypto", "status_code": 2}, "min": 1, "max": 1},
-    {"name": "retained-invalid-frame", "select": {"name": "ascii-chat.frame.validation.rejected", "status_code": 2}, "min": 1, "max": 1},
-    {"name": "retained-budget-and-reset", "select": {"name": "ascii-chat.failure.protocol", "status_code": 2}, "min": 101, "max": 101},
-    {"name": "profile-success-only-once", "select": {"name": "ascii-chat.storage.BoundValue", "kind": 3, "status_code": 0}, "min": 1, "max": 1},
-    {"name": "literal-success-only-once", "select": {"name": "ascii-chat.storage.LiteralValue", "kind": 3, "status_code": 0}, "min": 1, "max": 1},
-    {"name": "prepare-failure-only-once", "select": {"name": "ascii-chat.storage.Malformed", "kind": 3, "status_code": 2, "attributes": {"gotel.db.query.text_reason": "malformed", "db.response.status_code": 1}}, "min": 1, "max": 1},
-    {"name": "query-fingerprints", "select": {"attributes": {"db.system.name": "sqlite"}, "has_attributes": ["gotel.db.query.fingerprint"]}, "min": 1},
-    {"name": "safe-query-analysis-metadata", "select": {"name": "ascii-chat.storage.BoundValue", "has_attributes": ["gotel.db.query.fingerprint", "gotel.db.query.source_map", "gotel.db.query.binds"]}, "min": 1, "max": 1},
-    {"name": "named-rate-lookups", "select": {"name": "ascii-chat.storage.CountRateEvents"}, "min": 3, "max": 3},
-    {"name": "named-rate-write", "select": {"name": "ascii-chat.storage.InsertRateEvent"}, "min": 1, "max": 1},
-    {"name": "named-rate-prune", "select": {"name": "ascii-chat.storage.DeleteRateEvents"}, "min": 1, "max": 1},
-    {"name": "named-key-migration", "select": {"name": "ascii-chat.storage.SchemaKeyPolicy"}, "min": 1, "max": 1},
-    {"name": "fully-registered-catalog", "select": {"name": "ascii-chat.storage.UnknownQuery"}, "max": 0}
+    {
+      "name": "bounded-http",
+      "select": { "name": "ascii-chat.http.request" },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "bounded-media-child",
+      "select": { "name": "ascii-chat.ffmpeg.video.decode" },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "retained-crypto",
+      "select": { "name": "ascii-chat.failure.crypto", "status_code": 2 },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "retained-invalid-frame",
+      "select": {
+        "name": "ascii-chat.frame.validation.rejected",
+        "status_code": 2
+      },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "retained-budget-and-reset",
+      "select": { "name": "ascii-chat.failure.protocol", "status_code": 2 },
+      "min": 101,
+      "max": 101
+    },
+    {
+      "name": "profile-success-only-once",
+      "select": {
+        "name": "ascii-chat.storage.BoundValue",
+        "kind": 3,
+        "status_code": 0
+      },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "literal-success-only-once",
+      "select": {
+        "name": "ascii-chat.storage.LiteralValue",
+        "kind": 3,
+        "status_code": 0
+      },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "prepare-failure-only-once",
+      "select": {
+        "name": "ascii-chat.storage.Malformed",
+        "kind": 3,
+        "status_code": 2,
+        "attributes": {
+          "gotel.db.query.text_reason": "malformed",
+          "db.response.status_code": 1
+        }
+      },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "query-fingerprints",
+      "select": {
+        "attributes": { "db.system.name": "sqlite" },
+        "has_attributes": ["gotel.db.query.fingerprint"]
+      },
+      "min": 1
+    },
+    {
+      "name": "safe-query-analysis-metadata",
+      "select": {
+        "name": "ascii-chat.storage.BoundValue",
+        "has_attributes": [
+          "gotel.db.query.fingerprint",
+          "gotel.db.query.source_map",
+          "gotel.db.query.binds"
+        ]
+      },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "named-rate-lookups",
+      "select": { "name": "ascii-chat.storage.CountRateEvents" },
+      "min": 3,
+      "max": 3
+    },
+    {
+      "name": "named-rate-write",
+      "select": { "name": "ascii-chat.storage.InsertRateEvent" },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "named-rate-prune",
+      "select": { "name": "ascii-chat.storage.DeleteRateEvents" },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "named-key-migration",
+      "select": { "name": "ascii-chat.storage.SchemaKeyPolicy" },
+      "min": 1,
+      "max": 1
+    },
+    {
+      "name": "fully-registered-catalog",
+      "select": { "name": "ascii-chat.storage.UnknownQuery" },
+      "max": 0
+    }
   ],
   "ancestry": [
-    {"name": "bounded-operation-shares-decision", "path": [{"name": "ascii-chat.http.request"}, {"name": "ascii-chat.ffmpeg.video.decode"}], "min": 1, "direct": true}
+    {
+      "name": "bounded-operation-shares-decision",
+      "path": [
+        { "name": "ascii-chat.http.request" },
+        { "name": "ascii-chat.ffmpeg.video.decode" }
+      ],
+      "min": 1,
+      "direct": true
+    }
   ],
   "diagnostics": [
-    {"name": "malformed-sql-catalog", "select": {"name": "ascii-chat.storage.Malformed"}, "codes": ["unterminated_string"], "text_reason": "malformed"}
+    {
+      "name": "malformed-sql-catalog",
+      "select": { "name": "ascii-chat.storage.Malformed" },
+      "codes": ["unterminated_string"],
+      "text_reason": "malformed"
+    }
   ],
   "redaction": {
     "forbidden_keys": ["db.query.parameters", "db.parameters"],
-    "forbidden_values": ["fixture-secret", "fixture-bound-secret", "fixture-literal-secret"],
+    "forbidden_values": [
+      "fixture-secret",
+      "fixture-bound-secret",
+      "fixture-literal-secret"
+    ],
     "require_query_text_reason": true,
     "validate_diagnostics": true
   }

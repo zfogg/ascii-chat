@@ -2,6 +2,9 @@
 # Note: Source file properties (C++ language, mdns warnings) set in root CMakeLists.txt
 
 set(NETWORK_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/basic_auth.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http2.c
     # Core network files
     ${CMAKE_CURRENT_SOURCE_DIR}/network.c
     ${CMAKE_CURRENT_SOURCE_DIR}/frame_validator.c
@@ -12,7 +15,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/decoder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/client/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/tailscale.c
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c
@@ -35,6 +38,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/peer_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/stun.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/turn_credentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/sdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/ice.c
@@ -47,6 +51,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_client_io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/send.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/acip/traffic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/prepare.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security_options.c
@@ -69,6 +74,15 @@ set(NETWORK_SRCS
 if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/establish.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/stream.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/http/server/http3.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/datagram.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/tls.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/connection.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/endpoint.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/transport.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/worker.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/udp.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c ${CMAKE_CURRENT_SOURCE_DIR}/connection.c ${CMAKE_CURRENT_SOURCE_DIR}/negotiation.c)
 endif()
 

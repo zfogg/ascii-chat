@@ -4,7 +4,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
 #include <ctype.h>
@@ -110,12 +110,14 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   cr_assert(external_source);
   cr_assert_eq(strcmp(display_path, "vendor/runtime/file.c"), 0);
 
-  cr_assert_eq(symbol_format_source_path("test-error-popup-fixture.exe",
-                                         ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c",
-                                         display_path, sizeof(display_path), &external_source),
-               ASCIICHAT_OK);
-  cr_assert(!external_source);
-  cr_assert_str_eq(display_path, "tests\\standalone\\errno\\error_popup_fixture.c");
+  if (ASCIICHAT_SOURCE_ROOT[0]) {
+    cr_assert_eq(symbol_format_source_path("test-error-popup-fixture.exe",
+                                           ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c",
+                                           display_path, sizeof(display_path), &external_source),
+                 ASCIICHAT_OK);
+    cr_assert(!external_source);
+    cr_assert_str_eq(display_path, "tests\\standalone\\errno\\error_popup_fixture.c");
+  }
 
   char too_small[4];
   cr_assert_eq(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small),
@@ -138,7 +140,7 @@ Test(source_paths, log_headers_and_memory_reports_preserve_locations) {
   void *external = debug_malloc(23, "Z:\\external\\path_fixture.c", 789);
   cr_assert(src && lib && windows && external);
   debug_memory_set_quiet_mode(false);
-  debug_memory_report();
+  debug_memory_report(true);
   debug_free(src, __FILE__, __LINE__);
   debug_free(lib, __FILE__, __LINE__);
   debug_free(windows, __FILE__, __LINE__);

@@ -1,0 +1,361 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>protocol.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">protocol.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">protocol.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">protocol.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            yyjson_mut_doc * <b>mcp_error</b> (yyjson_val *id, int code, const
+            char *message)
+            <br />
+            void <b>mcp_jobs_reap</b> (<b>mcp_server_t</b> *s, <b>bool</b> all)
+            <br />
+            yyjson_mut_doc * <b>mcp_dispatch</b> (<b>mcp_server_t</b> *s,
+            yyjson_doc *message, void *connection, const char *session_id,
+            <b>bool</b> *pending)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="yyjson_mut_doc_*_mcp_dispatch_(">
+            <a class="permalink" href="#yyjson_mut_doc_*_mcp_dispatch_("
+              >yyjson_mut_doc * mcp_dispatch (<b>mcp_server_t</b> * s,
+              yyjson_doc * message, void * connection, const char * session_id,
+              <b>bool</b> * pending)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>176</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+177                                             {
+178   ASCII_OTEL_SCOPE(MCP_REQUEST);
+179   ASCII_OTEL_ATTR_STRING(&quot;rpc.system&quot;, &quot;jsonrpc&quot;);
+180   ASCII_OTEL_ATTR_STRING(&quot;mcp.transport&quot;, s-&gt;policy.hosted ? &quot;http&quot; : &quot;stdio&quot;);
+181   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REQUESTS, 1);
+182   *pending = false;
+183   yyjson_val *root = yyjson_doc_get_root(message), *id = mcp_get(root, &quot;id&quot;), *method = mcp_get(root, &quot;method&quot;),
+184              *version = mcp_get(root, &quot;jsonrpc&quot;);
+185   if (!yyjson_is_obj(root) || !yyjson_is_str(version) || strcmp(yyjson_get_str(version), &quot;2.0&quot;) ||
+186       !yyjson_is_str(method) || strlen(yyjson_get_str(method)) != yyjson_get_len(method) ||
+187       (id &amp;&amp; !yyjson_is_str(id) &amp;&amp; !yyjson_is_int(id)))
+188     return mcp_error(id, -32600, &quot;Invalid JSON-RPC request&quot;);
+189   const char *name = yyjson_get_str(method);
+190   static const char *const methods[] = {
+191       &quot;initialize&quot;, &quot;ping&quot;, &quot;tools/list&quot;, &quot;tools/call&quot;, &quot;notifications/initialized&quot;, &quot;notifications/cancelled&quot;};
+192   const char *method_name = &quot;unknown&quot;;
+193   for (size_t i = 0; i &lt; sizeof(methods) / sizeof(methods[0]); i++)
+194     if (!strcmp(name, methods[i]))
+195       method_name = methods[i];
+196   ASCII_OTEL_ATTR_STRING(&quot;rpc.method&quot;, method_name);
+197   yyjson_val *params = mcp_get(root, &quot;params&quot;);
+198   if (params &amp;&amp; !yyjson_is_obj(params))
+199     return id ? mcp_error(id, -32602, &quot;params must be an object&quot;) : NULL;
+200   if (!id) {
+201     if (!strcmp(name, &quot;notifications/initialized&quot;))
+202       s-&gt;initialized = true;
+203     if (!strcmp(name, &quot;notifications/cancelled&quot;)) {
+204       yyjson_val *cancel = mcp_get(params, &quot;requestId&quot;);
+205       for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i)
+206         if (s-&gt;jobs[i].started &amp;&amp;
+207             (!s-&gt;policy.hosted || (session_id &amp;&amp; *session_id &amp;&amp; !strcmp(s-&gt;jobs[i].session_id, session_id)) ||
+208              ((!session_id || !*session_id) &amp;&amp; s-&gt;jobs[i].connection == connection)) &amp;&amp;
+209             same_id(cancel, mcp_get(yyjson_doc_get_root(s-&gt;jobs[i].message), &quot;id&quot;)))
+210           atomic_store_bool(&amp;s-&gt;jobs[i].cancelled, true);
+211     }
+212     return NULL;
+213   }
+214   yyjson_mut_doc *d = envelope(id);
+215   yyjson_mut_val *result = yyjson_mut_obj(d);
+216   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), &quot;result&quot;, result);
+217   if (!strcmp(name, &quot;initialize&quot;)) {
+218     yyjson_val *requested = mcp_get(params, &quot;protocolVersion&quot;);
+219     const char *v = yyjson_get_str(requested);
+220     if (!v || (strcmp(v, &quot;2025-11-25&quot;) &amp;&amp; strcmp(v, &quot;2025-06-18&quot;) &amp;&amp; strcmp(v, &quot;2025-03-26&quot;)))
+221       v = &quot;2025-11-25&quot;;
+222     yyjson_mut_obj_add_strcpy(d, result, &quot;protocolVersion&quot;, v);
+223     yyjson_mut_val *caps = yyjson_mut_obj(d), *info = yyjson_mut_obj(d);
+224     yyjson_mut_obj_add_val(d, caps, &quot;tools&quot;, yyjson_mut_obj(d));
+225     yyjson_mut_obj_add_val(d, result, &quot;capabilities&quot;, caps);
+226     yyjson_mut_obj_add_str(d, info, &quot;name&quot;, &quot;ascii-chat&quot;);
+227     yyjson_mut_obj_add_str(d, info, &quot;version&quot;, ASCII_CHAT_VERSION_FULL);
+228     yyjson_mut_obj_add_val(d, result, &quot;serverInfo&quot;, info);
+229     yyjson_mut_obj_add_str(
+230         d, result, &quot;instructions&quot;,
+231         &quot;Render media as ASCII art. Uploaded bytes must be base64 encoded by the client. snapshot-delay measures &quot;
+232         &quot;capture duration after the first rendered frame; use seek for media timestamps. output_path saves ASCII art &quot;
+233         &quot;as an image/video and never replaces an existing file.&quot;);
+234     return d;
+235   }
+236   if (!strcmp(name, &quot;ping&quot;))
+237     return d;
+238   if (!strcmp(name, &quot;tools/list&quot;)) {
+239     yyjson_mut_obj_add_val(d, result, &quot;tools&quot;, mcp_tools_schema(d, &amp;s-&gt;policy));
+240     return d;
+241   }
+242   yyjson_mut_doc_free(d);
+243   if (strcmp(name, &quot;tools/call&quot;))
+244     return mcp_error(id, -32601, &quot;Method not found&quot;);
+245   const char *tool = yyjson_get_str(mcp_get(params, &quot;name&quot;));
+246   if (tool &amp;&amp; yyjson_get_len(mcp_get(params, &quot;name&quot;)) == sizeof(&quot;device_list&quot;) - 1 &amp;&amp; !strcmp(tool, &quot;device_list&quot;)) {
+247     if (s-&gt;policy.restricted)
+248       return mcp_error(id, -32602, &quot;Unknown tool&quot;);
+249     ASCII_OTEL_ATTR_STRING(&quot;mcp.tool&quot;, &quot;device_list&quot;);
+250     return device_list_result(id, mcp_get(params, &quot;arguments&quot;));
+251   }
+252   const char *names[] = {&quot;render_file&quot;, &quot;render_url&quot;, &quot;render_webcam&quot;, &quot;render_visualization&quot;};
+253   int kind = -1;
+254   for (int i = 0; i &lt; 4; ++i)
+255     if (tool &amp;&amp; strlen(tool) == yyjson_get_len(mcp_get(params, &quot;name&quot;)) &amp;&amp; !strcmp(tool, names[i]))
+256       kind = i;
+257   if (kind &lt; 0 || (s-&gt;policy.restricted &amp;&amp; kind == MCP_WEBCAM))
+258     return mcp_error(id, -32602, &quot;Unknown tool&quot;);
+259   mcp_jobs_reap(s, false);
+260   mcp_job_t *j = NULL;
+261   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i)
+262     if (!s-&gt;jobs[i].started) {
+263       j = &amp;s-&gt;jobs[i];
+264       break;
+265     }
+266   if (!j) {
+267     char message[128];
+268     safe_snprintf(message, sizeof(message), &quot;Server busy; at most %u render%s may run concurrently&quot;, s-&gt;policy.max_jobs,
+269                   s-&gt;policy.max_jobs == 1 ? &quot;&quot; : &quot;s&quot;);
+270     return mcp_error(id, -32000, message);
+271   }
+272   yyjson_val *arguments = mcp_get(params, &quot;arguments&quot;);
+273   yyjson_doc *empty = NULL;
+274   if (!arguments) {
+275     empty = yyjson_read(&quot;{}&quot;, 2, 0);
+276     arguments = yyjson_doc_get_root(empty);
+277   }
+278   asciichat_error_t err = mcp_request_parse(&amp;s-&gt;policy, (mcp_tool_t)kind, arguments, &amp;j-&gt;request);
+279   if (empty)
+280     yyjson_doc_free(empty);
+281   if (err != ASCIICHAT_OK) {
+282     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
+283     ASCII_OTEL_ATTR_STRING(&quot;error.type&quot;, &quot;invalid_arguments&quot;);
+284     asciichat_error_context_t ctx;
+285     mcp_render_result_t fail = {0};
+286     SAFE_STRNCPY(fail.error, HAS_ERRNO(&amp;ctx) ? ctx.context_message : &quot;Invalid render request&quot;, sizeof(fail.error));
+287     mcp_request_destroy(&amp;j-&gt;request);
+288     return tool_result(id, &amp;fail);
+289   }
+290   // Copy before returning to the transport, which owns and frees the input document.
+291   size_t len;
+292   char *copy = yyjson_write(message, 0, &amp;len);
+293   j-&gt;message = yyjson_read(copy, len, 0);
+294   free(copy);
+295   j-&gt;tool = (mcp_tool_t)kind;
+296   j-&gt;telemetry_parent = ascii_otel_context();
+297   j-&gt;server = s;
+298   j-&gt;connection = connection;
+299   if (session_id)
+300     SAFE_STRNCPY(j-&gt;session_id, session_id, sizeof(j-&gt;session_id));
+301   j-&gt;started = true;
+302   if (acthread_create(&amp;j-&gt;thread, &quot;mcp-render&quot;, run_job, j)) {
+303     mcp_request_destroy(&amp;j-&gt;request);
+304     yyjson_doc_free(j-&gt;message);
+305     memset(j, 0, sizeof(*j));
+306     return mcp_error(id, -32603, &quot;Cannot create render worker&quot;);
+307   }
+308   *pending = true;
+309   return NULL;
+310 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>mcp_job::connection</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>mcp_render_result_t::error</b>, <b>HAS_ERRNO</b>,
+            <b>mcp_policy_t::hosted</b>, <b>mcp_server::initialized</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
+            <b>mcp_request_destroy()</b>, <b>mcp_request_parse()</b>,
+            <b>mcp_tools_schema()</b>, <b>MCP_WEBCAM</b>,
+            <b>mcp_job::message</b>, <b>mcp_server::policy</b>,
+            <b>mcp_job::request</b>, <b>mcp_policy_t::restricted</b>,
+            <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>, <b>mcp_job::server</b>,
+            <b>mcp_job::session_id</b>, <b>mcp_job::started</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>,
+            <b>STATS_COUNTER_MCP_REQUESTS</b>, <b>stats_runtime_scope()</b>,
+            <b>mcp_job::telemetry_parent</b>, <b>mcp_job::thread</b>, and
+            <b>mcp_job::tool</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+              >yyjson_mut_doc * mcp_error (yyjson_val * id, int code, const char
+              * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+18                                                                          {
+19   ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
+20   ASCII_OTEL_ATTR_INT(&quot;rpc.jsonrpc.error_code&quot;, code);
+21   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
+22   ascii_otel_error(&quot;MCP protocol request rejected&quot;);
+23   yyjson_mut_doc *d = envelope(id);
+24   yyjson_mut_val *e = yyjson_mut_obj(d);
+25   yyjson_mut_obj_add_int(d, e, &quot;code&quot;, code);
+26   yyjson_mut_obj_add_strcpy(d, e, &quot;message&quot;, message);
+27   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), &quot;error&quot;, e);
+28   return d;
+29 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>, <b>ascii_otel_error()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>mcp_error()</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>, and
+            <b>stats_runtime_scope()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_error()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_jobs_reap_(">
+            <a class="permalink" href="#void_mcp_jobs_reap_("
+              >void mcp_jobs_reap (<b>mcp_server_t</b> * s, <b>bool</b> all)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+158                                               {
+159   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i) {
+160     mcp_job_t *j = &amp;s-&gt;jobs[i];
+161     if (!j-&gt;started || (!all &amp;&amp; (!atomic_load_bool(&amp;j-&gt;done) || (s-&gt;policy.hosted &amp;&amp; j-&gt;connection))))
+162       continue;
+163     thread_join(&amp;j-&gt;thread, NULL);
+164     yyjson_doc_free(j-&gt;message);
+165     if (j-&gt;response)
+166       yyjson_mut_doc_free(j-&gt;response);
+167     memset(j, 0, sizeof(*j));
+168   }
+169 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>mcp_job::connection</b>,
+            <b>mcp_job::done</b>, <b>mcp_policy_t::hosted</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_job::message</b>,
+            <b>mcp_server::policy</b>, <b>mcp_job::response</b>,
+            <b>mcp_job::started</b>, <b>mcp_job::thread</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

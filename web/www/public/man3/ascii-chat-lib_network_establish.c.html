@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>establish.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">establish.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">establish.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">establish.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>network_connection_establish</b> (const
+            <b>network_establish_config_t</b> *config,
+            <b>network_connection_t</b> **owner,
+            <b>network_establish_result_t</b>
+            *attempt)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> network_connection_establish (const
+            <b>network_establish_config_t</b> * config,
+            <b>network_connection_t</b> ** owner,
+            <b>network_establish_result_t</b> * attempt)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>lib/network/establish.c</b>.
+          </p>
+          <pre>
+4                                                                                     {
+5   if (!config || !owner || *owner || !attempt || !config-&gt;prepare || config-&gt;protocol &gt; NETWORK_PROTOCOL_DISCOVERY)
+6     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid connection establishment parameters&quot;);
+7   *attempt = (network_establish_result_t){0};
+8   asciichat_error_t result = network_connection_open(config-&gt;name, config-&gt;address, config-&gt;default_port,
+9                                                      config-&gt;connect, owner, &amp;attempt-&gt;endpoint);
+10   if (result != ASCIICHAT_OK)
+11     return result;
+12   result = config-&gt;prepare(*owner, &amp;attempt-&gt;endpoint, config-&gt;password, config-&gt;context);
+13   if (result != ASCIICHAT_OK)
+14     return result;
+15   crypto_handshake_context_t *handshake = network_connection_handshake(*owner);
+16   handshake-&gt;defer_password_prompt = true;
+17   uint8_t mode = network_connection_crypto_mode(*owner);
+18   if (config-&gt;authenticate)
+19     mode |= ACIP_CRYPTO_AUTH;
+20   result = network_client_negotiate(network_connection_transport(*owner), handshake, mode, config-&gt;protocol);
+21   attempt-&gt;password_failure = handshake-&gt;password_failure;
+22   if (result == ASCIICHAT_OK)
+23     network_connection_ready(*owner);
+24   return result;
+25 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_AUTH</b>,
+            <b>network_establish_config_t::address</b>, <b>ASCIICHAT_OK</b>,
+            <b>network_establish_config_t::authenticate</b>,
+            <b>network_establish_config_t::connect</b>,
+            <b>network_establish_config_t::context</b>,
+            <b>network_establish_config_t::default_port</b>,
+            <b>crypto_handshake_context_t::defer_password_prompt</b>,
+            <b>network_establish_result_t::endpoint</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>network_establish_config_t::name</b>,
+            <b>network_client_negotiate()</b>,
+            <b>network_connection_crypto_mode()</b>,
+            <b>network_connection_establish()</b>,
+            <b>network_connection_handshake()</b>,
+            <b>network_connection_open()</b>, <b>network_connection_ready()</b>,
+            <b>network_connection_transport()</b>,
+            <b>NETWORK_PROTOCOL_DISCOVERY</b>,
+            <b>network_establish_config_t::password</b>,
+            <b>crypto_handshake_context_t::password_failure</b>,
+            <b>network_establish_result_t::password_failure</b>,
+            <b>network_establish_config_t::prepare</b>,
+            <b>network_establish_config_t::protocol</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_establish()</b>, and
+            <b>session_connection_establish()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,17 +1,23 @@
 #include <ascii-chat/audio/visualization.h>
 
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/common/sync.h>
+#include <ascii-chat/os/memory.h>
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/terminal/ansi.h>
+#include <ascii-chat/util/utf8.h>
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#define VISUALIZATION_HISTORY 48000
-#define MAX_TERMINAL_WIDTH 512
-#define MAX_TERMINAL_HEIGHT 256
+#include "../video/anim/visualization_internal.h"
 
+/**
+ * @brief waveform color stop keeps the values that move through the subsystem: `frequency`, `red`, `green`, `blue`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
+ */
 typedef struct {
   float frequency;
   unsigned char red;
@@ -53,8 +59,8 @@ static void visualization_color_for_frequency(float centroid_hz, unsigned char *
   *blue = stops[stop_count - 1].blue;
 }
 
-static void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red,
-                                          unsigned char *green, unsigned char *blue) {
+void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red,
+                                   unsigned char *green, unsigned char *blue) {
   visualization_color_for_frequency(frequency_hz, red, green, blue);
   float brightness = 0.5f + 0.5f * level;
   float white_mix = 0.0f;
@@ -67,34 +73,6 @@ static void visualization_color_for_level(float frequency_hz, float level, int c
   *red = (unsigned char)lrintf(fminf(255.0f, *red * brightness + 255.0f * white_mix));
   *green = (unsigned char)lrintf(fminf(255.0f, *green * brightness + 255.0f * white_mix));
   *blue = (unsigned char)lrintf(fminf(255.0f, *blue * brightness + 255.0f * white_mix));
-}
-
-static float waveform_spectral_centroid(const float *samples, size_t sample_count, size_t center) {
-  static const float frequencies[] = {55.0f, 110.0f, 220.0f, 440.0f, 880.0f, 1760.0f, 3520.0f, 7040.0f, 14080.0f};
-  const size_t window_size = 1024;
-  const size_t half_window = window_size / 2;
-  size_t start = center > half_window ? center - half_window : 0;
-  if (start + window_size > sample_count)
-    start = sample_count - window_size;
-
-  float weighted_log_frequency = 0.0f;
-  float total_weight = 0.0f;
-  for (size_t frequency_index = 0; frequency_index < sizeof(frequencies) / sizeof(frequencies[0]); frequency_index++) {
-    float coefficient = 2.0f * cosf(6.28318530718f * frequencies[frequency_index] / AUDIO_VISUALIZATION_SAMPLE_RATE);
-    float q1 = 0.0f, q2 = 0.0f;
-    for (size_t i = 0; i < window_size; i++) {
-      float position = (float)i / (float)(window_size - 1);
-      float taper = 1.0f - fabsf(2.0f * position - 1.0f);
-      float q0 = coefficient * q1 - q2 + samples[start + i] * taper;
-      q2 = q1;
-      q1 = q0;
-    }
-    float power = fmaxf(q1 * q1 + q2 * q2 - coefficient * q1 * q2, 0.0f);
-    float magnitude = sqrtf(power);
-    weighted_log_frequency += magnitude * logf(frequencies[frequency_index]);
-    total_weight += magnitude;
-  }
-  return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;
 }
 
 void audio_visualization_submit_stereo(audio_visualization_source_t source, const float *samples, size_t count) {
@@ -158,11 +136,45 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
 }
 
+static char *visualization_color(char *out, const unsigned char *color, bool background, int color_mode) {
+  if (color_mode == COLOR_MODE_16) {
+    uint8_t index = rgb_to_16color(color[0], color[1], color[2]);
+    return background ? append_16color_bg(out, index) : append_16color_fg(out, index);
+  }
+  if (color_mode == COLOR_MODE_256) {
+    uint8_t index = rgb_to_256color(color[0], color[1], color[2]);
+    return background ? append_256color_bg(out, index) : append_256color_fg(out, index);
+  }
+  return background ? append_truecolor_bg(out, color[0], color[1], color[2])
+                    : append_truecolor_fg(out, color[0], color[1], color[2]);
+}
+
 /* Encode the same visualization grid for native terminals and browser rasterization.
  * Half-block grids have two vertical samples per terminal row. */
-static char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors,
-                                  unsigned int width, unsigned int height, bool use_color, bool flip_x, bool flip_y) {
+char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors, unsigned int width,
+                           unsigned int height, bool use_color, bool flip_x, bool flip_y) {
   int mode = GET_OPTION(render_mode);
+  int color_mode = GET_OPTION(color_mode);
+  if (color_mode == COLOR_MODE_AUTO)
+    color_mode = COLOR_MODE_TRUECOLOR;
+  use_color = use_color && color_mode != COLOR_MODE_NONE;
+  palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
+  const palette_def_t *builtin = get_builtin_palette(palette_type);
+  const char *palette =
+      palette_type == PALETTE_CUSTOM ? GET_OPTION(palette_custom) : (builtin ? builtin->chars : PALETTE_CHARS_STANDARD);
+  if (!palette || !*palette)
+    palette = PALETTE_CHARS_STANDARD;
+  const char *characters[256];
+  size_t lengths[256], count = 0;
+  for (const char *p = palette; *p && count < 256;) {
+    uint32_t codepoint;
+    int length = utf8_decode((const uint8_t *)p, &codepoint);
+    if (length <= 0)
+      break;
+    characters[count] = p;
+    lengths[count++] = (size_t)length;
+    p += length;
+  }
   bool half = mode == RENDER_MODE_HALF_BLOCK;
   unsigned int rows = half ? height / 2 : height;
   size_t capacity = (size_t)width * rows * 64 + rows + 1;
@@ -184,20 +196,36 @@ static char *visualization_encode(const char *cells, const unsigned char *colors
         const unsigned char *lower_color = colors + (column_colors ? sx : lower) * 3;
         bool upper_on = ch != ' ', lower_on = cells[lower] != ' ';
         if (use_color) {
-          used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um▀\033[0m",
-                                   upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
-                                   lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0,
-                                   lower_on ? lower_color[2] : 0);
+          const unsigned char black[3] = {0};
+          char *out = visualization_color(frame + used, upper_on ? color : black, false, color_mode);
+          out = visualization_color(out, lower_on ? lower_color : black, true, color_mode);
+          memcpy(out, "▀\033[0m", sizeof("▀\033[0m") - 1);
+          used = (size_t)(out - frame) + sizeof("▀\033[0m") - 1;
         } else {
           const char *glyph = upper_on ? (lower_on ? "█" : "▀") : (lower_on ? "▄" : " ");
           size_t length = strlen(glyph);
           memcpy(frame + used, glyph, length);
           used += length;
         }
-      } else if (use_color && ch != ' ') {
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[%d;2;%u;%u;%um%c\033[0m",
-                                 mode == RENDER_MODE_BACKGROUND ? 48 : 38, color[0], color[1], color[2],
-                                 mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
+      } else if (ch != ' ') {
+        char *out = frame + used;
+        if (use_color)
+          out = visualization_color(out, color, mode == RENDER_MODE_BACKGROUND, color_mode);
+        if (mode == RENDER_MODE_BACKGROUND && use_color) {
+          *out++ = ' ';
+        } else if (count) {
+          unsigned int luminance = 2126u * color[0] + 7152u * color[1] + 722u * color[2];
+          size_t index = (luminance * (count - 1) + 1275000u) / 2550000u;
+          memcpy(out, characters[index], lengths[index]);
+          out += lengths[index];
+        } else {
+          *out++ = ch;
+        }
+        if (use_color) {
+          memcpy(out, "\033[0m", 4);
+          out += 4;
+        }
+        used = (size_t)(out - frame);
       } else {
         frame[used++] = ch;
       }
@@ -205,189 +233,5 @@ static char *visualization_encode(const char *cells, const unsigned char *colors
     frame[used++] = '\n';
   }
   frame[used] = '\0';
-  return frame;
-}
-
-char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                          bool use_color, int color_mode, bool flip_x, bool flip_y) {
-  if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
-      source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
-    return NULL;
-
-  /* Keep a fixed one-second view so new audio enters on the right smoothly. */
-  const size_t sample_count = VISUALIZATION_HISTORY;
-  float *samples = SAFE_MALLOC(sample_count * sizeof(float), float *);
-  if (!samples)
-    return NULL;
-  audio_visualization_read(source, samples, sample_count);
-
-  const unsigned int grid_height = GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
-  const unsigned int center = grid_height / 2;
-  const unsigned int half_height = grid_height - 1 - center;
-  const size_t cell_count = (size_t)width * grid_height;
-  char *cells = SAFE_MALLOC(cell_count, char *);
-  if (!cells) {
-    SAFE_FREE(samples);
-    return NULL;
-  }
-  memset(cells, ' ', cell_count);
-  unsigned char palette[MAX_TERMINAL_WIDTH][3] = {{0}};
-
-  float positive_peak = 0.0f;
-  float negative_peak = 0.0f;
-  size_t x = 0;
-
-  for (size_t i = 0; i < sample_count; i++) {
-    float sample = samples[i];
-    positive_peak = fmaxf(positive_peak, sample);
-    negative_peak = fmaxf(negative_peak, -sample);
-
-    size_t next_bucket = ((i + 1) * width) / sample_count;
-    if (next_bucket != x || i + 1 == sample_count) {
-      size_t begin = x * sample_count / width;
-      size_t end = (x + 1) * sample_count / width;
-      size_t bucket_center = begin + (end - begin) / 2;
-      float centroid = waveform_spectral_centroid(samples, sample_count, bucket_center);
-      /* A gentle square-root scale keeps speech visible without flattening loud peaks. */
-      float level = sqrtf(fminf(fmaxf(positive_peak, negative_peak), 1.0f));
-      visualization_color_for_level(centroid, level, color_mode, &palette[x][0], &palette[x][1], &palette[x][2]);
-      unsigned int positive_amplitude = (unsigned int)lrintf(sqrtf(fminf(positive_peak, 1.0f)) * (float)half_height);
-      unsigned int negative_amplitude = (unsigned int)lrintf(sqrtf(fminf(negative_peak, 1.0f)) * (float)half_height);
-      if (positive_amplitude > half_height)
-        positive_amplitude = half_height;
-      if (negative_amplitude > half_height)
-        negative_amplitude = half_height;
-      unsigned int top = center - positive_amplitude;
-      unsigned int bottom = center + negative_amplitude;
-      for (unsigned int y = top; y <= bottom; y++) {
-        char ch = (y == top || y == bottom) ? '+' : '#';
-        cells[(size_t)y * width + x] = ch;
-      }
-
-      /* Advance to the next time slice in the left-to-right history. */
-      positive_peak = 0.0f;
-      negative_peak = 0.0f;
-      x = next_bucket;
-    }
-  }
-
-  char *frame = visualization_encode(cells, &palette[0][0], true, width, grid_height, use_color, flip_x, flip_y);
-  SAFE_FREE(cells);
-  SAFE_FREE(samples);
-  return frame;
-}
-
-#define FFT_SIZE 1024
-
-static void visualization_fft(float *real, float *imaginary) {
-  for (size_t i = 1, j = 0; i < FFT_SIZE; i++) {
-    size_t bit = FFT_SIZE >> 1;
-    for (; j & bit; bit >>= 1)
-      j ^= bit;
-    j ^= bit;
-    if (i < j) {
-      float swap = real[i];
-      real[i] = real[j];
-      real[j] = swap;
-      swap = imaginary[i];
-      imaginary[i] = imaginary[j];
-      imaginary[j] = swap;
-    }
-  }
-  for (size_t length = 2; length <= FFT_SIZE; length <<= 1) {
-    float angle = -6.28318530718f / (float)length;
-    float step_real = cosf(angle), step_imaginary = sinf(angle);
-    for (size_t base = 0; base < FFT_SIZE; base += length) {
-      float twiddle_real = 1.0f, twiddle_imaginary = 0.0f;
-      for (size_t offset = 0; offset < length / 2; offset++) {
-        size_t even = base + offset, odd = even + length / 2;
-        float odd_real = real[odd] * twiddle_real - imaginary[odd] * twiddle_imaginary;
-        float odd_imaginary = real[odd] * twiddle_imaginary + imaginary[odd] * twiddle_real;
-        real[odd] = real[even] - odd_real;
-        imaginary[odd] = imaginary[even] - odd_imaginary;
-        real[even] += odd_real;
-        imaginary[even] += odd_imaginary;
-        float next_real = twiddle_real * step_real - twiddle_imaginary * step_imaginary;
-        twiddle_imaginary = twiddle_real * step_imaginary + twiddle_imaginary * step_real;
-        twiddle_real = next_real;
-      }
-    }
-  }
-}
-
-char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color, int color_mode, bool flip_x, bool flip_y) {
-  if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
-      source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
-    return NULL;
-
-  if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
-    height *= 2;
-  float *samples = SAFE_MALLOC(VISUALIZATION_HISTORY * sizeof(float), float *);
-  if (!samples)
-    return NULL;
-  audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
-  size_t cell_count = (size_t)width * height;
-  char *cells = SAFE_MALLOC(cell_count, char *);
-  unsigned char *colors = SAFE_MALLOC(cell_count * 3, unsigned char *);
-  if (!cells || !colors) {
-    SAFE_FREE(colors);
-    SAFE_FREE(cells);
-    SAFE_FREE(samples);
-    return NULL;
-  }
-  memset(cells, ' ', cell_count);
-  memset(colors, 0, cell_count * 3);
-
-  /* Each column is a 21 ms Hann-windowed spectrum; adjacent columns overlap heavily. */
-  float real[FFT_SIZE], imaginary[FFT_SIZE];
-  static const char levels[] = " .:-=+*#%@";
-  const unsigned int spectrum_height = height;
-  for (unsigned int x = 0; x < width; x++) {
-    size_t center = (size_t)x * (VISUALIZATION_HISTORY - 1) / (width - 1);
-    size_t start = center > FFT_SIZE / 2 ? center - FFT_SIZE / 2 : 0;
-    if (start + FFT_SIZE > VISUALIZATION_HISTORY)
-      start = VISUALIZATION_HISTORY - FFT_SIZE;
-    for (size_t i = 0; i < FFT_SIZE; i++) {
-      float window = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
-      real[i] = samples[start + i] * window;
-      imaginary[i] = 0.0f;
-    }
-    visualization_fft(real, imaginary);
-
-    for (unsigned int row = 0; row < spectrum_height; row++) {
-      float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
-      float bottom_fraction = (float)(spectrum_height - row) / (float)spectrum_height;
-      float low_hz = 35.0f * powf(18000.0f / 35.0f, top_fraction);
-      float high_hz = 35.0f * powf(18000.0f / 35.0f, bottom_fraction);
-      size_t low_bin = (size_t)fmaxf(1.0f, floorf(low_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
-      size_t high_bin =
-          (size_t)fmaxf((float)(low_bin + 1), ceilf(high_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
-      if (high_bin > FFT_SIZE / 2)
-        high_bin = FFT_SIZE / 2;
-      float power = 0.0f;
-      size_t bins = 0;
-      for (size_t bin = low_bin; bin < high_bin; bin++) {
-        float magnitude = hypotf(real[bin], imaginary[bin]) / (FFT_SIZE * 0.25f);
-        power += magnitude * magnitude;
-        bins++;
-      }
-      float magnitude = bins ? sqrtf(power / (float)bins) : 0.0f;
-      /* dB scaling leaves room for quiet speech while keeping loud music detailed. */
-      float db = 20.0f * log10f(fmaxf(magnitude, 0.00001f));
-      float intensity = fmaxf(0.0f, fminf(1.0f, (db + 58.0f) / 52.0f));
-      int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
-      size_t cell = (size_t)row * width + x;
-      cells[cell] = levels[level];
-      float band_hz = sqrtf(low_hz * high_hz);
-      visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
-                                    &colors[cell * 3 + 2]);
-    }
-  }
-
-  char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
-  SAFE_FREE(colors);
-  SAFE_FREE(cells);
-  SAFE_FREE(samples);
   return frame;
 }

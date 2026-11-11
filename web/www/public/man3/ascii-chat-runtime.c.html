@@ -1,0 +1,815 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>runtime.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">runtime.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">runtime.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">runtime.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>stats_peer</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>STATS_RUNTIME_TRANSPORT_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>STATS_RUNTIME_STATE_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>STATS_RUNTIME_OUTPUT_BUFFER_SIZE</b> 8192
+            <br />
+            #define <b>STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE</b> 4096
+            <br />
+            #define <b>STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>STATS_PEER_CAPACITY</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>stats_runtime_media</b> (unsigned width, unsigned height,
+            double position, double duration)
+            <br />
+            <b>stats_scope_t</b> * <b>stats_runtime_scope</b> (void)
+            <br />
+            <b>stats_scope_t</b> * <b>stats_runtime_peer_scope</b> (<b
+              >stats_peer_t</b
+            >
+            *peer)
+            <br />
+            <b>bool</b> <b>stats_runtime_active</b> (void)
+            <br />
+            void <b>stats_runtime_toggle</b> (void)
+            <br />
+            void <b>stats_view_add</b> (<b>stats_view_t</b> *view, const char
+            *format,...)
+            <br />
+            void <b>stats_view_add_header</b> (<b>stats_view_t</b> *view, const
+            char *format,...)
+            <br />
+            void <b>stats_runtime_set_provider</b> (<b>stats_provider_fn</b>
+            provider, void *data)
+            <br />
+            void <b>stats_runtime_connection_state</b> (const char *state)
+            <br />
+            <b>stats_peer_t</b> * <b>stats_runtime_peer_open</b> (const char
+            *transport)
+            <br />
+            void <b>stats_runtime_peer_close</b> (<b>stats_peer_t</b> *peer)
+            <br />
+            void <b>stats_runtime_packet</b> (<b>stats_peer_t</b> *peer,
+            unsigned type, size_t payload_bytes, <b>bool</b> sent,
+            <b>bool</b> success)
+            <br />
+            <b>asciichat_error_t</b> <b>stats_runtime_start</b> (const char
+            *mode, unsigned interval_seconds)
+            <br />
+            void <b>stats_runtime_stop</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STATS_PEER_CAPACITY___64">
+            <a class="permalink" href="#_define_STATS_PEER_CAPACITY___64"
+              >#define STATS_PEER_CAPACITY 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>runtime.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_runtime_peer_close()</b>, and
+            <b>stats_runtime_peer_open()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE___512"
+              >#define STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>runtime.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE___4096"
+          >
+            <a
+              class="permalink"
+              href="#_define_STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE___4096"
+              >#define STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>runtime.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STATS_RUNTIME_OUTPUT_BUFFER_SIZE___8192">
+            <a
+              class="permalink"
+              href="#_define_STATS_RUNTIME_OUTPUT_BUFFER_SIZE___8192"
+              >#define STATS_RUNTIME_OUTPUT_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>runtime.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STATS_RUNTIME_STATE_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_STATS_RUNTIME_STATE_BUFFER_SIZE___64"
+              >#define STATS_RUNTIME_STATE_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>runtime.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STATS_RUNTIME_TRANSPORT_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_STATS_RUNTIME_TRANSPORT_BUFFER_SIZE___16"
+              >#define STATS_RUNTIME_TRANSPORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>runtime.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> stats_runtime_active (void )</h2>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+77                                 {
+78   return atomic_load_bool_impl(&amp;g_active) &amp;&amp; (ui_controller_interactive_screen() == UI_SCREEN_STATS ||
+79                                               (ui_controller_interactive_screen() == UI_SCREEN_HELP &amp;&amp;
+80                                                keyboard_help_previous_interactive() == UI_SCREEN_STATS));
+81 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool_impl()</b>,
+            <b>keyboard_help_previous_interactive()</b>,
+            <b>stats_runtime_active()</b>,
+            <b>ui_controller_interactive_screen()</b>, <b>UI_SCREEN_HELP</b>,
+            and <b>UI_SCREEN_STATS</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_stats_runtime_connection_state_(const_char_*_state)"
+          >
+            <a
+              class="permalink"
+              href="#void_stats_runtime_connection_state_(const_char_*_state)"
+              >void stats_runtime_connection_state (const char * state)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>126</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+126                                                        {
+127   if (!g_scope)
+128     return;
+129   mutex_lock(&amp;g_provider_mutex);
+130   snprintf(g_state, sizeof(g_state), &quot;%s&quot;, state);
+131   mutex_unlock(&amp;g_provider_mutex);
+132 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>stats_runtime_connection_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_stats_runtime_media_(unsigned_width,_unsigned_height,_double_position,_double_duration)"
+          >
+            <a
+              class="permalink"
+              href="#void_stats_runtime_media_(unsigned_width,_unsigned_height,_double_position,_double_duration)"
+              >void stats_runtime_media (unsigned width, unsigned height, double
+              position, double duration)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+60                                                                                             {
+61   if (!g_scope)
+62     return;
+63   atomic_store_u64_impl(&amp;g_media_width, width);
+64   atomic_store_u64_impl(&amp;g_media_height, height);
+65   atomic_store_u64_impl(&amp;g_media_position,
+66                         isfinite(position) &amp;&amp; position &gt;= 0 &amp;&amp; position &lt; 1e12 ? (uint64_t)(position * 1000) + 1 : 0);
+67   atomic_store_u64_impl(&amp;g_media_duration,
+68                         isfinite(duration) &amp;&amp; duration &gt; 0 &amp;&amp; duration &lt; 1e12 ? (uint64_t)(duration * 1000) + 1 : 0);
+69 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64_impl()</b>, and
+            <b>stats_runtime_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_runtime_packet_(">
+            <a class="permalink" href="#void_stats_runtime_packet_("
+              >void stats_runtime_packet (<b>stats_peer_t</b> * peer, unsigned
+              type, size_t payload_bytes, <b>bool</b> sent,
+              <b>bool</b> success)</a
+            >
+          </h2>
+          <p class="Pp">
+            Application packet boundary, after decryption on receive. Header
+            bytes are included internally.
+          </p>
+          <p class="Pp">
+            Definition at line <b>187</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+187                                                                                                             {
+188   if (success) {
+189     ascii_otel_metric(sent ? ASCII_OTEL_METRIC_NET_TX_SIZE : ASCII_OTEL_METRIC_NET_RX_SIZE, (double)payload_bytes);
+190   }
+191   if (sent &amp;&amp; type == PACKET_TYPE_ERROR_MESSAGE)
+192     stats_counter_add(g_scope, STATS_COUNTER_REQUEST_FAILURES, 1);
+193   stats_scope_t *scopes[] = {g_scope, peer ? peer-&gt;scope : NULL};
+194   for (unsigned i = 0; i &lt; 2; ++i) {
+195     if (!success) {
+196       stats_counter_add(scopes[i], sent ? STATS_COUNTER_SEND_ERRORS : STATS_COUNTER_RECEIVE_ERRORS, 1);
+197       continue;
+198     }
+199     stats_counter_add(scopes[i], sent ? STATS_COUNTER_PACKETS_SENT : STATS_COUNTER_PACKETS_RECEIVED, 1);
+200     stats_counter_add(scopes[i], sent ? STATS_COUNTER_BYTES_SENT : STATS_COUNTER_BYTES_RECEIVED,
+201                       sizeof(packet_header_t) + payload_bytes);
+202     if (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_IMAGE_FRAME_H265 ||
+203         type == PACKET_TYPE_IMAGE_FRAME_H264)
+204       stats_counter_add(scopes[i], sent ? STATS_COUNTER_FRAMES_SENT : STATS_COUNTER_FRAMES_RECEIVED, 1);
+205   }
+206 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>,
+            <b>PACKET_TYPE_ASCII_FRAME</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME</b>, <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>stats_peer::scope</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_BYTES_RECEIVED</b>,
+            <b>STATS_COUNTER_BYTES_SENT</b>,
+            <b>STATS_COUNTER_FRAMES_RECEIVED</b>,
+            <b>STATS_COUNTER_FRAMES_SENT</b>,
+            <b>STATS_COUNTER_PACKETS_RECEIVED</b>,
+            <b>STATS_COUNTER_PACKETS_SENT</b>,
+            <b>STATS_COUNTER_RECEIVE_ERRORS</b>,
+            <b>STATS_COUNTER_REQUEST_FAILURES</b>,
+            <b>STATS_COUNTER_SEND_ERRORS</b>, and <b>stats_runtime_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_runtime_peer_close_(">
+            <a class="permalink" href="#void_stats_runtime_peer_close_("
+              >void stats_runtime_peer_close (<b>stats_peer_t</b> * peer)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>172</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+172                                                   {
+173   if (!peer)
+174     return;
+175   mutex_lock(&amp;g_peers_mutex);
+176   for (unsigned i = 0; i &lt; STATS_PEER_CAPACITY; ++i)
+177     if (g_peers[i] == peer)
+178       g_peers[i] = NULL;
+179   --g_peer_count;
+180   stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
+181   mutex_unlock(&amp;g_peers_mutex);
+182   stats_sampler_destroy(peer-&gt;sampler);
+183   stats_scope_destroy(peer-&gt;scope);
+184   SAFE_FREE(peer);
+185 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>SAFE_FREE</b>,
+            <b>stats_peer::sampler</b>, <b>stats_peer::scope</b>,
+            <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>, <b>stats_gauge_set()</b>,
+            <b>STATS_PEER_CAPACITY</b>, <b>stats_runtime_peer_close()</b>,
+            <b>stats_sampler_destroy()</b>, and <b>stats_scope_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>stats_peer_t</b> * stats_runtime_peer_open (const char *
+            transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>143</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+143                                                              {
+144   if (!g_scope)
+145     return NULL;
+146   stats_peer_t *peer = SAFE_CALLOC(1, sizeof(*peer), stats_peer_t *);
+147   if (!peer)
+148     return NULL;
+149   stats_capabilities_t caps = network_capabilities();
+150   stats_sampler_config_t config = {NS_PER_SEC_INT, 250 * NS_PER_MS_INT};
+151   if (stats_scope_create(&amp;caps, &amp;peer-&gt;scope) != ASCIICHAT_OK ||
+152       stats_sampler_create(&amp;config, &amp;peer-&gt;sampler) != ASCIICHAT_OK) {
+153     stats_scope_destroy(peer-&gt;scope);
+154     SAFE_FREE(peer);
+155     return NULL;
+156   }
+157   snprintf(peer-&gt;transport, sizeof(peer-&gt;transport), &quot;%s&quot;, transport);
+158   mutex_lock(&amp;g_peers_mutex);
+159   peer-&gt;id = ++g_peer_id;
+160   ++g_peer_count;
+161   stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
+162   for (unsigned i = 0; i &lt; STATS_PEER_CAPACITY; ++i) {
+163     if (!g_peers[i]) {
+164       g_peers[i] = peer;
+165       break;
+166     }
+167   }
+168   mutex_unlock(&amp;g_peers_mutex);
+169   return peer;
+170 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>stats_peer::id</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
+            <b>NS_PER_SEC_INT</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+            <b>stats_peer::sampler</b>, <b>stats_peer::scope</b>,
+            <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>, <b>stats_gauge_set()</b>,
+            <b>STATS_PEER_CAPACITY</b>, <b>stats_runtime_peer_open()</b>,
+            <b>stats_sampler_create()</b>, <b>stats_scope_create()</b>,
+            <b>stats_scope_destroy()</b>, and <b>stats_peer::transport</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>stats_scope_t</b> * stats_runtime_peer_scope (<b>stats_peer_t</b>
+            * peer)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+74                                                             {
+75   return peer ? peer-&gt;scope : NULL;
+76 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>stats_peer::scope</b>, and
+            <b>stats_runtime_peer_scope()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>stats_scope_t</b> * stats_runtime_scope (void )</h2>
+          <p class="Pp">
+            Definition at line <b>71</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+71                                          {
+72   return g_scope;
+73 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>stats_runtime_scope()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_runtime_set_provider_(">
+            <a class="permalink" href="#void_stats_runtime_set_provider_("
+              >void stats_runtime_set_provider (<b>stats_provider_fn</b>
+              provider, void * data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>117</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+117                                                                         {
+118   if (!g_scope)
+119     return;
+120   mutex_lock(&amp;g_provider_mutex);
+121   g_provider = provider;
+122   g_provider_data = data;
+123   mutex_unlock(&amp;g_provider_mutex);
+124 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>stats_runtime_set_provider()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> stats_runtime_start (const char * mode,
+            unsigned interval_seconds)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>510</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+510                                                                                    {
+511   if (!mode)
+512     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing statistics mode&quot;);
+513   if (g_started)
+514     return ASCIICHAT_OK;
+515   bool mcp = strcmp(mode, &quot;mcp-server&quot;) == 0;
+516   stats_capabilities_t caps = network_capabilities();
+517   bool mirror = strcmp(mode, &quot;mirror&quot;) == 0, acds = strcmp(mode, &quot;discovery-service&quot;) == 0;
+518   if (mirror)
+519     memset(&amp;caps, 0, sizeof(caps));
+520   if (!acds) {
+521     for (int i = 0; i &lt;= STATS_COUNTER_FRAMES_DROPPED; ++i)
+522       caps.counters[i] = true;
+523     caps.counters[STATS_COUNTER_FRAMES_ENQUEUED] = caps.counters[STATS_COUNTER_QUEUE_DROPS] = true;
+524     caps.counters[STATS_COUNTER_AUDIO_UNDERRUNS] = caps.counters[STATS_COUNTER_AUDIO_OVERRUNS] =
+525         GET_OPTION(audio_enabled);
+526     for (int i = 0; i &lt;= STATS_DURATION_TERMINAL_WRITE; ++i)
+527       caps.durations[i] = true;
+528     caps.gauges[STATS_GAUGE_AUDIO_BUFFERED_SAMPLES] = GET_OPTION(audio_enabled);
+529     caps.durations[STATS_DURATION_AUDIO_MIX] = GET_OPTION(audio_enabled) &amp;&amp; !mirror;
+530     if (mirror) {
+531       caps.counters[STATS_COUNTER_FRAMES_ENCODED] = caps.counters[STATS_COUNTER_FRAMES_DECODED] = false;
+532       caps.durations[STATS_DURATION_ENCODE] = caps.durations[STATS_DURATION_DECODE] = false;
+533     }
+534   } else {
+535     caps.counters[STATS_COUNTER_FRAMES_SENT] = caps.counters[STATS_COUNTER_FRAMES_RECEIVED] = false;
+536     for (int i = STATS_COUNTER_SESSION_CREATES; i &lt;= STATS_COUNTER_HOST_MIGRATIONS; ++i)
+537       caps.counters[i] = true;
+538     caps.counters[STATS_COUNTER_MIGRATION_FAILURES] = true;
+539     caps.durations[STATS_DURATION_REQUEST] = true;
+540     caps.gauges[STATS_GAUGE_SESSIONS_ACTIVE] = caps.gauges[STATS_GAUGE_PARTICIPANTS_ACTIVE] = true;
+541   }
+542   if (strcmp(mode, &quot;discovery&quot;) == 0)
+543     caps.counters[STATS_COUNTER_MIGRATION_FAILURES] = true;
+544   caps.gauges[STATS_GAUGE_VIDEO_QUEUE_DEPTH] = strcmp(mode, &quot;server&quot;) == 0;
+545   if (GET_OPTION(render_file)[0]) {
+546     caps.counters[STATS_COUNTER_RECORDING_FRAMES] = true;
+547     caps.durations[STATS_DURATION_RECORDING] = true;
+548   }
+549   if (!mirror) {
+550     caps.counters[STATS_COUNTER_RATE_LIMIT_REJECTIONS] = true;
+551     caps.durations[STATS_DURATION_RTT] = !acds;
+552     caps.counters[STATS_COUNTER_RECONNECTS] = !acds;
+553     caps.counters[STATS_COUNTER_HOST_MIGRATIONS] = true;
+554     caps.gauges[STATS_GAUGE_CONNECTIONS_ACTIVE] = true;
+555     caps.durations[STATS_DURATION_CONNECTION_SETUP] = !acds;
+556   }
+557   if (mcp) {
+558     memset(&amp;caps, 0, sizeof(caps));
+559     for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i &lt;= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
+560       caps.counters[i] = true;
+561     caps.durations[STATS_DURATION_MCP_RENDER] = true;
+562   }
+563   asciichat_error_t result = stats_scope_create(&amp;caps, &amp;g_scope);
+564   if (result != ASCIICHAT_OK)
+565     return result;
+566   ascii_otel_stats_attach(g_scope);
+567   stats_sampler_config_t config = {NS_PER_SEC_INT, 250 * NS_PER_MS_INT};
+568   result = stats_sampler_create(&amp;config, &amp;g_sampler);
+569   if (result != ASCIICHAT_OK)
+570     goto fail_scope;
+571   if (mutex_init(&amp;g_peers_mutex, &quot;stats_peers&quot;) != 0) {
+572     result = SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize stats peer mutex&quot;);
+573     goto fail_sampler;
+574   }
+575   if (mutex_init(&amp;g_provider_mutex, &quot;stats_provider&quot;) != 0) {
+576     result = SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize stats provider mutex&quot;);
+577     goto fail_peers;
+578   }
+579   g_peer_count = g_peer_id = 0;
+580   memset(g_peers, 0, sizeof(g_peers));
+581   g_state[0] = 0;
+582   stats_runtime_media(0, 0, -1, -1);
+583   snprintf(g_mode, sizeof(g_mode), &quot;%s&quot;, mode);
+584   g_interval = interval_seconds;
+585   g_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
+586   g_keyboard = (!mcp || !strcmp(GET_OPTION(mcp_transport), &quot;http&quot;)) &amp;&amp; platform_isatty(STDIN_FILENO) &amp;&amp;
+587                platform_isatty(g_fd) &amp;&amp; keyboard_init() == ASCIICHAT_OK;
+588   atomic_store_bool_impl(&amp;g_stop, false);
+589   atomic_store_bool_impl(&amp;g_active, false);
+590   atomic_store_bool_impl(&amp;g_onboarding_wait, false);
+591   g_started = true;
+592   bool server_like = strcmp(mode, &quot;server&quot;) == 0 || strcmp(mode, &quot;discovery-service&quot;) == 0 ||
+593                      (mcp &amp;&amp; !strcmp(GET_OPTION(mcp_transport), &quot;http&quot;));
+594   if (g_keyboard &amp;&amp; server_like &amp;&amp; ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
+595     LOG_ERRNO_IF_SET(&quot;Cannot start terminal presentation&quot;);
+596   if (acthread_create(&amp;g_worker, &quot;stats&quot;, stats_worker, NULL) == 0) {
+597     atomic_store_bool_impl(&amp;g_onboarding_wait, true);
+598     bool shown = show_first_use_instructions();
+599     while (shown &amp;&amp; ui_controller_screen_live(UI_SCREEN_NOTICE) &amp;&amp; !shutdown_is_requested()) {
+600       ui_presentation_state_t state = ui_controller_state();
+601       if (state.screen == UI_SCREEN_NOTICE &amp;&amp; state.covered)
+602         break;
+603       platform_sleep_ms(10);
+604     }
+605     atomic_store_bool_impl(&amp;g_onboarding_wait, false);
+606     return ASCIICHAT_OK;
+607   }
+608   result = SET_ERRNO(ERROR_THREAD, &quot;Cannot start stats worker&quot;);
+609   g_started = false;
+610   if (g_keyboard)
+611     keyboard_destroy();
+612   mutex_destroy(&amp;g_provider_mutex);
+613 fail_peers:
+614   mutex_destroy(&amp;g_peers_mutex);
+615 fail_sampler:
+616   stats_sampler_destroy(g_sampler);
+617   g_sampler = NULL;
+618 fail_scope:
+619   stats_scope_destroy(g_scope);
+620   g_scope = NULL;
+621   return result;
+622 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ascii_otel_stats_attach()</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_store_bool_impl()</b>,
+            <b>stats_capabilities_t::counters</b>,
+            <b>ui_presentation_state_t::covered</b>,
+            <b>stats_capabilities_t::durations</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_THREAD</b>, <b>stats_capabilities_t::gauges</b>,
+            <b>GET_OPTION</b>, <b>keyboard_destroy()</b>,
+            <b>keyboard_init()</b>, <b>LOG_ERRNO_IF_SET</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NS_PER_MS_INT</b>,
+            <b>NS_PER_SEC_INT</b>, <b>platform_isatty()</b>,
+            <b>platform_sleep_ms()</b>, <b>ui_presentation_state_t::screen</b>,
+            <b>SET_ERRNO</b>, <b>shutdown_is_requested()</b>,
+            <b>STATS_COUNTER_AUDIO_OVERRUNS</b>,
+            <b>STATS_COUNTER_AUDIO_UNDERRUNS</b>,
+            <b>STATS_COUNTER_FRAMES_DECODED</b>,
+            <b>STATS_COUNTER_FRAMES_DROPPED</b>,
+            <b>STATS_COUNTER_FRAMES_ENCODED</b>,
+            <b>STATS_COUNTER_FRAMES_ENQUEUED</b>,
+            <b>STATS_COUNTER_FRAMES_RECEIVED</b>,
+            <b>STATS_COUNTER_FRAMES_SENT</b>,
+            <b>STATS_COUNTER_HOST_MIGRATIONS</b>,
+            <b>STATS_COUNTER_MCP_HTTP_RESPONSES</b>,
+            <b>STATS_COUNTER_MCP_REQUESTS</b>,
+            <b>STATS_COUNTER_MIGRATION_FAILURES</b>,
+            <b>STATS_COUNTER_QUEUE_DROPS</b>,
+            <b>STATS_COUNTER_RATE_LIMIT_REJECTIONS</b>,
+            <b>STATS_COUNTER_RECONNECTS</b>,
+            <b>STATS_COUNTER_RECORDING_FRAMES</b>,
+            <b>STATS_COUNTER_SESSION_CREATES</b>,
+            <b>STATS_DURATION_AUDIO_MIX</b>,
+            <b>STATS_DURATION_CONNECTION_SETUP</b>,
+            <b>STATS_DURATION_DECODE</b>, <b>STATS_DURATION_ENCODE</b>,
+            <b>STATS_DURATION_MCP_RENDER</b>, <b>STATS_DURATION_RECORDING</b>,
+            <b>STATS_DURATION_REQUEST</b>, <b>STATS_DURATION_RTT</b>,
+            <b>STATS_DURATION_TERMINAL_WRITE</b>,
+            <b>STATS_GAUGE_AUDIO_BUFFERED_SAMPLES</b>,
+            <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>,
+            <b>STATS_GAUGE_PARTICIPANTS_ACTIVE</b>,
+            <b>STATS_GAUGE_SESSIONS_ACTIVE</b>,
+            <b>STATS_GAUGE_VIDEO_QUEUE_DEPTH</b>, <b>stats_runtime_media()</b>,
+            <b>stats_runtime_start()</b>, <b>stats_sampler_create()</b>,
+            <b>stats_sampler_destroy()</b>, <b>stats_scope_create()</b>,
+            <b>stats_scope_destroy()</b>, <b>ui_controller_screen_live()</b>,
+            <b>ui_controller_start_terminal()</b>, <b>ui_controller_state()</b>,
+            and <b>UI_SCREEN_NOTICE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_runtime_stop_(void_)">
+            <a class="permalink" href="#void_stats_runtime_stop_(void_)"
+              >void stats_runtime_stop (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>624</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+624                               {
+625   if (!g_started)
+626     return;
+627   atomic_store_bool_impl(&amp;g_stop, true);
+628   thread_join(&amp;g_worker, NULL);
+629   ui_controller_shutdown();
+630   if (g_keyboard)
+631     keyboard_destroy();
+632   g_provider = NULL;
+633   g_provider_data = NULL;
+634   stats_sampler_destroy(g_sampler);
+635   stats_scope_destroy(g_scope);
+636   g_sampler = NULL;
+637   g_scope = NULL;
+638   mutex_destroy(&amp;g_provider_mutex);
+639   mutex_destroy(&amp;g_peers_mutex);
+640   g_started = false;
+641 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>,
+            <b>keyboard_destroy()</b>, <b>mutex_destroy()</b>,
+            <b>stats_runtime_stop()</b>, <b>stats_sampler_destroy()</b>,
+            <b>stats_scope_destroy()</b>, <b>thread_join</b>, and
+            <b>ui_controller_shutdown()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_runtime_toggle_(void_)">
+            <a class="permalink" href="#void_stats_runtime_toggle_(void_)"
+              >void stats_runtime_toggle (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>83</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+83                                 {
+84   if (g_started &amp;&amp; g_keyboard) {
+85     bool active = !stats_runtime_active();
+86     atomic_store_bool_impl(&amp;g_active, active);
+87     ui_controller_select_interactive(active ? UI_SCREEN_STATS : -1);
+88     log_debug(&quot;Statistics TUI requested: %s&quot;, active ? &quot;open&quot; : &quot;closed&quot;);
+89   }
+90 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, <b>log_debug</b>,
+            <b>stats_runtime_active()</b>, <b>stats_runtime_toggle()</b>,
+            <b>ui_controller_select_interactive()</b>, and
+            <b>UI_SCREEN_STATS</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_view_add_(">
+            <a class="permalink" href="#void_stats_view_add_("
+              >void stats_view_add (<b>stats_view_t</b> * view, const char *
+              format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+103                                                                  {
+104   va_list args;
+105   va_start(args, format);
+106   stats_view_vadd(view, false, format, args);
+107   va_end(args);
+108 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>stats_view_add()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_view_add_header_(">
+            <a class="permalink" href="#void_stats_view_add_header_("
+              >void stats_view_add_header (<b>stats_view_t</b> * view, const
+              char * format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>110</b> of file <b>runtime.c</b>.
+          </p>
+          <pre>
+110                                                                         {
+111   va_list args;
+112   va_start(args, format);
+113   stats_view_vadd(view, true, format, args);
+114   va_end(args);
+115 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>stats_view_add_header()</b>.</p>
+          <p class="Pp">Referenced by <b>stats_view_add_header()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

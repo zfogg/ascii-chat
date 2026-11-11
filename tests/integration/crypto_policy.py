@@ -1,6 +1,6 @@
 """Real CLI security negotiation, authentication failures, and rendered frames.
 
-Run: python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
 Uses temporary identities and loopback TCP/WS/WSS listeners only.
 """
 
@@ -9,15 +9,15 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
 
-import os
 from contextlib import contextmanager
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 @contextmanager
@@ -34,7 +34,7 @@ def running(*args):
 
 
 def run_client(binary, directory, name, address, options, mode, success=True):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                APPDATA=str(directory), XDG_CONFIG_HOME=str(directory),
                ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
@@ -89,7 +89,7 @@ def main():
             assert result.returncode != 0 and any(message in output for message in
                 ("Cannot use", "mutually exclusive", "Authentication material cannot be used")), (ordered, output[-3000:])
         print(f"PASS CLI conflict: {flags}", flush=True)
-    clean_env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    clean_env = clean_environment()
     for configured, environment, flags in [
         ("encrypt", {}, ["--no-encrypt"]),
         ("no_encrypt", {}, ["--encrypt"]),
@@ -126,7 +126,7 @@ def main():
     ]
     for name, scheme, server_extra, client_extra, mode, success in cases:
         tcp, ws = free_port(), free_port()
-        tls = ["--websocket-tls-cert", str(certificate), "--websocket-tls-key", str(tls_key)] if scheme == "wss" else []
+        tls = ["--tls-cert", str(certificate), "--tls-key", str(tls_key)] if scheme == "wss" else []
         with running(binary, directory, name, "server", server_options(tcp, ws) + server_extra + tls) as service:
             service.wait_for("Server accepting connections", timeout=40)
             address = f"127.0.0.1:{tcp}" if scheme == "tcp" else f"{scheme}://127.0.0.1:{ws}"

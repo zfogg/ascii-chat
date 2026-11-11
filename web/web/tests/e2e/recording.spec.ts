@@ -681,7 +681,9 @@ for (const mode of ["client", "discovery"] as const)
             () =>
               output.match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)?.[1] ??
               "",
-            { timeout: 30000 },
+            {
+              timeout: 30000,
+            },
           )
           .not.toBe("");
         query.set(

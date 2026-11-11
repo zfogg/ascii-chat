@@ -10,9 +10,12 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MANPAGE_INITIAL_PARSE_CAPACITY 16
 
+#include <defer.h>
 #include <ascii-chat/options/manpage/parser.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <libplatform/util/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -359,6 +362,8 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary file for memory parsing");
   }
 
+  defer(fclose(tmp));
+
   // Write content to temporary file
   // Write content_len + 1 to include the null terminator.
   // The embedded string is content_len + 1 bytes (content_len chars + null terminator).
@@ -366,19 +371,16 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
   size_t bytes_to_write = content_len + 1;
   size_t written = fwrite(content, 1, bytes_to_write, tmp);
   if (written != bytes_to_write) {
-    fclose(tmp);
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write complete content to temporary file");
   }
 
   // Rewind to beginning for reading
   if (fseek(tmp, 0, SEEK_SET) != 0) {
-    fclose(tmp);
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to rewind temporary file");
   }
 
   // Parse using common function
   asciichat_error_t err = parse_sections_internal(tmp, out_sections, out_count);
-  fclose(tmp);
 
   return err;
 }

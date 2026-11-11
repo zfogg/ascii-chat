@@ -24,8 +24,12 @@ if(NOT EMSCRIPTEN)
         # Keep Clang's builtin headers, but select musl and the isolated Linux
         # headers explicitly so libuv does not reference glibc-only symbols.
         target_compile_options(uv_a PRIVATE -nostdlibinc)
-        target_include_directories(uv_a SYSTEM PRIVATE
-            "${MUSL_INCLUDE_DIR}" "${KERNEL_HEADERS_DIR}")
+        # Consumers compile sources that include <uv.h>; propagate the musl
+        # and kernel header roots through the static target.
+        target_include_directories(uv_a SYSTEM PUBLIC
+            "$<BUILD_INTERFACE:${MUSL_INCLUDE_DIR}>"
+            "$<BUILD_INTERFACE:${KERNEL_HEADERS_DIR}>")
+        set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${asciichat_libuv_SOURCE_DIR}/include")
         set(ASCIICHAT_LIBUV_TARGET uv_a)
     else()
         find_package(PkgConfig REQUIRED)

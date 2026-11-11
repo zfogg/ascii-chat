@@ -26,13 +26,15 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/mutex.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/mutex.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -53,7 +55,14 @@ typedef struct {
   uint64_t group_timestamp;
   asciichat_errno_outcome_t outcome;
   bool historical;
+  /**
+   */
 } errno_tui_row_t;
+/**
+ * @brief The useful part of errno tui row is in `context`, `resolved_ns`, `group_id`, `group_timestamp`: together they
+ * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
+ * the parent cleanup path.
+ */
 typedef struct {
   bool visible;
   bool stack_sort;
@@ -64,6 +73,11 @@ typedef struct {
   int output_fd;
   asciichat_error_context_t selected_context;
   bool selected_current;
+  /**
+   * @brief When code needs to work with errno tui state, it keeps `visible`, `stack_sort`, `tab`, `list` here instead
+   * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   */
 } errno_tui_state_t;
 
 static errno_tui_state_t g_state;
@@ -261,7 +275,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     return;
   }
 
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd);
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd, options_terminal_settings());
   errno_tui_row_t *rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*rows), errno_tui_row_t *);
   errno_tui_row_t *current_rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*current_rows), errno_tui_row_t *);
   if (!rows || !current_rows) {
@@ -367,9 +381,9 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     safe_snprintf(outcomes, sizeof(outcomes), "%s%u%s/%s%u%s/%s%u%s", purple, resolved, reset, purple, dismissed, reset,
                   purple, handled, reset);
     safe_snprintf(code, sizeof(code), "%s%d%s", purple, row->context.code, reset);
-    const ui_table_column_t table_columns[] = {{"Ago", 10, UI_ALIGN_LEFT},
-                                               {"R/D/H", 8, UI_ALIGN_LEFT},
-                                               {"Code", 5, UI_ALIGN_LEFT},
+    const ui_table_column_t table_columns[] = {{"Ago", 10, UI_ALIGN_LEFT, false},
+                                               {"R/D/H", 8, UI_ALIGN_LEFT, false},
+                                               {"Code", 5, UI_ALIGN_LEFT, false},
                                                {"Thread", thread_width, UI_ALIGN_LEFT, true},
                                                {"Standard message", message_width, UI_ALIGN_LEFT, true},
                                                {"User message", user_width, UI_ALIGN_LEFT, true}};

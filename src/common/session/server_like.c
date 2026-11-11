@@ -15,9 +15,11 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
 #include "server_like.h"
+#include "quic_listeners.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/network/quic/quic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/buffer.h>
@@ -25,10 +27,13 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/systemd.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <signal.h>
@@ -39,11 +44,13 @@
  * ============================================================================ */
 
 static network_server_t *g_network_server;
+static quic_endpoint_t *g_quic_endpoint;
+static quic_endpoint_t *g_webtransport_endpoint;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
 static nat_upnp_context_t *g_ws_upnp_ctx = NULL;
-static asciichat_thread_t g_upnp_thread;
+static platform_thread_t g_upnp_thread;
 static bool g_upnp_thread_started = false;
 static atomic_t g_upnp_stop = {0};
 static atomic_t g_upnp_ready = {0};
@@ -70,7 +77,7 @@ static void *upnp_renewal_thread(void *unused) {
   return NULL;
 }
 
-static asciichat_thread_t g_status_screen_thread;
+static platform_thread_t g_status_screen_thread;
 static bool g_status_screen_thread_started = false;
 
 /** Status screen callback and user data (immutable after thread start, cleared at shutdown). */
@@ -243,7 +250,14 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot specify both --keepawake and --no-keepawake");
   }
   if (keepawake_enabled) {
-    platform_enable_keepawake();
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool suppressed = errno_notifications_suppress(true);
+    asciichat_error_t keepawake_result = platform_enable_keepawake();
+    errno_notifications_suppress(suppressed);
+    if (keepawake_result != ASCIICHAT_OK) {
+      log_warn("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+    }
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   /* === 2. File descriptor limit === */
@@ -268,26 +282,33 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   const char *address = GET_OPTION(address);
   const char *address6 = GET_OPTION(address6);
 
-  bool ipv4_has_value = (address && strlen(address) > 0);
-  bool ipv6_has_value = (address6 && strlen(address6) > 0);
+  const char *effective_address = (address && strlen(address) > 0) ? address : "127.0.0.1";
+  const char *effective_address6 = (address6 && strlen(address6) > 0) ? address6 : "::1";
+  bool ipv4_has_value = true;
+
+  result = session_quic_listeners_open(port, &g_quic_endpoint, &g_webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    goto cleanup;
 
   network_server_config_t tcp_config = {
       .port = port,
-      .ipv4_address = ipv4_has_value ? address : NULL,
-      .ipv6_address = ipv6_has_value ? address6 : NULL,
-      .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
-      .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
+      .ipv4_address = effective_address,
+      .ipv6_address = effective_address6,
+      .bind_ipv4 = true,
+      .bind_ipv6 = true,
       .callbacks = config->connections,
       .max_payload = config->max_payload,
       .partial_timeout_ms = config->partial_timeout_ms,
       .idle_timeout_ms = config->idle_timeout_ms,
       .websocket_enabled = config->websocket_enabled,
       .websocket_port = GET_OPTION(websocket_port),
-      .tls_cert_path = GET_OPTION(websocket_tls_cert),
-      .tls_key_path = GET_OPTION(websocket_tls_key),
+      .tls_cert_path = GET_OPTION(tls_cert),
+      .tls_key_path = GET_OPTION(tls_key),
       .tick = config->tick_fn,
       .tick_context = config->tick_user_data,
       .user_data = config->connection_user_data,
+      .quic_endpoint = g_quic_endpoint,
+      .webtransport_endpoint = g_webtransport_endpoint,
   };
 
   result = network_server_create(&tcp_config, &g_network_server);
@@ -359,6 +380,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     result = network_server_start(g_network_server);
     if (result != ASCIICHAT_OK)
       goto cleanup;
+    platform_systemd_notify_status("Listener started");
+    platform_systemd_notify_ready();
   } else {
     goto cleanup;
   }
@@ -375,7 +398,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (g_upnp_ctx || g_ws_upnp_ctx) {
     atomic_store_bool(&g_upnp_stop, false);
     atomic_store_bool(&g_upnp_ready, false);
-    if (acthread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
+    if (platform_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
       g_upnp_thread_started = true;
     } else {
       log_warn("NAT: could not start lease renewal; removing the temporary mapping");
@@ -398,7 +421,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       g_status_fn = config->status_fn;
       g_status_user_data = config->status_user_data;
 
-      if (acthread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
+      if (platform_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
         g_status_screen_thread_started = true;
         log_info("Status screen thread started");
       } else {
@@ -461,6 +484,9 @@ cleanup:
   }
 
   network_server_destroy(&g_network_server);
+  stopped = session_quic_listeners_close(&g_quic_endpoint, &g_webtransport_endpoint);
+  if (stopped != ASCIICHAT_OK)
+    return stopped;
 
   /* 17. mDNS cleanup */
   if (g_mdns_ctx) {

@@ -132,7 +132,7 @@ Test(yt_dlp, extract_null_terminates_output) {
 
   // Regardless of success/failure, output should be null-terminated
   // (The test framework will detect buffer overrun if not)
-  cr_assert(output[sizeof(output) - 1] == '\0' || output[0] != '\0', "Output should be null-terminated or empty");
+  cr_assert_not_null(memchr(output, '\0', sizeof(output)), "Output should be null-terminated, including on failure");
 }
 
 Test(yt_dlp, extract_respects_buffer_size) {

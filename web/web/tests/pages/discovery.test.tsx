@@ -92,7 +92,7 @@ vi.mock("../../src/components", async () => ({
   ...(await import("../../src/components/ModeHeader")),
   AsciiChatWebHead: () => null,
   ConnectionPanelModal: () => null,
-  AsciiRenderer: ({
+  AsciiCanvas: ({
     onDimensionsChange,
   }: {
     onDimensionsChange: (dimensions: { cols: number; rows: number }) => void;
@@ -150,7 +150,9 @@ describe("Discovery page", () => {
     await openPage();
     fireEvent.change(
       screen.getByLabelText("Session password", { exact: true }),
-      { target: { value: "test-password" } },
+      {
+        target: { value: "test-password" },
+      },
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Create session" }),

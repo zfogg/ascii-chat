@@ -17,9 +17,9 @@
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/process.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -98,7 +98,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   // Note: Don't log the full command as it may contain sensitive key material
   log_debug("Signing with GPG key 0x%s", escaped_key_id);
   int status = 0;
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv, NULL, 0); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv, NULL, 0, NULL, NULL); });
   if (status != 0) {
     log_error("GPG signing failed (exit code %d)", status);
     goto cleanup;

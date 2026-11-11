@@ -2,7 +2,7 @@
 """
 Fix the "directory" field in compile_commands.json to use source directory
 instead of the temp build directory. This allows LibTooling-based tools
-like the defer tool to resolve includes correctly.
+using Clang to resolve includes correctly.
 """
 
 import json

@@ -1,488 +1,702 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mirror.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mirror.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mirror.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mirror.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>RAIN_UPDATE_INTERVAL_MS</b> 100.0
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">EMSCRIPTEN_KEEPALIVE int <b>mirror_init_with_args</b> (const char
-    *args_json)
-  <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>mirror_cleanup</b> (void)
-  <br/>
-  EMSCRIPTEN_KEEPALIVE char * <b>mirror_convert_frame</b> (<b>uint8_t</b>
-    *rgba_data, int src_width, int src_height)
-  <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>mirror_free_string</b> (char *ptr)
-  <br/>
-  EMSCRIPTEN_KEEPALIVE const unsigned char * <b>get_font_default_ptr</b> (void)
-  <br/>
-  EMSCRIPTEN_KEEPALIVE unsigned int <b>get_font_default_size</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const unsigned char <b>g_font_default</b> []
-  <br/>
-  const size_t <b>g_font_default_size</b>
-  <br/>
-  const unsigned char <b>g_font_matrix_resurrected</b> []
-  <br/>
-  const size_t <b>g_font_matrix_resurrected_size</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_RAIN_UPDATE_INTERVAL_MS___100"><a class="permalink" href="#_define_RAIN_UPDATE_INTERVAL_MS___100">#define
-  RAIN_UPDATE_INTERVAL_MS 100.0</a></h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>mirror.c</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_const_unsigned_char_*_get_font_default_ptr_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_const_unsigned_char_*_get_font_default_ptr_(void_)">EMSCRIPTEN_KEEPALIVE
-  const unsigned char * get_font_default_ptr (void )</a></h2>
-<p class="Pp">Get the pointer to the embedded default font data</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to font data</div>
-<p class="Pp">Definition at line <b>311</b> of file <b>mirror.c</b>.</p>
-<pre>311                                                 {
-312   // Auto-select matrix font when --matrix flag is set
-313   int matrix_rain_val = GET_OPTION(matrix_rain);
-314   log_info(&quot;[get_font_default_ptr] CALLED: matrix_rain=%d, g_font_matrix_resurrected=%p, g_font_default=%p&quot;,
-315            matrix_rain_val, (void *)g_font_matrix_resurrected, (void *)g_font_default);
-316   if (matrix_rain_val) {
-317     log_info(&quot;[get_font_default_ptr] RETURNING matrix font&quot;);
-318     return g_font_matrix_resurrected;
-319   }
-320   log_info(&quot;[get_font_default_ptr] RETURNING default font&quot;);
-321   return g_font_default;
-322 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_font_default</b>,
-    <b>g_font_matrix_resurrected</b>, <b>GET_OPTION</b>, and
-  <b>log_info</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_unsigned_int_get_font_default_size_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_unsigned_int_get_font_default_size_(void_)">EMSCRIPTEN_KEEPALIVE
-  unsigned int get_font_default_size (void )</a></h2>
-<p class="Pp">Get the size of the embedded default font</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Font data size in bytes</div>
-<p class="Pp">Definition at line <b>329</b> of file <b>mirror.c</b>.</p>
-<pre>329                                          {
-330   // Auto-select matrix font when --matrix flag is set
-331   if (GET_OPTION(matrix_rain)) {
-332     return (unsigned int)g_font_matrix_resurrected_size;
-333   }
-334   return (unsigned int)g_font_default_size;
-335 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_font_default_size</b>,
-    <b>g_font_matrix_resurrected_size</b>, and <b>GET_OPTION</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_mirror_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_mirror_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
-  void mirror_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>mirror.c</b>.</p>
-<pre>84                           {
-85   if (g_digital_rain) {
-86     digital_rain_destroy(g_digital_rain);
-87     g_digital_rain = NULL;
-88   }
-89   if (g_last_rain_output) {
-90     SAFE_FREE(g_last_rain_output);
-91     g_last_rain_output = NULL;
-92   }
-93   options_state_destroy();
-94   platform_destroy();
-95 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>digital_rain_destroy()</b>,
-    <b>options_state_destroy()</b>, <b>platform_destroy()</b>, and
-    <b>SAFE_FREE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_("><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_(">EMSCRIPTEN_KEEPALIVE
-  char * mirror_convert_frame (<b>uint8_t</b> * rgba_data, int src_width, int
-  src_height)</a></h2>
-<p class="Pp">Definition at line <b>102</b> of file <b>mirror.c</b>.</p>
-<pre>102                                                                               {
-103   if (!rgba_data || src_width &lt;= 0 || src_height &lt;= 0) {
-104     return NULL;
-105   }
-106 
-107   g_frame_count++;
-108   // Derive a time value from frame count using actual target FPS from options
-109   int target_fps = (int)GET_OPTION(fps);
-110   if (target_fps &lt;= 0) {
-111     target_fps = 60; // Default to 60 FPS if not set
-112   }
-113   float time_seconds = (float)g_frame_count / (float)target_fps;
-114 
-115   // Get current settings from options or terminal detection
-116   int dst_width = (int)terminal_get_effective_width();
-117   int dst_height = (int)terminal_get_effective_height();
-118   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
-119   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
-120   if (g_frame_count &lt;= 3 || g_frame_count % 120 == 0) {
-121     log_debug(&quot;frame=%u color_filter=%d color_mode=%d&quot;, g_frame_count, (int)filter, (int)color_mode);
-122   }
-123   if (color_mode == TERM_COLOR_AUTO) {
-124     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
-125   }
-126   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
-127   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
-128   bool stretch = false;              // Don't stretch - maintain proportions
-129 
-130   // Build terminal capabilities structure with user's color mode
-131   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
-132   caps.color_level = color_mode;
-133   caps.capabilities = 0;
-134   caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
-135                      : (color_mode == TERM_COLOR_16)  ? 16
-136                      : (color_mode == TERM_COLOR_256) ? 256
-137                                                       : 16777216;
-138   caps.utf8_support = true;
-139   caps.detection_reliable = true;
-140   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
-141   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
-142   caps.wants_padding = true;
-143   caps.palette_type = palette_type;
-144   caps.desired_fps = 60;
-145   caps.color_filter = filter;
-146 
-147   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
-148   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
-149   if (!rgb_pixels) {
-150     return NULL;
-151   }
-152 
-153   bool flip_x = GET_OPTION(flip_x);
-154   bool flip_y = GET_OPTION(flip_y);
-155   for (int y = 0; y &lt; src_height; y++) {
-156     for (int x = 0; x &lt; src_width; x++) {
-157       int src_x = flip_x ? (src_width - 1 - x) : x;
-158       int src_y = flip_y ? (src_height - 1 - y) : y;
-159       int src_idx = (src_y * src_width + src_x) * 4;
-160       int dst_idx = y * src_width + x;
-161 
-162       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
-163       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
-164       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
-165       // Alpha (rgba_data[src_idx + 3]) is discarded
-166     }
-167   }
-168 
-169   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
-170   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
-171     // color_filter operates on packed RGB24 format
-172     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
-173     int stride = src_width * 3;
-174     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
-175   }
-176 
-177   // Create image structure
-178   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
-179 
-180   // Get palette characters based on selected palette type
-181   const char *palette_chars;
-182   switch (palette_type) {
-183   case PALETTE_BLOCKS:
-184     palette_chars = PALETTE_CHARS_BLOCKS;
-185     break;
-186   case PALETTE_DIGITAL:
-187     palette_chars = PALETTE_CHARS_DIGITAL;
-188     break;
-189   case PALETTE_MINIMAL:
-190     palette_chars = PALETTE_CHARS_MINIMAL;
-191     break;
-192   case PALETTE_COOL:
-193     palette_chars = PALETTE_CHARS_COOL;
-194     break;
-195   case PALETTE_CUSTOM:
-196     // Custom palette uses user-provided characters from options
-197     palette_chars = GET_OPTION(palette_custom);
-198     if (!palette_chars || palette_chars[0] == '\0') {
-199       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
-200     }
-201     break;
-202   case PALETTE_STANDARD:
-203   default:
-204     palette_chars = PALETTE_CHARS_STANDARD;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mirror.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mirror.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mirror.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mirror.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int <b>mirror_init_with_args</b>
+            (const char *args_json)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>mirror_reset_stabilizer</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>mirror_cleanup</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> char * <b>mirror_convert_frame</b> (<b
+              >uint8_t</b
+            >
+            *rgba_data, int src_width, int src_height, int contain)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>mirror_submit_audio_samples</b> (const float *samples, int count,
+            int source)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> char *
+            <b>mirror_render_audio_visualization</b>
+            (unsigned int width, unsigned int height, int source)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>mirror_free_string</b> (char
+            *ptr)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const unsigned char *
+            <b>get_font_default_ptr</b>
+            (int selection)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> unsigned int
+            <b>get_font_default_size</b> (int selection)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const unsigned char <b>g_font_default</b> []
+            <br />
+            const size_t <b>g_font_default_size</b>
+            <br />
+            const unsigned char <b>g_font_matrix_resurrected</b> []
+            <br />
+            const size_t <b>g_font_matrix_resurrected_size</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const unsigned char *
+            get_font_default_ptr (int selection)
+          </h2>
+          <p class="Pp">Get the pointer to the embedded default font data</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to font data</div>
+          <p class="Pp">
+            Definition at line <b>358</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+358                                                          {
+359   bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+360   return matrix ? g_font_matrix_resurrected : g_font_default;
+361 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>g_font_default</b>, <b>g_font_matrix_resurrected</b>,
+            <b>get_font_default_ptr()</b>, and <b>GET_OPTION</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> unsigned int get_font_default_size (int
+            selection)
+          </h2>
+          <p class="Pp">
+            Selection 0 follows settings, 1 selects the default font, 2 selects
+            Matrix.
+          </p>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+365                                                   {
+366   bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+367   return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
+368 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>g_font_default_size</b>,
+            <b>g_font_matrix_resurrected_size</b>,
+            <b>get_font_default_size()</b>, and <b>GET_OPTION</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void mirror_cleanup (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>96</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+96                           {
+97   ascii_stabilizer_reset(&amp;g_stabilizer);
+98   errno_destroy();
+99   if (g_digital_rain) {
+100     digital_rain_destroy(g_digital_rain);
+101     g_digital_rain = NULL;
+102   }
+103   options_state_destroy();
+104   buffer_system_cleanup();
+105   platform_destroy();
+106 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_stabilizer_reset()</b>,
+            <b>buffer_system_cleanup()</b>, <b>digital_rain_destroy()</b>,
+            <b>errno_destroy()</b>, <b>mirror_cleanup()</b>,
+            <b>options_state_destroy()</b>, and <b>platform_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_cleanup()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> char * mirror_convert_frame (<b
+              >uint8_t</b
+            >
+            * rgba_data, int src_width, int src_height, int contain)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+113                                                                                            {
+114   if (!rgba_data || src_width &lt;= 0 || src_height &lt;= 0) {
+115     return NULL;
+116   }
+117
+118   g_frame_count++;
+119   // Derive a time value from frame count using actual target FPS from options
+120   int target_fps = (int)GET_OPTION(fps);
+121   if (target_fps &lt;= 0) {
+122     target_fps = 60; // Default to 60 FPS if not set
+123   }
+124   float time_seconds = (float)g_frame_count / (float)target_fps;
+125
+126   // Get current settings from options or terminal detection
+127   int dst_width = (int)terminal_get_effective_width();
+128   int dst_height = (int)terminal_get_effective_height();
+129   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
+130   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+131   if (g_frame_count &lt;= 3 || g_frame_count % 120 == 0) {
+132     log_debug(&quot;frame=%u color_filter=%d color_mode=%d&quot;, g_frame_count, (int)filter, (int)color_mode);
+133   }
+134   if (color_mode == TERM_COLOR_AUTO) {
+135     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+136   }
+137   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
+138   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
+139   bool stretch = false;              // Don't stretch - maintain proportions
+140
+141   // Build terminal capabilities structure with user's color mode
+142   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
+143   caps.color_level = color_mode;
+144   caps.capabilities = 0;
+145   caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
+146                      : (color_mode == TERM_COLOR_16)  ? 16
+147                      : (color_mode == TERM_COLOR_256) ? 256
+148                                                       : 16777216;
+149   caps.utf8_support = true;
+150   caps.detection_reliable = true;
+151   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
+152   caps.text_renderer = GET_OPTION(renderer);
+153   caps.stabilize = GET_OPTION(stabilize);
+154   caps.palette_explicit = GET_OPTION(palette_explicit);
+155   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
+156   caps.wants_padding = true;
+157   caps.palette_type = palette_type;
+158   caps.desired_fps = 60;
+159   caps.color_filter = filter;
+160
+161   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
+162   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+163   if (!rgb_pixels) {
+164     return NULL;
+165   }
+166
+167   bool flip_x = GET_OPTION(flip_x);
+168   bool flip_y = GET_OPTION(flip_y);
+169   for (int y = 0; y &lt; src_height; y++) {
+170     for (int x = 0; x &lt; src_width; x++) {
+171       int src_x = flip_x ? (src_width - 1 - x) : x;
+172       int src_y = flip_y ? (src_height - 1 - y) : y;
+173       int src_idx = (src_y * src_width + src_x) * 4;
+174       int dst_idx = y * src_width + x;
+175
+176       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
+177       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
+178       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
+179       // Alpha (rgba_data[src_idx + 3]) is discarded
+180     }
+181   }
+182
+183   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
+184   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
+185     // color_filter operates on packed RGB24 format
+186     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
+187     int stride = src_width * 3;
+188     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
+189   }
+190
+191   // Create image structure
+192   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels};
+193
+194   // Get palette characters based on selected palette type
+195   const char *palette_chars;
+196   switch (palette_type) {
+197   case PALETTE_BLOCKS:
+198     palette_chars = PALETTE_CHARS_BLOCKS;
+199     break;
+200   case PALETTE_DIGITAL:
+201     palette_chars = PALETTE_CHARS_DIGITAL;
+202     break;
+203   case PALETTE_MINIMAL:
+204     palette_chars = PALETTE_CHARS_MINIMAL;
 205     break;
-206   }
-207 
-208   // Convert to ASCII using capability-aware function
-209   char *ascii_output = ascii_convert_with_capabilities(&amp;img, dst_width, dst_height, &amp;caps, preserve_aspect_ratio,
-210                                                        stretch, palette_chars);
-211 
-212   // Clean up
-213   SAFE_FREE(rgb_pixels);
-214 
-215   if (!ascii_output) {
-216     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
-217     return NULL;
-218   }
-219 
-220   // Apply rainbow color filter to ANSI output by replacing RGB values
-221   // This preserves character selection while applying rainbow colors
-222   if (filter == COLOR_FILTER_RAINBOW) {
-223     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
-224     if (rainbow_output) {
-225       SAFE_FREE(ascii_output);
-226       ascii_output = rainbow_output;
-227     }
-228   }
-229 
-230   bool matrix_rain = GET_OPTION(matrix_rain);
-231   if (matrix_rain) {
-232     // Initialize digital rain context if needed or dimensions changed
-233     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
-234       if (g_digital_rain) {
-235         digital_rain_destroy(g_digital_rain);
-236       }
-237       if (g_last_rain_output) {
-238         SAFE_FREE(g_last_rain_output);
-239         g_last_rain_output = NULL;
-240       }
-241       g_digital_rain = digital_rain_init(dst_width, dst_height);
-242       if (!g_digital_rain) {
-243         log_error(&quot;Failed to initialize digital rain effect&quot;);
-244         return ascii_output; // Return without effect on error
-245       }
-246       g_last_rain_update_time = emscripten_get_now();
-247     }
-248 
-249     // Update color from active filter (allows filter changes after initialization)
-250     digital_rain_set_color_from_filter(g_digital_rain, filter);
-251 
-252     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
-253     double current_time = emscripten_get_now();
-254     double elapsed_ms = current_time - g_last_rain_update_time;
-255 
-256     if (elapsed_ms &gt;= RAIN_UPDATE_INTERVAL_MS) {
-257       // Calculate actual delta time in seconds
-258       float delta_time = (float)(elapsed_ms / 1000.0);
-259       g_last_rain_update_time = current_time;
-260 
-261       // Apply effect and cache a copy
-262       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
-263       if (rain_output) {
-264         // Free old cached output
-265         if (g_last_rain_output) {
-266           SAFE_FREE(g_last_rain_output);
-267         }
-268         // Cache a copy (we'll return the original rain_output)
-269         g_last_rain_output = strdup(rain_output);
-270         // Return the rain output (caller will free it)
-271         SAFE_FREE(ascii_output);
-272         ascii_output = rain_output;
-273       }
-274     } else if (g_last_rain_output) {
-275       // Use cached output
-276       SAFE_FREE(ascii_output);
-277       ascii_output = strdup(g_last_rain_output);
-278     }
-279   } else {
-280     // Clean up digital rain context if it exists but effect is disabled
-281     if (g_digital_rain) {
-282       digital_rain_destroy(g_digital_rain);
-283       g_digital_rain = NULL;
-284     }
-285     if (g_last_rain_output) {
-286       SAFE_FREE(g_last_rain_output);
-287       g_last_rain_output = NULL;
-288     }
-289     g_last_rain_update_time = 0.0;
-290   }
-291 
-292   return ascii_output;
-293 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>apply_color_filter()</b>,
-    <b>ascii_convert_with_capabilities()</b>, <b>rgb_pixel_t::b</b>,
-    <b>terminal_capabilities_t::capabilities</b>,
-    <b>terminal_capabilities_t::color_count</b>,
-    <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
-    <b>COLOR_FILTER_RAINBOW</b>, <b>terminal_capabilities_t::color_level</b>,
-    <b>terminal_capabilities_t::desired_fps</b>,
-    <b>terminal_capabilities_t::detection_reliable</b>,
-    <b>digital_rain_apply()</b>, <b>digital_rain_destroy()</b>,
-    <b>digital_rain_init()</b>, <b>digital_rain_set_color_from_filter()</b>,
-    <b>rgb_pixel_t::g</b>, <b>GET_OPTION</b>, <b>IMAGE_ALLOC_SIMD</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>PALETTE_BLOCKS</b>,
-    <b>PALETTE_CHARS_BLOCKS</b>, <b>PALETTE_CHARS_COOL</b>,
-    <b>PALETTE_CHARS_DIGITAL</b>, <b>PALETTE_CHARS_MINIMAL</b>,
-    <b>PALETTE_CHARS_STANDARD</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
-    <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
-    <b>terminal_capabilities_t::palette_type</b>, <b>rgb_pixel_t::r</b>,
-    <b>RAIN_UPDATE_INTERVAL_MS</b>, <b>rainbow_replace_ansi_colors()</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>TERM_COLOR_16</b>,
-    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
-    <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_get_effective_height()</b>,
-    <b>terminal_get_effective_width()</b>,
-    <b>terminal_capabilities_t::utf8_support</b>,
-    <b>terminal_capabilities_t::wants_background</b>, and
-    <b>terminal_capabilities_t::wants_padding</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
-  void mirror_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>296</b> of file <b>mirror.c</b>.</p>
-<pre>296                                    {
-297   SAFE_FREE(ptr);
-298 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)">EMSCRIPTEN_KEEPALIVE
-  int mirror_init_with_args (const char * args_json)</a></h2>
-<p class="Pp">Initialize mirror mode with command-line style arguments</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>args_json</i> JSON array of argument strings, e.g.
-  [&quot;mirror&quot;, &quot;--width&quot;, &quot;80&quot;,
-  &quot;--height&quot;, &quot;40&quot;]</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>46</b> of file <b>mirror.c</b>.</p>
-<pre>46                                                  {
-47   // Initialize platform layer
-48   asciichat_error_t err = platform_init();
-49   if (err != ASCIICHAT_OK) {
-50     return -1;
-51   }
-52 
-53   // Initialize logging to stderr (console.error in browser)
-54   log_init(NULL, LOG_DEBUG, true, false);
-55   // Use debug-style format in WASM so browser console shows full log headers
-56   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
-57 
-58   // Parse space-separated arguments
-59   char *args_copy = NULL;
-60   char *argv[64] = {NULL};
-61   int argc = wasm_parse_args(args_json, argv, 64, &amp;args_copy);
-62   if (argc &lt; 0) {
-63     return -1;
-64   }
-65 
-66   // Initialize options (sets up RCU, defaults, etc.)
-67   err = options_init(argc, argv);
-68   free(args_copy);
-69 
-70   if (err != ASCIICHAT_OK) {
-71     return -1;
-72   }
-73 
-74   // Log option values after initialization
-75   log_info(&quot;[mirror_init_with_args] After options_init: argc=%d, matrix_rain=%d&quot;, argc, GET_OPTION(matrix_rain));
-76 
-77   // Initialize ANSI color code generation (dec3 cache for RGB values)
-78   ansi_fast_init();
-79 
-80   return 0;
-81 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>GET_OPTION</b>, <b>LOG_DEBUG</b>, <b>log_info</b>, <b>log_init()</b>,
-    <b>log_set_format()</b>, <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>,
-    <b>options_init()</b>, <b>platform_init()</b>, and
-  <b>wasm_parse_args()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_unsigned_char_g_font_default__"><a class="permalink" href="#const_unsigned_char_g_font_default__">const
-  unsigned char g_font_default[] [extern]</a></h2>
-<p class="Pp">Referenced by <b>get_font_default_ptr()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_g_font_default_size"><a class="permalink" href="#const_size_t_g_font_default_size">const
-  size_t g_font_default_size [extern]</a></h2>
-<p class="Pp">Referenced by <b>get_font_default_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_unsigned_char_g_font_matrix_resurrected__"><a class="permalink" href="#const_unsigned_char_g_font_matrix_resurrected__">const
-  unsigned char g_font_matrix_resurrected[] [extern]</a></h2>
-<p class="Pp">Referenced by <b>get_font_default_ptr()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_g_font_matrix_resurrected_size"><a class="permalink" href="#const_size_t_g_font_matrix_resurrected_size">const
-  size_t g_font_matrix_resurrected_size [extern]</a></h2>
-<p class="Pp">Referenced by <b>get_font_default_size()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+206   case PALETTE_COOL:
+207     palette_chars = PALETTE_CHARS_COOL;
+208     break;
+209   case PALETTE_CUSTOM:
+210     // Custom palette uses user-provided characters from options
+211     palette_chars = GET_OPTION(palette_custom);
+212     if (!palette_chars || palette_chars[0] == '\0') {
+213       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
+214     }
+215     break;
+216   case PALETTE_STANDARD:
+217   default:
+218     palette_chars = PALETTE_CHARS_STANDARD;
+219     break;
+220   }
+221
+222   // Convert to ASCII using capability-aware function
+223   char *ascii_output = ascii_convert_with_buffers_stabilized(&amp;img, dst_width, dst_height, &amp;caps, preserve_aspect_ratio,
+224                                                              stretch, palette_chars, contain != 0, NULL, NULL,
+225                                                              caps.stabilize ? &amp;g_stabilizer : NULL);
+226   if (!caps.stabilize)
+227     ascii_stabilizer_reset(&amp;g_stabilizer);
+228
+229   // Clean up
+230   SAFE_FREE(rgb_pixels);
+231
+232   if (!ascii_output) {
+233     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
+234     return NULL;
+235   }
+236
+237   // Apply rainbow color filter to ANSI output by replacing RGB values
+238   // This preserves character selection while applying rainbow colors
+239   if (filter == COLOR_FILTER_RAINBOW) {
+240     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
+241     if (rainbow_output) {
+242       SAFE_FREE(ascii_output);
+243       ascii_output = rainbow_output;
+244     }
+245   }
+246
+247   bool matrix_rain = GET_OPTION(matrix_rain);
+248   if (matrix_rain) {
+249     // Initialize digital rain context if needed or dimensions changed
+250     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
+251       if (g_digital_rain) {
+252         digital_rain_destroy(g_digital_rain);
+253       }
+254       g_digital_rain = digital_rain_init(dst_width, dst_height);
+255       if (!g_digital_rain) {
+256         log_error(&quot;Failed to initialize digital rain effect&quot;);
+257         goto validate_output;
+258       }
+259       g_last_rain_update_time = emscripten_get_now();
+260     }
+261
+262     // Update color from active filter (allows filter changes after initialization)
+263     digital_rain_set_color_from_filter(g_digital_rain, filter);
+264
+265     // Always apply rain to the newest input. Caching an entire ANSI frame freezes
+266     // both the animation and webcam while the browser keeps counting presentations.
+267     double current_time = emscripten_get_now();
+268     float delta_time = (float)((current_time - g_last_rain_update_time) / 1000.0);
+269     g_last_rain_update_time = current_time;
+270     char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+271     if (rain_output) {
+272       SAFE_FREE(ascii_output);
+273       ascii_output = rain_output;
+274     }
+275   } else {
+276     // Clean up digital rain context if it exists but effect is disabled
+277     if (g_digital_rain) {
+278       digital_rain_destroy(g_digital_rain);
+279       g_digital_rain = NULL;
+280     }
+281     g_last_rain_update_time = 0.0;
+282   }
+283
+284 validate_output:
+285   if (ascii_output) {
+286     bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH &amp;&amp; caps.render_mode == RENDER_MODE_FOREGROUND &amp;&amp;
+287                        dst_width &gt; 0 &amp;&amp; dst_height &gt; 0 &amp;&amp; dst_width &lt;= IMAGE_MAX_WIDTH / 8 &amp;&amp;
+288                        dst_height &lt;= IMAGE_MAX_HEIGHT / 8 &amp;&amp;
+289                        (!caps.palette_explicit || ascii_glyph_palette_supported(palette_chars));
+290     if (!glyph_match &amp;&amp; (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
+291       ascii_frame_source_t source = {.frame_data = ascii_output, .frame_size = strlen(ascii_output)};
+292       size_t normalized_size;
+293       char *rectangular = ascii_create_grid(&amp;source, 1, dst_width, dst_height, &amp;normalized_size);
+294       SAFE_FREE(ascii_output);
+295       ascii_output = rectangular;
+296     }
+297     if (!ascii_output)
+298       return NULL;
+299     acip_render_settings_t rendering = {.caps = caps};
+300     const char *contract_palette =
+301         glyph_match &amp;&amp; !caps.palette_explicit
+302             ? &quot; !\&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~&quot;
+303             : palette_chars;
+304     SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
+305     uint32_t effects = matrix_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
+306     if (session_frame_validate_contract(ascii_output, strlen(ascii_output), dst_width, dst_height, &amp;rendering,
+307                                         effects) != ASCIICHAT_OK) {
+308       SAFE_FREE(ascii_output);
+309       return NULL;
+310     }
+311   }
+312   return ascii_output;
+313 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>apply_color_filter()</b>,
+            <b>ascii_convert_with_buffers_stabilized()</b>,
+            <b>ascii_create_grid()</b>, <b>ascii_glyph_palette_supported()</b>,
+            <b>ASCII_RENDERER_GLYPH</b>, <b>ascii_stabilizer_reset()</b>,
+            <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+            <b>terminal_capabilities_t::capabilities</b>,
+            <b>terminal_capabilities_t::color_count</b>,
+            <b>terminal_capabilities_t::color_filter</b>,
+            <b>COLOR_FILTER_NONE</b>, <b>COLOR_FILTER_RAINBOW</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>terminal_capabilities_t::desired_fps</b>,
+            <b>terminal_capabilities_t::detection_reliable</b>,
+            <b>digital_rain_apply()</b>, <b>digital_rain_destroy()</b>,
+            <b>digital_rain_init()</b>,
+            <b>digital_rain_set_color_from_filter()</b>,
+            <b>FRAME_RENDER_CONTRACT_RAIN</b>, <b>rgb_pixel_t::g</b>,
+            <b>GET_OPTION</b>, <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>,
+            <b>log_debug</b>, <b>log_error</b>, <b>mirror_convert_frame()</b>,
+            <b>acip_render_settings_t::palette</b>, <b>PALETTE_BLOCKS</b>,
+            <b>PALETTE_CHARS_BLOCKS</b>, <b>PALETTE_CHARS_COOL</b>,
+            <b>PALETTE_CHARS_DIGITAL</b>, <b>PALETTE_CHARS_MINIMAL</b>,
+            <b>PALETTE_CHARS_STANDARD</b>, <b>PALETTE_COOL</b>,
+            <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>,
+            <b>terminal_capabilities_t::palette_explicit</b>,
+            <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
+            <b>terminal_capabilities_t::palette_type</b>, <b>rgb_pixel_t::r</b>,
+            <b>rainbow_replace_ansi_colors()</b>,
+            <b>terminal_capabilities_t::render_mode</b>,
+            <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+            <b>session_frame_validate_contract()</b>,
+            <b>terminal_capabilities_t::stabilize</b>, <b>TERM_COLOR_16</b>,
+            <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>TERM_COLOR_TRUECOLOR</b>,
+            <b>terminal_get_effective_height()</b>,
+            <b>terminal_get_effective_width()</b>,
+            <b>terminal_capabilities_t::text_renderer</b>,
+            <b>utf8_char_count()</b>, <b>utf8_display_width()</b>,
+            <b>terminal_capabilities_t::utf8_support</b>,
+            <b>terminal_capabilities_t::wants_background</b>, and
+            <b>terminal_capabilities_t::wants_padding</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void mirror_free_string (char * ptr)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>342</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+342                                    {
+343   SAFE_FREE(ptr);
+344 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mirror_free_string()</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_free_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int mirror_init_with_args (const char *
+            args_json)
+          </h2>
+          <p class="Pp">
+            Initialize mirror mode with command-line style arguments
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>args_json</i> JSON array of argument strings, e.g.
+            [&quot;mirror&quot;, &quot;--width&quot;, &quot;80&quot;,
+            &quot;--height&quot;, &quot;40&quot;]
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on error</div>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+53                                                  {
+54   // Initialize platform layer
+55   asciichat_error_t err = platform_init();
+56   if (err != ASCIICHAT_OK) {
+57     return -1;
+58   }
+59
+60   // Parse space-separated arguments
+61   char *args_copy = NULL;
+62   char *argv[WASM_ARGV_CAPACITY] = {NULL};
+63   int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &amp;args_copy);
+64   if (argc &lt; 0) {
+65     return -1;
+66   }
+67
+68   // Initialize options (sets up RCU, defaults, etc.)
+69   err = options_init(argc, argv);
+70   free(args_copy);
+71
+72   if (err != ASCIICHAT_OK) {
+73     return -1;
+74   }
+75
+76   // Honor parsed verbosity and let INFO use stdout (console.log).
+77   log_init(NULL, GET_OPTION(log_level), false, false);
+78   // Use debug-style format in WASM so browser console shows full log headers.
+79   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
+80
+81   // Log option values after initialization
+82   log_info(&quot;After options_init: argc=%d, matrix_rain=%d&quot;, argc, GET_OPTION(matrix_rain));
+83
+84   // Initialize ANSI color code generation (dec3 cache for RGB values)
+85   ansi_fast_init();
+86
+87   return 0;
+88 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
+            <b>GET_OPTION</b>, <b>log_info</b>, <b>log_init()</b>,
+            <b>log_set_format()</b>, <b>mirror_init_with_args()</b>,
+            <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>, <b>options_init()</b>,
+            <b>platform_init()</b>, <b>WASM_ARGV_CAPACITY</b>, and
+            <b>wasm_parse_args()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_init_with_args()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> char * mirror_render_audio_visualization
+            (unsigned int width, unsigned int height, int source)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>325</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+325                                                                                              {
+326   audio_visualization_source_t audio_source =
+327       source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
+328   char *text =
+329       GET_OPTION(fft)
+330           ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+331                                            GET_OPTION(flip_x), GET_OPTION(flip_y))
+332           : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+333                                                 GET_OPTION(flip_x), GET_OPTION(flip_y));
+334   if (text &amp;&amp; session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
+335     SAFE_FREE(text);
+336     return NULL;
+337   }
+338   return text;
+339 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>AUDIO_VISUALIZATION_COLOR_BRIGHTER</b>,
+            <b>audio_visualization_render_fft()</b>,
+            <b>audio_visualization_render_waveform()</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>, <b>GET_OPTION</b>,
+            <b>mirror_render_audio_visualization()</b>, <b>SAFE_FREE</b>, and
+            <b>session_frame_validate()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mirror_render_audio_visualization()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void mirror_reset_stabilizer (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+91                                    {
+92   ascii_stabilizer_reset(&amp;g_stabilizer);
+93 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_stabilizer_reset()</b>, and
+            <b>mirror_reset_stabilizer()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_reset_stabilizer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void mirror_submit_audio_samples (const
+            float * samples, int count, int source)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>316</b> of file <b>mirror.c</b>.
+          </p>
+          <pre>
+316                                                                               {
+317   if (!samples || count &lt;= 0 || count &gt; 8192)
+318     return;
+319   audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
+320                                                                       : AUDIO_VISUALIZATION_SOURCE_MEDIA,
+321                              samples, (size_t)count);
+322 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+            <b>audio_visualization_submit()</b>, and
+            <b>mirror_submit_audio_samples()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_submit_audio_samples()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_unsigned_char_g_font_default__">
+            <a class="permalink" href="#const_unsigned_char_g_font_default__"
+              >const unsigned char g_font_default[] [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Referenced by <b>get_font_default_ptr()</b>, and
+            <b>term_renderer_set_zalgo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_size_t_g_font_default_size">
+            <a class="permalink" href="#const_size_t_g_font_default_size"
+              >const size_t g_font_default_size [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Referenced by <b>get_font_default_size()</b>, and
+            <b>term_renderer_set_zalgo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_unsigned_char_g_font_matrix_resurrected__">
+            <a
+              class="permalink"
+              href="#const_unsigned_char_g_font_matrix_resurrected__"
+              >const unsigned char g_font_matrix_resurrected[] [extern]</a
+            >
+          </h2>
+          <p class="Pp">Referenced by <b>get_font_default_ptr()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_size_t_g_font_matrix_resurrected_size">
+            <a
+              class="permalink"
+              href="#const_size_t_g_font_matrix_resurrected_size"
+              >const size_t g_font_matrix_resurrected_size [extern]</a
+            >
+          </h2>
+          <p class="Pp">Referenced by <b>get_font_default_size()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

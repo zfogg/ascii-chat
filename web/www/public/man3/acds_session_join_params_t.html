@@ -62,8 +62,12 @@
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-        <p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/network/acip/acds_client.h&gt;
+        </p>
         <section class="Ss">
           <h2 class="Ss" id="Data_Fields">
             <a class="permalink" href="#Data_Fields">Data Fields</a>
@@ -74,7 +78,8 @@
             <br />
             Session to join. <b>uint8_t</b> <b>identity_pubkey</b> [32]
             <br />
-            Participant's Ed25519 public key. <b>uint8_t</b> <b>identity_seckey</b> [64]
+            Participant's Ed25519 public key. <b>uint8_t</b>
+            <b>identity_seckey</b> [64]
             <br />
             Ed25519 secret key (for signing). <b>bool</b> <b>has_password</b>
             <br />
@@ -87,58 +92,100 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">Session join parameters.</p>
-        <p class="Pp">Definition at line <b>231</b> of file <b>acds_client.h</b>.</p>
+        <p class="Pp">
+          Definition at line <b>231</b> of file <b>acds_client.h</b>.
+        </p>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Field_Documentation">
-          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
         </h1>
         <section class="Ss">
-          <h2 class="Ss"><b>bool</b> acds_session_join_params_t::has_password</h2>
+          <h2 class="Ss">
+            <b>bool</b> acds_session_join_params_t::has_password
+          </h2>
           <p class="Pp">Password provided.</p>
-          <p class="Pp">Definition at line <b>235</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>235</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_params_t::identity_pubkey[32]</h2>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_params_t::identity_pubkey[32]
+          </h2>
           <p class="Pp">Participant's Ed25519 public key.</p>
-          <p class="Pp">Definition at line <b>233</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>233</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_params_t::identity_seckey[64]</h2>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_params_t::identity_seckey[64]
+          </h2>
           <p class="Pp">Ed25519 secret key (for signing).</p>
-          <p class="Pp">Definition at line <b>234</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">
+            Definition at line <b>234</b> of file <b>acds_client.h</b>.
+          </p>
           <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="char_acds_session_join_params_t::password_128_">
-            <a class="permalink" href="#char_acds_session_join_params_t::password_128_"
+            <a
+              class="permalink"
+              href="#char_acds_session_join_params_t::password_128_"
               >char acds_session_join_params_t::password[128]</a
             >
           </h2>
           <p class="Pp">Password (if has_password).</p>
-          <p class="Pp">Definition at line <b>236</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>236</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss" id="const_char*_acds_session_join_params_t::session_string">
-            <a class="permalink" href="#const_char*_acds_session_join_params_t::session_string"
+          <h2
+            class="Ss"
+            id="const_char*_acds_session_join_params_t::session_string"
+          >
+            <a
+              class="permalink"
+              href="#const_char*_acds_session_join_params_t::session_string"
               >const char* acds_session_join_params_t::session_string</a
             >
           </h2>
           <p class="Pp">Session to join.</p>
-          <p class="Pp">Definition at line <b>232</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>232</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
           <p class="Pp"></p>
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

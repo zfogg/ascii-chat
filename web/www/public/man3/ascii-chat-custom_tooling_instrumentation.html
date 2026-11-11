@@ -1,0 +1,633 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_tooling_instrumentation(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_tooling_instrumentation(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_tooling_instrumentation(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_tooling_instrumentation - Tooling Instrumentation
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Panic_Instrumented_Builds">
+            <a class="permalink" href="#Panic_Instrumented_Builds"
+              >Panic Instrumented Builds</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="When_to_Enable">
+            <a class="permalink" href="#When_to_Enable">When to Enable</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Configure any preset with -DASCIICHAT_BUILD_WITH_PANIC=ON to
+              enable the panic instrumentation pipeline. Examples:
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              cmake --preset default -B
+              <b>Build System</b> -DASCIICHAT_BUILD_WITH_PANIC=ON<b></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>cmake --<b>Build System</b> <b>Build System</b><b></b></dd>
+          </dl>
+          <ul class="Bl-bullet">
+            <li>
+              The configure step adds the panic instrumentation tool
+              (ascii-instr-panic, a Clang libTooling rewriter) and the
+              ascii-debug-runtime library to the build graph. When the flag is
+              on, targets listed in cmake/tooling/Panic.cmake are rebuilt from a
+              panic-instrumented tree under build/instrumented/.
+            </li>
+            <li>
+              The generated tree mirrors project layout but skips third-party
+              code (deps/) and the panic instrumentation runtime itself to avoid
+              recursive logging.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Flow">
+            <a class="permalink" href="#Build_Flow">Build Flow</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              The panic instrumentation tool (ascii-instr-panic) rewrites each
+              translation unit, inserting <b>asciichat_instr_log_line()</b
+              ><b> before every executable statement.</b>
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              cmake/tooling/run_panic_instrumentation.sh orchestrates the panic
+              pass, refuses to reuse populated directories, and writes outputs
+              only to build/instrumented/.
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              A stamp file (build/instrumented/.stamp) records successful
+              completion. Modifying sources or the tool invalidates the stamp
+              and triggers regeneration.
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              Library/executable targets acquire an explicit dependency on the
+              generation step and link against ascii-debug-runtime when
+              required.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Generated_Layout">
+            <a class="permalink" href="#Generated_Layout">Generated Layout</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              build/instrumented/&lt;relative/path&gt;.c &#x2014;
+              panic-instrumented copy of each source file.
+            </li>
+            <li>
+              build/instrumented/.stamp &#x2014; sentinel touched after a
+              successful run.
+            </li>
+            <li>
+              Only files that required panic instrumentation appear; directories
+              are created lazily alongside rewritten files.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Panic_Macro_Instrumentation_Controls">
+            <a class="permalink" href="#Panic_Macro_Instrumentation_Controls"
+              >Panic Macro Instrumentation Controls</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Pass --log-macro-expansions to record statements that originate
+              from macro bodies (disabled by default to limit noise).
+            </li>
+            <li>
+              Pass --log-macro-invocations to emit a synthetic record for each
+              macro call site (deduplicated per expansion). The log entry is
+              tagged with macro=2 and contains the invocation snippet.
+            </li>
+            <li>
+              The legacy flag --include-macro-expansions remains accepted as an
+              alias for --log-macro-expansions but prints a warning. Update any
+              scripts to the new flag names.
+            </li>
+          </ul>
+          <p class="Pp">
+            Inspect panic-instrumented files whenever you need to confirm macro
+            expansion handling or verify that inserted snippets match
+            expectations.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Panic_Runtime_Logging">
+            <a class="permalink" href="#Panic_Runtime_Logging"
+              >Panic Runtime Logging</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Per-thread_Log_Files">
+            <a class="permalink" href="#Per-thread_Log_Files"
+              >Per-thread Log Files</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Each thread lazily allocates a runtime state block the first time
+              it logs. Logs live in
+              ${ASCII_PANIC_OUTPUT_DIR:-$TMPDIR:-$TEMP:/tmp} and use the pattern
+              ascii-instr-&lt;pid&gt;-&lt;tid&gt;.log.
+            </li>
+            <li>
+              Files open with O_CREAT|O_EXCL, so stale logs are never appended
+              to. Rename or archive log files between runs if you want to keep
+              history.
+            </li>
+            <li>
+              If file creation fails, the runtime flips into stderr mode while
+              keeping the same record format.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Log_Record_Format">
+            <a class="permalink" href="#Log_Record_Format">Log Record Format</a>
+          </h2>
+          <pre>
+pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=lib/network.c line=512 func=socket_send macro=0 snippet=send_packet(queue, payload)</pre>
+          <ul class="Bl-bullet">
+            <li>
+              elapsed displays monotonic time since the runtime initialized
+              inside the process.
+            </li>
+            <li>macro values distinguish statement origin:</li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>0 &#x2014; standard source statements.</dd>
+            <dt>&#x2022;</dt>
+            <dd>1 &#x2014; statements emitted from macro expansions.</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              2 &#x2014; synthetic macro invocation records (enabled via
+              --log-macro-invocations).
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              snippet escapes control characters (\n, \t, \r) and truncates to
+              2048 characters to stay within the 4 KiB atomic write budget.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Environment_Filters">
+            <a class="permalink" href="#Environment_Filters"
+              >Environment Filters</a
+            >
+          </h2>
+          <p class="Pp">
+            Variable Purpose ASCII_PANIC_INCLUDE Substring filter applied to
+            file=; emit only when the substring is present. ASCII_PANIC_EXCLUDE
+            Suppresses logs when the substring matches the file path.
+            ASCII_PANIC_THREAD Comma-separated decimal thread IDs to keep. IDs
+            must match those printed in log headers. ASCII_PANIC_INCLUDE_REGEX
+            POSIX extended-regular-expression include filter on file=. Takes
+            precedence over substring filters. ASCII_PANIC_EXCLUDE_REGEX POSIX
+            extended-regular-expression exclude filter on file=.
+            ASCII_PANIC_FUNCTION_INCLUDE Substring filter on func=.
+            ASCII_PANIC_FUNCTION_EXCLUDE Substring exclusion filter on func=.
+            ASCII_PANIC_FUNCTION_INCLUDE_REGEX POSIX extended regex include
+            filter for function names. ASCII_PANIC_FUNCTION_EXCLUDE_REGEX POSIX
+            extended regex exclusion filter for function names.
+            ASCII_PANIC_OUTPUT_DIR Override log directory. The runtime creates
+            it with mode 0700 when absent. ASCII_PANIC_ONLY Comma-separated
+            allow-list selectors (file=&lt;glob&gt;, func=&lt;glob&gt;,
+            module=&lt;name&gt;[:&lt;glob&gt;], or shorthand module:pattern such
+            as server:*). ASCII_PANIC_RATE Positive integer; log the first
+            statement and every Nth subsequent statement per thread (helps
+            throttle noisy traces). ASCII_PANIC_ENABLE_COVERAGE Set to 1,
+            <b>true</b><b>, </b>on<b>, or </b>yes<b>
+              to enable SanitizerCoverage logging callbacks (requires building
+              with </b
+            >-fsanitize-coverage=trace-pc-guard<b>).</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <div class="Bd-indent">
+            Regex filters rely on regcomp(3) and are available on POSIX
+            platforms. On Windows they are ignored gracefully.
+          </div>
+          <p class="Pp">
+            Unset variables disable the corresponding filter. Checks happen
+            before log formatting to reduce overhead.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            ASCII_PANIC_ONLY is useful when you want to lock tracing to a narrow
+            slice of the project:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              ASCII_PANIC_ONLY=file=lib/network/*,func=enforce_* keeps only logs
+              whose file path matches the glob and whose function names match
+              enforce_*.
+            </li>
+            <li>
+              ASCII_PANIC_ONLY=module=server:render_* restricts logging to files
+              under any /server/ directory whose basename matches render_*.
+            </li>
+            <li>
+              ASCII_PANIC_ONLY=server:* is shorthand for &quot;any file living
+              under a `/server/` directory&quot;.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Startup_&amp;_Shutdown">
+            <a class="permalink" href="#Startup_&amp;_Shutdown"
+              >Startup &amp; Shutdown</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>asciichat_instr_runtime_get()</b><b> uses </b>pthread_once<b>
+                to create TLS keys and picks up environment filters. Memory is
+                allocated through the SAFE_ macros, ensuring leak tracking when </b
+              ><b>DEBUG_MEMORY</b><b> is enabled.</b>
+            </li>
+            <li>
+              asciichat_instr_runtime_global_shutdown() tears down TLS entries
+              and halts logging&#x2014;useful in unit tests that spawn threads.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Sanitizer_Coverage_Mode">
+            <a class="permalink" href="#Sanitizer_Coverage_Mode"
+              >Sanitizer Coverage Mode</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Build with -fsanitize-coverage=trace-pc-guard (or enable the
+              equivalent CMake option) and export ASCII_PANIC_ENABLE_COVERAGE=1.
+            </li>
+            <li>
+              The runtime registers <b>__sanitizer_cov_trace_pc_guard</b
+              ><b> and logs a compact </b>pc=0x...<b>
+                snippet for each sampled edge, sharing the same per-thread files
+                as statement logs.</b
+              >
+            </li>
+            <li>
+              Combine with llvm-symbolizer or addr2line in post-processing to
+              map PCs back to file:line. Coverage entries respect
+              ASCII_PANIC_RATE so you can throttle high-volume traces.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Workflows">
+            <a class="permalink" href="#Usage_Workflows">Usage Workflows</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="CMake-managed_builds">
+            <a class="permalink" href="#CMake-managed_builds"
+              >CMake-managed builds</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Configure with panic instrumentation enabled (see above).</dd>
+            <dt>2.</dt>
+            <dd>
+              Build normally (cmake --<b>Build System</b> <b>Build System</b
+              ><b
+                >). Compilers will consume the panic-instrumented sources
+                transparently.</b
+              >
+            </dd>
+            <dt>3.</dt>
+            <dd>Export runtime filters as needed, e.g.:</dd>
+            <dt>&#x2022;</dt>
+            <dd>export ASCII_PANIC_INCLUDE=network.c</dd>
+            <dt>&#x2022;</dt>
+            <dd>export ASCII_PANIC_OUTPUT_DIR=/tmp/ascii-instr</dd>
+            <dt>4.</dt>
+            <dd>
+              Run the binary and inspect
+              /tmp/ascii-instr/ascii-instr-&lt;pid&gt;-&lt;tid&gt;.log. tail -n1
+              reveals the last executed statement per thread.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Manual_panic_instrumentation">
+            <a class="permalink" href="#Manual_panic_instrumentation"
+              >Manual panic instrumentation</a
+            >
+          </h2>
+          <p class="Pp">
+            Use the panic instrumentation helper script when experimenting with
+            subsets of files or out-of-tree builds:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+./cmake/tooling/run_panic_instrumentation.sh -b build -o /tmp/ascii-instrumented -- lib/audio/audio.c src/server/server.c</pre>
+          <ul class="Bl-bullet">
+            <li>
+              Additional clang-tool flags can follow the -- delimiter (e.g.,
+              --filter-file server).
+            </li>
+            <li>
+              The script reuses the repository root as --input-root, keeping
+              relative paths stable.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Thread-focused_inspection">
+            <a class="permalink" href="#Thread-focused_inspection"
+              >Thread-focused inspection</a
+            >
+          </h2>
+          <p class="Pp">
+            When diagnosing a multi-threaded crash, identify the failing thread
+            ID from the crash report or sanitizer output, then:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>grep &quot;tid=1234&quot; /tmp/ascii-instr-*.log | tail -n1</pre>
+          <p class="Pp">
+            The final seq= value indicates the last statement that thread
+            executed before the fault.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Summaries_with_">
+            <a class="permalink" href="#Summaries_with_"
+              >Summaries with ascii-panic-report</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Build the helper with cmake --<b>Build System</b>
+              <b>Build System</b> --target ascii-panic-report<b>.</b>
+            </li>
+            <li>
+              By default the tool scans ${ASCII_PANIC_OUTPUT_DIR} (or falls back
+              to /tmp) and prints the most recent record per thread.
+            </li>
+            <li>Common flags:</li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>--log-dir /path/to/logs &#x2013; override the directory</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              --thread 1234 &#x2013; focus on one or more thread IDs (repeat
+              flag to add more)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              --include network.c / --exclude <b>Video to ASCII Conversion</b
+              ><b> &#x2013; apply the same substring filters as the runtime</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              --raw &#x2013; emit the original log line instead of the formatted
+              summary
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Example:</dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+./build/bin/ascii-panic-report --log-dir /tmp/ascii-instr --thread 6789</pre>
+          <p class="Pp">
+            The formatted output highlights timestamp, file/line, function,
+            macro flag, and snippet for each thread's last recorded statement.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Signal_Handler_Annotations">
+            <a class="permalink" href="#Signal_Handler_Annotations"
+              >Signal Handler Annotations</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Mark functions that must remain async-signal-safe with
+              ASCII_PANIC_SIGNAL_HANDLER before the declaration:
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>ASCII_PANIC_SIGNAL_HANDLER
+void handle_sigint(int signum) {
+<br/>
+    /* ... */
+}</pre>
+          <ul class="Bl-bullet">
+            <li>
+              The panic instrumentation tool skips any function carrying that
+              annotation, ensuring inserted logging calls never appear inside
+              signal handlers.
+            </li>
+            <li>
+              Combine this with the runtime filters to keep critical paths free
+              from additional I/O.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Safety_Guarantees">
+            <a class="permalink" href="#Safety_Guarantees">Safety Guarantees</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Original sources remain untouched.</b> The tool writes only to
+              new files under build/instrumented/ and aborts if the destination
+              already exists.
+            </li>
+            <li>
+              <b>Atomic writes.</b> Each log line is emitted with a single
+              <b>platform_write()</b
+              ><b>
+                call, so concurrent threads cannot interleave records, and logs
+                survive abrupt crashes.</b
+              >
+            </li>
+            <li>
+              <b>Signal tolerance.</b> Once initialized, the runtime avoids non
+              signal-safe functions inside the hot path, making it reliable even
+              when a crash occurs between statements.
+            </li>
+            <li>
+              <b>Thread isolation.</b> Separate files per thread prevent
+              interleaving and simplify postmortem analysis.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Limitations_&amp;_Best_Practices">
+            <a class="permalink" href="#Limitations_&amp;_Best_Practices"
+              >Limitations &amp; Best Practices</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Performance cost.</b> Logging every statement carries
+              significant overhead. Narrow the panic instrumentation scope using
+              ASCII_PANIC_INCLUDE or clang-tool filters when chasing specific
+              bugs.
+            </li>
+            <li>
+              <b>Timing changes.</b> Heavy I/O can mask race conditions
+              (Heisenbugs). After localizing the failure, confirm with
+              sanitizers (-fsanitize=address,undefined) or record/replay (rr).
+            </li>
+            <li>
+              <b>Macros and generated code.</b> Macro bodies receive logs, but
+              the failing line may still reside in called functions. Combine
+              logs with traditional debugging techniques for accuracy.
+            </li>
+            <li>
+              <b>Binary size and build time.</b> Expect larger binaries and
+              longer links because every statement introduces a logging call and
+              associated string literal.
+            </li>
+            <li>
+              <b>Thread IDs differ by platform.</b> Always copy the numeric ID
+              from log headers when using ASCII_PANIC_THREAD; pthread IDs and
+              system thread IDs are not interchangeable.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Troubleshooting">
+            <a class="permalink" href="#Troubleshooting">Troubleshooting</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>No logs emitted:</b> verify the output directory exists and is
+              writable, and double-check that filters are not over-restrictive.
+              Clearing ASCII_PANIC_INCLUDE entirely disables the include filter.
+            </li>
+            <li>
+              <b></b>Refusing to overwrite<b>
+                errors during panic instrumentation:</b
+              >
+              remove the existing build/instrumented/ directory or specify a
+              fresh output directory.
+            </li>
+            <li>
+              <b>Partial log files:</b> ensure disks are not full. The runtime
+              permanently disables logging if <b>platform_write()</b
+              ><b> fails with a non-recoverable error.</b>
+            </li>
+            <li>
+              <b>Missing include warnings:</b> custom extensions may be skipped
+              by run_panic_instrumentation.sh. Update the script's find
+              expression if you have non-standard source suffixes.
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Roadmap_Follow-ups">
+            <a class="permalink" href="#Roadmap_Follow-ups"
+              >Roadmap Follow-ups</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Cover runtime filtering and formatting with Criterion tests
+              executed via ctest --test-dir
+              <b>Build System</b> --output-on-failure<b> (Docker on macOS).</b>
+            </dd>
+          </dl>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date"><b>Version 0.14.7</b></td>
+        <td class="foot-os"><b>ascii-chat</b></td>
+      </tr>
+    </table>
+  </body>
+</html>

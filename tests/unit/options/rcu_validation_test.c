@@ -74,15 +74,15 @@ Test(rcu_validation, zalgo_rejects_invalid_runtime_intensity) {
 // ============================================================================
 
 /**
- * Test: FPS validation - reject value below minimum (range 1-144)
+ * Test: FPS validation - reject value below minimum (range 0-144)
  */
 Test(rcu_validation, fps_below_minimum) {
-  asciichat_error_t err = options_set_int("fps", 0);
-  cr_assert_neq(err, ASCIICHAT_OK, "Expected validation error for fps=0");
+  asciichat_error_t err = options_set_int("fps", -1);
+  cr_assert_neq(err, ASCIICHAT_OK, "Expected validation error for fps=-1");
 }
 
 /**
- * Test: FPS validation - accept valid value (range 1-144)
+ * Test: FPS validation - accept valid value (range 0-144)
  */
 Test(rcu_validation, fps_valid) {
   asciichat_error_t err = options_set_int("fps", 30);

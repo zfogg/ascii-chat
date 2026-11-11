@@ -17,7 +17,7 @@ ctest --test-dir build -L '^contract$' --no-tests=error --output-on-failure
 
 CTest normally supplies `TESTING`, `CRITERION_TEST`, and `BUILD_DIR`; retain them for direct binary runs. Prefer CTest when wrappers, environment, deadlines or serialization matter. CMake supplies `--xml=<build>/Testing/criterion-xml/NAME.xml` for registered Criterion runs; direct invocations need an explicit `--xml=PATH` to retain equivalent reports.
 
-CTest parallelizes executables; Criterion parallelizes cases within each executable. Avoid multiplying both blindly. Current ordinary defaults are 25-second Criterion / 30-second CTest deadlines, with suite overrides; coverage uses one Criterion worker and longer deadlines. Many integration/contracts use `RUN_SERIAL` for shared ports/resources. Inspect effective commands before changing timeouts or serialization.
+CTest uses all available cores across executables; Criterion uses one worker per executable to avoid multiplying pools. Pytest batches reserve the detected core count and use xdist logical cores. Many legacy integration/contracts use `RUN_SERIAL` for shared resources. Inspect effective commands and fixture isolation before changing serialization.
 
 ## Windows Docker
 
@@ -33,7 +33,7 @@ Native Windows supports selected CTest library/standalone/Python checks, but Cri
 
 The wrapper builds `tests/Dockerfile` when needed, mounts source at `/app`, uses `build_docker/`, and retains ccache/dependency volumes. `-Build` rebuilds the image; `-NoBuild` skips image creation but still builds tests. Avoid `-Clean` routinely. It removes the fixed container `ascii-chat-test-runner`, so inspect ownership before concurrent use. Filters select CTest names, not individual Criterion cases. The wrapper lacks `--no-tests=error`; inspect selected counts or use a direct command with that option.
 
-Compose persists build/dependency/ccache named volumes. Inspect `docker compose -f tests/docker-compose.yml config`. The current Arch service points at a missing root `Dockerfile`; use a temporary override setting `services.ascii-chat-tests.build.dockerfile: tests/Dockerfile`, or build the matching image first:
+Compose persists build/dependency/ccache named volumes. Inspect `docker compose -f tests/docker-compose.yml config`; the Arch service builds `tests/Dockerfile`:
 
 ```powershell
 docker build -f tests/Dockerfile -t zfogg/ascii-chat:latest .
@@ -42,26 +42,46 @@ docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests
 docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -lc 'cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker -L "^unit$" --no-tests=error --output-on-failure'
 ```
 
-The Ubuntu service uses `tests/Dockerfile.ubuntu` but hardcodes `DOCKER_OS=arm64`; align the cache namespace with actual architecture. Preserve volumes and reuse the same Compose project name. For direct Docker mounts read the cross-platform skill: retain `build_docker/`, `.deps-cache-docker/` mapped to `/app/.deps-cache`, and ccache. Separate native/Linux/architecture caches.
+The Ubuntu service uses `tests/Dockerfile.ubuntu` and defaults `DOCKER_OS` to `arm64`. Set `DOCKER_OS` in a `.env` file or the shell to match the container architecture; for a file under `tests`, use `docker compose --env-file tests/.env -f tests/docker-compose.yml`. Build and ccache volumes must also be kept separate across architectures. Preserve volumes and reuse the same Compose project name. For direct Docker mounts read the cross-platform skill: retain `build_docker/`, `.deps-cache-docker/` mapped to `/app/.deps-cache`, and ccache. Separate native/Linux/architecture caches.
 
-Compose adds `SYS_PTRACE` and disables LeakSanitizer detection through its environment workaround. A passing run there is not leak-freedom evidence; use a supported environment with leak detection enabled for that claim.
+Compose and non-interactive wrapper runs enable LeakSanitizer. A run with leak detection disabled is not evidence of leak freedom. Compose retains `SYS_PTRACE` for hosts that require it. CTest fails registered Criterion tests when a worker prints a LeakSanitizer report, even if Criterion exits successfully. Direct Criterion invocations can still exit successfully after reporting leaks, so inspect their output or use CTest. Test selection still limits what a passing run can prove.
 
 ## Python integration and standalone fixtures
 
-Many Python files are executable-specific harnesses, not pytest suites. Inspect docstrings, imports, argument parsing and CMake registration. Do not assume every script accepts `--binary`, or that unittest discovery exercises the actual binary.
+The locked uv project provides pytest and pytest-xdist. `tests/python/` is the
+only default collection tree; its modules must not start processes or parse CLI
+arguments at import time. Fixtures in `tests/python/conftest.py` provide the
+native binary, isolated environment, managed services, and PTY/ConPTY terminals. Pass `--terminal-probe` to exercise the native terminal fixture in direct pytest runs. CTest registers Python batches with the `python` label; each emits
+`build/Testing/python-*.xml` and reserves all cores while xdist runs.
+
+```sh
+uv sync --project tests/ascii_chat_tests --frozen
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/cli/test_options.py --ascii-chat-binary build/bin/ascii-chat -k seek -n 0
+ctest --test-dir build -L '^python$' --no-tests=error --output-on-failure --parallel
+```
+
+Use the platform executable suffix on Windows. pytest defaults to `-n logical`;
+`-n 0` is useful to debug one case. Exit code 5 means no cases were collected,
+not a pass. `--parallel` without a number uses the available cores; `--parallel 0`
+is unbounded in current CTest and can oversubscribe the host. Resource-sensitive
+legacy CTest cases retain their explicit serialization. Add pytest coverage
+incrementally; many remaining harnesses are executable scripts with import-time
+work. Do not collect the entire legacy tree or run a migrated case twice.
 
 ```sh
 cmake --build build --target ascii-chat
-python tests/integration/server_lifecycle.py build/bin/ascii-chat
-python tests/integration/server_client_lifecycle.py build/bin/ascii-chat
-python tests/integration/terminal_ui.py --binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat
 python tests/integration/network_terminal_backpressure.py \
   --binary build/bin/ascii-chat --output build/backpressure
 # Harness unit tests are separate from exercising real processes:
-python -m unittest discover -s tests/integration -p 'test_network_terminal_backpressure.py'
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit/test_receive_timing.py
 ```
 
-On Windows pass the actual native `.exe` path; host Python cannot run a Linux Docker executable. `terminal_ui.py` requires pyte, ffmpeg, and pywinpty on Windows / pexpect on POSIX. tmux probes require tmux and a POSIX terminal. `os.fork`/PTY probes do not prove native Windows behavior; inspect `windows_console.py`, `terminal_resize_windows.py`, and other native harnesses for that surface. Audio scripts under `tests/audio/` have separate dependencies and may require hardware; inspect prerequisites individually.
+On Windows pass the actual native `.exe` path; host Python cannot run a Linux Docker executable. `terminal_ui.py` requires pyte, ffmpeg, and pywinpty on Windows / pexpect on POSIX. tmux probes require tmux and a POSIX terminal. `os.fork`/PTY probes do not prove native Windows behavior; inspect `windows_console.py`, `tests/python/integration/resize/test_terminal_resize.py`, and other native harnesses for that surface. Audio scripts under `tests/audio/` have separate dependencies and may require hardware; inspect prerequisites individually.
 
 Prefer registered CTest wrappers for lifecycle, backpressure, terminal-resize, media capture, dependency paths and crypto logging. They supply fixture executable paths and timeout/skip/serialization properties. Some standalone targets are `EXCLUDE_FROM_ALL`; enabling tests does not necessarily build every fixture. Look up target dependencies in `tests/CMakeLists.txt` and build the required target rather than inventing compile/link commands. Preserve intentional skip semantics (for example media capture return code 77).
 

@@ -63,7 +63,7 @@ def main():
     if args.probe:
         probe(args.library.resolve(), args.log)
         return
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
     with tempfile.TemporaryDirectory(prefix="ascii-prompt-") as directory:
         log = Path(directory) / "prompt.log"
         term = Terminal([sys.executable, str(Path(__file__).resolve()), "--library", str(args.library.resolve()),

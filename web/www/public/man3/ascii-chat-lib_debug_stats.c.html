@@ -1,0 +1,453 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stats.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stats.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stats.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">stats.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>debug_stats_set_main_thread_id</b> (void)
+            <br />
+            <b>uint64_t</b> <b>debug_stats_get_main_thread_id</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>debug_stats_init</b> (void)
+            <br />
+            void <b>debug_stats_print</b> (void)
+            <br />
+            void <b>debug_stats_set_memory_report_interval</b> (<b>uint64_t</b>
+            interval)
+            <br />
+            void <b>debug_stats_trigger_print</b> (void)
+            <br />
+            <b>bool</b> <b>debug_stats_is_cleanup_in_progress</b> (void)
+            <br />
+            void <b>debug_stats_poll</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>debug_stats_start_thread</b> (void)
+            <br />
+            void <b>debug_stats_cleanup_thread</b> (void)
+            <br />
+            void <b>debug_stats_destroy</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_cleanup_thread_(void_)">
+            <a class="permalink" href="#void_debug_stats_cleanup_thread_(void_)"
+              >void debug_stats_cleanup_thread (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>124</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+124                                       {
+125   if (!g_debug_stats_started)
+126     return;
+127   atomic_store_bool_impl(&amp;g_debug_stats_cleaning, true);
+128   mutex_lock(&amp;g_debug_stats_mutex);
+129   atomic_store_bool_impl(&amp;g_debug_stats_exiting, true);
+130   cond_signal(&amp;g_debug_stats_condition);
+131   mutex_unlock(&amp;g_debug_stats_mutex);
+132 #ifndef EMSCRIPTEN_BUILD
+133   // Join fully: diagnostic data must not be destroyed while a reader is alive.
+134   if (thread_join(&amp;g_debug_stats_thread, NULL) != 0)
+135     FATAL(ERROR_THREAD, &quot;Cannot join diagnostics worker&quot;);
+136 #endif
+137   g_debug_stats_started = false;
+138 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, <b>cond_signal()</b>,
+            <b>debug_stats_cleanup_thread()</b>, <b>ERROR_THREAD</b>,
+            <b>FATAL</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>debug_stats_cleanup_thread()</b>, and
+            <b>debug_stats_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_destroy_(void_)">
+            <a class="permalink" href="#void_debug_stats_destroy_(void_)"
+              >void debug_stats_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>139</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+139                                {
+140   debug_stats_cleanup_thread();
+141   if (g_debug_stats_initialized) {
+142     cond_destroy(&amp;g_debug_stats_condition);
+143     mutex_destroy(&amp;g_debug_stats_mutex);
+144     g_debug_stats_initialized = false;
+145     atomic_store_bool_impl(&amp;g_debug_stats_signal, false);
+146     g_debug_stats_memory_deadline = g_debug_stats_memory_interval = 0;
+147   }
+148 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, <b>cond_destroy()</b>,
+            <b>debug_stats_cleanup_thread()</b>, <b>debug_stats_destroy()</b>,
+            and <b>mutex_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>, and
+            <b>debug_stats_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> debug_stats_get_main_thread_id (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+26                                               {
+27   return g_debug_stats_main_thread;
+28 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>debug_stats_get_main_thread_id()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_get_main_thread_id()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> debug_stats_init (void )</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+29                                          {
+30   if (g_debug_stats_initialized)
+31     return ASCIICHAT_OK;
+32   if (mutex_init(&amp;g_debug_stats_mutex, &quot;debug_stats&quot;) != 0)
+33     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize diagnostics mutex&quot;);
+34   if (cond_init(&amp;g_debug_stats_condition, &quot;debug_stats&quot;) != 0) {
+35     mutex_destroy(&amp;g_debug_stats_mutex);
+36     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize diagnostics condition&quot;);
+37   }
+38   g_debug_stats_initialized = true;
+39   atomic_store_bool_impl(&amp;g_debug_stats_cleaning, false);
+40   return ASCIICHAT_OK;
+41 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool_impl()</b>,
+            <b>cond_init()</b>, <b>debug_stats_init()</b>, <b>ERROR_THREAD</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_init()</b>,
+            <b>debug_stats_start_thread()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> debug_stats_is_cleanup_in_progress (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+60                                               {
+61   return atomic_load_bool_impl(&amp;g_debug_stats_cleaning);
+62 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool_impl()</b>, and
+            <b>debug_stats_is_cleanup_in_progress()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_is_cleanup_in_progress()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_poll_(void_)">
+            <a class="permalink" href="#void_debug_stats_poll_(void_)"
+              >void debug_stats_poll (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+63                             {
+64   if (!g_debug_stats_initialized)
+65     return;
+66   uint64_t now = time_get_ns();
+67   bool all = atomic_exchange_bool_impl(&amp;g_debug_stats_signal, false);
+68   mutex_lock(&amp;g_debug_stats_mutex);
+69   bool memory = g_debug_stats_memory_deadline &amp;&amp; now &gt;= g_debug_stats_memory_deadline;
+70   if (memory)
+71     g_debug_stats_memory_deadline = debug_report_deadline_after(now, g_debug_stats_memory_interval);
+72   mutex_unlock(&amp;g_debug_stats_mutex);
+73   if (all)
+74     debug_stats_print();
+75 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(NDEBUG)
+76   if (memory)
+77     debug_memory_report();
+78 #else
+79   (void)memory;
+80 #endif
+81 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_exchange_bool_impl()</b>,
+            <b>debug_memory_report()</b>, <b>debug_report_deadline_after()</b>,
+            <b>debug_stats_poll()</b>, <b>debug_stats_print()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>debug_stats_poll()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_print_(void_)">
+            <a class="permalink" href="#void_debug_stats_print_(void_)"
+              >void debug_stats_print (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+42                              {
+43   log_info(&quot;Diagnostic statistics:&quot;);
+44   asciichat_error_stats_print();
+45 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_stats_print()</b>,
+            <b>debug_stats_print()</b>, and <b>log_info</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_poll()</b>, and
+            <b>debug_stats_print()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_set_main_thread_id_(void_)">
+            <a
+              class="permalink"
+              href="#void_debug_stats_set_main_thread_id_(void_)"
+              >void debug_stats_set_main_thread_id (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+23                                           {
+24   g_debug_stats_main_thread = thread_current_id();
+25 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>debug_stats_set_main_thread_id()</b>, and
+            <b>thread_current_id()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_set_main_thread_id()</b>, and
+            <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_set_memory_report_interval_(">
+            <a
+              class="permalink"
+              href="#void_debug_stats_set_memory_report_interval_("
+              >void debug_stats_set_memory_report_interval (<b>uint64_t</b>
+              interval)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+46                                                                {
+47   if (!g_debug_stats_initialized)
+48     return;
+49   mutex_lock(&amp;g_debug_stats_mutex);
+50   g_debug_stats_memory_interval = interval;
+51   g_debug_stats_memory_deadline = interval ? debug_report_deadline_after(time_get_ns(), interval) : 0;
+52   cond_signal(&amp;g_debug_stats_condition);
+53   mutex_unlock(&amp;g_debug_stats_mutex);
+54 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_signal()</b>,
+            <b>debug_report_deadline_after()</b>,
+            <b>debug_stats_set_memory_report_interval()</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_set_memory_report_interval()</b>, and
+            <b>debug_stats_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> debug_stats_start_thread (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>104</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+104                                                  {
+105   if (g_debug_stats_started)
+106     return ASCIICHAT_OK;
+107   asciichat_error_t result = debug_stats_init();
+108   if (result != ASCIICHAT_OK)
+109     return result;
+110   atomic_store_bool_impl(&amp;g_debug_stats_exiting, false);
+111   atomic_store_bool_impl(&amp;g_debug_stats_cleaning, false);
+112   options_t *opts = options_get();
+113   if (opts) {
+114     if (opts-&gt;debug_memory_report_interval &gt; 0)
+115       debug_stats_set_memory_report_interval((uint64_t)(opts-&gt;debug_memory_report_interval * NS_PER_SEC_INT));
+116   }
+117 #ifndef EMSCRIPTEN_BUILD
+118   if (acthread_create(&amp;g_debug_stats_thread, &quot;debug_stats&quot;, debug_stats_worker, NULL) != 0)
+119     return SET_ERRNO(ERROR_THREAD, &quot;Cannot start diagnostics worker&quot;);
+120 #endif
+121   g_debug_stats_started = true;
+122   return ASCIICHAT_OK;
+123 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool_impl()</b>,
+            <b>options_state::debug_memory_report_interval</b>,
+            <b>debug_stats_init()</b>,
+            <b>debug_stats_set_memory_report_interval()</b>,
+            <b>debug_stats_start_thread()</b>, <b>ERROR_THREAD</b>,
+            <b>NS_PER_SEC_INT</b>, <b>options_get()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_stats_start_thread()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_stats_trigger_print_(void_)">
+            <a class="permalink" href="#void_debug_stats_trigger_print_(void_)"
+              >void debug_stats_trigger_print (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>lib/debug/stats.c</b>.
+          </p>
+          <pre>
+55                                      {
+56   // Do not signal a condition variable or invoke diagnostic hooks in a signal
+57   // handler. The worker checks this flag at most 100ms after its next wakeup.
+58   atomic_store_bool_impl(&amp;g_debug_stats_signal, true);
+59 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, and
+            <b>debug_stats_trigger_print()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>debug_stats_trigger_print()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

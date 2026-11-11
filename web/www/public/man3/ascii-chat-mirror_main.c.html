@@ -1,73 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.c - Local media mirror mode: view webcam or media files as
-    ASCII art without network.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>mirror_main</b> (void)
-  <br/>
-  Run mirror mode main loop.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Local media mirror mode: view webcam or media files as ASCII art
-    without network.</p>
-<p class="Pp">Mirror mode is a standalone, self-contained ASCII video viewer
-    that requires no server or network connection. It's ideal for:</p>
-<ul class="Bl-bullet">
-  <li>Testing webcam capture and ASCII conversion pipelines locally</li>
-  <li>Viewing video files as ASCII art</li>
-  <li>Previewing terminal rendering without networking complexity</li>
-  <li>Debugging frame processing, color palettes, and keyboard input
-    handling</li>
-</ul>
-<section class="Ss">
-<h2 class="Ss" id="Architecture_Overview"><a class="permalink" href="#Architecture_Overview">Architecture
-  Overview</a></h2>
-<p class="Pp">Mirror mode uses the unified session library to manage
-    initialization and rendering:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>mirror_main()
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          main.c - Local media mirror mode: view webcam or media files as ASCII
+          art without network.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>mirror_main</b> (void)
+            <br />
+            Run mirror mode main loop.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Local media mirror mode: view webcam or media files as ASCII art
+          without network.
+        </p>
+        <p class="Pp">
+          Mirror mode is a standalone, self-contained ASCII video viewer that
+          requires no server or network connection. It's ideal for:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Testing webcam capture and ASCII conversion pipelines locally</li>
+          <li>Viewing video files as ASCII art</li>
+          <li>Previewing terminal rendering without networking complexity</li>
+          <li>
+            Debugging frame processing, color palettes, and keyboard input
+            handling
+          </li>
+        </ul>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture_Overview">
+            <a class="permalink" href="#Architecture_Overview"
+              >Architecture Overview</a
+            >
+          </h2>
+          <p class="Pp">
+            Mirror mode uses the unified session library to manage
+            initialization and rendering:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>mirror_main()
 <br/>
     &#x2193;
 session_client_like_run()  [Shared initialization]
@@ -105,29 +154,36 @@ session_client_like_run()  [Shared initialization]
         &#x251C;&#x2500; Keyboard input polling (if handler provided)
 <br/>
         &#x2514;&#x2500; Loop until user Ctrl+C or media EOF</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Frame_Processing_Pipeline"><a class="permalink" href="#Frame_Processing_Pipeline">Frame
-  Processing Pipeline</a></h2>
-<p class="Pp">Each frame flows through a multi-stage pipeline:</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="1"><a class="permalink" href="#1">1. Media Source &amp;
-  Capture</a></h2>
-<p class="Pp">The media source abstraction handles all input types
-    transparently:</p>
-<ul class="Bl-bullet">
-  <li><b>Webcam</b>: Continuous live capture at target FPS</li>
-  <li><b>Video Files</b>: Decoded frame-by-frame via FFmpeg</li>
-  <li><b>Streaming URLs</b>: HTTP/HTTPS/RTSP streams resolved via FFmpeg or
-      yt-dlp</li>
-  <li><b>Stdin</b>: Custom frame input for testing</li>
-  <li><b>Test Pattern</b>: Synthetic frames for debugging</li>
-</ul>
-<p class="Pp">Configuration:</p>
-<p class="Pp"></p>
-<pre>session_capture_config_t {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Frame_Processing_Pipeline">
+            <a class="permalink" href="#Frame_Processing_Pipeline"
+              >Frame Processing Pipeline</a
+            >
+          </h2>
+          <p class="Pp">Each frame flows through a multi-stage pipeline:</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="1">
+            <a class="permalink" href="#1">1. Media Source &amp; Capture</a>
+          </h2>
+          <p class="Pp">
+            The media source abstraction handles all input types transparently:
+          </p>
+          <ul class="Bl-bullet">
+            <li><b>Webcam</b>: Continuous live capture at target FPS</li>
+            <li><b>Video Files</b>: Decoded frame-by-frame via FFmpeg</li>
+            <li>
+              <b>Streaming URLs</b>: HTTP/HTTPS/RTSP streams resolved via FFmpeg
+              or yt-dlp
+            </li>
+            <li><b>Stdin</b>: Custom frame input for testing</li>
+            <li><b>Test Pattern</b>: Synthetic frames for debugging</li>
+          </ul>
+          <p class="Pp">Configuration:</p>
+          <p class="Pp"></p>
+          <pre>session_capture_config_t {
 <br/>
   .type = MEDIA_SOURCE_WEBCAM,  // or FILE, STDIN, TEST
 <br/>
@@ -140,75 +196,113 @@ session_client_like_run()  [Shared initialization]
   .resize_for_network = false    // local rendering, no resize
 }
 </pre>
-<p class="Pp">Captured frame: Raw RGB image from media source.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="2"><a class="permalink" href="#2">2. ASCII
-  Conversion</a></h2>
-<p class="Pp"><b>session_display_convert_to_ascii()</b><b> transforms raw video
-    to ASCII art:</b></p>
-<ul class="Bl-bullet">
-  <li><b>Palette Selection</b>: Choose from standard, compact, or custom ASCII
-      characters</li>
-  <li><b>Luminance Mapping</b>: Convert RGB to brightness, map to character
-      palette</li>
-  <li><b>Color Rendering</b>: Terminal color codes (256-color or true color if
-      supported)</li>
-  <li><b>Compression</b>: Optional RLE compression for efficient
-    transmission</li>
-</ul>
-<p class="Pp">Output: ASCII frame with embedded ANSI color codes.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="3"><a class="permalink" href="#3">3. Terminal
-  Rendering</a></h2>
-<p class="Pp"><b>session_display_render_frame()</b><b> writes ASCII to
-    terminal:</b></p>
-<ul class="Bl-bullet">
-  <li><b>Terminal Detection</b>: Detect color capability (256-color, true color,
-      monochrome)</li>
-  <li><b>Cursor Management</b>: Minimize flicker with intelligent cursor
-      positioning</li>
-  <li><b>Atomic Writes</b>: Serialized output prevents visual artifacts</li>
-</ul>
-<p class="Pp">Terminal output: Colored ASCII art displayed in real-time.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="4"><a class="permalink" href="#4">4. Frame Rate
-  Control</a></h2>
-<p class="Pp">Adaptive sleep maintains target FPS:</p>
-<ul class="Bl-bullet">
-  <li>Track capture timestamps</li>
-  <li>Calculate ideal sleep duration</li>
-  <li>Yield CPU without blocking (platform-aware sleep)</li>
-</ul>
-<p class="Pp">Result: Smooth, responsive playback at target frame rate.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Features"><a class="permalink" href="#Features">Features</a></h2>
-<ul class="Bl-bullet">
-  <li>Local webcam capture and ASCII conversion (no network)</li>
-  <li>Media file playback (video/audio files, animated GIFs, URLs)</li>
-  <li>Smart media resolution (FFmpeg + yt-dlp for 1000+ streaming sites)</li>
-  <li>Loop playback for media files</li>
-  <li>Terminal capability detection for optimal color output (256-color, true
-      color)</li>
-  <li>Adaptive frame rate limiting for smooth display</li>
-  <li>Audio playback from media files or microphone</li>
-  <li>Keyboard input support for interactive controls</li>
-  <li>Graceful shutdown on Ctrl+C (proper cleanup, no orphaned processes)</li>
-  <li>Snapshot mode for single-frame capture</li>
-  <li>Custom palette support</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
-  Examples</a></h2>
-<pre>// Local webcam (live view)
+          <p class="Pp">Captured frame: Raw RGB image from media source.</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="2">
+            <a class="permalink" href="#2">2. ASCII Conversion</a>
+          </h2>
+          <p class="Pp">
+            <b>session_display_convert_to_ascii()</b
+            ><b> transforms raw video to ASCII art:</b>
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Palette Selection</b>: Choose from standard, compact, or custom
+              ASCII characters
+            </li>
+            <li>
+              <b>Luminance Mapping</b>: Convert RGB to brightness, map to
+              character palette
+            </li>
+            <li>
+              <b>Color Rendering</b>: Terminal color codes (256-color or true
+              color if supported)
+            </li>
+            <li>
+              <b>Compression</b>: Optional RLE compression for efficient
+              transmission
+            </li>
+          </ul>
+          <p class="Pp">Output: ASCII frame with embedded ANSI color codes.</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="3">
+            <a class="permalink" href="#3">3. Terminal Rendering</a>
+          </h2>
+          <p class="Pp">
+            <b>session_display_render_frame()</b
+            ><b> writes ASCII to terminal:</b>
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Terminal Detection</b>: Detect color capability (256-color,
+              true color, monochrome)
+            </li>
+            <li>
+              <b>Cursor Management</b>: Minimize flicker with intelligent cursor
+              positioning
+            </li>
+            <li>
+              <b>Atomic Writes</b>: Serialized output prevents visual artifacts
+            </li>
+          </ul>
+          <p class="Pp">
+            Terminal output: Colored ASCII art displayed in real-time.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="4">
+            <a class="permalink" href="#4">4. Frame Rate Control</a>
+          </h2>
+          <p class="Pp">Adaptive sleep maintains target FPS:</p>
+          <ul class="Bl-bullet">
+            <li>Track capture timestamps</li>
+            <li>Calculate ideal sleep duration</li>
+            <li>Yield CPU without blocking (platform-aware sleep)</li>
+          </ul>
+          <p class="Pp">
+            Result: Smooth, responsive playback at target frame rate.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Features">
+            <a class="permalink" href="#Features">Features</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Local webcam capture and ASCII conversion (no network)</li>
+            <li>
+              Media file playback (video/audio files, animated GIFs, URLs)
+            </li>
+            <li>
+              Smart media resolution (FFmpeg + yt-dlp for 1000+ streaming sites)
+            </li>
+            <li>Loop playback for media files</li>
+            <li>
+              Terminal capability detection for optimal color output (256-color,
+              true color)
+            </li>
+            <li>Adaptive frame rate limiting for smooth display</li>
+            <li>Audio playback from media files or microphone</li>
+            <li>Keyboard input support for interactive controls</li>
+            <li>
+              Graceful shutdown on Ctrl+C (proper cleanup, no orphaned
+              processes)
+            </li>
+            <li>Snapshot mode for single-frame capture</li>
+            <li>Custom palette support</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Examples">
+            <a class="permalink" href="#Usage_Examples">Usage Examples</a>
+          </h2>
+          <pre>
+// Local webcam (live view)
 ascii-chat mirror
 // Video file (with loop)
 ascii-chat mirror --file video.mp4 --loop
@@ -220,66 +314,100 @@ ascii-chat mirror --snapshot --snapshot-delay 0
 ascii-chat mirror --file video.mp4 --fps 30 --palette compact
 // With audio from file
 ascii-chat mirror --file video.mp4 --enable-audio</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Integration_with_Session_Library"><a class="permalink" href="#Integration_with_Session_Library">Integration
-  with Session Library</a></h2>
-<p class="Pp">Mirror mode delegates initialization and lifecycle management to
-    <b>session_client_like_run()</b><b>:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>Initialization</b>: Media source creation, FPS probing, display
-    setup</li>
-  <li><b>Splash Screen</b>: Animated intro with embedded log capture</li>
-  <li><b>Render Loop</b>: Delegates to <b>session_render_loop()</b><b> for frame
-      processing</b></li>
-  <li><b>Cleanup</b>: Proper teardown of audio, display, and media
-    resources</li>
-  <li><b>Keyboard Handler</b>: Optional interactive controls via
-      mirror_keyboard_handler()</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Keyboard_Controls"><a class="permalink" href="#Keyboard_Controls">Keyboard
-  Controls</a></h2>
-<p class="Pp">If keyboard support is enabled:</p>
-<ul class="Bl-bullet">
-  <li>q or Ctrl+C: Quit</li>
-  <li>h: Toggle help screen</li>
-  <li>p: Pause/resume playback (media files only)</li>
-  <li>n: Next frame (when paused)</li>
-  <li>Space: Pause/resume</li>
-</ul>
-<p class="Pp">(Actual controls implemented in
-    <b>session_handle_keyboard_input()</b>)</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Performance_Characteristics"><a class="permalink" href="#Performance_Characteristics">Performance
-  Characteristics</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Webcam</b>: Minimal latency (single-frame buffer)</li>
-  <li><b>Video Files</b>: Streaming decode (no buffering overhead)</li>
-  <li><b>Large Files</b>: Constant memory usage (frame-by-frame processing)</li>
-  <li><b>Terminal Output</b>: Optimized for minimal flicker (differential
-      rendering)</li>
-  <li><b>CPU Usage</b>: Scales with target FPS and color mode</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Terminal_Requirements"><a class="permalink" href="#Terminal_Requirements">Terminal
-  Requirements</a></h2>
-<ul class="Bl-bullet">
-  <li>TTY output (not suitable for piped output - detection and auto-fallback
-      implemented)</li>
-  <li>ANSI escape sequence support (16, 256, or true color)</li>
-  <li>Minimum 60x20 terminal size (uses full available space)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Example_Workflow"><a class="permalink" href="#Example_Workflow">Example
-  Workflow</a></h2>
-<pre>// User runs:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Integration_with_Session_Library">
+            <a class="permalink" href="#Integration_with_Session_Library"
+              >Integration with Session Library</a
+            >
+          </h2>
+          <p class="Pp">
+            Mirror mode delegates initialization and lifecycle management to
+            <b>session_client_like_run()</b><b>:</b>
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Initialization</b>: Media source creation, FPS probing, display
+              setup
+            </li>
+            <li>
+              <b>Splash Screen</b>: Animated intro with embedded log capture
+            </li>
+            <li>
+              <b>Render Loop</b>: Delegates to <b>session_render_loop()</b
+              ><b> for frame processing</b>
+            </li>
+            <li>
+              <b>Cleanup</b>: Proper teardown of audio, display, and media
+              resources
+            </li>
+            <li>
+              <b>Keyboard Handler</b>: Optional interactive controls via
+              mirror_keyboard_handler()
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Keyboard_Controls">
+            <a class="permalink" href="#Keyboard_Controls">Keyboard Controls</a>
+          </h2>
+          <p class="Pp">If keyboard support is enabled:</p>
+          <ul class="Bl-bullet">
+            <li>q or Ctrl+C: Quit</li>
+            <li>h: Toggle help screen</li>
+            <li>p: Pause/resume playback (media files only)</li>
+            <li>n: Next frame (when paused)</li>
+            <li>Space: Pause/resume</li>
+          </ul>
+          <p class="Pp">
+            (Actual controls implemented in
+            <b>session_handle_keyboard_input()</b>)
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Performance_Characteristics">
+            <a class="permalink" href="#Performance_Characteristics"
+              >Performance Characteristics</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Webcam</b>: Minimal latency (single-frame buffer)</li>
+            <li>
+              <b>Video Files</b>: Streaming decode (no buffering overhead)
+            </li>
+            <li>
+              <b>Large Files</b>: Constant memory usage (frame-by-frame
+              processing)
+            </li>
+            <li>
+              <b>Terminal Output</b>: Optimized for minimal flicker
+              (differential rendering)
+            </li>
+            <li><b>CPU Usage</b>: Scales with target FPS and color mode</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Terminal_Requirements">
+            <a class="permalink" href="#Terminal_Requirements"
+              >Terminal Requirements</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              TTY output (not suitable for piped output - detection and
+              auto-fallback implemented)
+            </li>
+            <li>ANSI escape sequence support (16, 256, or true color)</li>
+            <li>Minimum 60x20 terminal size (uses full available space)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Example_Workflow">
+            <a class="permalink" href="#Example_Workflow">Example Workflow</a>
+          </h2>
+          <pre>// User runs:
 $ ascii-chat mirror --file movie.mp4
 // Internal flow:
 1. mirror_main() called from binary main()
@@ -311,82 +439,194 @@ $ ascii-chat mirror --file movie.mp4
    - Destroy display, audio, media source
 <br/>
    - Print newline to separate from shell prompt</pre>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>session/client_like.h</b> - Shared initialization
-<p class="Pp"></p>
-<p class="Pp"><b>session/render.h</b> - Unified render loop</p>
-<p class="Pp"></p>
-<p class="Pp"><b>session/capture.h</b> - Media source abstraction</p>
-<p class="Pp"></p>
-<p class="Pp"><b>session/display.h</b> - Terminal rendering</p>
-<p class="Pp"></p>
-<p class="Pp">lib/media/source.h - Media source types (<b>Webcam Module</b>,
-    file, etc.)</p>
-<p class="Pp"></p>
-<p class="Pp">lib/video/palette.h - ASCII <b>Palette</b> types</p>
-</div>
-<p class="Pp">Definition in file <b>mirror/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_mirror_main_(void_)"><a class="permalink" href="#int_mirror_main_(void_)">int
-  mirror_main (void )</a></h2>
-<p class="Pp">Run mirror mode main loop. Initializes webcam and terminal, then
-    continuously captures frames, converts them to ASCII art, and displays them
-    locally.</p>
-<p class="Pp"></p>
-<p class="Pp">Uses the session library for unified capture and display
-    management.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>379</b> of file <b>mirror/main.c</b>.</p>
-<pre>379                       {
-380   log_info(&quot;[MIRROR] main ENTRY&quot;);
-381 
-382   // Configure mode-specific session settings
-383   session_client_like_config_t config = {
-384       .run_fn = mirror_run,
-385       .run_user_data = NULL,
-386       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
-387       .keyboard_handler = mirror_keyboard_handler,
-388       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-389   };
-390 
-391   // Run shared initialization/teardown with mode-specific loop
-392   asciichat_error_t result = session_client_like_run(&amp;config);
-393   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-394 
-395   if (result != ASCIICHAT_OK) {
-396     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-397   }
-398 
-399   return (int)result;
-400 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
-    <b>session_client_like_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">2025</div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>session/client_like.h</b> - Shared initialization
+            <p class="Pp"></p>
+            <p class="Pp"><b>session/render.h</b> - Unified render loop</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>session/capture.h</b> - Media source abstraction
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp"><b>session/display.h</b> - Terminal rendering</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              lib/media/source.h - Media source types (<b>Webcam Module</b>,
+              file, etc.)
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              lib/video/palette.h - ASCII <b>Character Palettes</b> types
+            </p>
+          </div>
+          <p class="Pp">Definition in file <b>mirror/main.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_mirror_main_(void_)">
+            <a class="permalink" href="#int_mirror_main_(void_)"
+              >int mirror_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Run mirror mode main loop. Initializes webcam and terminal, then
+            continuously captures frames, converts them to ASCII art, and
+            displays them locally.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Uses the session library for unified capture and display management.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, non-zero error code on failure
+          </div>
+          <p class="Pp">
+            Entry point for mirror mode. Initializes media source (webcam or
+            file), sets up terminal display, and then continuously captures
+            frames, converts them to ASCII art, and displays them locally. The
+            function runs until the user presses Ctrl+C, the media reaches EOF,
+            or an error occurs.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The function uses the unified session library for initialization:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Detects and opens media source (webcam, file, URL, test pattern)
+            </li>
+            <li>Probes frame rate automatically</li>
+            <li>Initializes terminal with capability detection</li>
+            <li>Sets up audio if available and enabled</li>
+            <li>Shows splash screen animation</li>
+            <li>
+              Runs the main render loop (frame capture &#x2192; ASCII conversion
+              &#x2192; display)
+            </li>
+            <li>Performs proper cleanup on exit</li>
+          </ul>
+          <p class="Pp">
+            All settings are read from command-line options (e.g., --file,
+            --url, --fps, etc.). No parameters are required - configuration is
+            global.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Return_Value">
+            <a class="permalink" href="#Return_Value">Return Value</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>0: Success (Ctrl+C, EOF, or snapshot complete)</li>
+            <li>
+              Non-zero: Error code (ASCIICHAT_OK is 0, other codes indicate
+              failure)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Example_Flow">
+            <a class="permalink" href="#Example_Flow">Example Flow</a>
+          </h2>
+          <pre>$ ascii-chat mirror --file video.mp4 --enable-audio
+1. Media source created (FFmpeg decoder for video.mp4)
+2. FPS detected (e.g., 24 FPS)
+3. Terminal initialized (e.g., 256-color palette)
+4. Audio initialized (from video.mp4)
+5. Splash screen shown (5 seconds with animation)
+6. Render loop starts:
+<br/>
+   - Read frame from FFmpeg
+<br/>
+   - Convert to ASCII (luminance + color codes)
+<br/>
+   - Render to terminal
+<br/>
+   - Sleep to maintain 24 FPS
+<br/>
+   - Poll keyboard for 'q' to quit
+7. On EOF or Ctrl+C:
+<br/>
+   - Destroy display, audio, media source
+<br/>
+   - Return 0</pre>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success (clean exit or Ctrl+C)
+            <p class="Pp"></p>
+            <p class="Pp">Non-zero error code on failure</p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>src/mirror/main.c</b> - Full implementation
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>src/common/session/client_like.h</b> - Shared initialization
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>298</b> of file <b>mirror/main.c</b>.
+          </p>
+          <pre>
+298                       {
+299
+300   // Configure mode-specific session settings
+301   session_client_like_config_t config = {
+302       .run_fn = mirror_run,
+303       .run_user_data = NULL,
+304       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+305       .keyboard_handler = mirror_keyboard_handler,
+306       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+307   };
+308
+309   // Run shared initialization/teardown with mode-specific loop
+310   asciichat_error_t result = session_client_like_run(&amp;config);
+311   log_debug(&quot;session_client_like_run returned with result=%d&quot;, result);
+312
+313   if (result != ASCIICHAT_OK) {
+314     log_set_terminal_output(true);
+315     NOTICE(WARNING, &quot;MIRROR FAILED&quot;, &quot;%s&quot;, asciichat_error_format(&quot;Mirror mode failed&quot;, result));
+316   }
+317
+318   return (int)result;
+319 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>log_debug</b>, <b>log_set_terminal_output()</b>,
+            <b>mirror_main()</b>, <b>NOTICE</b>,
+            <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
+            <b>session_client_like_run()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mirror_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

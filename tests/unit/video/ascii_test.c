@@ -7,7 +7,7 @@
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/string.h>
 

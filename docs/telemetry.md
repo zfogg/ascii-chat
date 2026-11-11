@@ -94,14 +94,6 @@ environment:
 uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
 ```
 
-Install the matching Spaniel verifier at its immutable source revision and make
-`spaniel-assert` available on `PATH` before running both contract tests:
-
-```sh
-go install github.com/zfogg/spaniel/cmd/spaniel-assert@9e30a755503f956a38a4f3b743f802910ab04dbc
-ctest --test-dir build -R 'otel-(trace-)?contract' --no-tests=error --output-on-failure
-```
-
 ### Failure alerts and active-session scope
 
 All repository dashboard panels and alert SQL use Spaniel's built-in
@@ -131,7 +123,6 @@ and restores the original session in a finally block:
 ```sh
 python tests/integration/test_spaniel_alert_pack.py
 ```
-
 
 Debug and Dev builds export traces, logs, and metrics to the local Compose
 collector at `http://127.0.0.1:24318` by default. Release builds require an endpoint.
@@ -426,7 +417,6 @@ cmake --build build_docker --target test_unit_otel_otel ascii-chat
 ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure
 ```
 
-
 ### Compression and video codecs
 
 `ascii-chat.compression.zstd.{compress,compress_workspace,decompress,decompress_exact}`
@@ -482,7 +472,6 @@ renders with three render spans, and (in the audio/video run) 1,381 client audio
 captures with 14 spans, 955 server audio renders with six spans, and 467 Opus
 decodes with four spans. Metrics continue counting work omitted from traces.
 
-
 ### Spaniel alerts and deadlock watchdog
 
 Compose mounts `deploy/otel/alerts` read-only and passes `--alerts-dir /alerts`.
@@ -537,7 +526,6 @@ from Needs attention without deleting its telemetry. Repeated query evaluations,
 replay, and container restarts do not rearm the same trace ID. A different trace
 ID creates a fresh instance immediately. Other alerts retain condition semantics:
 acknowledgement suppresses repeats until recovery and the next breach.
-
 
 ### Invalid rendered ASCII frames
 

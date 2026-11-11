@@ -30,15 +30,15 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 
 ## Inputs
 
-| Input             | Description                                   | Required | Default     |
-| ----------------- | --------------------------------------------- | -------- | ----------- |
-| `test-type`       | Type of test (unit, integration, performance) | Yes      | -           |
-| `os-name`         | Operating system name (ubuntu, macos)         | Yes      | -           |
-| `build-type`      | Build type (debug, release)                   | No       | ''          |
-| `junit-file`      | Path to JUnit XML file                        | No       | 'junit.xml' |
-| `coverage-files`  | Merged coverage report for Codecov             | No       | 'build/coverage.xml' |
-| `codecov-token`   | Codecov token                                 | Yes      | -           |
-| `upload-coverage` | Whether to upload coverage to Codecov         | No       | 'false'     |
+| Input             | Description                                   | Required | Default              |
+| ----------------- | --------------------------------------------- | -------- | -------------------- |
+| `test-type`       | Type of test (unit, integration, performance) | Yes      | -                    |
+| `os-name`         | Operating system name (ubuntu, macos)         | Yes      | -                    |
+| `build-type`      | Build type (debug, release)                   | No       | ''                   |
+| `junit-file`      | Path to JUnit XML file                        | No       | 'junit.xml'          |
+| `coverage-files`  | Merged coverage report for Codecov            | No       | 'build/coverage.xml' |
+| `codecov-token`   | Codecov token                                 | Yes      | -                    |
+| `upload-coverage` | Whether to upload coverage to Codecov         | No       | 'false'              |
 
 ## Examples
 

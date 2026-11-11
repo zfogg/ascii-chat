@@ -1,5 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { expectMeaningful60Fps } from "./server-fixture";
+
+const mirrorModuleUrl = `/@fs/${fileURLToPath(
+  new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
+)
+  .replaceAll("\\", "/")
+  .replace(/^\/+/, "")}`;
 
 test("Mirror loads and remains interactive across reloads", async ({
   page,
@@ -9,11 +16,9 @@ test("Mirror loads and remains interactive across reloads", async ({
     if (attempt > 0) await page.reload({ waitUntil: "domcontentloaded" });
     await expect
       .poll(() =>
-        page.evaluate(() =>
-          Boolean(
-            (window as unknown as { asciiChatWasm?: { _wasmModule?: unknown } })
-              .asciiChatWasm?._wasmModule,
-          ),
+        page.evaluate(
+          async (url) => Boolean((await import(url)).getMirrorModule()),
+          mirrorModuleUrl,
         ),
       )
       .toBe(true);

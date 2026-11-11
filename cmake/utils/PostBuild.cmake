@@ -285,7 +285,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
                 COMMAND ${CMAKE_SOURCE_DIR}/cmake/utils/clean_comment.sh $<TARGET_FILE:ascii-chat>
                 # Strip symbols but keep custom sections
                 # Use --strip-debug instead of --strip-unneeded to preserve custom sections
-                COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
+                COMMAND timeout 60 ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
                 COMMENT "Deduplicating .comment section and stripping debug symbols"
             )
             # Remove embedded file paths from binary using bash script (much faster than PowerShell)
@@ -376,7 +376,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
             codesign_target(ascii-chat)
         else()
             add_custom_command(TARGET ascii-chat POST_BUILD
-                COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                COMMAND timeout 60 ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols from ascii-chat"
             )
         endif()

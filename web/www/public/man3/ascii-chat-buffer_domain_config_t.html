@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buffer_domain_config_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buffer_domain_config_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buffer_domain_config_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">buffer_domain_config_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/buffer.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>limit_bytes</b>
+            <br />
+            size_t <b>cache_bytes</b>
+            <br />
+            <b>uint64_t</b> <b>idle_ns</b>
+            <br />
+            <b>bool</b> <b>control</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>31</b> of file <b>buffer.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_domain_config_t::cache_bytes">
+            <a
+              class="permalink"
+              href="#size_t_buffer_domain_config_t::cache_bytes"
+              >size_t buffer_domain_config_t::cache_bytes</a
+            >
+          </h2>
+          <p class="Pp">Maximum idle storage; zero disables caching.</p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_unref()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> buffer_domain_config_t::control</h2>
+          <p class="Pp">May consume the process reserve for control traffic.</p>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and
+            <b>buffer_domain_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> buffer_domain_config_t::idle_ns</h2>
+          <p class="Pp">Minimum idle age for maintenance trimming.</p>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>buffer.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_domain_config_t::limit_bytes">
+            <a
+              class="permalink"
+              href="#size_t_buffer_domain_config_t::limit_bytes"
+              >size_t buffer_domain_config_t::limit_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Includes live and cached storage and headers. Zero uses the default.
+          </p>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and
+            <b>buffer_domain_create()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

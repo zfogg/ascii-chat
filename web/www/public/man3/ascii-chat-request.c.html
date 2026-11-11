@@ -1,0 +1,598 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>request.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">request.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">request.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">request.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b> 4097
+            <br />
+            #define <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>MCP_REQUEST_ARGV_CAPACITY</b> 256
+            <br />
+            #define <b>MCP_REQUEST_RESERVED_ARGS</b> 6
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            yyjson_mut_val * <b>mcp_tools_schema</b> (yyjson_mut_doc *d, const
+            <b>mcp_policy_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_request_parse</b> (const
+            <b>mcp_policy_t</b> *p, <b>mcp_tool_t</b> tool, yyjson_val *a,
+            <b>mcp_render_request_t</b> *r)
+            <br />
+            void <b>mcp_request_destroy</b> (<b>mcp_render_request_t</b> *r)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_REQUEST_ARGV_CAPACITY___256">
+            <a class="permalink" href="#_define_MCP_REQUEST_ARGV_CAPACITY___256"
+              >#define MCP_REQUEST_ARGV_CAPACITY 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_REQUEST_RESERVED_ARGS___6">
+            <a class="permalink" href="#_define_MCP_REQUEST_RESERVED_ARGS___6"
+              >#define MCP_REQUEST_RESERVED_ARGS 6</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>request.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16"
+              >#define MCP_SERVER_REQUEST_B_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097"
+              >#define MCP_SERVER_REQUEST_BUF_BUFFER_SIZE 4097</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16"
+              >#define MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64"
+              >#define MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_request_destroy_(">
+            <a class="permalink" href="#void_mcp_request_destroy_("
+              >void mcp_request_destroy (<b>mcp_render_request_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>564</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+564                                                   {
+565   for (size_t i = 0; i &lt; r-&gt;argc; ++i)
+566     SAFE_FREE(r-&gt;argv[i]);
+567   SAFE_FREE(r-&gt;argv);
+568   if (r-&gt;upload_dir[0]) {
+569     asciichat_error_t e = platform_rmdir_recursive(r-&gt;upload_dir);
+570     (void)e;
+571   }
+572   if (r-&gt;stage_dir[0]) {
+573     asciichat_error_t e = platform_rmdir_recursive(r-&gt;stage_dir);
+574     (void)e;
+575   }
+576   memset(r, 0, sizeof(*r));
+577 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argc</b>,
+            <b>mcp_render_request_t::argv</b>, <b>mcp_request_destroy()</b>,
+            <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>,
+            <b>mcp_render_request_t::stage_dir</b>, and
+            <b>mcp_render_request_t::upload_dir</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and
+            <b>mcp_request_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_request_parse (const
+            <b>mcp_policy_t</b> * p, <b>mcp_tool_t</b> tool, yyjson_val * a,
+            <b>mcp_render_request_t</b> * r)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>367</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+367                                                                                                                     {
+368   memset(r, 0, sizeof(*r));
+369   r-&gt;timeout_ms = 45000;
+370   r-&gt;argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
+371   static const char *const fields[] = {&quot;path&quot;,         &quot;data_base64&quot;,   &quot;mime_type&quot;, &quot;url&quot;,         &quot;video_device&quot;,
+372                                        &quot;audio&quot;,        &quot;visualization&quot;, &quot;options&quot;,   &quot;output_path&quot;, &quot;timeout_ms&quot;,
+373                                        &quot;audio_device&quot;, &quot;volume&quot;,        NULL};
+374   asciichat_error_t err = check_fields(a, fields);
+375   if (err)
+376     return err;
+377   const char *source_fields[] = {&quot;path&quot;,  &quot;data_base64&quot;,   &quot;mime_type&quot;,    &quot;url&quot;,   &quot;video_device&quot;,
+378                                  &quot;audio&quot;, &quot;visualization&quot;, &quot;audio_device&quot;, &quot;volume&quot;};
+379   for (size_t i = 0; i &lt; 9; ++i) {
+380     bool allowed = tool == MCP_FILE ? i &lt; 3 : tool == MCP_URL ? i == 3 : tool == MCP_WEBCAM ? i == 4 || i &gt;= 7 : i &gt;= 5;
+381     if (!allowed &amp;&amp; mcp_get(a, source_fields[i]))
+382       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Argument %s is not valid for this tool&quot;, source_fields[i]);
+383   }
+384   if (p-&gt;restricted &amp;&amp; (tool == MCP_WEBCAM || mcp_get(a, &quot;path&quot;) || mcp_get(a, &quot;output_path&quot;) ||
+385                         mcp_get(a, &quot;audio_device&quot;) || mcp_get(a, &quot;volume&quot;)))
+386     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Local capability is unavailable in server mode&quot;);
+387   yyjson_val *timeout = mcp_get(a, &quot;timeout_ms&quot;);
+388   if (timeout) {
+389     if (!yyjson_is_int(timeout) || yyjson_get_sint(timeout) &lt; 1000 || yyjson_get_sint(timeout) &gt; 60000)
+390       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;timeout_ms must be 1000&#x2013;60000&quot;);
+391     r-&gt;timeout_ms = (unsigned)yyjson_get_uint(timeout);
+392   }
+393   char exe[PLATFORM_MAX_PATH_LENGTH];
+394   if (!platform_get_executable_path(exe, sizeof(exe)))
+395     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Cannot locate renderer executable&quot;);
+396   arg(r, exe);
+397   arg(r, &quot;--log-level=error&quot;);
+398   arg(r, &quot;--no-check-update&quot;);
+399   arg(r, &quot;mirror&quot;);
+400   option(r, &quot;width&quot;, &quot;100&quot;);
+401   option(r, &quot;height&quot;, &quot;40&quot;);
+402   option(r, &quot;color-mode&quot;, &quot;none&quot;);
+403   option(r, &quot;strip-ansi&quot;, &quot;true&quot;);
+404   option(r, &quot;snapshot&quot;, &quot;true&quot;);
+405   option(r, &quot;snapshot-delay&quot;, &quot;0&quot;);
+406   option(r, &quot;splash-screen&quot;, &quot;false&quot;);
+407   option(r, &quot;no-audio-playback&quot;, &quot;true&quot;);
+408   option(r, &quot;audio&quot;, &quot;false&quot;);
+409   yyjson_val *opts = mcp_get(a, &quot;options&quot;);
+410   if (opts &amp;&amp; !yyjson_is_obj(opts))
+411     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;options must be an object&quot;);
+412   size_t i, max;
+413   yyjson_val *k, *v;
+414   if (opts)
+415     yyjson_obj_foreach(opts, i, max, k, v) {
+416       const char *name = yyjson_get_str(k);
+417       const registry_entry_t *e = exposed(p, name);
+418       if (strlen(name) != yyjson_get_len(k) || !e)
+419         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported option: %s&quot;, name);
+420       char buf[MCP_SERVER_REQUEST_BUF_BUFFER_SIZE];
+421       bool omitted = false;
+422       err = options_json_parse_value(name, v, buf, sizeof(buf), &amp;omitted);
+423       if (err)
+424         return err;
+425       if (omitted)
+426         continue;
+427       double n = yyjson_get_num(v);
+428       if ((!strcmp(name, &quot;width&quot;) &amp;&amp; (n &lt; e-&gt;metadata.numeric_range.min || n &gt; 512)) ||
+429           (!strcmp(name, &quot;height&quot;) &amp;&amp; (n &lt; e-&gt;metadata.numeric_range.min || n &gt; 256)) ||
+430           (!strcmp(name, &quot;snapshot-delay&quot;) &amp;&amp; (n &lt; 0 || n &gt; 30)) || (!strcmp(name, &quot;fps&quot;) &amp;&amp; (n &lt; 0 || n &gt; 144)))
+431         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option %s is out of bounds&quot;, name);
+432       err = option(r, name, buf);
+433       if (err)
+434         return err;
+435     }
+436   bool synthetic = enabled(opts, &quot;test-pattern&quot;), test_audio = enabled(opts, &quot;test-audio&quot;);
+437   yyjson_val *audio_device = mcp_get(a, &quot;audio_device&quot;), *volume = mcp_get(a, &quot;volume&quot;);
+438   if (audio_device) {
+439     if (!yyjson_is_int(audio_device) || yyjson_get_sint(audio_device) &lt; -1 || yyjson_get_sint(audio_device) &gt; INT_MAX)
+440       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;audio_device must be -1 or a nonnegative device index&quot;);
+441     char index[MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE];
+442     SAFE_SNPRINTF(index, sizeof(index), &quot;%d&quot;, (int)yyjson_get_sint(audio_device));
+443     err = option(r, &quot;microphone-index&quot;, index);
+444     if (err)
+445       return err;
+446   }
+447   if (volume) {
+448     if (!yyjson_is_num(volume) || yyjson_get_num(volume) &lt; 0 || yyjson_get_num(volume) &gt; 1)
+449       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;volume must be a number from 0 to 1&quot;);
+450     char value[MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE];
+451     bool omitted = false;
+452     err = options_json_parse_value(&quot;microphone-volume&quot;, volume, value, sizeof(value), &amp;omitted);
+453     if (err)
+454       return err;
+455     if (mcp_get(opts, &quot;microphone-volume&quot;) || mcp_get(opts, &quot;ivolume&quot;))
+456       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;volume conflicts with options.microphone-volume/ivolume&quot;);
+457     err = option(r, &quot;microphone-volume&quot;, value);
+458     if (err)
+459       return err;
+460   }
+461   if (tool == MCP_FILE) {
+462     if (synthetic || test_audio) {
+463       if (mcp_get(a, &quot;path&quot;) || mcp_get(a, &quot;data_base64&quot;))
+464         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Synthetic source conflicts with media&quot;);
+465       if (!synthetic) {
+466         option(r, &quot;waveform&quot;, &quot;true&quot;);
+467         option(r, &quot;audio&quot;, &quot;true&quot;);
+468       }
+469     } else {
+470       err = source_file(p, a, r);
+471       if (err)
+472         return err;
+473     }
+474   } else if (tool == MCP_URL) {
+475     if (synthetic)
+476       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;test-pattern conflicts with URL&quot;);
+477     err = source_url(p, mcp_get(a, &quot;url&quot;), r);
+478     if (err)
+479       return err;
+480   } else if (tool == MCP_WEBCAM) {
+481     r-&gt;capture_webcam = !synthetic;
+482     bool record_audio =
+483         audio_device || volume || enabled(opts, &quot;audio&quot;) ||
+484         (mcp_get(a, &quot;output_path&quot;) &amp;&amp; yyjson_get_num(mcp_get(opts, &quot;snapshot-delay&quot;)) &gt; 0 &amp;&amp; !mcp_get(opts, &quot;audio&quot;));
+485     if (record_audio &amp;&amp; mcp_get(opts, &quot;audio&quot;) &amp;&amp; !enabled(opts, &quot;audio&quot;))
+486       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Microphone selection conflicts with options.audio=false&quot;);
+487     if (record_audio &amp;&amp; !test_audio) {
+488       option(r, &quot;audio&quot;, &quot;true&quot;);
+489       option(r, &quot;audio-source&quot;, &quot;mic&quot;);
+490       option(r, &quot;audio-capture-source&quot;, &quot;mic&quot;);
+491     }
+492     yyjson_val *dev = mcp_get(a, &quot;video_device&quot;);
+493     if (dev) {
+494       if (!yyjson_is_int(dev) || yyjson_get_sint(dev) &lt; 0 || yyjson_get_sint(dev) &gt; 10)
+495         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;video_device must be 0&#x2013;10&quot;);
+496       char b[MCP_SERVER_REQUEST_B_BUFFER_SIZE];
+497       SAFE_SNPRINTF(b, sizeof(b), &quot;%d&quot;, (int)yyjson_get_sint(dev));
+498       option(r, &quot;webcam-index&quot;, b);
+499     }
+500   } else {
+501     if (synthetic)
+502       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;test-pattern conflicts with audio visualization&quot;);
+503     yyjson_val *visual = mcp_get(a, &quot;visualization&quot;);
+504     if (!yyjson_is_str(visual) || (strcmp(yyjson_get_str(visual), &quot;waveform&quot;) &amp;&amp; strcmp(yyjson_get_str(visual), &quot;fft&quot;)))
+505       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;visualization must be waveform or fft&quot;);
+506     option(r, yyjson_get_str(visual), &quot;true&quot;);
+507     option(r, &quot;audio&quot;, &quot;true&quot;);
+508     yyjson_val *audio = mcp_get(a, &quot;audio&quot;);
+509     static const char *const audio_fields[] = {&quot;type&quot;, &quot;path&quot;, &quot;data_base64&quot;, &quot;mime_type&quot;, &quot;url&quot;, NULL};
+510     if (audio) {
+511       err = check_fields(audio, audio_fields);
+512       if (err)
+513         return err;
+514     }
+515     yyjson_val *type = mcp_get(audio, &quot;type&quot;);
+516     if (type &amp;&amp; !yyjson_is_str(type))
+517       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;audio.type must be a string&quot;);
+518     const char *t = type ? yyjson_get_str(type) : (audio_device || volume ? &quot;microphone&quot; : &quot;test&quot;);
+519     if ((audio_device || volume) &amp;&amp; strcmp(t, &quot;microphone&quot;))
+520       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;audio_device and volume require microphone audio&quot;);
+521     if (!strcmp(t, &quot;test&quot;)) {
+522       if (audio &amp;&amp; yyjson_obj_size(audio) &gt; 1)
+523         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Test audio has no source fields&quot;);
+524       option(r, &quot;test-audio&quot;, &quot;true&quot;);
+525       option(r, &quot;audio-source&quot;, &quot;all&quot;);
+526     } else if (!strcmp(t, &quot;file&quot;)) {
+527       if (mcp_get(audio, &quot;url&quot;) || mcp_get(a, &quot;audio_device&quot;) || test_audio)
+528         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Conflicting audio sources&quot;);
+529       err = source_file(p, audio, r);
+530       if (err)
+531         return err;
+532       option(r, &quot;audio-source&quot;, &quot;media&quot;);
+533       option(r, &quot;audio-capture-source&quot;, &quot;media&quot;);
+534     } else if (!strcmp(t, &quot;url&quot;)) {
+535       if (mcp_get(audio, &quot;path&quot;) || mcp_get(audio, &quot;data_base64&quot;) || mcp_get(a, &quot;audio_device&quot;) || test_audio)
+536         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Conflicting audio sources&quot;);
+537       err = source_url(p, mcp_get(audio, &quot;url&quot;), r);
+538       if (err)
+539         return err;
+540       option(r, &quot;audio-source&quot;, &quot;media&quot;);
+541       option(r, &quot;audio-capture-source&quot;, &quot;media&quot;);
+542     } else if (!strcmp(t, &quot;microphone&quot;) &amp;&amp; !p-&gt;restricted) {
+543       if (mcp_get(audio, &quot;path&quot;) || mcp_get(audio, &quot;data_base64&quot;) || mcp_get(audio, &quot;url&quot;) || test_audio)
+544         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Conflicting audio sources&quot;);
+545       option(r, &quot;audio-source&quot;, &quot;mic&quot;);
+546       option(r, &quot;audio-capture-source&quot;, &quot;mic&quot;);
+547     } else
+548       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported audio source&quot;);
+549   }
+550   if (test_audio)
+551     option(r, &quot;audio&quot;, &quot;true&quot;);
+552   if (tool != MCP_WEBCAM &amp;&amp; tool != MCP_VISUALIZATION &amp;&amp; !test_audio)
+553     option(r, &quot;audio-capture-source&quot;, &quot;media&quot;);
+554   yyjson_val *output = mcp_get(a, &quot;output_path&quot;);
+555   if (output) {
+556     if (!yyjson_is_str(output))
+557       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output_path must be a string&quot;);
+558     err = stage_output(yyjson_get_str(output), r);
+559     if (err)
+560       return err;
+561   }
+562   return ASCIICHAT_OK;
+563 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>, <b>ASCIICHAT_OK</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>MCP_FILE</b>, <b>MCP_REQUEST_ARGV_CAPACITY</b>,
+            <b>mcp_request_parse()</b>, <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b>, <b>MCP_URL</b>,
+            <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_parse_value()</b>,
+            <b>platform_get_executable_path()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>mcp_policy_t::restricted</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>, and
+            <b>mcp_render_request_t::timeout_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_request_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_"
+              >yyjson_mut_val * mcp_tools_schema (yyjson_mut_doc * d, const
+              <b>mcp_policy_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+130                                                                            {
+131   const char *names[] = {&quot;render_file&quot;, &quot;render_url&quot;, &quot;render_webcam&quot;, &quot;render_visualization&quot;};
+132   const char *descs[] = {
+133       &quot;Convert uploaded media or a local file into ASCII art. Source can be omitted for test-pattern/test-audio.&quot;,
+134       &quot;Convert URL media into ASCII art using the CLI media resolver.&quot;,
+135       &quot;Capture a local webcam as ASCII art; test-pattern avoids camera access.&quot;,
+136       &quot;Render waveform or FFT from test audio, uploaded audio, URL audio, or local audio/microphone.&quot;};
+137   yyjson_mut_val *tools = yyjson_mut_arr(d);
+138   for (int i = 0; i &lt; 4; ++i) {
+139     if (p-&gt;restricted &amp;&amp; i == MCP_WEBCAM)
+140       continue;
+141     yyjson_mut_val *tool = yyjson_mut_obj(d), *s = object_schema(d), *props = yyjson_mut_obj_get(s, &quot;properties&quot;);
+142     yyjson_mut_obj_add_str(d, tool, &quot;name&quot;, names[i]);
+143     yyjson_mut_obj_add_str(d, tool, &quot;description&quot;, descs[i]);
+144     yyjson_mut_obj_add_val(d, props, &quot;options&quot;, options_schema(d, p));
+145     property(d, s, &quot;timeout_ms&quot;, &quot;integer&quot;, &quot;Maximum job time, 1000&#x2013;60000 ms; default 45000.&quot;);
+146     if (!p-&gt;restricted)
+147       property(d, s, &quot;output_path&quot;, &quot;string&quot;,
+148                &quot;Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.&quot;);
+149     if (i == MCP_FILE)
+150       file_properties(d, s, !p-&gt;restricted);
+151     if (i == MCP_URL) {
+152       property(d, s, &quot;url&quot;, &quot;string&quot;, &quot;HTTP/HTTPS media URL (local profile also accepts RTSP/RTMP).&quot;);
+153       yyjson_mut_val *required = yyjson_mut_arr(d);
+154       yyjson_mut_arr_add_str(d, required, &quot;url&quot;);
+155       yyjson_mut_obj_add_val(d, s, &quot;required&quot;, required);
+156     }
+157     if (i == MCP_WEBCAM) {
+158       property(d, s, &quot;video_device&quot;, &quot;integer&quot;, &quot;Local webcam index, 0&#x2013;10; default 0.&quot;);
+159       yyjson_mut_val *device = yyjson_mut_obj_get(props, &quot;video_device&quot;);
+160       yyjson_mut_obj_add_int(d, device, &quot;default&quot;, 0);
+161       yyjson_mut_obj_add_int(d, device, &quot;minimum&quot;, 0);
+162       yyjson_mut_obj_add_int(d, device, &quot;maximum&quot;, 10);
+163     }
+164     if (!p-&gt;restricted &amp;&amp; (i == MCP_WEBCAM || i == MCP_VISUALIZATION)) {
+165       property(d, s, &quot;audio_device&quot;, &quot;integer&quot;, &quot;Microphone index; -1 or omitted selects the system default.&quot;);
+166       yyjson_mut_val *device = yyjson_mut_obj_get(props, &quot;audio_device&quot;);
+167       yyjson_mut_obj_add_int(d, device, &quot;default&quot;, -1);
+168       yyjson_mut_obj_add_int(d, device, &quot;minimum&quot;, -1);
+169       yyjson_mut_obj_add_int(d, device, &quot;maximum&quot;, INT_MAX);
+170       yyjson_mut_val *volume = options_json_schema_for_option(d, &quot;microphone-volume&quot;);
+171       yyjson_mut_obj_remove_str(volume, &quot;description&quot;);
+172       yyjson_mut_obj_add_str(d, volume, &quot;description&quot;, &quot;Microphone volume multiplier, 0&#x2013;1; 0 mutes, 1 is normal.&quot;);
+173       yyjson_mut_obj_add_real(d, volume, &quot;default&quot;, 1);
+174       yyjson_mut_obj_add_real(d, volume, &quot;minimum&quot;, 0);
+175       yyjson_mut_obj_add_real(d, volume, &quot;maximum&quot;, 1);
+176       yyjson_mut_obj_add_val(d, props, &quot;volume&quot;, volume);
+177     }
+178     if (i == MCP_VISUALIZATION) {
+179       property(d, s, &quot;visualization&quot;, &quot;string&quot;, &quot;waveform or fft&quot;);
+180       const char *values[] = {&quot;waveform&quot;, &quot;fft&quot;, NULL};
+181       enum_strings(d, yyjson_mut_obj_get(props, &quot;visualization&quot;), values);
+182       yyjson_mut_val *audio = object_schema(d);
+183       property(d, audio, &quot;type&quot;, &quot;string&quot;, &quot;Audio source, default test.&quot;);
+184       const char *types[] = {&quot;test&quot;, &quot;file&quot;, &quot;url&quot;, &quot;microphone&quot;, NULL};
+185       const char *remote_types[] = {&quot;test&quot;, &quot;file&quot;, &quot;url&quot;, NULL};
+186       enum_strings(d, yyjson_mut_obj_get(yyjson_mut_obj_get(audio, &quot;properties&quot;), &quot;type&quot;),
+187                    p-&gt;restricted ? remote_types : types);
+188       file_properties(d, audio, !p-&gt;restricted);
+189       property(d, audio, &quot;url&quot;, &quot;string&quot;, &quot;Audio URL.&quot;);
+190       yyjson_mut_obj_add_val(d, props, &quot;audio&quot;, audio);
+191       yyjson_mut_val *req = yyjson_mut_arr(d);
+192       yyjson_mut_arr_add_str(d, req, &quot;visualization&quot;);
+193       yyjson_mut_obj_add_val(d, s, &quot;required&quot;, req);
+194     }
+195     yyjson_mut_val *out = object_schema(d);
+196     property(d, out, &quot;ascii&quot;, &quot;string&quot;, &quot;Rendered text; saved media may have no terminal text.&quot;);
+197     property(d, out, &quot;elapsed_ms&quot;, &quot;integer&quot;, &quot;Worker wall-clock duration.&quot;);
+198     yyjson_mut_val *saved = yyjson_mut_obj(d), *items = yyjson_mut_obj(d);
+199     yyjson_mut_obj_add_str(d, saved, &quot;type&quot;, &quot;array&quot;);
+200     yyjson_mut_obj_add_str(d, items, &quot;type&quot;, &quot;string&quot;);
+201     yyjson_mut_obj_add_val(d, saved, &quot;items&quot;, items);
+202     yyjson_mut_obj_add_val(d, yyjson_mut_obj_get(out, &quot;properties&quot;), &quot;saved_files&quot;, saved);
+203     yyjson_mut_val *required = yyjson_mut_arr(d);
+204     yyjson_mut_arr_add_str(d, required, &quot;ascii&quot;);
+205     yyjson_mut_arr_add_str(d, required, &quot;elapsed_ms&quot;);
+206     yyjson_mut_arr_add_str(d, required, &quot;saved_files&quot;);
+207     yyjson_mut_obj_add_val(d, out, &quot;required&quot;, required);
+208     yyjson_mut_obj_add_val(d, tool, &quot;outputSchema&quot;, out);
+209     yyjson_mut_obj_add_val(d, tool, &quot;inputSchema&quot;, s);
+210     yyjson_mut_arr_add_val(tools, tool);
+211   }
+212   if (!p-&gt;restricted) {
+213     yyjson_mut_val *tool = yyjson_mut_obj(d);
+214     yyjson_mut_obj_add_str(d, tool, &quot;name&quot;, &quot;device_list&quot;);
+215     yyjson_mut_obj_add_str(d, tool, &quot;description&quot;,
+216                            &quot;List local video and microphone device indices, names, and defaults.&quot;);
+217     yyjson_mut_obj_add_val(d, tool, &quot;inputSchema&quot;, object_schema(d));
+218     yyjson_mut_val *annotations = yyjson_mut_obj(d);
+219     yyjson_mut_obj_add_bool(d, annotations, &quot;readOnlyHint&quot;, true);
+220     yyjson_mut_obj_add_val(d, tool, &quot;annotations&quot;, annotations);
+221     yyjson_mut_arr_add_val(tools, tool);
+222   }
+223   return tools;
+224 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>MCP_FILE</b>, <b>mcp_tools_schema()</b>,
+            <b>MCP_URL</b>, <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_schema_for_option()</b>, and
+            <b>mcp_policy_t::restricted</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_tools_schema()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

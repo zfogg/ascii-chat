@@ -1,7 +1,7 @@
 #pragma once
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define MAX_BATCH_FRAMES 8
+#define MAX_BATCH_FRAMES 16
 
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/audio/limits.h>
@@ -15,10 +15,12 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/atomic.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/network/connection.h>
@@ -31,9 +33,12 @@ typedef struct {
   size_t size;
   uint16_t frame_sizes[MAX_BATCH_FRAMES];
   int frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
+  /**
+   * @brief For audio send packet, this is the live record that ties `size`, `frame_count`, `telemetry_context`
+   * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+   * storage before freeing the record.
+   */
 } audio_send_packet_t;
 
 /** Ring buffer queue for async audio packets */
@@ -42,7 +47,7 @@ typedef struct {
 /* Mutable state belongs to one attempt. Application devices and UI outlive it. */
 struct client_connection {
   network_connection_t *network;
-  acip_transport_t *transport;
+  atomic_ptr_t transport;
   // Application resources are borrowed explicitly by this connection.
   session_capture_ctx_t *capture_context;
   session_display_ctx_t *display_context;
@@ -100,3 +105,12 @@ struct client_connection {
   thread_pool_t *client_worker_pool;
   client_audio_pipeline_t *audio_pipeline;
 };
+
+// Zero means no outstanding ping; the clock itself may return zero at startup.
+static inline void client_connection_mark_ping_sent(client_connection_t *connection, uint64_t timestamp_ns) {
+  uint64_t empty = 0;
+  if (!timestamp_ns)
+    timestamp_ns = 1;
+  if (!atomic_cas_u64(&connection->telemetry_ping_ns, &empty, timestamp_ns))
+    atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);
+}

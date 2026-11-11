@@ -9,7 +9,9 @@ const run = (...args) =>
   execFileSync(
     "ffmpeg",
     ["-hide_banner", "-loglevel", "error", ...args, "-y"],
-    { stdio: "inherit" },
+    {
+      stdio: "inherit",
+    },
   );
 const path = (name) => join(directory, name);
 run(

@@ -364,7 +364,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
  * @brief PCRE2 regex validator for SDP fmtp parameter parsing
  *
  * Extracts video terminal capability parameters from SDP fmtp attributes.
- * Uses centralized PCRE2 singleton for atomic extraction with single regex match.
+ * Extracts parameters with one regex match.
  */
 
 static const char *SDP_FMTP_VIDEO_PATTERN = "width=([0-9]+)"                  // 1: width
@@ -374,21 +374,16 @@ static const char *SDP_FMTP_VIDEO_PATTERN = "width=([0-9]+)"                  //
                                             "(?:.*?compression=([a-z0-9]+))?" // 5: compression (optional)
                                             "(?:.*?csi_rep=([01]))?";         // 6: csi_rep (optional)
 
-static pcre2_singleton_t *g_sdp_fmtp_video_regex = NULL;
-
 /**
- * Get compiled SDP fmtp video regex (lazy initialization)
+ * Get compiled SDP fmtp video regex (owned by the caller)
  * Returns NULL if compilation failed
  */
 static pcre2_code *sdp_fmtp_video_regex_get(void) {
-  if (g_sdp_fmtp_video_regex == NULL) {
-    g_sdp_fmtp_video_regex = asciichat_pcre2_singleton_compile(SDP_FMTP_VIDEO_PATTERN, PCRE2_DOTALL);
-  }
-  return asciichat_pcre2_singleton_get_code(g_sdp_fmtp_video_regex);
+  return asciichat_pcre2_compile(SDP_FMTP_VIDEO_PATTERN, PCRE2_DOTALL);
 }
 
 /**
- * @brief Parse video fmtp parameters using PCRE2 regex singleton
+ * @brief Parse video fmtp parameters using a PCRE2 regex
  *
  * Extracts width, height, renderer, charset, compression, and csi_rep from fmtp string.
  * Falls back to manual parsing if PCRE2 unavailable.
@@ -402,7 +397,7 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
     return false;
   }
 
-  // Get compiled regex (lazy initialization)
+  // Get compiled regex (owned by the caller)
   pcre2_code *regex = sdp_fmtp_video_regex_get();
 
   // If PCRE2 not available, fall through to manual parsing
@@ -412,10 +407,11 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
 
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
+    pcre2_code_free(regex);
     return false;
   }
 
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)fmtp_params, strlen(fmtp_params), 0, 0, match_data, NULL);
+  int rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)fmtp_params, strlen(fmtp_params), 0, 0, match_data, NULL);
 
   bool success = false;
   if (rc >= 4) { // At least 4 groups (width, height, renderer must be present)
@@ -481,6 +477,7 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
   }
 
   pcre2_match_data_free(match_data);
+  pcre2_code_free(regex);
   return success;
 }
 

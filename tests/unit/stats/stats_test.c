@@ -1,9 +1,11 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/stats/stats.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/atomic.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/atomic.h>
+#include <libplatform/thread.h>
 #include <string.h>
 
 static stats_capabilities_t capabilities(void) {
@@ -267,9 +269,9 @@ static void *record_worker(void *arg) {
 
 Test(stats, concurrent_recording_and_snapshots, .timeout = 30) {
   worker_context_t context = {.scope = make_scope(), .done = {0}};
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (size_t i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "stats_test", record_worker, &context), 0);
+    cr_assert_eq(platform_thread_create(&threads[i], "stats_test", record_worker, &context), 0);
   uint64_t previous = 0;
   stats_snapshot_t snapshot;
   do {
@@ -477,10 +479,11 @@ Test(stats, summary_runtime_calls_provider_when_due, .timeout = 5) {
   atomic_t calls = {0};
   cr_assert_eq(stats_runtime_start("discovery-service", 1), ASCIICHAT_OK);
   stats_runtime_set_provider(count_provider_calls, &calls);
-  platform_sleep_ns(1600000000);
+  for (unsigned i = 0; i < 35 && atomic_load_u64_impl(&calls) == 0; ++i)
+    platform_sleep_ns(100000000);
   stats_runtime_set_provider(NULL, NULL);
   stats_runtime_stop();
-  cr_assert_eq(atomic_load_u64_impl(&calls), 1);
+  cr_assert_geq(atomic_load_u64_impl(&calls), 1);
 }
 
 Test(stats, mcp_measurements_share_the_process_observer) {

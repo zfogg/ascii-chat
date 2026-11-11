@@ -481,17 +481,15 @@ configure_file(
     endif()
 
     # HEAD contains a symbolic ref on a branch; commits update that ref, not HEAD.
+    # Track Git's ref storage rather than resolving only the current branch:
+    # refs may move between loose files and packed-refs during maintenance.
     if(EXISTS "${_GIT_DIR}/HEAD")
-        execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --symbolic-full-name HEAD
-            WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
-            OUTPUT_VARIABLE _git_ref OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(_git_ref MATCHES "^refs/")
-            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path "${_git_ref}"
-                WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
-                OUTPUT_VARIABLE _git_ref_path OUTPUT_STRIP_TRAILING_WHITESPACE)
-            if(EXISTS "${_git_ref_path}")
-                list(APPEND VERSION_DEPENDENCIES "${_git_ref_path}")
-            endif()
+        file(GLOB _git_loose_refs CONFIGURE_DEPENDS
+            "${_GIT_DIR}/refs/heads/*"
+            "${_GIT_DIR}/refs/tags/*")
+        list(APPEND VERSION_DEPENDENCIES ${_git_loose_refs})
+        if(EXISTS "${_GIT_DIR}/packed-refs")
+            list(APPEND VERSION_DEPENDENCIES "${_GIT_DIR}/packed-refs")
         endif()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_GIT_DIR}/HEAD")
     endif()

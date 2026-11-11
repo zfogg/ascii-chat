@@ -188,7 +188,7 @@ if (verify_key_in_buffer(server_identity_key, github_keys, keys_len)) {
 ### XSalsa20-Poly1305 Encryption
 
 - **Authenticated encryption:** Detects tampering
-- **Nonce-based:** Different nonce per packet (prevents replay)
+- **Nonce-based:** Different nonce per packet avoids reuse; replay detection requires additional receive state
 - **MAC verification:** Automatic, returns error on mismatch
 - **Speed:** ~20μs per KB on modern CPUs
 

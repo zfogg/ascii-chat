@@ -9,9 +9,7 @@
     {
       "name": "icu",
       "host": true,
-      "features": [
-        "tools"
-      ]
+      "features": ["tools"]
     },
     {
       "name": "vcpkg-cmake-get-vars",

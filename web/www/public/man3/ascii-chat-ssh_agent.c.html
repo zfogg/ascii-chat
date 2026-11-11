@@ -1,70 +1,139 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ssh_agent.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ssh_agent.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ssh_agent.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ssh_agent.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>ssh_agent_is_available</b> (void)
-  <br/>
-  Check if ssh-agent is running and available. <b>bool</b>
-    <b>ssh_agent_has_key</b> (const <b>public_key_t</b> *public_key)
-  <br/>
-  Check if a public key is already in ssh-agent. <b>asciichat_error_t</b>
-    <b>ssh_agent_add_key</b> (const <b>private_key_t</b> *private_key, const
-    char *key_path)
-  <br/>
-  Add a private key to ssh-agent. <b>asciichat_error_t</b> <b>ssh_agent_sign</b>
-    (const <b>public_key_t</b> *public_key, const <b>uint8_t</b> *message,
-    size_t message_len, <b>uint8_t</b> signature[64])
-  <br/>
-  Sign data using SSH agent with the specified public key.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ssh_agent.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ssh_agent.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ssh_agent.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ssh_agent.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE</b> 256
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>ssh_agent_is_available</b> (void)
+            <br />
+            Check if ssh-agent is running and available. <b>bool</b>
+            <b>ssh_agent_has_key</b> (const <b>public_key_t</b> *public_key)
+            <br />
+            Check if a public key is already in ssh-agent.
+            <b>asciichat_error_t</b> <b>ssh_agent_add_key</b> (const
+            <b>private_key_t</b> *private_key, const char *key_path)
+            <br />
+            Add a private key to ssh-agent. <b>asciichat_error_t</b>
+            <b>ssh_agent_sign</b> (const <b>public_key_t</b> *public_key, const
+            <b>uint8_t</b> *message, size_t message_len,
+            <b>uint8_t</b> signature[64])
+            <br />
+            Sign data using SSH agent with the specified public key.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE___256"
+              >#define CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>ssh_agent.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

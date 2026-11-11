@@ -189,6 +189,10 @@ typedef struct ffmpeg_encoder_s ffmpeg_encoder_t;
 asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
                                         ffmpeg_encoder_t **out);
 
+/** Create an encoder that scales RGBA input to the requested video dimensions. */
+asciichat_error_t ffmpeg_encoder_create_scaled(const char *output_path, int source_width, int source_height,
+                                               int width_px, int height_px, int fps, ffmpeg_encoder_t **out);
+
 /**
  * Write a single video frame to the output file.
  *

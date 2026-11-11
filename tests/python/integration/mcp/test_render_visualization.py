@@ -1,0 +1,168 @@
+import pytest
+"""Exercise MCP audio visualizations against real mirror output.
+
+Run only after the implementation publishes build/mcp-ready.json::
+
+    uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/mcp/test_render_visualization.py --ascii-chat-binary build/bin/ascii-chat.exe
+
+No hardware or public network is needed. Artifacts retain protocol transcripts,
+CLI commands, decoded frames and generated exports for visual inspection.
+"""
+
+from pathlib import Path
+
+from ascii_chat_tests.media import write_pcm_wav
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
+from ascii_chat_tests.cli import cli_command
+
+import base64
+import functools
+import http.server
+import json
+import math
+import re
+import struct
+import subprocess
+import threading
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.mcp]
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)")
+ROOT = Path(__file__).resolve().parents[4]
+
+
+class Client:
+    def __init__(self, binary, artifacts, extra=()):
+        self.transcript = []
+        self.rpc = JsonRpcProcess([str(binary), "mcp-server", *extra], artifacts / "server.stderr.txt", cwd=ROOT, count_notifications=False)
+
+    def send(self, method, params, notification=False):
+        def record(direction, message):
+            self.transcript.append({"direction": direction, "message": message})
+        return self.rpc.request(method, params, notification=notification, timeout=60, on_message=record)
+
+    def call(self, arguments):
+        return self.send("tools/call", {"name": "render_visualization", "arguments": arguments})
+
+    def close(self, artifacts):
+        self.rpc.close()
+        (artifacts / "protocol.json").write_text(json.dumps(self.transcript, indent=2), encoding="utf-8")
+
+
+def text_result(response):
+    assert "error" not in response, response
+    result = response["result"]
+    assert not result.get("isError", False), response
+    parts = [item["text"] for item in result.get("content", []) if item.get("type") == "text"]
+    assert parts, f"Missing text content: {response}"
+    return "\n".join(parts)
+
+
+def frame(text):
+    text = ANSI.sub("", text).replace("\r", "")
+    return [line for line in text.splitlines() if line.strip()]
+
+
+def validate_visual(text, kind):
+    rows = frame(text)
+    assert rows, "Empty visualization"
+    allowed = set(" #+" if kind == "waveform" else " .:-=+*#%@")
+    visual = [row for row in rows if set(row) <= allowed]
+    assert visual, f"No {kind} rows: {text[:1000]!r}"
+    assert all(len(row) <= 64 for row in visual), "Width exceeds requested 64 columns"
+    ink = sum(len(row.strip()) for row in visual)
+    assert ink > 20, f"Silent/empty {kind}: {text!r}"
+    if kind == "waveform":
+        assert "#" in "".join(visual), f"Waveform contains only a silent baseline: {text!r}"
+    else:
+        assert any(glyph in "".join(visual) for glyph in ":=+*#%@"), f"FFT has no signal: {text!r}"
+    return {"rows": len(visual), "max_width": max(map(len, visual)), "ink": ink,
+            "alphabet": "".join(sorted(set("".join(visual))))}
+
+
+def test_render_visualization(binary, tmp_path):
+    artifacts = tmp_path
+    tone = artifacts / "tone.wav"
+    write_pcm_wav(tone, b"".join(struct.pack("<h", int(18000 * math.sin(2 * math.pi * 440 * i / 48000)))
+                                 for i in range(48000 * 3)), sample_rate=48000)
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(QuietHandler, directory=str(artifacts)))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    client = Client(binary, artifacts)
+    checks = []
+    options = {"width": 64, "height": 20, "color-mode": "none", "snapshot-delay": 0.2}
+    try:
+        initialized = client.send("initialize", {"protocolVersion": "2024-11-05", "capabilities": {},
+                                                 "clientInfo": {"name": "visualization-integration", "version": "1"}})
+        assert "result" in initialized, initialized
+        client.send("notifications/initialized", {}, notification=True)
+        listed = client.send("tools/list", {})
+        tools = {tool["name"]: tool for tool in listed["result"]["tools"]}
+        assert set(tools) == {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"}, listed
+        checks.append({"case": "initialize-and-tools-list", "passed": True})
+        sources = {
+            "test": ({"type": "test"}, ["--test-audio"]),
+            "file": ({"type": "file", "path": str(tone)}, ["--file", str(tone)]),
+            "inline": ({"type": "file", "data_base64": base64.b64encode(tone.read_bytes()).decode(),
+                        "mime_type": "audio/wav"}, ["--file", str(tone)]),
+            "url": ({"type": "url", "url": f"http://127.0.0.1:{server.server_port}/tone.wav"},
+                    ["--url", f"http://127.0.0.1:{server.server_port}/tone.wav"]),
+        }
+        for kind in ("waveform", "fft"):
+            for source, (audio, cli_source) in sources.items():
+                case = f"{kind}-{source}"
+                try:
+                    case_options = dict(options)
+                    if case == "fft-test":
+                        # The synthetic audio worker needs a populated FFT window on slower hosts.
+                        case_options["snapshot-delay"] = 1.0
+                    response = client.call({"visualization": kind, "audio": audio, "options": case_options})
+                    rendered = text_result(response)
+                    (artifacts / f"{case}-mcp.txt").write_text(rendered, encoding="utf-8")
+                    mcp_stats = validate_visual(rendered, kind)
+                    command = cli_command(str(binary), "mirror", f"--{kind}", *cli_source,
+                               "--no-audio-playback", "--snapshot", "--snapshot-delay", str(case_options["snapshot-delay"]),
+                               "--width", "64", "--height", "20", "--color-mode", "none", "--strip-ansi=true", "--splash-screen=false")
+                    (artifacts / f"{case}-command.json").write_text(json.dumps(command), encoding="utf-8")
+                    cli = subprocess.run(command, capture_output=True, timeout=45, cwd=ROOT)
+                    (artifacts / f"{case}-cli.txt").write_bytes(cli.stdout)
+                    (artifacts / f"{case}-cli.stderr.txt").write_bytes(cli.stderr)
+                    assert cli.returncode == 0, f"CLI exited {cli.returncode}: {cli.stderr[-1000:]!r}"
+                    cli_stats = validate_visual(cli.stdout.decode("utf-8", "replace"), kind)
+                    # Live sample timing varies; compare geometry and valid glyphs, not exact samples.
+                    assert mcp_stats["max_width"] == cli_stats["max_width"], (mcp_stats, cli_stats)
+                    checks.append({"case": case, "passed": True, "mcp": mcp_stats, "cli": cli_stats})
+                except Exception as error:
+                    checks.append({"case": case, "passed": False, "error": repr(error)})
+                print(json.dumps(checks[-1]), flush=True)
+        for extension in ("png", "mp4"):
+            case = "output-" + extension
+            try:
+                output = artifacts / ("waveform." + extension)
+                arguments = {"visualization": "waveform", "audio": {"type": "test"},
+                             "options": options, "output_path": str(output)}
+                text_result(client.call(arguments))
+                data = output.read_bytes()
+                assert len(data) > 100, "Missing or empty saved media"
+                assert data.startswith(b"\x89PNG\r\n\x1a\n") if extension == "png" else b"ftyp" in data[:64], "Invalid media header"
+                rejected = client.call(arguments)
+                assert "error" in rejected or rejected.get("result", {}).get("isError"), rejected
+                assert output.read_bytes() == data, "Existing media overwritten"
+                checks.append({"case": case, "passed": True, "bytes": len(data)})
+            except Exception as error:
+                checks.append({"case": case, "passed": False, "error": repr(error)})
+            print(json.dumps(checks[-1]), flush=True)
+        for arguments in ({"visualization": "invalid", "audio": {"type": "test"}},
+                          {"visualization": "fft", "audio": {"type": "file", "data_base64": "!", "mime_type": "audio/wav"}}):
+            response = client.call(arguments)
+            assert "error" in response or response.get("result", {}).get("isError"), response
+        checks.append({"case": "invalid-inputs", "passed": True})
+    finally:
+        client.close(artifacts)
+        server.shutdown()
+        server.server_close()
+        (artifacts / "summary.json").write_text(json.dumps(checks, indent=2), encoding="utf-8")
+        print(f"Artifacts: {artifacts}", flush=True)
+    assert all(check["passed"] for check in checks), checks

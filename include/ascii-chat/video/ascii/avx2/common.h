@@ -12,10 +12,10 @@
 #if SIMD_SUPPORT_AVX2
 
 // Thread-local storage for AVX2 working buffers
-extern THREAD_LOCAL ALIGNED_32 uint8_t avx2_r_buffer[32];
-extern THREAD_LOCAL ALIGNED_32 uint8_t avx2_g_buffer[32];
-extern THREAD_LOCAL ALIGNED_32 uint8_t avx2_b_buffer[32];
-extern THREAD_LOCAL ALIGNED_32 uint8_t avx2_luminance_buffer[32];
+extern THREAD_LOCAL _Alignas(32) uint8_t avx2_r_buffer[32];
+extern THREAD_LOCAL _Alignas(32) uint8_t avx2_g_buffer[32];
+extern THREAD_LOCAL _Alignas(32) uint8_t avx2_b_buffer[32];
+extern THREAD_LOCAL _Alignas(32) uint8_t avx2_luminance_buffer[32];
 
 // Helper functions
 void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out,

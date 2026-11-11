@@ -67,9 +67,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /**
+ * @brief For color filter def, this is the live record that ties `name`, `cli_name`, `r`, `g` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Color filter metadata structure
  *
  * Contains all information about a color filter including its name,

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "client.h"
+#include <ascii-chat/common/limits.h>
 
 // Per-client render thread functions
 void *client_video_render_thread(void *arg);
@@ -16,11 +17,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
 asciichat_error_t stop_client_render_threads(client_info_t *client);
 
 // Render timing control - match platform-specific client FPS for optimal performance
-#ifdef _WIN32
-#define VIDEO_RENDER_FPS 60 // Windows with timeBeginPeriod(1) can handle 60 FPS
-#else
-#define VIDEO_RENDER_FPS 60 // Linux/macOS can handle higher rates
-#endif
+#define VIDEO_RENDER_FPS DEFAULT_MAX_FPS
 // Audio mixing runs at 100 Hz, while each outgoing 960-sample Opus frame at
 // 48 kHz is queued every 20 ms.
 #define AUDIO_PACKET_FPS 50

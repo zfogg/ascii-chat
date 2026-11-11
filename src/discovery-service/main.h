@@ -96,9 +96,14 @@ typedef struct {
   turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS];          ///< TURN server configurations
   char turn_secret[DISCOVERY_SERVICE_MAIN_TURN_SECRET_BUFFER_SIZE]; ///< Shared secret for TURN credential generation
                                                                     ///< (HMAC-SHA1)
+  /**
+   */
 } acds_config_t;
 
 /**
+ * @brief This is the handoff point for acds config. Callers fill `port`, `log_level`, `require_server_identity`,
+ * `require_client_identity` before passing it on; consumers read the values during the operation and return ownership
+ * only where the member contract explicitly says they do.
  * @brief ACDS (discovery-service mode) entry point
  *
  * Expects options already parsed and shared initialization complete.

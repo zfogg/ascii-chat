@@ -96,4 +96,39 @@ describe("socket establishment ownership", () => {
     expect(Socket.instances).toHaveLength(1);
     expect(bridge.isConnected()).toBe(false);
   });
+  it("clears partial packet state on reconnect and closes on invalid framing", async () => {
+    const packets: Uint8Array[] = [];
+    const errors: Error[] = [];
+    bridge.onPacket((packet) => packets.push(packet));
+    bridge.onError((error) => errors.push(error));
+    const connecting = bridge.connect();
+    const first = Socket.instances[0]!;
+    first.open();
+    await connecting;
+    const packet = new Uint8Array(23);
+    const header = new DataView(packet.buffer);
+    header.setBigUint64(0, 0xa5c11c4a1n);
+    header.setUint32(10, 1);
+    header.setUint32(14, 0xb048173d);
+    packet[22] = 17;
+    first.dispatchEvent(
+      new MessageEvent("message", { data: packet.slice(0, 10).buffer }),
+    );
+    first.closed();
+    await vi.advanceTimersByTimeAsync(1000);
+    const second = Socket.instances[1]!;
+    second.open();
+    second.dispatchEvent(
+      new MessageEvent("message", { data: packet.slice(0, 12).buffer }),
+    );
+    second.dispatchEvent(
+      new MessageEvent("message", { data: packet.slice(12).buffer }),
+    );
+    expect(packets).toEqual([packet]);
+    const invalid = packet.slice();
+    new DataView(invalid.buffer).setUint32(10, 0xffffffff);
+    second.dispatchEvent(new MessageEvent("message", { data: invalid.buffer }));
+    expect(errors.at(-1)?.message).toContain("header");
+    expect(second.close).toHaveBeenCalledWith(1002, "Invalid ACIP packet");
+  });
 });

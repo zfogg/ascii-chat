@@ -109,10 +109,12 @@ typedef enum {
 /** @} */
 
 /**
- * @brief Palette definition structure
+ * @brief Validated luminance palette used to turn brightness into characters
  *
- * Contains all information about a palette, including its character
- * sequence, UTF-8 requirements, and validation status.
+ * The character sequence is stored in display order from dark to light.
+ * `chars` gives the decoded UTF-8 bytes and terminal width for each character;
+ * the original string and its byte length are retained so callers can report,
+ * reuse, or free the exact input.
  *
  * @note Character sequence must be ordered from darkest to lightest
  *       for proper luminance mapping.
@@ -133,6 +135,7 @@ typedef struct {
 } palette_def_t;
 
 /**
+ * @brief Validated luminance palette used to turn brightness into characters
  * @brief UTF-8 capability detection structure
  *
  * Stores information about terminal UTF-8 support, including detection
@@ -152,6 +155,7 @@ typedef struct {
 } utf8_capabilities_t;
 
 /**
+ * @brief The useful part of utf8 capabilities is in `utf8_support`, `forced_utf8`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @name Built-in Palette Character Strings
  * @{
  * @ingroup palette
@@ -226,10 +230,13 @@ typedef struct {
 } utf8_char_info_t;
 
 /**
- * @brief UTF-8 palette structure
+ * @brief When code needs to work with utf8 char info, it keeps `byte_len`, `display_width` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely.
  *
- * Properly handles multi-byte UTF-8 characters in palettes. Stores
- * per-character information for efficient lookup and rendering.
+ * The palette keeps character boundaries separate from byte offsets, so a
+ * renderer can choose by character index without splitting a multibyte code
+ * point. Its cached UTF-8 entries also carry byte length and terminal cell
+ * width for output sizing.
  *
  * @note char_count is the number of characters (not bytes), which is
  *       important for proper palette indexing.
@@ -251,6 +258,7 @@ typedef struct {
 } utf8_palette_t;
 
 /**
+ * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely
  * @name Default Palette Constants
  * @{
  * @ingroup palette

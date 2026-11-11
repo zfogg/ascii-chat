@@ -9,20 +9,21 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
 from pathlib import Path
-import socket
 import subprocess
 import sys
 import tempfile
 
 
+from ascii_chat_tests.process import free_port
+
+
 def unused_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return str(sock.getsockname()[1])
+    return str(free_port())
 
 
 def main():
@@ -34,14 +35,14 @@ def main():
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     if args.child:
-        argv = [binary, "--no-check-update", "--log-level", "warn", "--log-file",
+        argv = cli_command(binary, "--log-level", "warn", "--log-file",
                 str(args.output / "status.log"), "server", "--status-screen", "--port",
-                unused_port(), "--websocket-port", unused_port()]
+                unused_port(), "--websocket-port", unused_port())
         # Only redirect the child's stdout. Its stdin and stderr inherit the PTY.
         with open(args.output / "stdout.log", "wb") as output:
             raise SystemExit(subprocess.call(argv, stdout=output if args.redirect else None))
 
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
 
     for redirected in [False, True]:
         with tempfile.TemporaryDirectory(prefix="ascii-status-input-") as directory:

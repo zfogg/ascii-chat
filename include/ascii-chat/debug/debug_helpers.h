@@ -2,7 +2,7 @@
 /** @file debug_helpers.h
  * @brief Shared deadline and scheduling helpers for diagnostic reports.
  */
-#include <ascii-chat/platform/cond.h>
+#include <libplatform/debug/helpers.h>
 #include <stdint.h>
 #ifdef __cplusplus
 extern "C" {

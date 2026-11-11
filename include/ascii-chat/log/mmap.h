@@ -33,10 +33,10 @@
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
 #else
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #endif
 #include "../common.h"
-#include "../platform/mmap.h"
+#include "../os/mmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,7 +46,12 @@ extern "C" {
 #define LOG_MMAP_DEFAULT_SIZE (4 * 1024 * 1024)
 
 /**
- * @brief Configuration for mmap logging
+ * @brief Path and size limits for the memory-mapped log file
+ * @brief Path and size limits for the memory-mapped log file
+ *
+ * `log_path` is borrowed for initialization; `max_size` bounds the mapping and
+ * falls back to the default when zero. The logging subsystem uses these values
+ * while it creates the mapping.
  */
 typedef struct log_mmap_config {
   const char *log_path; /**< Path to log file (required) */

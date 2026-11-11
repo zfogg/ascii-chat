@@ -21,14 +21,21 @@ typedef struct {
   uint32_t fps;
   double speed;
   animation_hidden_policy_t hidden_policy;
+/**
+ */
 } animation_config_t;
 
+/**
+ * @brief For animation config, this is the live record that ties `type`, `fps`, `speed`, `hidden_policy` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 typedef struct {
   animation_type_t type;
   double seconds;
   uint64_t frame;
   bool changed;
   uint64_t next_frame_ns; // In the supplied timestamp domain; UINT64_MAX if suspended.
+/**
+ */
 } animation_sample_t;
 
 typedef struct {
@@ -37,6 +44,9 @@ typedef struct {
   uint64_t last_ns;
   uint64_t last_frame;
   bool started, paused, visible;
+/**
+ * @brief animation sample keeps the values that move through the subsystem: `type`, `seconds`, `frame`, `changed`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 } animation_t;
 
 asciichat_error_t animation_init(animation_t *animation, const char *name, animation_config_t config);
@@ -73,5 +83,9 @@ typedef struct {
       bool cadence;
     } test_pattern;
   };
+/**
+ * @brief This is the handoff point for animation. Callers fill `config`, `seconds`, `last_ns`, `last_frame` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief The useful part of animation target is in `[union].__unnamed0__`, `type`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 } animation_target_t;
 asciichat_error_t animation_apply(const animation_sample_t *sample, animation_target_t *target);

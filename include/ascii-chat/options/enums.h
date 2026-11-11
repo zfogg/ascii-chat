@@ -23,6 +23,8 @@ extern "C" {
 
 /**
  * @brief Enum value mapping with description for shell completions
+ * @brief Enum value mapping for an option
+ * @brief Enum value mapping with description for shell completions
  */
 typedef struct {
   int enum_value;     ///< The numeric enum value

@@ -5,19 +5,18 @@
  */
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define UTIL_PATH_TEMP_COMPONENT_BUFFER_SIZE 256
 #define UTIL_PATH_BUFFER_BUFFER_SIZE 256
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define PATH_COMPONENT_BUFFER_SIZE 256
 
+#include <defer.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/error_codes.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/util/pcre2.h>
+#include <libplatform/system.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/paths.h>
 #include <ascii-chat/source_root.h>
 #include <string.h>
@@ -26,73 +25,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <ascii-chat/platform/stat.h>
-#include <pcre2.h>
+#include <sys/stat.h>
 
-/**
- * @brief PCRE2 regex validators for path component splitting
- *
- * Uses centralized PCRE2 singleton for thread-safe compilation
- * with JIT compilation for 5-10x performance improvement.
- */
-
-static const char *PATH_SEPARATOR_PATTERN = "[/\\\\]+";
-static const char *PATH_DOT_COMPONENT_PATTERN = "^\\.\\.*$";
-
-static pcre2_singleton_t *g_path_separator_regex = NULL;
-static pcre2_singleton_t *g_path_dot_component_regex = NULL;
-
-/**
- * Get compiled path separator regex (lazy initialization)
- * Returns NULL if compilation failed
- */
-static pcre2_code *path_separator_regex_get(void) {
-  if (g_path_separator_regex == NULL) {
-    g_path_separator_regex = asciichat_pcre2_singleton_compile(PATH_SEPARATOR_PATTERN, 0);
-  }
-  return asciichat_pcre2_singleton_get_code(g_path_separator_regex);
-}
-
-/**
- * Get compiled path dot component regex (lazy initialization)
- * Returns NULL if compilation failed
- */
-static pcre2_code *path_dot_component_regex_get(void) {
-  if (g_path_dot_component_regex == NULL) {
-    g_path_dot_component_regex = asciichat_pcre2_singleton_compile(PATH_DOT_COMPONENT_PATTERN, 0);
-  }
-  return asciichat_pcre2_singleton_get_code(g_path_dot_component_regex);
-}
-
-/**
- * Allocate match data for a regex on the stack (no persistent allocation)
- * Match data is small and safe to allocate locally - no caching needed
- */
-static inline pcre2_match_data *path_match_data_create(pcre2_code *regex) {
-  if (!regex)
-    return NULL;
-  return pcre2_match_data_create_from_pattern(regex, NULL);
-}
-
-/**
- * Free match data allocated by path_match_data_create
- */
-static inline void path_match_data_free(pcre2_match_data *match_data) {
-  if (match_data) {
-    pcre2_match_data_free(match_data);
-  }
-}
-
-/**
- * Cleanup thread-local PCRE2 resources (now a no-op, kept for compatibility)
- *
- * Previously this freed cached thread-local match data, but we now allocate
- * fresh match data for each operation and free it immediately, so there's
- * nothing to clean up. This function is kept for API compatibility.
- */
-void path_cleanup_thread_locals(void) {
-  /* No-op: match data is now allocated and freed immediately per operation */
-}
+/* Generic path primitives are provided by libplatform. */
+#if 0
+/** Retained for callers that used to release thread-local path resources. */
+void path_cleanup_thread_locals(void) {}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -131,166 +69,42 @@ static const char *normalize_path(const char *path) {
 #endif
   }
 
-  /* Use PCRE2 to split by separators and detect dot components.
-     Allocate fresh match data for this operation and free immediately when done. */
-  pcre2_code *separator_regex = path_separator_regex_get();
-  pcre2_code *dot_regex = path_dot_component_regex_get();
-
-  if (separator_regex && dot_regex) {
-    pcre2_match_data *sep_match = path_match_data_create(separator_regex);
-    pcre2_match_data *dot_match = path_match_data_create(dot_regex);
-
-    if (sep_match && dot_match) {
-      size_t offset = 0;
-      size_t remaining_len = strlen(pos);
-      size_t last_component_end = 0;
-
-      while (offset <= remaining_len) {
-        /* Find next separator */
-        int rc = asciichat_pcre2_match(separator_regex, (PCRE2_SPTR8)pos, remaining_len, offset, 0, sep_match, NULL);
-        PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(sep_match);
-        PCRE2_SIZE sep_start, sep_end;
-
-        if (rc >= 0) {
-          sep_start = ovector[0];
-          sep_end = ovector[1];
-        } else {
-          /* No more separators - handle last component if any */
-          sep_start = remaining_len;
-          sep_end = remaining_len;
-        }
-
-        /* Extract component between last_component_end and sep_start */
-        size_t component_len = sep_start - last_component_end;
-        if (component_len > 0) {
-          if (component_len >= sizeof(components[0])) {
-            component_len = sizeof(components[0]) - 1;
-          }
-
-          char temp_component[UTIL_PATH_TEMP_COMPONENT_BUFFER_SIZE];
-          memcpy(temp_component, pos + last_component_end, component_len);
-          temp_component[component_len] = '\0';
-
-          /* Check if component matches dot pattern (^\.\.*$) */
-          int is_dot =
-              asciichat_pcre2_match(dot_regex, (PCRE2_SPTR8)temp_component, component_len, 0, 0, dot_match, NULL);
-
-          if (is_dot >= 0) {
-            /* It's ".", "..", or "..." */
-            if (component_len == 1) {
-              /* Skip "." */
-            } else if (component_len == 2) {
-              /* Handle ".." */
-              if (component_count > 0) {
-                component_count--;
-              } else if (!absolute) {
-                memcpy(components[component_count], temp_component, component_len);
-                components[component_count][component_len] = '\0';
-                component_count++;
-              }
-            } else {
-              /* "..." or more - treat as normal component */
-              memcpy(components[component_count], temp_component, component_len);
-              components[component_count][component_len] = '\0';
-              component_count++;
-            }
-          } else {
-            /* Normal component */
-            memcpy(components[component_count], temp_component, component_len);
-            components[component_count][component_len] = '\0';
-            component_count++;
-          }
-        }
-
-        if (rc < 0) {
-          break; /* No more separators */
-        }
-
-        offset = sep_end;
-        last_component_end = sep_end;
+  /* Split on either path separator and resolve dot components. */
+  const char *parse_pos = pos;
+  while (*parse_pos) {
+    while (*parse_pos == '/' || *parse_pos == '\\') {
+      parse_pos++;
+    }
+    if (!*parse_pos)
+      break;
+    const char *component_start = parse_pos;
+    while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
+      parse_pos++;
+    }
+    size_t component_len = (size_t)(parse_pos - component_start);
+    if (component_len == 0)
+      continue;
+    if (component_len >= sizeof(components[0])) {
+      component_len = sizeof(components[0]) - 1;
+    }
+    if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
+      continue;
+    }
+    if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
+      if (component_count > 0) {
+        component_count--;
+        continue;
       }
-
-      /* Free match data immediately - it was allocated for this operation only */
-      path_match_data_free(sep_match);
-      path_match_data_free(dot_match);
-    } else {
-      /* Fallback to manual parsing if match data allocation failed */
-      const char *parse_pos = pos;
-      while (*parse_pos) {
-        while (*parse_pos == '/' || *parse_pos == '\\') {
-          parse_pos++;
-        }
-        if (!*parse_pos)
-          break;
-        const char *component_start = parse_pos;
-        while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
-          parse_pos++;
-        }
-        size_t component_len = (size_t)(parse_pos - component_start);
-        if (component_len == 0)
-          continue;
-        if (component_len >= sizeof(components[0])) {
-          component_len = sizeof(components[0]) - 1;
-        }
-        if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
-          continue;
-        }
-        if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT &&
-            component_start[1] == PATH_COMPONENT_DOT) {
-          if (component_count > 0) {
-            component_count--;
-            continue;
-          }
-          if (!absolute) {
-            memcpy(components[component_count], component_start, component_len);
-            components[component_count][component_len] = '\0';
-            component_count++;
-          }
-          continue;
-        }
+      if (!absolute) {
         memcpy(components[component_count], component_start, component_len);
         components[component_count][component_len] = '\0';
         component_count++;
       }
+      continue;
     }
-  } else {
-    /* Fallback to manual parsing if regex compilation failed */
-    const char *parse_pos = pos;
-    while (*parse_pos) {
-      while (*parse_pos == '/' || *parse_pos == '\\') {
-        parse_pos++;
-      }
-      if (!*parse_pos)
-        break;
-      const char *component_start = parse_pos;
-      while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
-        parse_pos++;
-      }
-      size_t component_len = (size_t)(parse_pos - component_start);
-      if (component_len == 0)
-        continue;
-      if (component_len >= sizeof(components[0])) {
-        component_len = sizeof(components[0]) - 1;
-      }
-      if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
-        continue;
-      }
-      if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
-        if (component_count > 0) {
-          component_count--;
-          continue;
-        }
-        if (!absolute) {
-          memcpy(components[component_count], component_start, component_len);
-          components[component_count][component_len] = '\0';
-          component_count++;
-        }
-        continue;
-      }
-      memcpy(components[component_count], component_start, component_len);
-      components[component_count][component_len] = '\0';
-      component_count++;
-    }
+    memcpy(components[component_count], component_start, component_len);
+    components[component_count][component_len] = '\0';
+    component_count++;
   }
 
   /* Build normalized path */
@@ -406,6 +220,7 @@ const char *path_last_components(const char *path, size_t component_count) {
 
   return path;
 }
+#endif
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
@@ -524,7 +339,7 @@ char *get_log_dir(void) {
 
 char *get_discovery_database_dir(void) {
   platform_directory_list_t data_dirs = {0};
-  if (platform_get_data_dir_candidates(&data_dirs) == ASCIICHAT_OK) {
+  if (platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &data_dirs) == ASCIICHAT_OK) {
     for (size_t i = 0; i < data_dirs.count; i++) {
       platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
       if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
@@ -553,6 +368,7 @@ char *get_discovery_database_dir(void) {
   return NULL;
 }
 
+#if 0
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
@@ -645,7 +461,9 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 
   return false;
 }
+#endif
 
+#if 0 /* libplatform provides this generic predicate. */
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
     return false;
@@ -667,6 +485,7 @@ bool path_looks_like_path(const char *value) {
 
   return false;
 }
+#endif
 
 static asciichat_error_t map_role_to_error(path_role_t role) {
   switch (role) {
@@ -940,19 +759,19 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Failed to expand path: %s", input);
   }
 
+  defer(SAFE_FREE(expanded));
+
   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
   const char *candidate_path = expanded;
 
   if (!path_is_absolute(candidate_path)) {
     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-      SAFE_FREE(expanded);
       return SET_ERRNO(map_role_to_error(role), "Failed to determine current working directory");
     }
 
     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
     if (total_len >= sizeof(candidate_buf)) {
-      SAFE_FREE(expanded);
       return SET_ERRNO(map_role_to_error(role), "Resolved path is too long: %s/%s", cwd_buf, candidate_path);
     }
     if (strlen(candidate_path) > 0 && candidate_path[0] == PATH_DELIM) {
@@ -965,12 +784,10 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(map_role_to_error(role), "Failed to normalize path: %s", candidate_path);
   }
 
   if (!path_is_absolute(normalized_buf)) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(map_role_to_error(role), "Normalized path is not absolute: %s", normalized_buf);
   }
 
@@ -984,12 +801,20 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(cwd_base, bases, &base_count);
   }
 
+#ifndef NDEBUG
+  // Debug builds select the source checkout as their default log directory,
+  // even when the process was launched from another working directory.
+  if (role == PATH_ROLE_LOG_FILE)
+    append_base_if_valid(ASCIICHAT_SOURCE_ROOT, bases, &base_count);
+#endif
+
   char temp_base[PLATFORM_MAX_PATH_LENGTH];
   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
     append_base_if_valid(temp_base, bases, &base_count);
   }
 
   char *config_dir = get_config_dir();
+  defer(SAFE_FREE(config_dir));
   if (config_dir) {
     append_base_if_valid(config_dir, bases, &base_count);
   }
@@ -1047,10 +872,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   // Security check: Reject paths that point to sensitive system files
   // This applies to all path roles, not just logs
   if (is_sensitive_system_path(normalized_buf)) {
-    SAFE_FREE(expanded);
-    if (config_dir) {
-      SAFE_FREE(config_dir);
-    }
     return SET_ERRNO(map_role_to_error(role), "Cannot write to protected system path: %s", normalized_buf);
   }
 
@@ -1062,10 +883,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
     if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf) && !is_file_empty(normalized_buf)) {
-      SAFE_FREE(expanded);
-      if (config_dir) {
-        SAFE_FREE(config_dir);
-      }
       return SET_ERRNO(ERROR_LOGGING_INIT,
                        "Cannot overwrite existing non-ascii-chat file: %s\n"
                        "For safety, ascii-chat will only overwrite its own log files or empty files",
@@ -1076,10 +893,6 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     if (!is_regular_file) {
       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
       if (!allowed) {
-        SAFE_FREE(expanded);
-        if (config_dir) {
-          SAFE_FREE(config_dir);
-        }
         return SET_ERRNO(ERROR_LOGGING_INIT,
                          "Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or "
                          "relative/absolute paths in safe locations)",
@@ -1090,28 +903,16 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     // For non-log-file paths, apply standard whitelist validation
     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
     if (!allowed) {
-      SAFE_FREE(expanded);
-      if (config_dir) {
-        SAFE_FREE(config_dir);
-      }
       return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
     }
   }
 
   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
   if (!result) {
-    SAFE_FREE(expanded);
-    if (config_dir) {
-      SAFE_FREE(config_dir);
-    }
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized path");
   }
   safe_snprintf(result, strlen(normalized_buf) + 1, "%s", normalized_buf);
   *normalized_out = result;
 
-  SAFE_FREE(expanded);
-  if (config_dir) {
-    SAFE_FREE(config_dir);
-  }
   return ASCIICHAT_OK;
 }

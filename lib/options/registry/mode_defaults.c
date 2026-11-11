@@ -13,7 +13,7 @@
 #include <ascii-chat/options/registry/mode_defaults.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -32,6 +32,7 @@ static const mode_descriptor_t g_mode_descriptors[] = {
     {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
     {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
     {MODE_MCP_SERVER, "mcp-server", "MCP media rendering tools", "server-like"},
+    {MODE_API_SERVER, "api-server", "HTTP image-to-ASCII API", "server-like"},
     {MODE_INVALID, NULL, NULL, NULL}};
 
 /**
@@ -131,6 +132,10 @@ const void *get_default_port(asciichat_mode_t mode) {
     static const int port = OPT_MCP_PORT_DEFAULT;
     return &port;
   }
+  case MODE_API_SERVER: {
+    static const int port = OPT_MCP_PORT_DEFAULT;
+    return &port;
+  }
   case MODE_SERVER:
     return &g_port_server;
   case MODE_CLIENT:
@@ -193,7 +198,7 @@ void apply_mode_specific_defaults(options_t *opts) {
 
   // Apply port default based on mode
   const int *mode_port = (const int *)get_default_port(opts->detected_mode);
-  if (mode_port) {
+  if (mode_port && opts->detected_mode != MODE_MCP_SERVER && opts->detected_mode != MODE_API_SERVER) {
     // Only update if still at a generic default (27224 or 27225)
     if (opts->port == OPT_PORT_INT_DEFAULT || opts->port == OPT_ACDS_PORT_INT_DEFAULT) {
       opts->port = *mode_port;
@@ -212,7 +217,7 @@ void apply_mode_specific_defaults(options_t *opts) {
 
   // If TLS cert+key are provided and websocket-port was not explicitly set,
   // default to 443 (standard HTTPS/WSS port) instead of the mode default.
-  if (opts->websocket_tls_cert[0] != '\0' && opts->websocket_tls_key[0] != '\0') {
+  if (opts->tls_cert[0] != '\0' && opts->tls_key[0] != '\0') {
     if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
         opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
       opts->websocket_port = 443;

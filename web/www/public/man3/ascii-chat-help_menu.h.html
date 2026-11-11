@@ -1,0 +1,320 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>help_menu.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">help_menu.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">help_menu.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">help_menu.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_help_entry_t</b>
+            <br />
+            struct <b>ui_help_menu_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>terminal_size_t</b> <b>ui_help_menu_measure</b> (const
+            <b>ui_help_menu_t</b> *menu)
+            <br />
+            <b>bool</b> <b>ui_help_menu_render</b> (<b>frame_buffer_t</b>
+            *output, <b>terminal_size_t</b> size, const
+            <b>ui_help_menu_t</b> *menu)
+            <br />
+            void <b>ui_help_keys</b> (char *output, size_t capacity, const char
+            *keys)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)"
+          >
+            <a
+              class="permalink"
+              href="#void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)"
+              >void ui_help_keys (char * output, size_t capacity, const char *
+              keys)</a
+            >
+          </h2>
+          <p class="Pp">
+            Key tokens are yellow; spaces, slashes, parentheses and pipes stay
+            uncolored.
+          </p>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+25                                                            {
+26   if (!out || !cap) {
+27     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help keys require output storage&quot;);
+28     return;
+29   }
+30   size_t used = 0;
+31   out[0] = '\0';
+32   if (!keys)
+33     return;
+34   for (const char *p = keys; *p;) {
+35     if (used + 1 &gt;= cap) {
+36       SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Help key output buffer is too small&quot;);
+37       return;
+38     }
+39     if (*p == ' ' || *p == '/' || *p == '|' || *p == '(' || *p == ')') {
+40       out[used++] = *p++;
+41       out[used] = '\0';
+42     } else {
+43       const char *start = p;
+44       while (*p &amp;&amp; *p != ' ' &amp;&amp; *p != '/' &amp;&amp; *p != '|' &amp;&amp; *p != '(' &amp;&amp; *p != ')')
+45         ++p;
+46       char key[UI_HELP_MENU_KEY_BUFFER_SIZE];
+47       if ((size_t)(p - start) &gt;= sizeof(key)) {
+48         SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Help key token is too long&quot;);
+49         return;
+50       }
+51       snprintf(key, sizeof(key), &quot;%.*s&quot;, (int)(p - start), start);
+52       const char *styled = colored_string(LOG_COLOR_WARN, key);
+53       size_t length = strlen(styled);
+54       if (length &gt;= cap - used) {
+55         SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Help key output buffer is too small&quot;);
+56         return;
+57       }
+58       memcpy(out + used, styled, length + 1);
+59       used += length;
+60     }
+61   }
+62 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>LOG_COLOR_WARN</b>, <b>SET_ERRNO</b>,
+            <b>ui_help_keys()</b>, and <b>UI_HELP_MENU_KEY_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>,
+            <b>ui_help_keys()</b>, and <b>ui_help_menu_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_help_menu_measure (const
+            <b>ui_help_menu_t</b> * menu)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+85                                                               {
+86   if (!m || (m-&gt;count &amp;&amp; !m-&gt;entries) || (m-&gt;settings_count &amp;&amp; !m-&gt;settings)) {
+87     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid help menu entries or settings&quot;);
+88     return (terminal_size_t){0};
+89   }
+90   int keys, left, right;
+91   measure(m, &amp;keys, &amp;left, &amp;right);
+92   int width = left + (right ? right + 3 : 0);
+93   if (m-&gt;title &amp;&amp; display_width(m-&gt;title) &gt; width)
+94     width = display_width(m-&gt;title);
+95   if (m-&gt;footer &amp;&amp; display_width(m-&gt;footer) &gt; width)
+96     width = display_width(m-&gt;footer);
+97   size_t rows = m-&gt;count &gt; m-&gt;settings_count ? m-&gt;count : m-&gt;settings_count;
+98   return (terminal_size_t){.cols = width + 6, .rows = (int)rows + 8 + m-&gt;top_margin};
+99 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_help_menu_t::count</b>, <b>display_width()</b>,
+            <b>ui_help_menu_t::entries</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_help_menu_t::footer</b>, <b>SET_ERRNO</b>,
+            <b>ui_help_menu_t::settings</b>,
+            <b>ui_help_menu_t::settings_count</b>, <b>ui_help_menu_t::title</b>,
+            <b>ui_help_menu_t::top_margin</b>, and
+            <b>ui_help_menu_measure()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_help_menu_measure()</b>,
+            <b>ui_session_context_help_render()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_help_menu_render (<b>frame_buffer_t</b> * output,
+            <b>terminal_size_t</b> size, const <b>ui_help_menu_t</b> * menu)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>101</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+101                                                                                              {
+102   if (!out || !m || (m-&gt;count &amp;&amp; !m-&gt;entries) || (m-&gt;settings_count &amp;&amp; !m-&gt;settings) || m-&gt;count &gt; 62 ||
+103       m-&gt;settings_count &gt; 62) {
+104     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid help output or entry counts&quot;);
+105     return false;
+106   }
+107   char text[UI_HELP_MENU_TEXT_COUNT][HELP_MENU_TEXT_LINE_BUFFER_SIZE];
+108   const char *lines[UI_HELP_MENU_TEXT_COUNT];
+109   size_t rows = m-&gt;count &gt; m-&gt;settings_count ? m-&gt;count : m-&gt;settings_count;
+110   int keys, left, right;
+111   measure(m, &amp;keys, &amp;left, &amp;right);
+112   lines[0] = &quot;&quot;;
+113   for (size_t i = 0; i &lt; rows; ++i) {
+114     char lhs[UI_HELP_MENU_LHS_BUFFER_SIZE] = &quot;&quot;, rhs[UI_HELP_MENU_RHS_BUFFER_SIZE] = &quot;&quot;,
+115          padded[UI_HELP_MENU_PADDED_BUFFER_SIZE];
+116     if (i &lt; m-&gt;count) {
+117       const ui_help_entry_t *entry = &amp;m-&gt;entries[i];
+118       if (!entry-&gt;keys)
+119         snprintf(lhs, sizeof(lhs), &quot;%s&quot;, entry-&gt;description);
+120       else {
+121         char key[UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE], description[UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE];
+122         char styled_keys[UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE];
+123         ui_help_keys(styled_keys, sizeof(styled_keys), entry-&gt;keys);
+124         ui_text_cell(key, sizeof(key), styled_keys, keys, UI_ALIGN_LEFT);
+125         ui_text_values_style(description, sizeof(description), entry-&gt;description, LOG_COLOR_FATAL);
+126         snprintf(lhs, sizeof(lhs), &quot;%s  %s&quot;, key, description);
+127       }
+128     }
+129     if (i &lt; m-&gt;settings_count) {
+130       const char *setting = m-&gt;settings[i];
+131       const char *end = setting[0] == '(' ? strchr(setting, ')') : NULL;
+132       if (end) {
+133         char binding[UI_HELP_MENU_BINDING_BUFFER_SIZE], styled[UI_HELP_MENU_STYLED_BUFFER_SIZE];
+134         snprintf(binding, sizeof(binding), &quot;%.*s&quot;, (int)(end + 1 - setting), setting);
+135         ui_help_keys(styled, sizeof(styled), binding);
+136         char values[UI_HELP_MENU_VALUES_BUFFER_SIZE];
+137         ui_text_values_style(values, sizeof(values), end + 1, LOG_COLOR_FATAL);
+138         snprintf(rhs, sizeof(rhs), &quot;%s%s&quot;, styled, values);
+139       } else
+140         ui_text_values_style(rhs, sizeof(rhs), setting, LOG_COLOR_FATAL);
+141     }
+142     ui_text_cell(padded, sizeof(padded), lhs, left, UI_ALIGN_LEFT);
+143     snprintf(text[i], sizeof(text[i]), &quot;%s%s%s&quot;, padded, right ? &quot;   &quot; : &quot;&quot;, rhs);
+144     lines[i + 1] = text[i];
+145   }
+146   ui_popup_t box = {
+147       .title = m-&gt;title, .lines = lines, .line_count = rows + 1, .footer = m-&gt;footer, .top_margin = m-&gt;top_margin};
+148   return ui_popup_render(out, size, &amp;box);
+149 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_help_menu_t::count</b>,
+            <b>ui_help_entry_t::description</b>, <b>ui_help_menu_t::entries</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_help_menu_t::footer</b>,
+            <b>HELP_MENU_TEXT_LINE_BUFFER_SIZE</b>,
+            <b>ui_help_entry_t::keys</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>SET_ERRNO</b>, <b>ui_help_menu_t::settings</b>,
+            <b>ui_help_menu_t::settings_count</b>, <b>ui_help_menu_t::title</b>,
+            <b>ui_help_menu_t::top_margin</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_help_keys()</b>, <b>UI_HELP_MENU_BINDING_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_LHS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_PADDED_BUFFER_SIZE</b>,
+            <b>ui_help_menu_render()</b>, <b>UI_HELP_MENU_RHS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_STYLED_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_TEXT_COUNT</b>,
+            <b>UI_HELP_MENU_VALUES_BUFFER_SIZE</b>, <b>ui_popup_render()</b>,
+            <b>ui_text_cell()</b>, and <b>ui_text_values_style()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>,
+            <b>ui_help_menu_render()</b>,
+            <b>ui_session_context_help_render()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -22,7 +22,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
@@ -45,7 +45,13 @@
  * ============================================================================ */
 
 /**
- * @brief Internal session participant structure
+ * @brief Client session state spanning connection, transport, media workers, and callbacks
+ * @brief Client session state spanning connection, transport, media workers, and callbacks.
+ *
+ * The participant owns its copied address/password settings and worker handles,
+ * while the selected transport and network connection follow their explicit
+ * ownership fields. Audio/video lifecycle state prevents stale workers from
+ * using a connection during shutdown.
  *
  * Contains connection state, media stream state, and callback configuration.
  */
@@ -65,6 +71,9 @@ typedef struct session_participant {
 
   /** @brief Server key for verification (if any) */
   char server_key[BUFFER_SIZE_MEDIUM];
+
+  char tls_ca_file[OPTIONS_BUFF_SIZE];
+  bool quic_audio_datagrams, quic_visual_datagrams;
 
   /** @brief Audio enabled */
   bool enable_audio;
@@ -101,6 +110,7 @@ typedef struct session_participant {
   session_settings_t settings;
   mutex_t settings_mutex;
   uint32_t settings_request;
+  uint32_t settings_applied_request;
 
   /** @brief Video capture context (for webcam/file media) */
   session_capture_ctx_t *video_capture;
@@ -112,10 +122,10 @@ typedef struct session_participant {
   bool audio_uses_video;
 
   /** @brief Video capture thread handle */
-  asciichat_thread_t video_capture_thread;
+  platform_thread_t video_capture_thread;
 
   /** @brief Audio capture thread handle */
-  asciichat_thread_t audio_capture_thread;
+  platform_thread_t audio_capture_thread;
 
   /** @brief Video worker handle requires joining */
   bool video_thread_created;
@@ -175,6 +185,10 @@ session_participant_t *session_participant_create(const session_participant_conf
   if (config->server_key) {
     SAFE_STRNCPY(p->server_key, config->server_key, sizeof(p->server_key));
   }
+  if (config->tls_ca_file)
+    SAFE_STRNCPY(p->tls_ca_file, config->tls_ca_file, sizeof(p->tls_ca_file));
+  p->quic_audio_datagrams = config->quic_audio_datagrams;
+  p->quic_visual_datagrams = config->quic_visual_datagrams;
 
   p->enable_audio = config->enable_audio;
   p->enable_video = config->enable_video;
@@ -258,7 +272,12 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   participant_connection_init(p);
   char password[PASSWORD_BUFFER_SIZE] = {0};
   SAFE_STRNCPY(password, p->password, sizeof(password));
-  result = session_connection_establish("participant", p->address, p->port, NULL, &p->network, password,
+  network_connect_config_t quic_config = {.timeout_ms = 10000,
+                                          .tls_ca_file = p->tls_ca_file[0] ? p->tls_ca_file : NULL,
+                                          .quic_audio_datagrams = p->quic_audio_datagrams,
+                                          .quic_visual_datagrams = p->quic_visual_datagrams};
+  const network_connect_config_t *connect_config = strncmp(p->address, "quic://", 7) == 0 ? &quic_config : NULL;
+  result = session_connection_establish("participant", p->address, p->port, connect_config, &p->network, password,
                                         sizeof(password), participant_prepare, NULL, p);
   sodium_memzero(password, sizeof(password));
   p->transport = network_connection_transport(p->network);
@@ -275,6 +294,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->connected = true;
@@ -382,8 +402,10 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   session_settings_to_options(settings, values);
+  if (values->fps == 0)
+    values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
+    terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   }
   acip_render_settings_t prepared = {0};
@@ -540,7 +562,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     session_capture_config_t config = {
         .type = MEDIA_SOURCE_WEBCAM,
         .path = "0", // Default device
-        .target_fps = 60,
+        .target_fps = (uint32_t)GET_OPTION(fps),
         .resize_for_network = true, // Optimize for bandwidth
     };
     const char *file = GET_OPTION(media_file);
@@ -566,7 +588,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
   }
 
   // Spawn video capture thread (media source is ready in ctx)
-  if (acthread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
     session_participant_stop_video(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
@@ -658,7 +680,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   }
 
   // Spawn audio capture thread
-  if (acthread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     session_participant_stop_audio(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");
@@ -729,6 +751,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   p->transport = transport;
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
@@ -803,7 +826,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result != ASCIICHAT_OK)
     return result;
   mutex_lock(&p->settings_mutex);
-  if ((header.request && header.request != p->settings_request) || header.revision < p->settings.version) {
+  if ((header.request && (header.request > p->settings_request || header.request < p->settings_applied_request)) ||
+      header.revision < p->settings.version) {
     mutex_unlock(&p->settings_mutex);
     return ASCIICHAT_OK;
   }
@@ -814,6 +838,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result == ASCIICHAT_OK) {
     session_settings_from_values(candidate, &p->settings);
     p->settings.version = header.revision;
+    if (header.request)
+      p->settings_applied_request = header.request;
   }
   session_settings_t effective = p->settings;
   SAFE_FREE(current);

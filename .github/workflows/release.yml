@@ -1,5 +1,7 @@
 name: Release
 
+# Manual dispatch may reuse an existing immutable tag after workflow-only fixes.
+
 on:
   push:
     tags:
@@ -170,6 +172,24 @@ jobs:
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
           echo "Created tarball: $TARBALL"
           echo "SHA256: $SHA256"
+
+      - name: Prepare Windows ARM manual artifact
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          version="${version#v}"
+          tar -xOzf "${{ steps.tarball.outputs.tarball }}" \
+            "ascii-chat-${version}/share/man/man1/ascii-chat.1.in" |
+            sed -e "s/@PROJECT_VERSION@/${version}/g" \
+                -e "s/@PROJECT_VERSION_DATE@/$(date -u +%Y-%m-%d)/g" \
+            > "$RUNNER_TEMP/release-man1"
+
+      - name: Upload Windows ARM manual artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-man1
+          path: ${{ runner.temp }}/release-man1
+          if-no-files-found: error
 
       - name: Create Release
         id: create_release
@@ -365,23 +385,9 @@ jobs:
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
           grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
 
-      - name: Save manual for Windows ARM packaging
-        if: matrix.runner == 'ubuntu-24.04'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-man1
-          path: build_release/share/man/man1/ascii-chat.1
-          if-no-files-found: error
-
       - name: Print build logs on failure
         if: failure()
         run: |
-          echo "=== Defer tool configure log ==="
-          cat build_release/ascii-instr-defer-external-prefix/src/ascii-instr-defer-external-stamp/ascii-instr-defer-external-configure-*.log 2>/dev/null || echo "No configure log"
-          echo ""
-          echo "=== Defer tool build log ==="
-          cat build_release/ascii-instr-defer-external-prefix/src/ascii-instr-defer-external-stamp/ascii-instr-defer-external-build-*.log 2>/dev/null || echo "No build log"
-          echo ""
           echo "=== CMake error log ==="
           cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
           echo ""
@@ -558,19 +564,12 @@ jobs:
 
       - name: Configure with CMake
         run: |
-          DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
           CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
           CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
-          if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
-            echo "Using pre-built defer tool: $DEFER_TOOL"
-            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
-          else
-            echo "No pre-built defer tool available - CMake will build from source"
-          fi
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
@@ -745,7 +744,7 @@ jobs:
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    needs: [create-release, package-linux]
+    needs: [create-release]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -816,12 +815,10 @@ jobs:
       - name: Configure with CMake
         shell: pwsh
         run: |
-          $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
           $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
           $args = @("--preset", "windows-release", "-B", "build_release",
             "-DPROJECT_VERSION_FROM_GIT=$version",
             "-DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }}",
-            "-DASCIICHAT_DEFER_TOOL=$deferTool",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DASCIICHAT_ENABLE_NSIS=OFF",
             "-DASCIICHAT_ENFORCE_STATIC_RELEASE=ON",
@@ -998,43 +995,27 @@ jobs:
   notify:
     name: Send release notification
     if: always() && needs.create-release.result != 'skipped'
-    needs: [create-release, package-linux, package-macos, package-windows, publish-release]
-    runs-on: ubuntu-latest
+    needs:
+      [
+        create-release,
+        package-linux,
+        package-macos,
+        package-windows,
+        publish-release,
+      ]
+    uses: ./.github/workflows/notify.yml
+    secrets: inherit
+    with:
+      subject: "${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && '✅' || '❌' }} ascii-chat release ${{ needs.create-release.outputs.version || github.ref_name }} - ${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && 'SUCCESS' || 'FAILED' }}"
+      body: |
+        ascii-chat release ${{ needs.create-release.outputs.version || github.ref_name }}: ${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && 'SUCCESS' || 'FAILED' }}
 
-    steps:
-      - name: Determine overall result
-        id: result
-        run: |
-          if [[ "${{ needs.create-release.result }}" != "success" || \
-                "${{ needs.package-linux.result }}" != "success" || \
-                "${{ needs.package-macos.result }}" != "success" || \
-                "${{ needs.package-windows.result }}" != "success" || \
-                "${{ needs.publish-release.result }}" != "success" ]]; then
-            echo "status=FAILED" >> $GITHUB_OUTPUT
-            echo "emoji=❌" >> $GITHUB_OUTPUT
-          else
-            echo "status=SUCCESS" >> $GITHUB_OUTPUT
-            echo "emoji=✅" >> $GITHUB_OUTPUT
-          fi
+        Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version || github.ref_name }}
+        Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
-          username: ${{ secrets.SMTP_FROM_EMAIL }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "${{ steps.result.outputs.emoji }} ascii-chat release ${{ needs.create-release.outputs.version }} - ${{ steps.result.outputs.status }}"
-          to: ${{ secrets.SMTP_TO_EMAIL }}
-          from: ${{ secrets.SMTP_FROM_EMAIL }}
-          body: |
-            ascii-chat release ${{ needs.create-release.outputs.version }}: ${{ steps.result.outputs.status }}
-
-            Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }}
-            Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Job Results:
-              create-release: ${{ needs.create-release.result }}
-              package-linux:  ${{ needs.package-linux.result }}
-              package-macos:  ${{ needs.package-macos.result }}
-              package-windows: ${{ needs.package-windows.result }}
+        Job Results:
+          create-release: ${{ needs.create-release.result }}
+          package-linux:  ${{ needs.package-linux.result }}
+          package-macos:  ${{ needs.package-macos.result }}
+          package-windows: ${{ needs.package-windows.result }}
+          publish-release: ${{ needs.publish-release.result }}

@@ -28,16 +28,25 @@ typedef struct {
   size_t count;
   uint64_t expected_revision;
   options_origin_t origin;
+/**
+ * @brief When code needs to work with options patch, it keeps `edits`, `count`, `expected_revision`, `origin` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } options_patch_t;
 
 typedef struct {
   uint64_t revision;
   bool changed;
+/**
+ */
 } options_patch_result_t;
 typedef struct {
   options_t values;
   uint64_t revision;
   options_origin_t origin;
+/**
+ * @brief The useful part of options patch result is in `revision`, `changed`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief options snapshot is intentionally a small, concrete record. Fields such as `values`, `revision`, `origin` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } options_snapshot_t;
 
 /** No observer callbacks or network I/O run under the writer mutex. A rejected patch publishes nothing. */

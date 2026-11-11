@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto_policy_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto_policy_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto_policy_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">crypto_policy_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/crypto/policy.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>transport_secure</b>
+            <br />
+            <b>bool</b> <b>encrypt</b>
+            <br />
+            <b>bool</b> <b>no_encrypt</b>
+            <br />
+            <b>bool</b> <b>no_auth</b>
+            <br />
+            <b>bool</b> <b>has_password</b>
+            <br />
+            <b>bool</b> <b>has_identity</b>
+            <br />
+            <b>bool</b> <b>has_verification_key</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Transport-independent inputs shared by native, WASM, and mobile
+          callers. TLS/DTLS protect the transport. Keys request authentication,
+          not encryption. Explicit no-encrypt wins over the password default,
+          enabling auth-only.
+        </p>
+        <p class="Pp">Definition at line <b>11</b> of file <b>policy.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::encrypt</h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>,
+            <b>crypto_policy_resolve()</b>, and <b>peer_crypto_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::has_identity</h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>, and
+            <b>crypto_policy_resolve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::has_password</h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>,
+            <b>crypto_policy_resolve()</b>, and <b>peer_crypto_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::has_verification_key</h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>, and
+            <b>crypto_policy_resolve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::no_auth</h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_policy_resolve()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::no_encrypt</h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>,
+            <b>crypto_policy_resolve()</b>, and <b>peer_crypto_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> crypto_policy_t::transport_secure</h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>policy.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_policy_resolve()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -14,17 +14,17 @@
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/memory.h>
+#include <libplatform/system.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/process.h>
+#include <ascii-chat/os/memory.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/asan.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
 #include <ascii-chat/util/time.h>           // For timer_system_destroy()
-#include <ascii-chat/util/pcre2.h>          // For asciichat_pcre2_cleanup_all()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/options/options.h>
@@ -34,13 +34,13 @@
 #include <ascii-chat/debug/mutex.h>         // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>         // For named_destroy()
 #include <ascii-chat/debug/atomic.h>        // For debug_atomic_shutdown()
-#include <ascii-chat/debug/memory.h>        // For debug_memory_thread_cleanup in debug builds
-#include <ascii-chat/platform/symbols.h>    // For symbols cache init
-#include <ascii-chat/platform/terminal.h>   // For terminal_screen_cleanup
-#include <ascii-chat/platform/keyboard.h>   // For keyboard_destroy()
+#include <ascii-chat/debug/memory.h>        // For debug memory reporting
+#include <libplatform/symbols.h>            // For symbols cache init
+#include <libplatform/terminal.h>           // For terminal_screen_cleanup
+#include <ascii-chat/os/keyboard.h>         // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -70,7 +70,7 @@ ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color
  */
 
 // Use atomic for thread-safe access to shutdown callback
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 static atomic_ptr_t g_shutdown_callback = {0};
 static atomic_t g_shutdown_requested = {0};
 
@@ -166,6 +166,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
     }
 
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
+    sanitizer_log_init(log_file);
     log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);
 
     // 2. KEYBOARD SYSTEM - Initialize keyboard input AFTER logging (may fail if stdin/tty not available)
@@ -243,11 +244,6 @@ void asciichat_shared_destroy(void) {
   // Clean up current thread's allocations
   debug_sync_final_cleanup();
 
-  // Memory debug thread - prints memory report (must be last)
-#if defined(DEBUG_MEMORY)
-  debug_memory_thread_cleanup();
-#endif
-
   // Atomic debug cleanup
   debug_atomic_shutdown();
 #endif
@@ -295,6 +291,7 @@ void asciichat_shared_destroy(void) {
 
   // 12. Logging cleanup - free log format buffers and system state
   log_destroy();
+  sanitizer_log_destroy();
   log_system_destroy();
 
   // 13. Mutex stack cleanup - must be before memory report so stacks are freed
@@ -305,8 +302,6 @@ void asciichat_shared_destroy(void) {
 #endif
 
   // 14. Memory stats (debug builds only) - runs with colors still available
-  //     Note: PCRE2 singletons are cleaned up later via atexit handler (runs after this function)
-  //     This ensures code can still use PCRE2 during normal program shutdown
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -314,7 +309,7 @@ void asciichat_shared_destroy(void) {
 #endif
 
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  debug_memory_report();
+  debug_memory_report(GET_OPTION(color));
 #endif
 
   // 15. Color cleanup - free compiled ANSI strings (AFTER memory report)
@@ -333,12 +328,8 @@ void asciichat_shared_destroy(void) {
 
 #ifndef NDEBUG
   // 19. Named registry - cleanup all registered thread names and debug entries
-  // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
   named_destroy();
 #endif
-
-  // 20. PCRE2 - cleanup all regex singletons together (after named_destroy)
-  asciichat_pcre2_cleanup_all();
 
   // 21. timer resolution restore
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)

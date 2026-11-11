@@ -171,24 +171,13 @@ jobs:
       - name: Configure (Unix)
         if: matrix.os != 'Windows'
         run: |
-          DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
           CMAKE_ARGS="--preset release"
-          if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
-            echo "Using pre-built defer tool: $DEFER_TOOL"
-            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
-            # Force reconfigure to pick up the pre-built defer tool
-            # (cached build_release may have been created without it)
-            CMAKE_ARGS="$CMAKE_ARGS --fresh"
-          else
-            echo "No pre-built defer tool available - CMake will build from source"
-          fi
           cmake $CMAKE_ARGS
 
       - name: Configure (Windows)
         if: matrix.os == 'Windows'
         shell: pwsh
         run: |
-          $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
           # Use windows-release preset which inherits vcpkg toolchain
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
           # Disable tests - Criterion doesn't work well on Windows
@@ -199,12 +188,6 @@ jobs:
             "-DASCIICHAT_ENABLE_TESTS=OFF",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}"
           )
-          if ($deferTool -and (Test-Path $deferTool)) {
-            Write-Host "Using pre-built defer tool: $deferTool"
-            $cmakeArgs += "-DASCIICHAT_DEFER_TOOL=$deferTool"
-          } else {
-            Write-Host "No pre-built defer tool available - CMake will build from source"
-          }
           cmake @cmakeArgs
 
       - name: Save configure cache
@@ -234,6 +217,9 @@ jobs:
         if: matrix.os != 'Linux'
         run: cmake --build build_release --target shared-lib
 
+      - uses: astral-sh/setup-uv@v6
+        if: matrix.os == 'Windows'
+
       - name: Verify native Windows call recording
         if: matrix.os == 'Windows'
         shell: pwsh
@@ -247,7 +233,7 @@ jobs:
           $ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
           $ffprobe = Get-Command ffprobe -ErrorAction SilentlyContinue
           if (-not $ffmpeg -or -not $ffprobe) { throw "FFmpeg test tools were not added to PATH" }
-          python tests/integration/render_file_audio.py build_release/bin/ascii-chat.exe
+          uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/recording/test_file_audio.py --ascii-chat-binary build_release/bin/ascii-chat.exe
           if ($LASTEXITCODE -ne 0) { throw "Native Windows call recording regression failed" }
 
       - name: Verify build artifacts (Unix)

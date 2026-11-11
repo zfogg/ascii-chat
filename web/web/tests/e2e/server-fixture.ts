@@ -340,9 +340,14 @@ export async function waitForPort(
 /**
  * Get a free port number
  */
-export function getRandomPort(): number {
+export function getRandomPort(excludedPorts: readonly number[] = []): number {
   // Use ports in the range 27230-27300 for test servers
-  return 27230 + Math.floor(Math.random() * 70);
+  const available = Array.from(
+    { length: 70 },
+    (_, index) => 27230 + index,
+  ).filter((port) => !excludedPorts.includes(port));
+  if (!available.length) throw new Error("No test ports available");
+  return available[Math.floor(Math.random() * available.length)]!;
 }
 
 /**

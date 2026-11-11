@@ -64,7 +64,13 @@ component_management:
       paths: ["src/common/session/", "src/session/"]
     - component_id: discovery
       name: Discovery
-      paths: ["src/discovery/", "src/discovery-service/", "lib/discovery/", "include/ascii-chat/discovery/"]
+      paths:
+        [
+          "src/discovery/",
+          "src/discovery-service/",
+          "lib/discovery/",
+          "include/ascii-chat/discovery/",
+        ]
     - component_id: mcp
       name: MCP Server
       paths: ["src/mcp-server/"]
@@ -92,7 +98,8 @@ component_management:
       paths: ["lib/network/", "include/ascii-chat/network/"]
     - component_id: crypto
       name: Cryptography
-      paths: ["lib/crypto/", "include/ascii-chat/crypto/", "src/client/crypto.c"]
+      paths:
+        ["lib/crypto/", "include/ascii-chat/crypto/", "src/client/crypto.c"]
     - component_id: media
       name: Media Sources and Output
       paths: ["lib/media/", "include/ascii-chat/media/"]
@@ -122,7 +129,13 @@ component_management:
       paths: ["lib/platform/", "include/ascii-chat/platform/"]
     - component_id: utilities
       name: Utilities and Data Structures
-      paths: ["lib/*.c", "lib/util/", "include/ascii-chat/*.h", "include/ascii-chat/util/"]
+      paths:
+        [
+          "lib/*.c",
+          "lib/util/",
+          "include/ascii-chat/*.h",
+          "include/ascii-chat/util/",
+        ]
     - component_id: tooling
       name: Native Developer Tools
       paths: ["lib/tooling/", "src/tooling/"]

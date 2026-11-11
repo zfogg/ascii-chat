@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/crypto/session.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/options/rcu.h>
@@ -21,6 +23,7 @@ static void setup(void) {
   cr_assert_eq(crypto_get_public_key(&receiver, second), CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&sender, second), CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&receiver, first), CRYPTO_OK);
+  sender.handshake_complete = receiver.handshake_complete = true;
   socket_t listener = socket_create("secure-contract-listen", AF_INET, SOCK_STREAM, 0);
   cr_assert_neq(listener, INVALID_SOCKET_VALUE);
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK)};
@@ -68,20 +71,26 @@ static size_t read_secure(packet_type_t expected, bool encrypted, void *output, 
 }
 
 Test(secure_socket_contract, encrypted_sender_protects_an_entire_network_order_header_and_payload) {
-  uint8_t payload[2048], plaintext[4096];
+  uint8_t payload[2048];
   for (size_t i = 0; i < sizeof(payload); ++i)
     payload[i] = (uint8_t)(i * 17);
   const size_t lengths[] = {0, 7, sizeof(payload)};
   for (size_t i = 0; i < 3; ++i) {
-    cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, lengths[i] ? payload : NULL, lengths[i], &sender), ASCIICHAT_OK);
+    cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, lengths[i] ? payload : NULL, lengths[i], &sender),
+                 ASCIICHAT_OK);
     packet_type_t type;
     void *ciphertext = NULL;
     size_t ciphertext_len = 0, plaintext_len = 0;
     cr_assert_eq(packet_receive(receiver_fd, &type, &ciphertext, &ciphertext_len), ASCIICHAT_OK);
     cr_assert_eq(type, PACKET_TYPE_ENCRYPTED);
     cr_assert_gt(ciphertext_len, sizeof(packet_header_t) + lengths[i]);
-    cr_assert_eq(crypto_decrypt(&receiver, ciphertext, ciphertext_len, plaintext, sizeof(plaintext), &plaintext_len),
-                 CRYPTO_OK);
+    uint8_t *plaintext = NULL;
+    uint64_t sequence;
+    bool consumed;
+    cr_assert_eq(acip_security_decrypt(&receiver, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, ciphertext,
+                                       ciphertext_len, &plaintext, &plaintext_len, &sequence, &consumed),
+                 ASCIICHAT_OK);
+    cr_assert(!consumed);
     buffer_release(ciphertext);
     cr_assert_eq(plaintext_len, sizeof(packet_header_t) + lengths[i]);
     packet_header_t header;
@@ -92,6 +101,7 @@ Test(secure_socket_contract, encrypted_sender_protects_an_entire_network_order_h
     cr_assert_eq(NET_TO_HOST_U32(header.client_id), 0);
     cr_assert_eq(NET_TO_HOST_U32(header.crc32), lengths[i] ? asciichat_crc32(payload, lengths[i]) : 0);
     cr_assert_arr_eq(plaintext + sizeof(header), payload, lengths[i]);
+    buffer_release(plaintext);
   }
 }
 
@@ -130,14 +140,19 @@ Test(secure_socket_contract, authenticated_malformed_inner_packets_are_rejected_
     memcpy(plaintext, &header, sizeof(header));
     memcpy(plaintext + sizeof(header), payload, sizeof(payload));
     size_t length = 0;
-    cr_assert_eq(crypto_encrypt(&sender, plaintext, scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext),
-                                ciphertext, sizeof(ciphertext), &length), CRYPTO_OK);
+    crypto_session_t *session;
+    cr_assert_eq(crypto_session_lock(&sender, &session), ASCIICHAT_OK);
+    cr_assert_eq(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, plaintext,
+                                         scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext), ciphertext,
+                                         sizeof(ciphertext), &length),
+                 ASCIICHAT_OK);
+    crypto_session_unlock(session);
     if (scenario == 4)
       ciphertext[length - 1] ^= 1;
     cr_assert_eq(packet_send(sender_fd, PACKET_TYPE_ENCRYPTED, ciphertext, length), ASCIICHAT_OK);
     packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure_with_timeout(receiver_fd, &receiver, true, &envelope,
-                                                                    1000000000ULL);
+    packet_recv_result_t result =
+        receive_packet_secure_with_timeout(receiver_fd, &receiver, true, &envelope, 1000000000ULL);
     if (scenario < 5) {
       cr_assert_eq(result, PACKET_RECV_ERROR, "Malformed scenario %u was accepted", scenario);
       cr_assert_null(envelope.allocated_buffer);
@@ -163,14 +178,16 @@ Test(secure_socket_contract, remote_log_sender_preserves_fields_and_marks_only_t
     for (unsigned variant = 0; variant < 4; ++variant) {
       const char *input = variant == 0 ? NULL : variant == 1 ? "short message" : variant == 2 ? exact : message;
       cr_assert_eq(packet_send_remote_log(sender_fd, encrypted ? &sender : NULL, LOG_WARN,
-                                          REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, 0x80, input), ASCIICHAT_OK);
+                                          REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, 0x80, input),
+                   ASCIICHAT_OK);
       size_t length = read_secure(PACKET_TYPE_REMOTE_LOG, encrypted != 0, payload, sizeof(payload));
       log_level_t level;
       remote_log_direction_t direction;
       uint16_t flags;
       size_t message_len;
-      cr_assert_eq(packet_parse_remote_log(payload, length, &level, &direction, &flags, decoded, sizeof(decoded),
-                                            &message_len), ASCIICHAT_OK);
+      cr_assert_eq(
+          packet_parse_remote_log(payload, length, &level, &direction, &flags, decoded, sizeof(decoded), &message_len),
+          ASCIICHAT_OK);
       cr_assert_eq(level, LOG_WARN);
       cr_assert_eq(direction, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT);
       cr_assert_eq(flags, 0x80 | (variant == 3 ? REMOTE_LOG_FLAG_TRUNCATED : 0));

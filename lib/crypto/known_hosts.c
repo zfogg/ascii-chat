@@ -27,14 +27,14 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
-#include <ascii-chat/platform/system.h>     // For FILE_PERM_* constants
-#include <ascii-chat/platform/terminal.h>   // For platform_isatty()
-#include <ascii-chat/platform/filesystem.h> // For platform_mkdir(), platform_stat()
-#include <ascii-chat/platform/question.h>   // For platform_prompt_yes_no
-#include <ascii-chat/options/options.h>     // For opt_snapshot_mode
+#include <libplatform/system.h>   // For FILE_PERM_* constants
+#include <libplatform/terminal.h> // For platform_isatty()
+#include <libplatform/filesystem.h>
+#include <ascii-chat/os/question.h>     // For platform_prompt_yes_no
+#include <ascii-chat/options/options.h> // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/tooling/defer/defer.h>
+#include <defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
@@ -62,20 +62,18 @@ const char *get_known_hosts_path(void) {
       log_error("Failed to determine configuration directory for known_hosts");
       return NULL;
     }
+    defer(SAFE_FREE(config_dir));
 
     // Build path: config_dir + "known_hosts"
     size_t config_len = strlen(config_dir);
     size_t total_len = config_len + strlen("known_hosts") + 1;
     char *path = SAFE_MALLOC(total_len, char *);
     if (!path) {
-      SAFE_FREE(config_dir);
       log_error("Failed to allocate memory for known_hosts path");
       return NULL;
     }
 
     safe_snprintf(path, total_len, "%sknown_hosts", config_dir);
-    SAFE_FREE(config_dir);
-
     g_known_hosts_path_cache = path;
     log_debug("KNOWN_HOSTS: Using path %s", g_known_hosts_path_cache);
   }
@@ -120,6 +118,7 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
     log_debug("KNOWN_HOSTS: Failed to search for known_hosts files: %d", search_result);
     return ASCIICHAT_OK;
   }
+  defer(config_file_list_destroy(&known_hosts_files));
 
   // If no files found, this is an unknown host (first connection)
   if (known_hosts_files.count == 0) {
@@ -143,6 +142,7 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       log_debug("KNOWN_HOSTS: Failed to fdopen: %s", path);
       continue;
     }
+    defer(SAFE_FCLOSE(f));
 
     char line[BUFFER_SIZE_XLARGE];
 
@@ -156,13 +156,13 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
         continue; // Line doesn't match known_hosts format
       }
+      defer(SAFE_FREE(parsed_comment));
+      defer(SAFE_FREE(parsed_hex_key));
+      defer(SAFE_FREE(parsed_key_type));
+      defer(SAFE_FREE(parsed_ip_port));
 
       // Check if IP:port matches what we're looking for (with IPv6 normalization)
       if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_hex_key);
-        SAFE_FREE(parsed_comment);
         continue; // Different IP:port
       }
 
@@ -171,28 +171,17 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       if (strcmp(parsed_key_type, NO_IDENTITY_MARKER) == 0) {
         // No-identity entry but server has identity - continue searching
         log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key");
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_hex_key);
-        SAFE_FREE(parsed_comment);
         continue;
       }
 
       // Parse identity key from hex string
       if (!parsed_hex_key) {
         // No hex key found - invalid entry
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_comment);
         continue;
       }
 
       public_key_t stored_key;
       if (parse_public_key(parsed_hex_key, &stored_key) != 0) {
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_hex_key);
-        SAFE_FREE(parsed_comment);
         continue; // Invalid key format
       }
 
@@ -222,38 +211,18 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       // Both zero = no-identity connection (weaker security)
       if (server_key_is_zero && stored_key_is_zero) {
         NOTICE(WARNING, "UNVERIFIED SERVER IDENTITY", "SECURITY: Connecting to no-identity server at known IP:port");
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_hex_key);
-        SAFE_FREE(parsed_comment);
-        fclose(f);
-        config_file_list_destroy(&known_hosts_files);
         return 1; // Match found
       }
 
       // Compare keys (constant-time)
       if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
         log_info("SECURITY: Server key matches known_hosts - connection verified");
-        SAFE_FREE(parsed_ip_port);
-        SAFE_FREE(parsed_key_type);
-        SAFE_FREE(parsed_hex_key);
-        SAFE_FREE(parsed_comment);
-        fclose(f);
-        config_file_list_destroy(&known_hosts_files);
         return 1; // Match found!
       }
 
-      // Key mismatch - free and continue searching
-      SAFE_FREE(parsed_ip_port);
-      SAFE_FREE(parsed_key_type);
-      SAFE_FREE(parsed_hex_key);
-      SAFE_FREE(parsed_comment);
+      // Key mismatch - continue searching after releasing this entry.
     }
-
-    fclose(f);
   }
-
-  config_file_list_destroy(&known_hosts_files);
 
   // Check if we found any entries at all
   if (found_entries) {
@@ -312,13 +281,13 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
       continue; // Line doesn't match known_hosts format
     }
+    defer(SAFE_FREE(parsed_comment));
+    defer(SAFE_FREE(parsed_hex_key));
+    defer(SAFE_FREE(parsed_key_type));
+    defer(SAFE_FREE(parsed_ip_port));
 
     // Check if IP:port matches what we're looking for (with IPv6 normalization)
     if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
-      SAFE_FREE(parsed_ip_port);
-      SAFE_FREE(parsed_key_type);
-      SAFE_FREE(parsed_hex_key);
-      SAFE_FREE(parsed_comment);
       continue; // Different IP:port
     }
 
@@ -326,10 +295,6 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     if (strcmp(parsed_key_type, "no-identity") == 0) {
       // This is a server without identity key that was previously accepted by the user
       // No warnings or user confirmation needed - user already accepted this server
-      SAFE_FREE(parsed_ip_port);
-      SAFE_FREE(parsed_key_type);
-      SAFE_FREE(parsed_hex_key);
-      SAFE_FREE(parsed_comment);
       return 1; // Known host (no-identity entry) - secure connection
     }
 
@@ -337,10 +302,6 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     // Server previously had identity key but now has none
     NOTICE(DANGER, "SERVER IDENTITY REMOVED",
            "Server previously had identity key but now has none - potential security issue");
-    SAFE_FREE(parsed_ip_port);
-    SAFE_FREE(parsed_key_type);
-    SAFE_FREE(parsed_hex_key);
-    SAFE_FREE(parsed_comment);
     return ERROR_CRYPTO_VERIFICATION; // Mismatch - server changed from identity to no-identity
   }
 
@@ -637,7 +598,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return true;
   }
 #endif
-  if (!terminal_can_prompt_user()) {
+  if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode))) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
     NOTICE(DANGER, "HOST VERIFICATION FAILED",
@@ -788,7 +749,7 @@ static bool is_automated_mode(void) {
   }
 
   // Check if user prompts are possible (TTY + not snapshot + not automated)
-  if (!terminal_can_prompt_user()) {
+  if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode))) {
     return true; // Skip interactive prompts in non-interactive environments
   }
 

@@ -5,6 +5,7 @@
 
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/runtime.h>
+#include <ascii-chat/options/validation.h>
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
@@ -15,12 +16,14 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/process.h>
+#include <libplatform/lifecycle.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/process.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
@@ -32,6 +35,7 @@
 // ============================================================================
 
 /**
+ * @brief Deferred free list for old options structs
  * @brief Global atomic pointer to current options
  *
  * This is the heart of the RCU pattern:
@@ -188,6 +192,9 @@ static const options_t g_default_options = (options_t){
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
+    .stabilize = true,
+    .stabilize_explicit = false,
+    .renderer = ASCII_RENDERER_DEFAULT,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -524,11 +531,32 @@ const options_t *options_get(void) {
   return current;
 }
 
+const terminal_options_t *options_terminal_settings_ptr(void) {
+  static terminal_options_t settings;
+  const options_t *options = options_get();
+  settings = (terminal_options_t){
+      .color = (terminal_color_setting_t)options->color,
+      .color_mode = options->color_mode,
+      .force_utf8 = (terminal_utf8_setting_t)options->force_utf8,
+      .render_mode = options->render_mode,
+      .width = options->width,
+      .height = options->height,
+      .fps = options->fps,
+      .snapshot_mode = options->snapshot_mode,
+  };
+  return &settings;
+}
+
 typedef struct {
   const char *name;
   options_value_type_t type;
   size_t offset, size;
   const char *cli;
+  /**
+   * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } runtime_field_t;
 #define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
 static const runtime_field_t runtime_fields[] = {
@@ -562,6 +590,9 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(audio_enabled, OPTIONS_VALUE_BOOL, "audio-enabled"),
     FIELD(audio_analysis_enabled, OPTIONS_VALUE_BOOL, "audio-analysis-enabled"),
     FIELD(audio_no_playback, OPTIONS_VALUE_BOOL, "audio-no-playback"),
+    FIELD(stabilize, OPTIONS_VALUE_BOOL, "stabilize"),
+    FIELD(renderer, OPTIONS_VALUE_INT, "renderer"),
+    FIELD(palette_explicit, OPTIONS_VALUE_BOOL, "palette-explicit"),
     FIELD(stretch, OPTIONS_VALUE_BOOL, "stretch"),
     FIELD(snapshot_mode, OPTIONS_VALUE_BOOL, "snapshot-mode"),
     FIELD(strip_ansi, OPTIONS_VALUE_BOOL, "strip-ansi"),
@@ -593,6 +624,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(splash_screen, OPTIONS_VALUE_BOOL, "splash-screen"),
     FIELD(status_screen, OPTIONS_VALUE_BOOL, "status-screen"),
     FIELD(matrix_rain, OPTIONS_VALUE_BOOL, "matrix-rain"),
+    FIELD(audio_source, OPTIONS_VALUE_INT, "audio-source"),
     FIELD(waveform, OPTIONS_VALUE_BOOL, "waveform"),
     FIELD(fft, OPTIONS_VALUE_BOOL, "fft"),
     FIELD(fps_counter, OPTIONS_VALUE_BOOL, "fps-counter"),
@@ -639,8 +671,9 @@ bool options_remote_render_field(const char *name) {
   const runtime_field_t *field = find_field(name);
   if (!field)
     return false;
-  const char *allowed[] = {"width",        "height",         "fps",        "color_mode", "color_filter", "render_mode",
-                           "palette_type", "palette_custom", "matrix_rain"};
+  const char *allowed[] = {
+      "width",          "height",           "fps",      "color_mode", "color_filter", "render_mode", "palette_type",
+      "palette_custom", "palette_explicit", "renderer", "stabilize",  "matrix_rain"};
   for (size_t i = 0; i < sizeof(allowed) / sizeof(*allowed); ++i)
     if (!strcmp(field->name, allowed[i]))
       return true;
@@ -648,6 +681,9 @@ bool options_remote_render_field(const char *name) {
 }
 
 static asciichat_error_t validate_field(const runtime_field_t *field, const options_t *candidate) {
+  if (!strcmp(field->name, "audio_source") &&
+      (candidate->audio_source < AUDIO_SOURCE_ALL || candidate->audio_source > AUDIO_SOURCE_MEDIA))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option 'audio_source'");
   const registry_entry_t *entry = registry_find_entry_by_name(field->cli);
   const char *ptr = (const char *)candidate + field->offset;
   if (entry && entry->validate_fn && !entry->validate_fn(candidate))
@@ -698,6 +734,8 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
     } else if (edit->operation != OPTIONS_ASSIGN)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid integer operation");
     memcpy(ptr, &value, sizeof(value));
+    if (!strcmp(field->name, "palette_type"))
+      candidate->palette_explicit = true;
     break;
   }
   case OPTIONS_VALUE_BOOL: {
@@ -747,8 +785,10 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
       return SET_ERRNO(ERROR_INVALID_PARAM, "Overlong string option '%s'", field->name);
     memset(ptr, 0, field->size);
     memcpy(ptr, edit->value.string, length);
-    if (!strcmp(field->name, "palette_custom"))
+    if (!strcmp(field->name, "palette_custom")) {
       candidate->palette_custom_set = ptr[0] != 0;
+      candidate->palette_explicit = ptr[0] != 0;
+    }
     break;
   }
   }
@@ -769,11 +809,25 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  bool animation_changed = false;
+  bool stabilize_changed = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const char *name = patch->edits[i].name;
+    animation_changed |= !strcmp(name, "matrix_rain") || !strcmp(name, "waveform") || !strcmp(name, "fft");
+    stabilize_changed |= !strcmp(name, "stabilize");
+  }
+  if (stabilize_changed)
+    candidate->stabilize_explicit = true;
+  else if (animation_changed && !candidate->stabilize_explicit)
+    candidate->stabilize = !(candidate->waveform || candidate->fft);
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
     if (error != ASCIICHAT_OK)
       return error;
   }
+  asciichat_error_t palette_error = validate_glyph_palette(candidate);
+  if (palette_error != ASCIICHAT_OK)
+    return palette_error;
   candidate->flip_x_explicit |= current->flip_x_explicit;
   options_resolve_flip_x(candidate);
   return ASCIICHAT_OK;
@@ -964,11 +1018,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-                         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
-                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
-                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "speakers_volume") ||
-                         !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
+    if (!remote_only &&
+        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
+         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
+         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
+         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
+         !strcmp(field->name, "audio_enabled")))
       exposed = true;
     if (!exposed)
       continue;

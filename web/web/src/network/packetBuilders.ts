@@ -1,3 +1,7 @@
+import {
+  colorFilterValues,
+  paletteTypes,
+} from "@ascii-chat/shared/wasm/options";
 export const CAPABILITIES_PACKET_SIZE = 168; // Includes codec capabilities (added 8 bytes)
 export const STREAM_TYPE_VIDEO = 0x01;
 export const STREAM_TYPE_AUDIO = 0x02;
@@ -40,31 +44,8 @@ export type BrowserPalette =
   | "cool"
   | "custom";
 
-const COLOR_FILTER_VALUES: Record<BrowserColorFilter, number> = {
-  none: 0,
-  black: 1,
-  white: 2,
-  green: 3,
-  magenta: 4,
-  fuchsia: 5,
-  orange: 6,
-  teal: 7,
-  cyan: 8,
-  pink: 9,
-  red: 10,
-  yellow: 11,
-  rainbow: 12,
-};
-
-// These values match palette_type_t. PALETTE_UNSET is 0; Standard is 1.
-const PALETTE_VALUES: Record<BrowserPalette, number> = {
-  standard: 1,
-  blocks: 2,
-  digital: 3,
-  minimal: 4,
-  cool: 5,
-  custom: 6,
-};
+const COLOR_FILTER_VALUES = colorFilterValues;
+const PALETTE_VALUES = paletteTypes;
 
 function getColorCapabilities(colorMode: BrowserColorMode): {
   count: number;

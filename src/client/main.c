@@ -89,11 +89,13 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/symbols.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/common/sync.h>
+#include <libplatform/terminal.h>
+#include <libplatform/symbols.h>
+#include <libplatform/system.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
@@ -125,7 +127,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -136,6 +138,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Client connection session state for session_client_like integration
  * @brief Global WebRTC peer manager (legacy compatibility)
  *
  * Client mode no longer uses WebRTC, but protocol.c still references this.
@@ -352,7 +355,8 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
       (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
       g_client_session.password, sizeof(g_client_session.password));
   if (connection_result != ASCIICHAT_OK) {
-    if (should_exit())
+    // Password prompt failures request shutdown but must retain their error.
+    if (should_exit() && connection_result != ERROR_CRYPTO_AUTH)
       return ERROR_NETWORK;
     LOG_ERRNO_IF_SET("Connection attempt failed");
     return connection_result;
@@ -373,13 +377,16 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
   uint64_t advertised_revision = OPTIONS_REVISION_ANY;
+  asciichat_error_t settings_error = ASCIICHAT_OK;
   while (!should_exit() && server_connection_is_active(connection)) {
     display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
-    if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
-                                         connection) == ASCIICHAT_OK &&
-        (previous.cols != connection->advertised_dimensions.cols ||
-         previous.rows != connection->advertised_dimensions.rows)) {
+    settings_error = session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision,
+                                                      client_send_settings, connection);
+    if (settings_error != ASCIICHAT_OK)
+      break;
+    if (previous.cols != connection->advertised_dimensions.cols ||
+        previous.rows != connection->advertised_dimensions.rows) {
       display_full_reset();
       log_set_terminal_output(false);
     }
@@ -462,10 +469,6 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   // may close the connection while the snapshot shutdown is propagating, but
   // that is a successful snapshot rather than a reconnectable network error.
 
-  if (should_exit()) {
-    return ASCIICHAT_OK;
-  }
-
   // The receive worker publishes the rejection before marking the connection lost.
   asciichat_error_t remote_error = server_connection_get_remote_error(connection);
   if (remote_error != ASCIICHAT_OK) {
@@ -477,6 +480,10 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     errno_notifications_suppress(previous);
     return result;
   }
+  if (settings_error != ASCIICHAT_OK)
+    return settings_error;
+  if (should_exit())
+    return ASCIICHAT_OK;
   return ERROR_NETWORK;
 }
 
@@ -641,7 +648,7 @@ int client_main(void) {
   const options_t *opts_websocket = options_get();
   const char *provided_address = opts_websocket && opts_websocket->address[0] != '\0' ? opts_websocket->address : NULL;
 
-  if (provided_address && url_is_websocket(provided_address)) {
+  if (provided_address && url_looks_like_websocket(provided_address) && url_is_websocket(provided_address)) {
     // Direct WebSocket connection
     log_debug("Client: Direct WebSocket URL: %s", provided_address);
     discovered_address = provided_address;

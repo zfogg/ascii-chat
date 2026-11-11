@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2acip-preparation(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2acip-preparation(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2acip-preparation(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2acip-preparation - ACIP packet preparation validation
+        </p>
+        <p class="Pp">
+          The shared planner borrows the caller's vectors. Plaintext TCP keeps
+          vectored delivery; no payload is copied or allocated by preparation.
+          Ciphertext is written into storage owned by each transport, which
+          retains its existing delivery/queue lifetime. WebRTC also uses the
+          shared encrypted envelope after its per-peer negotiation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Reproducing_the_measurements">
+          <a class="permalink" href="#Reproducing_the_measurements"
+            >Reproducing the measurements</a
+          >
+        </h1>
+        <p class="Pp">
+          Build bench-acip-prepare and run build/bin/bench-acip-prepare. The
+          fixture compares reproductions of the previous preparation algorithms
+          with the shared implementation, using actual encryption on 64 KiB
+          packets, 2,000 iterations per sample, three samples, and alternating
+          before/after order. Allocation and explicit copy counts cover
+          preparation only, excluding encryption internals and transport queue
+          copies. Reported throughput is median preparation throughput, not
+          network or presentation throughput.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Windows x64, Clang, CMake Dev build, October 18, 2026:</p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Path Allocations before/after Explicit copy bytes before/after MiB/s
+          before/after Sync TCP contiguous 1 / 1 22 / 44 637.04 / 617.27 Sync
+          TCP vectors 2 / 2 65,558 / 65,580 619.14 / 616.54 Async TCP contiguous
+          2 / 1 65,536 / 22 632.68 / 631.33 Async TCP vectors 2 / 2 65,536 /
+          65,558 568.24 / 619.89 WebSocket contiguous 2 / 1 65,598 / 44 621.12 /
+          598.70
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The additional 22-byte header read centralizes policy inspection.
+          Plaintext paths retain zero allocations and zero payload copies; the
+          planner reads the header. Timing varies across samples, so these
+          measurements do not establish a network throughput improvement. They
+          demonstrate preserved vector behavior and reduced allocation/copy work
+          on contiguous encrypted async TCP and WebSocket paths.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Coverage">
+          <a class="permalink" href="#Coverage">Coverage</a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            test-acip-prepare: borrowed plaintext vectors, handshake exceptions,
+            identical contiguous/vector ciphertext, decryption, bounds,
+            allocation/crypto failures, synchronous and asynchronous TCP, and
+            continued delivery after local send rejection.
+          </li>
+          <li>
+            uv run --project tests/ascii_chat_tests --frozen python -m pytest
+            tests/python/integration/acip --acip-websocket-probe
+            build/bin/test-acip-prepare: real WebSocket binary-frame round trip
+            using the shared envelope.
+          </li>
+          <li>
+            test-webrtc-security: real libdatachannel peers, 64 KiB round trips,
+            nonce advancement, default/encrypted/password/identity/auth-only
+            modes, and rejected credentials before application admission.
+          </li>
+          <li>
+            python tests/integration/crypto_policy.py build/bin/ascii-chat: 15
+            real CLI TCP/WS/WSS policy cases with rendered frames and rejected
+            credentials.
+          </li>
+          <li>
+            python tests/integration/webrtc_security.py build/bin/ascii-chat:
+            local ACDS, CLI host and participant, negotiation through the
+            production peer manager, and received/rendered video in six
+            default/password/mutual-key security modes. Observed receive/render
+            rates were 57.9-58.0 fps with a 40x12 terminal.
+          </li>
+          <li>
+            From web/web, vp exec playwright test --<b>Config Module</b>
+            tests/e2e/peer-security.config.ts<b
+              >: real browser DataChannels and compiled C/WASM peer crypto,
+              chunked round trips, policy parity, wrong credentials, and
+              plaintext rejection on encrypted sessions.</b
+            >
+          </li>
+        </ul>
+        <p class="Pp">
+          WebRTC's native DTLS remains enabled in every mode. ACIP encryption is
+          additional: secure transports default to DTLS/TLS alone, --encrypt
+          enables ACIP encryption, passwords enable it by default, and
+          --no-encrypt allows authentication without ACIP payload encryption.
+          Media credentials belong to each peer, separately from ACDS signaling
+          credentials. Existing peers without ACIP negotiation must upgrade both
+          endpoints for this WebRTC protocol change.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

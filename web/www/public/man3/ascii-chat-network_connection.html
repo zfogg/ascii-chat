@@ -1,0 +1,447 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>network_connection(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">network_connection(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">network_connection(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">network_connection</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>network_server_t</b> * <b>server</b>
+            <br />
+            <b>network_connection_callbacks_t</b> <b>callbacks</b>
+            <br />
+            void * <b>callback_context</b>
+            <br />
+            <b>network_server_config_t</b> <b>policy</b>
+            <br />
+            <b>network_connection_t</b> * <b>next</b>
+            <br />
+            <b>acip_transport_t</b> * <b>transport</b>
+            <br />
+            <b>platform_event_stream_t</b> * <b>stream</b>
+            <br />
+            <b>packet_decoder_t</b> <b>decoder</b>
+            <br />
+            <b>acip_security_t</b> <b>security</b>
+            <br />
+            <b>acip_security_t</b> * <b>adopted_security</b>
+            <br />
+            <b>bool</b> <b>security_claimed</b>
+            <br />
+            <b>bool</b> <b>security_options</b>
+            <br />
+            <b>atomic_ptr_t</b> <b>context</b>
+            <br />
+            char <b>peer</b> [256]
+            <br />
+            <b>uint16_t</b> <b>port</b>
+            <br />
+            <b>atomic_t</b> <b>state</b>
+            <br />
+            <b>atomic_t</b> <b>pins</b>
+            <br />
+            <b>bool</b> <b>secure</b>
+            <br />
+            <b>bool</b> <b>opened</b>
+            <br />
+            <b>bool</b> <b>authenticated_peer</b>
+            <br />
+            <b>bool</b> <b>cleanup_failed</b>
+            <br />
+            <b>uint64_t</b> <b>started</b>
+            <br />
+            <b>uint64_t</b> <b>last_packet</b>
+            <br />
+            <b>uint64_t</b> <b>partial_since</b>
+            <br />
+            const void * <b>input</b>
+            <br />
+            size_t <b>input_length</b>
+            <br />
+            <b>asciichat_error_t</b> <b>result</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>48</b> of file <b>lib/network/connection.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_security_t</b>* network_connection::adopted_security
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_crypto_mode()</b>, and
+            <b>network_connection_handshake()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::authenticated_peer</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_network_connection::callback_context">
+            <a
+              class="permalink"
+              href="#void*_network_connection::callback_context"
+              >void* network_connection::callback_context</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>51</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_connection_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_callbacks_t</b> network_connection::callbacks
+          </h2>
+          <p class="Pp">
+            Definition at line <b>50</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_connection_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::cleanup_failed</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_server_stop()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_ptr_t</b> network_connection::context</h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_context()</b>, and
+            <b>network_connection_set_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>packet_decoder_t</b> network_connection::decoder
+          </h2>
+          <p class="Pp">
+            Definition at line <b>56</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_void*_network_connection::input">
+            <a class="permalink" href="#const_void*_network_connection::input"
+              >const void* network_connection::input</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_network_connection::input_length">
+            <a class="permalink" href="#size_t_network_connection::input_length"
+              >size_t network_connection::input_length</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> network_connection::last_packet</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b>* network_connection::next
+          </h2>
+          <p class="Pp">
+            Definition at line <b>53</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_foreach()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::opened</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_connection_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> network_connection::partial_since</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_network_connection::peer_256_">
+            <a class="permalink" href="#char_network_connection::peer_256_"
+              >char network_connection::peer[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_peer()</b>, and
+            <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> network_connection::pins</h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_server_foreach()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_server_config_t</b> network_connection::policy
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint16_t</b> network_connection::port</h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_open()</b>, and
+            <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> network_connection::result
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_run()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::secure</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_prepare_security()</b>, and
+            <b>network_connection_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_security_t</b> network_connection::security
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_crypto_mode()</b>,
+            <b>network_connection_handshake()</b>, and
+            <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::security_claimed</h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_handshake()</b>, and
+            <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_connection::security_options</h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_server_t</b>* network_connection::server
+          </h2>
+          <p class="Pp">
+            Definition at line <b>49</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_connection_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> network_connection::started</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> network_connection::state</h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_ready()</b>,
+            <b>network_connection_request_stop()</b>,
+            <b>network_connection_state()</b>, and
+            <b>network_server_foreach()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>platform_event_stream_t</b>* network_connection::stream
+          </h2>
+          <p class="Pp">
+            Definition at line <b>55</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b>* network_connection::transport
+          </h2>
+          <p class="Pp">
+            Definition at line <b>54</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_connection_request_stop()</b>,
+            <b>network_connection_transport()</b>, and
+            <b>network_server_adopt()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

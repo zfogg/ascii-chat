@@ -27,6 +27,7 @@ static void setup(void) {
     *values = options_t_new();
     values->width = 80;
     values->height = 24;
+    values->fps = 30;
     values->color_mode = TERM_COLOR_NONE;
     values->palette_type = PALETTE_CUSTOM;
     SAFE_STRNCPY(values->palette_custom, "#@", sizeof(values->palette_custom));
@@ -203,6 +204,7 @@ static void stream_settings(client_info_t *client, bool rain, int width, int hei
   *v = options_t_new();
   v->width = width;
   v->height = height;
+  v->fps = 30;
   v->color_mode = TERM_COLOR_NONE;
   v->palette_type = PALETTE_CUSTOM;
   SAFE_STRNCPY(v->palette_custom, palette, sizeof(v->palette_custom));

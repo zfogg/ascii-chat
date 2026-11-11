@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/cpu.h>
 #include <string.h>
 
 #if defined(__aarch64__) && defined(HAVE_CRC32_HW)

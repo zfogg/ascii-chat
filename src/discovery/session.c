@@ -33,13 +33,17 @@
 #include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/config.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>
 #include "ascii-chat/common/error_codes.h"
 #include "negotiate.h"
 #include "nat.h"
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/keys.h>
@@ -114,7 +118,20 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
   }
   if (id_result == ASCIICHAT_OK) {
-    id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
+    asciichat_errno_scope_t load_scope = {0};
+    bool suppressed = false;
+    if (!explicit_identity) {
+      load_scope = errno_scope_begin();
+      suppressed = errno_notifications_suppress(true);
+    }
+    if (!explicit_identity && platform_access(identity_path, PLATFORM_ACCESS_EXISTS) != 0)
+      id_result = ERROR_CONFIG;
+    else
+      id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
+    if (!explicit_identity) {
+      errno_notifications_suppress(suppressed);
+      errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
     if (id_result != ASCIICHAT_OK && !explicit_identity) {
       // File doesn't exist or is corrupted - generate new key
       log_info("Identity key not found, generating new key");
@@ -380,9 +397,14 @@ static void *nat_detection_thread_fn(void *arg) {
 
   discovery_session_t *session = (discovery_session_t *)arg;
 
-  const char *probe_host = OPT_ENDPOINT_STUN_FALLBACK;
-  if (strncmp(probe_host, "stun:", 5) == 0)
-    probe_host += 5;
+  stun_server_t probe = {0};
+  const char *probe_host = NULL;
+  if (!GET_OPTION(webrtc_skip_stun) &&
+      stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, &probe, 1) > 0) {
+    probe_host = probe.host;
+    if (strncmp(probe_host, "stun:", 5) == 0)
+      probe_host += 5;
+  }
 
   // Run blocking NAT detection in this thread (not main thread)
   nat_quality_t quality;
@@ -436,7 +458,7 @@ static void start_nat_detection(discovery_session_t *session) {
   mutex_lock(&session->nat_quality_mutex);
   session->nat_detection_completed = false;
   mutex_unlock(&session->nat_quality_mutex);
-  if (acthread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
+  if (platform_thread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
     session->nat_detection_thread_started = true;
   } else {
     log_warn("Could not start NAT detection; handoff will use unknown NAT tier");
@@ -512,8 +534,19 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     params.session_type = SESSION_TYPE_WEBRTC;
     params.has_password = session->password[0] != 0;
     SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
-    SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
-    params.server_port = ACIP_HOST_DEFAULT_PORT;
+    // An empty address lets ACDS use the creator's observed source address.
+    params.acds_expose_ip = GET_OPTION(discovery_expose_ip);
+    params.server_port = (uint16_t)GET_OPTION(port);
+    if (GET_OPTION(quic_bind_address)[0] ||
+        (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+      params.quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : GET_OPTION(port));
+    if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) {
+      if (strlen(GET_OPTION(webtransport_public_url)) >= sizeof(params.webtransport_url)) {
+        acds_protocol_destroy(&protocol);
+        return SET_ERRNO(ERROR_USAGE, "WebTransport public URL exceeds the discovery endpoint limit");
+      }
+      SAFE_STRNCPY(params.webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params.webtransport_url));
+    }
     asciichat_error_t result =
         acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));
@@ -885,45 +918,14 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate TURN server array");
     }
 
-    // Parse comma-separated TURN server URLs
-    char turn_copy[OPTIONS_BUFF_SIZE];
-    SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
-    session->turn_count = 0;
-
-    char *saveptr = NULL;
-    char *token = platform_strtok_r(turn_copy, ",", &saveptr);
-    while (token && session->turn_count < max_turn_servers) {
-      // Trim whitespace
-      while (*token == ' ' || *token == '\t')
-        token++;
-      size_t len = strlen(token);
-      while (len > 0 && (token[len - 1] == ' ' || token[len - 1] == '\t')) {
-        token[--len] = '\0';
-      }
-
-      if (len > 0 && len < sizeof(session->turn_servers[0].url)) {
-        // Set TURN server URL
-        session->turn_servers[session->turn_count].url_len = (uint8_t)len;
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].url, token,
-                     sizeof(session->turn_servers[session->turn_count].url));
-
-        // Keep wire-compatible summaries; the peer manager receives full credentials separately.
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].username, turn_username,
-                     sizeof(session->turn_servers[session->turn_count].username));
-        session->turn_servers[session->turn_count].username_len =
-            (uint8_t)strlen(session->turn_servers[session->turn_count].username);
-
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].credential, turn_credential,
-                     sizeof(session->turn_servers[session->turn_count].credential));
-        session->turn_servers[session->turn_count].credential_len =
-            (uint8_t)strlen(session->turn_servers[session->turn_count].credential);
-
-        session->turn_count++;
-      } else if (len > 0) {
-        log_warn("TURN server URL too long (max 63 chars): %s", token);
-      }
-
-      token = platform_strtok_r(NULL, ",", &saveptr);
+    asciichat_error_t parse_result =
+        webrtc_turn_servers_parse(turn_servers_str, turn_username, turn_credential, session->turn_servers,
+                                  max_turn_servers, &session->turn_count);
+    if (parse_result != ASCIICHAT_OK) {
+      SAFE_FREE(session->turn_servers);
+      session->turn_servers = NULL;
+      session->turn_count = 0;
+      return parse_result;
     }
 
     if (session->turn_count > 0) {
@@ -1136,7 +1138,10 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
       session_host_config_t config = {.port = GET_OPTION(port),
                                       .ipv4_address = "0.0.0.0",
                                       .max_clients = MAX_SESSION_PARTICIPANTS,
-                                      .encryption_enabled = session->session_type != SESSION_TYPE_WEBRTC};
+                                      .encryption_enabled = true,
+                                      .configured_quic_listeners = true,
+                                      .password = session->password,
+                                      .key_path = GET_OPTION(encrypt_key)};
       session->host_ctx = session_host_create(&config);
       result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
     }
@@ -1228,6 +1233,10 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
+  if ((GET_OPTION(quic_bind_address)[0] ||
+       (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) &&
+      GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
+    message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
   asciichat_error_t result = discovery_handoff_send(session, &message, false);
@@ -1260,9 +1269,18 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_RECONCILE);
   ASCII_OTEL_ATTR_STRING("host.update.source", "designation");
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "malformed");
-  if (!data || len != sizeof(acip_host_designated_t))
+  if (!data || len < sizeof(acip_host_designated_t))
     return;
   const acip_host_designated_t *host = data;
+  uint16_t quic_port = 0;
+  char webtransport_url[512];
+  asciichat_errno_scope_t metadata_scope = errno_scope_begin();
+  asciichat_error_t metadata_result =
+      acds_transport_metadata_decode((const uint8_t *)data + sizeof(*host), len - sizeof(*host), &quic_port,
+                                     webtransport_url, sizeof(webtransport_url));
+  errno_scope_end(metadata_scope, ASCIICHAT_ERRNO_DISMISSED);
+  if (metadata_result != ASCIICHAT_OK)
+    return;
   uint32_t generation = NET_TO_HOST_U32(host->generation);
   ASCII_OTEL_ATTR_INT("host.generation", generation);
   ASCII_OTEL_ATTR_INT("host.decision.sequence", NET_TO_HOST_U32(host->sequence));
@@ -1285,7 +1303,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
     session->host_address[0] = 0;
   if (host->host_address[0])
     SAFE_STRNCPY(session->host_address, host->host_address, sizeof(session->host_address));
-  session->host_port = host->host_port;
+  session->host_port = GET_OPTION(discovery_quic) && quic_port ? quic_port : host->host_port;
   if (changed && active)
     NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
   if ((changed && (active || connecting) && discovery_host_endpoint_ready(session, host)) ||
@@ -1362,6 +1380,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     acds_protocol_destroy(&protocol);
     return result;
   }
+  uint16_t advertised_quic_port = protocol.quic_port;
   acip_session_joined_t joined_value = protocol.joined;
   acip_session_joined_t *joined = &joined_value;
   void *alloc_buffer = NULL;
@@ -1372,17 +1391,24 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   memcpy(session->participant_id, joined->participant_id, SESSION_ID_SIZE);
 
   memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, SESSION_ID_SIZE);
+  session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
-  if (GET_OPTION(no_webrtc)) {
-    if (!joined->server_address[0] || joined->server_port == 0) {
-      set_error(session, ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+  if (GET_OPTION(no_webrtc) || GET_OPTION(discovery_quic)) {
+    if (!session->is_host && (!joined->server_address[0] || joined->server_port == 0)) {
+      const char *message = GET_OPTION(discovery_quic)
+                                ? "Direct QUIC requires a disclosed host endpoint"
+                                : "Direct TCP requires a disclosed host endpoint; WebRTC is disabled";
+      set_error(session, ERROR_NETWORK, message);
       buffer_release(alloc_buffer);
-      return SET_ERRNO(ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+      return SET_ERRNO(ERROR_NETWORK, "%s", message);
     }
     session->session_type = SESSION_TYPE_DIRECT_TCP;
-    log_info("Discovery connection route: direct TCP (--no-webrtc)");
+    if (GET_OPTION(discovery_quic))
+      log_info("Discovery connection route: direct QUIC (--discovery-quic)");
+    else
+      log_info("Discovery connection route: direct TCP (--no-webrtc)");
   }
   if (session->session_type == SESSION_TYPE_WEBRTC) {
     // WebRTC signaling addresses peers by participant ID, so a private server
@@ -1410,11 +1436,20 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     log_info("WebRTC peer manager initialized successfully");
   }
 
+  // The initiator also joins its own session. Start its listeners instead of
+  // treating its newly advertised endpoint as an already running remote host.
+  if (session->is_host) {
+    buffer_release(alloc_buffer);
+    set_state(session, DISCOVERY_STATE_STARTING_HOST);
+    return ASCIICHAT_OK;
+  }
+
   // Check if host is already established
   if (session->session_type != SESSION_TYPE_WEBRTC && joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
-    session->host_port = joined->server_port;
+    session->host_port =
+        GET_OPTION(discovery_quic) && advertised_quic_port ? advertised_quic_port : joined->server_port;
     session->is_host = false;
 
     log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",
@@ -1712,6 +1747,9 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
         .ipv4_address = "0.0.0.0",
         .max_clients = MAX_SESSION_PARTICIPANTS,
         .encryption_enabled = true,
+        .configured_quic_listeners = true,
+        .password = session->password,
+        .key_path = GET_OPTION(encrypt_key),
     };
 
     session->host_ctx = session_host_create(&hconfig);
@@ -1749,8 +1787,26 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   announcement.sequence = HOST_TO_NET_U32(session->host_authority_sequence);
 
   if (session->acds_transport) {
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
-                              sizeof(announcement), 0);
+    uint8_t payload[sizeof(announcement) + ACDS_TRANSPORT_METADATA_MAX];
+    size_t metadata_length = 0;
+    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] ||
+                          (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+                             ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port)
+                             : 0;
+    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])
+                          ? GET_OPTION(webtransport_public_url)
+                          : "";
+    asciichat_error_t sent = ASCIICHAT_OK;
+    if (quic_port || *url)
+      sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX,
+                                            &metadata_length);
+    if (sent != ASCIICHAT_OK)
+      return sent;
+    memcpy(payload, &announcement, sizeof(announcement));
+    sent = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, payload,
+                                     sizeof(announcement) + metadata_length, 0);
+    if (sent != ASCIICHAT_OK)
+      return sent;
     log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
   }
 
@@ -1875,12 +1931,25 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *session) {
   ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
   if (!session->participant_ctx) {
-    session_participant_config_t config = {.address = session->host_address,
+    char quic_address[ACIP_ADDRESS_SIZE + 16];
+    const char *address = session->host_address;
+    if (GET_OPTION(discovery_quic)) {
+      if (strchr(address, ':'))
+        SAFE_SNPRINTF(quic_address, sizeof(quic_address), "quic://[%s]", address);
+      else
+        SAFE_SNPRINTF(quic_address, sizeof(quic_address), "quic://%s", address);
+      address = quic_address;
+    }
+    session_participant_config_t config = {.address = address,
                                            .port = session->host_port,
                                            .enable_audio = true,
                                            .enable_video = true,
                                            .encryption_enabled = true,
-                                           .password = session->password};
+                                           .password = session->password,
+                                           .server_key = GET_OPTION(server_key),
+                                           .tls_ca_file = GET_OPTION(tls_ca_file),
+                                           .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                                           .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
     session->participant_ctx = session_participant_create(&config);
     if (!session->participant_ctx)
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery participant");

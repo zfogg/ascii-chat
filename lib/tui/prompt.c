@@ -32,6 +32,11 @@ typedef struct {
   bool unicode;
   bool secret;
   char text[];
+  /**
+   * @brief When code needs to work with prompt snapshot, it keeps `kind`, `prompt_bytes`, `cursor`, `selected_button`
+   * here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must
+   * release any allocation, lock, thread, or callback context recorded in those fields.
+   */
 } prompt_snapshot_t;
 
 static void media_center_line(frame_buffer_t *buffer, const char *text, int row, int cols) {
@@ -84,7 +89,8 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
   int top = (size.rows - height) / 2 + 1;
   if (top < 1)
     top = 1;
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+  bool colors = !GET_OPTION(strip_ansi) &&
+                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   frame_buffer_append(buffer, "\033[0m\033[H\033[?25l", 13);
   frame_buffer_printf(buffer, "\033[%d;1H", top);
   const animation_sample_t *sample = ui_controller_animation_sample();
@@ -276,8 +282,9 @@ asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible
   snapshot->secret = secret;
   snapshot->severity = ui_notice_prompt_severity();
   bool media = strncmp(prompt, "Open media:", 11) == 0;
-  snapshot->color = !media && !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
-  snapshot->unicode = !media && terminal_should_use_utf8();
+  snapshot->color =
+      !media && !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd(), options_terminal_settings());
+  snapshot->unicode = !media && terminal_should_use_utf8(GET_OPTION(force_utf8));
   memcpy(snapshot->text, prompt, prompt_bytes);
   memcpy(snapshot->text + prompt_bytes, visible, visible_bytes);
   // Height is measured at the minimum width, so every larger terminal fits.
@@ -346,7 +353,7 @@ asciichat_error_t ui_password_prompt_present(const char *target, const char *mas
   s->incorrect = incorrect;
   s->can_confirm = can_confirm;
   s->newline_limit = newline_limit;
-  s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
+  s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd(), options_terminal_settings());
   memcpy(s->text, target, target_bytes);
   memcpy(s->text + target_bytes, masked, masked_bytes);
   asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(),

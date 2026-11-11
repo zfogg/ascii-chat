@@ -59,7 +59,9 @@ async function expectClientRendersChangingFrames(
     .poll(
       () =>
         page.evaluate(() => window.__clientFrameMetrics?.uniqueRendered ?? 0),
-      { timeout: 15_000 },
+      {
+        timeout: 15_000,
+      },
     )
     .toBeGreaterThan(1);
 

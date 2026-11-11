@@ -47,6 +47,17 @@ int main(void) {
   }
   if (captured_x != 2 * 1024 * 1024)
     return 3;
+  int conditions = 0, executions = 0;
+  int previous_redirects = redirects;
+  LOG_IO_IF(++conditions == 0, "unused", { ++executions; });
+  if (conditions != 1 || executions != 1 || redirects != previous_redirects)
+    return 5;
+  LOG_IO_IF(++conditions == 2, "backend", {
+    ++executions;
+    fputc('X', stdout);
+  });
+  if (conditions != 2 || executions != 2 || captured_x != 2 * 1024 * 1024 + 1)
+    return 6;
   // The second dup2 fails: stdout must be rolled back before returning.
   fail_redirect = redirects + 2;
   log_io_t failed = log_io_start();

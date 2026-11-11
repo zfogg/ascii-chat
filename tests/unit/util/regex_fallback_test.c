@@ -10,13 +10,12 @@
 
 static void setup(void) {
   setenv("ASCII_CHAT_PCRE2_DISABLE_JIT", "1", 1);
-  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("^fallback-probe$", 0);
-  cr_assert_not_null(singleton);
-  pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+  pcre2_code *code = asciichat_pcre2_compile("^fallback-probe$", 0);
   cr_assert_not_null(code);
   size_t jit_size = 1;
   cr_assert_eq(pcre2_pattern_info(code, PCRE2_INFO_JITSIZE, &jit_size), 0);
   cr_assert_eq(jit_size, 0, "The fixture must exercise interpreted regex matching");
+  pcre2_code_free(code);
 }
 
 TestSuite(regex_fallback, .init = setup);

@@ -34,7 +34,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
     hash: string;
   }>[] = [];
   page.on("console", (message) => {
-    if (message.text().includes("_client_init_with_args"))
+    if (message.text().includes("[Client WASM] Session initialized"))
       initLogs.push(message.text());
   });
   page.on("response", (response) => {
@@ -58,9 +58,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
       const { initClientWasm } = await import(path);
       await initClientWasm({ width: 80, height: 24 });
     });
-    expect(initLogs).toContain(
-      "[Client WASM] _client_init_with_args returned: 0",
-    );
+    expect(initLogs).toContain("[Client WASM] Session initialized");
     const served = await Promise.all(assets);
     for (const file of ["client.js", "client.wasm"]) {
       expect(served).toContainEqual(
@@ -336,7 +334,9 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
   await page.goto("/mirror?colorMode=truecolor");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await page
     .getByRole("button", { name: "Enable microphone", exact: true })
     .click();
@@ -478,7 +478,9 @@ test("Mirror screen sharing from idle returns to idle, and file sharing restores
   await page.goto("/mirror");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop sharing", exact: true }),
@@ -524,9 +526,11 @@ test("C resolves source orientation and transforms upload pixels once while pres
   await page.goto("/mirror");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   const proof = await page.evaluate(async (url) => {
-    const { getMirrorModule } = await import(url);
+    const { getMirrorModule, transformCaptureRgba } = await import(url);
     const { runtimeOptions } = await import(
       url.replace("mirror.ts", "common/runtimeOptions.ts")
     );
@@ -558,7 +562,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module._wasm_capture_transform_required(),
+        required: module.browser_capture_transform_required(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -567,9 +571,28 @@ test("C resolves source orientation and transforms upload pixels once while pres
     return {
       original: Array.from(original),
       results,
-      invalid: module._wasm_capture_transform_rgba(0, 2, 2),
+      fractionalRejected: (() => {
+        try {
+          transformCaptureRgba(new Uint8ClampedArray(16), 2.5, 2);
+          return false;
+        } catch (error) {
+          return (
+            error instanceof Error &&
+            error.message === "Invalid capture dimensions"
+          );
+        }
+      })(),
+      invalid: (() => {
+        const frame = new module.MirrorFrameBinding();
+        try {
+          return frame.transform(new Uint8Array(0), 2, 2);
+        } finally {
+          frame.delete();
+        }
+      })(),
     };
   }, moduleUrl);
+  expect(proof.fractionalRejected).toBe(true);
   const reversedRows = [
     20, 0, 0, 255, 10, 0, 0, 255, 40, 0, 0, 255, 30, 0, 0, 255,
   ];
@@ -592,7 +615,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
         JSON.stringify(result.local) === JSON.stringify(proof.original),
     ),
   ).toBe(true);
-  expect(proof.invalid).toBe(-1);
+  expect(proof.invalid).toBe(86);
 });
 
 test("Mirror visualizes captured audio in waveform and FFT while its enabled speakers remain silent", async ({
@@ -604,7 +627,9 @@ test("Mirror visualizes captured audio in waveform and FFT while its enabled spe
   await page.goto("/mirror?colorMode=truecolor");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await observeAudioVisualization(page);
   await page
     .getByRole("button", { name: "Enable speakers", exact: true })
@@ -722,7 +747,7 @@ for (const mode of ["client", "discovery"]) {
         message.text().includes("track reader stopped")
       )
         console.log(message.text());
-      if (message.text().includes("_client_init_with_args"))
+      if (message.text().includes("[Client WASM] Session initialized"))
         clientInitLogs.push(message.text());
     });
     page.on("request", (request) => {
@@ -810,7 +835,9 @@ for (const mode of ["client", "discovery"]) {
             () =>
               output.match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)?.[1] ??
               "",
-            { timeout: 30000 },
+            {
+              timeout: 30000,
+            },
           )
           .not.toBe("");
         query.set(
@@ -832,10 +859,10 @@ for (const mode of ["client", "discovery"]) {
         .click();
       await expect(
         page.getByRole("button", { name: "Disconnect", exact: true }),
-      ).toBeVisible({ timeout: 45000 });
-      expect(clientInitLogs).toContain(
-        "[Client WASM] _client_init_with_args returned: 0",
-      );
+      ).toBeVisible({
+        timeout: 45000,
+      });
+      expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])
         expect(
           clientAssets.some(
@@ -893,7 +920,9 @@ for (const mode of ["client", "discovery"]) {
       await expect
         .poll(
           () => page.evaluate(() => window.__clientFrameMetrics?.received ?? 0),
-          { timeout: 20000 },
+          {
+            timeout: 20000,
+          },
         )
         .toBeGreaterThan(before + 3);
       await expect
@@ -920,7 +949,9 @@ for (const mode of ["client", "discovery"]) {
         .click();
       await expect(
         observer.getByRole("button", { name: "Disconnect", exact: true }),
-      ).toBeVisible({ timeout: 45000 });
+      ).toBeVisible({
+        timeout: 45000,
+      });
       await expect(
         observer.getByRole("button", { name: "Disable webcam", exact: true }),
       ).toBeVisible();

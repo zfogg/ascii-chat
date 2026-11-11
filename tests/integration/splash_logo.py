@@ -5,13 +5,14 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
 import socket
 import threading
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 from sync_tui_modes import capture
 
 
@@ -35,9 +36,9 @@ def main():
                 pass
         worker = threading.Thread(target=hold_handshake, daemon=True)
         worker.start()
-        term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(args.artifacts / 'splash.log'),
+        term = Terminal(cli_command(str(args.binary.resolve()), '--log-file', str(args.artifacts / 'splash.log'),
                          'client', f'127.0.0.1:{listener.getsockname()[1]}',
-                         '--test-pattern', '--audio=false', '--splash-screen=true', '--color-mode', 'truecolor'],
+                         '--test-pattern', '--audio=false', '--splash-screen=true', '--color-mode', 'truecolor'),
                         rows=40, cols=110)
         try:
             term.expect(lambda text: 'Video chat in your terminal' in text and

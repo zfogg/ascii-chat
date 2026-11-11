@@ -3,11 +3,12 @@
  * @brief PCRE2-based regex patterns for cryptographic parsing
  * @ingroup crypto
  *
- * Implements regex-based parsing for SSH formats using PCRE2 with JIT compilation.
- * Uses centralized PCRE2 singleton module for thread-safe lazy initialization.
+ * Implements regex-based parsing for SSH formats using PCRE2.
+ * Compiles each pattern for the duration of a match.
  */
 
 #include "ascii-chat/asciichat_errno.h"
+#include <defer.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
@@ -77,64 +78,52 @@ static const char *GPG_KEYGRIP_REGEX_PATTERN = "^grp:(?:[^:]*:){8}(?<keygrip>[A-
 /* ═══════════════════════════════════════════════════════════════════════════
  * PCRE2 REGEX SINGLETONS
  *
- * Individual lazy-initialized singletons for each regex pattern.
- * Compiled regex is read-only after initialization, safe for concurrent reads.
+ * Patterns are compiled for each operation.
+ * Each operation owns its compiled pattern.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-static pcre2_singleton_t *g_known_hosts_regex = NULL;
-static pcre2_singleton_t *g_ssh_public_key_regex = NULL;
-static pcre2_singleton_t *g_openssh_pem_regex = NULL;
-static pcre2_singleton_t *g_gpg_keygrip_regex = NULL;
-
 /**
- * Get compiled known_hosts regex (lazy initialization)
+ * Get compiled known_hosts regex (owned by the caller)
  */
 static pcre2_code *crypto_regex_get_known_hosts(void) {
-  if (g_known_hosts_regex == NULL) {
-    g_known_hosts_regex =
-        asciichat_pcre2_singleton_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
-  }
-  return asciichat_pcre2_singleton_get_code(g_known_hosts_regex);
+  return asciichat_pcre2_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
 }
 
 /**
- * Get compiled SSH public key regex (lazy initialization)
+ * Get compiled SSH public key regex (owned by the caller)
  */
 static pcre2_code *crypto_regex_get_ssh_public_key(void) {
-  if (g_ssh_public_key_regex == NULL) {
-    g_ssh_public_key_regex =
-        asciichat_pcre2_singleton_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
-  }
-  return asciichat_pcre2_singleton_get_code(g_ssh_public_key_regex);
+  return asciichat_pcre2_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
 }
 
 /**
- * Get compiled OpenSSH PEM regex (lazy initialization)
+ * Get compiled OpenSSH PEM regex (owned by the caller)
  */
 static pcre2_code *crypto_regex_get_openssh_pem(void) {
-  if (g_openssh_pem_regex == NULL) {
-    g_openssh_pem_regex = asciichat_pcre2_singleton_compile(OPENSSH_PEM_REGEX_PATTERN,
-                                                            PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
-  }
-  return asciichat_pcre2_singleton_get_code(g_openssh_pem_regex);
+  return asciichat_pcre2_compile(OPENSSH_PEM_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
 }
 
 /**
- * Get compiled GPG keygrip regex (lazy initialization)
+ * Get compiled GPG keygrip regex (owned by the caller)
  */
 static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
-  if (g_gpg_keygrip_regex == NULL) {
-    g_gpg_keygrip_regex = asciichat_pcre2_singleton_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
-  }
-  return asciichat_pcre2_singleton_get_code(g_gpg_keygrip_regex);
+  return asciichat_pcre2_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
 }
 
 static int crypto_regex_match(pcre2_code *regex, PCRE2_SPTR subject, PCRE2_SIZE length, pcre2_match_data *match_data) {
-  int result = pcre2_jit_match(regex, subject, length, 0, 0, match_data, NULL);
+  int result = asciichat_pcre2_match(regex, subject, length, 0, 0, match_data, NULL);
   if (result == PCRE2_ERROR_JIT_BADOPTION) {
     result = pcre2_match(regex, subject, length, 0, 0, match_data, NULL);
   }
   return result;
+}
+
+static void crypto_regex_free_code(pcre2_code *regex) {
+  pcre2_code_free(regex);
+}
+
+static void crypto_regex_free_match_data(pcre2_match_data *match_data) {
+  pcre2_match_data_free(match_data);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -154,15 +143,16 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
     return false;
   }
 
@@ -171,8 +161,6 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
   *key_type_out = asciichat_pcre2_extract_named_group(regex, match_data, "key_type", line);
   *hex_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "hex_key", line);
   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
-
-  pcre2_match_data_free(match_data);
 
   /* Verify we got required fields */
   if (!*ip_port_out || !*key_type_out) {
@@ -198,23 +186,22 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
     return false;
   }
 
   /* Extract named groups */
   *base64_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_key", line);
   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
-
-  pcre2_match_data_free(match_data);
 
   /* Verify we got required field */
   if (!*base64_key_out) {
@@ -238,22 +225,21 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
     return false;
   }
 
   /* Extract base64 data */
   *base64_data_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_data", file_content);
-
-  pcre2_match_data_free(match_data);
 
   return *base64_data_out != NULL;
 }
@@ -270,22 +256,21 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
     return false;
   }
 
   /* Extract keygrip from named group */
   *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, "keygrip", line);
-
-  pcre2_match_data_free(match_data);
 
   return *keygrip_out != NULL;
 }

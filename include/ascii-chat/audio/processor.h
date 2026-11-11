@@ -11,6 +11,12 @@ extern "C" {
 
 /** Streaming mono PCM enhancement. Each instance has one processing owner. */
 typedef struct audio_processor audio_processor_t;
+/**
+ * @brief audio processor config keeps the values that move through the subsystem: `channels`, `sample_rate`, `flags`, `spectral_enabled`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
+/**
+ * @brief This is the handoff point for audio processor flags. Callers fill `agc`, `compressor`, `noise_gate`, `highpass` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ */
 typedef struct {
   bool agc, compressor, noise_gate, highpass, lowpass;
 } audio_processor_flags_t;

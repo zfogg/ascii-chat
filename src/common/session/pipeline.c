@@ -13,15 +13,18 @@
 #include "capture.h"
 #include "display.h"
 #include "render.h"
-#include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <ascii-chat/os/memory.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/terminal.h>
+#include <libplatform/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 
@@ -43,12 +46,21 @@ typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
+  /**
+   * @brief When code needs to work with frame slot, it keeps `frame`, `busy`, `capacity` here instead of scattering it
+   * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock,
+   * thread, or callback context recorded in those fields.
+   * @brief Owns the temporary storage used by frame queue. The data pointers and size or cursor fields describe the
+   * live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+   * needed.
+   * @brief pipeline frame keeps the values that move through the subsystem: `slot`, `pixels`, `w`, `h`. Some members
+   * are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than
+   * the struct copy itself.
+   */
 } pipeline_frame_t;
 
 struct frame_slot_s {
@@ -267,10 +279,16 @@ static bool frame_is_valid(const pipeline_frame_t *f) {
  * Pipeline Context
  * ============================================================================ */
 
+/**
+ * @brief For session pipeline, this is the live record that ties `capture_tid`, `encode_tid`, `input_tid`,
+ * `input_start_status` together. The owning code creates it, updates it while work is active, and releases its handles
+ * and pointed-to storage before freeing the record.
+ */
 struct session_pipeline_s {
-  asciichat_thread_t capture_tid;
-  asciichat_thread_t encode_tid;
-  asciichat_thread_t input_tid;
+  platform_thread_t capture_tid;
+  platform_thread_t encode_tid;
+  platform_thread_t input_tid;
+  atomic_int input_start_status;
   session_keyboard_handler_fn keyboard_handler;
   session_should_exit_fn should_exit;
   void *input_data;
@@ -347,9 +365,7 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
     frame->acquisition_started_ns = acquisition_started_ns;
-#ifdef ASCIICHAT_WITH_OTEL
     frame->telemetry_context = ascii_otel_context();
-#endif
 
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
@@ -460,6 +476,7 @@ static void *pipeline_encode_thread(void *arg) {
   log_debug("[PIPELINE_ENCODE] Starting encode thread");
 
   uint64_t frames_processed = 0;
+  uint64_t recording_epoch = UINT64_MAX;
   while (true) {
     // Drain queued frames before exiting, even when capture was interrupted.
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->encode_queue, 100 * NS_PER_MS_INT);
@@ -485,6 +502,11 @@ static void *pipeline_encode_thread(void *arg) {
     if (frames_processed == 0 || frames_processed % 30 == 0) {
       log_debug_every(US_PER_SEC_INT, "[PIPELINE_ENCODE] Processing frame %llu: %dx%d",
                       (unsigned long long)frames_processed, frame->w, frame->h);
+    }
+
+    if (recording_epoch != frame->source_epoch) {
+      session_display_reset_stabilizer(pipeline->display, true);
+      recording_epoch = frame->source_epoch;
     }
 
     // Encode frame (convert_to_ascii is called internally by encode_frame)
@@ -557,7 +579,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   atomic_store_u64(&p->first_frame_ns, 0);
 
   // Start capture thread
-  if (acthread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
+  if (platform_thread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
     free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
     platform_wakeup_destroy(p->display_ready);
     NAMED_UNREGISTER(&p->display_pending);
@@ -569,7 +591,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 
   // Start encode thread only if render_file is active
   if (p->has_render_file) {
-    if (acthread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
+    if (platform_thread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
       atomic_store_bool(&p->stop, true);
       thread_join(&p->capture_tid, NULL);
       free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
@@ -591,6 +613,10 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 // must never determine when an interactive command is consumed.
 static void *pipeline_input_thread(void *data) {
   session_pipeline_t *pipeline = data;
+  asciichat_error_t result = keyboard_init();
+  atomic_store(&pipeline->input_start_status, result == ASCIICHAT_OK ? 1 : -1);
+  if (result != ASCIICHAT_OK)
+    return NULL;
   while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
     if (key != KEY_NONE)
@@ -608,15 +634,20 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   }
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
-  if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
-    asciichat_error_t keyboard_result = keyboard_init();
-    if (keyboard_result != ASCIICHAT_OK)
-      return keyboard_result;
+  uint64_t display_epoch = UINT64_MAX;
+  if (keyboard_handler && !GET_OPTION(snapshot_mode) && !(pipeline->has_render_file && !terminal_is_interactive())) {
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;
-    if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
+    atomic_store(&pipeline->input_start_status, 0);
+    if (platform_thread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
+    while (atomic_load(&pipeline->input_start_status) == 0)
+      platform_sleep_ms(1);
+    if (atomic_load(&pipeline->input_start_status) < 0) {
+      thread_join(&pipeline->input_tid, NULL);
+      return SET_ERRNO(ERROR_INIT, "Cannot initialize session keyboard input");
+    }
   }
 
   // Snapshot duration is owned by the capture thread. It records the first
@@ -643,9 +674,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_WAIT, queue_age);
     ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, queue_age);
     ASCII_OTEL_SCOPE_PARENT(PIPELINE_DISPLAY, &frame->telemetry_context);
-#ifdef ASCIICHAT_WITH_OTEL
     ascii_otel_scope_int(&otel_scope, "ascii_chat.queue.wait_ns", (int64_t)(time_get_ns() - frame->captured_ns));
-#endif
     // Validate frame structure exists before accessing fields
     if (!frame_is_valid(frame)) {
       ascii_otel_metric(ASCII_OTEL_METRIC_DROP_INVALID, 1);
@@ -661,6 +690,10 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
     if (!help_is_active) {
       // Convert to ASCII
+      if (display_epoch != frame->source_epoch) {
+        session_display_reset_stabilizer(pipeline->display, false);
+        display_epoch = frame->source_epoch;
+      }
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
       uint64_t conversion_started_ns = time_get_ns();
       char *ascii = session_display_convert_to_ascii_reuse(pipeline->display, &tmp);
@@ -684,10 +717,11 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
           ascii_otel_pipeline_progress(1, 0);
           ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_LATENCY, (double)(published_ns - acquisition_started_ns) / 1e9);
           session_capture_complete_open(pipeline->capture, epoch);
-          log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
-                    "publish_ms=%.2f",
-                    (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
-                    convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
+          log_debug_every(US_PER_SEC_INT,
+                          "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
+                          "publish_ms=%.2f",
+                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
+                          convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
         session_display_release_ascii(pipeline->display, ascii);
       } else {

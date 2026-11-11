@@ -1,11 +1,21 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 
 TestSuite(common_parsers);
+
+Test(common_parsers, levenshtein_handles_utf8_and_invalid_inputs) {
+  cr_assert_eq(levenshtein("kitten", "sitting"), 3);
+  cr_assert_eq(levenshtein("café", "cafe"), 1);
+  cr_assert_eq(levenshtein("界é", "界"), 1);
+  cr_assert_eq(levenshtein("", "abc"), 3);
+  cr_assert_eq(levenshtein(NULL, "abc"), SIZE_MAX);
+  cr_assert_eq(levenshtein("\xff", "abc"), SIZE_MAX);
+}
 
 Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_settings) {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
@@ -80,8 +90,10 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
   cr_assert_eq(port, 65535);
   int fps = 10;
   cr_assert(validate_fps_opt("30", &fps));
-  cr_assert_not(validate_fps_opt("0", &fps));
-  cr_assert_eq(fps, 30);
+  cr_assert(validate_fps_opt("0", &fps));
+  cr_assert_eq(fps, 0);
+  cr_assert_not(validate_fps_opt("-1", &fps));
+  cr_assert_eq(fps, 0);
   SAFE_FREE(options);
 }
 

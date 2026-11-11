@@ -1,127 +1,332 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>crypto.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">crypto.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">crypto.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">crypto.c - Stub implementations for crypto-related functions in
-    WASM build.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>ed25519_verify_signature</b> (const
-    <b>uint8_t</b> public_key[32], const <b>uint8_t</b> *message, size_t
-    message_len, const <b>uint8_t</b> signature[64], const char *gpg_key_id)
-  <br/>
-  Verify an Ed25519 signature. <b>asciichat_error_t</b>
-    <b>ed25519_sign_message</b> (const <b>private_key_t</b> *key, const
-    <b>uint8_t</b> *message, size_t message_len, <b>uint8_t</b> signature[64])
-  <br/>
-  Sign a message with Ed25519 (uses SSH agent if available, otherwise in-memory
-    key). <b>asciichat_error_t</b> <b>parse_public_keys</b> (const char *input,
-    <b>public_key_t</b> *keys_out, size_t *num_keys, size_t max_keys)
-  <br/>
-  Parse all SSH/GPG public keys from any format (returns all keys).
-    <b>asciichat_error_t</b> <b>check_known_host</b> (const char *server_ip,
-    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
-  <br/>
-  Check if server key is in known_hosts. <b>asciichat_error_t</b>
-    <b>check_known_host_no_identity</b> (const char *server_ip, <b>uint16_t</b>
-    port)
-  <br/>
-  Check known_hosts for servers without identity key (no-identity entries).
-    <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip,
-    <b>uint16_t</b> port, const <b>uint8_t</b> expected_key[32], const
-    <b>uint8_t</b> received_key[32])
-  <br/>
-  Display MITM warning with key comparison and prompt user for confirmation.
-    <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip,
-    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
-  <br/>
-  Interactive prompt for unknown host - returns true if user wants to add, false
-    to abort. <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char
-    *server_ip, <b>uint16_t</b> port)
-  <br/>
-  Interactive prompt for unknown host without identity key - returns true if
-    user wants to continue, false to abort. <b>asciichat_error_t</b>
-    <b>add_known_host</b> (const char *server_ip, <b>uint16_t</b> port, const
-    <b>uint8_t</b> server_key[32])
-  <br/>
-  Add server to known_hosts. const char * <b>get_known_hosts_path</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>prompt_password</b> (const char *prompt_text, char
-    *password_out, size_t password_max_len)
-  <br/>
-  Prompt the user for a password with secure input.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Stub implementations for crypto-related functions in WASM
-  build.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_get_known_hosts_path_(void_)"><a class="permalink" href="#const_char_*_get_known_hosts_path_(void_)">const
-  char * get_known_hosts_path (void )</a></h2>
-<p class="Pp">Definition at line <b>66</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>66                                        {
-67   // No filesystem in WASM
-68   return NULL;
-69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          crypto.c - Stub implementations for crypto-related functions in WASM
+          build.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>parse_public_keys</b> (const char
+            *input, <b>public_key_t</b> *keys_out, size_t *num_keys, size_t
+            max_keys)
+            <br />
+            Parse all SSH/GPG public keys from any format (returns all keys).
+            <b>asciichat_error_t</b> <b>check_known_host</b> (const char
+            *server_ip, <b>uint16_t</b> port, const <b>uint8_t</b>
+            server_key[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>check_known_host_no_identity</b> (const
+            char *server_ip, <b>uint16_t</b> port)
+            <br />
+            Check known_hosts for servers without identity key (no-identity
+            entries).
+            <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> expected_key[<b>ED25519_PUBLIC_KEY_SIZE</b>], const
+            <b>uint8_t</b>
+            received_key[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char
+            *server_ip, <b>uint16_t</b> port)
+            <br />
+            Interactive prompt for unknown host without identity key - returns
+            true if user wants to continue, false to abort.
+            <b>asciichat_error_t</b> <b>add_known_host</b> (const char
+            *server_ip, <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            const char * <b>get_known_hosts_path</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>prompt_password</b> (const char
+            *prompt_text, char *password_out, size_t password_max_len)
+            <br />
+            Prompt the user for a password with secure input.
+            <b>asciichat_error_t</b> <b>check_known_host_with_key</b> (const
+            char *server_ip, <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>uint8_t</b> stored_key[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>bool</b>
+            *has_stored_key)
+            <br />
+            void <b>key_identity_announce</b> (const char *label, const
+            <b>public_key_t</b> *key)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Stub implementations for crypto-related functions in WASM build.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>lib/platform/wasm/stubs/crypto.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> add_known_host (const char * server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>53</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+54                                                                                     {
+55   // Known hosts file updates not supported in WASM
+56   return ASCIICHAT_OK;
+57 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>add_known_host()</b>, <b>ASCIICHAT_OK</b>, and
+            <b>ED25519_PUBLIC_KEY_SIZE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> check_known_host (const char * server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+27                                                                                       {
+28   // Known hosts checking not supported in WASM
+29   return ASCIICHAT_OK;
+30 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>check_known_host()</b>, and
+            <b>ED25519_PUBLIC_KEY_SIZE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> check_known_host_with_key (const char *
+            server_ip, <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[ED25519_PUBLIC_KEY_SIZE],
+            <b>uint8_t</b> stored_key[ED25519_PUBLIC_KEY_SIZE], <b>bool</b> *
+            has_stored_key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>72</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+74                                                                                                                {
+75   if (has_stored_key)
+76     *has_stored_key = false;
+77   if (stored_key)
+78     memset(stored_key, 0, sizeof(stored_key));
+79   return check_known_host(server_ip, port, server_key);
+80 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>check_known_host()</b>,
+            <b>check_known_host_with_key()</b>, and
+            <b>ED25519_PUBLIC_KEY_SIZE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> display_mitm_warning (const char * server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> expected_key[ED25519_PUBLIC_KEY_SIZE], const
+            <b>uint8_t</b> received_key[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+38                                                                                {
+39   // MITM warnings not displayed in WASM (browser console log instead)
+40   return false;
+41 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>display_mitm_warning()</b>, and
+            <b>ED25519_PUBLIC_KEY_SIZE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_get_known_hosts_path_(void_)">
+            <a
+              class="permalink"
+              href="#const_char_*_get_known_hosts_path_(void_)"
+              >const char * get_known_hosts_path (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+59                                        {
+60   // No filesystem in WASM
+61   return NULL;
+62 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>get_known_hosts_path()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_key_identity_announce_(const_char_*_label,_const_"
+          >
+            <a
+              class="permalink"
+              href="#void_key_identity_announce_(const_char_*_label,_const_"
+              >void key_identity_announce (const char * label, const
+              <b>public_key_t</b> * key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Announce a public identity using the existing notice/logging policy.
+          </p>
+          <p class="Pp">
+            Definition at line <b>82</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+82                                                                        {
+83   (void)label;
+84   (void)key;
+85 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>key_identity_announce()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> prompt_unknown_host (const char * server_ip,
+            <b>uint16_t</b> port, const
+            <b>uint8_t</b> server_key[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file
+            <b>lib/platform/wasm/stubs/crypto.c</b>.
+          </p>
+          <pre>
+43                                                                                                                   {
+44   // No interactive prompts in WASM - auto-accept
+45   return true;
+46 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ED25519_PUBLIC_KEY_SIZE</b>, and
+            <b>prompt_unknown_host()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

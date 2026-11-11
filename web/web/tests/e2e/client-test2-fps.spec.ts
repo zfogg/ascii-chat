@@ -27,7 +27,9 @@ test("/client?test2&testCadence sustains near-60-FPS video delivery and renderin
     await expect
       .poll(
         () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
-        { timeout: 10_000 },
+        {
+          timeout: 10_000,
+        },
       )
       .toBeGreaterThan(60);
 

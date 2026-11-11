@@ -62,7 +62,9 @@ export function saveMediaDevicePreferences(
   window.dispatchEvent(
     new CustomEvent<MediaDevicePreferencesChange>(
       MEDIA_DEVICE_PREFERENCES_CHANGED,
-      { detail: { preferences, changedKeys } },
+      {
+        detail: { preferences, changedKeys },
+      },
     ),
   );
 }

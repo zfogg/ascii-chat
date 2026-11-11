@@ -5,6 +5,7 @@
 typedef enum { NETWORK_PROTOCOL_MEDIA, NETWORK_PROTOCOL_DISCOVERY } network_protocol_t;
 
 /** Wire profiles preserve deployed media and discovery handshakes. Credentials
+ * @brief When code needs to work with network negotiation, it keeps `protocol`, `handshake`, `identity_keys`, `identity_key_count` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * are borrowed from server configuration until all connections have drained.
  * The application context retains handshake storage until the closed callback.
  */

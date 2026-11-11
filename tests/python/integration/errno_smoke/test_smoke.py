@@ -1,0 +1,143 @@
+import pytest
+from types import SimpleNamespace
+"""Application error-boundary checks. Usage: python smoke.py /path/to/ascii-chat."""
+
+from ascii_chat_tests.media import ppm_image
+from ascii_chat_tests.cli import cli_command
+
+
+import os
+from pathlib import Path
+import subprocess
+import time
+
+
+from ascii_chat_tests.process import free_port
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.network, pytest.mark.skipif(os.name == "nt", reason="POSIX errno integration fixture")]
+
+
+def unused_port():
+    return str(free_port())
+
+
+def test_errno_smoke(binary, tmp_path, request):
+    args = SimpleNamespace(debug_sync=request.config.getoption("--debug-sync"),
+                           codec_fixture=Path(request.config.getoption("--codec-fixture")) if request.config.getoption("--codec-fixture") else None,
+                           failed_codec_fixture=Path(request.config.getoption("--failed-codec-fixture")) if request.config.getoption("--failed-codec-fixture") else None)
+    binary = str(binary)
+    logs = tmp_path
+    print(f"Logs: {logs}", flush=True)
+    # The server is a fresh, local test instance. Do not modify known_hosts.
+    env = dict(os.environ, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
+
+    def command(name, options):
+        return cli_command(binary, "--log-file", str(logs / f"{name}.log"), *options)
+
+    def run(name, options, expected):
+        with (logs / f"{name}-output.log").open("wb") as output:
+            result = subprocess.run(command(name, options), env=env, stdout=output,
+                                    stderr=output, timeout=30)
+        assert result.returncode == expected, (name, result.returncode, expected, logs,
+            (logs / f"{name}-output.log").read_text(encoding="utf-8", errors="replace")[-8000:])
+        print(f"PASS {name}: exit {expected}", flush=True)
+        return (logs / f"{name}.log").read_text(encoding="utf-8", errors="replace")
+
+    synthetic_media = ["--test-pattern", "--test-audio", "--no-audio-playback"]
+    snapshot = ["--snapshot", "--snapshot-delay", "0.3", "--width", "20", "--height", "10",
+                "--splash-screen=false"]
+    synthetic_snapshot = [*snapshot, *synthetic_media]
+    help_text = subprocess.check_output([binary, "--help"], env=env, stderr=subprocess.STDOUT).decode(errors="replace")
+    for flag in ("--errno-stacks", "--sync-state"):
+        assert (flag in help_text) == args.debug_sync, (flag, args.debug_sync)
+    if args.debug_sync:
+        diagnostic = run("mirror", ["mirror", "--errno-stacks=0.05", *synthetic_snapshot], 0)
+        assert "Pending error stacks" in diagnostic
+        assert "Error registry:" in diagnostic
+        assert "SYNC_STATE:" not in diagnostic
+        sync = run("sync-only", ["mirror", "--sync-state=0.05", *synthetic_snapshot], 0)
+        assert "Pending error stacks" not in sync
+        both = run("both-reports", ["mirror", "--sync-state=0.05",
+                                   "--errno-stacks=0.15", *synthetic_snapshot], 0)
+        assert both.count("Pending error stacks") == 1
+        # A partial registry warning also starts with SYNC_STATE: but is not another report.
+        assert sync.count("SYNC_STATE:\n") == 1, sync[-8000:]
+        assert both.count("SYNC_STATE:\n") == 1
+        # Independent report workers may publish in either order when both are overdue.
+        # A later errno deadline must not delay or replace the earlier sync report.
+        later = run("independent-deadlines", ["mirror", "--sync-state=0.05",
+                                            "--errno-stacks=60", *synthetic_snapshot], 0)
+        assert "Pending error stacks" not in later
+        assert later.count("SYNC_STATE:\n") == 1, later[-8000:]
+    else:
+        for flag in ("--errno-stacks", "--sync-state"):
+            for suffix in ("", "=0.05"):
+                result = subprocess.run([binary, "mirror", flag + suffix, *synthetic_snapshot],
+                                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+                assert result.returncode == 2, (flag, suffix, result.returncode, result.stdout)
+            print(f"PASS Release rejects {flag}", flush=True)
+        run("mirror", ["mirror", *synthetic_snapshot], 0)
+    missing = run("missing-media", ["mirror", "--file", str(logs / "missing.mp4"), *snapshot], 26)
+    assert "Failure chain (outer context -> root cause)" in missing
+    assert "Media initialization failed" in missing
+
+    if args.failed_codec_fixture:
+        failure = run("failed-codec", ["mirror", "--file", str(args.failed_codec_fixture.resolve()), *snapshot], 28)
+        assert "Media capture failed" in failure
+        assert "Failure chain" in failure
+
+    frame = logs / "extensionless-frame"
+    frame.write_bytes(ppm_image(2, 2, bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])))
+    run("media-fallback", ["mirror", "--file", str(frame), *snapshot], 0)
+    if args.codec_fixture:
+        fallback = run("optional-codec", ["mirror", "--file", str(args.codec_fixture.resolve()), *snapshot], 0)
+        assert "Optional media stream unavailable" in fallback
+
+    port = unused_port()
+    with (logs / "server-output.log").open("wb") as output:
+        server = subprocess.Popen(command("server", ["server", "127.0.0.1", "--port", port,
+                                  "--websocket-port", unused_port(), "--password", "errno-test-secret",
+                                  "--status-screen=false", "--max-clients", "1"]), env=env, stdout=output, stderr=output)
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                assert server.poll() is None, ("server exited", logs)
+                log = logs / "server.log"
+                if log.exists() and "Listening" in log.read_text(encoding="utf-8", errors="replace"):
+                    break
+                time.sleep(0.1)
+            for attempt in range(2):
+                run(f"rejected-client-{attempt}", ["client", f"127.0.0.1:{port}", "--password",
+                    "wrong-test-secret", *synthetic_snapshot], 62)
+                assert server.poll() is None, "One client's authentication failure stopped the server"
+            print("PASS server survives repeated authentication failures", flush=True)
+            # Keep an authenticated client active while testing the capacity rejection.
+            with (logs / "holder-output.log").open("wb") as holder_output:
+                holder = subprocess.Popen(command("holder", ["client", f"127.0.0.1:{port}",
+                    "--password", "errno-test-secret", "--test-pattern", "--video-codec", "raw",
+                    "--width", "20", "--height", "10", "--splash-screen=false", "--audio=false"]),
+                    env=env, stdout=holder_output, stderr=holder_output)
+                try:
+                    deadline = time.monotonic() + 15
+                    while time.monotonic() < deadline:
+                        assert holder.poll() is None, ("holder exited", logs)
+                        server_log = logs / "server.log"
+                        if server_log.exists() and "announced video stream" in server_log.read_text(encoding="utf-8", errors="replace"):
+                            break
+                        time.sleep(0.1)
+                    else:
+                        raise AssertionError(("Holder was not admitted before the capacity check", logs))
+                    run("session-full", ["client", f"127.0.0.1:{port}", "--password",
+                        "errno-test-secret", "--video-codec", "raw", *synthetic_snapshot], 48)
+                finally:
+                    holder.terminate()
+                    holder.wait(timeout=10)
+            time.sleep(1)
+            assert server.poll() is None, "Admission rejection stopped the server"
+            run("authenticated-client", ["client", f"127.0.0.1:{port}", "--password",
+                "errno-test-secret", "--video-codec", "raw",
+                *synthetic_snapshot, "--snapshot-delay", "0"], 0)
+        finally:
+            server.terminate()
+            server.wait(timeout=15)

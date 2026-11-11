@@ -72,10 +72,12 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
 
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 
 /* ============================================================================
@@ -147,15 +149,6 @@ static void *ping_thread_func(void *arg) {
     if (!server_connection_is_active(connection)) {
       log_debug("Connection inactive, exiting ping thread");
       break;
-    }
-
-    // Check if session rekeying should be triggered
-    if (crypto_client_should_rekey(connection)) {
-      log_debug("Rekey threshold reached, initiating session rekey");
-      if (crypto_client_initiate_rekey(connection) != ASCIICHAT_OK) {
-        log_error("Failed to initiate rekey");
-        // Don't break - continue with keepalive, rekey will be retried
-      }
     }
 
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive

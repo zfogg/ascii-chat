@@ -30,6 +30,9 @@
 extern "C" {
 #endif
 
+/** Validate the selected glyph palette after options have been normalized. */
+ASCIICHAT_API asciichat_error_t validate_glyph_palette(const options_t *opts);
+
 /**
  * @name Validation Functions
  * @{
@@ -171,13 +174,13 @@ ASCIICHAT_API float validate_opt_float_non_negative(const char *value_str, char 
 ASCIICHAT_API float validate_opt_volume(const char *value_str, char *error_msg, size_t error_msg_size);
 
 /**
- * @brief Validate FPS value (1-144)
+ * @brief Validate FPS value (0 for auto, otherwise 1-144)
  * @param value_str FPS value as string
  * @param error_msg Buffer for error message (can be NULL)
  * @param error_msg_size Size of error message buffer
  * @return Parsed FPS value on success, -1 on error
  *
- * Validates that the FPS is in the valid range of 1-144.
+ * Validates that the FPS is in the valid range of 0-144.
  *
  * @ingroup options
  */

@@ -2,7 +2,7 @@
 # DetectLLVMPaths.cmake - LLVM Path Detection Utility
 # =============================================================================
 # This module detects LLVM include and library directories for building
-# tools that link against LLVM/Clang libraries (e.g., the defer tool).
+# tools that link against LLVM/Clang libraries (e.g., the panic instrumentation tool).
 #
 # On Unix (Linux/macOS):
 #   Uses llvm-config to discover paths (the standard LLVM approach)
@@ -71,7 +71,7 @@ if(WIN32)
         # for development (only import libs for clang.exe, not clangTooling.lib etc.)
         if(EXISTS "${_llvm_root}/include" AND EXISTS "${_llvm_root}/lib")
             # Verify this is a full LLVM installation with development libraries
-            # Check for clangTooling.lib which is required for the defer tool
+            # Check for clangTooling.lib which is required by Clang tooling
             if(EXISTS "${_llvm_root}/lib/clangTooling.lib" OR
                EXISTS "${_llvm_root}/lib/libclangTooling.a")
                 set(LLVM_ROOT "${_llvm_root}")

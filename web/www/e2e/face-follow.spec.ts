@@ -58,7 +58,9 @@ test("Face Follow uses only the webcam and switches framing before ASCII renderi
   const section = page.getByTestId("face-follow-demo");
   await expect(
     section.getByRole("heading", { name: "Face Follow" }),
-  ).toBeVisible({ timeout: 30_000 });
+  ).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(section.getByRole("button", { name: "Demo Video" })).toHaveCount(
     0,
   );
@@ -91,7 +93,9 @@ test("Face Follow uses only the webcam and switches framing before ASCII renderi
   await section.getByRole("button", { name: "Webcam", exact: true }).click();
   await expect(
     section.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 30_000 });
+  ).toBeVisible({
+    timeout: 30_000,
+  });
   await expect.poll(async () => (await probe()).draws).toBeGreaterThan(3);
   if (webcam)
     await expect
@@ -122,7 +126,9 @@ test("Face Follow uses only the webcam and switches framing before ASCII renderi
     await expect
       .poll(
         () => redPixels('[data-testid="face-follow-demo"] canvas.ascii-canvas'),
-        { timeout: 20000 },
+        {
+          timeout: 20000,
+        },
       )
       .toBeGreaterThan(10);
     await section.screenshot({

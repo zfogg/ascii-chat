@@ -11,10 +11,11 @@
 #ifndef PARALLEL_CONNECT_H
 #define PARALLEL_CONNECT_H
 
-#include "../platform/socket.h"
+#include "../os/socket.h"
 #include "../common.h"
 
 /**
+ * @brief When code needs to work with parallel connect config, it keeps `hostname`, `port`, `timeout_ms`, `should_exit_callback` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Callback type to check if connection should be abandoned
  *
  * Called periodically by connection threads to allow graceful shutdown.

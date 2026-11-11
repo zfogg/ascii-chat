@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/string.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/version.h>
 
@@ -45,6 +45,7 @@ static void restore_test_config_root(void) {
   (void)remove(cache_path);
   (void)rmdir(cache_dir);
   (void)rmdir(test_config_root);
+  free(test_config_root);
   test_config_root = NULL;
 }
 

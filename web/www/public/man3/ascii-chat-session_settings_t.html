@@ -1,192 +1,265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_settings_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_settings_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_settings_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_settings_t - Session settings for transmission between
-    peers.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;src/common/session/settings.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint32_t</b> <b>version</b>
-  <br/>
-  Settings version for conflict detection (monotonically increasing). int16_t
-    <b>width</b>
-  <br/>
-  Terminal width in characters (0 = auto-detect). int16_t <b>height</b>
-  <br/>
-  Terminal height in characters (0 = auto-detect). <b>uint8_t</b>
-    <b>color_mode</b>
-  <br/>
-  Color mode (<b>terminal_color_mode_t</b> value). <b>uint8_t</b>
-    <b>render_mode</b>
-  <br/>
-  Render mode (<b>render_mode_t</b> value). <b>uint8_t</b> <b>palette_type</b>
-  <br/>
-  Palette type (<b>palette_type_t</b> value). char <b>palette_custom</b> [32]
-  <br/>
-  Custom palette characters (if palette_type == PALETTE_CUSTOM). <b>uint8_t</b>
-    <b>audio_enabled</b>
-  <br/>
-  Audio enabled flag. <b>uint8_t</b> <b>encryption_required</b>
-  <br/>
-  Encryption required flag. <b>uint8_t</b> <b>reserved</b> [16]
-  <br/>
-  Reserved bytes for future expansion.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Session settings for transmission between peers.</p>
-<p class="Pp">Contains display and rendering configuration that can be
-    synchronized between session participants. Uses fixed-size fields for
-    deterministic serialization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Struct is designed for binary serialization with network
-  byte order.
-<p class="Pp"></p>
-<p class="Pp">Reserved bytes allow future extension without breaking
-    compatibility.</p>
-</div>
-<p class="Pp">Definition at line <b>77</b> of file <b>settings.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::audio_enabled</h2>
-<p class="Pp">Audio enabled flag.</p>
-<p class="Pp">Definition at line <b>100</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::color_mode</h2>
-<p class="Pp">Color mode (<b>terminal_color_mode_t</b> value).</p>
-<p class="Pp">Definition at line <b>88</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::encryption_required</h2>
-<p class="Pp">Encryption required flag.</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int16_t_session_settings_t::height"><a class="permalink" href="#int16_t_session_settings_t::height">int16_t
-  session_settings_t::height</a></h2>
-<p class="Pp">Terminal height in characters (0 = auto-detect).</p>
-<p class="Pp">Definition at line <b>85</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_apply_to_options()</b>,
-    <b>session_settings_deserialize()</b>, <b>session_settings_equal()</b>,
-    <b>session_settings_from_options()</b>, <b>session_settings_init()</b>, and
-    <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_session_settings_t::palette_custom_32_"><a class="permalink" href="#char_session_settings_t::palette_custom_32_">char
-  session_settings_t::palette_custom[32]</a></h2>
-<p class="Pp">Custom palette characters (if palette_type == PALETTE_CUSTOM).</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::palette_type</h2>
-<p class="Pp">Palette type (<b>palette_type_t</b> value).</p>
-<p class="Pp">Definition at line <b>94</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::render_mode</h2>
-<p class="Pp">Render mode (<b>render_mode_t</b> value).</p>
-<p class="Pp">Definition at line <b>91</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_equal()</b>, <b>session_settings_from_options()</b>,
-    <b>session_settings_init()</b>, and <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_settings_t::reserved[16]</h2>
-<p class="Pp">Reserved bytes for future expansion.</p>
-<p class="Pp">Definition at line <b>106</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>, and
-    <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> session_settings_t::version</h2>
-<p class="Pp">Settings version for conflict detection (monotonically
-    increasing).</p>
-<p class="Pp">Definition at line <b>79</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_deserialize()</b>,
-    <b>session_settings_from_options()</b>, <b>session_settings_init()</b>, and
-    <b>session_settings_serialize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int16_t_session_settings_t::width"><a class="permalink" href="#int16_t_session_settings_t::width">int16_t
-  session_settings_t::width</a></h2>
-<p class="Pp">Terminal width in characters (0 = auto-detect).</p>
-<p class="Pp">Definition at line <b>82</b> of file <b>settings.h</b>.</p>
-<p class="Pp">Referenced by <b>session_settings_apply_to_options()</b>,
-    <b>session_settings_deserialize()</b>, <b>session_settings_equal()</b>,
-    <b>session_settings_from_options()</b>, <b>session_settings_init()</b>, and
-    <b>session_settings_serialize()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_settings_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_settings_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_settings_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_settings_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;src/common/session/settings.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint32_t</b> <b>version</b>
+            <br />
+            int16_t <b>width</b>
+            <br />
+            int16_t <b>height</b>
+            <br />
+            int8_t <b>color_mode</b>
+            <br />
+            <b>uint8_t</b> <b>render_mode</b>
+            <br />
+            <b>uint8_t</b> <b>palette_type</b>
+            <br />
+            char <b>palette_custom</b> [64]
+            <br />
+            <b>uint8_t</b> <b>color_filter</b>
+            <br />
+            <b>uint8_t</b> <b>fps</b>
+            <br />
+            <b>bool</b> <b>matrix_rain</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          A participant's rendering preferences/effective values. Security is
+          session policy.
+        </p>
+        <p class="Pp">
+          Definition at line <b>10</b> of file
+          <b>src/common/session/settings.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> session_settings_t::color_filter</h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int8_t_session_settings_t::color_mode">
+            <a class="permalink" href="#int8_t_session_settings_t::color_mode"
+              >int8_t session_settings_t::color_mode</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> session_settings_t::fps</h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int16_t_session_settings_t::height">
+            <a class="permalink" href="#int16_t_session_settings_t::height"
+              >int16_t session_settings_t::height</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_settings_t::matrix_rain</h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_session_settings_t::palette_custom_64_">
+            <a
+              class="permalink"
+              href="#char_session_settings_t::palette_custom_64_"
+              >char session_settings_t::palette_custom[64]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> session_settings_t::palette_type</h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> session_settings_t::render_mode</h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> session_settings_t::version</h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_participant_connect()</b>,
+            <b>session_participant_receive_settings()</b>,
+            <b>session_participant_set_transport()</b>, and
+            <b>session_settings_from_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int16_t_session_settings_t::width">
+            <a class="permalink" href="#int16_t_session_settings_t::width"
+              >int16_t session_settings_t::width</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file
+            <b>src/common/session/settings.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_settings_from_values()</b>, and
+            <b>session_settings_to_options()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

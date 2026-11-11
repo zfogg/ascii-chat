@@ -1,5 +1,5 @@
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>
@@ -8,7 +8,7 @@
 #include <string.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/tui/errno_stacks.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -24,6 +24,14 @@
     if (!(condition))                                                                                                  \
       return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                               \
   } while (0)
+
+static bool wait_for_screen(ui_screen_t screen) {
+  uint64_t deadline = ui_input_deadline(5);
+  while (ui_controller_current_screen() != screen && !ui_input_expired(deadline))
+    platform_sleep_ms(1);
+  return ui_controller_current_screen() == screen;
+}
+
 static asciichat_error_t probe(const char *mode) {
   if (strcmp(mode, "modal-lifecycle") == 0) {
     REQUIRE(keyboard_init() == ASCIICHAT_OK);
@@ -45,7 +53,7 @@ static asciichat_error_t probe(const char *mode) {
     CLEAR_ERRNO();
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
     keyboard_help_toggle_terminal(1);
-    REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
+    REQUIRE(wait_for_screen(UI_SCREEN_HELP));
     keyboard_help_toggle_terminal(1);
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
     REQUIRE(platform_write_all(1, "MODAL-READY", 11) == 11);
@@ -93,14 +101,20 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(ui_input_prompt("Cancel with Escape", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) != ASCIICHAT_OK);
     CLEAR_ERRNO();
     REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
-    ui_error_popup_key(KEY_ESCAPE);
+    error_deadline = ui_input_deadline(30);
+    while (ui_error_popup_visible() && !ui_input_expired(error_deadline))
+      (void)ui_input_read_key(UI_SCREEN_LOGS);
+    REQUIRE(!ui_error_popup_visible());
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     prompt_opts_t opts = PROMPT_OPTS_DEFAULT;
     opts.timeout_seconds = 1;
     REQUIRE(ui_input_prompt("Wait for timeout", answer, sizeof(answer), opts) == ERROR_PROMPT_TIMEOUT);
     CLEAR_ERRNO();
     REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
-    ui_error_popup_key(KEY_ESCAPE);
+    error_deadline = ui_input_deadline(30);
+    while (ui_error_popup_visible() && !ui_input_expired(error_deadline))
+      (void)ui_input_read_key(UI_SCREEN_LOGS);
+    REQUIRE(!ui_error_popup_visible());
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     ui_controller_remove(UI_SCREEN_LOGS);
     ui_controller_restore_terminal();

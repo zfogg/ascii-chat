@@ -46,7 +46,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/rgba/image.h>
 
@@ -66,9 +66,11 @@
 typedef bool (*session_display_should_exit_fn)(void *user_data);
 
 /**
- * @brief Configuration for session display context
+ * @brief Terminal-rendering and snapshot settings used to create a display context.
  *
- * Specifies display parameters including snapshot mode, palette, and color mode.
+ * Selects palette and color behavior, optional audio playback, render-file FPS,
+ * and deferred encoder creation. The palette and callback strings/data are
+ * borrowed; the display context copies the terminal-facing state it needs.
  *
  * @ingroup session
  */
@@ -110,6 +112,9 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief session display config is intentionally a small, concrete record. Fields such as `snapshot_mode`,
+ * `palette_type`, `custom_palette`, `color_mode` give callers the identity and current value they need. It is normally
+ * borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Opaque session display context handle
  *
  * Manages TTY state, terminal capabilities, palette, and rendering state.
@@ -359,6 +364,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 /** Single display owner; result must be released before its next conversion. */
 char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image);
 void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii);
+/** Clear only the history owned by the calling display or recording worker. */
+void session_display_reset_stabilizer(session_display_ctx_t *ctx, bool recording);
 
 /** @} */
 

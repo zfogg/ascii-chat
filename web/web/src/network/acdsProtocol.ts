@@ -29,7 +29,28 @@ export interface JoinedSession {
   hostId: Uint8Array;
   turnUsername: string;
   turnPassword: string;
+  /** Disclosed host routing metadata from the authenticated join response. */
+  serverAddress?: string;
+  serverPort?: number;
+  sessionType?: number;
+  quicPort?: number;
+  webtransportUrl?: string;
 }
+export interface HandoffAction {
+  kind: number;
+  participant: Uint8Array;
+  generation: number;
+  sequence: number;
+}
+
+export interface DiscoverySnapshot {
+  state: number;
+  terminal: boolean;
+  error: string;
+  name: string;
+  joined: JoinedSession;
+}
+
 export function signalPacket(
   session: JoinedSession,
   type: "offer" | "answer" | "ice",

@@ -16,10 +16,10 @@
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/log/grep.h"
-#include "ascii-chat/platform/keyboard.h"
-#include "ascii-chat/platform/mutex.h"
-#include "ascii-chat/platform/terminal.h"
-#include "ascii-chat/util/lifecycle.h"
+#include "ascii-chat/os/keyboard.h"
+#include <libplatform/mutex.h>
+#include <libplatform/terminal.h>
+#include <libplatform/lifecycle.h>
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
 #include "ascii-chat/util/flow_control.h"
@@ -32,7 +32,7 @@
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 
 /* ============================================================================
  * Constants
@@ -57,7 +57,7 @@ typedef struct {
   int previous_pattern_count;
 
   // Compiled patterns for display filtering
-  pcre2_singleton_t *active_patterns[MAX_LOG_SEARCH_PATTERNS];
+  pcre2_code *active_patterns[MAX_LOG_SEARCH_PATTERNS];
   int active_pattern_count;
 
   // Parsed flags (from /pattern/flags syntax)
@@ -75,6 +75,11 @@ typedef struct {
   atomic_t mode_atomic;            ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
   flow_control_debounce_t debounce;
+  /**
+   * @brief log search state is intentionally a small, concrete record. Fields such as `mode`, `len`, `cursor`,
+   * `previous_pattern_count` give callers the identity and current value they need. It is normally borrowed from, or
+   * owned by, the surrounding subsystem—not independently managed.
+   */
 } log_search_state_t;
 
 static log_search_state_t g_search_state = {
@@ -125,8 +130,11 @@ static bool validate_pcre2_pattern(const char *input) {
   }
 
   // Try to compile pattern with full pcre2_options (includes UTF, UCP, CASELESS, etc.)
-  // Pattern is valid if singleton cached and reusable
-  return asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options) != NULL;
+  pcre2_code *code = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+  if (!code)
+    return false;
+  pcre2_code_free(code);
+  return true;
 }
 
 /* ============================================================================
@@ -172,9 +180,9 @@ asciichat_error_t log_search_init(void) {
   // Compile the initial pattern
   grep_parse_result_t parsed = grep_parse_pattern(cli_pattern);
   if (parsed.valid) {
-    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-    if (singleton) {
-      g_search_state.active_patterns[0] = singleton;
+    pcre2_code *compiled = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+    if (compiled) {
+      g_search_state.active_patterns[0] = compiled;
       g_search_state.active_pattern_count = 1;
     }
     g_search_state.case_insensitive = parsed.case_insensitive;
@@ -202,7 +210,7 @@ void log_search_destroy(void) {
   // Free active patterns
   for (int i = 0; i < g_search_state.active_pattern_count; i++) {
     if (g_search_state.active_patterns[i]) {
-      // Note: pcre2_singleton handles its own reference counting
+      pcre2_code_free(g_search_state.active_patterns[i]);
       g_search_state.active_patterns[i] = NULL;
     }
   }
@@ -264,11 +272,13 @@ void log_search_enter_mode(void) {
 
           // Compile pattern if not fixed string
           if (strlen(parsed.pattern) > 0 && !parsed.is_fixed_string) {
-            pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-            if (singleton) {
-              pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+            pcre2_code *compiled = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+            if (compiled) {
+              pcre2_code *code = compiled;
               if (code) {
-                g_search_state.active_patterns[0] = singleton;
+                if (g_search_state.active_pattern_count > 0)
+                  pcre2_code_free(g_search_state.active_patterns[0]);
+                g_search_state.active_patterns[0] = compiled;
                 g_search_state.active_pattern_count = 1;
               } else {
                 g_search_state.fixed_string = true;
@@ -309,6 +319,7 @@ void log_search_exit_mode(bool accept) {
 
     // Clear interactive grep patterns
     for (int i = 0; i < g_search_state.active_pattern_count; i++) {
+      pcre2_code_free(g_search_state.active_patterns[i]);
       g_search_state.active_patterns[i] = NULL;
     }
     g_search_state.active_pattern_count = 0;
@@ -336,6 +347,7 @@ void log_search_exit_mode(bool accept) {
 
   // Clear old regex patterns
   for (int i = 0; i < g_search_state.active_pattern_count; i++) {
+    pcre2_code_free(g_search_state.active_patterns[i]);
     g_search_state.active_patterns[i] = NULL;
   }
   g_search_state.active_pattern_count = 0;
@@ -350,12 +362,12 @@ void log_search_exit_mode(bool accept) {
 
   // Compile and store new pattern (if not fixed string)
   if (strlen(parsed.pattern) > 0 && !parsed.is_fixed_string) {
-    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-    if (singleton) {
+    pcre2_code *compiled = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+    if (compiled) {
       // Verify the pattern actually compiles
-      pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+      pcre2_code *code = compiled;
       if (code) {
-        g_search_state.active_patterns[0] = singleton;
+        g_search_state.active_patterns[0] = compiled;
         g_search_state.active_pattern_count = 1;
       } else {
         // Compilation failed - fall back to fixed string matching
@@ -423,6 +435,11 @@ bool log_search_should_handle(int key) {
 }
 
 static void log_search_update_filter_locked(void) {
+  for (int i = 0; i < g_search_state.active_pattern_count; i++) {
+    pcre2_code_free(g_search_state.active_patterns[i]);
+    g_search_state.active_patterns[i] = NULL;
+  }
+  g_search_state.active_pattern_count = 0;
   if (g_search_state.len == 0) {
     g_search_state.active_pattern_count = 0;
     g_search_state.fixed_string = false;
@@ -435,9 +452,9 @@ static void log_search_update_filter_locked(void) {
   g_search_state.case_insensitive = parsed.case_insensitive;
   g_search_state.fixed_string = parsed.is_fixed_string;
   if (!parsed.is_fixed_string) {
-    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-    if (singleton && asciichat_pcre2_singleton_get_code(singleton)) {
-      g_search_state.active_patterns[0] = singleton;
+    pcre2_code *compiled = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+    if (compiled) {
+      g_search_state.active_patterns[0] = compiled;
       g_search_state.active_pattern_count = 1;
     } else {
       g_search_state.fixed_string = true;
@@ -598,7 +615,7 @@ asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, sessio
   pcre2_match_data *match_data = NULL;
   for (int p = 0; p < g_search_state.active_pattern_count; p++) {
     if (g_search_state.active_patterns[p]) {
-      pcre2_code *code = asciichat_pcre2_singleton_get_code(g_search_state.active_patterns[p]);
+      pcre2_code *code = g_search_state.active_patterns[p];
       if (code) {
         match_data = pcre2_match_data_create_from_pattern(code, NULL);
         break;
@@ -669,12 +686,12 @@ asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, sessio
     else if (has_regex_patterns) {
       // Check against all active patterns (OR logic)
       for (int p = 0; p < g_search_state.active_pattern_count; p++) {
-        pcre2_singleton_t *singleton = g_search_state.active_patterns[p];
-        if (!singleton) {
+        pcre2_code *compiled = g_search_state.active_patterns[p];
+        if (!compiled) {
           continue;
         }
 
-        pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+        pcre2_code *code = compiled;
         if (!code) {
           continue;
         }
@@ -775,7 +792,7 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
   char pattern_copy[LOG_SEARCH_INPUT_BUFFER_SIZE];
   size_t pattern_len = g_search_state.len;
   int pattern_count = g_search_state.active_pattern_count;
-  pcre2_singleton_t *patterns_copy[MAX_LOG_SEARCH_PATTERNS];
+  pcre2_code *patterns_copy[MAX_LOG_SEARCH_PATTERNS] = {0};
 
   if (has_fixed_string) {
     // Parse the input buffer to extract just the pattern part (without flags)
@@ -787,7 +804,8 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
   }
 
   for (int i = 0; i < pattern_count && i < MAX_LOG_SEARCH_PATTERNS; i++) {
-    patterns_copy[i] = g_search_state.active_patterns[i];
+    if (g_search_state.active_patterns[i])
+      patterns_copy[i] = pcre2_code_copy(g_search_state.active_patterns[i]);
   }
 
   mutex_unlock(&g_search_state.mutex);
@@ -841,7 +859,7 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
     pcre2_match_data *match_data = NULL;
     for (int p = 0; p < pattern_count; p++) {
       if (patterns_copy[p]) {
-        pcre2_code *code = asciichat_pcre2_singleton_get_code(patterns_copy[p]);
+        pcre2_code *code = patterns_copy[p];
         if (code) {
           match_data = pcre2_match_data_create_from_pattern(code, NULL);
           break;
@@ -851,12 +869,12 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
 
     if (match_data) {
       for (int p = 0; p < pattern_count; p++) {
-        pcre2_singleton_t *singleton = patterns_copy[p];
-        if (!singleton) {
+        pcre2_code *compiled = patterns_copy[p];
+        if (!compiled) {
           continue;
         }
 
-        pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+        pcre2_code *code = compiled;
         if (!code) {
           continue;
         }
@@ -901,6 +919,10 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
     }
   }
 
+  for (int i = 0; i < pattern_count && i < MAX_LOG_SEARCH_PATTERNS; i++) {
+    if (patterns_copy[i])
+      pcre2_code_free(patterns_copy[i]);
+  }
   return matches;
 }
 
@@ -935,7 +957,7 @@ bool log_search_get_global_highlight(void) {
   return result;
 }
 
-void *log_search_get_pattern_singleton(void) {
+void *log_search_copy_pattern(void) {
   // Use atomic read to check if active
   int mode = atomic_load_int(&g_search_state.mode_atomic);
   if (mode == LOG_SEARCH_MODE_INACTIVE) {
@@ -948,7 +970,7 @@ void *log_search_get_pattern_singleton(void) {
   // Return the compiled pattern if we have one (not fixed string)
   void *result = NULL;
   if (g_search_state.active_pattern_count > 0 && !g_search_state.fixed_string) {
-    result = (void *)g_search_state.active_patterns[0];
+    result = (void *)pcre2_code_copy(g_search_state.active_patterns[0]);
   }
 
   mutex_unlock(&g_search_state.mutex);

@@ -1,123 +1,329 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>digital_rain.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">digital_rain.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">digital_rain.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">digital_rain.c - Matrix-style digital rain effect
-  implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>M_PI</b> 3.14159265358979323846
-  <br/>
-  #define <b>SQRT_2</b> 1.4142135623730951
-  <br/>
-  #define <b>SQRT_5</b> 2.23606797749979
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns,
-    int num_rows)
-  <br/>
-  Initialize digital rain effect context. void <b>digital_rain_destroy</b>
-    (<b>digital_rain_t</b> *rain)
-  <br/>
-  Destroy digital rain effect context. void <b>digital_rain_reset</b>
-    (<b>digital_rain_t</b> *rain)
-  <br/>
-  Reset digital rain effect state. void <b>digital_rain_set_fall_speed</b>
-    (<b>digital_rain_t</b> *rain, float speed)
-  <br/>
-  Set digital rain fall speed. void <b>digital_rain_set_raindrop_length</b>
-    (<b>digital_rain_t</b> *rain, float length)
-  <br/>
-  Set digital rain raindrop length. void <b>digital_rain_set_color</b>
-    (<b>digital_rain_t</b> *rain, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> b)
-  <br/>
-  Set digital rain color. void <b>digital_rain_set_color_from_filter</b>
-    (<b>digital_rain_t</b> *rain, <b>color_filter_t</b> filter)
-  <br/>
-  Set digital rain color from color filter. char * <b>digital_rain_apply</b>
-    (<b>digital_rain_t</b> *rain, const char *<b>frame</b>, float delta_time)
-  <br/>
-  Apply digital rain effect to ASCII frame.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Matrix-style digital rain effect implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>digital_rain.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_M_PI___3"><a class="permalink" href="#_define_M_PI___3">#define
-  M_PI 3.14159265358979323846</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>digital_rain.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SQRT_2___1"><a class="permalink" href="#_define_SQRT_2___1">#define
-  SQRT_2 1.4142135623730951</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>digital_rain.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SQRT_5___2"><a class="permalink" href="#_define_SQRT_5___2">#define
-  SQRT_5 2.23606797749979</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>digital_rain.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>digital_rain.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">digital_rain.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">digital_rain.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          digital_rain.c - Matrix-style digital rain effect implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>M_PI</b> 3.14159265358979323846
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>digital_rain_glyph_group</b> (<b>uint32_t</b> codepoint)
+            <br />
+            <b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns,
+            int num_rows)
+            <br />
+            Initialize digital rain effect context. void
+            <b>digital_rain_destroy</b> (<b>digital_rain_t</b>
+            *rain)
+            <br />
+            Destroy digital rain effect context. void
+            <b>digital_rain_reset</b> (<b>digital_rain_t</b>
+            *rain)
+            <br />
+            Reset digital rain effect state. void
+            <b>digital_rain_set_fall_speed</b> (<b>digital_rain_t</b>
+            *rain, float speed)
+            <br />
+            Set digital rain fall speed. void
+            <b>digital_rain_set_raindrop_length</b> (<b>digital_rain_t</b>
+            *rain, float length)
+            <br />
+            Set digital rain raindrop length. void
+            <b>digital_rain_set_color</b> (<b>digital_rain_t</b> *rain,
+            <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
+            <br />
+            Set digital rain color. void
+            <b>digital_rain_set_color_from_filter</b> (<b>digital_rain_t</b>
+            *rain, <b>color_filter_t</b> filter)
+            <br />
+            Set digital rain color from color filter. char *
+            <b>digital_rain_apply</b> (<b>digital_rain_t</b>
+            *rain, const char *frame, float delta_time)
+            <br />
+            Apply digital rain effect to ASCII frame. char *
+            <b>digital_rain_render_at</b> (<b>digital_rain_t</b>
+            *rain, const char *frame, float seconds)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Matrix-style digital rain effect implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>digital_rain.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_M_PI___3">
+            <a class="permalink" href="#_define_M_PI___3"
+              >#define M_PI 3.14159265358979323846</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>digital_rain.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_digital_rain_render_at_(">
+            <a class="permalink" href="#char_*_digital_rain_render_at_("
+              >char * digital_rain_render_at (<b>digital_rain_t</b> * rain,
+              const char * frame, float seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>382</b> of file <b>digital_rain.c</b>.
+          </p>
+          <pre>
+382                                                                                      {
+383   if (!rain || !frame) {
+384     log_error(&quot;NULL parameter&quot;);
+385     return NULL;
+386   }
+387
+388   if (!isfinite(seconds) || seconds &lt; 0)
+389     return NULL;
+390   float elapsed = fmaxf(0.0f, seconds - rain-&gt;time);
+391   rain-&gt;time = seconds;
+392   float sim_time = seconds;
+393   // brightness_decay retains its meaning as a blend factor at 60 Hz.
+394   float decay = fminf(1.0f, fmaxf(0.0f, rain-&gt;brightness_decay));
+395   float alpha = elapsed &gt; 0 ? 1.0f - powf(1.0f - decay, elapsed * 60.0f) : 0.0f;
+396
+397   if (rain-&gt;rainbow_mode)
+398     color_filter_calculate_rainbow(sim_time, &amp;rain-&gt;color_r, &amp;rain-&gt;color_g, &amp;rain-&gt;color_b);
+399
+400   size_t input_len = strlen(frame);
+401   if (input_len &gt; (SIZE_MAX - 1024) / 48)
+402     return NULL;
+403   size_t output_capacity = input_len * 48 + 1024;
+404   char *output = SAFE_MALLOC(output_capacity, char *);
+405   if (!output)
+406     return NULL;
+407
+408   const char *src = frame;
+409   char *dst = output;
+410   size_t remaining = output_capacity;
+411   int col = 0, row = 0;
+412   float foreground_luminance = 1.0f, background_luminance = 0.0f;
+413   bool has_background = false;
+414   bool colored = false;
+415
+416   while (*src &amp;&amp; remaining &gt; 100) {
+417     if (*src == '\033') {
+418       int r, g, b;
+419       bool foreground;
+420       const char *after = parse_ansi_color(src, &amp;r, &amp;g, &amp;b, &amp;foreground);
+421       if (after) {
+422         float luminance = fminf(1.0f, fmaxf(0.0f, (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f));
+423         if (foreground)
+424           foreground_luminance = luminance;
+425         else {
+426           background_luminance = luminance;
+427           has_background = true;
+428         }
+429         src = after;
+430       } else {
+431         after = skip_ansi_sequence(src);
+432         size_t count = (size_t)(after - src);
+433         if ((count == 4 &amp;&amp; memcmp(src, &quot;\033[0m&quot;, 4) == 0) || (count == 3 &amp;&amp; memcmp(src, &quot;\033[m&quot;, 3) == 0)) {
+434           foreground_luminance = 1.0f;
+435           has_background = false;
+436         }
+437         memcpy(dst, src, count);
+438         dst += count;
+439         remaining -= count;
+440         src = after;
+441       }
+442       continue;
+443     }
+444     if (*src == '\n' || *src == '\r') {
+445       if (*src == '\n')
+446         row++;
+447       col = 0;
+448       *dst++ = *src++;
+449       remaining--;
+450       continue;
+451     }
+452
+453     float head;
+454     float brightness = get_rain_brightness(rain, col, row, sim_time, &amp;head);
+455     // Update once per cell, independently of how many ANSI sequences precede it.
+456     if (row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
+457       size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
+458       if (!rain-&gt;first_frame)
+459         brightness = rain-&gt;previous_brightness[idx] + (brightness - rain-&gt;previous_brightness[idx]) * alpha;
+460       rain-&gt;previous_brightness[idx] = brightness;
+461     }
+462     int count = generate_rain_color(dst, remaining, rain, brightness, head, foreground_luminance, true);
+463     colored = true;
+464     dst += count;
+465     remaining -= (size_t)count;
+466     if (has_background) {
+467       count = generate_rain_color(dst, remaining, rain, brightness, head, background_luminance, false);
+468       dst += count;
+469       remaining -= (size_t)count;
+470     }
+471     uint32_t codepoint;
+472     int bytes = utf8_decode((const uint8_t *)src, &amp;codepoint);
+473     if (bytes &lt;= 0) {
+474       bytes = 1;
+475       codepoint = (uint8_t)*src;
+476     }
+477     if (bytes == 1 &amp;&amp; codepoint &gt; 32 &amp;&amp; codepoint &lt; 127) {
+478       *dst++ = (char)mutate_glyph(codepoint, col, row, sim_time);
+479       src++;
+480       remaining--;
+481     } else {
+482       memcpy(dst, src, (size_t)bytes);
+483       dst += bytes;
+484       src += bytes;
+485       remaining -= (size_t)bytes;
+486     }
+487     col++;
+488   }
+489   // Monochrome input has no trailing SGR reset to copy. The effect introduces
+490   // colors itself, so every colored result must restore terminal attributes.
+491   if (colored) {
+492     const char reset[] = &quot;\033[0m&quot;;
+493     if (remaining &lt; sizeof(reset)) {
+494       SAFE_FREE(output);
+495       return NULL;
+496     }
+497     memcpy(dst, reset, sizeof(reset));
+498   } else {
+499     *dst = '\0';
+500   }
+501   rain-&gt;first_frame = false;
+502   return output;
+503 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>digital_rain::brightness_decay</b>,
+            <b>digital_rain::color_b</b>,
+            <b>color_filter_calculate_rainbow()</b>,
+            <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
+            <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
+            <b>log_error</b>, <b>digital_rain::num_columns</b>,
+            <b>digital_rain::previous_brightness</b>,
+            <b>digital_rain::rainbow_mode</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
+            <b>utf8_decode()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>digital_rain_render_at()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

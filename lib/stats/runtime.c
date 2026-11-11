@@ -14,15 +14,18 @@
 #include <ascii-chat/tui/stats.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/systemd.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
@@ -36,6 +39,11 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
+/**
+ * @brief When code needs to work with stats peer, it keeps `scope`, `sampler`, `id` here instead of scattering it
+ * across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread,
+ * or callback context recorded in those fields.
+ */
 struct stats_peer {
   stats_scope_t *scope;
   stats_sampler_t *sampler;
@@ -53,7 +61,7 @@ static void *g_provider_data;
 static char g_mode[STATS_RUNTIME_MODE_BUFFER_SIZE], g_state[STATS_RUNTIME_STATE_BUFFER_SIZE];
 static unsigned g_interval;
 static atomic_t g_stop, g_active, g_onboarding_wait;
-static asciichat_thread_t g_worker;
+static platform_thread_t g_worker;
 static bool g_started, g_keyboard;
 static int g_fd;
 static atomic_t g_media_width, g_media_height, g_media_position, g_media_duration;
@@ -299,31 +307,70 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   mutex_unlock(&g_provider_mutex);
 }
 
+static void sample_hidden_peers(void) {
+  mutex_lock(&g_peers_mutex);
+  for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i) {
+    stats_peer_t *peer = g_peers[i];
+    if (!peer)
+      continue;
+    stats_snapshot_t snapshot;
+    stats_rates_t rates;
+    stats_scope_snapshot(peer->scope, &snapshot);
+    stats_sampler_update(peer->sampler, &snapshot, &rates);
+  }
+  mutex_unlock(&g_peers_mutex);
+}
+
+static bool summary_append(char *output, size_t capacity, size_t *used, const char *format, ...) {
+  if (*used >= capacity)
+    return false;
+  va_list args;
+  va_start(args, format);
+  int written = vsnprintf(output + *used, capacity - *used, format, args);
+  va_end(args);
+  if (written < 0)
+    return false;
+  if ((size_t)written >= capacity - *used) {
+    *used = capacity - 1;
+    return false;
+  }
+  *used += (size_t)written;
+  return true;
+}
+
 static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t *rates) {
   char output[STATS_RUNTIME_OUTPUT_BUFFER_SIZE];
-  int used = snprintf(output, sizeof(output), "stats mode=%s uptime_s=%.3f", g_mode,
-                      (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
+  size_t used = 0;
+  // Reserve the final byte for the newline, even if a field is truncated.
+  size_t capacity = sizeof(output) - 1;
+  if (!summary_append(output, capacity, &used, "stats mode=%s uptime_s=%.3f", g_mode,
+                      (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9))
+    goto done;
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i)
-    if (snapshot->capabilities.counters[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s=%llu %s_per_s=%.3f",
-                       stats_counter_descriptor(i)->name, (unsigned long long)snapshot->counters[i],
-                       stats_counter_descriptor(i)->name, rates->counters_per_second[i]);
+    if (snapshot->capabilities.counters[i] &&
+        !summary_append(output, capacity, &used, " %s=%llu %s_per_s=%.3f", stats_counter_descriptor(i)->name,
+                        (unsigned long long)snapshot->counters[i], stats_counter_descriptor(i)->name,
+                        rates->counters_per_second[i]))
+      goto done;
   for (int i = 0; i < STATS_GAUGE_COUNT; ++i)
-    if (snapshot->capabilities.gauges[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s=%llu", stats_gauge_descriptor(i)->name,
-                       (unsigned long long)snapshot->gauges[i]);
+    if (snapshot->capabilities.gauges[i] &&
+        !summary_append(output, capacity, &used, " %s=%llu", stats_gauge_descriptor(i)->name,
+                        (unsigned long long)snapshot->gauges[i]))
+      goto done;
   for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
     if (!snapshot->capabilities.durations[i])
       continue;
-    if (rates->duration_valid[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s_mean_ms=%.3f",
-                       stats_duration_descriptor(i)->name, rates->duration_mean_ns[i] / 1e6);
-    else
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s_mean_ms=unavailable",
-                       stats_duration_descriptor(i)->name);
+    bool appended =
+        rates->duration_valid[i]
+            ? summary_append(output, capacity, &used, " %s_mean_ms=%.3f", stats_duration_descriptor(i)->name,
+                             rates->duration_mean_ns[i] / 1e6)
+            : summary_append(output, capacity, &used, " %s_mean_ms=unavailable", stats_duration_descriptor(i)->name);
+    if (!appended)
+      goto done;
   }
+done:
   output[used++] = '\n';
-  ui_controller_write(STDOUT_FILENO, output, (size_t)used);
+  ui_controller_write(STDOUT_FILENO, output, used);
 }
 
 static bool show_first_use_instructions(void) {
@@ -387,6 +434,7 @@ static void *stats_worker(void *unused) {
   bool was_active = false;
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    platform_systemd_notify_watchdog();
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
@@ -439,8 +487,13 @@ static void *stats_worker(void *unused) {
       stats_sampler_update(g_sampler, &snapshot, &rates);
       bool print_due = g_interval && now >= next_print;
       bool telemetry_due = ascii_otel_enabled() && now >= next_telemetry;
-      if (active || print_due || telemetry_due)
+      if (active || print_due || telemetry_due) {
         build_view(&view, &snapshot, &rates);
+        // Providers refresh gauges while building the view.
+        stats_scope_snapshot(g_scope, &snapshot);
+      } else {
+        sample_hidden_peers();
+      }
       if (telemetry_due)
         next_telemetry = now + NS_PER_SEC_INT;
       terminal_size_t size = ui_controller_size();
@@ -514,7 +567,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     memset(&caps, 0, sizeof(caps));
     for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i <= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
       caps.counters[i] = true;
+    for (unsigned i = STATS_COUNTER_HTTP_REQUESTS; i <= STATS_COUNTER_HTTP_BYTES_SENT; i++)
+      caps.counters[i] = true;
+    caps.gauges[STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE] = true;
+    caps.gauges[STATS_GAUGE_HTTP_STREAMS_ACTIVE] = true;
     caps.durations[STATS_DURATION_MCP_RENDER] = true;
+    caps.durations[STATS_DURATION_HTTP_REQUEST] = true;
   }
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)
@@ -549,7 +607,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
                      (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
-  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
+  if (platform_thread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
     atomic_store_bool_impl(&g_onboarding_wait, true);
     bool shown = show_first_use_instructions();
     while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested()) {

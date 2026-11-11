@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2testing_2issue-507_2follow-up-status(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">
+          md_docs_2testing_2issue-507_2follow-up-status(3)
+        </td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">
+          md_docs_2testing_2issue-507_2follow-up-status(3)
+        </td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2testing_2issue-507_2follow-up-status - Discovery and
+          dependency follow-up handoff
+        </p>
+        <p class="Pp">
+          PR #531 is merged. The follow-up work from #532 is being transferred
+          directly to master at the user's request, including the previously
+          uncommitted changes.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The follow-up fixes discovery frame pacing, honors --no-webrtc when
+          the host discloses a TCP endpoint, uses the session clock for pong
+          deadlines, and allows the fourth discovery negotiation packet required
+          by clients with an identity. Dependency changes address BearSSL
+          command quoting, Opus header discovery, discovery-test mimalloc
+          linking, stale musl configuration, and macOS release dependency
+          paths/static linking.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The direct-TCP integration fixture passed on Windows against the
+          current Debug binary: password authentication, changing video reaching
+          the host, encrypted video reaching the client, actual TCP admission,
+          and graceful process shutdown. This fixture verifies media delivery;
+          completed terminal presentation FPS is measured separately by
+          network_fps_windows.py.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Validation remains incomplete. The final identity-enabled 60-second
+          FPS reruns, fresh WASM artifacts, and final macOS/Windows dependency
+          CI verification have not all completed. The macOS source-root literal
+          identified by the hardening check still needs repair. The working
+          manifest is preserved as work in progress; it does not certify that
+          artifacts match all final source changes.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Historical transport labels were corrected in
+          <b>review-follow-up/README.md</b
+          ><b
+            >. Intermediate FPS results and failed attempts must not be treated
+            as final proof. Local build output, scripts, and logs are retained
+            in the main checkout under </b
+          >build/issue-507-worktree-archive/<b>
+            when the old worktree is removed.</b
+          >
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date"><b>Version 0.14.7</b></td>
+        <td class="foot-os"><b>ascii-chat</b></td>
+      </tr>
+    </table>
+  </body>
+</html>

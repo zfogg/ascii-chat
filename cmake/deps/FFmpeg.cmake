@@ -94,7 +94,6 @@ if(PLATFORM_IOS)
 
     set(FFMPEG_FOUND TRUE)
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
-
     # iOS frameworks needed for FFmpeg
     set(FFMPEG_LIBRARIES
         "${FFMPEG_PREFIX}/lib/libavformat.a"
@@ -127,6 +126,9 @@ if(USE_MUSL)
     set(FFMPEG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/ffmpeg")
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FFMPEG_INCLUDE_DIRS}")
+    # The defer parser consumes the compilation database before target-level
+    # include propagation is available; make FFmpeg headers visible there too.
+    add_compile_options("-I${FFMPEG_INCLUDE_DIRS}")
     set(_ffmpeg_runtime "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
     set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
     set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
@@ -164,7 +166,9 @@ if(USE_MUSL)
     add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
     set_target_properties(asciichat-ffmpeg PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES}")
+        # FFmpeg's static archives have mutual dependencies.  A rescan group
+        # is required for the musl release link to resolve all av* symbols.
+        INTERFACE_LINK_LIBRARIES "-Wl,--start-group;${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES};-Wl,--end-group")
     add_dependencies(asciichat-ffmpeg ffmpeg-musl)
     set(FFMPEG_LIBRARIES asciichat-ffmpeg)
     set(FFMPEG_FOUND TRUE)
@@ -218,16 +222,32 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
         if(NOT EXISTS "${FFMPEG_TARBALL}")
             message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
-            file(DOWNLOAD
-                "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-                "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=${FFMPEG_HASH}
-                STATUS DOWNLOAD_STATUS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
+            set(FFMPEG_DOWNLOAD "${FFMPEG_TARBALL}.download")
+            set(FFMPEG_DOWNLOAD_ERROR "download did not complete")
+            foreach(FFMPEG_ATTEMPT RANGE 1 3)
+                if(FFMPEG_ATTEMPT EQUAL 2)
+                    set(FFMPEG_DOWNLOAD_URL "https://mirrors.omnios.org/ffmpeg/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+                else()
+                    set(FFMPEG_DOWNLOAD_URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+                endif()
+                file(DOWNLOAD "${FFMPEG_DOWNLOAD_URL}" "${FFMPEG_DOWNLOAD}"
+                    TIMEOUT 180 INACTIVITY_TIMEOUT 30 STATUS DOWNLOAD_STATUS)
+                list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+                if(STATUS_CODE EQUAL 0)
+                    file(SHA256 "${FFMPEG_DOWNLOAD}" FFMPEG_ACTUAL_HASH)
+                    if(FFMPEG_ACTUAL_HASH STREQUAL FFMPEG_HASH)
+                        file(RENAME "${FFMPEG_DOWNLOAD}" "${FFMPEG_TARBALL}")
+                        break()
+                    endif()
+                    set(FFMPEG_DOWNLOAD_ERROR "SHA256 mismatch")
+                else()
+                    list(GET DOWNLOAD_STATUS 1 FFMPEG_DOWNLOAD_ERROR)
+                endif()
+                file(REMOVE "${FFMPEG_DOWNLOAD}")
+                message(WARNING "FFmpeg download attempt ${FFMPEG_ATTEMPT} failed: ${FFMPEG_DOWNLOAD_ERROR}")
+            endforeach()
+            if(NOT EXISTS "${FFMPEG_TARBALL}")
+                message(FATAL_ERROR "Failed to download FFmpeg after 3 attempts: ${FFMPEG_DOWNLOAD_ERROR}")
             endif()
         endif()
 

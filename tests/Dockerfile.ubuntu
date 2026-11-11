@@ -21,6 +21,10 @@ ENV CCACHE_DIR=/ccache \
   CCACHE_HARDLINK=true \
   CCACHE_NLEVELS=2
 
+ENV OPENSSL_ROOT_DIR=/opt/openssl \
+  PKG_CONFIG_PATH=/opt/openssl/lib64/pkgconfig:/opt/openssl/lib/pkgconfig:$PKG_CONFIG_PATH \
+  LD_LIBRARY_PATH=/opt/openssl/lib64:/opt/openssl/lib:$LD_LIBRARY_PATH
+
 # Install git and basic utilities first
 RUN apt-get update && apt-get install -y \
   git \
@@ -43,22 +47,40 @@ RUN apt-get update && apt-get install -y \
   pkg-config make autoconf automake libtool \
   cmake ninja-build ccache \
   musl-tools musl-dev \
-  libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev \
+  libmimalloc-dev libzstd-dev zlib1g-dev libuv1-dev libsodium-dev libasound2-dev portaudio19-dev libopus-dev libfftw3-dev \
   libcriterion-dev libffi-dev \
   libprotobuf-c-dev libprotobuf-c1 \
-  libssl-dev libicu-dev \
+  libnghttp2-dev libminiupnpc-dev libpcre2-dev libsqlite3-dev libnanomsg-dev libgit2-dev libkrb5-dev \
+  libssl-dev libicu-dev libfreetype6-dev libfontconfig1-dev libvterm-dev libsystemd-dev \
+  libx264-dev libx265-dev ffmpeg libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
   doxygen \
   dpkg-dev rpm \
   && rm -rf /var/lib/apt/lists/*
 
-# Install LLVM/Clang (try versions from newest to oldest)
-# liblldb-XX-dev is required for the query tool to link against LLDB
+# Ubuntu 24.04's OpenSSL 3.0 does not provide the QUIC TLS callback API.
+# Build the required system OpenSSL version into the image; QUIC is mandatory.
+RUN wget -q https://www.openssl.org/source/openssl-3.6.0.tar.gz -O /tmp/openssl.tar.gz && \
+  mkdir -p /tmp/openssl && \
+  tar -xzf /tmp/openssl.tar.gz --strip-components=1 -C /tmp/openssl && \
+  cd /tmp/openssl && \
+  CC=gcc ./Configure linux-x86_64 shared --prefix=/opt/openssl --openssldir=/opt/openssl/ssl && \
+  make -j"$(nproc)" && \
+  make install_sw && \
+  echo '/opt/openssl/lib64' > /etc/ld.so.conf.d/ascii-chat-openssl.conf && \
+  echo '/opt/openssl/lib' >> /etc/ld.so.conf.d/ascii-chat-openssl.conf && \
+  ldconfig && \
+  rm -rf /tmp/openssl /tmp/openssl.tar.gz
+
+# LLVM 23 is distributed through the LLVM APT repository on Ubuntu 24.04.
+RUN curl --retry 5 --retry-all-errors -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+  | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
+  && echo 'deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/noble/ llvm-toolchain-noble-23 main' \
+  > /etc/apt/sources.list.d/llvm-23.list
+
+# LLVM 23 provides the libclang version used by the defer transformer.
+# liblldb-23-dev is required for the query tool to link against LLDB.
 RUN apt-get update && \
-  ( apt-get install -y clang-23 clang-tools-23 clang-tidy-23 libclang-23-dev llvm-23 llvm-23-dev lld-23 lldb-23 liblldb-23-dev 2>/dev/null && LLVM_VERSION=23 || \
-    apt-get install -y clang-22 clang-tools-22 clang-tidy-22 libclang-22-dev llvm-22 llvm-22-dev lld-22 lldb-22 liblldb-22-dev 2>/dev/null && LLVM_VERSION=22 || \
-    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 libclang-20-dev llvm-20 llvm-20-dev lld-20 lldb-20 liblldb-20-dev 2>/dev/null && LLVM_VERSION=20 || \
-    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 libclang-19-dev llvm-19 llvm-19-dev lld-19 lldb-19 liblldb-19-dev 2>/dev/null && LLVM_VERSION=19 || \
-    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 libclang-18-dev llvm-18 llvm-18-dev lld-18 lldb-18 liblldb-18-dev 2>/dev/null && LLVM_VERSION=18 ) && \
+  apt-get install -y clang-23 clang-tools-23 clang-tidy-23 libclang-23-dev llvm-23 llvm-23-dev lld-23 lldb-23 liblldb-23-dev && \
   rm -rf /var/lib/apt/lists/*
 
 # Set up LLVM alternatives (find which version was installed)
@@ -84,11 +106,14 @@ RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep 
 # Verify installation
 RUN clang --version && cmake --version
 
+# uv manages the locked Python test environment in the build tree.
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
+
+# Match the project's locked Python requirement used by CTest's Python tests.
+RUN uv python install 3.15
+
 # Set working directory
 WORKDIR /app
 
-# Copy .git directory to enable CMake to initialize submodules
-COPY .git /app/.git
-
 # Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]
+CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel"]

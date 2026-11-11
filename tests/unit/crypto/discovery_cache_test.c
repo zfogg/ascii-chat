@@ -2,7 +2,7 @@
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/tests/logging.h>
 #include <sodium.h>

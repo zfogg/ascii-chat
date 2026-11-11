@@ -61,7 +61,6 @@
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
-#include <ascii-chat/platform/abstraction.h>
 #endif
 
 /* ============================================================================
@@ -70,6 +69,7 @@
  */
 
 /**
+ * @brief Non-owning source reference used when laying out an ASCII frame. `frame_data` points to the source text and `frame_size` tells the compositor how many bytes are valid; the source must remain alive until layout and copy-out finish.
  * @brief Default ASCII palette characters
  *
  * Default character palette for ASCII art conversion. Contains
@@ -161,7 +161,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 
 // Capability-aware ASCII conversion using terminal detection
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 
 /**
  * @brief Convert image to ASCII art with terminal capability awareness
@@ -201,6 +201,8 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
                                           const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                           const bool stretch, const char *palette_chars, const bool contain);
 
+#include <ascii-chat/video/ascii/render.h>
+
 /** Caller owns the reusable resize image; calls using it must be serialized. */
 char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
                                                 const terminal_capabilities_t *caps, const bool use_aspect_ratio,
@@ -213,6 +215,12 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
 char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
                                  const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output);
+
+/** Convert with a history owned by this stream; reset it when the source changes. */
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
+                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                            const bool stretch, const char *palette_chars, const bool contain,
+                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer);
 
 /**
  * @brief Convert image to ASCII art with terminal capabilities

@@ -23,7 +23,9 @@
 #include <string.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
@@ -34,7 +36,6 @@
  */
 
 /**
- * @struct webcam_context_t
  * @brief WASM webcam context - holds state for browser-based webcam capture
  */
 struct webcam_context_t {
@@ -320,6 +321,15 @@ image_t *webcam_read_async(webcam_context_t *ctx) {
   // WASM doesn't have a background thread model like other platforms
   // Fall back to synchronous read
   return webcam_read_context(ctx);
+}
+
+EM_JS(double, js_webcam_get_fps, (), {
+  const track = Module.webcamStream ?.getVideoTracks()[0];
+  return track                      ?.getSettings().frameRate || 0;
+});
+
+double webcam_get_fps(webcam_context_t *ctx) {
+  return ctx ? js_webcam_get_fps() : 0.0;
 }
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {

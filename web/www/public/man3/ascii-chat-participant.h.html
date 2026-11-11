@@ -1,162 +1,469 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>participant.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">participant.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">participant.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">participant.h - &#x1F464; Client-side session participation
-    abstraction</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_participant_callbacks_t</b>
-  <br/>
-  Callback function prototypes for session participant events. struct
-    <b>session_participant_config_t</b>
-  <br/>
-  Configuration for session participant.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>acip_transport</b> <b>acip_transport_t</b>
-  <br/>
-  Forward declaration of ACIP transport.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>session_participant_t</b> * <b>session_participant_create</b>
-    (const <b>session_participant_config_t</b> *config)
-  <br/>
-  Create a new session participant. void <b>session_participant_destroy</b>
-    (<b>session_participant_t</b> *p)
-  <br/>
-  Destroy session participant and free resources. <b>asciichat_error_t</b>
-    <b>session_participant_connect</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Connect to session server. void <b>session_participant_disconnect</b>
-    (<b>session_participant_t</b> *p)
-  <br/>
-  Disconnect from session server. <b>bool</b>
-    <b>session_participant_is_connected</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Check if participant is connected. <b>uint32_t</b>
-    <b>session_participant_get_client_id</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Get assigned client ID. <b>asciichat_error_t</b>
-    <b>session_participant_start_video</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Start video capture and streaming. void <b>session_participant_stop_video</b>
-    (<b>session_participant_t</b> *p)
-  <br/>
-  Stop video capture and streaming. <b>bool</b>
-    <b>session_participant_is_video_active</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Check if video is streaming. <b>asciichat_error_t</b>
-    <b>session_participant_start_audio</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Start audio capture and streaming. void <b>session_participant_stop_audio</b>
-    (<b>session_participant_t</b> *p)
-  <br/>
-  Stop audio capture and streaming. <b>bool</b>
-    <b>session_participant_is_audio_active</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Check if audio is streaming. <b>asciichat_error_t</b>
-    <b>session_participant_get_settings</b> (<b>session_participant_t</b> *p,
-    <b>session_settings_t</b> *settings)
-  <br/>
-  Get current session settings. <b>asciichat_error_t</b>
-    <b>session_participant_request_settings</b> (<b>session_participant_t</b>
-    *p, const <b>session_settings_t</b> *settings)
-  <br/>
-  Request session settings update (if permitted). <b>asciichat_error_t</b>
-    <b>session_participant_start_video_capture</b> (<b>session_participant_t</b>
-    *p)
-  <br/>
-  Start video capture and transmission to host. void
-    <b>session_participant_stop_video_capture</b> (<b>session_participant_t</b>
-    *p)
-  <br/>
-  Stop video capture and transmission. <b>asciichat_error_t</b>
-    <b>session_participant_start_audio_capture</b> (<b>session_participant_t</b>
-    *p)
-  <br/>
-  Start audio capture and transmission to host. void
-    <b>session_participant_stop_audio_capture</b> (<b>session_participant_t</b>
-    *p)
-  <br/>
-  Stop audio capture and transmission. <b>socket_t</b>
-    <b>session_participant_get_socket</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Get the socket from a participant context. <b>asciichat_error_t</b>
-    <b>session_participant_set_transport</b> (<b>session_participant_t</b> *p,
-    <b>acip_transport_t</b> *transport)
-  <br/>
-  Set an alternative transport for the participant. <b>acip_transport_t</b> *
-    <b>session_participant_get_transport</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Get the current transport for the participant. <b>bool</b>
-    <b>session_participant_has_transport</b> (<b>session_participant_t</b> *p)
-  <br/>
-  Check if participant has an active alternative transport.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F464; Client-side session participation abstraction</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>participant.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>participant.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">participant.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">participant.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          participant.h - &#x1F464; Client-side session participation
+          abstraction
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_participant_callbacks_t</b>
+            <br />
+            Callback function prototypes for session participant events. struct
+            <b>session_participant_config_t</b>
+            <br />
+            Configuration for session participant.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>acip_transport</b> <b>acip_transport_t</b>
+            <br />
+            Forward declaration of ACIP transport.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_participant_t</b> *
+            <b>session_participant_create</b> (const
+            <b>session_participant_config_t</b> *config)
+            <br />
+            Create a new session participant. void
+            <b>session_participant_destroy</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Destroy session participant and free resources.
+            <b>asciichat_error_t</b> <b>session_participant_connect</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Connect to session server. void
+            <b>session_participant_disconnect</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Disconnect from session server. <b>bool</b>
+            <b>session_participant_is_connected</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Check if participant is connected. <b>uint32_t</b>
+            <b>session_participant_get_client_id</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Get assigned client ID. <b>asciichat_error_t</b>
+            <b>session_participant_start_video</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Start video capture and streaming. void
+            <b>session_participant_stop_video</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Stop and join video capture, then release its resources Also stops
+            audio when it may borrow the video media source. <b>bool</b>
+            <b>session_participant_is_video_active</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Check if video is streaming. <b>asciichat_error_t</b>
+            <b>session_participant_start_audio</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Start audio capture and streaming. void
+            <b>session_participant_stop_audio</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            Stop audio capture and streaming. <b>bool</b>
+            <b>session_participant_is_audio_active</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Check if audio is streaming. <b>asciichat_error_t</b>
+            <b>session_participant_get_settings</b> (<b
+              >session_participant_t</b
+            >
+            *p, <b>session_settings_t</b> *settings)
+            <br />
+            Get current session settings. <b>asciichat_error_t</b>
+            <b>session_participant_request_settings</b> (<b
+              >session_participant_t</b
+            >
+            *p, const <b>session_settings_t</b> *settings)
+            <br />
+            Request this participant's remote rendering update.
+            <b>asciichat_error_t</b>
+            <b>session_participant_set_transport</b> (<b
+              >session_participant_t</b
+            >
+            *p, <b>acip_transport_t</b> *transport,
+            <b>acip_transport_ownership_t</b>
+            ownership)
+            <br />
+            Select a transport and its ownership mode for the participant.
+            <b>asciichat_error_t</b>
+            <b>session_participant_set_connection</b> (<b
+              >session_participant_t</b
+            >
+            *p, <b>network_connection_t</b> **owner)
+            <br />
+            Detach the selected transport and transfer its ownership
+            responsibility.
+            <b>asciichat_error_t</b>
+            <b>session_participant_take_connection</b> (<b
+              >session_participant_t</b
+            >
+            *, <b>network_connection_t</b> **)
+            <br />
+            <b>acip_transport_t</b> *
+            <b>session_participant_get_transport</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Get the current transport for the participant. <b>bool</b>
+            <b>session_participant_has_transport</b> (<b
+              >session_participant_t</b
+            >
+            *p)
+            <br />
+            Check if participant has a selected transport.
+            <b>network_connection_t</b> *
+            <b>session_participant_connection</b> (<b>session_participant_t</b>
+            *p)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>session_participant_receive_settings</b> (<b
+              >session_participant_t</b
+            >
+            *p, const void *payload, size_t length)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F464; Client-side session participation abstraction
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>participant.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b> * session_participant_connection (<b
+              >session_participant_t</b
+            >
+            * p)
+          </h2>
+          <p class="Pp">
+            Borrow the connection until the participant stops or transfers
+            ownership.
+          </p>
+          <p class="Pp">
+            Definition at line <b>792</b> of file <b>participant.c</b>.
+          </p>
+          <pre>
+792                                                                                {
+793   return p ? p-&gt;network : NULL;
+794 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_participant::network</b>, and
+            <b>session_participant_connection()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_participant_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_participant_receive_settings (<b
+              >session_participant_t</b
+            >
+            * p, const void * payload, size_t length)
+          </h2>
+          <p class="Pp">
+            Dispatch SETTINGS_ACK on the connection owner thread; callbacks run
+            outside locks.
+          </p>
+          <p class="Pp">
+            Definition at line <b>796</b> of file <b>participant.c</b>.
+          </p>
+          <pre>
+796                                                                                                                      {
+797   if (!p || !p-&gt;initialized)
+798     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant&quot;);
+799   acip_settings_header_t header;
+800   const char *json;
+801   size_t json_length;
+802   asciichat_error_t result = acip_settings_decode(payload, length, &amp;header, &amp;json, &amp;json_length);
+803   if (result != ASCIICHAT_OK)
+804     return result;
+805   mutex_lock(&amp;p-&gt;settings_mutex);
+806   if ((header.request &amp;&amp; header.request != p-&gt;settings_request) || header.revision &lt; p-&gt;settings.version) {
+807     mutex_unlock(&amp;p-&gt;settings_mutex);
+808     return ASCIICHAT_OK;
+809   }
+810   options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+811             *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+812   session_settings_to_options(&amp;p-&gt;settings, current);
+813   result = options_prepare_json(current, json, json_length, candidate, true);
+814   if (result == ASCIICHAT_OK) {
+815     session_settings_from_values(candidate, &amp;p-&gt;settings);
+816     p-&gt;settings.version = header.revision;
+817   }
+818   session_settings_t effective = p-&gt;settings;
+819   SAFE_FREE(current);
+820   SAFE_FREE(candidate);
+821   mutex_unlock(&amp;p-&gt;settings_mutex);
+822   if (result != ASCIICHAT_OK)
+823     return result;
+824   if (header.status &amp;&amp; p-&gt;callbacks.on_error)
+825     p-&gt;callbacks.on_error(p, (asciichat_error_t)header.status, &quot;Remote rendering update rejected&quot;, p-&gt;user_data);
+826   if (p-&gt;callbacks.on_settings_changed)
+827     p-&gt;callbacks.on_settings_changed(p, &amp;effective, p-&gt;user_data);
+828   return ASCIICHAT_OK;
+829 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_settings_decode()</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_participant::callbacks</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_participant::initialized</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>,
+            <b>session_participant_callbacks_t::on_error</b>,
+            <b>session_participant_callbacks_t::on_settings_changed</b>,
+            <b>options_prepare_json()</b>,
+            <b>acip_settings_header_t::request</b>,
+            <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>session_participant_receive_settings()</b>,
+            <b>session_settings_from_values()</b>,
+            <b>session_settings_to_options()</b>, <b>SET_ERRNO</b>,
+            <b>session_participant::settings</b>,
+            <b>session_participant::settings_mutex</b>,
+            <b>session_participant::settings_request</b>,
+            <b>acip_settings_header_t::status</b>,
+            <b>session_participant::user_data</b>, and
+            <b>session_settings_t::version</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_participant_receive_settings()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_participant_set_connection (<b
+              >session_participant_t</b
+            >
+            * p, <b>network_connection_t</b> ** owner)
+          </h2>
+          <p class="Pp">
+            Detach the selected transport and transfer its ownership
+            responsibility.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>p</i> Participant whose media workers have been stopped
+            <br />
+            <i>transport</i> Receives the detached transport, or NULL if none
+            <br />
+            <i>ownership</i> Receives the detached transport's ownership mode
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success; outputs are unchanged on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>761</b> of file <b>participant.c</b>.
+          </p>
+          <pre>
+761                                                                                                              {
+762   if (!owner || !*owner)
+763     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing participant connection&quot;);
+764   asciichat_error_t result = session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED);
+765   if (result != ASCIICHAT_OK)
+766     return result;
+767   p-&gt;network = *owner;
+768   *owner = NULL;
+769   p-&gt;transport = network_connection_transport(p-&gt;network);
+770   p-&gt;transport_ownership = ACIP_TRANSPORT_OWNED;
+771   result = session_connection_start(&amp;p-&gt;connection);
+772   p-&gt;connected = result == ASCIICHAT_OK &amp;&amp; acip_transport_is_connected(p-&gt;transport);
+773   return result;
+774 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>,
+            <b>ACIP_TRANSPORT_OWNED</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_participant::connected</b>,
+            <b>session_participant::connection</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_participant::network</b>,
+            <b>network_connection_transport()</b>,
+            <b>session_connection_start()</b>,
+            <b>session_participant_set_connection()</b>,
+            <b>session_participant_set_transport()</b>, <b>SET_ERRNO</b>,
+            <b>session_participant::transport</b>, and
+            <b>session_participant::transport_ownership</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_participant_set_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_participant_take_connection (<b
+              >session_participant_t</b
+            >
+            * p, <b>network_connection_t</b> ** connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>745</b> of file <b>participant.c</b>.
+          </p>
+          <pre>
+745                                                                                                                    {
+746   if (!p || !p-&gt;initialized || !connection)
+747     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing participant connection output&quot;);
+748   if (session_av_state_should_run(&amp;p-&gt;video) || session_av_state_should_run(&amp;p-&gt;audio) || p-&gt;video_thread_created ||
+749       p-&gt;audio_thread_created)
+750     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Stop media before transferring its connection&quot;);
+751   if (!p-&gt;network)
+752     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Participant does not own a connection&quot;);
+753   *connection = p-&gt;network;
+754   p-&gt;network = NULL;
+755   p-&gt;transport = NULL;
+756   p-&gt;transport_ownership = ACIP_TRANSPORT_BORROWED;
+757   p-&gt;connected = false;
+758   return ASCIICHAT_OK;
+759 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_participant::audio</b>,
+            <b>session_participant::audio_thread_created</b>,
+            <b>session_participant::connected</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>session_participant::initialized</b>,
+            <b>session_participant::network</b>,
+            <b>session_av_state_should_run()</b>,
+            <b>session_participant_take_connection()</b>, <b>SET_ERRNO</b>,
+            <b>session_participant::transport</b>,
+            <b>session_participant::transport_ownership</b>,
+            <b>session_participant::video</b>, and
+            <b>session_participant::video_thread_created</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_participant_take_connection()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

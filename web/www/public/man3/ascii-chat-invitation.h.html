@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>invitation.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">invitation.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">invitation.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">invitation.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>invitation_render</b> (<b>frame_buffer_t</b> *buf,
+            <b>terminal_size_t</b> size, const char *session_string,
+            <b>bool</b> joining, int animation_frame, <b>bool</b> use_colors)
+            <br />
+            void <b>invitation_render_logo</b> (<b>frame_buffer_t</b> *buf, int
+            cols, int animation_frame, <b>bool</b> use_colors,
+            <b>bool</b> compact)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_invitation_render_(">
+            <a class="permalink" href="#void_invitation_render_("
+              >void invitation_render (<b>frame_buffer_t</b> * buf,
+              <b>terminal_size_t</b> size, const char * session_string,
+              <b>bool</b> joining, int animation_frame,
+              <b>bool</b> use_colors)</a
+            >
+          </h2>
+          <p class="Pp">
+            Render the discovery invitation into a frame without writing to the
+            terminal. An empty string shows creation progress; joining shows
+            connection progress. Text is plain ASCII, and the Run instruction
+            immediately follows the string.
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>invitation.c</b>.
+          </p>
+          <pre>
+59                                     {
+60   if (!buf || size.cols &lt; 2 || size.rows &lt; 2)
+61     return;
+62   int cols = size.cols - 1;
+63   int rows = size.rows - 1;
+64   bool ready = session &amp;&amp; session[0];
+65   const char *label =
+66       ready ? (joining ? &quot;Connecting to session:&quot; : &quot;Share this string to connect:&quot;) : &quot;Creating session...&quot;;
+67   char command[SESSION_STRING_BUFFER_SIZE + 32];
+68   snprintf(command, sizeof(command), &quot;Run: ascii-chat %s&quot;, ready ? session : &quot;&quot;);
+69   const char *lines[3] = {label, ready ? session : &quot;&quot;, ready &amp;&amp; !joining ? command : &quot;&quot;};
+70   int text_rows = 0;
+71   for (int i = 0; i &lt; 3; ++i) {
+72     if (lines[i][0])
+73       text_rows += ((int)strlen(lines[i]) + cols - 1) / cols;
+74   }
+75   bool compact = cols &lt; 52 || rows &lt; text_rows + 7;
+76   int logo_rows = compact ? 1 : 4;
+77   bool show_logo = rows &gt;= text_rows + logo_rows + 1;
+78   int height = text_rows + (show_logo ? logo_rows + 1 : 0);
+79   int top = rows &gt; height ? (rows - height) / 2 : 0;
+80   int used = 0;
+81   for (; used &lt; top; ++used)
+82     frame_buffer_printf(buf, &quot;\n&quot;);
+83   if (show_logo) {
+84     invitation_render_logo(buf, cols, frame, colors, compact);
+85     frame_buffer_printf(buf, &quot;\n&quot;);
+86     used += logo_rows + 1;
+87   }
+88   // On exceptionally short terminals prioritize the string and its command.
+89   int first = height &gt; rows &amp;&amp; ready ? 1 : 0;
+90   for (int i = first; i &lt; 3 &amp;&amp; used &lt; rows; ++i) {
+91     const char *text = lines[i];
+92     size_t remaining = strlen(text);
+93     while (remaining &amp;&amp; used &lt; rows) {
+94       int length = remaining &gt; (size_t)cols ? cols : (int)remaining;
+95       centered_line(buf, text, length, cols, frame, false);
+96       text += length;
+97       remaining -= length;
+98       ++used;
+99     }
+100   }
+101   // Erase stale logs/rows after a layout change without clearing between frames.
+102   frame_buffer_printf(buf, &quot;\033[J&quot;);
+103 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>,
+            <b>frame_buffer_printf()</b>, <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>, <b>terminal_size_t::rows</b>, and
+            <b>SESSION_STRING_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>invitation_render()</b>, and
+            <b>ui_session_splash_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_invitation_render_logo_(">
+            <a class="permalink" href="#void_invitation_render_logo_("
+              >void invitation_render_logo (<b>frame_buffer_t</b> * buf, int
+              cols, int animation_frame, <b>bool</b> use_colors,
+              <b>bool</b> compact)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared rainbow logo used by the startup splash and discovery
+            invitation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>invitation.c</b>.
+          </p>
+          <pre>
+34                                                                                                  {
+35   const char *ascii_logo[4] = {
+36       &quot;  __ _ ___  ___(_|_)       ___| |__   __ _| |_ &quot;, &quot; / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| &quot;,
+37       &quot;| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ &quot;, &quot; \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| &quot;};
+38   if (compact) {
+39     const char *title = &quot;ascii-chat&quot;;
+40     int len = (int)strlen(title);
+41     centered_line(buf, title, len &lt; cols ? len : cols, cols, frame, colors);
+42     return;
+43   }
+44   // Pad every row to the same width so the ASCII glyphs stay aligned.
+45   int width = 0;
+46   for (int i = 0; i &lt; 4; ++i) {
+47     int len = (int)strlen(ascii_logo[i]);
+48     if (len &gt; width)
+49       width = len;
+50   }
+51   for (int i = 0; i &lt; 4; ++i) {
+52     char line[TUI_INVITATION_LINE_BUFFER_SIZE];
+53     snprintf(line, sizeof(line), &quot;%-*s&quot;, width, ascii_logo[i]);
+54     centered_line(buf, line, width &lt; cols ? width : cols, cols, frame, colors);
+55   }
+56 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>invitation_render_logo()</b>, and
+            <b>TUI_INVITATION_LINE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>, <b>ui_media_panel_render()</b>,
+            <b>ui_session_render()</b>, and <b>ui_session_splash_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

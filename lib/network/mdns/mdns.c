@@ -21,10 +21,12 @@
 
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdio.h>
@@ -48,7 +50,10 @@ typedef struct {
 } bonjour_resolver_t;
 #endif
 
-/** @brief Internal mDNS context structure */
+/** @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered
+ * @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered
+ * records, and shutdown state. The context keeps those resources together until the platform mDNS operation is stopped.
+ * records, and shutdown state. */
 struct asciichat_mdns_t {
   int socket_fd;                                 /**< UDP socket for mDNS */
   asciichat_mdns_discovery_callback_fn callback; /**< Discovery callback */
@@ -57,7 +62,7 @@ struct asciichat_mdns_t {
   size_t buffer_capacity;                        /**< Buffer capacity */
   bool advertising;
   _Atomic bool stop_advertising;
-  asciichat_thread_t advertiser;
+  platform_thread_t advertiser;
   char service_type[NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE], instance[NETWORK_MDNS_INSTANCE_BUFFER_SIZE],
       host[NETWORK_MDNS_HOST_BUFFER_SIZE], query_service[NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE];
   char txt[MDNS_MAX_TXT_RECORDS][NETWORK_MDNS_TXT_BUFFER_SIZE];
@@ -411,7 +416,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
                               mdns->additional, mdns->additional_count) < 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot announce mDNS service");
   atomic_store(&mdns->stop_advertising, false);
-  if (acthread_create(&mdns->advertiser, "mdns_advertiser", mdns_advertiser, mdns) != 0)
+  if (platform_thread_create(&mdns->advertiser, "mdns_advertiser", mdns_advertiser, mdns) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start mDNS advertiser");
   mdns->advertising = true;
   return ASCIICHAT_OK;

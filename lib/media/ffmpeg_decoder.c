@@ -9,14 +9,16 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/system.h>
+#include <libplatform/mutex.h>
+#include <libplatform/cond.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/options/options.h>
@@ -36,8 +38,13 @@
  * ============================================================================ */
 
 /**
- * Silent logging callback for FFmpeg - discards all log messages
- * This prevents FFmpeg from printing "stdout: " prefixed messages
+ * @brief FFmpeg decoder state for video and audio decoding
+ * @brief Owns the temporary storage used by stdin buffer. The data pointers and size or cursor fields describe the live
+ * portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ * @brief Owns the temporary storage used by stdin buffer reader. The data pointers and size or cursor fields describe
+ * the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed. Silent logging callback for FFmpeg - discards all log messages This prevents FFmpeg from printing "stdout: "
+ * prefixed messages
  */
 static void ffmpeg_silent_log_callback(void *avcl, int level, const char *fmt, va_list vl) {
   (void)avcl;  // unused
@@ -97,11 +104,11 @@ struct ffmpeg_decoder_t {
   size_t audio_buffer_offset; ///< Current offset in audio buffer
 
   // Background thread for frame prefetching (reduces YouTube HTTP blocking)
-  asciichat_thread_t prefetch_thread; ///< Prefetch thread handle
-  image_t *prefetch_image_a;          ///< First prefetch buffer
-  image_t *prefetch_image_b;          ///< Second prefetch buffer
-  image_t *current_prefetch_image;    ///< Currently available prefetched frame
-  _Atomic bool prefetch_frame_ready;  ///< Whether current_prefetch_image has valid data
+  platform_thread_t prefetch_thread; ///< Prefetch thread handle
+  image_t *prefetch_image_a;         ///< First prefetch buffer
+  image_t *prefetch_image_b;         ///< Second prefetch buffer
+  image_t *current_prefetch_image;   ///< Currently available prefetched frame
+  _Atomic bool prefetch_frame_ready; ///< Whether current_prefetch_image has valid data
   asciichat_error_context_t prefetch_failure;
   _Atomic bool prefetch_failed;
   bool prefetch_thread_running;      ///< Whether prefetch thread is active
@@ -135,8 +142,8 @@ struct ffmpeg_decoder_t {
   int audio_sample_rate;       ///< Audio sample rate (Hz)
 
   // Exit signal callback (for graceful shutdown during blocking I/O)
-  _Atomic(bool (*)(void *)) should_exit_callback; ///< Callback to check if app should exit
-  _Atomic(void *) exit_callback_user_data;        ///< User data for exit callback
+  atomic_ptr_t should_exit_callback;    ///< Callback to check if app should exit
+  atomic_ptr_t exit_callback_user_data; ///< User data for exit callback
 };
 
 /* ============================================================================
@@ -309,8 +316,8 @@ static int ffmpeg_interrupt_callback(void *opaque) {
 
   // Interrupt traced_packet_read() if application is shutting down
   // This allows Ctrl+C to abort blocking I/O operations like YouTube HTTP requests
-  bool (*cancel)(void *) = decoder->should_exit_callback;
-  void *data = decoder->exit_callback_user_data;
+  bool (*cancel)(void *) = (bool (*)(void *))atomic_ptr_load(&decoder->should_exit_callback);
+  void *data = atomic_ptr_load(&decoder->exit_callback_user_data);
   if (cancel && cancel(data)) {
     return 1;
   }
@@ -327,14 +334,9 @@ static int ffmpeg_interrupt_callback(void *opaque) {
  */
 
 static void ffmpeg_otel_result(int result, bool streaming) {
-#ifdef ASCIICHAT_WITH_OTEL
   // EOF, buffering and application cancellation are expected control flow.
   if (result < 0 && result != AVERROR_EXIT && !(streaming && (result == AVERROR_EOF || result == AVERROR(EAGAIN))))
     gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
-#else
-  (void)result;
-  (void)streaming;
-#endif
 }
 
 static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,
@@ -428,6 +430,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
+    bool packet_rejected = false;
     asciichat_errno_scope_t decode_scope = errno_checkpoint();
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent traced_packet_read() calls from audio
@@ -439,6 +442,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       mutex_lock(&decoder->prefetch_mutex);
       continue;
     }
+    // Interrupted reads are expected. Publish a failure only after deciding
+    // whether this attempt was cancelled or superseded by a seek.
+    bool notifications_suppressed = errno_notifications_suppress(true);
 
     ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
     ASCII_OTEL_ATTR_STRING("media.codec", avcodec_get_name(decoder->video_codec_ctx->codec_id));
@@ -492,7 +498,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           if (ret == AVERROR(EAGAIN))
             continue;
           if (ret < 0) {
-            SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", ret);
+            packet_rejected = true;
             break;
           }
 
@@ -629,8 +635,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     // Shutdown can race a buffered read without FFmpeg returning AVERROR_EXIT.
     // The caller's cancellation request is authoritative for this operation.
-    bool (*cancel)(void *) = decoder->should_exit_callback;
-    bool cancelled = cancel && cancel(decoder->exit_callback_user_data);
+    bool (*cancel)(void *) = (bool (*)(void *))atomic_ptr_load(&decoder->should_exit_callback);
+    bool cancelled = cancel && cancel(atomic_ptr_load(&decoder->exit_callback_user_data));
 
     if (frame_decoded) {
       char read_time_str[TIME_DURATION_BUFFER_SIZE];
@@ -644,6 +650,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Mutex now held - update prefetch state
     bool obsolete = generation != decoder->seek_generation;
     bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete || cancelled;
+    errno_notifications_suppress(notifications_suppressed);
     if (interrupted)
       errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
     if (obsolete) {
@@ -652,7 +659,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     }
     if (!frame_decoded && !reached_eof && !interrupted) {
       if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
-        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
+        if (packet_rejected)
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", decode_result);
+        else
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
         if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
           SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
@@ -760,6 +770,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
+  return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
+}
+
+ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
+                                                             const char *headers, const char *cookies,
+                                                             const char *proxy) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
@@ -782,8 +798,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
   }
 
   memset(decoder, 0, sizeof(*decoder));
-  decoder->should_exit_callback = cancel;
-  decoder->exit_callback_user_data = data;
+  atomic_ptr_store(&decoder->should_exit_callback, (void *)cancel);
+  atomic_ptr_store(&decoder->exit_callback_user_data, data);
   decoder->format_ctx = avformat_alloc_context();
   if (!decoder->format_ctx) {
     SAFE_FREE(decoder);
@@ -802,13 +818,20 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     // Configure FFmpeg options for HTTP streaming performance
     AVDictionary *options = NULL;
 
-    // Local paths must not create URL errors or diagnostic notifications.
-    // Resolve a failed explicit-URL probe without dismissing older errors.
+    // FFmpeg accepts HTTP authorities that the application URL validator rejects.
+    // Classify the protocol rather than validating the host for timeout settings.
+    bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 ||
+                            platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
     asciichat_errno_scope_t url_scope = errno_scope_begin();
-    bool is_url = path && strstr(path, "://") && url_is_valid(path);
+    bool is_url = is_http || (path && strstr(path, "://") && url_is_valid(path));
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
-    // For HTTP/HTTPS streams: enable fast probing and reconnection.
     if (is_url) {
+      if (headers && *headers)
+        av_dict_set(&options, "headers", headers, 0);
+      if (cookies && *cookies)
+        av_dict_set(&options, "cookies", cookies, 0);
+      if (proxy)
+        av_dict_set(&options, "http_proxy", proxy, 0);
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);
       // Analyze for 100ms max to determine streams quickly
@@ -1451,8 +1474,8 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
   atomic_store(&decoder->prefetch_failed, false);
 
-  int thread_err =
-      acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err = platform_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
+                                          ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }
@@ -1487,8 +1510,8 @@ void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_e
   if (!decoder) {
     return;
   }
-  decoder->exit_callback_user_data = user_data;
-  decoder->should_exit_callback = should_exit_callback;
+  atomic_ptr_store(&decoder->exit_callback_user_data, user_data);
+  atomic_ptr_store(&decoder->should_exit_callback, (void *)should_exit_callback);
 }
 
 bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {

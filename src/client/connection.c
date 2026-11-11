@@ -8,7 +8,7 @@
 #include "../main.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/platform/system.h>
+#include <libplatform/system.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
@@ -126,19 +126,17 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
 
 static void client_detach(void *context) {
   client_connection_t *connection = context;
-  connection->transport = NULL;
+  atomic_ptr_store(&connection->transport, NULL);
   connection->crypto_ctx = NULL;
 }
 
 static asciichat_error_t client_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
                                         const char *password, void *context) {
   client_connection_t *connection = context;
-  connection->transport = network_connection_transport(network);
+  atomic_ptr_store(&connection->transport, network_connection_transport(network));
   server_connection_set_ip(connection, endpoint->host);
   server_connection_set_port(connection, endpoint->port);
   asciichat_error_t result = client_crypto_init(connection, password);
-  if (result == ASCIICHAT_OK && !GET_OPTION(no_auth))
-    connection->crypto_mode |= ACIP_CRYPTO_AUTH;
   return result;
 }
 
@@ -150,15 +148,21 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
-  asciichat_error_t result = session_connection_establish("client", address, port, NULL, &connection->network, password,
-                                                          password_capacity, client_prepare, client_detach, connection);
-  connection->transport = network_connection_transport(connection->network);
+  network_connect_config_t quic_config = {.timeout_ms = 10000,
+                                          .tls_ca_file = GET_OPTION(tls_ca_file)[0] ? GET_OPTION(tls_ca_file) : NULL,
+                                          .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                                          .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
+  const network_connect_config_t *connect_config = address && strncmp(address, "quic://", 7) == 0 ? &quic_config : NULL;
+  asciichat_error_t result =
+      session_connection_establish("client", address, port, connect_config, &connection->network, password,
+                                   password_capacity, client_prepare, client_detach, connection);
+  atomic_ptr_store(&connection->transport, network_connection_transport(connection->network));
   connection->crypto_ctx = connection->network ? network_connection_handshake(connection->network) : NULL;
   if (result != ASCIICHAT_OK)
     return result;
   if (should_exit())
     return SET_ERRNO(ERROR_NETWORK, "Connection startup interrupted");
-  server_connection_set_transport(connection, connection->transport);
+  server_connection_set_transport(connection, atomic_ptr_load(&connection->transport));
   result = client_connection_checkpoint("transport");
   if (result != ASCIICHAT_OK)
     return result;
@@ -231,7 +235,7 @@ static void client_release(void *context) {
   log_debug("CLIENT_CONNECTION_TRANSPORT_CLEANUP");
   network_connection_destroy(&connection->network);
   log_debug("CLIENT_CONNECTION_TRANSPORT_RELEASED");
-  connection->transport = NULL;
+  atomic_ptr_store(&connection->transport, NULL);
   connection->crypto_ctx = NULL;
 }
 

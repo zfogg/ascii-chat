@@ -18,6 +18,7 @@
 typedef enum {
   CONNECTION_ENDPOINT_TCP = 0,
   CONNECTION_ENDPOINT_WEBSOCKET = 1,
+  CONNECTION_ENDPOINT_QUIC = 2,
 } connection_endpoint_protocol_t;
 
 typedef struct {
@@ -26,15 +27,19 @@ typedef struct {
   char host[HOSTNAME_BUFFER_SIZE];
   uint16_t port;
   bool has_explicit_port;
+/**
+ */
 } connection_endpoint_t;
 
 /**
+ * @brief For connection endpoint, this is the live record that ties `protocol`, `port`, `has_explicit_port` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * Resolve an input string into a normalized TCP or WebSocket endpoint.
  *
  * Supported inputs:
  * - ws://host[:port]
  * - wss://host[:port]
  * - tcp://host[:port]
+ * - quic://host[:port]
  * - bare hostnames or host:port pairs
  *
  * Bare hostnames are treated as TCP endpoints and use default_port when the

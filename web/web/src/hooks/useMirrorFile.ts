@@ -40,6 +40,7 @@ export function useMirrorFile({
   setError,
 }: Options) {
   const [fileName, setFileName] = useState("");
+  const [revision, setRevision] = useState(0);
   const [kind, setKind] = useState<"video" | "gif" | "image" | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
@@ -96,6 +97,7 @@ export function useMirrorFile({
       setLoading(true);
       setStatus("Opening media...");
       setFileName(file.name);
+      setRevision((value) => value + 1);
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas) {
@@ -333,6 +335,7 @@ export function useMirrorFile({
   }, [videoRef, setError]);
 
   const restart = useCallback(() => {
+    setRevision((value) => value + 1);
     setEnded(false);
     if (streaming.current) {
       streaming.current.restart();
@@ -358,10 +361,14 @@ export function useMirrorFile({
       setMuted(video.muted);
       setVolume(video.volume);
     };
+    const onSeek = () => setRevision((value) => value + 1);
+    video.addEventListener("seeked", onSeek);
     const events = ["play", "pause", "ended", "seeked", "volumechange"];
     events.forEach((event) => video.addEventListener(event, sync));
-    return () =>
+    return () => {
+      video.removeEventListener("seeked", onSeek);
       events.forEach((event) => video.removeEventListener(event, sync));
+    };
   }, [videoRef]);
 
   return {
@@ -369,6 +376,7 @@ export function useMirrorFile({
     stop,
     captureFrame,
     fileName,
+    revision,
     kind,
     loading,
     status,

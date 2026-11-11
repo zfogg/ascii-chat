@@ -1,0 +1,402 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio_processor_config_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio_processor_config_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio_processor_config_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">audio_processor_config_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/audio/processor.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>channels</b>
+            <br />
+            Interleaved PCM channels; zero retains the mono API default. int
+            <b>sample_rate</b>
+            <br />
+            <b>audio_processor_flags_t</b> <b>flags</b>
+            <br />
+            <b>bool</b> <b>spectral_enabled</b>
+            <br />
+            <b>spectral_config_t</b> <b>spectral</b>
+            <br />
+            int <b>agc_level</b>
+            <br />
+            int <b>agc_max_gain</b>
+            <br />
+            float <b>highpass_hz</b>
+            <br />
+            float <b>lowpass_hz</b>
+            <br />
+            float <b>comp_threshold_db</b>
+            <br />
+            float <b>comp_ratio</b>
+            <br />
+            float <b>comp_makeup_db</b>
+            <br />
+            <b>uint64_t</b> <b>comp_attack_ns</b>
+            <br />
+            <b>uint64_t</b> <b>comp_release_ns</b>
+            <br />
+            float <b>gate_threshold</b>
+            <br />
+            float <b>gate_hysteresis</b>
+            <br />
+            <b>uint64_t</b> <b>gate_attack_ns</b>
+            <br />
+            <b>uint64_t</b> <b>gate_release_ns</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>18</b> of file <b>processor.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_processor_config_t::agc_level">
+            <a class="permalink" href="#int_audio_processor_config_t::agc_level"
+              >int audio_processor_config_t::agc_level</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_processor_config_t::agc_max_gain">
+            <a
+              class="permalink"
+              href="#int_audio_processor_config_t::agc_max_gain"
+              >int audio_processor_config_t::agc_max_gain</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_processor_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_processor_config_t::channels">
+            <a class="permalink" href="#int_audio_processor_config_t::channels"
+              >int audio_processor_config_t::channels</a
+            >
+          </h2>
+          <p class="Pp">
+            Interleaved PCM channels; zero retains the mono API default.
+          </p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_process()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> audio_processor_config_t::comp_attack_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_processor_reset()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::comp_makeup_db">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::comp_makeup_db"
+              >float audio_processor_config_t::comp_makeup_db</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::comp_ratio">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::comp_ratio"
+              >float audio_processor_config_t::comp_ratio</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> audio_processor_config_t::comp_release_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_processor_reset()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::comp_threshold_db">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::comp_threshold_db"
+              >float audio_processor_config_t::comp_threshold_db</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_processor_flags_t</b> audio_processor_config_t::flags
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>,
+            <b>audio_processor_set_flags()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>wasm_audio_processor_create()</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> audio_processor_config_t::gate_attack_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_processor_reset()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::gate_hysteresis">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::gate_hysteresis"
+              >float audio_processor_config_t::gate_hysteresis</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> audio_processor_config_t::gate_release_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_processor_reset()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::gate_threshold">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::gate_threshold"
+              >float audio_processor_config_t::gate_threshold</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::highpass_hz">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::highpass_hz"
+              >float audio_processor_config_t::highpass_hz</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor_config_t::lowpass_hz">
+            <a
+              class="permalink"
+              href="#float_audio_processor_config_t::lowpass_hz"
+              >float audio_processor_config_t::lowpass_hz</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_processor_config_t::sample_rate">
+            <a
+              class="permalink"
+              href="#int_audio_processor_config_t::sample_rate"
+              >int audio_processor_config_t::sample_rate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_process()</b>, <b>audio_processor_reset()</b>,
+            and <b>client_audio_pipeline_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>spectral_config_t</b> audio_processor_config_t::spectral
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_process()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>, and
+            <b>client_audio_pipeline_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> audio_processor_config_t::spectral_enabled
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>processor.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>wasm_audio_processor_create()</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

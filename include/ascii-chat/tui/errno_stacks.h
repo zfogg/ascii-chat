@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <stdbool.h>
 
 /** Toggle the diagnostic errno-stack terminal UI. Available only in diagnostic builds. */

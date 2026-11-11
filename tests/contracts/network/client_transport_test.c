@@ -105,6 +105,7 @@ Test(client_transport, control_packets_preserve_network_order_and_capability_ack
   cr_assert_eq(threaded_send_ping_packet(&connection), ASCIICHAT_OK);
   cr_assert_eq(records[0].type, PACKET_TYPE_PING);
   cr_assert_gt(atomic_load_u64(&connection.telemetry_ping_ns), 0);
+  cr_assert_neq(atomic_load_u64(&connection.telemetry_ping_ns), UINT64_MAX);
   server_connection_pong_received(&connection);
   cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), 0);
   cr_assert_eq(threaded_send_pong_packet(&connection), ASCIICHAT_OK);
@@ -124,6 +125,18 @@ Test(client_transport, control_packets_preserve_network_order_and_capability_ack
   cr_assert_eq(threaded_send_terminal_size_with_auto_detect(&connection, 100, 30), ERROR_NETWORK);
   cr_assert_eq(connection.advertised_dimensions.cols, 80);
   cr_assert_eq(connection.advertised_dimensions.rows, 24);
+}
+Test(client_transport, zero_clock_value_does_not_collide_with_the_no_ping_sentinel) {
+  client_connection_mark_ping_sent(&connection, 0);
+  cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), 1);
+  server_connection_pong_received(&connection);
+  cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), 0);
+  client_connection_mark_ping_sent(&connection, 0);
+  client_connection_mark_ping_sent(&connection, 0);
+  cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), UINT64_MAX);
+  atomic_store_u64(&connection.telemetry_ping_ns, 0);
+  client_connection_mark_ping_sent(&connection, 42);
+  cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), 42);
 }
 Test(client_transport, local_payload_rejection_keeps_the_connection_but_network_failure_marks_it_lost) {
   const uint8_t pixel[3] = {10, 20, 30};

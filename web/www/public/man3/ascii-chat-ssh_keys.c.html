@@ -1,100 +1,563 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ssh_keys.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ssh_keys.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ssh_keys.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ssh_keys.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>parse_ssh_ed25519_line</b> (const char
-    *line, <b>uint8_t</b> ed25519_pk[32])
-  <br/>
-  Parse SSH Ed25519 public key from
-    <i>ssh-ed25519</i>AAAAC3...&quot;<i>format.</i> <b>asciichat_error_t</b>
-    <b>parse_ssh_private_key</b> (const char *key_path, <b>private_key_t</b>
-    *key_out)
-  <br/>
-  Parse SSH Ed25519 private key from file. <b>asciichat_error_t</b>
-    <b>ed25519_to_x25519_public</b> (const <b>uint8_t</b> ed25519_pk[32],
-    <b>uint8_t</b> x25519_pk[32])
-  <br/>
-  Convert Ed25519 public key to X25519 for key exchange.
-    <b>asciichat_error_t</b> <b>ed25519_to_x25519_private</b> (const
-    <b>uint8_t</b> ed25519_sk[64], <b>uint8_t</b> x25519_sk[32])
-  <br/>
-  Convert Ed25519 private key to X25519 for key exchange.
-  <br/>
-</p>
-<p class="Pp"><b>SSH Key Parsing</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  <b>asciichat_error_t</b> <b>validate_ssh_key_file</b> (const char *key_path)
-  <br/>
-  Validate SSH key file permissions and format.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>SSH Key Operations</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  <b>asciichat_error_t</b> <b>ed25519_sign_message</b> (const
-    <b>private_key_t</b> *key, const <b>uint8_t</b> *message, size_t
-    message_len, <b>uint8_t</b> signature[64])
-  <br/>
-  Sign a message with Ed25519 private key. <b>asciichat_error_t</b>
-    <b>ed25519_verify_signature</b> (const <b>uint8_t</b> public_key[32], const
-    <b>uint8_t</b> *message, size_t message_len, const <b>uint8_t</b>
-    signature[64], const char *gpg_key_id)
-  <br/>
-  Verify an Ed25519 signature.
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ssh_keys.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ssh_keys.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ssh_keys.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ssh_keys.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ssh_private_key_parse_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>SSH_PASSWORD_INPUT_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>SSH_BCRYPT_SALT_SIZE</b> 16
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>parse_ssh_ed25519_line</b> (const char
+            *line, <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>parse_ssh_private_key</b> (const char
+            *key_path, <b>private_key_t</b> *key_out)
+            <br />
+            Parse SSH Ed25519 private key from file. <b>asciichat_error_t</b>
+            <b>ed25519_to_x25519_public</b> (const
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>uint8_t</b>
+            x25519_pk[<b>X25519_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>ed25519_to_x25519_private</b> (const
+            <b>uint8_t</b> ed25519_sk[<b>ED25519_PRIVATE_KEY_SIZE</b>],
+            <b>uint8_t</b>
+            x25519_sk[<b>X25519_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>ed25519_sign_message</b> (const
+            <b>private_key_t</b> *key, const <b>uint8_t</b> *message, size_t
+            message_len,
+            <b>uint8_t</b> signature[<b>ED25519_SIGNATURE_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>ed25519_verify_signature</b> (const
+            <b>uint8_t</b> public_key[<b>ED25519_PUBLIC_KEY_SIZE</b>], const
+            <b>uint8_t</b> *message, size_t message_len, const <b>uint8_t</b>
+            signature[<b>ED25519_SIGNATURE_SIZE</b>], const char *gpg_key_id)
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>SSH Key Parsing</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            <b>asciichat_error_t</b> <b>validate_ssh_key_file</b> (const char
+            *key_path)
+            <br />
+            Validate SSH key file permissions and format.
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE___32"
+              >#define CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>ssh_keys.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE___32"
+              >#define CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>ssh_keys.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SSH_BCRYPT_SALT_SIZE___16">
+            <a class="permalink" href="#_define_SSH_BCRYPT_SALT_SIZE___16"
+              >#define SSH_BCRYPT_SALT_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>ssh_keys.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SSH_PASSWORD_INPUT_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_SSH_PASSWORD_INPUT_BUFFER_SIZE___1024"
+              >#define SSH_PASSWORD_INPUT_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>ssh_keys.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ed25519_sign_message (const
+            <b>private_key_t</b> * key, const <b>uint8_t</b> * message, size_t
+            message_len, <b>uint8_t</b> signature[ED25519_SIGNATURE_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1143</b> of file <b>ssh_keys.c</b>.
+          </p>
+          <pre>
+1144                                                                                   {
+1145   if (!key || !message || !signature) {
+1146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, message=%p, signature=%p&quot;, key, message,
+1147                      signature);
+1148   }
+1149
+1150   if (key-&gt;type != KEY_TYPE_ED25519) {
+1151     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key is not an Ed25519 key&quot;);
+1152   }
+1153
+1154 #ifndef EMSCRIPTEN_BUILD
+1155   // If using GPG agent, delegate signing to GPG agent
+1156   if (key-&gt;use_gpg_agent) {
+1157     log_debug(&quot;Using GPG agent for Ed25519 signing (keygrip: %.40s)&quot;, key-&gt;gpg_keygrip);
+1158
+1159     // Connect to GPG agent
+1160     int agent_sock = gpg_agent_connect();
+1161     log_debug(&quot;GPG agent connection result: %d&quot;, agent_sock);
+1162
+1163     if (agent_sock &lt; 0) {
+1164       log_debug(&quot;GPG agent not available, falling back to gpg --detach-sign for signing&quot;);
+1165
+1166       // Extract GPG key ID from key comment (&quot;GPG key &lt;key_id&gt;&quot;)
+1167       const char *key_id_prefix = &quot;GPG key &quot;;
+1168       const char *key_id = NULL;
+1169       if (strncmp(key-&gt;key_comment, key_id_prefix, strlen(key_id_prefix)) == 0) {
+1170         key_id = key-&gt;key_comment + strlen(key_id_prefix);
+1171       }
+1172
+1173       log_debug(&quot;Extracted GPG key ID: %s (len=%zu)&quot;, key_id ? key_id : &quot;NULL&quot;, key_id ? strlen(key_id) : 0);
+1174
+1175       if (!key_id || strlen(key_id) != 16) {
+1176         return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot extract GPG key ID from comment for fallback signing&quot;);
+1177       }
+1178
+1179       // Use gpg --detach-sign fallback
+1180       log_debug(&quot;Calling gpg_sign_detached_ed25519 with key %s&quot;, key_id);
+1181       int result = gpg_sign_detached_ed25519(key_id, message, message_len, signature);
+1182       log_debug(&quot;gpg_sign_detached_ed25519 result: %d&quot;, result);
+1183
+1184       if (result != 0) {
+1185         return SET_ERRNO(ERROR_CRYPTO, &quot;GPG fallback signing failed (both agent and gpg command failed)&quot;);
+1186       }
+1187
+1188       log_debug(&quot;Successfully signed message with gpg --detach-sign fallback (64 bytes)&quot;);
+1189       return ASCIICHAT_OK;
+1190     }
+1191
+1192     log_debug(&quot;Using GPG agent for signing&quot;);
+1193
+1194     // Sign the message using GPG agent
+1195     size_t sig_len = 0;
+1196     int result = gpg_agent_sign(agent_sock, key-&gt;gpg_keygrip, message, message_len, signature, &amp;sig_len);
+1197
+1198     // Disconnect from agent
+1199     gpg_agent_disconnect(agent_sock);
+1200
+1201     if (result != 0) {
+1202       return SET_ERRNO(ERROR_CRYPTO, &quot;GPG agent signing failed&quot;);
+1203     }
+1204
+1205     if (sig_len != 64) {
+1206       return SET_ERRNO(ERROR_CRYPTO, &quot;GPG agent returned invalid signature length: %zu (expected 64)&quot;, sig_len);
+1207     }
+1208
+1209     log_debug(&quot;Successfully signed message with GPG agent (64 bytes)&quot;);
+1210     return ASCIICHAT_OK;
+1211   }
+1212
+1213   // If using SSH agent, delegate signing to SSH agent
+1214   if (key-&gt;use_ssh_agent) {
+1215     log_debug(&quot;Using SSH agent for Ed25519 signing&quot;);
+1216
+1217     // Create a public_key_t from the stored public key
+1218     public_key_t pub_key = {0};
+1219     pub_key.type = KEY_TYPE_ED25519;
+1220     memcpy(pub_key.key, key-&gt;public_key, ED25519_PUBLIC_KEY_SIZE);
+1221
+1222     // Sign using SSH agent
+1223     asciichat_error_t result = ssh_agent_sign(&amp;pub_key, message, message_len, signature);
+1224     if (result != ASCIICHAT_OK) {
+1225       return result; // Error already set by ssh_agent_sign
+1226     }
+1227
+1228     log_debug(&quot;Successfully signed message with SSH agent (64 bytes)&quot;);
+1229     return ASCIICHAT_OK;
+1230   }
+1231 #else
+1232   if (key-&gt;use_gpg_agent || key-&gt;use_ssh_agent) {
+1233     return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;External SSH and GPG agents are not available in the browser&quot;);
+1234   }
+1235 #endif
+1236
+1237   // Sign the message with Ed25519 (in-memory key)
+1238   if (crypto_sign_detached(signature, NULL, message, message_len, key-&gt;key.ed25519) != 0) {
+1239     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign message with Ed25519&quot;);
+1240   }
+1241
+1242   return ASCIICHAT_OK;
+1243 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ed25519_sign_message()</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>gpg_agent_connect()</b>, <b>gpg_agent_disconnect()</b>,
+            <b>gpg_agent_sign()</b>, <b>private_key_t::gpg_keygrip</b>,
+            <b>gpg_sign_detached_ed25519()</b>, <b>private_key_t::key</b>,
+            <b>public_key_t::key</b>, <b>private_key_t::key_comment</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
+            <b>private_key_t::public_key</b>, <b>SET_ERRNO</b>,
+            <b>ssh_agent_sign()</b>, <b>private_key_t::type</b>,
+            <b>public_key_t::type</b>, <b>private_key_t::use_gpg_agent</b>, and
+            <b>private_key_t::use_ssh_agent</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>ed25519_sign_message()</b>, <b>ed25519_sign_message()</b>, and
+            <b>ed25519_to_x25519_private()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ed25519_to_x25519_private (const
+            <b>uint8_t</b> ed25519_sk[ED25519_PRIVATE_KEY_SIZE],
+            <b>uint8_t</b> x25519_sk[X25519_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1125</b> of file <b>ssh_keys.c</b>.
+          </p>
+          <pre>
+1126                                                                                 {
+1127   if (!ed25519_sk || !x25519_sk) {
+1128     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ed25519_sk=%p, x25519_sk=%p&quot;, ed25519_sk, x25519_sk);
+1129   }
+1130
+1131   // Convert Ed25519 private key to X25519 private key
+1132   if (crypto_sign_ed25519_sk_to_curve25519(x25519_sk, ed25519_sk) != 0) {
+1133     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Failed to convert Ed25519 private key to X25519&quot;);
+1134   }
+1135
+1136   return ASCIICHAT_OK;
+1137 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PRIVATE_KEY_SIZE</b>,
+            <b>ed25519_to_x25519_private()</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>, and
+            <b>X25519_KEY_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_to_x25519_private()</b>, and
+            <b>private_key_to_x25519()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ed25519_to_x25519_public (const
+            <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+            <b>uint8_t</b> x25519_pk[X25519_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1111</b> of file <b>ssh_keys.c</b>.
+          </p>
+          <pre>
+1112                                                                                {
+1113   if (!ed25519_pk || !x25519_pk) {
+1114     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ed25519_pk=%p, x25519_pk=%p&quot;, ed25519_pk, x25519_pk);
+1115   }
+1116
+1117   // Convert Ed25519 public key to X25519 public key
+1118   if (crypto_sign_ed25519_pk_to_curve25519(x25519_pk, ed25519_pk) != 0) {
+1119     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Failed to convert Ed25519 public key to X25519&quot;);
+1120   }
+1121
+1122   return ASCIICHAT_OK;
+1123 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ed25519_to_x25519_public()</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>, and
+            <b>X25519_KEY_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ed25519_to_x25519_public()</b>,
+            <b>ed25519_to_x25519_public()</b>, and
+            <b>public_key_to_x25519()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ed25519_verify_signature (const
+            <b>uint8_t</b> public_key[ED25519_PUBLIC_KEY_SIZE], const
+            <b>uint8_t</b> * message, size_t message_len, const
+            <b>uint8_t</b> signature[ED25519_SIGNATURE_SIZE], const char *
+            gpg_key_id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1245</b> of file <b>ssh_keys.c</b>.
+          </p>
+          <pre>
+1247                                                                    {
+1248   if (!public_key || !message || !signature) {
+1249     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: public_key=%p, message=%p, signature=%p&quot;, public_key,
+1250                      message, signature);
+1251   }
+1252
+1253   // Try standard Ed25519 verification first
+1254   if (crypto_sign_verify_detached(signature, message, message_len, public_key) == 0) {
+1255     return ASCIICHAT_OK;
+1256   }
+1257
+1258 #ifndef EMSCRIPTEN_BUILD
+1259   // If standard verification fails, try GPG fallback (for GPG-signed messages)
+1260   // Use provided gpg_key_id if available, otherwise check environment variable (for tests)
+1261   const char *key_id_to_use = gpg_key_id;
+1262   size_t key_id_len = key_id_to_use ? strlen(key_id_to_use) : 0;
+1263   // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
+1264   bool valid_key_id = (key_id_len == 8 || key_id_len == 16 || key_id_len == 40);
+1265
+1266   if (!valid_key_id) {
+1267     key_id_to_use = platform_getenv(&quot;TEST_GPG_KEY_ID&quot;);
+1268     key_id_len = key_id_to_use ? strlen(key_id_to_use) : 0;
+1269     valid_key_id = (key_id_len == 8 || key_id_len == 16 || key_id_len == 40);
+1270   }
+1271
+1272   if (valid_key_id) {
+1273     log_debug(&quot;Standard Ed25519 verification failed, trying GPG fallback with key %s&quot;, key_id_to_use);
+1274     int gpg_result = gpg_verify_detached_ed25519(key_id_to_use, message, message_len, signature);
+1275     if (gpg_result == 0) {
+1276       log_debug(&quot;GPG verification succeeded&quot;);
+1277       return ASCIICHAT_OK;
+1278     }
+1279     log_debug(&quot;GPG verification also failed&quot;);
+1280   }
+1281 #endif
+1282
+1283   return SET_ERRNO(ERROR_CRYPTO, &quot;Ed25519 signature verification failed (tried both libsodium and GPG)&quot;);
+1284 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_SIGNATURE_SIZE</b>, <b>ed25519_verify_signature()</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>gpg_verify_detached_ed25519()</b>, <b>log_debug</b>,
+            <b>platform_getenv()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_verify_signature()</b>, and
+            <b>ed25519_verify_signature()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> parse_ssh_ed25519_line (const char * line,
+            <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>178</b> of file <b>ssh_keys.c</b>.
+          </p>
+          <pre>
+178                                                                                                         {
+179   if (!line || !ed25519_pk) {
+180     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: line=%p, ed25519_pk=%p&quot;, line, ed25519_pk);
+181   }
+182
+183   // Use regex to parse and extract SSH public key components
+184   char *base64_key = NULL, *comment = NULL;
+185   if (!crypto_regex_match_public_key(line, &amp;base64_key, &amp;comment)) {
+186     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;SSH key line does not match expected format&quot;);
+187   }
+188
+189   // Base64 decode
+190   uint8_t *blob;
+191   size_t blob_len;
+192   if (base64_decode_ssh_key(base64_key, strlen(base64_key), &amp;blob, &amp;blob_len) != 0) {
+193     SAFE_FREE(base64_key);
+194     SAFE_FREE(comment);
+195     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Failed to decode SSH key base64 data&quot;);
+196   }
+197
+198   // Clean up regex-extracted strings
+199   SAFE_FREE(base64_key);
+200   SAFE_FREE(comment);
+201
+202   // Parse SSH key blob structure:
+203   // [4 bytes: length of &quot;ssh-ed25519&quot;]
+204   // [11 bytes: &quot;ssh-ed25519&quot;]
+205   // [4 bytes: length of public key (32)]
+206   // [32 bytes: Ed25519 public key]
+207
+208   if (blob_len &lt; SSH_KEY_HEADER_SIZE) {
+209     SAFE_FREE(blob);
+210     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;SSH key blob too small: %zu bytes (expected at least %d)&quot;, blob_len,
+211                      SSH_KEY_HEADER_SIZE);
+212   }
+213
+214   // Extract Ed25519 public key (last 32 bytes)
+215   memcpy(ed25519_pk, blob + blob_len - ED25519_PUBLIC_KEY_SIZE, ED25519_PUBLIC_KEY_SIZE);
+216   SAFE_FREE(blob);
+217
+218   return ASCIICHAT_OK;
+219 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_regex_match_public_key()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>parse_ssh_ed25519_line()</b>,
+            <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and <b>SSH_KEY_HEADER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_parse_ssh_public_key()</b>,
+            <b>parse_public_key()</b>, <b>parse_ssh_ed25519_line()</b>, and
+            <b>parse_ssh_ed25519_line()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

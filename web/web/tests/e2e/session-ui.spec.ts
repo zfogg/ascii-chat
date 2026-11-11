@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./browser-fixture";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
 const moduleUrl = `/@fs/${fileURLToPath(
   new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
@@ -29,28 +30,29 @@ async function observe(page: Page) {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const patch = m._wasm_options_patch;
+    const patch = m.patchOptions;
     window.__sessionSettingsPatches = [];
-    m._wasm_options_patch = (pointer: number, revision: number) => {
-      window.__sessionSettingsPatches!.push(m.UTF8ToString(pointer));
+    m.patchOptions = (
+      values: Record<string, number | string | boolean>,
+      revision: number,
+    ) => {
+      window.__sessionSettingsPatches!.push(JSON.stringify(values));
       if (window.__sessionSettingsPatches!.length > 100)
         throw new Error(
           `Settings feedback loop: ${window.__sessionSettingsPatches!.slice(-10).join("; ")}`,
         );
-      return patch(pointer, revision);
+      return patch(values, revision);
     };
-    const feed = m._term_renderer_feed;
+    const renderer = m.TerminalRendererBinding.prototype;
+    const feed = renderer.feed;
     window.__sessionUiFrames = [];
-    m._term_renderer_feed = (
-      renderer: number,
-      pointer: number,
-      length: number,
-    ) => {
-      const text = m.UTF8ToString(pointer, length);
+    renderer.feed = function (this: unknown, value: string) {
+      // Inspect rendered text independently of terminal color decoration.
+      const text = value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed(renderer, pointer, length);
+      return feed.call(this, value);
     };
   }, moduleUrl);
   await expect
@@ -59,7 +61,9 @@ async function observe(page: Page) {
 }
 
 async function lastFrame(page: Page) {
-  return page.evaluate(() => window.__sessionUiFrames?.at(-1) ?? "");
+  return stripVTControlCharacters(
+    await page.evaluate(() => window.__sessionUiFrames?.at(-1) ?? ""),
+  );
 }
 
 test.use({ viewport: { width: 1440, height: 1000 } });
@@ -155,7 +159,9 @@ test("help owns presentation during live video and recovers after resize", async
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
   await page.keyboard.press("?");
@@ -194,46 +200,48 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
   const result = await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const text = (value: string, fn: (p: number, n: number) => void) => {
-      const n = m.lengthBytesUTF8(value),
-        p = m._malloc(n + 1);
-      try {
-        m.stringToUTF8(value, p, n + 1);
-        fn(p, n);
-      } finally {
-        m._free(p);
-      }
-    };
     const outcomes = [];
     for (let i = 0; i < 10; i++) {
-      const s = m._wasm_ui_create();
-      m._wasm_ui_resize(s, 120, 40);
-      text("old", (p, n) => m._wasm_ui_media(s, p, n));
-      m._wasm_ui_key(s, 63);
-      const help = m.UTF8ToString(m._wasm_ui_tick(s, 100));
-      text("newest", (p, n) => m._wasm_ui_media(s, p, n));
-      const covered = m.UTF8ToString(m._wasm_ui_tick(s, 200));
-      m._wasm_ui_key(s, 27);
-      const restored = m.UTF8ToString(m._wasm_ui_tick(s, 300));
-      const unchanged = m._wasm_ui_tick(s, 400);
-      const invalid = m._wasm_ui_media(s, 0, 0);
-      outcomes.push(
-        help.includes("Keyboard Shortcuts") &&
-          covered.includes("Keyboard Shortcuts") &&
-          restored.endsWith("newest") &&
-          unchanged === 0 &&
-          invalid !== 0,
-      );
-      m._wasm_ui_destroy(s);
+      const session = new m.SessionUiBinding(false);
+      try {
+        session.resize(120, 40);
+        session.media("old");
+        session.key(63);
+        const help = session.tick(100) ?? "";
+        session.media("newest");
+        const covered = session.tick(200) ?? "";
+        session.key(27);
+        const restored = session.tick(300) ?? "";
+        const unchanged = session.tick(400);
+        const invalid =
+          i === 0 ? session.media("x".repeat(16 * 1024 * 1024 + 1)) : 1;
+        outcomes.push(
+          help.includes("Keyboard Shortcuts") &&
+            covered.includes("Keyboard Shortcuts") &&
+            restored.endsWith("newest") &&
+            unchanged === undefined &&
+            invalid !== 0,
+        );
+      } finally {
+        session.delete();
+      }
     }
     return outcomes;
   }, moduleUrl);
   expect(result).toEqual(Array(10).fill(true));
 });
 
-test("C application logs survive closed overlays and share exclusive presentation", async ({
+test("C application logs survive search, log help, and media transitions", async ({
   page,
 }) => {
+  const renderErrors: string[] = [];
+  page.on("console", (message) => {
+    if (
+      ["warning", "error"].includes(message.type()) &&
+      /Frame rendering failed|Camera frame failed/.test(message.text())
+    )
+      renderErrors.push(message.text());
+  });
   await observe(page);
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
@@ -251,15 +259,15 @@ test("C application logs survive closed overlays and share exclusive presentatio
   expect(await lastFrame(page)).not.toContain("OPTIONS_CONFIG_DESTROY");
   await page.screenshot({ path: "artifacts/session-logs-search-web.png" });
   await page.keyboard.press("Escape");
+  await expect.poll(() => lastFrame(page)).not.toContain("/Volume DOWN");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.screenshot({ path: "artifacts/session-logs-web.png" });
   await page.keyboard.press("?");
   await expect
     .poll(() => lastFrame(page))
-    .toContain("Live log viewer/searcher TUI");
-  expect(await lastFrame(page)).not.toContain("/: search logs");
+    .toContain("Log Viewer Keyboard Controls");
   await page.screenshot({ path: "artifacts/session-logs-help-web.png" });
-  await page.keyboard.press("]");
+  await page.keyboard.press("?");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.keyboard.press("Escape");
   await expect
@@ -268,7 +276,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   await canvas.focus();
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
@@ -277,7 +287,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.waitForTimeout(400);
   expect(
     (await page.evaluate(() => window.__sessionUiFrames!.slice(-5))).every(
-      (frame) => frame.includes("/: search logs"),
+      (frame) => stripVTControlCharacters(frame).includes("/: search logs"),
     ),
   ).toBe(true);
   await page.setViewportSize({ width: 360, height: 320 });
@@ -297,6 +307,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
       );
     })
     .toBe(true);
+  expect(renderErrors).toEqual([]);
 });
 
 test("connected web client shows its C network logs", async ({ page }) => {
@@ -309,23 +320,22 @@ test("connected web client shows its C network logs", async ({ page }) => {
   );
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 30000 });
+  ).toBeVisible({
+    timeout: 30000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await expect(canvas).toBeVisible();
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const feed = m._term_renderer_feed;
+    const renderer = m.TerminalRendererBinding.prototype;
+    const feed = renderer.feed;
     window.__sessionUiFrames = [];
-    m._term_renderer_feed = (
-      renderer: number,
-      pointer: number,
-      length: number,
-    ) => {
-      window.__sessionUiFrames!.push(m.UTF8ToString(pointer, length));
+    renderer.feed = function (this: unknown, value: string) {
+      window.__sessionUiFrames!.push(value);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed(renderer, pointer, length);
+      return feed.call(this, value);
     };
   }, moduleUrl);
   await canvas.focus();
@@ -341,8 +351,10 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await expect.poll(canvasFps).toBeGreaterThan(0);
   await page.screenshot({ path: "artifacts/session-logs-web-client.png" });
   await page.keyboard.press("?");
-  await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");
-  await page.keyboard.press("]");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Log Viewer Keyboard Controls");
+  await page.keyboard.press("?");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.keyboard.press("Escape");
   await expect
@@ -364,12 +376,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.evaluate(async (url) => {
       const { getMirrorModule } = await import(url);
       const m = getMirrorModule();
-      const p = m._wasm_options_values();
-      try {
-        return JSON.parse(m.UTF8ToString(p)).values;
-      } finally {
-        m._wasm_options_release(p);
-      }
+      return m.readOptions().values;
     }, moduleUrl);
   const orientation = async (flip: boolean, explicit = false) => {
     await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
@@ -445,13 +452,8 @@ for (const mode of ["client", "discovery"]) {
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const p = m._wasm_options_values();
-        try {
-          const values = JSON.parse(m.UTF8ToString(p)).values;
-          return [values.flip_x, values.flip_x_explicit];
-        } finally {
-          m._wasm_options_release(p);
-        }
+        const values = m.readOptions().values;
+        return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
     await page
@@ -486,13 +488,8 @@ test("horizontal orientation startup commits saved choices before reading C", as
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const p = m._wasm_options_values();
-        try {
-          const values = JSON.parse(m.UTF8ToString(p)).values;
-          return [values.flip_x, values.flip_x_explicit];
-        } finally {
-          m._wasm_options_release(p);
-        }
+        const values = m.readOptions().values;
+        return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect.poll(state).toEqual([flip, true]);
     await expect(

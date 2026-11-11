@@ -10,7 +10,7 @@ import _environment  # noqa: F401
 import argparse
 from pathlib import Path
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--probe", type=Path, required=True)

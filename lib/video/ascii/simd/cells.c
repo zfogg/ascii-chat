@@ -1,6 +1,12 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/terminal/ansi.h>
 
+int glyph_shape_correlation_scalar(const int16_t samples[16], const int16_t mask[16]) {
+  int dot = 0;
+  for (int i = 0; i < 16; ++i)
+    dot += samples[i] * mask[i];
+  return dot;
+}
 void simd_pack_scalar(const uint8_t *rgb, uint32_t *out, size_t count) {
   for (size_t i = 0; i < count; ++i)
     out[i] = ((uint32_t)rgb[3 * i] << 16) | ((uint32_t)rgb[3 * i + 1] << 8) | rgb[3 * i + 2];
@@ -33,30 +39,34 @@ void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t
       fg[i] = bg[i] = UINT32_MAX;
   }
 }
-#define CELLS(isa, mono)                                                                                               \
+#define CELLS(isa, mono, dot)                                                                                          \
   {simd_luminance_##isa,                                                                                               \
    simd_pack_##isa,                                                                                                    \
    simd_lookup_##isa,                                                                                                  \
    simd_quantize_##isa,                                                                                                \
    simd_halfblock_##isa,                                                                                               \
    simd_run_##isa,                                                                                                     \
-   mono}
+   mono,                                                                                                               \
+   dot}
 #if SIMD_SUPPORT_SSE2
-const simd_cells_t simd_cells_sse2 = CELLS(sse2, NULL);
+#define GLYPH_CORRELATION_X86 glyph_shape_correlation_sse2
+const simd_cells_t simd_cells_sse2 = CELLS(sse2, NULL, GLYPH_CORRELATION_X86);
+#else
+#define GLYPH_CORRELATION_X86 glyph_shape_correlation_scalar
 #endif
 #if SIMD_SUPPORT_SSSE3
-const simd_cells_t simd_cells_ssse3 = CELLS(ssse3, NULL);
+const simd_cells_t simd_cells_ssse3 = CELLS(ssse3, NULL, GLYPH_CORRELATION_X86);
 #endif
 #if SIMD_SUPPORT_AVX2
-const simd_cells_t simd_cells_avx2 = CELLS(avx2, NULL);
+const simd_cells_t simd_cells_avx2 = CELLS(avx2, NULL, glyph_shape_correlation_avx2);
 #endif
 #if SIMD_SUPPORT_NEON
-const simd_cells_t simd_cells_neon = CELLS(neon, simd_emit_mono_neon);
+const simd_cells_t simd_cells_neon = CELLS(neon, simd_emit_mono_neon, glyph_shape_correlation_neon);
 #endif
 #if SIMD_SUPPORT_SVE
-const simd_cells_t simd_cells_sve = CELLS(sve, NULL);
+const simd_cells_t simd_cells_sve = CELLS(sve, NULL, glyph_shape_correlation_sve);
 #endif
-const simd_cells_t simd_cells_scalar = CELLS(scalar, NULL);
+const simd_cells_t simd_cells_scalar = CELLS(scalar, NULL, glyph_shape_correlation_scalar);
 const simd_cells_t *simd_cells_backend(void) {
   uint32_t features = simd_backend()->required_features;
   (void)features;

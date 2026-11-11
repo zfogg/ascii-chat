@@ -1,6 +1,6 @@
 """Decode encoder output across formats and exercise stdout and setup failures.
 
-Run: python tests/integration/encoder_video_output.py build/bin/asciichat.dll
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/encoder_video_output.py build/bin/asciichat.dll
 Requires ffmpeg/ffprobe; also accepts a POSIX shared library.
 """
 
@@ -22,7 +22,7 @@ import tempfile
 def main():
     library = Path(sys.argv[1]).resolve()
     if os.name == "nt":
-        dll_directory = os.add_dll_directory(str(library.parent))
+        _dll_directory = os.add_dll_directory(str(library.parent))
     api = c.CDLL(str(library))
     api.log_init.argtypes = [c.c_char_p, c.c_int, c.c_bool, c.c_bool]
     api.log_init(None, 4, True, False)

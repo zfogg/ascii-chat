@@ -5,12 +5,13 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
 import re
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def main():
@@ -19,10 +20,10 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
-    term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-level", "debug",
+    term = Terminal(cli_command(str(args.binary.resolve()), "--log-level", "debug",
                      "--log-file", str((args.artifacts / "application.log").resolve()), "mirror",
                      "--test-pattern", "--audio=false", "--fps", "60", "--fps-counter",
-                     "--splash-screen=false"], rows=24, cols=80)
+                     "--splash-screen=false"), rows=24, cols=80)
     query = "\x1b]11;?\x1b\\"
     pending = False
     reply_at = 0

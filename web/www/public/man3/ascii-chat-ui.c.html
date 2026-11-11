@@ -1,0 +1,520 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ui.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ui.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ui.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ui.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> size_t
+            <b>wasm_renderer_config_size</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>wasm_renderer_config_write</b> (<b>term_renderer_config_t</b>
+            *config, int cols, int rows, double font_size, int theme, const
+            <b>uint8_t</b>
+            *font_data, size_t font_size_bytes, int matrix)
+            <br />
+            <b>terminal_size_t</b> <b>ui_controller_size</b> (void)
+            <br />
+            void <b>ui_controller_redraw</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>ui_session_t</b> *
+            <b>wasm_ui_create</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_destroy</b> (<b
+              >ui_session_t</b
+            >
+            *s)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_resize</b> (<b
+              >ui_session_t</b
+            >
+            *s, int cols, int rows)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_loading</b> (<b
+              >ui_session_t</b
+            >
+            *s, int loading, const char *message)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_log</b> (<b
+              >ui_session_t</b
+            >
+            *s, const char *message)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>wasm_ui_media</b> (<b>ui_session_t</b>
+            *s, const char *text, size_t length)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> int <b>wasm_ui_key</b> (<b
+              >ui_session_t</b
+            >
+            *s, int key)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * <b>wasm_ui_tick</b> (<b
+              >ui_session_t</b
+            >
+            *s, double milliseconds)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_clear</b> (<b
+              >ui_session_t</b
+            >
+            *s)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_redraw</b> (<b
+              >ui_session_t</b
+            >
+            *s)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_ui_capture_logs</b> (<b
+              >ui_session_t</b
+            >
+            *s)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> double <b>wasm_ui_volume</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> int <b>wasm_ui_fps</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>wasm_ui_audio</b> (int enabled)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_controller_redraw_(void_)">
+            <a class="permalink" href="#void_ui_controller_redraw_(void_)"
+              >void ui_controller_redraw (void )</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>36</b> of file <b>ui.c</b>.</p>
+          <pre>
+36                                 {
+37   ui_session_redraw(active_session);
+38 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_controller_redraw()</b>, and
+            <b>ui_session_redraw()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> ui_controller_size (void )</h2>
+          <p class="Pp">Definition at line <b>32</b> of file <b>ui.c</b>.</p>
+          <pre>
+32                                          {
+33   return ui_session_size(active_session);
+34 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_controller_size()</b>, and
+            <b>ui_session_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> size_t wasm_renderer_config_size (void )
+          </h2>
+          <p class="Pp">Definition at line <b>9</b> of file <b>ui.c</b>.</p>
+          <pre>
+9                                                             {
+10   return sizeof(term_renderer_config_t);
+11 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>wasm_renderer_config_size()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_renderer_config_size()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> wasm_renderer_config_write (<b
+              >term_renderer_config_t</b
+            >
+            * config, int cols, int rows, double font_size, int theme, const
+            <b>uint8_t</b> * font_data, size_t font_size_bytes, int matrix)
+          </h2>
+          <p class="Pp">Definition at line <b>13</b> of file <b>ui.c</b>.</p>
+          <pre>
+15                                                                                                       {
+16   if (!config)
+17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing browser renderer configuration&quot;);
+18   *config = (term_renderer_config_t){.cols = cols,
+19                                      .rows = rows,
+20                                      .font_size_pt = font_size,
+21                                      .theme = (term_renderer_theme_t)theme,
+22                                      .font_data = font_data,
+23                                      .font_data_size = font_size_bytes};
+24   if (matrix)
+25     SAFE_STRNCPY(config-&gt;font_spec, &quot;Matrix&quot;, sizeof(config-&gt;font_spec));
+26   return ASCIICHAT_OK;
+27 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>term_renderer_config_t::font_spec</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, and <b>wasm_renderer_config_write()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_renderer_config_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b> wasm_ui_audio
+            (int enabled)
+          </h2>
+          <p class="Pp">Definition at line <b>88</b> of file <b>ui.c</b>.</p>
+          <pre>
+88                                                                   {
+89   return options_set_bool(&quot;audio_enabled&quot;, enabled != 0);
+90 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>options_set_bool()</b>,
+            and <b>wasm_ui_audio()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_audio()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_capture_logs (<b
+              >ui_session_t</b
+            >
+            * s)
+          </h2>
+          <p class="Pp">Definition at line <b>78</b> of file <b>ui.c</b>.</p>
+          <pre>
+78                                                                 {
+79   ui_session_capture_logs(s);
+80 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>ui_session_capture_logs()</b>, and <b>wasm_ui_capture_logs()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_capture_logs()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_clear (<b>ui_session_t</b>
+            * s)
+          </h2>
+          <p class="Pp">Definition at line <b>72</b> of file <b>ui.c</b>.</p>
+          <pre>
+72                                                          {
+73   ui_session_clear(s);
+74 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_clear()</b>,
+            and <b>wasm_ui_clear()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_clear()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>ui_session_t</b> * wasm_ui_create
+            (void )
+          </h2>
+          <p class="Pp">Definition at line <b>40</b> of file <b>ui.c</b>.</p>
+          <pre>
+40                                                         {
+41   return ui_session_create();
+42 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_create()</b>,
+            and <b>wasm_ui_create()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_destroy (<b
+              >ui_session_t</b
+            >
+            * s)
+          </h2>
+          <p class="Pp">Definition at line <b>43</b> of file <b>ui.c</b>.</p>
+          <pre>
+43                                                            {
+44   ui_session_destroy(s);
+45 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_destroy()</b>,
+            and <b>wasm_ui_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_ui_fps (void )
+          </h2>
+          <p class="Pp">Definition at line <b>85</b> of file <b>ui.c</b>.</p>
+          <pre>
+85                                            {
+86   return GET_OPTION(fps_counter);
+87 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>GET_OPTION</b>, and
+            <b>wasm_ui_fps()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_fps()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> int wasm_ui_key (<b>ui_session_t</b> *
+            s, int key)
+          </h2>
+          <p class="Pp">Definition at line <b>58</b> of file <b>ui.c</b>.</p>
+          <pre>
+58                                                                {
+59   ui_session_t *previous = active_session;
+60   active_session = s;
+61   int result = ui_session_input(s, (keyboard_key_t)key);
+62   active_session = previous;
+63   return result;
+64 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_input()</b>,
+            and <b>wasm_ui_key()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_loading (<b
+              >ui_session_t</b
+            >
+            * s, int loading, const char * message)
+          </h2>
+          <p class="Pp">Definition at line <b>49</b> of file <b>ui.c</b>.</p>
+          <pre>
+49                                                                                              {
+50   ui_session_loading(s, loading != 0, message);
+51 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_loading()</b>,
+            and <b>wasm_ui_loading()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_loading()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_log (<b>ui_session_t</b> *
+            s, const char * message)
+          </h2>
+          <p class="Pp">Definition at line <b>52</b> of file <b>ui.c</b>.</p>
+          <pre>
+52                                                                             {
+53   ui_session_log(s, message);
+54 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_log()</b>, and
+            <b>wasm_ui_log()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_log()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b> wasm_ui_media
+            (<b>ui_session_t</b>
+            * s, const char * text, size_t length)
+          </h2>
+          <p class="Pp">Definition at line <b>55</b> of file <b>ui.c</b>.</p>
+          <pre>
+55                                                                                                        {
+56   return ui_session_media(s, text, length);
+57 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_media()</b>,
+            and <b>wasm_ui_media()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_redraw (<b>ui_session_t</b>
+            * s)
+          </h2>
+          <p class="Pp">Definition at line <b>75</b> of file <b>ui.c</b>.</p>
+          <pre>
+75                                                           {
+76   ui_session_redraw(s);
+77 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_redraw()</b>,
+            and <b>wasm_ui_redraw()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_redraw()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_ui_resize (<b>ui_session_t</b>
+            * s, int cols, int rows)
+          </h2>
+          <p class="Pp">Definition at line <b>46</b> of file <b>ui.c</b>.</p>
+          <pre>
+46                                                                               {
+47   ui_session_resize(s, cols, rows);
+48 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_resize()</b>,
+            and <b>wasm_ui_resize()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_resize()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> const char * wasm_ui_tick (<b
+              >ui_session_t</b
+            >
+            * s, double milliseconds)
+          </h2>
+          <p class="Pp">Definition at line <b>65</b> of file <b>ui.c</b>.</p>
+          <pre>
+65                                                                                     {
+66   ui_session_t *previous = active_session;
+67   active_session = s;
+68   const char *result = ui_session_tick(s, (uint64_t)(milliseconds * 1000000));
+69   active_session = previous;
+70   return result;
+71 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ui_session_tick()</b>,
+            and <b>wasm_ui_tick()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> double wasm_ui_volume (void )
+          </h2>
+          <p class="Pp">Definition at line <b>82</b> of file <b>ui.c</b>.</p>
+          <pre>
+82                                                  {
+83   return GET_OPTION(speakers_volume);
+84 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>GET_OPTION</b>, and
+            <b>wasm_ui_volume()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_ui_volume()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

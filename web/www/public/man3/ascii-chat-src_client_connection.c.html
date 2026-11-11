@@ -1,0 +1,392 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>connection.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">connection.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">connection.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">connection.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>client_connection_checkpoint</b>
+            (const char *stage)
+            <br />
+            <b>asciichat_error_t</b> <b>client_connection_create</b> (<b
+              >client_connection_t</b
+            >
+            **out)
+            <br />
+            <b>asciichat_error_t</b> <b>client_connection_start</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const char *address, <b>uint16_t</b> port, char
+            *password, size_t password_capacity)
+            <br />
+            void <b>client_connection_request_stop</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>client_connection_stop</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>client_connection_destroy</b> (<b
+              >client_connection_t</b
+            >
+            **owner)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_connection_checkpoint (const char *
+            stage)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>80</b> of file <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+80                                                                   {
+81 #ifndef NDEBUG
+82   const char *failure = SAFE_GETENV(&quot;ASCII_CHAT_TEST_CLIENT_FAIL_STAGE&quot;);
+83   if (failure &amp;&amp; strcmp(failure, stage) == 0) {
+84     log_debug(&quot;Injected client startup failure after %s&quot;, stage);
+85     return SET_ERRNO(ERROR_THREAD, &quot;Injected client startup failure after %s&quot;, stage);
+86   }
+87 #else
+88   (void)stage;
+89 #endif
+90   return ASCIICHAT_OK;
+91 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>client_connection_checkpoint()</b>, <b>ERROR_THREAD</b>,
+            <b>log_debug</b>, <b>SAFE_GETENV</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_init()</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_connection_create()</b>, <b>client_connection_start()</b>,
+            <b>client_crypto_init()</b>, and <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_connection_create (<b
+              >client_connection_t</b
+            >
+            ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>93</b> of file <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+93                                                                       {
+94   if (!out) {
+95     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Missing client connection output&quot;);
+96   }
+97   *out = SAFE_CALLOC(1, sizeof(client_connection_t), client_connection_t *);
+98   if (!*out)
+99     return SET_ERRNO(ERROR_MEMORY, &quot;Could not allocate client connection&quot;);
+100   client_connection_t *connection = *out;
+101   client_sync_entries(connection, true);
+102   session_connection_init(&amp;connection-&gt;lifecycle,
+103                           (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
+104   connection-&gt;crypto_mode = ACIP_CRYPTO_ENCRYPT;
+105   asciichat_error_t result = ASCIICHAT_OK;
+106   if (result == ASCIICHAT_OK &amp;&amp; server_connection_init(connection) != 0)
+107     result = ERROR_THREAD;
+108   if (result == ASCIICHAT_OK)
+109     result = client_connection_checkpoint(&quot;send-mutex&quot;);
+110   if (result == ASCIICHAT_OK) {
+111     connection-&gt;client_worker_pool = thread_pool_create(&quot;client_connection&quot;);
+112     if (!connection-&gt;client_worker_pool)
+113       result = SET_ERRNO(ERROR_THREAD, &quot;Could not create connection worker pool&quot;);
+114   }
+115   if (result == ASCIICHAT_OK)
+116     result = client_connection_checkpoint(&quot;worker-pool&quot;);
+117   if (result != ASCIICHAT_OK) {
+118     asciichat_error_t cleanup = client_connection_destroy(out);
+119     if (cleanup != ASCIICHAT_OK)
+120       return cleanup;
+121   }
+122   if (result == ASCIICHAT_OK)
+123     log_info(&quot;CLIENT_CONNECTION_CREATED: workers=0 frames=0&quot;);
+124   return result;
+125 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_ENCRYPT</b>, <b>ASCIICHAT_OK</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_connection_create()</b>,
+            <b>client_connection_destroy()</b>,
+            <b>client_connection::client_worker_pool</b>,
+            <b>client_connection::crypto_mode</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+            <b>client_connection::lifecycle</b>, <b>log_info</b>,
+            <b>SAFE_CALLOC</b>, <b>server_connection_init()</b>,
+            <b>session_connection_init()</b>, <b>SET_ERRNO</b>, and
+            <b>thread_pool_create()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_connection_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_connection_destroy (<b
+              >client_connection_t</b
+            >
+            ** owner)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>238</b> of file
+            <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+238                                                                          {
+239   if (!owner || !*owner)
+240     return ASCIICHAT_OK;
+241   client_connection_t *connection = *owner;
+242   asciichat_error_t result = client_connection_stop(connection);
+243   if (result != ASCIICHAT_OK)
+244     return result;
+245   if (connection-&gt;client_worker_pool)
+246     thread_pool_destroy(connection-&gt;client_worker_pool);
+247   if (connection-&gt;send_mutex_initialized)
+248     mutex_destroy(&amp;connection-&gt;send_mutex);
+249   log_info(&quot;CLIENT_CONNECTION_RELEASED&quot;);
+250   client_sync_entries(connection, false);
+251   SAFE_FREE(*owner);
+252   *owner = NULL;
+253   return ASCIICHAT_OK;
+254 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>client_connection_destroy()</b>,
+            <b>client_connection_stop()</b>,
+            <b>client_connection::client_worker_pool</b>, <b>log_info</b>,
+            <b>mutex_destroy()</b>, <b>SAFE_FREE</b>,
+            <b>client_connection::send_mutex</b>,
+            <b>client_connection::send_mutex_initialized</b>, and
+            <b>thread_pool_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_create()</b>, and
+            <b>client_connection_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_client_connection_request_stop_(">
+            <a class="permalink" href="#void_client_connection_request_stop_("
+              >void client_connection_request_stop (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>177</b> of file
+            <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+177                                                                      {
+178   if (connection)
+179     session_connection_request_stop(&amp;connection-&gt;lifecycle);
+180 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_connection_request_stop()</b>,
+            <b>client_connection::lifecycle</b>, and
+            <b>session_connection_request_stop()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_request_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_connection_start (<b
+              >client_connection_t</b
+            >
+            * connection, const char * address, <b>uint16_t</b> port, char *
+            password, size_t password_capacity)
+          </h2>
+          <p class="Pp">
+            Reuse caller-owned session credentials across attempts; the owner
+            wipes them at session shutdown.
+          </p>
+          <p class="Pp">
+            Definition at line <b>145</b> of file
+            <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+146                                                                                     {
+147   ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
+148   if (!password || password_capacity &lt; PASSWORD_BUFFER_SIZE)
+149     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing session password storage&quot;);
+150   if (!connection || atomic_load_int(&amp;connection-&gt;lifecycle.state) != SESSION_CONNECTION_STARTING) {
+151     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for startup&quot;);
+152   }
+153   asciichat_error_t result = session_connection_establish(&quot;client&quot;, address, port, NULL, &amp;connection-&gt;network, password,
+154                                                           password_capacity, client_prepare, client_detach, connection);
+155   connection-&gt;transport = network_connection_transport(connection-&gt;network);
+156   connection-&gt;crypto_ctx = connection-&gt;network ? network_connection_handshake(connection-&gt;network) : NULL;
+157   if (result != ASCIICHAT_OK)
+158     return result;
+159   if (should_exit())
+160     return SET_ERRNO(ERROR_NETWORK, &quot;Connection startup interrupted&quot;);
+161   server_connection_set_transport(connection, connection-&gt;transport);
+162   result = client_connection_checkpoint(&quot;transport&quot;);
+163   if (result != ASCIICHAT_OK)
+164     return result;
+165   result = client_protocol_start(connection);
+166   if (result != ASCIICHAT_OK)
+167     return result;
+168   if (atomic_load_bool(&amp;connection-&gt;stop_requested))
+169     return SET_ERRNO(ERROR_NETWORK, &quot;Connection stopped during startup&quot;);
+170   result = session_connection_start(&amp;connection-&gt;lifecycle);
+171   if (result != ASCIICHAT_OK)
+172     return result;
+173   log_info(&quot;CLIENT_CONNECTION_RUNNING&quot;);
+174   return ASCIICHAT_OK;
+175 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_load_bool()</b>, <b>atomic_load_int()</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_connection_start()</b>, <b>client_protocol_start()</b>,
+            <b>client_connection::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>client_connection::lifecycle</b>, <b>log_info</b>,
+            <b>client_connection::network</b>,
+            <b>network_connection_handshake()</b>,
+            <b>network_connection_transport()</b>, <b>PASSWORD_BUFFER_SIZE</b>,
+            <b>server_connection_set_transport()</b>,
+            <b>session_connection_establish()</b>,
+            <b>session_connection_start()</b>,
+            <b>SESSION_CONNECTION_STARTING</b>, <b>SET_ERRNO</b>,
+            <b>should_exit()</b>, <b>session_connection_t::state</b>,
+            <b>client_connection::stop_requested</b>, and
+            <b>client_connection::transport</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_connection_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_connection_stop (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>188</b> of file
+            <b>src/client/connection.c</b>.
+          </p>
+          <pre>
+188                                                                           {
+189   return connection ? session_connection_stop(&amp;connection-&gt;lifecycle) : ASCIICHAT_OK;
+190 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>client_connection_stop()</b>,
+            <b>client_connection::lifecycle</b>, and
+            <b>session_connection_stop()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_destroy()</b>, and
+            <b>client_connection_stop()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -37,7 +37,7 @@
 typedef struct {
   /** @brief Called when client requests session creation */
   void (*on_session_create)(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
-                            void *app_ctx);
+                            const uint8_t *extension, size_t extension_length, void *app_ctx);
 
   /** @brief Called when client looks up session info */
   void (*on_session_lookup)(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
@@ -67,6 +67,11 @@ typedef struct {
   void (*on_host_announcement)(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx);
 
+  /** Optional host announcement including validated ACQT transport metadata. */
+  void (*on_host_announcement_ex)(const acip_host_announcement_t *announcement, const void *metadata,
+                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
+                                  void *app_ctx);
+
   /** @brief Called when participant reports host has disconnected (discovery mode) */
   void (*on_host_lost)(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
                        void *app_ctx);
@@ -82,6 +87,7 @@ typedef struct {
 } acip_acds_callbacks_t;
 
 /**
+ * @brief ACDS packet handler callbacks
  * @brief Handle incoming ACDS packet with O(1) dispatch
  *
  * Dispatches packet to appropriate callback based on type.

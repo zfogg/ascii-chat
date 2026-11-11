@@ -23,6 +23,11 @@
 #include <ascii-chat/options/options.h>
 
 #define MIXER_LISTENER_SAMPLES 8192
+/**
+ * @brief Owns the temporary storage used by mixer listener buffer. The data pointers and size or cursor fields describe
+ * the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed.
+ */
 typedef struct mixer_listener_buffer {
   float samples[MIXER_LISTENER_SAMPLES];
   size_t read;
@@ -65,7 +70,7 @@ static void mixer_distribute_samples(mixer_t *mixer) {
 
 static void mixer_spectral_process(mixer_t *mixer, int slot, float *samples, size_t count) {
   if (mixer->channels == 1) {
-    (void)spectral_process(mixer->spectral[slot], samples, samples, count);
+    (void)spectral_process(mixer->spectral_left[slot], samples, samples, count);
     return;
   }
   for (size_t base = 0; base < count;) {
@@ -79,7 +84,7 @@ static void mixer_spectral_process(mixer_t *mixer, int slot, float *samples, siz
       left[i] = samples[base + i * 2];
       right[i] = samples[base + i * 2 + 1];
     }
-    (void)spectral_process(mixer->spectral[slot], left, left, frames);
+    (void)spectral_process(mixer->spectral_left[slot], left, left, frames);
     (void)spectral_process(mixer->spectral_right[slot], right, right, frames);
     for (size_t i = 0; i < frames; i++) {
       samples[base + i * 2] = left[i];
@@ -225,9 +230,10 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
     return NULL;
   }
 
-  memset(mixer->spectral, 0, sizeof(mixer->spectral));
+  memset(mixer->spectral_left, 0, sizeof(mixer->spectral_left));
   memset(mixer->spectral_right, 0, sizeof(mixer->spectral_right));
   mixer->num_sources = 0;
+  atomic_store_int(&mixer->active_sources, 0);
   mixer->max_sources = max_sources;
   mixer->sample_rate = sample_rate;
   mixer->channels = channels;
@@ -346,7 +352,7 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
       config.noise_gate = false;
     }
     for (int i = 0; i <= max_sources; ++i) {
-      if (spectral_create(&config, &mixer->spectral[i]) != ASCIICHAT_OK ||
+      if (spectral_create(&config, &mixer->spectral_left[i]) != ASCIICHAT_OK ||
           (channels == 2 && spectral_create(&config, &mixer->spectral_right[i]) != ASCIICHAT_OK)) {
         mixer_destroy(mixer);
         return NULL;
@@ -369,7 +375,7 @@ void mixer_destroy(mixer_t *mixer) {
 
   NAMED_UNREGISTER(mixer);
   for (int i = 0; i <= mixer->max_sources; ++i) {
-    spectral_destroy(mixer->spectral[i]);
+    spectral_destroy(mixer->spectral_left[i]);
     spectral_destroy(mixer->spectral_right[i]);
   }
 
@@ -444,6 +450,7 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
   }
   mixer->source_active[slot] = true;
   mixer->num_sources++;
+  atomic_fetch_add_int(&mixer->active_sources, 1);
 
   // OPTIMIZATION 1: Update bitset optimization structures
   mixer->active_sources_mask[slot / 64] |= (1ULL << (slot % 64)); // Set bit for this slot
@@ -470,12 +477,14 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
         if (j != i)
           SAFE_FREE(mixer->listener_buffers[j][i]);
       }
-      spectral_reset(mixer->spectral[i]);
+      spectral_reset(mixer->spectral_left[i]);
+      spectral_reset(mixer->spectral_right[i]);
       mixer->source_buffers[i] = NULL;
       // Free the allocated client_id string
       SAFE_FREE(mixer->source_ids[i]);
       mixer->source_active[i] = false;
       mixer->num_sources--;
+      atomic_fetch_sub_int(&mixer->active_sources, 1);
 
       // OPTIMIZATION 1: Update bitset optimization structures
       mixer->active_sources_mask[i / 64] &= ~(1ULL << (i % 64)); // Clear bit for this slot
@@ -493,6 +502,10 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
   }
 
   rwlock_wrunlock(&mixer->source_lock);
+}
+
+int mixer_source_count(const mixer_t *mixer) {
+  return mixer ? atomic_load_int((atomic_t *)&mixer->active_sources) : 0;
 }
 
 void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active) {
@@ -541,7 +554,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
-  if (active_count == 0 && !mixer->spectral[mixer->max_sources]) {
+  if (active_count == 0 && !mixer->spectral_left[mixer->max_sources]) {
     rwlock_wrunlock(&mixer->source_lock);
     return 0;
   }
@@ -667,7 +680,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
-  if (mixer->spectral[mixer->max_sources])
+  if (mixer->spectral_left[mixer->max_sources])
     mixer_spectral_process(mixer, mixer->max_sources, output, (size_t)num_samples);
   rwlock_wrunlock(&mixer->source_lock);
   return num_samples;
@@ -678,11 +691,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0) {
     return -1;
   }
-
-  // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
-#ifndef NDEBUG
-  START_TIMER("mixer_total");
-#endif
 
   // Serialize sample distribution and mutable ducking/compressor state.
   rwlock_wrlock(&mixer->source_lock);
@@ -711,11 +719,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Fast check: any sources to mix?
   int spectral_slot = valid_exclude ? exclude_index : mixer->max_sources;
-  if (!any_active && !mixer->spectral[spectral_slot]) {
+  if (!any_active && !mixer->spectral_left[spectral_slot]) {
     rwlock_wrunlock(&mixer->source_lock);
-#ifndef NDEBUG
-    STOP_TIMER("mixer_total");
-#endif
     return 0; // No sources to mix (excluding the specified client), output silence
   }
 
@@ -891,13 +896,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
-  if (mixer->spectral[spectral_slot])
+  if (mixer->spectral_left[spectral_slot])
     mixer_spectral_process(mixer, spectral_slot, output, (size_t)num_samples);
   rwlock_wrunlock(&mixer->source_lock);
-
-#ifndef NDEBUG
-  STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "mixer_total", "Mixer took");
-#endif
 
   return num_samples;
 }

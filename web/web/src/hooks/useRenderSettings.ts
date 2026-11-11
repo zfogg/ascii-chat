@@ -38,7 +38,10 @@ export function useRenderSettings() {
     "render",
     DEFAULT_SETTINGS,
     false,
-    (restored) => ({ ...restored, flipX: DEFAULT_SETTINGS.flipX ?? true }),
+    (restored) => ({
+      ...restored,
+      flipX: DEFAULT_SETTINGS.flipX ?? true,
+    }),
   );
   const [appliedFlip, setAppliedFlip] = useState(stored.flipX ?? true);
   const settings = useMemo(

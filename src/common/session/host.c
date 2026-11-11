@@ -25,6 +25,9 @@
  */
 
 #include "session/host.h"
+#ifndef __EMSCRIPTEN__
+#include "quic_listeners.h"
+#endif
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
@@ -34,8 +37,8 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/mutex.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -69,7 +72,18 @@
  * ============================================================================ */
 
 /**
- * @brief Internal client record structure
+ * @brief Keeps the host-side rendering history used to compare successive frames and stabilize output for connected
+ * participants. Its buffers and dimensions belong to the host render target and must be reset when the source or
+ * terminal geometry changes.
+ * @brief The useful part of session host is in `frame_workspace`, `render_histories`, `port`, `max_clients`: together
+ * they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and
+ * use the parent cleanup path.
+ * @brief Host-owned live record for one connected participant.
+ *
+ * It ties the participant ID and network transport to rendering dimensions,
+ * media activity, decoded video/audio buffers, codec state, and the next render
+ * deadline. The host owns this record and joins/releases its worker resources
+ * before freeing it.
  */
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY
@@ -126,12 +140,21 @@ static void host_client_release_transport(session_host_client_t *client) {
  * ============================================================================ */
 
 /**
- * @brief Internal session host structure
+ * @brief Owns the server-side session state, including connected participants, host callbacks, render history, and
+ * shutdown coordination. The session host creates it once, keeps it alive for the session lifetime, and releases its
+ * child resources during teardown.
  *
  * Contains server state, client list, and callback configuration.
  */
+typedef struct host_render_history {
+  uint32_t viewer_id, source_id;
+  ascii_stabilizer_t stabilizer;
+  struct host_render_history *next;
+} host_render_history_t;
+
 typedef struct session_host {
   acip_frame_workspace_t frame_workspace; // Protected by clients_mutex.
+  host_render_history_t *render_histories;
   /** @brief Port to listen on */
   int port;
 
@@ -167,9 +190,11 @@ typedef struct session_host {
 
   /** @brief IPv4 listen socket */
   network_server_t *network_server;
+  bool configured_quic_listeners;
+  quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
-  asciichat_thread_t network_thread;
+  platform_thread_t network_thread;
   bool network_thread_started;
 
   /** @brief Server is running */
@@ -188,7 +213,7 @@ typedef struct session_host {
   mutex_t clients_mutex;
 
   /** @brief Render thread handle (for video mixing and audio distribution) */
-  asciichat_thread_t render_thread;
+  platform_thread_t render_thread;
 
   /** @brief Render thread is running */
   bool render_thread_running;
@@ -199,6 +224,8 @@ typedef struct session_host {
   /** @brief Context is initialized */
   bool initialized;
 } session_host_t;
+
+static void host_forget_render_history(session_host_t *host, uint32_t client_id);
 
 /* ============================================================================
  * Session Host Lifecycle Functions
@@ -217,6 +244,7 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   host->port = config->port > 0 ? config->port : OPT_PORT_INT_DEFAULT;
   host->max_clients = config->max_clients > 0 ? config->max_clients : SESSION_HOST_DEFAULT_MAX_CLIENTS;
   host->encryption_enabled = config->encryption_enabled;
+  host->configured_quic_listeners = config->configured_quic_listeners;
 
   if (config->ipv4_address) {
     SAFE_STRNCPY(host->ipv4_address, config->ipv4_address, sizeof(host->ipv4_address));
@@ -271,6 +299,13 @@ asciichat_error_t session_host_destroy(session_host_t *host) {
     session_audio_destroy(host->audio_ctx);
 #endif
     host->audio_ctx = NULL;
+  }
+
+  while (host->render_histories) {
+    host_render_history_t *history = host->render_histories;
+    host->render_histories = history->next;
+    ascii_stabilizer_reset(&history->stabilizer);
+    SAFE_FREE(history);
   }
 
   // Free client array and per-client resources
@@ -504,6 +539,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     mutex_lock(&host->clients_mutex);
     for (int j = 0; j < host->max_clients; j++) {
       if (host->clients[j].client_id == client_id) {
+        host_forget_render_history(host, client_id);
         host->clients[j].video_active = false;
         host->clients[j].audio_active = false;
         break;
@@ -531,8 +567,51 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
   return ASCIICHAT_OK;
 }
 
+static ascii_stabilizer_t *host_render_history(session_host_t *host, uint32_t viewer_id, uint32_t source_id) {
+  for (host_render_history_t *item = host->render_histories; item; item = item->next)
+    if (item->viewer_id == viewer_id && item->source_id == source_id)
+      return &item->stabilizer;
+  host_render_history_t *item = SAFE_CALLOC(1, sizeof(*item), host_render_history_t *);
+  if (!item)
+    return NULL;
+  item->viewer_id = viewer_id;
+  item->source_id = source_id;
+  item->next = host->render_histories;
+  host->render_histories = item;
+  return &item->stabilizer;
+}
+
+static void host_forget_render_history(session_host_t *host, uint32_t client_id) {
+  host_render_history_t **link = &host->render_histories;
+  while (*link) {
+    host_render_history_t *item = *link;
+    if (item->viewer_id == client_id || item->source_id == client_id) {
+      *link = item->next;
+      ascii_stabilizer_reset(&item->stabilizer);
+      SAFE_FREE(item);
+    } else {
+      link = &item->next;
+    }
+  }
+}
+
+static void host_forget_viewer_history(session_host_t *host, uint32_t viewer_id) {
+  host_render_history_t **link = &host->render_histories;
+  while (*link) {
+    host_render_history_t *item = *link;
+    if (item->viewer_id == viewer_id) {
+      *link = item->next;
+      ascii_stabilizer_reset(&item->stabilizer);
+      SAFE_FREE(item);
+    } else {
+      link = &item->next;
+    }
+  }
+}
+
 static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
-                                    const terminal_capabilities_t *caps, const char *palette, size_t *size) {
+                                    const terminal_capabilities_t *caps, const char *palette, uint32_t viewer_id,
+                                    size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -550,8 +629,11 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
       continue;
     uint64_t start = time_get_ns();
-    sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
-                                                                cell_height, caps, false, false, palette);
+    ascii_stabilizer_t *history =
+        caps->stabilize ? host_render_history(host, viewer_id, host->clients[i].client_id) : NULL;
+    sources[index].frame_data =
+        ascii_convert_with_buffers_stabilized(host->clients[i].incoming_video, cell_width, cell_height, caps, false,
+                                              false, palette, false, NULL, NULL, history);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
     stats_counter_add(stats_runtime_scope(),
                       sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -578,6 +660,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
     ASCII_OTEL_SCOPE(SERVER_VIDEO);
     typedef struct {
       int width, height;
+      uint32_t viewer_id;
       terminal_capabilities_t caps;
       const char *palette;
       char *frame;
@@ -648,20 +731,28 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
           recipient->next_video_deadline = now;
         recipient->next_video_deadline += interval;
       }
+      uint32_t viewer_id = recipient ? recipient->client_id : 0;
+      if (!caps.stabilize)
+        host_forget_viewer_history(host, viewer_id);
       int cached = 0;
       while (cached < grid_count &&
-             (grids[cached].width != width || grids[cached].height != height ||
-              grids[cached].caps.render_mode != caps.render_mode ||
+             (grids[cached].caps.stabilize != caps.stabilize ||
+              (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
+              grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode ||
+              grids[cached].caps.text_renderer != caps.text_renderer ||
+              grids[cached].caps.palette_explicit != caps.palette_explicit ||
               grids[cached].caps.color_level != caps.color_level ||
               grids[cached].caps.utf8_support != caps.utf8_support ||
               grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
         ++cached;
       if (cached == grid_count) {
+        grids[cached].viewer_id = viewer_id;
         grids[cached].width = width;
         grids[cached].height = height;
         grids[cached].caps = caps;
         grids[cached].palette = palette;
-        grids[cached].frame = host_create_video_grid(host, count, width, height, &caps, palette, &grids[cached].size);
+        grids[cached].frame =
+            host_create_video_grid(host, count, width, height, &caps, palette, viewer_id, &grids[cached].size);
         ++grid_count;
       }
       host_grid_t *grid = &grids[cached];
@@ -859,6 +950,11 @@ typedef struct {
   uint32_t client_id;
   network_negotiation_t negotiation;
   private_key_t identity;
+  /**
+   * @brief The useful part of host connection is in `client_id`, `negotiation`, `identity`: together they describe what
+   * is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+   * cleanup path.
+   */
 } host_connection_t;
 static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
   session_host_t *host = arg;
@@ -948,19 +1044,26 @@ asciichat_error_t session_host_start(session_host_t *host) {
 #ifdef __EMSCRIPTEN__
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser hosts accept browser-managed connections");
 #else
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (host->configured_quic_listeners)
+    result = session_quic_listeners_open(host->port, &host->quic_endpoint, &host->webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    return result;
   network_server_config_t config = {
+      .quic_endpoint = host->quic_endpoint,
+      .webtransport_endpoint = host->webtransport_endpoint,
       .port = host->port,
-      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
       .bind_ipv4 = true,
       .max_connections = host->max_clients,
       .partial_timeout_ms = 30000,
       .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
       .user_data = host};
-  asciichat_error_t result = network_server_create(&config, &host->network_server);
+  result = network_server_create(&config, &host->network_server);
   if (result == ASCIICHAT_OK)
     result = network_server_start(host->network_server);
   if (result == ASCIICHAT_OK)
-    result = acthread_create(&host->network_thread, "host_network", host_network_run, host);
+    result = platform_thread_create(&host->network_thread, "host_network", host_network_run, host);
   if (result != ASCIICHAT_OK) {
     network_server_destroy(&host->network_server);
     return result;
@@ -993,6 +1096,9 @@ asciichat_error_t session_host_stop(session_host_t *host) {
   if (result != ASCIICHAT_OK)
     return result;
   network_server_destroy(&host->network_server);
+  result = session_quic_listeners_close(&host->quic_endpoint, &host->webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    return result;
 #endif
   host->running = false;
   return ASCIICHAT_OK;
@@ -1060,7 +1166,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
-      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].rendering.fps_limit = DEFAULT_MAX_FPS;
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers
@@ -1311,6 +1417,7 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
         host->clients[i].incoming_audio = NULL;
       }
 
+      host_forget_render_history(host, client_id);
       host->clients[i].active = false;
       host->client_count--;
       if (host->render_target.client_id == client_id)
@@ -1476,6 +1583,9 @@ static asciichat_error_t native_display_config(void *context, session_host_rende
     return SET_ERRNO(ERROR_INVALID_STATE, "Local terminal display is not initialized");
   config->caps = *caps;
   config->caps.render_mode = GET_OPTION(render_mode);
+  config->caps.text_renderer = GET_OPTION(renderer);
+  config->caps.stabilize = GET_OPTION(stabilize);
+  config->caps.palette_explicit = GET_OPTION(palette_explicit);
   config->caps.wants_background = config->caps.render_mode == RENDER_MODE_BACKGROUND;
   if (GET_OPTION(color_mode) != TERM_COLOR_AUTO)
     config->caps.color_level = GET_OPTION(color_mode);
@@ -1546,7 +1656,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
 
   // Spawn render thread
   host->render_thread_running = true;
-  if (acthread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
+  if (platform_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
     log_error("Failed to spawn render thread");
     host->render_thread_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn render thread");

@@ -1,0 +1,303 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>negotiation.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">negotiation.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">negotiation.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">negotiation.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>network_negotiation_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>network_protocol_t</b> { <b>NETWORK_PROTOCOL_MEDIA</b>,
+            <b>NETWORK_PROTOCOL_DISCOVERY</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>network_negotiation_receive</b> (<b
+              >network_negotiation_t</b
+            >
+            *, <b>acip_transport_t</b> *, <b>packet_type_t</b>, const void *,
+            size_t)
+            <br />
+            <b>asciichat_error_t</b> <b>network_client_negotiate</b> (<b
+              >acip_transport_t</b
+            >
+            *, <b>crypto_handshake_context_t</b> *, <b>uint8_t</b> mode,
+            <b>network_protocol_t</b> protocol)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>network_protocol_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="NETWORK_PROTOCOL_MEDIA">
+              <a class="permalink" href="#NETWORK_PROTOCOL_MEDIA"
+                ><b><i>NETWORK_PROTOCOL_MEDIA </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="NETWORK_PROTOCOL_DISCOVERY">
+              <a class="permalink" href="#NETWORK_PROTOCOL_DISCOVERY"
+                ><b><i>NETWORK_PROTOCOL_DISCOVERY </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>negotiation.h</b>.
+          </p>
+          <pre>
+5 { NETWORK_PROTOCOL_MEDIA, NETWORK_PROTOCOL_DISCOVERY } network_protocol_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> network_client_negotiate (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>crypto_handshake_context_t</b> * ctx,
+            <b>uint8_t</b> mode, <b>network_protocol_t</b> protocol)
+          </h2>
+          <p class="Pp">
+            Drive a client wire profile using connection-owned security storage.
+            A single absolute deadline covers negotiation; the caller retains
+            transport and credentials until cancellation and all users have
+            drained.
+          </p>
+          <p class="Pp">
+            Definition at line <b>352</b> of file <b>negotiation.c</b>.
+          </p>
+          <pre>
+353                                                                         {
+354   if (!transport || !ctx || mode &gt; ACIP_CRYPTO_FULL || protocol &gt; NETWORK_PROTOCOL_DISCOVERY)
+355     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client negotiation&quot;);
+356   uint64_t timeout = transport-&gt;receive_timeout_ns;
+357   asciichat_error_t result = protocol == NETWORK_PROTOCOL_DISCOVERY ? discovery_client_negotiate(transport, ctx, mode)
+358                                                                     : client_negotiate(transport, ctx, mode);
+359   transport-&gt;receive_timeout_ns = timeout;
+360   return result;
+361 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_FULL</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>network_client_negotiate()</b>,
+            <b>NETWORK_PROTOCOL_DISCOVERY</b>,
+            <b>acip_transport::receive_timeout_ns</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_session_start()</b>,
+            <b>network_client_negotiate()</b>, and
+            <b>network_connection_establish()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> network_negotiation_receive (<b
+              >network_negotiation_t</b
+            >
+            * n, <b>acip_transport_t</b> * transport, <b>packet_type_t</b> type,
+            const void * payload, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>161</b> of file <b>negotiation.c</b>.
+          </p>
+          <pre>
+162                                                                                   {
+163   if (!n || !n-&gt;handshake || !transport || n-&gt;ready)
+164     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid connection negotiation state&quot;);
+165   if (n-&gt;protocol == NETWORK_PROTOCOL_MEDIA)
+166     return media_receive(n, transport, type, payload, length);
+167   crypto_handshake_context_t *ctx = n-&gt;handshake;
+168   asciichat_error_t result;
+169   switch (n-&gt;step) {
+170   case 0: {
+171     if (type != PACKET_TYPE_PROTOCOL_VERSION || length != sizeof(protocol_version_packet_t))
+172       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected discovery protocol version&quot;);
+173     protocol_version_packet_t version;
+174     memcpy(&amp;version, payload, sizeof(version));
+175     if (NET_TO_HOST_U16(version.protocol_version) != 1)
+176       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unsupported discovery protocol version&quot;);
+177     uint8_t mode = version.supports_encryption;
+178     result = crypto_policy_check_mode(n-&gt;secure, n-&gt;require_encryption, n-&gt;forbid_encryption, n-&gt;require_auth, mode);
+179     if (result != ASCIICHAT_OK)
+180       return result;
+181     ctx-&gt;crypto_ctx.encrypt_data = n-&gt;encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+182     if (mode == ACIP_CRYPTO_NONE) {
+183       ctx-&gt;state = CRYPTO_HANDSHAKE_DISABLED;
+184       n-&gt;ready = true;
+185       return ASCIICHAT_OK;
+186     }
+187     result = crypto_handshake_server_send_parameters(ctx, transport);
+188     if (result == ASCIICHAT_OK)
+189       result = crypto_handshake_server_start(ctx, transport);
+190     break;
+191   }
+192   case 1:
+193     result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, length);
+194     break;
+195   case 2:
+196     result = crypto_handshake_server_complete(ctx, transport, type, payload, length);
+197     break;
+198   default:
+199     return SET_ERRNO(ERROR_CRYPTO, &quot;Invalid discovery negotiation state&quot;);
+200   }
+201   if (result != ASCIICHAT_OK)
+202     return result;
+203   ++n-&gt;step;
+204   n-&gt;ready = ctx-&gt;state == CRYPTO_HANDSHAKE_READY;
+205   if (n-&gt;ready)
+206     transport-&gt;crypto_ctx = &amp;ctx-&gt;crypto_ctx;
+207   return ASCIICHAT_OK;
+208 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ACIP_CRYPTO_NONE</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>CRYPTO_HANDSHAKE_READY</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>crypto_policy_check_mode()</b>,
+            <b>crypto_context_t::encrypt_data</b>,
+            <b>network_negotiation_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>network_negotiation_t::forbid_encryption</b>,
+            <b>network_negotiation_t::handshake</b>, <b>NET_TO_HOST_U16</b>,
+            <b>network_negotiation_receive()</b>, <b>NETWORK_PROTOCOL_MEDIA</b>,
+            <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>network_negotiation_t::protocol</b>,
+            <b>protocol_version_packet_t::protocol_version</b>,
+            <b>network_negotiation_t::ready</b>,
+            <b>network_negotiation_t::require_auth</b>,
+            <b>network_negotiation_t::require_encryption</b>,
+            <b>network_negotiation_t::secure</b>, <b>SET_ERRNO</b>,
+            <b>crypto_handshake_context_t::state</b>,
+            <b>network_negotiation_t::step</b>, and
+            <b>protocol_version_packet_t::supports_encryption</b>.
+          </p>
+          <p class="Pp">Referenced by <b>network_negotiation_receive()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

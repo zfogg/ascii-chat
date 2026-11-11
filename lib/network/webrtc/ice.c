@@ -153,7 +153,7 @@ uint32_t ice_calculate_priority_for_candidate(const ice_candidate_t *candidate) 
  * @brief PCRE2 regex validator for ICE candidate parsing
  *
  * Validates and extracts ICE candidate fields from standard RFC format.
- * Uses centralized PCRE2 singleton for atomic parsing with single regex match.
+ * Parses each candidate with one regex match.
  */
 
 static const char *ICE_CANDIDATE_PATTERN = "^([^ ]+)\\s+"                            // 1: foundation
@@ -169,21 +169,16 @@ static const char *ICE_CANDIDATE_PATTERN = "^([^ ]+)\\s+"                       
                                            "(?:\\s+tcptype\\s+(active|passive|so))?" // 10: optional tcptype
                                            "\\s*$";
 
-static pcre2_singleton_t *g_ice_candidate_regex = NULL;
-
 /**
- * Get compiled ICE candidate regex (lazy initialization)
+ * Get compiled ICE candidate regex (owned by the caller)
  * Returns NULL if compilation failed
  */
 static pcre2_code *ice_candidate_regex_get(void) {
-  if (g_ice_candidate_regex == NULL) {
-    g_ice_candidate_regex = asciichat_pcre2_singleton_compile(ICE_CANDIDATE_PATTERN, PCRE2_CASELESS);
-  }
-  return asciichat_pcre2_singleton_get_code(g_ice_candidate_regex);
+  return asciichat_pcre2_compile(ICE_CANDIDATE_PATTERN, PCRE2_CASELESS);
 }
 
 /**
- * @brief Parse ICE candidate using PCRE2 regex singleton
+ * @brief Parse ICE candidate using a PCRE2 regex
  *
  * Atomically validates and extracts all ICE candidate fields.
  * Falls back to manual parsing if PCRE2 unavailable.
@@ -197,7 +192,7 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate parameters");
   }
 
-  // Get compiled regex (lazy initialization)
+  // Get compiled regex (owned by the caller)
   pcre2_code *regex = ice_candidate_regex_get();
 
   // If PCRE2 not available, return error to fall back to manual parser
@@ -207,14 +202,16 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
 
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
+    pcre2_code_free(regex);
     return ERROR_MEMORY;
   }
 
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)line, strlen(line), 0, 0, match_data, NULL);
+  int rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)line, strlen(line), 0, 0, match_data, NULL);
 
   if (rc < 7) {
     // Must have at least foundation, component, protocol, priority, ip, port, type (7 groups)
     pcre2_match_data_free(match_data);
+    pcre2_code_free(regex);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ICE candidate format");
   }
 
@@ -243,6 +240,7 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     } else {
       SAFE_FREE(protocol_str);
       pcre2_match_data_free(match_data);
+      pcre2_code_free(regex);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protocol");
     }
     SAFE_FREE(protocol_str);
@@ -281,6 +279,7 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     } else {
       SAFE_FREE(type_str);
       pcre2_match_data_free(match_data);
+      pcre2_code_free(regex);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate type");
     }
     SAFE_FREE(type_str);
@@ -313,6 +312,7 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
   }
 
   pcre2_match_data_free(match_data);
+  pcre2_code_free(regex);
   return ASCIICHAT_OK;
 }
 

@@ -612,6 +612,11 @@ error, fatal. Use the \fB\-\-log\-level\fR flag to override.
 .\" MANUAL-START: NOTES
 .SH NOTES
 .IP \(bu 2
+\fBFrame Rate\fR: The default \fB\-\-fps 0\fR selects the negotiated webcam
+capture rate or the media source frame rate when available. If the rate cannot
+be determined, capture falls back to 60 FPS. Set \fB\-\-fps\fR to a value
+from 1 to 144 to request a specific frame rate.
+.IP \(bu 2
 \fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
 are NOT supported due to libsodium limitations. Generate Ed25519 keys with:
 \fCssh-keygen -t ed25519\fR

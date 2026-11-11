@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stats_duration_cell_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stats_duration_cell_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stats_duration_cell_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">stats_duration_cell_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            _Atomic <b>uint64_t</b> <b>sequence</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>observations</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>total_ns</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>min_ns</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>max_ns</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>last_ns</b>
+            <br />
+            _Atomic <b>uint64_t</b> <b>recorded_ns</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>14</b> of file <b>lib/stats/stats.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::last_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::max_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::min_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::observations
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::recorded_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::sequence
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>uint64_t</b> stats_duration_cell_t::total_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>lib/stats/stats.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>stats_duration_record()</b>, and
+            <b>stats_scope_snapshot()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

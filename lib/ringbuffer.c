@@ -7,13 +7,14 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64
 
+#include <defer.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,26 +160,27 @@ framebuffer_t *framebuffer_create(size_t capacity) {
     return NULL;
   }
 
-  framebuffer_t *fb;
-  fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
+  SAFE_CALLOC_DEFER_FREE(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
   if (mutex_init(&fb->mutex, "framebuffer") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
-    SAFE_FREE(fb);
     return NULL;
   }
+
+  defer_named(framebuffer_mutex, mutex_destroy(&fb->mutex));
 
   // Create ringbuffer to store frame_t structs
   fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
   if (!fb->rb) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame buffer");
-    mutex_destroy(&fb->mutex);
-    SAFE_FREE(fb);
     return NULL;
   }
 
-  return fb;
+  defer_cancel(framebuffer_mutex);
+  framebuffer_t *result = fb;
+  fb = NULL;
+  return result;
 }
 
 framebuffer_t *framebuffer_create_multi(size_t capacity) {
@@ -187,26 +189,27 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
     return NULL;
   }
 
-  framebuffer_t *fb;
-  fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
+  SAFE_CALLOC_DEFER_FREE(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
   if (mutex_init(&fb->mutex, "framebuffer_multi") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
-    SAFE_FREE(fb);
     return NULL;
   }
+
+  defer_named(framebuffer_mutex, mutex_destroy(&fb->mutex));
 
   // Create ringbuffer to store multi_source_frame_t structs
   fb->rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
 
   if (!fb->rb) {
-    mutex_destroy(&fb->mutex);
-    SAFE_FREE(fb);
     return NULL;
   }
 
-  return fb;
+  defer_cancel(framebuffer_mutex);
+  framebuffer_t *result = fb;
+  fb = NULL;
+  return result;
 }
 
 void framebuffer_destroy(framebuffer_t *fb) {

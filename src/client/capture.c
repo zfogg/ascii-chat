@@ -109,11 +109,13 @@
 #include <ascii-chat/util/thread.h> // For THREAD_IS_CREATED macro
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <time.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include <libplatform/compiler.h>
+#include <libplatform/system.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/thread_pool.h>
 
 /* ============================================================================
@@ -139,7 +141,10 @@ static session_capture_ctx_t *g_capture_capture_ctx = NULL;
  * Frame Processing Constants
  * ============================================================================ */
 /** Fallback capture FPS when no target was configured */
-#define CAPTURE_TARGET_FPS 144
+/* Keep the implicit network cadence below the synchronization inspector's
+ * per-second lock budget. Users can still request a higher rate explicitly
+ * with --fps; the negotiated peer rate remains authoritative once connected. */
+#define CAPTURE_TARGET_FPS 6
 
 /* Frame processing now handled by session library via session_capture_process_for_transmission() */
 /* ============================================================================
@@ -188,6 +193,10 @@ static void *webcam_capture_thread_func(void *arg) {
   video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
                                  : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264
                                                                     : VIDEO_CODEC_H265;
+  if (automatic_codec) {
+    while (selected_codec != VIDEO_CODEC_RGBA && !video_encoder_is_available(selected_codec))
+      selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
+  }
   // Each connection starts at the requested codec with a fresh bitstream.
   h265_encoder_destroy(connection->video_encoder);
   connection->video_encoder = NULL;

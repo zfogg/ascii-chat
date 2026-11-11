@@ -27,7 +27,7 @@ static session_capture_ctx_t *worker_capture(const session_capture_config_t *con
   }
   return session_network_capture_create(config->target_fps);
 }
-static int worker_create(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
+static int worker_create(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   (void)thread;
   cr_assert_not_null(name);
   cr_assert_not_null(fn);
@@ -35,7 +35,7 @@ static int worker_create(asciichat_thread_t *thread, const char *name, void *(*f
   ++created;
   return fail_thread ? -1 : 0;
 }
-static int worker_join(asciichat_thread_t *thread, void **result) {
+static int worker_join(platform_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
   ++joined;
@@ -73,7 +73,7 @@ static size_t worker_read_audio(session_audio_ctx_t *audio, float *output, size_
   return count;
 }
 #define session_capture_create worker_capture
-#define acthread_create worker_create
+#define platform_thread_create worker_create
 #define thread_join worker_join
 #define session_audio_start_duplex worker_audio_start
 #define session_capture_read_frame worker_read_video
@@ -82,7 +82,7 @@ static size_t worker_read_audio(session_audio_ctx_t *audio, float *output, size_
 #define platform_sleep_ms worker_sleep
 #include "../../../src/common/session/participant.c"
 #undef session_capture_create
-#undef acthread_create
+#undef platform_thread_create
 #undef thread_join
 #undef session_audio_start_duplex
 #undef session_capture_read_frame
@@ -129,6 +129,16 @@ static asciichat_error_t worker_receive_packet(acip_transport_t *transport, cons
     for (size_t i = 0; i < (size_t)expected_samples; ++i)
       energy += decoded[i] * decoded[i];
     cr_assert_gt(energy, 1.0);
+    if (participant->opus_encoder->channels == 1) {
+      // The fixture's channels have amplitudes 0.2 and 0.6, so their mono
+      // average is 0.4. Ignore Opus startup delay in the first half frame.
+      double tail_energy = 0;
+      for (size_t i = (size_t)expected_samples / 2; i < (size_t)expected_samples; ++i)
+        tail_energy += decoded[i] * decoded[i];
+      double rms = sqrt(tail_energy / ((size_t)expected_samples - (size_t)expected_samples / 2));
+      cr_assert_gt(rms, 0.20, "Mono output lost the louder input channel (RMS %f)", rms);
+      cr_assert_lt(rms, 0.37, "Mono output lost the quieter input channel (RMS %f)", rms);
+    }
     opus_codec_destroy(decoder);
     stop_worker();
   }

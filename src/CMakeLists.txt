@@ -25,9 +25,14 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer_process.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
+    # Public image-to-ASCII HTTP API
+    ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
+    # Shared render-over-HTTP request/result ownership
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
@@ -65,6 +70,9 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
+if(WIN32)
+    target_link_libraries(ascii-chat PRIVATE shell32)
+endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
@@ -91,14 +99,10 @@ endif()
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    elseif(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-        set(_use_shared_lib FALSE)
-    else()
+    if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         set(_use_shared_lib TRUE)
+    else()
+        set(_use_shared_lib FALSE)
     endif()
 endif()
 
@@ -199,7 +203,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
@@ -278,7 +282,7 @@ endif()
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
 # EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
-if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
     # Use $ORIGIN for relative paths to maintain portability
     if(APPLE)
@@ -300,7 +304,7 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         BUILD_RPATH "${_rpath_list}"
         SKIP_BUILD_RPATH FALSE
     )
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARED_DEPS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
@@ -317,7 +321,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
         INSTALL_RPATH_USE_LINK_PATH FALSE
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
@@ -386,27 +390,6 @@ endif()
 
 # Apply sanitizers to executable
 apply_sanitizers_to_target(ascii-chat)
-
-# Add build timing for ascii-chat executable
-add_custom_command(TARGET ascii-chat PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Starting ascii-chat timer"
-    VERBATIM
-)
-add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing ascii-chat timer"
-    VERBATIM
-)
-
-# Custom target wrapper for ALL builds (when no explicit --target is used)
-# This shows "up to date" message when ascii-chat doesn't need rebuilding
-add_custom_target(show-ascii-chat-success ALL
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
-    DEPENDS ascii-chat
-    VERBATIM
-)
 
 # macOS Info.plist embedding (for client mode webcam access)
 if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
@@ -591,31 +574,6 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
 
-# =============================================================================
-# Global Build Timer - End Marker
-# =============================================================================
-# Show total build time after the final target is built
-# ascii-chat is always built last, so attach the timer there
-add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing total build timer"
-    VERBATIM
-)
-
-# Custom target wrapper for ALL builds (when no explicit --target)
-# This only runs for default builds and prevents duplicate messages
-add_custom_target(build-timer-end ALL
-    DEPENDS show-ascii-chat-success
-    VERBATIM
-)
-
-# =============================================================================
-# Build-All Target - Shows Total Time After All Common Targets Built
-# =============================================================================
-# Usage: cmake --build build --target build-all
-# This builds common targets (executable and libraries),
-# then shows the total build time including all .o compilation
-
 # Determine dependencies based on build configuration
 set(BUILD_ALL_DEPS ascii-chat ascii-chat-shared)
 if(NOT BUILDING_OBJECT_LIBS)
@@ -623,10 +581,8 @@ if(NOT BUILDING_OBJECT_LIBS)
 endif()
 
 add_custom_target(build-all
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
     DEPENDS ${BUILD_ALL_DEPS}
-    COMMENT "Finishing build-all timer"
+    COMMENT "Building all native targets"
     VERBATIM
 )
 

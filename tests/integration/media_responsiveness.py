@@ -5,12 +5,13 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
 from pathlib import Path
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 if os.name == "nt":
     from windows_console import WindowsConsole as Terminal
 
@@ -25,11 +26,11 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
-    term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-level", "warn",
+    term = Terminal(cli_command(str(args.binary.resolve()), "--log-level", "warn",
                      "--log-file", str((args.artifacts / "application.log").resolve()), "mirror",
                      *([] if args.webcam else ["--test-pattern"]),
                      *(["--audio=false"] if args.without_audio else ["--audio-source", "media", "--volume", "0"]), "--fps", "60",
-                     "--fps-counter", "--splash-screen=false"], rows=35, cols=110)
+                     "--fps-counter", "--splash-screen=false"), rows=35, cols=110)
     try:
         term.expect(lambda text: "FPS:" in text and any(ch not in " \n" for ch in text[150:]),
                     "Initial live frame", timeout=90)
@@ -43,7 +44,7 @@ def main():
             def visible_text():
                 if os.name == "nt":
                     time.sleep(0.005)
-                    return term.read_text()
+                    return getattr(term, "read_text")()
                 return term.pump(0.005)
             while "Open media:" not in visible_text():
                 assert time.monotonic() - start <= 5, "Open prompt did not appear within five seconds"

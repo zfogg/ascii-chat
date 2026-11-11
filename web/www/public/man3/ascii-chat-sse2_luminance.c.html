@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>luminance.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">luminance.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">luminance.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">luminance.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>glyph_shape_correlation_sse2</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            void <b>simd_luminance_sse2</b> (const <b>uint8_t</b> *rgb,
+            <b>uint8_t</b>
+            *out, size_t width)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_sse2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_sse2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_sse2 (const int16_t samples[16],
+              const int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>sse2/luminance.c</b>.
+          </p>
+          <pre>
+7                                                                                     {
+8   __m128i a0 = _mm_loadu_si128((const __m128i *)(const void *)samples);
+9   __m128i a1 = _mm_loadu_si128((const __m128i *)(const void *)(samples + 8));
+10   __m128i b0 = _mm_loadu_si128((const __m128i *)(const void *)mask);
+11   __m128i b1 = _mm_loadu_si128((const __m128i *)(const void *)(mask + 8));
+12   __m128i sums = _mm_add_epi32(_mm_madd_epi16(a0, b0), _mm_madd_epi16(a1, b1));
+13   int32_t lanes[4];
+14   _mm_storeu_si128((__m128i *)(void *)lanes, sums);
+15   return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+16 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_sse2()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_sse2()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_luminance_sse2_(const_">
+            <a class="permalink" href="#void_simd_luminance_sse2_(const_"
+              >void simd_luminance_sse2 (const <b>uint8_t</b> * rgb,
+              <b>uint8_t</b> * out, size_t width)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>sse2/luminance.c</b>.
+          </p>
+          <pre>
+17                                                                          {
+18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+19   size_t x = 0;
+20   for (; width - x &gt;= 16; x += 16) {
+21     // Manual deinterleave RGB components (SSE2 limitation vs NEON's vld3q_u8)
+22     uint8_t r_array[16], g_array[16], b_array[16];
+23     for (int j = 0; j &lt; 16; j++) {
+24       r_array[j] = row[x + j].r;
+25       g_array[j] = row[x + j].g;
+26       b_array[j] = row[x + j].b;
+27     }
+28
+29     // Load full 16 bytes into SSE2 registers (process in two 8-pixel batches)
+30     __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0)); // First 8 pixels
+31     __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8)); // Second 8 pixels
+32     __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+33     __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+34     __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+35     __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
+36
+37     // Process first 8 pixels
+38     __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+39     __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+40     __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
+41
+42     __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(LUMA_RED));
+43     __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(150));
+44     __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(29));
+45
+46     __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+47     luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+48     luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(128));
+49     luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
+50
+51     // Process second 8 pixels
+52     __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+53     __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+54     __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
+55
+56     __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(LUMA_RED));
+57     __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(150));
+58     __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(29));
+59
+60     __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+61     luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+62     luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(128));
+63     luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+64
+65     // Pack both halves to 8-bit
+66     __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+67     __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+68
+69     // Store and convert to ASCII characters
+70     uint8_t luma_array[16];
+71     _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+72     _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+73
+74     memcpy(out + x, luma_array, 16);
+75   }
+76   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+77 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+            <b>LUMA_RED</b>, <b>rgb_pixel_t::r</b>,
+            <b>simd_luminance_scalar()</b>, and <b>simd_luminance_sse2()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simd_luminance_sse2()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

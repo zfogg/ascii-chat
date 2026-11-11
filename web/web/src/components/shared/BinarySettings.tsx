@@ -40,6 +40,10 @@ export interface BinarySettingsConfig {
   colorMode: ColorMode;
   colorFilter: ColorFilter;
   palette: Palette;
+  renderer?: "luminance" | "glyph";
+  stabilize?: boolean;
+  stabilizeExplicit?: boolean;
+  paletteExplicit?: boolean;
   paletteChars?: string;
   matrixRain?: boolean;
   zalgo?: number;
@@ -99,6 +103,8 @@ export function BinarySettings({
 }: BinarySettingsProps) {
   const dimensionsId = useId();
   const paletteInputId = useId();
+  const paletteSelectId = useId();
+  const rendererSelectId = useId();
   const configRef = useRef(config);
   const paletteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paletteDraft, setPaletteDraft] = useState(
@@ -112,6 +118,13 @@ export function BinarySettings({
       setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
     }
   }, [config.paletteChars]);
+  useEffect(() => {
+    if (disabled && paletteTimerRef.current !== null) {
+      clearTimeout(paletteTimerRef.current);
+      paletteTimerRef.current = null;
+      setPaletteDraft(configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS);
+    }
+  }, [disabled]);
   useEffect(
     () => () => {
       if (paletteTimerRef.current !== null) {
@@ -144,8 +157,13 @@ export function BinarySettings({
         onChange({
           ...configRef.current,
           palette: "custom",
+          paletteExplicit: true,
           paletteChars: value,
         });
+      } else {
+        setPaletteDraft(
+          configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS,
+        );
       }
     }, PALETTE_INPUT_DEBOUNCE_MS);
   };
@@ -366,6 +384,31 @@ export function BinarySettings({
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
+                : audioVisualizationSelected
+                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
+                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
+            }
+          >
+            <label className="flex items-center gap-2 text-sm text-terminal-fg">
+              <input
+                type="checkbox"
+                checked={config.stabilize ?? true}
+                disabled={disabled}
+                onChange={(e) => {
+                  updateConfig({
+                    stabilize: e.target.checked,
+                    stabilizeExplicit: true,
+                  });
+                }}
+              />
+              Reduce flicker
+            </label>
+          </Tooltip>
+
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
                 : getOptionHelp(mode, "color-mode")
             }
           >
@@ -456,6 +499,31 @@ export function BinarySettings({
             </div>
           </Tooltip>
 
+          <Tooltip text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance.">
+            <div className="flex-1 min-w-[200px]">
+              <label
+                htmlFor={rendererSelectId}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
+                Text Art Render Algorithm
+              </label>
+              <select
+                id={rendererSelectId}
+                value={config.renderer ?? "glyph"}
+                onChange={(e) =>
+                  updateConfig({
+                    renderer: e.target.value as "luminance" | "glyph",
+                  })
+                }
+                disabled={disabled}
+                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
+              >
+                <option value="luminance">Luminance</option>
+                <option value="glyph">Glyph matching</option>
+              </select>
+            </div>
+          </Tooltip>
+
           <Tooltip
             text={
               disabled
@@ -464,17 +532,49 @@ export function BinarySettings({
             }
           >
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
+              <label
+                htmlFor={paletteSelectId}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
                 Palette
               </label>
               <select
-                value={config.palette}
-                onChange={(e) =>
-                  updateConfig({ palette: e.target.value as Palette })
+                id={paletteSelectId}
+                value={
+                  config.renderer === "glyph" &&
+                  !config.paletteExplicit &&
+                  config.palette === "standard"
+                    ? "glyph-default"
+                    : config.palette
                 }
+                onChange={(e) => {
+                  if (paletteTimerRef.current !== null) {
+                    clearTimeout(paletteTimerRef.current);
+                    paletteTimerRef.current = null;
+                    setPaletteDraft(
+                      config.paletteChars ?? DEFAULT_PALETTE_CHARS,
+                    );
+                  }
+                  if (e.target.value === "glyph-default") {
+                    updateConfig({
+                      palette: "standard",
+                      paletteExplicit: false,
+                    });
+                  } else {
+                    updateConfig({
+                      palette: e.target.value as Palette,
+                      paletteExplicit: true,
+                    });
+                  }
+                }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >
+                {config.renderer === "glyph" && (
+                  <option value="glyph-default">
+                    Glyph default (95 ASCII)
+                  </option>
+                )}
                 <option value="standard">Standard</option>
                 <option value="blocks">Blocks</option>
                 <option value="digital">Digital</option>
@@ -579,7 +679,7 @@ export function BinarySettings({
               </label>
               <select
                 value={config.animation ?? "matrix"}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateConfig({
                     animation: e.target.value as Animation,
                     matrixRain: e.target.value === "matrix",
@@ -587,8 +687,8 @@ export function BinarySettings({
                       e.target.value === "waveform" || e.target.value === "fft"
                         ? "none"
                         : config.colorFilter,
-                  })
-                }
+                  });
+                }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >

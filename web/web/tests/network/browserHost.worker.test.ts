@@ -3,11 +3,12 @@ const wasm = vi.hoisted(() => ({
   hostPacketCallback: undefined as
     | undefined
     | ((id: number, bytes: Uint8Array) => void),
-  _browser_host_create: () => 0,
-  _browser_host_add_client: vi.fn(() => 1),
-  _browser_host_set_local_client: vi.fn(() => 0),
-  _browser_host_render: vi.fn(() => 0),
-  _browser_host_render_audio: vi.fn(() => 0),
+  browser_host_create: () => 0,
+  browser_host_add_client: vi.fn(() => 1),
+  browser_host_set_local_client: vi.fn(() => 0),
+  browser_host_render: vi.fn(() => 0),
+  browser_host_render_audio: vi.fn(() => 0),
+  HostPacketBinding: class {},
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},
@@ -34,7 +35,7 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   });
   const scope = { postMessage: vi.fn(), onmessage: undefined as any };
   vi.stubGlobal("self", scope);
-  wasm._browser_host_render.mockImplementation(() => {
+  wasm.browser_host_render.mockImplementation(() => {
     wasm.hostPacketCallback?.(1, new Uint8Array([1]));
     return 0;
   });
@@ -45,7 +46,7 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   };
   await send({ kind: "init" });
   await send({ kind: "add", id: 1, local: true });
-  expect(wasm._browser_host_set_local_client).toHaveBeenCalledWith(1);
+  expect(wasm.browser_host_set_local_client).toHaveBeenCalledWith(1);
   await vi.advanceTimersByTimeAsync(34);
   const batches = () =>
     scope.postMessage.mock.calls.filter(([m]) => m.kind === "packets");
@@ -53,7 +54,7 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   await vi.advanceTimersByTimeAsync(100);
   expect(batches()).toHaveLength(2);
   expect(vi.getTimerCount()).toBe(1); // Audio continues on its independent clock.
-  expect(wasm._browser_host_render_audio).toHaveBeenCalled();
+  expect(wasm.browser_host_render_audio).toHaveBeenCalled();
   await send({
     kind: "video",
     id: 1,
@@ -75,9 +76,9 @@ it("delivers synchronous admission readiness to the logical client before C id r
   vi.useFakeTimers();
   const scope = { postMessage: vi.fn(), onmessage: undefined as any };
   vi.stubGlobal("self", scope);
-  wasm._browser_host_render.mockImplementation(() => 0);
+  wasm.browser_host_render.mockImplementation(() => 0);
   const readiness = new Uint8Array(22);
-  wasm._browser_host_add_client.mockImplementation(() => {
+  wasm.browser_host_add_client.mockImplementation(() => {
     // session_host_set_client_transport sends SERVER_STATE before returning.
     wasm.hostPacketCallback?.(41, readiness);
     return 41;

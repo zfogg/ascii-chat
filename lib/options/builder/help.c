@@ -23,7 +23,8 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/layout.h>
-#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/common/constants.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/log/log.h>
@@ -81,6 +82,26 @@ static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
   return NULL; // Unknown or no specific mode
 }
 
+static const char *get_mode_name(asciichat_mode_t mode) {
+  switch (mode) {
+  case MODE_MCP_SERVER:
+    return "mcp-server";
+  case MODE_API_SERVER:
+    return "api-server";
+  case MODE_SERVER:
+    return "server";
+  case MODE_CLIENT:
+    return "client";
+  case MODE_MIRROR:
+    return "mirror";
+  case MODE_DISCOVERY_SERVICE:
+    return "discovery-service";
+  case MODE_DISCOVERY:
+  default:
+    return NULL;
+  }
+}
+
 /**
  * @brief Calculate global max column width across all help sections
  *
@@ -91,7 +112,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   if (!config)
     return 0;
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   int max_col_width = 0;
   char temp_buf[BUFFER_SIZE_MEDIUM];
@@ -231,7 +252,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
   }
 
   int max_width = 0;
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
   char temp_buf[BUFFER_SIZE_MEDIUM];
 
   if (strcmp(section_type, "usage") == 0) {
@@ -240,30 +261,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       return 20;
 
     // Get mode name for filtering usage lines (same logic as options_print_help_for_mode)
-    const char *mode_name = NULL;
-    if (!for_binary_help) {
-      switch (mode) {
-      case MODE_MCP_SERVER:
-        mode_name = "mcp-server";
-        break;
-      case MODE_SERVER:
-        mode_name = "server";
-        break;
-      case MODE_CLIENT:
-        mode_name = "client";
-        break;
-      case MODE_MIRROR:
-        mode_name = "mirror";
-        break;
-      case MODE_DISCOVERY_SERVICE:
-        mode_name = "discovery-service";
-        break;
-      case MODE_DISCOVERY:
-      default:
-        mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows all usage lines
-        break;
-      }
-    }
+    const char *mode_name = for_binary_help ? NULL : get_mode_name(mode);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
@@ -463,7 +461,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
     return;
   }
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
 
@@ -515,7 +513,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     return;
   }
 
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES"));
 
@@ -696,7 +694,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
  * @brief Print MODE-OPTIONS section programmatically
  */
 static void print_mode_options_section(FILE *stream, int term_width, int max_col_width) {
-  const char *binary_name = PLATFORM_BINARY_NAME;
+  const char *binary_name = BINARY_NAME;
 
   // Print section header with colored "MODE-OPTIONS:" label
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS"));
@@ -1073,7 +1071,9 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
       if (desc->default_value && !description_has_default) {
         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
-        int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+        int default_len = mode == MODE_MCP_SERVER && !strcmp(desc->long_name, "max-clients")
+                              ? safe_snprintf(default_buf, sizeof(default_buf), "available CPUs")
+                              : format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=
               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
@@ -1188,28 +1188,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
   if (config->num_usage_lines > 0) {
     // Get mode name for filtering usage lines
-    const char *mode_name = NULL;
-    switch (mode) {
-    case MODE_MCP_SERVER:
-      mode_name = "mcp-server";
-      break;
-    case MODE_SERVER:
-      mode_name = "server";
-      break;
-    case MODE_CLIENT:
-      mode_name = "client";
-      break;
-    case MODE_MIRROR:
-      mode_name = "mirror";
-      break;
-    case MODE_DISCOVERY_SERVICE:
-      mode_name = "discovery-service";
-      break;
-    case MODE_DISCOVERY:
-    default:
-      mode_name = NULL; // Binary help shows all usage lines
-      break;
-    }
+    const char *mode_name = get_mode_name(mode);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];

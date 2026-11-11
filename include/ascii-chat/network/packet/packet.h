@@ -80,8 +80,8 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ACIP_OPUS_BATCH_HEADER_SIZE 16
 
-#include "../../platform/socket.h"
-#include "../../platform/abstraction.h"
+#include <libplatform/socket.h>
+#include <libplatform/compiler.h>
 #include "../../crypto/crypto.h"
 #include "../../log/log.h"
 #include "../../util/magic.h"
@@ -97,6 +97,13 @@
 #endif
 
 /**
+ * @brief Announces the key-exchange, authentication, and cipher algorithms an endpoint is willing to use. The supported-algorithm fields are capability bitmasks or lists, while the preferred values guide selection; the receiver uses this packet to build the later crypto-parameters message rather than keeping it as session state.
+ * @brief Fixed prefix shared by every ACIP packet on the wire
+ * @brief The first ACIP negotiation packet exchanged by two peers. Its protocol version and revision fields establish wire compatibility, while the encryption, compression, and feature flags tell the receiver which later packet paths are safe to use. It is assembled for transmission and parsed into host-sized values on receipt.
+ * @brief Terminal size update packet
+ * @brief When code needs to work with server state packet, it keeps `connected_client_count`, `active_client_count` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief For stream header, this is the live record that ties `client_id`, `stream_type`, `timestamp` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief The ACIP packet sent when a terminal announces what it can render. `capabilities` and `color_level` describe feature support, while `width`, `height`, and `render_mode` let the peer choose a compatible output format. The packed fields are serialized directly; do not treat this as a long-lived heap object.
  * @name Network Protocol Constants
  * @{
  * @ingroup packet
@@ -331,6 +338,13 @@ typedef enum {
   PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 1108,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
+  /** @brief Internal authenticated readiness barrier for ACIP over QUIC */
+  PACKET_TYPE_QUIC_READY = 1110,
+  /** @brief Internal authenticated request for a QUIC encoded-video keyframe */
+  PACKET_TYPE_QUIC_KEYFRAME_REQUEST = 1111,
+  PACKET_TYPE_CRYPTO_EPOCH_MARKER = 1112,
+  PACKET_TYPE_CRYPTO_REKEY_NEEDED = 1113,
+  PACKET_TYPE_CRYPTO_EPOCH_ACK = 1114,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)
@@ -561,6 +575,12 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
   return false;
 }
 
+/** Initial negotiation stays plaintext; rotation is authenticated session traffic. */
+static inline bool packet_is_initial_handshake_type(packet_type_t type) {
+  return packet_is_handshake_type(type) &&
+         !(type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
+}
+
 /**
  * @brief Check if packet type contains already-compressed data
  *
@@ -585,7 +605,7 @@ static inline bool packet_is_precompressed(packet_type_t type) {
 }
 
 /**
- * @brief Network packet header structure
+ * @brief Fixed prefix shared by every ACIP packet on the wire
  *
  * Standard header for all network packets. Contains magic number for
  * validation, packet type, payload length, CRC32 checksum, and client ID.
@@ -618,6 +638,15 @@ typedef struct {
   uint32_t client_id;
 } /** @cond */
 PACKED_ATTR /** @endcond */ packet_header_t;
+
+/** Shared ACIP wire codec. Headers are returned in network byte order. */
+asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
+                                      size_t count, uint32_t client_id);
+asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id,
+                                void *output, size_t capacity, size_t *written);
+/** Validate exactly one complete packet, including the empty-payload checksum.
+ * A zero limit uses MAX_PACKET_SIZE. The optional header output is a copy. */
+asciichat_error_t packet_validate(const void *packet, size_t length, size_t limit, packet_header_t *header);
 
 /**
  * @name Multi-User Protocol Constants
@@ -690,10 +719,11 @@ typedef struct {
 PACKED_ATTR /** @endcond */ stream_header_t;
 
 /**
- * @brief Client list packet structure
+ * @brief Snapshot of the clients currently known to the server
  *
- * Contains list of all connected clients with their information.
- * Broadcast by server to all clients when client list changes.
+ * `client_count` says how many entries in `clients` are valid. The server
+ * sends this fixed-size packet when membership changes so each recipient can
+ * rebuild its participant list; unused array slots are ignored.
  *
  * @ingroup packet
  */
@@ -812,6 +842,7 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
 #define FEATURE_RLE_ENCODING 0x01                /**< @brief Run-length encoding support */
 #define FEATURE_DELTA_FRAMES 0x02                /**< @brief Delta frame encoding (future) */
 #define PROTOCOL_FEATURE_RECOVERABLE_ERRORS 0x04 /**< Peer accepts nonfatal audio error notifications */
+#define PROTOCOL_FEATURE_IDENTITY_SET 0x08       /**< CLIENT_HELLO accepts a bounded set of pinned Ed25519 keys */
 
 /** @} */
 
@@ -831,6 +862,8 @@ typedef struct {
   uint16_t protocol_version;
   /** @brief Minor protocol revision (server can be newer) */
   uint16_t protocol_revision;
+  /** @brief Patch protocol revision */
+  uint16_t protocol_patch;
   /** @brief Encryption & authentication mode bitmask (ACIP_CRYPTO_* constants: NONE, ENCRYPT, AUTH, or FULL) */
   uint8_t supports_encryption;
   /** @brief Supported compression algorithms bitmask (COMPRESS_ALGO_*) */
@@ -840,11 +873,21 @@ typedef struct {
   /** @brief Feature flags bitmask (FEATURE_RLE_ENCODING, etc.) */
   uint16_t feature_flags;
   /** @brief Reserved bytes for future expansion (must be zero) */
-  uint8_t reserved[7];
+  uint8_t reserved[5];
 } /** @cond */
 PACKED_ATTR /** @endcond */ protocol_version_packet_t;
 
+_Static_assert(sizeof(protocol_version_packet_t) == 16, "protocol version packet wire size must remain 16 bytes");
+
 /**
+ * @brief Initialize a protocol version packet with the current wire version.
+ * @param version Packet to initialize.
+ * @param supports_encryption ACIP encryption/authentication capability mask.
+ */
+void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t supports_encryption);
+
+/**
+ * @brief The wire metadata for one rendered ASCII frame. `width` and `height` describe the terminal grid, `original_size` and `compressed_size` bound the encoded text, and `checksum` detects corruption; flags carry frame-specific options. The variable text follows this fixed prefix and is owned by the packet storage until decoding completes.
  * @brief ASCII frame packet structure (Packet Type 2)
  *
  * Contains complete ASCII art frame with metadata for terminal rendering.
@@ -873,6 +916,7 @@ typedef struct {
 PACKED_ATTR /** @endcond */ ascii_frame_packet_t;
 
 /**
+ * @brief Describes one compressed image sent through ACIP. `width`, `height`, and `pixel_format` tell the decoder how to interpret the payload; `compressed_size` bounds the following bytes, and `checksum` plus `timestamp` support validation and frame ordering. The packet header is fixed-size, but the image bytes are variable-length and owned by the packet buffer.
  * @brief Image frame packet structure (Packet Type 3)
  *
  * Contains raw RGB image with dimensions from camera/webcam.
@@ -901,6 +945,7 @@ typedef struct {
 PACKED_ATTR /** @endcond */ image_frame_packet_t;
 
 /**
+ * @brief The metadata prefix for a batch of encoded audio samples. `batch_count`, `total_samples`, `sample_rate`, and `channels` let the receiver allocate or route the batch correctly before it touches the encoded payload. The header is serialized with the packet; the audio bytes remain in the enclosing packet buffer.
  * @brief Audio batch packet structure (Packet Type 28)
  *
  * Contains multiple audio chunks batched together for efficiency.
@@ -1146,6 +1191,7 @@ typedef struct {
   size_t len;
   /** @brief True if packet was encrypted (decrypted before envelope creation) */
   bool was_encrypted;
+  bool consumed; ///< Shared security control; never dispatch to the application.
   /** @brief Buffer that needs to be freed by caller (may be NULL if not allocated) */
   void *allocated_buffer;
   /** @brief Size of allocated buffer in bytes */
@@ -1153,6 +1199,7 @@ typedef struct {
 } packet_envelope_t;
 
 /**
+ * @brief packet envelope is intentionally a small, concrete record. Fields such as `type`, `data`, `len`, `was_encrypted` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Packet reception result codes
  *
  * Result codes for packet reception operations. Negative values indicate

@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>screen(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">screen(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">screen(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">screen</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>screen</b> * <b>next</b>
+            <br />
+            <b>screen_snapshot_t</b> * <b>owned</b>
+            <br />
+            void * <b>snapshot</b>
+            <br />
+            <b>ui_render_fn</b> <b>render</b>
+            <br />
+            <b>terminal_size_t</b> <b>minimum</b>
+            <br />
+            int <b>fd</b>
+            <br />
+            <b>bool</b> <b>dirty</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>81</b> of file <b>tui/controller.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> screen::dirty</h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>tui/controller.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_screen::fd">
+            <a class="permalink" href="#int_screen::fd">int screen::fd</a>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>tui/controller.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_active_fd()</b>,
+            <b>ui_controller_finish()</b>, <b>ui_controller_size()</b>, and
+            <b>ui_controller_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> screen::minimum</h2>
+          <p class="Pp">
+            Definition at line <b>86</b> of file <b>tui/controller.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>screen</b>* screen::next</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>82</b> of file <b>tui/controller.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>screen_snapshot_t</b>* screen::owned</h2>
+          <p class="Pp">
+            Definition at line <b>83</b> of file <b>tui/controller.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_render_fn</b> screen::render</h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>tui/controller.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_controller_active_fd()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_screen::snapshot">
+            <a class="permalink" href="#void*_screen::snapshot"
+              >void* screen::snapshot</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>tui/controller.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

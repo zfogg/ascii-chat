@@ -91,7 +91,12 @@
 #define OPTIONS_COMMON_H
 
 #include "../options/options.h"
-#include "../platform/terminal.h"
+#ifdef _WIN32
+#include "../os/windows/getopt.h"
+#else
+#include <getopt.h>
+#endif
+#include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -250,7 +255,7 @@ bool validate_positive_int_opt(const char *value_str, int *out_value, const char
 bool validate_port_opt(const char *value_str, uint16_t *out_port);
 
 /**
- * @brief Validate FPS value (1-144)
+ * @brief Validate FPS value (0 for auto, otherwise 1-144)
  *
  * Internal option parsing helper that validates FPS is in reasonable range.
  * Range chosen to support 1 FPS (slideshows) to 144 FPS (high refresh monitors).

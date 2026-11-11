@@ -1,260 +1,338 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>colorize.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">colorize.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">colorize.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">colorize.h - Log message colorization for terminal output.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>colorize_log_message</b> (const char *message)
-  <br/>
-  Colorize a log message for terminal output.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Log message colorization for terminal output.</p>
-<p class="Pp">Colorizes log messages for terminal output by applying colors
-  to:</p>
-<ul class="Bl-bullet">
-  <li>Numbers and numeric units (cyan/light blue)</li>
-  <li>File paths like /path/to/file or C:\path (magenta)</li>
-  <li>Environment variables like $VAR_NAME (grey)</li>
-</ul>
-<p class="Pp">Only applies colors when output goes to TTY (not when piped). File
-    logging output remains uncolorized.</p>
-<p class="Pp">Definition in file <b>colorize.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_colorize_log_message_(const_char_*_message)"><a class="permalink" href="#const_char_*_colorize_log_message_(const_char_*_message)">const
-  char * colorize_log_message (const char * message)</a></h2>
-<p class="Pp">Colorize a log message for terminal output. Applies semantic
-    colors to:</p>
-<ul class="Bl-bullet">
-  <li>Numeric values: 0, 25, 0.24, 1920x1080, 25 MB, 1024 GiB, etc. (cyan)</li>
-  <li>File paths: /path/to/file, C:\path, <b>src/main.c</b>, etc. (magenta)</li>
-  <li>Environment variables: $VAR_NAME, $HOME, etc. (grey)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>message</i> The log message to colorize</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Colorized string in static buffer (reused across
-  calls)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must use returned string immediately before next
-  call
-<p class="Pp"></p>
-<p class="Pp">Only colorizes if output is going to TTY, otherwise returns
-    message unchanged</p>
-</div>
-<p class="Pp">Uses 4 rotating static buffers like <b>colored_string()</b> to
-    handle multiple colorizations in a single expression.</p>
-<p class="Pp"></p>
-<p class="Pp">Only applies colors if output is going to a TTY (not
-    piped/redirected). Only colorizes text that is not already colored (in reset
-    state).</p>
-<p class="Pp">Definition at line <b>509</b> of file <b>colorize.c</b>.</p>
-<pre>509                                                       {
-510   if (!message) {
-511     return message;
-512   }
-513 
-514   // Check if colors should be used based on TTY status (same as ASCII art)
-515   // Colors are only applied when output is actually a TTY
-516   bool should_colorize = terminal_should_color_output(STDOUT_FILENO);
-517 
-518   if (!should_colorize) {
-519     return message;
-520   }
-521 
-522   // Use 4 static buffers for rotation (handles nested calls)
-523   static char buffers[4][4096];
-524   static int buffer_index = 0;
-525 
-526   char *output = buffers[buffer_index];
-527   buffer_index = (buffer_index + 1) % 4;
-528 
-529   size_t out_pos = 0;
-530   const size_t max_size = sizeof(buffers[0]);
-531 
-532   // Process the input string
-533   for (size_t i = 0; message[i] != '\0' &amp;&amp; out_pos &lt; max_size - 100; i++) {
-534     size_t end_pos = 0;
-535 
-536     // Check if already colorized - only colorize if NOT already colored
-537     bool can_colorize = !ansi_is_already_colorized(message, i);
-538 
-539     // Try key=value pair first (highest priority pattern)
-540     size_t key_end = 0, value_start = 0, value_end = 0;
-541     if (can_colorize &amp;&amp; is_key_value_pair(message, i, &amp;key_end, &amp;value_start, &amp;value_end)) {
-542       size_t key_len = key_end - i;
-543       size_t value_len = value_end - value_start;
-544 
-545       // Extract key
-546       char key_buf[256];
-547       safe_snprintf(key_buf, sizeof(key_buf), &quot;%.*s&quot;, (int)key_len, message + i);
-548 
-549       // Extract value
-550       char value_buf[512];
-551       safe_snprintf(value_buf, sizeof(value_buf), &quot;%.*s&quot;, (int)value_len, message + value_start);
-552 
-553       // Color the key (magenta)
-554       const char *colored_key = colored_string(LOG_COLOR_FATAL, key_buf);
-555       size_t colored_key_len = strlen(colored_key);
-556 
-557       // Check if we have enough space for key + equals + value
-558       // (accounting for ANSI codes which will be added by colored_string)
-559       if (out_pos + colored_key_len + 1 + value_len + 100 &lt; max_size) {
-560         memcpy(output + out_pos, colored_key, colored_key_len);
-561         out_pos += colored_key_len;
-562 
-563         // Add uncolored equals sign
-564         output[out_pos++] = '=';
-565 
-566         // Determine value color and add colored value
-567         log_color_t value_color = get_value_color(value_buf);
-568         const char *colored_value = colored_string(value_color, value_buf);
-569         size_t colored_value_len = strlen(colored_value);
-570         if (out_pos + colored_value_len &lt; max_size) {
-571           memcpy(output + out_pos, colored_value, colored_value_len);
-572           out_pos += colored_value_len;
-573         }
-574       }
-575       i = value_end - 1;
-576       continue;
-577     }
-578 
-579     // Try numeric pattern
-580     if (can_colorize &amp;&amp; is_numeric_pattern(message, i, &amp;end_pos)) {
-581       size_t pattern_len = end_pos - i;
-582       char pattern_buf[256];
-583       safe_snprintf(pattern_buf, sizeof(pattern_buf), &quot;%.*s&quot;, (int)pattern_len, message + i);
-584 
-585       const char *colored = colored_string(LOG_COLOR_GREY, pattern_buf);
-586       size_t colored_len = strlen(colored);
-587       if (out_pos + colored_len &lt; max_size) {
-588         memcpy(output + out_pos, colored, colored_len);
-589         out_pos += colored_len;
-590       }
-591       i = end_pos - 1;
-592       continue;
-593     }
-594 
-595     // Try file path
-596     if (can_colorize &amp;&amp; is_file_path(message, i, &amp;end_pos)) {
-597       size_t path_len = end_pos - i;
-598       char path_buf[512];
-599       safe_snprintf(path_buf, sizeof(path_buf), &quot;%.*s&quot;, (int)path_len, message + i);
-600 
-601       const char *colored = colored_string(LOG_COLOR_DEBUG, path_buf);
-602       size_t colored_len = strlen(colored);
-603       if (out_pos + colored_len &lt; max_size) {
-604         memcpy(output + out_pos, colored, colored_len);
-605         out_pos += colored_len;
-606       }
-607       i = end_pos - 1;
-608       continue;
-609     }
-610 
-611     // Try environment variable
-612     if (can_colorize &amp;&amp; is_env_var(message, i, &amp;end_pos)) {
-613       size_t var_len = end_pos - i;
-614       char var_buf[256];
-615       safe_snprintf(var_buf, sizeof(var_buf), &quot;%.*s&quot;, (int)var_len, message + i);
-616 
-617       const char *colored = colored_string(LOG_COLOR_GREY, var_buf);
-618       size_t colored_len = strlen(colored);
-619       if (out_pos + colored_len &lt; max_size) {
-620         memcpy(output + out_pos, colored, colored_len);
-621         out_pos += colored_len;
-622       }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>colorize.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">colorize.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">colorize.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          colorize.h - Log message colorization for terminal output.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>colorize_log_message</b> (const char *message)
+            <br />
+            Colorize a log message for terminal output. const char *
+            <b>colorize_log_message_with_color</b> (const char *message,
+            <b>bool</b>
+            enabled)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Log message colorization for terminal output.</p>
+        <p class="Pp">
+          Colorizes log messages for terminal output by applying colors to:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Numbers and numeric units (cyan/light blue)</li>
+          <li>File paths like /path/to/file or C:\path (magenta)</li>
+          <li>Environment variables like $VAR_NAME (grey)</li>
+        </ul>
+        <p class="Pp">
+          Only applies colors when output goes to TTY (not when piped). File
+          logging output remains uncolorized.
+        </p>
+        <p class="Pp">Definition in file <b>colorize.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_colorize_log_message_(const_char_*_message)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_colorize_log_message_(const_char_*_message)"
+              >const char * colorize_log_message (const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Colorize a log message for terminal output. Applies semantic colors
+            to:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Numeric values: 0, 25, 0.24, 1920x1080, 25 MB, 1024 GiB, etc.
+              (cyan)
+            </li>
+            <li>
+              File paths: /path/to/file, C:\path, <b>src/main.c</b>, etc.
+              (magenta)
+            </li>
+            <li>Environment variables: $VAR_NAME, $HOME, etc. (grey)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>message</i> The log message to colorize
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Colorized string in static buffer (reused across calls)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must use returned string immediately before next call
+            <p class="Pp"></p>
+            <p class="Pp">
+              Only colorizes if output is going to TTY, otherwise returns
+              message unchanged
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>536</b> of file <b>colorize.c</b>.
+          </p>
+          <pre>
+536                                                       {
+537   if (!message)
+538     return message;
+539   return colorize_log_message_with_color(message, terminal_should_color_output(STDOUT_FILENO));
+540 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colorize_log_message()</b>,
+            <b>colorize_log_message_with_color()</b>, and
+            <b>terminal_should_color_output()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>colorize_log_message()</b>, <b>log_msg()</b>,
+            <b>log_plain_msg()</b>, and <b>log_recolor_plain_entry()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_colorize_log_message_with_color_(const_char_*_message,_"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_colorize_log_message_with_color_(const_char_*_message,_"
+              >const char * colorize_log_message_with_color (const char *
+              message, <b>bool</b> enabled)</a
+            >
+          </h2>
+          <p class="Pp">
+            Apply an already-selected color policy without querying the
+            terminal.
+          </p>
+          <p class="Pp">
+            Definition at line <b>542</b> of file <b>colorize.c</b>.
+          </p>
+          <pre>
+542                                                                                {
+543   if (!message || !enabled) {
+544     return message;
+545   }
+546
+547   // Keep concurrent report formatting separate while allowing nested calls.
+548   static _Thread_local char buffers[LOG_COLORIZE_SLOT_COUNT][LOG_MSG_BUFFER_SIZE];
+549   static _Thread_local int buffer_index = 0;
+550
+551   char *output = buffers[buffer_index];
+552   buffer_index = (buffer_index + 1) % 4;
+553
+554   size_t out_pos = 0;
+555   const size_t max_size = sizeof(buffers[0]);
+556
+557   // Process the input string
+558   for (size_t i = 0; message[i] != '\0' &amp;&amp; out_pos &lt; max_size - 100; i++) {
+559     size_t end_pos = 0;
+560
+561     // Check if already colorized - only colorize if NOT already colored
+562     bool can_colorize = !ansi_is_already_colorized(message, i);
+563
+564     // Try key=value pair first (highest priority pattern)
+565     size_t key_end = 0, value_start = 0, value_end = 0;
+566     if (can_colorize &amp;&amp; is_key_value_pair(message, i, &amp;key_end, &amp;value_start, &amp;value_end)) {
+567       size_t key_len = key_end - i;
+568       size_t value_len = value_end - value_start;
+569
+570       // Extract key
+571       char key_buf[LOG_COLORIZE_KEY_BUFFER_SIZE];
+572       safe_snprintf(key_buf, sizeof(key_buf), &quot;%.*s&quot;, (int)key_len, message + i);
+573
+574       // Extract value
+575       char value_buf[LOG_COLORIZE_VALUE_BUFFER_SIZE];
+576       safe_snprintf(value_buf, sizeof(value_buf), &quot;%.*s&quot;, (int)value_len, message + value_start);
+577
+578       // Check if we have enough space for key + equals + value
+579       // including the bounded color prefixes and resets.
+580       if (out_pos + key_len + 1 + value_len + 100 &lt; max_size) {
+581         append_colored_token(output, max_size, &amp;out_pos, LOG_COLOR_FATAL, key_buf);
+582
+583         // Add uncolored equals sign
+584         output[out_pos++] = '=';
+585
+586         // Determine value color and add colored value
+587         log_color_t value_color = get_value_color(value_buf);
+588         append_colored_token(output, max_size, &amp;out_pos, value_color, value_buf);
+589       }
+590       i = value_end - 1;
+591       continue;
+592     }
+593
+594     // Try numeric pattern
+595     if (can_colorize &amp;&amp; is_numeric_pattern(message, i, &amp;end_pos)) {
+596       size_t pattern_len = end_pos - i;
+597       char pattern_buf[LOG_COLORIZE_PATTERN_BUFFER_SIZE];
+598       safe_snprintf(pattern_buf, sizeof(pattern_buf), &quot;%.*s&quot;, (int)pattern_len, message + i);
+599
+600       append_colored_token(output, max_size, &amp;out_pos, LOG_COLOR_GREY, pattern_buf);
+601       i = end_pos - 1;
+602       continue;
+603     }
+604
+605     // Try file path
+606     if (can_colorize &amp;&amp; is_file_path(message, i, &amp;end_pos)) {
+607       size_t path_len = end_pos - i;
+608       char path_buf[LOG_COLORIZE_PATH_BUFFER_SIZE];
+609       safe_snprintf(path_buf, sizeof(path_buf), &quot;%.*s&quot;, (int)path_len, message + i);
+610
+611       append_colored_token(output, max_size, &amp;out_pos, LOG_COLOR_DEBUG, path_buf);
+612       i = end_pos - 1;
+613       continue;
+614     }
+615
+616     // Try environment variable
+617     if (can_colorize &amp;&amp; is_env_var(message, i, &amp;end_pos)) {
+618       size_t var_len = end_pos - i;
+619       char var_buf[LOG_COLORIZE_VAR_BUFFER_SIZE];
+620       safe_snprintf(var_buf, sizeof(var_buf), &quot;%.*s&quot;, (int)var_len, message + i);
+621
+622       append_colored_token(output, max_size, &amp;out_pos, LOG_COLOR_GREY, var_buf);
 623       i = end_pos - 1;
 624       continue;
 625     }
-626 
+626
 627     // Try URL
 628     if (can_colorize &amp;&amp; is_url(message, i, &amp;end_pos)) {
 629       size_t url_len = end_pos - i;
-630       char url_buf[2048];
+630       char url_buf[LOG_COLORIZE_URL_BUFFER_SIZE];
 631       safe_snprintf(url_buf, sizeof(url_buf), &quot;%.*s&quot;, (int)url_len, message + i);
-632 
-633       const char *colored = colored_string(LOG_COLOR_INFO, url_buf);
-634       size_t colored_len = strlen(colored);
-635       if (out_pos + colored_len &lt; max_size) {
-636         memcpy(output + out_pos, colored, colored_len);
-637         out_pos += colored_len;
-638       }
-639       i = end_pos - 1;
-640       continue;
+632
+633       append_colored_token(output, max_size, &amp;out_pos, LOG_COLOR_INFO, url_buf);
+634       i = end_pos - 1;
+635       continue;
+636     }
+637
+638     // Regular character - just copy
+639     if (out_pos &lt; max_size - 1) {
+640       output[out_pos++] = message[i];
 641     }
-642 
-643     // Regular character - just copy
-644     if (out_pos &lt; max_size - 1) {
-645       output[out_pos++] = message[i];
-646     }
-647   }
-648 
-649   output[out_pos] = '\0';
-650   return output;
-651 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_is_already_colorized()</b>,
-    <b>colored_string()</b>, <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_FATAL</b>,
-    <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_INFO</b>, <b>safe_snprintf()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Referenced by <b>log_msg()</b>, <b>log_plain_msg()</b>,
-    <b>log_recolor_plain_entry()</b>, and <b>log_template_apply()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+642   }
+643
+644   output[out_pos] = '\0';
+645   return output;
+646 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_is_already_colorized()</b>,
+            <b>colorize_log_message_with_color()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+            <b>LOG_COLOR_INFO</b>, <b>LOG_COLORIZE_KEY_BUFFER_SIZE</b>,
+            <b>LOG_COLORIZE_PATH_BUFFER_SIZE</b>,
+            <b>LOG_COLORIZE_PATTERN_BUFFER_SIZE</b>,
+            <b>LOG_COLORIZE_SLOT_COUNT</b>, <b>LOG_COLORIZE_URL_BUFFER_SIZE</b>,
+            <b>LOG_COLORIZE_VALUE_BUFFER_SIZE</b>,
+            <b>LOG_COLORIZE_VAR_BUFFER_SIZE</b>, <b>LOG_MSG_BUFFER_SIZE</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>colorize_log_message()</b>,
+            <b>colorize_log_message_with_color()</b>, and
+            <b>log_template_apply()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -3,9 +3,9 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
-#include <ascii-chat/platform/thread.h>
+#include <libplatform/thread.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/atomic.h>
+#include <libplatform/atomic.h>
 #include <math.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
@@ -36,7 +36,7 @@ static void test_flip_defaults(void) {
     cr_assert(GET_OPTION(flip_x));
   }
   options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
-                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -63,12 +63,27 @@ static void test_flip_defaults(void) {
 }
 
 static void test_transactions(void) {
+  cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
+  cr_assert(GET_OPTION(renderer) == ASCII_RENDERER_GLYPH);
+  uint64_t palette_revision = options_revision();
+  palette_type_t previous_palette = GET_OPTION(palette_type);
+  cr_assert_neq(options_set_int("palette_type", PALETTE_DIGITAL), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(palette_type), previous_palette);
+  cr_assert_eq(options_revision(), palette_revision);
+  CLEAR_ERRNO();
+  cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_LUMINANCE), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
+  uint64_t renderer_revision = options_revision();
+  cr_assert_neq(options_set_int("renderer", 99), ASCIICHAT_OK);
+  CLEAR_ERRNO();
+  cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
+  cr_assert_eq(options_revision(), renderer_revision);
   cr_assert_eq(options_set_int("color_mode", TERM_COLOR_AUTO), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("width", 80), ASCIICHAT_OK);
   const options_t *borrowed = options_get();
   uint64_t before = options_revision();
   options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120},
-                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   cr_assert(GET_OPTION(width) == 80 && options_revision() == before);
@@ -93,9 +108,9 @@ static void test_transactions(void) {
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);
   before = options_revision();
-  asciichat_thread_t threads[4];
+  platform_thread_t threads[4];
   for (int i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"), ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"), ASCIICHAT_OK);
   while (atomic_load_int(&ready) != 4)
     time_sleep_ns(1000);
   atomic_store_int(&start, 1);
@@ -154,6 +169,16 @@ static void test_remote(void) {
   cr_assert(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM &&
             !strcmp(clients[0].palette, " .+#"));
   cr_assert(clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
+  cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
+  cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status,
+               0);
+  cr_assert(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
+  acip_render_settings_t glyph_previous = clients[1];
+  cr_assert_neq(request(&clients[1], "{\"palette_custom\":\"\\u2603\"}", UINT32_MAX).status, 0);
+  cr_assert(!memcmp(&glyph_previous, &clients[1], sizeof(glyph_previous)));
   acip_render_settings_t previous = clients[0];
   cr_assert_neq(request(&clients[0], "{\"width\":90,\"password\":\"secret\"}", UINT32_MAX).status, 0);
   cr_assert(!memcmp(&previous, &clients[0], sizeof(previous)));

@@ -270,7 +270,9 @@ test("/discovery joins native ACDS over WebSocket and renders an authenticated W
       .click();
     await expect(
       page.getByRole("button", { name: "Disconnect", exact: true }),
-    ).toBeVisible({ timeout: 40_000 });
+    ).toBeVisible({
+      timeout: 40_000,
+    });
     await rendered(page, info, "discovery");
     await server.ready(/Authenticated WebRTC connection adopted/);
     await page.getByRole("button", { name: "Disconnect", exact: true }).click();

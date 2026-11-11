@@ -1,7 +1,19 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/simd/dispatch.h>
+#include <ascii-chat/video/ascii/simd/cells.h>
 #include <string.h>
 #include <arm_sve.h>
+
+int glyph_shape_correlation_sve(const int16_t samples[16], const int16_t mask[16]) {
+  int sum = 0;
+  for (uint64_t i = 0; i < 16; i += svcntw()) {
+    svbool_t active = svwhilelt_b32(i, (uint64_t)16);
+    svint32_t a = svld1sh_s32(active, samples + i);
+    svint32_t b = svld1sh_s32(active, mask + i);
+    sum += (int)svaddv_s32(active, svmul_s32_x(active, a, b));
+  }
+  return sum;
+}
 void simd_luminance_sve(const uint8_t *rgb, uint8_t *out, size_t width) {
   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
   size_t x = 0;

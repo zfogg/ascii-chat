@@ -504,29 +504,12 @@ if(WIN32)
     unset(_MSVC_LIB_HINTS)
 endif()
 
-# =============================================================================
-# Python 3 - For scripts
-# =============================================================================
-if(WIN32)
-    set(_PYTHON_HINTS
-        "$ENV{USERPROFILE}/scoop/shims"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python312"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python311"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python310"
-        "$ENV{ProgramFiles}/Python312"
-        "$ENV{ProgramFiles}/Python311"
-    )
-elseif(APPLE)
-    set(_PYTHON_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin /usr/bin)
-else()
-    set(_PYTHON_HINTS /usr/bin /usr/local/bin)
-endif()
+# Python is optional for developer-only tooling such as clang-tidy. Search PATH
+# so native builds do not depend on a Python installation or hard-coded paths.
 find_program(ASCIICHAT_PYTHON3_EXECUTABLE
     NAMES python3 python
-    HINTS ${_PYTHON_HINTS}
-    DOC "Python 3 interpreter"
+    DOC "Optional Python 3 interpreter for developer tooling"
 )
-unset(_PYTHON_HINTS)
 
 # =============================================================================
 # Ninja - Build system
@@ -786,8 +769,8 @@ endif()
 #
 # Required for ALL builds:
 #   - clang: C compiler (ascii-chat is Clang-only)
-#   - clang++: C++ compiler (for defer/panic tools)
-#   - llvm-config: queries LLVM paths (required by defer tool)
+#   - clang++: C++ compiler for project dependencies and tooling
+#   - llvm-config: identifies LLVM paths on Unix
 #   - llvm-ar: static library archiver
 #   - llvm-ranlib: static library indexer
 #
@@ -812,19 +795,18 @@ if(NOT ASCIICHAT_CLANG_EXECUTABLE)
         "  Linux:   sudo apt install clang  OR  sudo pacman -S clang")
 endif()
 
-# clang++ is required for building the defer tool (defer() is used in codebase)
+# clang++ is required for C++ dependencies and tooling
 if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-    message(FATAL_ERROR "clang++ not found. Required for building defer tool. Install LLVM/Clang:\n"
+    message(FATAL_ERROR "clang++ not found. Required for C++ dependencies and tooling. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install clang  OR  sudo pacman -S clang")
 endif()
 
-# llvm-config is required for defer tool to find LLVM libraries (Unix only)
-# On Windows, the official pre-built LLVM binaries don't include llvm-config.exe
-# The defer tool detects LLVM paths directly on Windows instead
+# llvm-config identifies the LLVM installation on Unix. Windows binaries can
+# be located from the compiler path when llvm-config.exe is unavailable.
 if(NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
-    message(FATAL_ERROR "llvm-config not found. Required for building defer tool. Install LLVM:\n"
+    message(FATAL_ERROR "llvm-config not found. Required to identify LLVM on Unix. Install LLVM:\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()

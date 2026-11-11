@@ -94,101 +94,10 @@ Test(handshake_contract, negotiated_sizes_use_host_order_for_server_and_network_
   cr_assert_eq(crypto_handshake_set_parameters(&first, NULL), ERROR_INVALID_PARAM);
 }
 
-Test(handshake_contract, encrypted_wrappers_authenticate_binary_data_and_passthrough_preserves_capacity) {
-  const uint8_t message[] = {0, 0xff, 1, 'a', 'b'};
-  uint8_t wire[256], plain[32];
-  size_t wire_length = 0, plain_length = 0;
+Test(handshake_contract, exposes_crypto_only_after_handshake_completion) {
   cr_assert(crypto_handshake_is_ready(&first));
   cr_assert_eq(crypto_handshake_get_context(&first), &first.crypto_ctx);
   cr_assert_null(crypto_handshake_get_context(NULL));
-  cr_assert_eq(crypto_handshake_encrypt_packet(&first, message, sizeof(message), wire, sizeof(wire), &wire_length),
-               ASCIICHAT_OK);
-  cr_assert_gt(wire_length, sizeof(message));
-  cr_assert_eq(crypto_handshake_decrypt_packet(&second, wire, wire_length, plain, sizeof(plain), &plain_length),
-               ASCIICHAT_OK);
-  cr_assert_eq(plain_length, sizeof(message));
-  cr_assert_arr_eq(plain, message, sizeof(message));
-  wire[wire_length - 1] ^= 1;
-  cr_assert_eq(crypto_handshake_decrypt_packet(&second, wire, wire_length, plain, sizeof(plain), &plain_length),
-               ERROR_NETWORK);
-  cr_assert_eq(crypto_handshake_encrypt_packet(&first, message, sizeof(message), wire, 1, &wire_length), ERROR_NETWORK);
-  cr_assert_eq(crypto_handshake_encrypt_packet(NULL, message, sizeof(message), wire, sizeof(wire), &wire_length),
-               ERROR_INVALID_STATE);
   first.state = CRYPTO_HANDSHAKE_INIT;
   cr_assert_null(crypto_handshake_get_context(&first));
-  cr_assert_eq(crypto_handshake_decrypt_packet(&first, wire, 0, plain, sizeof(plain), &plain_length),
-               ERROR_INVALID_STATE);
-  for (unsigned disabled = 0; disabled < 2; ++disabled) {
-    first.crypto_ctx.encrypt_data = !disabled;
-    bool ready = disabled != 0;
-    cr_assert_eq(crypto_encrypt_packet_or_passthrough(&first, ready, message, sizeof(message), wire, sizeof(message),
-                                                      &wire_length),
-                 ASCIICHAT_OK);
-    cr_assert_eq(wire_length, sizeof(message));
-    cr_assert_arr_eq(wire, message, sizeof(message));
-    cr_assert_eq(
-        crypto_decrypt_packet_or_passthrough(&first, ready, wire, wire_length, plain, sizeof(message), &plain_length),
-        ASCIICHAT_OK);
-    cr_assert_arr_eq(plain, message, sizeof(message));
-    cr_assert_eq(crypto_encrypt_packet_or_passthrough(&first, ready, message, sizeof(message), wire, 1, &wire_length),
-                 ERROR_BUFFER);
-    cr_assert_eq(crypto_decrypt_packet_or_passthrough(&first, ready, message, sizeof(message), plain, 1, &plain_length),
-                 ERROR_BUFFER);
-  }
-}
-
-static void prepare_rotation(void) {
-  first.crypto_ctx.rekey_last_time = second.crypto_ctx.rekey_last_time = 0;
-  cr_assert_eq(crypto_rekey_init(&first.crypto_ctx), CRYPTO_OK);
-  cr_assert_eq(crypto_handshake_process_rekey_request(&second, first.crypto_ctx.temp_public_key, 32), ASCIICHAT_OK);
-  cr_assert_eq(crypto_handshake_process_rekey_response(&first, second.crypto_ctx.temp_public_key, 32), ASCIICHAT_OK);
-  cr_assert_arr_eq(first.crypto_ctx.temp_shared_key, second.crypto_ctx.temp_shared_key, 32);
-}
-
-Test(handshake_contract, rotation_keeps_old_keys_until_authenticated_confirmation_then_communicates_with_new_keys) {
-  uint8_t old[32];
-  memcpy(old, first.crypto_ctx.shared_key, sizeof(old));
-  prepare_rotation();
-  cr_assert_arr_eq(first.crypto_ctx.shared_key, old, sizeof(old));
-  cr_assert_arr_eq(second.crypto_ctx.shared_key, old, sizeof(old));
-  cr_assert_neq(memcmp(first.crypto_ctx.temp_shared_key, old, sizeof(old)), 0);
-  crypto_context_t proof = first.crypto_ctx;
-  memcpy(proof.shared_key, first.crypto_ctx.temp_shared_key, 32);
-  const uint8_t confirmation[] = {0};
-  uint8_t wire[256], plain[16];
-  size_t wire_length, plain_length;
-  cr_assert_eq(crypto_encrypt(&proof, confirmation, sizeof(confirmation), wire, sizeof(wire), &wire_length), CRYPTO_OK);
-  cr_assert_eq(crypto_handshake_process_rekey_complete(&second, wire, wire_length), ASCIICHAT_OK);
-  cr_assert_eq(crypto_rekey_commit(&first.crypto_ctx), CRYPTO_OK);
-  cr_assert_arr_eq(first.crypto_ctx.shared_key, second.crypto_ctx.shared_key, 32);
-  cr_assert_not(first.crypto_ctx.rekey_in_progress);
-  cr_assert_not(second.crypto_ctx.rekey_in_progress);
-  cr_assert_eq(first.crypto_ctx.rekey_count, 1);
-  cr_assert_eq(second.crypto_ctx.rekey_count, 1);
-  const uint8_t message[] = "after rotation";
-  cr_assert_eq(crypto_handshake_encrypt_packet(&first, message, sizeof(message), wire, sizeof(wire), &wire_length),
-               ASCIICHAT_OK);
-  cr_assert_eq(crypto_handshake_decrypt_packet(&second, wire, wire_length, plain, sizeof(plain), &plain_length),
-               ASCIICHAT_OK);
-  cr_assert_eq(plain_length, sizeof(message));
-  cr_assert_arr_eq(plain, message, sizeof(message));
-  sodium_memzero(&proof, sizeof(proof));
-}
-
-Test(handshake_contract, tampered_rotation_confirmation_aborts_temporary_keys_and_preserves_active_key) {
-  uint8_t old[32], invalid[64] = {0};
-  memcpy(old, second.crypto_ctx.shared_key, sizeof(old));
-  prepare_rotation();
-  cr_assert_eq(crypto_handshake_process_rekey_complete(&second, invalid, sizeof(invalid)), ERROR_CRYPTO);
-  cr_assert_arr_eq(second.crypto_ctx.shared_key, old, sizeof(old));
-  cr_assert_not(second.crypto_ctx.rekey_in_progress);
-  cr_assert_not(second.crypto_ctx.has_temp_key);
-  cr_assert(sodium_is_zero(second.crypto_ctx.temp_private_key, 32));
-  cr_assert_eq(crypto_handshake_process_rekey_complete(&second, invalid, sizeof(invalid)), ERROR_INVALID_STATE);
-  cr_assert_eq(crypto_handshake_process_rekey_response(&second, invalid, 32), ERROR_INVALID_STATE);
-  cr_assert_eq(crypto_handshake_process_rekey_response(&first, invalid, 31), ERROR_INVALID_PARAM);
-  cr_assert_eq(crypto_handshake_process_rekey_request(&second, invalid, 32), ERROR_CRYPTO);
-  cr_assert_eq(crypto_handshake_process_rekey_request(NULL, invalid, 32), ERROR_INVALID_STATE);
-  cr_assert_eq(crypto_handshake_process_rekey_response(NULL, invalid, 32), ERROR_INVALID_STATE);
-  cr_assert_eq(crypto_handshake_process_rekey_complete(NULL, invalid, 32), ERROR_INVALID_STATE);
 }

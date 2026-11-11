@@ -10,7 +10,7 @@ This directory contains unit and E2E tests for the ascii-chat WebAssembly client
 fails its job; browser retries are disabled. Reports are retained for 14 days,
 including screenshots, video, and traces from failed browser tests.
 
-To reproduce these checks, run `vp install --frozen-lockfile` from `web/`, then
+To reproduce these checks, run `vp install --frozen-lockfile` from the repository root, then
 run these commands from `web/web/`:
 
 ```bash

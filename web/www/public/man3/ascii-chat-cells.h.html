@@ -1,0 +1,905 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>cells.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">cells.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">cells.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">cells.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>simd_cells_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DECLARE_SIMD_CELLS</b>(isa)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>glyph_shape_correlation_scalar</b> (const int16_t
+            samples[16], const int16_t mask[16])
+            <br />
+            int <b>glyph_shape_correlation_sse2</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            int <b>glyph_shape_correlation_avx2</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            int <b>glyph_shape_correlation_neon</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            int <b>glyph_shape_correlation_sve</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            const <b>simd_cells_t</b> * <b>simd_cells_backend</b> (void)
+            <br />
+            void <b>simd_pack_scalar</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_scalar</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_scalar</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_scalar</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_scalar</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_pack_sse2</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_sse2</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_sse2</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_sse2</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_sse2</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_pack_ssse3</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_ssse3</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_ssse3</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_ssse3</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_ssse3</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_pack_avx2</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_avx2</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_avx2</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_avx2</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_avx2</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_pack_neon</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_neon</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_neon</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_neon</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_neon</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_pack_sve</b> (const <b>uint8_t</b> *,
+            <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_lookup_sve</b> (const <b>uint8_t</b> *, const
+            <b>uint32_t</b>[64], <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_quantize_sve</b> (const <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned)
+            <br />
+            void <b>simd_halfblock_sve</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, <b>uint32_t</b> *, <b>uint32_t</b> *,
+            <b>uint32_t</b> *, size_t, unsigned, const <b>uint32_t</b>[5])
+            <br />
+            size_t <b>simd_run_sve</b> (const <b>uint32_t</b> *, const
+            <b>uint32_t</b> *, const <b>uint32_t</b> *, size_t)
+            <br />
+            void <b>simd_emit_mono_neon</b> (<b>outbuf_t</b> *out, const
+            <b>uint32_t</b>
+            *glyph, size_t count)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>simd_cells_t</b> <b>simd_cells_scalar</b>
+            <br />
+            const <b>simd_cells_t</b> <b>simd_cells_sse2</b>
+            <br />
+            const <b>simd_cells_t</b> <b>simd_cells_ssse3</b>
+            <br />
+            const <b>simd_cells_t</b> <b>simd_cells_avx2</b>
+            <br />
+            const <b>simd_cells_t</b> <b>simd_cells_neon</b>
+            <br />
+            const <b>simd_cells_t</b> <b>simd_cells_sve</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DECLARE_SIMD_CELLS(_isa)">
+            <a class="permalink" href="#_define_DECLARE_SIMD_CELLS(_isa)"
+              >#define DECLARE_SIMD_CELLS( isa)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>void simd_pack_##isa(const uint8_t *, uint32_t *, size_t);                                                           \
+void simd_lookup_##isa(const uint8_t *, const uint32_t[64], uint32_t *, size_t);                                     \
+void simd_quantize_##isa(const uint32_t *, uint32_t *, size_t, unsigned);                                            \
+void simd_halfblock_##isa(const uint32_t *, const uint32_t *, uint32_t *, uint32_t *, uint32_t *, size_t, unsigned,  \
+<br/>
+                          const uint32_t[5]);                                                                        \
+size_t simd_run_##isa(const uint32_t *, const uint32_t *, const uint32_t *, size_t)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>29</b> of file <b>cells.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>simd_halfblock_avx2()</b>,
+            <b>simd_halfblock_neon()</b>, <b>simd_halfblock_sse2()</b>,
+            <b>simd_halfblock_ssse3()</b>, and <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_avx2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_avx2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_avx2 (const int16_t samples[16],
+              const int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>avx2/luminance.c</b>.
+          </p>
+          <pre>
+8                                                                                     {
+9   __m256i a = _mm256_loadu_si256((const __m256i *)(const void *)samples);
+10   __m256i b = _mm256_loadu_si256((const __m256i *)(const void *)mask);
+11   __m256i products = _mm256_madd_epi16(a, b);
+12   __m128i sums = _mm_add_epi32(_mm256_castsi256_si128(products), _mm256_extracti128_si256(products, 1));
+13   int32_t lanes[4];
+14   _mm_storeu_si128((__m128i *)(void *)lanes, sums);
+15   return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+16 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_avx2()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_avx2()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_neon_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_neon_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_neon (const int16_t samples[16],
+              const int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>neon/luminance.c</b>.
+          </p>
+          <pre>
+33                                                                                     {
+34   int16x8_t a0 = vld1q_s16(samples), a1 = vld1q_s16(samples + 8);
+35   int16x8_t b0 = vld1q_s16(mask), b1 = vld1q_s16(mask + 8);
+36   int32x4_t sums = vmull_s16(vget_low_s16(a0), vget_low_s16(b0));
+37   sums = vmlal_s16(sums, vget_high_s16(a0), vget_high_s16(b0));
+38   sums = vmlal_s16(sums, vget_low_s16(a1), vget_low_s16(b1));
+39   sums = vmlal_s16(sums, vget_high_s16(a1), vget_high_s16(b1));
+40   int32_t lanes[4];
+41   vst1q_s32(lanes, sums);
+42   return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+43 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_neon()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_neon()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_scalar_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_scalar_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_scalar (const int16_t samples[16],
+              const int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>cells.c</b>.</p>
+          <pre>
+4                                                                                       {
+5   int dot = 0;
+6   for (int i = 0; i &lt; 16; ++i)
+7     dot += samples[i] * mask[i];
+8   return dot;
+9 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_scalar()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_render_glyph_match()</b>, and
+            <b>glyph_shape_correlation_scalar()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_sse2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_sse2_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_sse2 (const int16_t samples[16],
+              const int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>sse2/luminance.c</b>.
+          </p>
+          <pre>
+7                                                                                     {
+8   __m128i a0 = _mm_loadu_si128((const __m128i *)(const void *)samples);
+9   __m128i a1 = _mm_loadu_si128((const __m128i *)(const void *)(samples + 8));
+10   __m128i b0 = _mm_loadu_si128((const __m128i *)(const void *)mask);
+11   __m128i b1 = _mm_loadu_si128((const __m128i *)(const void *)(mask + 8));
+12   __m128i sums = _mm_add_epi32(_mm_madd_epi16(a0, b0), _mm_madd_epi16(a1, b1));
+13   int32_t lanes[4];
+14   _mm_storeu_si128((__m128i *)(void *)lanes, sums);
+15   return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+16 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_sse2()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_sse2()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_sve (const int16_t samples[16], const
+              int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>sve/luminance.c</b>.
+          </p>
+          <pre>
+7                                                                                    {
+8   int sum = 0;
+9   for (uint64_t i = 0; i &lt; 16; i += svcntw()) {
+10     svbool_t active = svwhilelt_b32(i, (uint64_t)16);
+11     svint32_t a = svld1sh_s32(active, samples + i);
+12     svint32_t b = svld1sh_s32(active, mask + i);
+13     sum += (int)svaddv_s32(active, svmul_s32_x(active, a, b));
+14   }
+15   return sum;
+16 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_sve()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_sve()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>simd_cells_t</b> * simd_cells_backend (void )
+          </h2>
+          <p class="Pp">Definition at line <b>70</b> of file <b>cells.c</b>.</p>
+          <pre>
+70                                              {
+71   uint32_t features = simd_backend()-&gt;required_features;
+72   (void)features;
+73 #if SIMD_SUPPORT_SSE2
+74   if (features == CPU_FEATURE_SSE2)
+75     return &amp;simd_cells_sse2;
+76 #endif
+77 #if SIMD_SUPPORT_SSSE3
+78   if (features == CPU_FEATURE_SSSE3)
+79     return &amp;simd_cells_ssse3;
+80 #endif
+81 #if SIMD_SUPPORT_AVX2
+82   if (features == CPU_FEATURE_AVX2)
+83     return &amp;simd_cells_avx2;
+84 #endif
+85 #if SIMD_SUPPORT_NEON
+86   if (features == CPU_FEATURE_NEON)
+87     return &amp;simd_cells_neon;
+88 #endif
+89 #if SIMD_SUPPORT_SVE
+90   if (features == CPU_FEATURE_SVE)
+91     return &amp;simd_cells_sve;
+92 #endif
+93   return &amp;simd_cells_scalar;
+94 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>CPU_FEATURE_AVX2</b>, <b>CPU_FEATURE_NEON</b>,
+            <b>CPU_FEATURE_SSE2</b>, <b>CPU_FEATURE_SSSE3</b>,
+            <b>CPU_FEATURE_SVE</b>, <b>simd_backend_t::required_features</b>,
+            <b>simd_backend()</b>, <b>simd_cells_avx2</b>,
+            <b>simd_cells_backend()</b>, <b>simd_cells_neon</b>,
+            <b>simd_cells_scalar</b>, <b>simd_cells_sse2</b>,
+            <b>simd_cells_ssse3</b>, and <b>simd_cells_sve</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_convert()</b>,
+            <b>ascii_convert_with_buffers_stabilized()</b>,
+            <b>image_print()</b>, <b>image_print_16color()</b>,
+            <b>image_print_16color_dithered()</b>,
+            <b>image_print_16color_dithered_with_background()</b>,
+            <b>image_print_256color()</b>, <b>image_print_color()</b>,
+            <b>image_print_color_background()</b>,
+            <b>image_print_color_simd()</b>, <b>image_print_color_utf8()</b>,
+            <b>image_print_with_capabilities()</b>, and
+            <b>simd_cells_backend()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_emit_mono_neon_(">
+            <a class="permalink" href="#void_simd_emit_mono_neon_("
+              >void simd_emit_mono_neon (<b>outbuf_t</b> * out, const
+              <b>uint32_t</b> * glyph, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">References <b>simd_emit_mono_neon()</b>.</p>
+          <p class="Pp">Referenced by <b>simd_emit_mono_neon()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_avx2_(const_">
+            <a class="permalink" href="#void_simd_halfblock_avx2_(const_"
+              >void simd_halfblock_avx2 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , <b>uint32_t</b> * , <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned , const
+              <b>uint32_t</b> [5])</a
+            >
+          </h2>
+          <p class="Pp">References <b>DECLARE_SIMD_CELLS</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_neon_(const_">
+            <a class="permalink" href="#void_simd_halfblock_neon_(const_"
+              >void simd_halfblock_neon (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , <b>uint32_t</b> * , <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned , const
+              <b>uint32_t</b> [5])</a
+            >
+          </h2>
+          <p class="Pp">References <b>DECLARE_SIMD_CELLS</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_scalar_(const_">
+            <a class="permalink" href="#void_simd_halfblock_scalar_(const_"
+              >void simd_halfblock_scalar (const <b>uint32_t</b> * top, const
+              <b>uint32_t</b> * bottom, <b>uint32_t</b> * glyph,
+              <b>uint32_t</b> * fg, <b>uint32_t</b> * bg, size_t count, unsigned
+              mode, const <b>uint32_t</b> keys[5])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>30</b> of file <b>cells.c</b>.</p>
+          <pre>
+31                                                                                 {
+32   for (size_t i = 0; i &lt; count; ++i) {
+33     uint32_t t = top[i], b = bottom[i];
+34     unsigned yt = (76 * (t &gt;&gt; 16) + 150 * ((t &gt;&gt; 8) &amp; 255) + 29 * (t &amp; 255)) &gt;&gt; 8;
+35     unsigned yb = (76 * (b &gt;&gt; 16) + 150 * ((b &gt;&gt; 8) &amp; 255) + 29 * (b &amp; 255)) &gt;&gt; 8;
+36     bool transparent = mode == 0 ? yt &lt; 16 &amp;&amp; yb &lt; 16 : t == 0 &amp;&amp; b == 0;
+37     glyph[i] = transparent ? (uint32_t)' ' : mode == 0 ? keys[yt &gt;&gt; 6] : keys[4];
+38     if (mode == 0 || transparent)
+39       fg[i] = bg[i] = UINT32_MAX;
+40   }
+41 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>simd_halfblock_scalar()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>simd_halfblock_scalar()</b>, and
+            <b>simd_halfblock_SIMD_CELL_ISA()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_sse2_(const_">
+            <a class="permalink" href="#void_simd_halfblock_sse2_(const_"
+              >void simd_halfblock_sse2 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , <b>uint32_t</b> * , <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned , const
+              <b>uint32_t</b> [5])</a
+            >
+          </h2>
+          <p class="Pp">References <b>DECLARE_SIMD_CELLS</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_ssse3_(const_">
+            <a class="permalink" href="#void_simd_halfblock_ssse3_(const_"
+              >void simd_halfblock_ssse3 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , <b>uint32_t</b> * , <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned , const
+              <b>uint32_t</b> [5])</a
+            >
+          </h2>
+          <p class="Pp">References <b>DECLARE_SIMD_CELLS</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_sve_(const_">
+            <a class="permalink" href="#void_simd_halfblock_sve_(const_"
+              >void simd_halfblock_sve (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , <b>uint32_t</b> * , <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned , const
+              <b>uint32_t</b> [5])</a
+            >
+          </h2>
+          <p class="Pp">
+            References <b>DECLARE_SIMD_CELLS</b>, <b>simd_cells_avx2</b>,
+            <b>simd_cells_neon</b>, <b>simd_cells_scalar</b>,
+            <b>simd_cells_sse2</b>, <b>simd_cells_ssse3</b>, and
+            <b>simd_cells_sve</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_avx2_(const_">
+            <a class="permalink" href="#void_simd_lookup_avx2_(const_"
+              >void simd_lookup_avx2 (const <b>uint8_t</b> * , const
+              <b>uint32_t</b> [64], <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_neon_(const_">
+            <a class="permalink" href="#void_simd_lookup_neon_(const_"
+              >void simd_lookup_neon (const <b>uint8_t</b> * , const
+              <b>uint32_t</b> [64], <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_scalar_(const_">
+            <a class="permalink" href="#void_simd_lookup_scalar_(const_"
+              >void simd_lookup_scalar (const <b>uint8_t</b> * luma, const
+              <b>uint32_t</b> table[64], <b>uint32_t</b> * out, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>cells.c</b>.</p>
+          <pre>
+14                                                                                                     {
+15   for (size_t i = 0; i &lt; count; ++i)
+16     out[i] = table[luma[i] &gt;&gt; 2];
+17 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>simd_lookup_scalar()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>simd_lookup_scalar()</b>, and
+            <b>simd_lookup_SIMD_CELL_ISA()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_sse2_(const_">
+            <a class="permalink" href="#void_simd_lookup_sse2_(const_"
+              >void simd_lookup_sse2 (const <b>uint8_t</b> * , const
+              <b>uint32_t</b> [64], <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_ssse3_(const_">
+            <a class="permalink" href="#void_simd_lookup_ssse3_(const_"
+              >void simd_lookup_ssse3 (const <b>uint8_t</b> * , const
+              <b>uint32_t</b> [64], <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_lookup_sve_(const_">
+            <a class="permalink" href="#void_simd_lookup_sve_(const_"
+              >void simd_lookup_sve (const <b>uint8_t</b> * , const
+              <b>uint32_t</b> [64], <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_avx2_(const_">
+            <a class="permalink" href="#void_simd_pack_avx2_(const_"
+              >void simd_pack_avx2 (const <b>uint8_t</b> * , <b>uint32_t</b> * ,
+              size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_neon_(const_">
+            <a class="permalink" href="#void_simd_pack_neon_(const_"
+              >void simd_pack_neon (const <b>uint8_t</b> * , <b>uint32_t</b> * ,
+              size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_scalar_(const_">
+            <a class="permalink" href="#void_simd_pack_scalar_(const_"
+              >void simd_pack_scalar (const <b>uint8_t</b> * rgb,
+              <b>uint32_t</b> * out, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>10</b> of file <b>cells.c</b>.</p>
+          <pre>
+10                                                                        {
+11   for (size_t i = 0; i &lt; count; ++i)
+12     out[i] = ((uint32_t)rgb[3 * i] &lt;&lt; 16) | ((uint32_t)rgb[3 * i + 1] &lt;&lt; 8) | rgb[3 * i + 2];
+13 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>simd_pack_scalar()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>simd_pack_scalar()</b>, and
+            <b>simd_pack_SIMD_CELL_ISA()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_sse2_(const_">
+            <a class="permalink" href="#void_simd_pack_sse2_(const_"
+              >void simd_pack_sse2 (const <b>uint8_t</b> * , <b>uint32_t</b> * ,
+              size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_ssse3_(const_">
+            <a class="permalink" href="#void_simd_pack_ssse3_(const_"
+              >void simd_pack_ssse3 (const <b>uint8_t</b> * , <b>uint32_t</b> *
+              , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_sve_(const_">
+            <a class="permalink" href="#void_simd_pack_sve_(const_"
+              >void simd_pack_sve (const <b>uint8_t</b> * , <b>uint32_t</b> * ,
+              size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_avx2_(const_">
+            <a class="permalink" href="#void_simd_quantize_avx2_(const_"
+              >void simd_quantize_avx2 (const <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_neon_(const_">
+            <a class="permalink" href="#void_simd_quantize_neon_(const_"
+              >void simd_quantize_neon (const <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_scalar_(const_">
+            <a class="permalink" href="#void_simd_quantize_scalar_(const_"
+              >void simd_quantize_scalar (const <b>uint32_t</b> * rgb,
+              <b>uint32_t</b> * out, size_t count, unsigned colors)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>cells.c</b>.</p>
+          <pre>
+18                                                                                              {
+19   for (size_t i = 0; i &lt; count; ++i) {
+20     uint8_t r = (uint8_t)(rgb[i] &gt;&gt; 16), g = (uint8_t)(rgb[i] &gt;&gt; 8), b = (uint8_t)rgb[i];
+21     out[i] = colors == 16 ? rgb_to_16color(r, g, b) : rgb_to_256color(r, g, b);
+22   }
+23 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_to_16color()</b>, <b>rgb_to_256color()</b>, and
+            <b>simd_quantize_scalar()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>simd_quantize_scalar()</b>, and
+            <b>simd_quantize_SIMD_CELL_ISA()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_sse2_(const_">
+            <a class="permalink" href="#void_simd_quantize_sse2_(const_"
+              >void simd_quantize_sse2 (const <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_ssse3_(const_">
+            <a class="permalink" href="#void_simd_quantize_ssse3_(const_"
+              >void simd_quantize_ssse3 (const <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_sve_(const_">
+            <a class="permalink" href="#void_simd_quantize_sve_(const_"
+              >void simd_quantize_sve (const <b>uint32_t</b> * ,
+              <b>uint32_t</b> * , size_t , unsigned )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_avx2_(const_">
+            <a class="permalink" href="#size_t_simd_run_avx2_(const_"
+              >size_t simd_run_avx2 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , const <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_neon_(const_">
+            <a class="permalink" href="#size_t_simd_run_neon_(const_"
+              >size_t simd_run_neon (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , const <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_scalar_(const_">
+            <a class="permalink" href="#size_t_simd_run_scalar_(const_"
+              >size_t simd_run_scalar (const <b>uint32_t</b> * glyph, const
+              <b>uint32_t</b> * fg, const <b>uint32_t</b> * bg, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>24</b> of file <b>cells.c</b>.</p>
+          <pre>
+24                                                                                                     {
+25   size_t i = 1;
+26   for (; i &lt; count &amp;&amp; glyph[i] == glyph[0] &amp;&amp; fg[i] == fg[0] &amp;&amp; bg[i] == bg[0]; ++i) {
+27   }
+28   return count ? i : 0;
+29 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>simd_run_scalar()</b>.</p>
+          <p class="Pp">Referenced by <b>simd_run_scalar()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_sse2_(const_">
+            <a class="permalink" href="#size_t_simd_run_sse2_(const_"
+              >size_t simd_run_sse2 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , const <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_ssse3_(const_">
+            <a class="permalink" href="#size_t_simd_run_ssse3_(const_"
+              >size_t simd_run_ssse3 (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , const <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_sve_(const_">
+            <a class="permalink" href="#size_t_simd_run_sve_(const_"
+              >size_t simd_run_sve (const <b>uint32_t</b> * , const
+              <b>uint32_t</b> * , const <b>uint32_t</b> * , size_t )</a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">const <b>simd_cells_t</b> simd_cells_avx2 [extern]</h2>
+          <p class="Pp">
+            Referenced by <b>ascii_render()</b>,
+            <b>ascii_render_halfblocks()</b>, <b>simd_cells_backend()</b>, and
+            <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">const <b>simd_cells_t</b> simd_cells_neon [extern]</h2>
+          <p class="Pp">
+            Referenced by <b>ascii_render()</b>,
+            <b>ascii_render_halfblocks()</b>, <b>simd_cells_backend()</b>, and
+            <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>simd_cells_t</b> simd_cells_scalar [extern]
+          </h2>
+          <p class="Pp">Definition at line <b>69</b> of file <b>cells.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>rgb_to_16color_halfblocks_scalar()</b>,
+            <b>rgb_to_256color_halfblocks_scalar()</b>,
+            <b>rgb_to_halfblocks_scalar()</b>,
+            <b>rgb_to_truecolor_halfblocks_scalar()</b>,
+            <b>simd_cells_backend()</b>, and <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">const <b>simd_cells_t</b> simd_cells_sse2 [extern]</h2>
+          <p class="Pp">
+            Referenced by <b>ascii_render()</b>,
+            <b>ascii_render_halfblocks()</b>, <b>simd_cells_backend()</b>, and
+            <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>simd_cells_t</b> simd_cells_ssse3 [extern]
+          </h2>
+          <p class="Pp">
+            Referenced by <b>ascii_render()</b>,
+            <b>ascii_render_halfblocks()</b>, <b>simd_cells_backend()</b>, and
+            <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">const <b>simd_cells_t</b> simd_cells_sve [extern]</h2>
+          <p class="Pp">
+            Referenced by <b>ascii_render()</b>,
+            <b>ascii_render_halfblocks()</b>, <b>simd_cells_backend()</b>, and
+            <b>simd_halfblock_sve()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>
