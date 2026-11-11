@@ -91,8 +91,7 @@ elseif(PLATFORM_POSIX)
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/filesystem.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/system.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/render_bridge.c
-                ${CMAKE_CURRENT_SOURCE_DIR}/ios/stdin_bridge.c
-                ${CMAKE_CURRENT_SOURCE_DIR}/ios/lws_spawn_stub.c)
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/stdin_bridge.c)
             list(APPEND PLATFORM_LIBS Security)
         else()
             list(APPEND PLATFORM_SRCS
