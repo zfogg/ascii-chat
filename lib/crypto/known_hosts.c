@@ -27,11 +27,11 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
-#include <libplatform/system.h>             // For FILE_PERM_* constants
-#include <libplatform/terminal.h>   // For platform_isatty()
+#include <libplatform/system.h>   // For FILE_PERM_* constants
+#include <libplatform/terminal.h> // For platform_isatty()
 #include <libplatform/filesystem.h>
-#include <ascii-chat/os/question.h>   // For platform_prompt_yes_no
-#include <ascii-chat/options/options.h>     // For opt_snapshot_mode
+#include <ascii-chat/os/question.h>     // For platform_prompt_yes_no
+#include <ascii-chat/options/options.h> // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <defer.h>

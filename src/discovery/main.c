@@ -551,7 +551,8 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture, &host_capture);
+      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+                                      &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
         return result;
@@ -738,14 +739,14 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
-                               &receiver);
+      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+                                      discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result =
-            platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
+        result = platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+                                        &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);

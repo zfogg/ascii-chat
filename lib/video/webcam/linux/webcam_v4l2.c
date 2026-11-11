@@ -70,10 +70,10 @@ struct webcam_context_t {
   AVFrame *mjpeg_decoded_frame;       // Decoded JPEG frame buffer
 
   // Async camera reading (non-blocking)
-  lifecycle_t async_lifecycle;      // Lifecycle state machine for camera thread
+  lifecycle_t async_lifecycle;     // Lifecycle state machine for camera thread
   platform_thread_t camera_thread; // Background thread for continuous frame capture
-  atomic_ptr_t latest_frame;        // Latest frame from camera (atomic swap)
-  image_t *async_cached_frame;      // Last frame returned to caller (returned when no new frame available)
+  atomic_ptr_t latest_frame;       // Latest frame from camera (atomic swap)
+  image_t *async_cached_frame;     // Last frame returned to caller (returned when no new frame available)
 };
 
 /**

@@ -95,8 +95,8 @@
 #include <ascii-chat/audio/wav_writer.h>      // WAV file dumping for debugging
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>     // For RCU-based options access
-#include <libplatform/system.h> // For platform_memcpy
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <libplatform/system.h>     // For platform_memcpy
 
 #include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro

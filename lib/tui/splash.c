@@ -141,12 +141,12 @@ void splash_log_clear(void) {
  * @brief Animation state for intro splash
  */
 static struct {
-  atomic_t is_running;               // true while animation should continue
-  atomic_t should_stop;              // set to true when splash should stop
-  atomic_t thread_created;           // true if monitor thread was successfully created
+  atomic_t is_running;              // true while animation should continue
+  atomic_t should_stop;             // set to true when splash should stop
+  atomic_t thread_created;          // true if monitor thread was successfully created
   platform_thread_t monitor_thread; // monitor thread handle
-  uint64_t start_time_ns;            // when splash was started (for minimum display time)
-  atomic_t intro_done_time_ns;       // when splash_intro_done() was called
+  uint64_t start_time_ns;           // when splash was started (for minimum display time)
+  atomic_t intro_done_time_ns;      // when splash_intro_done() was called
 } g_splash_state = {
     .is_running = {0}, .should_stop = {0}, .thread_created = {0}, .start_time_ns = 0, .intro_done_time_ns = {0}};
 

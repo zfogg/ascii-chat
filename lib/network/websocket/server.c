@@ -66,11 +66,11 @@
  * released by the WebSocket close path.
  */
 typedef struct {
-  websocket_server_t *server;        ///< Back-reference to server
-  acip_transport_t *transport;       ///< ACIP transport for this connection
+  websocket_server_t *server;       ///< Back-reference to server
+  acip_transport_t *transport;      ///< ACIP transport for this connection
   platform_thread_t handler_thread; ///< Client handler thread
-  bool handler_started;              ///< True if handler thread was started
-  bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
+  bool handler_started;             ///< True if handler thread was started
+  bool cleaning_up;                 ///< True if cleanup is in progress (prevents race with remove_client)
 
   // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
   uint8_t *pending_send_data;        ///< Current message being sent

@@ -945,7 +945,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
   // Captured session logs still need formatting, but detecting the console
   // again would block their producer behind the presentation worker's writes.
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
+  bool use_colors =
+      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting)
     atomic_store(&g_terminal_log_colors, use_colors);
 
@@ -1417,7 +1418,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
 
   bool presenting = ui_controller_is_presenting();
   int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
-  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
+  bool use_colors =
+      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting) {
     atomic_store(&g_terminal_log_colors, use_colors);
   }

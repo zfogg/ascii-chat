@@ -62,7 +62,8 @@ size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const 
     const char *text = cells ? cells[i] : cols[i].heading;
     char clipped[UI_TABLE_CLIPPED_BUFFER_SIZE];
     if (text && cols[i].ellipsis && display_width(text) > cell_width) {
-      truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width, terminal_should_use_utf8(GET_OPTION(force_utf8)));
+      truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width,
+                                  terminal_should_use_utf8(GET_OPTION(force_utf8)));
       text = clipped;
     }
     used += ui_text_cell(out + used, cap - used, text, cell_width, cols[i].alignment);

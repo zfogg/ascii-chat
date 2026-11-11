@@ -299,7 +299,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   setvbuf(stdout, NULL, _IONBF, 0);
 
   // Detect terminal capabilities
-    ctx->caps = detect_terminal_capabilities(options_terminal_settings());
+  ctx->caps = detect_terminal_capabilities(options_terminal_settings());
 
   // Set wants_padding based on terminal output mode
   // Enable padding for all rendering modes (including snapshot) to center output

@@ -548,8 +548,8 @@ static void *update_check_thread_func(void *arg) {
   // the first frame. Notify interactively once its result is available.
   if (!force && err == ASCIICHAT_OK && result.update_available && !splash_should_display(true) &&
       (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT) &&
-      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() && terminal_can_prompt_user(!GET_OPTION(snapshot_mode)) &&
-      !update_check_is_dismissed(&result)) {
+      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() &&
+      terminal_can_prompt_user(!GET_OPTION(snapshot_mode)) && !update_check_is_dismissed(&result)) {
     bool expected = false;
     if (atomic_compare_exchange_strong(&g_update_overlay, &expected, true)) {
       atomic_store(&g_update_selected_action, 0);
@@ -576,7 +576,8 @@ static void update_banner_start_check_impl(bool force) {
   memset(&g_update_result, 0, sizeof(g_update_result));
   g_update_result_set = false;
   mutex_unlock(&g_update_result_mutex);
-  if (platform_thread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
+  if (platform_thread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) ==
+      0) {
     g_update_thread_started = true;
   } else {
     ascii_otel_ui_usage("update", "check_failed", 0);

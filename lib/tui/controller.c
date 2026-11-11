@@ -180,7 +180,8 @@ static terminal_capabilities_t volume_capabilities(void) {
   terminal_render_mode_t render = GET_OPTION(render_mode);
   if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
       utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
-  g_volume_caps = apply_color_mode_override(detect_terminal_capabilities(options_terminal_settings()), options_terminal_settings());
+    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities(options_terminal_settings()),
+                                              options_terminal_settings());
     g_volume_color_mode = mode;
     g_volume_color_setting = color;
     g_volume_utf8_setting = utf8;
@@ -776,8 +777,9 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     char count[32] = "";
     if (errors > 1)
       snprintf(count, sizeof(count), "(%zu) ", errors);
-    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*",
-             count, (int)latest.code, asciichat_error_string(latest.code));
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s",
+             terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*", count, (int)latest.code,
+             asciichat_error_string(latest.code));
   } else if (terminal_should_use_utf8(GET_OPTION(force_utf8))) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);

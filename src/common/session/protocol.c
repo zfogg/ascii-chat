@@ -84,7 +84,8 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
       // not a bound on their explicitly configured or default output size.
       terminal_size_t viewport =
           (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
-      uint32_t width = terminal_get_effective_width(GET_OPTION(width), 80), height = terminal_get_effective_height(GET_OPTION(height), 24);
+      uint32_t width = terminal_get_effective_width(GET_OPTION(width), 80),
+               height = terminal_get_effective_height(GET_OPTION(height), 24);
       if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) ||
           (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width ||
           header->height > height) {

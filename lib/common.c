@@ -35,9 +35,9 @@
 #include <ascii-chat/debug/named.h>         // For named_destroy()
 #include <ascii-chat/debug/atomic.h>        // For debug_atomic_shutdown()
 #include <ascii-chat/debug/memory.h>        // For debug memory reporting
-#include <libplatform/symbols.h>    // For symbols cache init
-#include <libplatform/terminal.h>   // For terminal_screen_cleanup
-#include <ascii-chat/os/keyboard.h>   // For keyboard_destroy()
+#include <libplatform/symbols.h>            // For symbols cache init
+#include <libplatform/terminal.h>           // For terminal_screen_cleanup
+#include <ascii-chat/os/keyboard.h>         // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <libplatform/atomic.h>

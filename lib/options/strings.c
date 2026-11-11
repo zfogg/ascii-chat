@@ -19,7 +19,7 @@
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/registry.h>
-#include <libplatform/terminal.h>   // For terminal color modes
+#include <libplatform/terminal.h>           // For terminal color modes
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
 #include <string.h>

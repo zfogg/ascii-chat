@@ -45,7 +45,8 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
 
   // Line 1: Top border
   bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
+  bool colors = !GET_OPTION(strip_ansi) &&
+                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 
   // The bundled browser font does not contain the emoji used in native status titles.

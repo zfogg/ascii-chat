@@ -137,10 +137,11 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       has_media ? "Space  Play/Pause (files only)" : NULL,
       has_media ? "[      Toggle Media Playback" : NULL,
       has_media ? (terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "← / →  Seek backward/forward 30s"
-                                              : "Left / Right  Seek backward/forward 30s")
+                                                                    : "Left / Right  Seek backward/forward 30s")
                 : NULL,
       "m / M  Mute/Unmute audio",
-      terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)" : "Up / Down  Volume up/down (10%)",
+      terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)"
+                                                       : "Up / Down  Volume up/down (10%)",
       "c / C  Cycle color mode",
       "f / F  Cycle color filter",
       "x / X  Flip webcam horizontally",

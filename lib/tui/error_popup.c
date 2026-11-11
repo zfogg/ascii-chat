@@ -318,7 +318,8 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   lock_state();
   g_displayed_latest = displayed_latest;
   unlock_state();
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
+  bool colors = !GET_OPTION(strip_ansi) &&
+                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   int width = MIN(size.cols - 4, 100);
   int body_width = width - 6;
   if (g_cached_id != error.error_id || g_cached_width != body_width || g_cached_color != colors)
@@ -390,7 +391,7 @@ void ui_error_popup_preserve(int fd, terminal_size_t size) {
   bool previous = errno_notifications_suppress(true);
   frame_buffer_t *output = frame_buffer_create(0, 0);
   if (output) {
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd, options_terminal_settings());
+    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd, options_terminal_settings());
     bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
     int width = MIN(size.cols > 0 ? size.cols - 1 : 79, 100);
     width = MAX(width, 8);

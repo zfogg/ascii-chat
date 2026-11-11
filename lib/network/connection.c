@@ -607,7 +607,8 @@ asciichat_error_t network_server_start(network_server_t *s) {
   if (!s || atomic_load_bool(&s->stopping))
     return SET_ERRNO(ERROR_INVALID_STATE, "Network server stopped before startup");
   if (s->websocket_initialized && !s->websocket_started) {
-    asciichat_error_t result = platform_thread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
+    asciichat_error_t result =
+        platform_thread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
     if (result != ASCIICHAT_OK)
       return result;
     s->websocket_started = true;
