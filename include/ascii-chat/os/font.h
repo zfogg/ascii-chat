@@ -8,10 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
-
-void platform_font_register(const char *name, const uint8_t *data, size_t size);
-bool platform_font_get_data(const char *name, const uint8_t **data, size_t *size);
-void platform_font_clear(void);
+#include <libplatform/font.h>
 
 // Resolve a font spec to a usable form for the current platform.
 // spec:        NULL/empty → platform default; bundled name; family name; or absolute path.
@@ -20,5 +17,3 @@ void platform_font_clear(void);
 // out_is_path: true if out is an absolute file path; false for names or bundled data.
 // out_font_data: non-NULL only for bundled fonts; points to TTF data in memory.
 // out_font_data_size: size of font_data, or 0 if not used.
-asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_size, bool *out_is_path,
-                                        const uint8_t **out_font_data, size_t *out_font_data_size);
