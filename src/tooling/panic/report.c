@@ -15,6 +15,7 @@
 #define TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE 8192
 
 #include <ascii-chat/common.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
 

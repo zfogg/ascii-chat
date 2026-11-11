@@ -84,7 +84,7 @@ static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
   if (!devices) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: no gateway discovered (unsupported or disabled)");
   }
-#ifdef MINIUPNPC_GETVALIDIGD_7ARG
+#if defined(__APPLE__) && defined(MINIUPNPC_GETVALIDIGD_7ARG)
   int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address), external_address,
                                 sizeof(external_address));
 #else
