@@ -165,6 +165,7 @@ static _Atomic uint32_t g_screen_mask;
 static atomic_t g_volume_until = {0};
 /* The UI controller owns the terminal while any full-screen presentation is live. */
 static bool g_terminal_screen_active;
+static int g_terminal_screen_fd = -1;
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
 static _Thread_local terminal_capabilities_t g_volume_caps;
@@ -189,6 +190,32 @@ static terminal_capabilities_t volume_capabilities(void) {
     g_volume_caps_valid = true;
   }
   return g_volume_caps;
+}
+
+static void terminal_screen_enter(int fd) {
+  if (!platform_isatty(fd) || GET_OPTION(snapshot_mode))
+    return;
+  const char sequence[] = "\033[?1049h\033[?25l\033[H\033[2J";
+  size_t written = platform_write_all(fd, sequence, sizeof(sequence) - 1);
+  if (written > 0) {
+    g_terminal_screen_active = true;
+    g_terminal_screen_fd = fd;
+  }
+  if (written != sizeof(sequence) - 1)
+    log_error("Cannot completely enter alternate terminal screen");
+}
+
+static void terminal_screen_leave(void) {
+  if (!g_terminal_screen_active || g_terminal_screen_fd < 0)
+    return;
+  const char sequence[] = "\033[0m\033[?25h\033[?1049l";
+  size_t written = platform_write_all(g_terminal_screen_fd, sequence, sizeof(sequence) - 1);
+  if (written == sizeof(sequence) - 1) {
+    g_terminal_screen_active = false;
+    g_terminal_screen_fd = -1;
+  } else {
+    log_error("Cannot completely restore the normal terminal screen");
+  }
 }
 
 void ui_controller_show_volume(void) {
@@ -595,6 +622,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
   }
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     release_screen(&retired[i], i == UI_SCREEN_NOTICE);
+  terminal_screen_leave();
   platform_write_all(fd, data, len);
   atomic_store_bool(&g_live, false);
 }
@@ -1357,15 +1385,8 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
     }
+    terminal_screen_enter(atomic_load(&g_default_fd));
     lifecycle_init_commit(&g_lifecycle);
-    if (platform_isatty(atomic_load(&g_default_fd)) && !GET_OPTION(snapshot_mode)) {
-      const char enter_screen[] = "\033[?1049h\033[?25l\033[H\033[2J";
-      if (platform_write_all(atomic_load(&g_default_fd), enter_screen, sizeof(enter_screen) - 1) ==
-          sizeof(enter_screen) - 1)
-        g_terminal_screen_active = true;
-      else
-        log_error("Cannot enter alternate terminal screen");
-    }
   }
   if (!lifecycle_is_initialized(&g_lifecycle))
     return SET_ERRNO(ERROR_INVALID_STATE, "UI controller initialization is not complete");
@@ -1475,6 +1496,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     g_render_fd = previous_fd;
     return ASCIICHAT_OK;
   }
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    atomic_store(&g_default_fd, fd);
   asciichat_error_t err = controller_start();
   if (err != ASCIICHAT_OK)
     return err;
@@ -1877,11 +1900,7 @@ void ui_controller_shutdown(void) {
   atomic_store(&g_background_screen, -1);
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
-  if (g_terminal_screen_active) {
-    const char leave_screen[] = "\033[0m\033[?25h\033[?1049l";
-    (void)platform_write_all(atomic_load(&g_default_fd), leave_screen, sizeof(leave_screen) - 1);
-    g_terminal_screen_active = false;
-  }
+  terminal_screen_leave();
   NAMED_UNREGISTER(&g_title_active);
   NAMED_UNREGISTER(&g_title_render);
   NAMED_UNREGISTER(&g_title_ready);
