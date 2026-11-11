@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-PROBES = Path(__file__).resolve().parents[3] / "tests/audio"
+PROBES = Path(__file__).resolve().parents[4] / "tests/audio"
 pytestmark = [pytest.mark.unit, pytest.mark.native]
 
 

@@ -19,6 +19,14 @@ def cli_command(binary, *args, _apply_test_policy=True):
 def prepare_test_command(command):
     """Apply the shared native-test policy to an arbitrary subprocess argv."""
     command = list(command)
+    # Preserve deliberately incomplete option-validation cases.  Appending the
+    # test log flags would otherwise supply a following token to --log-level
+    # and change the parser path under test into a different invocation.
+    if (any(value == "--log-level" for value in command) or
+            any(value == "--log-file" for value in command) or
+            any(str(value).startswith("--not-an-option") for value in command) or
+            any(value in {"--test-pattern", "--test-pattern=0", "--test-pattern=1"} for value in command)):
+        return command
     if ("--no-check-update" in command and "--log-level=debug" in command and
             ("--log-file" in command or any(str(value).startswith("--log-file=") for value in command))):
         return command

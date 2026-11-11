@@ -1147,12 +1147,24 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
-  asciichat_error_t validate_result =
-      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  if (validate_result != ASCIICHAT_OK) {
-    SAFE_FREE(validated_config_path);
-    SAFE_FREE(config_path_expanded);
-    return validate_result;
+  // An explicit --config path is already user-authorized and may point to any
+  // readable configuration file.  Do not route Windows absolute paths through
+  // the sandbox validator, which is intended for untrusted path-valued
+  // options and can reject valid drive-qualified paths.
+  if (config_path) {
+    validated_config_path = platform_strdup(config_path_expanded);
+    if (!validated_config_path) {
+      SAFE_FREE(config_path_expanded);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to copy config file path");
+    }
+  } else {
+    asciichat_error_t validate_result =
+        path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    if (validate_result != ASCIICHAT_OK) {
+      SAFE_FREE(validated_config_path);
+      SAFE_FREE(config_path_expanded);
+      return validate_result;
+    }
   }
   // Free the old path before reassigning (defer will free the new one)
   if (config_path_expanded != validated_config_path) {

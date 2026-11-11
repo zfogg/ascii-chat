@@ -53,6 +53,15 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
 
+# gotel's vendored CMake target supplies utf8proc for both gotel and the
+# application.  Configure it after gotel so ascii-chat does not create a
+# second target with the same name before gotel is added.
+set(UTF8PROC_LIBRARIES utf8proc CACHE STRING "utf8proc target supplied by gotel" FORCE)
+if(TARGET gotel)
+    target_include_directories(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+endif()
+
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
     target_include_directories(gotel_cxx SYSTEM PRIVATE "${ALPINE_LIBCXX_INCLUDE_DIR}")
 endif()

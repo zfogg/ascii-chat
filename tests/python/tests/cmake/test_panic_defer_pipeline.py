@@ -9,7 +9,7 @@ import subprocess
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:

@@ -21,6 +21,18 @@ message(STATUS "Generating .def file: ${OUTPUT_FILE}")
 # A response file avoids the Windows command-line limit and starts llvm-nm once.
 # PCH entries in TARGET_OBJECTS are compiler inputs, not exportable object files.
 list(FILTER OBJ_FILES INCLUDE REGEX "\\.(obj|o)$")
+# TARGET_OBJECTS can contain objects from linked dependency targets.  Only
+# objects belonging to the library itself may contribute exports; dependency
+# symbols are either private implementation details or are exported by their
+# own target.  Normalize separators first so this works on Windows and POSIX.
+set(_project_objects "")
+foreach(OBJ_FILE IN LISTS OBJ_FILES)
+    file(TO_CMAKE_PATH "${OBJ_FILE}" _normalized_object)
+    if(NOT _normalized_object MATCHES "(^|/)deps/")
+        list(APPEND _project_objects "${OBJ_FILE}")
+    endif()
+endforeach()
+set(OBJ_FILES "${_project_objects}")
 if(NOT OBJ_FILES)
     message(FATAL_ERROR "No exportable object files in ${OBJECT_LIST_FILE}")
 endif()

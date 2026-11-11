@@ -9,7 +9,7 @@ import unittest
 
 class WasmBuildLockTest(unittest.TestCase):
     def test_separate_parent_builds_do_not_overlap(self):
-        wrapper = Path(__file__).resolve().parents[3] / "cmake/scripts/build_wasm.cmake"
+        wrapper = Path(__file__).resolve().parents[4] / "cmake/scripts/build_wasm.cmake"
         with tempfile.TemporaryDirectory(prefix="ascii-wasm-lock-") as directory:
             root = Path(directory)
             (root / "CMakeLists.txt").write_text(
