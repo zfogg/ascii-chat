@@ -21,6 +21,7 @@
 
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/os/string.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/filesystem.h>
@@ -1150,4 +1151,3 @@ static int asciichat_instr_write_full(int fd, const char *buffer, size_t len) {
   }
   return 0;
 }
-#include <ascii-chat/os/string.h>
