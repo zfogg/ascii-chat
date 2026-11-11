@@ -26,6 +26,9 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
     target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
+    if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
+        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
+    endif()
 endif()
 
 unset(_ascii_chat_libplatform_shared)
