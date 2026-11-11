@@ -28,6 +28,7 @@ def cases():
         (["mirror", "--quiet"], "must appear before the mode"),
         (["mirror", "--not-an-option"], "Unknown option: --not-an-option"),
         (["mirror", "--not-an-option=value"], "Unknown option: --not-an-option"),
+        (["mirror", "--color-mode", "foo"], "Invalid color mode 'foo'"),
         (["mirror", "--width", "bad"], "not a valid integer"),
         (["mirror", "--seek", "3"], "--seek requires --file or --url"),
         (["mirror", "--pause"], "--pause requires --file or --url"),

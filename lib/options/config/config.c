@@ -749,16 +749,6 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
     SAFE_SNPRINTF(buf, bufsize, "\"%s\"", value >= 0 && (size_t)value < ARRAY_SIZE(names) ? names[value] : "auto");
     return;
   }
-  if (meta->field_offset == offsetof(options_t, fft_scale)) {
-    const fft_scale_t *scale = (const fft_scale_t *)field_ptr;
-    if (scale->mode == FFT_SCALE_LINEAR)
-      SAFE_SNPRINTF(buf, bufsize, "\"linear\"");
-    else if (scale->mode == FFT_SCALE_LOG)
-      SAFE_SNPRINTF(buf, bufsize, "\"log\"");
-    else
-      SAFE_SNPRINTF(buf, bufsize, "\"%.2g:%.2g\"", scale->min_db, scale->max_db);
-    return;
-  }
   if (meta->field_offset == offsetof(options_t, test_pattern)) {
     const options_t *opts = (const options_t *)(field_ptr - offsetof(options_t, test_pattern));
     if (opts->test_pattern)

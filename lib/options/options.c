@@ -1176,6 +1176,38 @@ static asciichat_error_t validate_binary_option_position(int argc, char **argv, 
   return ASCIICHAT_OK;
 }
 
+/**
+ * Validate options that affect process-wide terminal setup before constructing
+ * the full options object.  This keeps malformed values on the normal usage
+ * error path instead of allowing startup initialization to run with invalid
+ * terminal state.
+ */
+static asciichat_error_t validate_early_color_mode(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    const char *value = NULL;
+    if (strcmp(argv[i], "--color-mode") == 0) {
+      if (i + 1 >= argc || argv[i + 1][0] == '-') {
+        return SET_ERRNO(ERROR_USAGE, "--color-mode requires a value (auto, none, 16, 256, or truecolor)");
+      }
+      value = argv[++i];
+    } else if (strncmp(argv[i], "--color-mode=", 13) == 0) {
+      value = argv[i] + 13;
+    }
+
+    if (value) {
+      terminal_color_mode_t parsed = TERM_COLOR_AUTO;
+      char *error_msg = NULL;
+      if (!parse_color_mode(value, &parsed, &error_msg)) {
+        asciichat_error_t result = SET_ERRNO(ERROR_USAGE, "%s", error_msg ? error_msg : "Invalid color mode");
+        SAFE_FREE(error_msg);
+        return result;
+      }
+      SAFE_FREE(error_msg);
+    }
+  }
+  return ASCIICHAT_OK;
+}
+
 static void initialize_binary_options(options_t *opts, asciichat_mode_t detected_mode,
                                       const binary_actions_t *actions) {
   log_debug("initialize_binary_options: before systemd");
@@ -2397,6 +2429,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
   result = validate_binary_option_position(argc, argv, mode_index);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  result = validate_early_color_mode(argc, argv);
   if (result != ASCIICHAT_OK) {
     return result;
   }

@@ -11,6 +11,7 @@
 #define OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE 256
 
 #include <ascii-chat/options/parsers.h>
+#include <ascii-chat/util/string.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>

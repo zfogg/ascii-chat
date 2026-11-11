@@ -175,9 +175,6 @@ static size_t get_field_size(option_type_t type, size_t offset) {
     return OPTIONS_BUFF_SIZE;
   case OPTION_TYPE_CALLBACK:
     // CALLBACK options store into regular options_t fields; infer by offset.
-    if (offset == offsetof(options_t, fft_scale)) {
-      return sizeof(fft_scale_t);
-    }
     if (offset == offsetof(options_t, log_file) || offset == offsetof(options_t, port) ||
         offset == offsetof(options_t, palette_custom) || offset == offsetof(options_t, yt_dlp_options)) {
       return OPTIONS_BUFF_SIZE;
