@@ -61,6 +61,41 @@ asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packe
   return acip_handle_client_packet(transport, type, payload, length, callbacks);
 }
 
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport,
+                              const acip_client_callbacks_t *callbacks) {
+  if (!session)
+    return;
+  *session = (acip_client_session_t){.transport = transport};
+  if (callbacks)
+    session->callbacks = *callbacks;
+}
+
+asciichat_error_t acip_client_session_receive(acip_client_session_t *session) {
+  if (!session)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP client session");
+  return acip_client_receive_and_dispatch(session->transport, &session->callbacks);
+}
+
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload,
+                                               size_t length) {
+  if (!session)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP client session");
+  return acip_client_dispatch_packet(session->transport, type, payload, length, &session->callbacks);
+}
+
+asciichat_error_t acip_client_session_process_wire(acip_client_session_t *session, const void *wire, size_t length) {
+  if (!session || !wire)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ACIP client wire packet");
+  packet_envelope_t envelope = {0};
+  asciichat_error_t result =
+      packet_parse_envelope(wire, length, session->transport ? session->transport->crypto_ctx : NULL, &envelope);
+  if (result == ASCIICHAT_OK && !envelope.consumed)
+    result = acip_client_session_dispatch(session, envelope.type, envelope.data, envelope.len);
+  if (envelope.allocated_buffer)
+    buffer_release(envelope.allocated_buffer);
+  return result;
+}
+
 // =============================================================================
 // Client Send (to server)
 // =============================================================================

@@ -172,11 +172,15 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   cr_assert_arr_eq(envelope.data, payload, sizeof(payload));
   buffer_release(envelope.allocated_buffer);
   acip_client_callbacks_t callbacks = {.on_ping = client_ping, .app_ctx = &wire};
+  acip_client_session_t session;
+  acip_client_session_init(&session, &transport, &callbacks);
+  cr_assert_eq(acip_client_session_dispatch(&session, PACKET_TYPE_PING, payload, sizeof(payload)), ASCIICHAT_OK);
+  cr_assert_eq(wire.callbacks, 2);
   cr_assert_eq(acip_client_dispatch_packet(&transport, PACKET_TYPE_PING, payload, sizeof(payload), &callbacks),
                ASCIICHAT_OK);
-  cr_assert_eq(wire.callbacks, 1);
+  cr_assert_eq(wire.callbacks, 3);
   cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
-  cr_assert_eq(wire.callbacks, 2);
+  cr_assert_eq(wire.callbacks, 4);
 }
 
 Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch) {

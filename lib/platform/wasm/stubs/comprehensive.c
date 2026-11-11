@@ -221,6 +221,34 @@ asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packe
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
 }
 
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport,
+                              const acip_client_callbacks_t *callbacks) {
+  if (session)
+    *session = (acip_client_session_t){.transport = transport,
+                                       .callbacks = callbacks ? *callbacks : (acip_client_callbacks_t){0}};
+}
+
+asciichat_error_t acip_client_session_receive(acip_client_session_t *session) {
+  (void)session;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
+}
+
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload,
+                                               size_t length) {
+  (void)session;
+  (void)type;
+  (void)payload;
+  (void)length;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
+}
+
+asciichat_error_t acip_client_session_process_wire(acip_client_session_t *session, const void *wire, size_t length) {
+  (void)session;
+  (void)wire;
+  (void)length;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
+}
+
 void acip_transport_destroy(acip_transport_t *transport) {
   (void)transport;
 }
