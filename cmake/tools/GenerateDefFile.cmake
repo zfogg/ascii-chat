@@ -56,6 +56,9 @@ list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^__sanitizer_.*")
 list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^__asan_.*")
 list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^__ubsan_.*")
 list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^__llvm_.*")
+# llvm-nm can expose section/address tokens as bare symbols on Windows. They
+# are not linker exports and make lld reject the generated .def file.
+list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^[A-Za-z]$|^a[0-9]+$")
 list(REMOVE_DUPLICATES ALL_SYMBOLS)
 list(SORT ALL_SYMBOLS)
 list(LENGTH ALL_SYMBOLS EXPORT_COUNT)
