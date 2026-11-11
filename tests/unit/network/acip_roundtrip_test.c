@@ -168,9 +168,10 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ASCIICHAT_OK);
   cr_assert_eq(envelope.type, PACKET_TYPE_PING);
   cr_assert_eq(envelope.len, sizeof(payload));
+  cr_assert_eq(envelope.allocated_size, sizeof(payload));
   cr_assert_not_null(envelope.allocated_buffer);
   cr_assert_arr_eq(envelope.data, payload, sizeof(payload));
-  buffer_release(envelope.allocated_buffer);
+  packet_envelope_release(&envelope);
   acip_client_callbacks_t callbacks = {.on_ping = client_ping, .app_ctx = &wire};
   acip_client_session_t session;
   acip_client_session_init(&session, &transport, &callbacks);
@@ -223,7 +224,7 @@ Test(acip_roundtrip, shared_envelope_release_preserves_other_buffer_owner) {
   memcpy(owned, "key!", 4);
   const void *shared = buffer_share(owned);
   cr_assert_not_null(shared);
-  packet_envelope_t envelope = {.allocated_buffer = owned};
+  packet_envelope_t envelope = {.allocated_buffer = owned, .allocated_size = 4};
   packet_envelope_release(&envelope);
   cr_assert_arr_eq(shared, "key!", 4);
   buffer_release(shared);

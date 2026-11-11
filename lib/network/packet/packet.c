@@ -691,9 +691,12 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
     sodium_memzero(plaintext, buffer_capacity(plaintext));
     buffer_release(plaintext);
     plaintext = envelope->allocated_buffer;
+    envelope->allocated_size = plaintext_length;
   } else {
+    if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer))
+      sodium_memzero(envelope->allocated_buffer, envelope->allocated_size);
     buffer_release(envelope->allocated_buffer);
-    envelope->allocated_size = buffer_capacity(plaintext);
+    envelope->allocated_size = plaintext_length;
   }
   envelope->type = NET_TO_HOST_U16(header.type);
   envelope->data = plaintext + sizeof(header);
@@ -721,7 +724,7 @@ asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *c
   out->data = (uint8_t *)owned + sizeof(header);
   out->len = length - sizeof(header);
   out->allocated_buffer = owned;
-  out->allocated_size = buffer_capacity(owned);
+  out->allocated_size = length;
   result = packet_decrypt_envelope(out, crypto_ctx);
   if (result != ASCIICHAT_OK) {
     packet_envelope_release(out);
@@ -734,7 +737,7 @@ void packet_envelope_release(packet_envelope_t *envelope) {
     return;
   if (envelope->allocated_buffer) {
     if (buffer_is_unique(envelope->allocated_buffer))
-      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
+      sodium_memzero(envelope->allocated_buffer, envelope->allocated_size);
     buffer_release(envelope->allocated_buffer);
   }
   *envelope = (packet_envelope_t){0};

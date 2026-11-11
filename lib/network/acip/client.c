@@ -37,7 +37,11 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   }
 
   *out = (packet_envelope_t){0};
-  return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
+  asciichat_error_t result =
+      packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
+  if (result == ASCIICHAT_OK)
+    out->allocated_size = out->len;
+  return result;
 }
 
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
