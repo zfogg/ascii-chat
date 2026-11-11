@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/os/string.h>
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ASCII_INLINE_SCRATCH_COLUMNS 512
