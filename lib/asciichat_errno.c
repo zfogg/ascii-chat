@@ -19,6 +19,7 @@
 #include <ascii-chat/os/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -806,7 +807,7 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
   log_plain("  %s%s", asciichat_error_format(context->context_message, context->code),
             context->message_truncated ? " [truncated]" : "");
   if (context->file)
-    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file), context->line,
+    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file, ASCIICHAT_OWNED_SOURCE_DIRS), context->line,
               context->function ? context->function : "?");
   if (context->has_system_error)
     log_plain("  System error: %d", context->system_errno);
@@ -816,7 +817,7 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
     backtrace_t trace = context->backtrace;
     trace.symbols = NULL;
     trace.tried_symbolize = false;
-    backtrace_symbolize(&trace);
+    backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
     if (trace.symbols)
       backtrace_print(LOG_ERROR, "Error backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
                       backtrace_filter_error_internal);

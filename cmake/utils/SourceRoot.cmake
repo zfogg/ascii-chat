@@ -8,7 +8,9 @@ function(asciichat_configure_source_root source_root binary_root)
     else()
         string(REPLACE "\\" "/" ASCIICHAT_SOURCE_ROOT "${source_root}")
     endif()
+    string(REPLACE "\\" "/" ASCIICHAT_DEPS_CACHE_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}")
     string(REPLACE "\"" "\\\"" ASCIICHAT_SOURCE_ROOT "${ASCIICHAT_SOURCE_ROOT}")
+    string(REPLACE "\"" "\\\"" ASCIICHAT_DEPS_CACHE_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}")
     configure_file(
         "${source_root}/include/ascii-chat/source_root.h.in"
         "${binary_root}/generated/ascii-chat/source_root.h"

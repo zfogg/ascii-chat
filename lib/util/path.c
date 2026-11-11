@@ -137,14 +137,45 @@ static const char *normalize_path(const char *path) {
   return normalized;
 }
 
-const char *extract_project_relative_path(const char *file) {
+const char *extract_project_relative_path(const char *file, const char *const *owned_dirs) {
   // This runs inside logging and while the memory tracker holds its mutex.
   // Avoid allocations, filesystem access, mutable caches, and error logging.
   if (!file) {
     return "unknown";
   }
 
-  const char *root = ASCIICHAT_SOURCE_ROOT;
+  const char *root = NULL;
+  size_t root_length = 0;
+  if (owned_dirs) {
+    for (size_t dir_index = 0; owned_dirs[dir_index]; dir_index++) {
+      const char *candidate = owned_dirs[dir_index];
+      size_t candidate_length = strlen(candidate);
+      bool matches = true;
+      for (size_t i = 0; i < candidate_length; i++) {
+        unsigned char source_char = (unsigned char)candidate[i];
+        unsigned char file_char = (unsigned char)file[i];
+        if (source_char == '/' || source_char == '\\') {
+          if (file_char != '/' && file_char != '\\') { matches = false; break; }
+        } else {
+#ifdef _WIN32
+          if (tolower(source_char) != tolower(file_char)) { matches = false; break; }
+#else
+          if (source_char != file_char) { matches = false; break; }
+#endif
+        }
+      }
+      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') &&
+          candidate_length > root_length) {
+        root = candidate;
+        root_length = candidate_length;
+      }
+    }
+  }
+  if (root) {
+    return file + root_length + 1;
+  }
+
+  root = ASCIICHAT_SOURCE_ROOT;
   size_t i = 0;
   bool root_matches = true;
   for (; root[i]; i++) {

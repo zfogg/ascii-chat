@@ -60,7 +60,7 @@ Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_
      .fini = fallback_cleanup) {
   cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
-  char **symbols = symbol_cache_resolve_batch(addresses, 4);
+  char **symbols = symbol_cache_resolve_batch(addresses, 4, NULL);
   cr_assert_not_null(symbols);
   for (int i = 0; i < 4; ++i)
     cr_assert_not_null(symbols[i]);
@@ -70,7 +70,7 @@ Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_
   cr_assert_not_null(strstr(symbols[2], "source.c:73"));
   cr_assert_not_null(strstr(symbols[2], "unknown function"));
   cr_assert_str_eq(symbols[3], "0x4444");
-  char **cached = symbol_cache_resolve_batch(addresses, 4);
+  char **cached = symbol_cache_resolve_batch(addresses, 4, NULL);
   cr_assert_not_null(cached);
   for (int i = 0; i < 4; ++i)
     cr_assert_str_eq(cached[i], symbols[i]);
@@ -82,17 +82,17 @@ Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_
 Test(symbol_cache_lifecycle, batch_resolution_identifies_exported_functions_and_reuses_the_cache) {
   cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);
   void *addresses[] = {(void *)symbol_cache_init, (void *)symbol_cache_destroy, (void *)symbol_cache_insert};
-  char **first = symbol_cache_resolve_batch(addresses, 3);
+  char **first = symbol_cache_resolve_batch(addresses, 3, NULL);
   cr_assert_not_null(first);
   cr_assert_not_null(strstr(first[0], "symbol_cache_init"), "Resolved: %s", first[0]);
   cr_assert_not_null(strstr(first[1], "symbol_cache_destroy"), "Resolved: %s", first[1]);
-  char **second = symbol_cache_resolve_batch(addresses, 3);
+  char **second = symbol_cache_resolve_batch(addresses, 3, NULL);
   cr_assert_not_null(second);
   for (int i = 0; i < 3; ++i)
     cr_assert_str_eq(first[i], second[i]);
   symbol_cache_free_symbols(first);
   symbol_cache_free_symbols(second);
-  cr_assert_null(symbol_cache_resolve_batch(NULL, 0));
+  cr_assert_null(symbol_cache_resolve_batch(NULL, 0, NULL));
   symbol_cache_destroy();
 }
 
@@ -132,15 +132,15 @@ Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncati
   cr_assert_not(symbol_module_is_project(NULL));
   char output[256];
   bool external;
-  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external),
+  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL),
                ASCIICHAT_OK);
   cr_assert_not(external);
   cr_assert_str_eq(output, "lib/audio/audio.c");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external),
+  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL),
                ASCIICHAT_OK);
   cr_assert(external);
   cr_assert_not_null(strstr(output, "c/d/e/f/source.c"));
   strcpy(output, "unchanged");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external), ERROR_BUFFER_OVERFLOW);
+  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
   cr_assert_str_eq(output, "unchanged");
 }

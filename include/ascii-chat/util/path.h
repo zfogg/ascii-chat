@@ -102,7 +102,7 @@
  * @note Does not allocate, log, or access the filesystem; safe in memory reports.
  * @note Returns a pointer into the input, which must remain valid.
  */
-const char *extract_project_relative_path(const char *file);
+const char *extract_project_relative_path(const char *file, const char *const *owned_dirs);
 
 /**
  * @brief Return a pointer to the last components of a path

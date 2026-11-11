@@ -17,6 +17,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
@@ -563,7 +564,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
     case LOG_FORMAT_FILE_RELATIVE:
       if (file) {
-        const char *rel_file = extract_project_relative_path(file);
+        const char *rel_file = extract_project_relative_path(file, ASCIICHAT_OWNED_SOURCE_DIRS);
         written = safe_snprintf(p, remaining + 1, "%s", rel_file);
       }
       break;
