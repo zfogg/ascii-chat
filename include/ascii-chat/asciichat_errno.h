@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <libplatform/debug/backtrace.h>
+#include "common/error_codes.h"
 #include "common.h"
 #include "log/log.h"
 

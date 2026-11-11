@@ -150,7 +150,6 @@ ASCIICHAT_API void platform_process_title_destroy(void);
  *
  * @ingroup platform
  */
-asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream);
 
 /**
  * @brief Close a process stream opened with platform_popen()
@@ -171,7 +170,6 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
  *
  * @ingroup platform
  */
-asciichat_error_t platform_pclose(FILE **stream_ptr);
 
 /**
  * @name Platform-Specific popen/pclose Macros
@@ -287,3 +285,5 @@ void platform_process_destroy(platform_process_t *process);
 #endif
 
 /** @} */
+asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream);
+asciichat_error_t platform_pclose(FILE **stream_ptr);

@@ -29,7 +29,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/common/sync.h>
             <libplatform/filesystem.h>
             <libplatform/thread.h>
-            <libplatform/util/string.h>
+            <ascii-chat/util/string.h>
             <libplatform/socket.h>
             <libplatform/terminal.h>
 
@@ -50,7 +50,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/util/aspect_ratio.h>
             <ascii-chat/util/ip.h>
 
-            <libplatform/util/string.h>
+            <ascii-chat/util/string.h>
 
             <ascii-chat/crypto/known_hosts.h>
 
