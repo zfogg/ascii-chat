@@ -73,7 +73,7 @@
       "displayName": "Default (LLVM)",
       "description": "Debug build using the LLVM/Clang toolchain",
       "inherits": "default",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
@@ -81,7 +81,7 @@
       "displayName": "Default (GCC)",
       "description": "Debug build using GCC and GNU binutils",
       "inherits": "default",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
@@ -90,7 +90,7 @@
       "displayName": "Default (MSVC)",
       "description": "Debug build using MSVC and the Visual C++ tools",
       "inherits": "default",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -99,7 +99,7 @@
       "displayName": "Dev (LLVM)",
       "description": "Fast developer build using LLVM",
       "inherits": "dev",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
@@ -107,7 +107,7 @@
       "displayName": "Dev (GCC)",
       "description": "Fast developer build using GCC",
       "inherits": "dev",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
@@ -116,7 +116,7 @@
       "displayName": "Dev (MSVC)",
       "description": "Fast developer build using MSVC",
       "inherits": "dev",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -125,7 +125,7 @@
       "displayName": "Release (LLVM)",
       "description": "Release build using LLVM",
       "inherits": "release",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
@@ -133,7 +133,7 @@
       "displayName": "Release (GCC)",
       "description": "Release build using GCC",
       "inherits": "release",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
@@ -142,7 +142,7 @@
       "displayName": "Release (MSVC)",
       "description": "Release build using MSVC",
       "inherits": "release",
-      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
