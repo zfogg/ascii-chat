@@ -7,7 +7,7 @@ import subprocess
 import pytest
 from ascii_chat_tests.standalone import coverage_flags, standalone_output_directory
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 HERE = ROOT / "tests/standalone/upnp"
 pytestmark = pytest.mark.unit
 

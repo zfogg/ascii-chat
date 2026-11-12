@@ -13,8 +13,7 @@
 
 #include <string.h>
 
-void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
-                    const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator) {
+void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator) {
   if (!ctx)
     return;
 
@@ -89,8 +88,7 @@ asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
     ctx->host_port = ctx->our_quality.upnp_available ? ctx->our_quality.upnp_mapped_port : ACIP_HOST_DEFAULT_PORT;
     ctx->connection_type = determine_connection_type(&ctx->our_quality);
 
-    log_info("Negotiation result: WE ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port,
-             ctx->connection_type);
+    log_info("Negotiation result: WE ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port, ctx->connection_type);
   } else {
     // They should host
     ctx->we_are_host = false;
@@ -104,8 +102,7 @@ asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
     ctx->host_port = ctx->peer_quality.upnp_available ? ctx->peer_quality.upnp_mapped_port : ACIP_HOST_DEFAULT_PORT;
     ctx->connection_type = determine_connection_type(&ctx->peer_quality);
 
-    log_info("Negotiation result: THEY ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port,
-             ctx->connection_type);
+    log_info("Negotiation result: THEY ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port, ctx->connection_type);
   }
 
   ctx->state = NEGOTIATE_STATE_COMPLETE;

@@ -175,9 +175,7 @@ static bool wait_for_http_ready(int port, uint64_t timeout_ns) {
 static bool find_query_server_path(char *buffer, size_t buffer_size) {
   // Try common locations relative to the executable
   const char *search_paths[] = {// Relative to build directory
-                                ".deps-cache/query-tool/ascii-query-server",
-                                "../.deps-cache/query-tool/ascii-query-server",
-                                "../../.deps-cache/query-tool/ascii-query-server",
+                                ".deps-cache/query-tool/ascii-query-server", "../.deps-cache/query-tool/ascii-query-server", "../../.deps-cache/query-tool/ascii-query-server",
                                 // In PATH
                                 "ascii-query-server",
                                 // Absolute paths for development
@@ -236,8 +234,7 @@ int query_init(int preferred_port) {
   // Winsock is already initialized by platform_init()
 
   char cmdline[TOOLING_QUERY_CMDLINE_BUFFER_SIZE];
-  safe_snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path,
-                (unsigned long)GetCurrentProcessId(), preferred_port);
+  safe_snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path, (unsigned long)GetCurrentProcessId(), preferred_port);
 
   STARTUPINFOA si;
   PROCESS_INFORMATION pi;
@@ -263,8 +260,7 @@ int query_init(int preferred_port) {
   g_controller_pid = pi.dwProcessId;
   CloseHandle(pi.hThread); // Don't need the thread handle
 
-  fprintf(stderr, "[query] Started query server (PID %lu) on port %d\n", (unsigned long)g_controller_pid,
-          preferred_port);
+  fprintf(stderr, "[query] Started query server (PID %lu) on port %d\n", (unsigned long)g_controller_pid, preferred_port);
 
 #else
   // Unix implementation using fork/exec

@@ -234,8 +234,7 @@ static void wrap_body(const char *text, int width) {
 
 static void build_body(const asciichat_error_context_t *error, int width, bool colors) {
   g_trace_start = 0;
-  char message[ASCIICHAT_ERRNO_MESSAGE_MAX], thread[TUI_ERROR_POPUP_THREAD_BUFFER_SIZE],
-      file[TUI_ERROR_POPUP_FILE_BUFFER_SIZE], function[TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE],
+  char message[ASCIICHAT_ERRNO_MESSAGE_MAX], thread[TUI_ERROR_POPUP_THREAD_BUFFER_SIZE], file[TUI_ERROR_POPUP_FILE_BUFFER_SIZE], function[TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE],
       line[TUI_ERROR_POPUP_LINE_BUFFER_SIZE];
   sanitize(message, sizeof(message), error->context_message);
   named_metadata_t metadata = {0};
@@ -251,8 +250,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   }
   const char *grey = colors ? ui_text_color_prefix(LOG_COLOR_GREY) : "";
   const char *reset = colors ? "\033[0m" : "";
-  frame_buffer_printf(body, "Details: %s%s\n\n%sThread: %s", message[0] ? message : "No additional details",
-                      error->message_truncated ? " [truncated]" : "", grey,
+  frame_buffer_printf(body, "Details: %s%s\n\n%sThread: %s", message[0] ? message : "No additional details", error->message_truncated ? " [truncated]" : "", grey,
                       colors ? colored_string(named ? LOG_COLOR_WARN : LOG_COLOR_FATAL, thread) : thread);
   if (named) {
     char address[TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE];
@@ -268,8 +266,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   sanitize(file, sizeof(file), error->file ? extract_project_relative_path(error->file, ASCIICHAT_OWNED_SOURCE_DIRS) : "?");
   sanitize(function, sizeof(function), error->function);
   safe_snprintf(line, sizeof(line), "%d", error->line);
-  frame_buffer_printf(body, "%sSource: %s %s:%s%s\n", grey, colors ? colored_string(LOG_COLOR_DEBUG, file) : file,
-                      colors ? colored_string(LOG_COLOR_DEV, function) : function,
+  frame_buffer_printf(body, "%sSource: %s %s:%s%s\n", grey, colors ? colored_string(LOG_COLOR_DEBUG, file) : file, colors ? colored_string(LOG_COLOR_DEV, function) : function,
                       colors ? colored_string(LOG_COLOR_GREY, line) : line, reset);
   if (g_cached_id != error->error_id) {
     memset(&g_trace, 0, sizeof(g_trace));
@@ -279,8 +276,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     if (trace.count) {
       backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
       if (trace.symbols)
-        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
-                                backtrace_filter_error_internal);
+        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, backtrace_filter_error_internal);
       backtrace_t_free(&trace);
     }
   }
@@ -305,8 +301,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
 }
 
 static void format_error_heading(char *buffer, size_t capacity, const asciichat_error_context_t *error) {
-  safe_snprintf(buffer, capacity, "%s (%d): %s", asciichat_error_name(error->code), error->code,
-                asciichat_error_string(error->code));
+  safe_snprintf(buffer, capacity, "%s (%d): %s", asciichat_error_name(error->code), error->code, asciichat_error_string(error->code));
 }
 
 void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
@@ -329,8 +324,7 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   lock_state();
   g_displayed_latest = displayed_latest;
   unlock_state();
-  bool colors = !GET_OPTION(strip_ansi) &&
-                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   int width = MIN(size.cols - 4, 100);
   int body_width = width - 6;
   if (g_cached_id != error.error_id || g_cached_width != body_width || g_cached_color != colors)
@@ -353,12 +347,10 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   unlock_state();
   ui_popup_frame(out, top, left, width, height, LOG_COLOR_RESET);
   char title[TUI_ERROR_POPUP_TITLE_BUFFER_SIZE];
-  safe_snprintf(title, sizeof(title), "Error (%zu)   %zu of %zu%s", count, selected + 1, count,
-                dropped ? " [older errors dropped]" : "");
+  safe_snprintf(title, sizeof(title), "Error (%zu)   %zu of %zu%s", count, selected + 1, count, dropped ? " [older errors dropped]" : "");
   char heading[TUI_ERROR_POPUP_HEADING_BUFFER_SIZE];
   ui_text_cell(heading, sizeof(heading), title, width - 4, UI_ALIGN_LEFT);
-  frame_buffer_printf(out, "\033[%d;%dH%s", top + 1, left + 2,
-                      colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
+  frame_buffer_printf(out, "\033[%d;%dH%s", top + 1, left + 2, colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
   char code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE], cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE];
   format_error_heading(code, sizeof(code), &error);
   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
@@ -369,8 +361,7 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
       break;
     const char *start = g_wrapped + g_lines[index];
     const char *end = strchr(start, '\n');
-    frame_buffer_printf(out, "\033[%d;%dH%.*s\033[0m", top + 4 + i, left + 2,
-                        (int)(end ? end - start : (ptrdiff_t)strlen(start)), start);
+    frame_buffer_printf(out, "\033[%d;%dH%.*s\033[0m", top + 4 + i, left + 2, (int)(end ? end - start : (ptrdiff_t)strlen(start)), start);
   }
   ui_scrollbar_render(out, top + 4 + (int)fixed_rows, left + width - 3, (int)page_rows, scroll_rows, page_rows, scroll);
   const char *orange = colors ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
@@ -443,8 +434,7 @@ void ui_error_popup_preserve(int fd, terminal_size_t size) {
     } else {
       char message[ASCIICHAT_ERRNO_MESSAGE_MAX];
       sanitize(message, sizeof(message), entries[count - 1].context_message);
-      int length = safe_snprintf(g_final_output, sizeof(g_final_output), "\nERROR\n%s (%d): %s\nDetails: %s\n",
-                                 asciichat_error_name(entries[count - 1].code), entries[count - 1].code,
+      int length = safe_snprintf(g_final_output, sizeof(g_final_output), "\nERROR\n%s (%d): %s\nDetails: %s\n", asciichat_error_name(entries[count - 1].code), entries[count - 1].code,
                                  asciichat_error_string(entries[count - 1].code), message);
       g_final_length = length > 0 ? MIN((size_t)length, sizeof(g_final_output) - 1) : 0;
       g_final_fd = fd;

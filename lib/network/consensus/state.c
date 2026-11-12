@@ -40,8 +40,7 @@ typedef struct consensus_state {
   election_result_t election_result; /**< Last election result */
 } consensus_state_t;
 
-asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology,
-                                         consensus_state_t **out_state) {
+asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology, consensus_state_t **out_state) {
   if (!my_id || !topology || !out_state) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid state creation parameters");
   }
@@ -102,8 +101,7 @@ asciichat_error_t consensus_state_add_metrics(consensus_state_t *state, const pa
   /* Grow array if needed */
   if (state->metrics_count >= state->metrics_capacity) {
     int new_capacity = state->metrics_capacity * 2;
-    participant_metrics_t *new_metrics =
-        SAFE_REALLOC(state->metrics, new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+    participant_metrics_t *new_metrics = SAFE_REALLOC(state->metrics, new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
     state->metrics = new_metrics;
     state->metrics_capacity = new_capacity;
   }
@@ -144,16 +142,14 @@ asciichat_error_t consensus_state_compute_election(consensus_state_t *state) {
   }
 
   int best_idx = -1, backup_idx = -1;
-  asciichat_error_t result =
-      consensus_election_choose_hosts(state->metrics, state->metrics_count, &best_idx, &backup_idx);
+  asciichat_error_t result = consensus_election_choose_hosts(state->metrics, state->metrics_count, &best_idx, &backup_idx);
   if (result != ASCIICHAT_OK)
     return result;
   return consensus_state_store_election(state, best_idx, backup_idx);
 }
 
 asciichat_error_t consensus_state_store_election(consensus_state_t *state, int best_idx, int backup_idx) {
-  if (!state || state->current_state != CONSENSUS_STATE_ELECTION_START || best_idx < 0 ||
-      best_idx >= state->metrics_count || backup_idx < -1 || backup_idx >= state->metrics_count ||
+  if (!state || state->current_state != CONSENSUS_STATE_ELECTION_START || best_idx < 0 || best_idx >= state->metrics_count || backup_idx < -1 || backup_idx >= state->metrics_count ||
       backup_idx == best_idx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid election result");
   memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, SESSION_ID_SIZE);
@@ -185,8 +181,7 @@ consensus_state_machine_t consensus_state_get_current_state(const consensus_stat
   return state->current_state;
 }
 
-asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state,
-                                                   uint8_t out_host_id[SESSION_ID_SIZE]) {
+asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state, uint8_t out_host_id[SESSION_ID_SIZE]) {
   if (!state || !out_host_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -199,8 +194,7 @@ asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *stat
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state,
-                                                     uint8_t out_backup_id[SESSION_ID_SIZE]) {
+asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state, uint8_t out_backup_id[SESSION_ID_SIZE]) {
   if (!state || !out_backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -227,8 +221,7 @@ int consensus_state_get_metrics_count(const consensus_state_t *state) {
   return state->metrics_count;
 }
 
-asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, int index,
-                                                participant_metrics_t *out_metrics) {
+asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, int index, participant_metrics_t *out_metrics) {
   if (!state || !out_metrics || index < 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -238,10 +231,8 @@ asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, 
   }
 
   /* Valid to retrieve metrics in COLLECTING, COLLECTION_COMPLETE, or ELECTION states */
-  if (state->current_state != CONSENSUS_STATE_COLLECTING &&
-      state->current_state != CONSENSUS_STATE_COLLECTION_COMPLETE &&
-      state->current_state != CONSENSUS_STATE_ELECTION_START && state->current_state != CONSENSUS_STATE_ELECTING &&
-      state->current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+  if (state->current_state != CONSENSUS_STATE_COLLECTING && state->current_state != CONSENSUS_STATE_COLLECTION_COMPLETE && state->current_state != CONSENSUS_STATE_ELECTION_START &&
+      state->current_state != CONSENSUS_STATE_ELECTING && state->current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Cannot retrieve metrics in state %d", state->current_state);
   }
 

@@ -23,8 +23,7 @@ typedef struct {
   sqlite3 *db; ///< SQLite database handle
 } sqlite_backend_t;
 
-static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address, rate_event_type_t event_type,
-                                      const rate_limit_config_t *config, bool *allowed) {
+static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address, rate_event_type_t event_type, const rate_limit_config_t *config, bool *allowed) {
   sqlite_backend_t *backend = (sqlite_backend_t *)backend_data;
 
   // Use provided config or default
@@ -43,12 +42,9 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit query: %s", sqlite3_errmsg(backend->db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"),
-                         rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":window_start"), (sqlite3_int64)window_start_ns) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"), rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":window_start"), (sqlite3_int64)window_start_ns) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -66,8 +62,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
   *allowed = (event_count < limit->max_events);
 
   if (!*allowed) {
-    log_warn("Rate limit exceeded for %s (event: %s, count: %u/%u)", ip_address,
-             rate_limiter_event_type_string(event_type), event_count, limit->max_events);
+    log_warn("Rate limit exceeded for %s (event: %s, count: %u/%u)", ip_address, rate_limiter_event_type_string(event_type), event_count, limit->max_events);
   }
 
   return ASCIICHAT_OK;
@@ -88,12 +83,9 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit insert: %s", sqlite3_errmsg(backend->db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"),
-                         rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":timestamp"), (sqlite3_int64)now_ns) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"), rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":timestamp"), (sqlite3_int64)now_ns) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -130,8 +122,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit cleanup: %s", sqlite3_errmsg(backend->db));
   }
 
-  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_ns) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_ns) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }

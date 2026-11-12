@@ -128,8 +128,7 @@ asciichat_error_t hostname_to_ascii(const char *hostname, char *output, size_t c
     }
   }
 #endif
-  UIDNA *idna = uidna_openUTS46(
-      UIDNA_NONTRANSITIONAL_TO_ASCII | UIDNA_CHECK_BIDI | UIDNA_CHECK_CONTEXTJ | UIDNA_CHECK_CONTEXTO, &status);
+  UIDNA *idna = uidna_openUTS46(UIDNA_NONTRANSITIONAL_TO_ASCII | UIDNA_CHECK_BIDI | UIDNA_CHECK_CONTEXTJ | UIDNA_CHECK_CONTEXTO, &status);
   if (U_FAILURE(status) || !idna)
     return SET_ERRNO(ERROR_INIT, "Could not initialize ICU IDNA: %s", u_errorName(status));
   char ascii[HOSTNAME_BUFFER_SIZE];
@@ -140,10 +139,8 @@ asciichat_error_t hostname_to_ascii(const char *hostname, char *output, size_t c
   size_t max_length = MAX_HOSTNAME_LENGTH;
   if (written > 0 && written < (int32_t)sizeof(ascii) && ascii[written - 1] == '.')
     ++max_length;
-  if (U_FAILURE(status) || info.errors || written <= 0 || (size_t)written > max_length ||
-      (size_t)written >= sizeof(ascii) || (size_t)written >= capacity)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IDNA hostname or insufficient capacity (ICU %s, errors 0x%x)",
-                     u_errorName(status), (unsigned)info.errors);
+  if (U_FAILURE(status) || info.errors || written <= 0 || (size_t)written > max_length || (size_t)written >= sizeof(ascii) || (size_t)written >= capacity)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IDNA hostname or insufficient capacity (ICU %s, errors 0x%x)", u_errorName(status), (unsigned)info.errors);
   // Retain underscore hostnames used by local services, but reject other
   // non-DNS ASCII punctuation permitted by ICU when STD3 rules are disabled.
   for (int32_t i = 0; i < written; ++i) {
@@ -234,11 +231,9 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
 
   int compile_error;
   PCRE2_SIZE error_offset;
-  pcre2_code *regex = pcre2_compile((PCRE2_SPTR)URL_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                                    PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &compile_error, &error_offset, NULL);
+  pcre2_code *regex = pcre2_compile((PCRE2_SPTR)URL_REGEX_PATTERN, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &compile_error, &error_offset, NULL);
   if (!regex) {
-    return SET_ERRNO(ERROR_CONFIG, "URL validator compilation failed at offset %zu (PCRE2 error %d)",
-                     (size_t)error_offset, compile_error);
+    return SET_ERRNO(ERROR_CONFIG, "URL validator compilation failed at offset %zu (PCRE2 error %d)", (size_t)error_offset, compile_error);
   }
 
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);

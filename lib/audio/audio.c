@@ -43,8 +43,7 @@
 // worker exports them so the telemetry backend never runs on a device callback.
 #define AUDIO_RT_METRIC_SLOTS 1024
 #if !defined(_WIN32) || !defined(__clang__)
-_Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_POINTER_LOCK_FREE == 2,
-               "Audio telemetry requires lock-free unsigned and pointer atomics");
+_Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_POINTER_LOCK_FREE == 2, "Audio telemetry requires lock-free unsigned and pointer atomics");
 #endif
 typedef struct {
   _Atomic unsigned state; // 0 free, 1 owned, 2 ready
@@ -71,8 +70,7 @@ static void audio_metric(ascii_otel_metric_t metric, double value) {
   unsigned index = atomic_fetch_add_explicit(&g_audio_rt_next, 1, memory_order_relaxed) % AUDIO_RT_METRIC_SLOTS;
   audio_rt_metric_t *slot = &g_audio_rt_metrics[index];
   unsigned free_slot = 0;
-  if (!atomic_compare_exchange_strong_explicit(&slot->state, &free_slot, 1, memory_order_acquire,
-                                               memory_order_relaxed)) {
+  if (!atomic_compare_exchange_strong_explicit(&slot->state, &free_slot, 1, memory_order_acquire, memory_order_relaxed)) {
     atomic_fetch_add_explicit(&g_audio_rt_dropped, 1, memory_order_relaxed);
     return;
   }
@@ -193,8 +191,7 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
   }
   // Mirror may record and visualize the microphone without a transmission
   // consumer. Do not repeatedly overflow and log from that undrained queue.
-  if (!ctx->monitor_local_media ||
-      audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK)
+  if (!ctx->monitor_local_media || audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK)
     audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
 }
 
@@ -233,8 +230,7 @@ static void *audio_worker_thread(void *arg) {
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     errno_notifications_suppress(notifications);
   }
-  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", OPUS_FRAME_SAMPLES,
-            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
+  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", OPUS_FRAME_SAMPLES, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
 
   // Check for AEC3 bypass (static, checked once)
   static int bypass_aec3_worker = -1;
@@ -275,8 +271,7 @@ static void *audio_worker_thread(void *arg) {
     // Local media playback maintains 150 ms of queued audio. Refill below
     // 100 ms instead of waking for every callback or 10 ms timeout. Capture
     // and software-only transmission use a 20 ms processing cadence.
-    bool buffered_media =
-        ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
+    bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
     bool transmitted_media = ctx->capture_media_source && ctx->playback_only && !ctx->monitor_local_media;
     // Device callbacks publish every 20 ms. Leave a second batch of grace
     // before the watchdog flushes a partial batch, avoiding a timeout racing
@@ -290,8 +285,7 @@ static void *audio_worker_thread(void *arg) {
       platform_sleep_us(20 * US_PER_MS_INT);
       wait_result = 1;
     } else {
-      wait_result =
-          cond_timedwait(&ctx->audio_processing_wakeup, &ctx->audio_processing_wait_guard, timeout_ms * NS_PER_MS_INT);
+      wait_result = cond_timedwait(&ctx->audio_processing_wakeup, &ctx->audio_processing_wait_guard, timeout_ms * NS_PER_MS_INT);
     }
     double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
     total_wait_ns += wait_time_ns;
@@ -323,23 +317,17 @@ static void *audio_worker_thread(void *arg) {
       char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
       time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
-      time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
-                  sizeof(avg_capture_str));
+      time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str, sizeof(avg_capture_str));
       time_pretty(max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
-      time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str,
-                  sizeof(avg_playback_str));
+      time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str, sizeof(avg_playback_str));
       time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
-      log_debug("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
-                timeout_count, process_count);
-      log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
-                max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
-      log_debug("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
-                render_available, playback_available, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
+      log_debug("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count, timeout_count, process_count);
+      log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str, max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
+      log_debug("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available, render_available, playback_available, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
     }
 
-    if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source &&
-        !GET_OPTION(test_audio)) {
+    if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source && !GET_OPTION(test_audio)) {
       // Timeout with no data - continue waiting
       continue;
     }
@@ -349,9 +337,7 @@ static void *audio_worker_thread(void *arg) {
     bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
     audio_capture_source_t selection = GET_OPTION(audio_capture_source);
     bool test_audio = GET_OPTION(test_audio);
-    bool use_media = !test_audio && has_media &&
-                     (selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
-                      selection == AUDIO_CAPTURE_SOURCE_BOTH);
+    bool use_media = !test_audio && has_media && (selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA || selection == AUDIO_CAPTURE_SOURCE_BOTH);
     bool use_mic = !test_audio && audio_should_enable_microphone(selection, has_media);
     if (test_audio || (use_media && !use_mic)) {
       uint64_t now = time_get_ns();
@@ -361,14 +347,10 @@ static void *audio_worker_thread(void *arg) {
       bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
       size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
       size_t refill = queued < 7200 * AUDIO_CHANNELS ? 7200 * AUDIO_CHANNELS - queued : 0;
-      uint64_t due = local_playback
-                         ? media_samples + refill
-                         : (now - media_start_ns) / (20 * NS_PER_MS_INT) * (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
+      uint64_t due = local_playback ? media_samples + refill : (now - media_start_ns) / (20 * NS_PER_MS_INT) * (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
       float media[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
       while (media_samples < due) {
-        size_t count = due - media_samples > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                           ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                           : (size_t)(due - media_samples);
+        size_t count = due - media_samples > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) : (size_t)(due - media_samples);
         size_t read = count;
         if (test_audio) {
           audio_test_pattern(media, count / AUDIO_CHANNELS, media_samples / AUDIO_CHANNELS, AUDIO_SAMPLE_RATE);
@@ -377,14 +359,11 @@ static void *audio_worker_thread(void *arg) {
           read = media_source_read_audio(ctx->capture_media_source, media, count);
         if (read < count)
           memset(media + read, 0, (count - read) * sizeof(float));
-        audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
-                               media_start_ns + media_samples * 1000000000ULL / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS));
+        audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count, media_start_ns + media_samples * 1000000000ULL / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS));
         audio_visualization_submit_stereo(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, count);
         // Keep transmission available, but avoid overrunning an undrained
         // local-monitor queue once it is full.
-        if ((!test_audio || !ctx->monitor_local_media) &&
-            (!ctx->monitor_local_media ||
-             audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK))
+        if ((!test_audio || !ctx->monitor_local_media) && (!ctx->monitor_local_media || audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK))
           audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
         if (!test_audio && ctx->monitor_local_media)
           audio_ring_buffer_write(ctx->playback_buffer, media, (int)count);
@@ -392,8 +371,7 @@ static void *audio_worker_thread(void *arg) {
       }
     }
     if (!use_mic && capture_available > 0) {
-      size_t drain = capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                                                                               : capture_available;
+      size_t drain = capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) : capture_available;
       audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, drain);
       capture_available = 0;
     }
@@ -426,9 +404,7 @@ static void *audio_worker_thread(void *arg) {
         if (aligned > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
           aligned = ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
         if (render_available > 0) {
-          size_t discard = render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                               ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                               : render_available;
+          size_t discard = render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) : render_available;
           audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, discard);
         }
       }
@@ -451,8 +427,7 @@ static void *audio_worker_thread(void *arg) {
           // Both buffers have identical, frame-aligned sample counts. A zero
           // render reference leaves near-end microphone audio available when
           // there is no speaker signal to cancel.
-          client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
-                                               ctx->worker_capture_batch, (int)capture_read, ctx->worker_capture_batch);
+          client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read, ctx->worker_capture_batch, (int)capture_read, ctx->worker_capture_batch);
 
           long aec3_ns = (long)time_elapsed_ns(aec3_start_ns, time_get_ns());
 
@@ -466,13 +441,11 @@ static void *audio_worker_thread(void *arg) {
 
           if (aec3_count % 100 == 0) {
             long avg_ns = aec3_total_ns / aec3_count;
-            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[TIME_DURATION_BUFFER_SIZE],
-                latest_str[TIME_DURATION_BUFFER_SIZE];
+            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[TIME_DURATION_BUFFER_SIZE], latest_str[TIME_DURATION_BUFFER_SIZE];
             time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
-            log_debug("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
-                      latest_str, capture_read, aec3_count);
+            log_debug("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str, latest_str, capture_read, aec3_count);
           }
         }
 
@@ -490,8 +463,7 @@ static void *audio_worker_thread(void *arg) {
 
         audio_publish_local_capture(ctx, ctx->worker_capture_batch, capture_read, use_media);
 
-        log_debug_every(NS_PER_MS_INT, "Worker processed %zu samples (AEC3 applied, render=%zu)", capture_read,
-                        render_read);
+        log_debug_every(NS_PER_MS_INT, "Worker processed %zu samples (AEC3 applied, render=%zu)", capture_read, render_read);
 
         double capture_time_ns = (double)time_elapsed_ns(capture_start_ns, time_get_ns());
         total_capture_ns += capture_time_ns;
@@ -502,17 +474,13 @@ static void *audio_worker_thread(void *arg) {
       // No AEC3 (bypassed or no pipeline): process capture directly
       uint64_t capture_start_ns = time_get_ns();
 
-      size_t samples_to_process = (capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
-                                      ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                                      : capture_available;
+      size_t samples_to_process = (capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) : capture_available;
       size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, samples_to_process);
 
       if (capture_read > 0) {
         // Drain render buffer to keep it from growing unbounded
         if (render_available > 0) {
-          size_t drain = (render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
-                             ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
-                             : render_available;
+          size_t drain = (render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) : render_available;
           audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, drain);
         }
 
@@ -535,8 +503,7 @@ static void *audio_worker_thread(void *arg) {
         // Write processed capture to encoder buffer
         audio_publish_local_capture(ctx, ctx->worker_capture_batch, capture_read, use_media);
 
-        log_debug_every(NS_PER_MS_INT, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
-                        bypass_aec3_worker ? "BYPASSED" : "applied");
+        log_debug_every(NS_PER_MS_INT, "Worker processed %zu capture samples (AEC3 %s)", capture_read, bypass_aec3_worker ? "BYPASSED" : "applied");
       }
 
       double capture_time_ns = (double)time_elapsed_ns(capture_start_ns, time_get_ns());
@@ -620,13 +587,10 @@ static void audio_callback_prepare(void) {
   }
 }
 
-static int input_callback(const void *, void *, unsigned long, const PaStreamCallbackTimeInfo *, PaStreamCallbackFlags,
-                          void *);
-static int output_callback(const void *, void *, unsigned long, const PaStreamCallbackTimeInfo *, PaStreamCallbackFlags,
-                           void *);
+static int input_callback(const void *, void *, unsigned long, const PaStreamCallbackTimeInfo *, PaStreamCallbackFlags, void *);
+static int output_callback(const void *, void *, unsigned long, const PaStreamCallbackTimeInfo *, PaStreamCallbackFlags, void *);
 
-static int duplex_callback(const void *input, void *output, unsigned long frames, const PaStreamCallbackTimeInfo *time,
-                           PaStreamCallbackFlags flags, void *data) {
+static int duplex_callback(const void *input, void *output, unsigned long frames, const PaStreamCallbackTimeInfo *time, PaStreamCallbackFlags flags, void *data) {
   int result = output_callback(NULL, output, frames, time, flags, data);
   return result == paContinue ? input_callback(input, NULL, frames, time, flags, data) : result;
 }
@@ -642,8 +606,7 @@ static int duplex_callback(const void *input, void *output, unsigned long frames
  * @param src_rate Source sample rate (e.g., 48000)
  * @param dst_rate Destination sample rate (e.g., 44100)
  */
-void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
-                     double dst_rate) {
+void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate, double dst_rate) {
   if (src_samples == 0 || dst_samples == 0) {
     SAFE_MEMSET(dst, dst_samples * sizeof(float), 0, dst_samples * sizeof(float));
     return;
@@ -680,8 +643,7 @@ void resample_linear(const float *src, size_t src_samples, float *dst, size_t ds
  * Native-rate playback is converted to the device rate here with fixed-size,
  * stateful interpolation; no allocation or locking is performed.
  */
-static int output_callback(const void *input, void *output_buffer, unsigned long frames,
-                           const PaStreamCallbackTimeInfo *time, PaStreamCallbackFlags flags, void *data) {
+static int output_callback(const void *input, void *output_buffer, unsigned long frames, const PaStreamCallbackTimeInfo *time, PaStreamCallbackFlags flags, void *data) {
   audio_callback_prepare();
   (void)input;
   (void)time;
@@ -711,8 +673,7 @@ static int output_callback(const void *input, void *output_buffer, unsigned long
   }
   if (needed > sizeof(source) / sizeof(source[0]) / AUDIO_CHANNELS)
     return paContinue;
-  size_t read =
-      ctx->playback_buffer ? audio_ring_buffer_read(ctx->playback_buffer, source, needed * AUDIO_CHANNELS) : 0;
+  size_t read = ctx->playback_buffer ? audio_ring_buffer_read(ctx->playback_buffer, source, needed * AUDIO_CHANNELS) : 0;
   memset(source + read, 0, (needed * AUDIO_CHANNELS - read) * sizeof(float));
   float volume = fmaxf(0, fminf(1, GET_OPTION(speakers_volume)));
   for (size_t i = 0; i < needed * AUDIO_CHANNELS; i++)
@@ -753,14 +714,12 @@ static int output_callback(const void *input, void *output_buffer, unsigned long
       output[frame * channels + 1] = rendered[frame * 2 + 1];
     }
   }
-  if (ctx->playback_only && ctx->monitor_local_media &&
-      audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800 * AUDIO_CHANNELS)
+  if (ctx->playback_only && ctx->monitor_local_media && audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800 * AUDIO_CHANNELS)
     cond_signal(&ctx->audio_processing_wakeup);
   return paContinue;
 }
 
-static int input_callback(const void *input, void *output, unsigned long frames, const PaStreamCallbackTimeInfo *time,
-                          PaStreamCallbackFlags flags, void *data) {
+static int input_callback(const void *input, void *output, unsigned long frames, const PaStreamCallbackTimeInfo *time, PaStreamCallbackFlags flags, void *data) {
   audio_callback_prepare();
   (void)output;
   (void)time;
@@ -782,8 +741,7 @@ static int input_callback(const void *input, void *output, unsigned long frames,
   const float *capture = routed;
   size_t count = frames * AUDIO_CHANNELS;
   if (ctx->input_device_rate > 0 && ctx->input_device_rate != AUDIO_SAMPLE_RATE) {
-    count = audio_resample_stereo(&ctx->capture_resampler, routed, frames, ctx->input_device_rate, converted,
-                                  sizeof(converted) / sizeof(converted[0]) / AUDIO_CHANNELS, AUDIO_SAMPLE_RATE) *
+    count = audio_resample_stereo(&ctx->capture_resampler, routed, frames, ctx->input_device_rate, converted, sizeof(converted) / sizeof(converted[0]) / AUDIO_CHANNELS, AUDIO_SAMPLE_RATE) *
             AUDIO_CHANNELS;
     capture = converted;
   }
@@ -801,8 +759,7 @@ static int input_callback(const void *input, void *output, unsigned long frames,
 
 // Try the requested layout before layouts required by some hardware backends.
 // Successful opens, rather than maxInputChannels alone, establish support.
-static PaError audio_open_device(PaStream **stream, PaStreamParameters *input, PaStreamParameters *output, double rate,
-                                 PaStreamCallback *callback, audio_context_t *ctx) {
+static PaError audio_open_device(PaStream **stream, PaStreamParameters *input, PaStreamParameters *output, double rate, PaStreamCallback *callback, audio_context_t *ctx) {
   if (!isfinite(rate) || rate < 8000 || rate > 192000)
     return paInvalidSampleRate;
   PaStreamParameters *params = input ? input : output;
@@ -833,8 +790,7 @@ static PaError audio_open_device(PaStream **stream, PaStreamParameters *input, P
         ctx->input_device_channels = (unsigned)channels;
       else
         ctx->output_device_channels = (unsigned)channels;
-      log_info("Audio %s: %d device channels at %.0f Hz; internal PCM is stereo", input ? "input" : "output", channels,
-               rate);
+      log_info("Audio %s: %d device channels at %.0f Hz; internal PCM is stereo", input ? "input" : "output", channels, rate);
       return error;
     }
     if (*stream) {
@@ -947,10 +903,8 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   NAMED_REGISTER_ATOMIC(&rb->discard_to_index, "discard_to_index_producer_position", (uintptr_t)(const void *)(rb));
 
   // Jitter buffer state management
-  NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag",
-                        (uintptr_t)(const void *)(rb));
-  NAMED_REGISTER_ATOMIC(&rb->crossfade_samples_remaining, "crossfade_samples_remaining_count",
-                        (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->crossfade_samples_remaining, "crossfade_samples_remaining_count", (uintptr_t)(const void *)(rb));
   NAMED_REGISTER_ATOMIC(&rb->crossfade_fade_in, "crossfade_fade_in_direction_flag", (uintptr_t)(const void *)(rb));
 
   // Audio quality monitoring
@@ -1013,8 +967,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     return SET_ERRNO(ERROR_INVALID_PARAM, "Incomplete PCM frame in audio queue write");
   // Validate samples doesn't exceed our buffer size
   if (samples > AUDIO_RING_BUFFER_SIZE) {
-    return SET_ERRNO(ERROR_BUFFER, "Attempted to write %d samples, but buffer size is only %d", samples,
-                     AUDIO_RING_BUFFER_SIZE);
+    return SET_ERRNO(ERROR_BUFFER, "Attempted to write %d samples, but buffer size is only %d", samples, AUDIO_RING_BUFFER_SIZE);
   }
 
   // LOCK-FREE: Load indices with proper memory ordering
@@ -1043,9 +996,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
       // position atomically on its next invocation, then preserve this fresh
       // packet so audio resumes from the current stream position.
       audio_ring_buffer_discard_pending(rb);
-      log_warn_every(LOG_RATE_FAST,
-                     "Audio playback backlog (%d samples); requesting consumer to skip stale queued audio",
-                     buffer_level);
+      log_warn_every(LOG_RATE_FAST, "Audio playback backlog (%d samples); requesting consumer to skip stale queued audio", buffer_level);
     } else {
       // Capture queues also have a high-water mark, but their reader may be
       // processing a matching microphone/render interval. Retain the existing
@@ -1058,9 +1009,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
       if (samples > target_writes) {
         int dropped = samples - target_writes;
         audio_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, dropped);
-        log_warn_every(LOG_RATE_FAST,
-                       "Audio capture buffer high water mark exceeded (%d > %d): dropping %d incoming samples",
-                       buffer_level, (AUDIO_JITTER_HIGH_WATER_MARK * (int)rb->channels), dropped);
+        log_warn_every(LOG_RATE_FAST, "Audio capture buffer high water mark exceeded (%d > %d): dropping %d incoming samples", buffer_level, (AUDIO_JITTER_HIGH_WATER_MARK * (int)rb->channels),
+                       dropped);
         samples = target_writes;
       }
     }
@@ -1074,8 +1024,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     audio_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, samples_dropped);
     audio_metric(ASCII_OTEL_METRIC_AUDIO_OVERRUN, 1);
     samples_to_write = available;
-    log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
-                   samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
+    log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)", samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available,
+                   AUDIO_RING_BUFFER_SIZE);
   }
 
   samples_to_write -= samples_to_write % (int)rb->channels;
@@ -1089,8 +1039,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     } else {
       // Need to wrap around - copy in two chunks
       SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
-      SAFE_MEMCPY(&rb->data[0], (samples_to_write - remaining) * sizeof(float), &data[remaining],
-                  (samples_to_write - remaining) * sizeof(float));
+      SAFE_MEMCPY(&rb->data[0], (samples_to_write - remaining) * sizeof(float), &data[remaining], (samples_to_write - remaining) * sizeof(float));
     }
 
     // LOCK-FREE: Store new write_index with release ordering
@@ -1163,30 +1112,25 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       fade_in = true;
     } else {
       // Log buffer fill progress every second
-      log_debug_every(NS_PER_MS_INT, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
-                      rb->jitter_target_samples, (100.0f * available) / rb->jitter_target_samples);
+      log_debug_every(NS_PER_MS_INT, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available, rb->jitter_target_samples, (100.0f * available) / rb->jitter_target_samples);
       return 0; // Return 0 samples - caller will pad with silence
     }
   }
 
   // Periodic buffer health logging (every 5 seconds when healthy)
   unsigned int underruns = atomic_load_u64(&rb->underrun_count);
-  log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
-                AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
+  log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
   audio_metric(ASCII_OTEL_METRIC_AUDIO_FILL, (double)available);
   if (rb->jitter_buffer_enabled)
-    audio_metric(ASCII_OTEL_METRIC_AUDIO_JITTER,
-                 (double)rb->jitter_target_samples / (AUDIO_SAMPLE_RATE * rb->channels));
+    audio_metric(ASCII_OTEL_METRIC_AUDIO_JITTER, (double)rb->jitter_target_samples / (AUDIO_SAMPLE_RATE * rb->channels));
   bool underrun = rb->jitter_buffer_enabled && available < samples;
   if (underrun) {
     audio_metric(ASCII_OTEL_METRIC_AUDIO_UNDERRUN, 1);
     atomic_fetch_add_u64(&rb->underrun_count, 1);
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
-    rb->jitter_target_samples = rb->jitter_target_samples < 6720 * rb->channels
-                                    ? rb->jitter_target_samples + OPUS_FRAME_SAMPLES * rb->channels
-                                    : 7680 * rb->channels;
+    rb->jitter_target_samples = rb->jitter_target_samples < 6720 * rb->channels ? rb->jitter_target_samples + OPUS_FRAME_SAMPLES * rb->channels : 7680 * rb->channels;
     rb->jitter_stable_samples = 0;
     rb->jitter_drift_phase = 0;
     atomic_store_bool(&rb->jitter_buffer_filled, false);
@@ -1201,8 +1145,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   size_t to_read = (samples > available) ? available : samples;
-  audio_metric(rb->jitter_buffer_enabled ? ASCII_OTEL_METRIC_AUDIO_PLAYBACK : ASCII_OTEL_METRIC_AUDIO_CAPTURE,
-               (double)to_read);
+  audio_metric(rb->jitter_buffer_enabled ? ASCII_OTEL_METRIC_AUDIO_PLAYBACK : ASCII_OTEL_METRIC_AUDIO_CAPTURE, (double)to_read);
   size_t consumed = to_read;
   if (rb->jitter_buffer_enabled && !underrun && samples > 1 && available > samples) {
     // Slowly reconcile independent device clocks. Bound interpolation to one
@@ -1239,8 +1182,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       SAFE_MEMCPY(data, to_read * sizeof(float), &rb->data[read_idx], to_read * sizeof(float));
     } else {
       SAFE_MEMCPY(data, remaining * sizeof(float), &rb->data[read_idx], remaining * sizeof(float));
-      SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0],
-                  (to_read - remaining) * sizeof(float));
+      SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0], (to_read - remaining) * sizeof(float));
     }
   }
   atomic_store_u64(&rb->read_index, (read_idx + (unsigned int)consumed) % AUDIO_RING_BUFFER_SIZE);
@@ -1267,8 +1209,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     size_t max_fade_samples = (size_t)AUDIO_CROSSFADE_SAMPLES * rb->channels;
     size_t fade_samples = to_read < max_fade_samples ? to_read : max_fade_samples;
     for (size_t i = 0; i < fade_samples; ++i)
-      data[to_read - fade_samples + i] *=
-          (float)((fade_samples - i - 1) / rb->channels) / (float)(fade_samples / rb->channels);
+      data[to_read - fade_samples + i] *= (float)((fade_samples - i - 1) / rb->channels) / (float)(fade_samples / rb->channels);
   }
 
   // Save last sample for potential fade-out
@@ -1500,8 +1441,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   /* Register audio context's sync primitives with hierarchical naming */
   NAMED_REGISTER_MUTEX(&ctx->state_mutex, "state_mutex", (uintptr_t)(const void *)(ctx));
-  NAMED_REGISTER_MUTEX(&ctx->audio_processing_wait_guard, "audio_processing_wait_guard",
-                       (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_MUTEX(&ctx->audio_processing_wait_guard, "audio_processing_wait_guard", (uintptr_t)(const void *)(ctx));
   NAMED_REGISTER_COND(&ctx->audio_processing_wakeup, "audio_processing_wakeup", (uintptr_t)(const void *)(ctx));
   NAMED_REGISTER_ATOMIC(&ctx->worker_should_stop, "worker_should_stop", (uintptr_t)(const void *)(ctx));
   NAMED_REGISTER_ATOMIC(&ctx->shutting_down, "shutting_down", (uintptr_t)(const void *)(ctx));
@@ -1629,10 +1569,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     // Local decoded PCM is paced by the speaker callback and has no network
     // clock to reconcile. Keep its samples exact across callback boundaries.
     audio_capture_source_t selection = GET_OPTION(audio_capture_source);
-    bool local_media_selected = selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
-                                selection == AUDIO_CAPTURE_SOURCE_BOTH;
-    ctx->playback_buffer->jitter_buffer_enabled =
-        !(media_audio && ctx->playback_only && ctx->monitor_local_media && local_media_selected);
+    bool local_media_selected = selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA || selection == AUDIO_CAPTURE_SOURCE_BOTH;
+    ctx->playback_buffer->jitter_buffer_enabled = !(media_audio && ctx->playback_only && ctx->monitor_local_media && local_media_selected);
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 
@@ -1679,8 +1617,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     has_input = true;
     inputParams.channelCount = GET_OPTION(microphone_channels) == 2 ? 2 : 1;
     int first_channel = GET_OPTION(microphone_channel);
-    if (first_channel >= 0 && (first_channel >= inputInfo->maxInputChannels ||
-                               inputParams.channelCount > inputInfo->maxInputChannels - first_channel))
+    if (first_channel >= 0 && (first_channel >= inputInfo->maxInputChannels || inputParams.channelCount > inputInfo->maxInputChannels - first_channel))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Selected microphone input/pair is unavailable on %s", inputInfo->name);
     inputParams.sampleFormat = paFloat32;
     inputParams.suggestedLatency = inputInfo->defaultLowInputLatency;
@@ -1746,10 +1683,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   if (!try_separate) {
     // Try full-duplex first (preferred - perfect AEC3 timing)
-    LOG_IO("portaudio", {
-      err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
-                          paClipOff, duplex_callback, ctx);
-    });
+    LOG_IO("portaudio", { err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff, duplex_callback, ctx); });
 
     if (err == paNoError) {
       ctx->input_device_rate = AUDIO_SAMPLE_RATE;
@@ -1774,8 +1708,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (try_separate) {
     // Use separate streams for non-48 kHz devices and single-direction modes.
     if (has_output && has_input) {
-      log_info("Using separate native-rate input/output streams (%.0f Hz in, %.0f Hz out)",
-               inputInfo->defaultSampleRate, outputInfo->defaultSampleRate);
+      log_info("Using separate native-rate input/output streams (%.0f Hz in, %.0f Hz out)", inputInfo->defaultSampleRate, outputInfo->defaultSampleRate);
       log_info("  Converting between device rates and the %.0f Hz audio pipeline", (double)AUDIO_SAMPLE_RATE);
     } else if (has_output) {
       log_debug("Using output-only mode (playback-only for mirror/media)");
@@ -1813,16 +1746,14 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       PaStreamCallback *callback = output_callback;
 
       // Try preferred rate first
-      LOG_IO("portaudio",
-             { err = audio_open_device(&ctx->output_stream, NULL, &outputParams, preferred_rate, callback, ctx); });
+      LOG_IO("portaudio", { err = audio_open_device(&ctx->output_stream, NULL, &outputParams, preferred_rate, callback, ctx); });
 
       if (err == paNoError) {
         actual_output_rate = preferred_rate;
         output_ok = true;
         log_info("Output stream opened at %.0f Hz", preferred_rate);
       } else {
-        log_warn("Failed to open output at %.0f Hz: %s, trying %.0f Hz", preferred_rate, Pa_GetErrorText(err),
-                 fallback_rate);
+        log_warn("Failed to open output at %.0f Hz: %s, trying %.0f Hz", preferred_rate, Pa_GetErrorText(err), fallback_rate);
 
         // If first Pa_OpenStream call left a partial stream, clean it up before retrying
         if (ctx->output_stream) {
@@ -1832,8 +1763,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         }
 
         // Try the other endpoint rate if the native rate is unavailable.
-        LOG_IO("portaudio",
-               { err = audio_open_device(&ctx->output_stream, NULL, &outputParams, fallback_rate, callback, ctx); });
+        LOG_IO("portaudio", { err = audio_open_device(&ctx->output_stream, NULL, &outputParams, fallback_rate, callback, ctx); });
 
         if (err == paNoError) {
           actual_output_rate = fallback_rate;
@@ -1857,8 +1787,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         ctx->output_resample_previous = 0.0f;
         ctx->output_resample_has_previous = false;
         if (actual_output_rate != AUDIO_SAMPLE_RATE) {
-          log_warn("⚠️  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used",
-                   actual_output_rate, (double)AUDIO_SAMPLE_RATE);
+          log_warn("⚠️  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used", actual_output_rate, (double)AUDIO_SAMPLE_RATE);
         }
       }
     }
@@ -1872,14 +1801,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       if (input_stream_rate <= 0.0) {
         input_stream_rate = AUDIO_SAMPLE_RATE;
       }
-      LOG_IO("portaudio", {
-        err = audio_open_device(&ctx->input_stream, &inputParams, NULL, input_stream_rate, input_callback, ctx);
-      });
+      LOG_IO("portaudio", { err = audio_open_device(&ctx->input_stream, &inputParams, NULL, input_stream_rate, input_callback, ctx); });
       if (err != paNoError && input_stream_rate != AUDIO_SAMPLE_RATE) {
         input_stream_rate = AUDIO_SAMPLE_RATE;
-        LOG_IO("portaudio", {
-          err = audio_open_device(&ctx->input_stream, &inputParams, NULL, input_stream_rate, input_callback, ctx);
-        });
+        LOG_IO("portaudio", { err = audio_open_device(&ctx->input_stream, &inputParams, NULL, input_stream_rate, input_callback, ctx); });
       }
       input_ok = (err == paNoError);
       if (input_ok) {
@@ -1905,10 +1830,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         fallback_input_params.device = 0;
         const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
         if (device_0_info && device_0_info->maxInputChannels > 0) {
-          LOG_IO("portaudio", {
-            err = audio_open_device(&ctx->input_stream, &fallback_input_params, NULL, device_0_info->defaultSampleRate,
-                                    input_callback, ctx);
-          });
+          LOG_IO("portaudio", { err = audio_open_device(&ctx->input_stream, &fallback_input_params, NULL, device_0_info->defaultSampleRate, input_callback, ctx); });
           if (err == paNoError) {
             ctx->input_device_rate = device_0_info->defaultSampleRate;
             log_info("Input stream opened on device 0 (fallback from default)");
@@ -2129,8 +2051,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
 
 asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer,
-                     num_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer, num_samples);
   }
 
   // audio_ring_buffer_read now returns number of samples read, not error code
@@ -2140,8 +2061,7 @@ asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int nu
 
 asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer,
-                     num_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer, num_samples);
   }
 
   // Don't accept new audio data during shutdown - this prevents garbage/beeps
@@ -2157,8 +2077,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
 }
 
 // Internal helper to list audio devices (input or output)
-static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_devices, unsigned int *out_count,
-                                                     bool list_inputs) {
+static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_devices, unsigned int *out_count, bool list_inputs) {
   if (!out_devices || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
@@ -2289,8 +2208,7 @@ asciichat_error_t audio_parse_batch_header(const void *data, size_t len, audio_b
   }
 
   if (len < sizeof(audio_batch_packet_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch header too small (len=%zu, expected=%zu)", len,
-                     sizeof(audio_batch_packet_t));
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch header too small (len=%zu, expected=%zu)", len, sizeof(audio_batch_packet_t));
   }
 
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
@@ -2338,8 +2256,7 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch) {
   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
   // With max 256 frames, that's up to ~245k samples per batch
   if (batch->total_samples > 1000000) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch sample count suspiciously large (total_samples=%u)",
-                     batch->total_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch sample count suspiciously large (total_samples=%u)", batch->total_samples);
   }
 
   return ASCIICHAT_OK;

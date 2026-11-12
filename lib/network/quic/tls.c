@@ -15,14 +15,12 @@ static asciichat_error_t tls_error(const char *operation) {
   return SET_ERRNO(ERROR_CRYPTO, "%s: %s", operation, code ? message : "OpenSSL rejected the operation");
 }
 
-static int select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length, const unsigned char *offered,
-                       unsigned int offered_length, void *arg) {
+static int select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length, const unsigned char *offered, unsigned int offered_length, void *arg) {
   (void)ssl;
   quic_tls_t *tls = arg;
   unsigned char *selected = NULL;
   unsigned char selected_length = 0;
-  if (SSL_select_next_proto(&selected, &selected_length, tls->alpn, tls->alpn_length, offered, offered_length) !=
-      OPENSSL_NPN_NEGOTIATED)
+  if (SSL_select_next_proto(&selected, &selected_length, tls->alpn, tls->alpn_length, offered, offered_length) != OPENSSL_NPN_NEGOTIATED)
     return SSL_TLSEXT_ERR_ALERT_FATAL;
   *out = selected;
   *out_length = selected_length;
@@ -48,8 +46,7 @@ static asciichat_error_t create_context(bool server, const char *alpn, quic_tls_
   tls->alpn_length = (unsigned int)length + 1;
   ERR_clear_error();
   tls->ssl_ctx = SSL_CTX_new(server ? TLS_server_method() : TLS_client_method());
-  if (!tls->ssl_ctx || SSL_CTX_set_min_proto_version(tls->ssl_ctx, TLS1_3_VERSION) != 1 ||
-      SSL_CTX_set_max_proto_version(tls->ssl_ctx, TLS1_3_VERSION) != 1 ||
+  if (!tls->ssl_ctx || SSL_CTX_set_min_proto_version(tls->ssl_ctx, TLS1_3_VERSION) != 1 || SSL_CTX_set_max_proto_version(tls->ssl_ctx, TLS1_3_VERSION) != 1 ||
       SSL_CTX_set_max_early_data(tls->ssl_ctx, 0) != 1) {
     asciichat_error_t result = tls_error("Cannot configure QUIC TLS 1.3");
     quic_tls_destroy(&tls);
@@ -64,8 +61,7 @@ static asciichat_error_t create_context(bool server, const char *alpn, quic_tls_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file, const char *private_key_file,
-                                         quic_tls_t **out) {
+asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file, const char *private_key_file, quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC server requires a certificate and private key");
   *out = NULL;
@@ -76,8 +72,7 @@ asciichat_error_t quic_tls_server_create(const char *alpn, const char *certifica
   if (result != ASCIICHAT_OK)
     return result;
   ERR_clear_error();
-  if (SSL_CTX_use_certificate_chain_file(tls->ssl_ctx, certificate_file) != 1 ||
-      SSL_CTX_use_PrivateKey_file(tls->ssl_ctx, private_key_file, SSL_FILETYPE_PEM) != 1 ||
+  if (SSL_CTX_use_certificate_chain_file(tls->ssl_ctx, certificate_file) != 1 || SSL_CTX_use_PrivateKey_file(tls->ssl_ctx, private_key_file, SSL_FILETYPE_PEM) != 1 ||
       SSL_CTX_check_private_key(tls->ssl_ctx) != 1) {
     result = tls_error("Cannot load QUIC server certificate or private key");
     quic_tls_destroy(&tls);
@@ -98,8 +93,7 @@ asciichat_error_t quic_tls_client_create(const char *alpn, const char *ca_file, 
   if (result != ASCIICHAT_OK)
     return result;
   ERR_clear_error();
-  int loaded = ca_file ? SSL_CTX_load_verify_locations(tls->ssl_ctx, ca_file, NULL)
-                       : SSL_CTX_set_default_verify_paths(tls->ssl_ctx);
+  int loaded = ca_file ? SSL_CTX_load_verify_locations(tls->ssl_ctx, ca_file, NULL) : SSL_CTX_set_default_verify_paths(tls->ssl_ctx);
   if (loaded != 1) {
     result = tls_error("Cannot load QUIC client trust roots");
     quic_tls_destroy(&tls);
@@ -116,15 +110,12 @@ asciichat_error_t quic_tls_client_configure(quic_tls_t *tls, SSL *ssl, const cha
   X509_VERIFY_PARAM *verify = SSL_get0_param(ssl);
   X509_VERIFY_PARAM_set_hostflags(verify, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
   if (SSL_set_alpn_protos(ssl, tls->alpn, tls->alpn_length) != 0 ||
-      (is_valid_ip(server_name)
-           ? X509_VERIFY_PARAM_set1_ip_asc(verify, server_name) != 1
-           : (SSL_set_tlsext_host_name(ssl, server_name) != 1 || SSL_set1_host(ssl, server_name) != 1)))
+      (is_valid_ip(server_name) ? X509_VERIFY_PARAM_set1_ip_asc(verify, server_name) != 1 : (SSL_set_tlsext_host_name(ssl, server_name) != 1 || SSL_set1_host(ssl, server_name) != 1)))
     return tls_error("Cannot configure QUIC server identity");
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name, ngtcp2_crypto_conn_ref *connection,
-                                          SSL **out) {
+asciichat_error_t quic_tls_session_create(quic_tls_t *tls, const char *server_name, ngtcp2_crypto_conn_ref *connection, SSL **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC TLS session arguments");
   *out = NULL;
@@ -180,10 +171,7 @@ asciichat_error_t quic_tls_verify_ready(quic_tls_t *tls, SSL *ssl) {
     const char *host = X509_VERIFY_PARAM_get0_host(verify, 0);
     char *ip = X509_VERIFY_PARAM_get1_ip_asc(verify);
     X509 *peer = SSL_get0_peer_certificate(ssl);
-    bool identity_matches =
-        peer && (host || ip) &&
-        (!host || X509_check_host(peer, host, 0, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, NULL) == 1) &&
-        (!ip || X509_check_ip_asc(peer, ip, 0) == 1);
+    bool identity_matches = peer && (host || ip) && (!host || X509_check_host(peer, host, 0, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, NULL) == 1) && (!ip || X509_check_ip_asc(peer, ip, 0) == 1);
     OPENSSL_free(ip);
     if (!identity_matches || !(SSL_get_verify_mode(ssl) & SSL_VERIFY_PEER) || SSL_get_verify_result(ssl) != X509_V_OK)
       return SET_ERRNO(ERROR_CRYPTO, "QUIC TLS peer certificate or identity was not verified");

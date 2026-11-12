@@ -86,16 +86,14 @@ static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint
           pending = true;
           break;
         }
-      if (!pending &&
-          (victim == OUTBOUND_MAX_STREAMS || out->streams[i].last_used_ns < out->streams[victim].last_used_ns))
+      if (!pending && (victim == OUTBOUND_MAX_STREAMS || out->streams[i].last_used_ns < out->streams[victim].last_used_ns))
         victim = i;
     }
     if (victim == OUTBOUND_MAX_STREAMS) {
       log_warn("Outbound stream state limit reached (%u); all stream slots are active", OUTBOUND_MAX_STREAMS);
       return NULL;
     }
-    log_warn("Evicting inactive outbound stream state for type %u stream %u", out->streams[victim].type,
-             out->streams[victim].stream);
+    log_warn("Evicting inactive outbound stream state for type %u stream %u", out->streams[victim].type, out->streams[victim].stream);
     outbound_stream_t *stream = &out->streams[victim];
     *stream = (outbound_stream_t){.type = type, .stream = id, .last_used_ns = time_get_ns()};
     atomic_store_bool(&stream->needs_keyframe, true);
@@ -186,8 +184,7 @@ static void expire_datagrams(acip_outbound_t *out, uint64_t now) {
   outbound_packet_t **link = &out->head;
   while (*link) {
     outbound_packet_t *packet = *link;
-    if (packet->options.delivery != ACIP_DELIVERY_DATAGRAM || !packet->options.deadline_ns ||
-        packet->options.deadline_ns > now) {
+    if (packet->options.delivery != ACIP_DELIVERY_DATAGRAM || !packet->options.deadline_ns || packet->options.deadline_ns > now) {
       link = &packet->next;
       continue;
     }
@@ -208,8 +205,7 @@ static void expire_datagrams(acip_outbound_t *out, uint64_t now) {
 
 // Keep the terminal wrapper plus its relevant nested cause. Follow causal IDs,
 // not merely older registry entries, and never cross this send's checkpoint.
-static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t scope,
-                                                        const asciichat_error_context_t *cause) {
+static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t scope, const asciichat_error_context_t *cause) {
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
   size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
   asciichat_error_context_t detail = {0};
@@ -228,8 +224,7 @@ static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t 
   return detail;
 }
 
-static asciichat_error_t import_failure(const asciichat_error_context_t *cause,
-                                        const asciichat_error_context_t *detail) {
+static asciichat_error_t import_failure(const asciichat_error_context_t *cause, const asciichat_error_context_t *detail) {
   if (detail->code != ASCIICHAT_OK && !cause->has_system_error && !cause->has_wsa_error) {
     errno_import(detail);
     // Recreate the wrapper at its original source location. Normal recording
@@ -243,9 +238,7 @@ static asciichat_error_t import_failure(const asciichat_error_context_t *cause,
 // The caller holds mutex. Retain the first terminal cause, reject later
 // admissions, and wake queued producers with that failure. Backend close is
 // performed by the worker after releasing mutex.
-static void outbound_record_failure_and_fail_pending(acip_outbound_t *out, asciichat_error_t code,
-                                                     const asciichat_error_context_t *cause,
-                                                     const asciichat_error_context_t *detail) {
+static void outbound_record_failure_and_fail_pending(acip_outbound_t *out, asciichat_error_t code, const asciichat_error_context_t *cause, const asciichat_error_context_t *detail) {
   if (!out->failed) {
     out->failure_code = code;
     if (cause)
@@ -271,8 +264,7 @@ static void outbound_record_failure_and_fail_pending(acip_outbound_t *out, ascii
 
 static asciichat_error_t outbound_send(acip_outbound_t *out, const outbound_packet_t *packet) {
   ASCII_OTEL_SCOPE_PARENT(ACIP_OUTBOUND_SEND, &packet->telemetry_context);
-  ASCII_OTEL_PACKET(packet->type, packet->size >= sizeof(packet_header_t) ? packet->size - sizeof(packet_header_t) : 0,
-                    "send", acip_transport_get_type(out->transport));
+  ASCII_OTEL_PACKET(packet->type, packet->size >= sizeof(packet_header_t) ? packet->size - sizeof(packet_header_t) : 0, "send", acip_transport_get_type(out->transport));
   uint64_t wait_ns = time_get_ns() - packet->created;
   ASCII_OTEL_ATTR_INT("network.queue.wait_ns", wait_ns);
   ASCII_OTEL_ATTR_STRING("network.packet.category", packet->video ? "video" : packet->audio ? "audio" : "control");
@@ -378,9 +370,7 @@ static void *outbound_worker(void *arg) {
       }
     }
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
-    bool datagram_drop =
-        p->options.delivery == ACIP_DELIVERY_DATAGRAM &&
-        (result == ERROR_NETWORK_TIMEOUT || result == ERROR_BUFFER_FULL || result == ERROR_NOT_SUPPORTED);
+    bool datagram_drop = p->options.delivery == ACIP_DELIVERY_DATAGRAM && (result == ERROR_NETWORK_TIMEOUT || result == ERROR_BUFFER_FULL || result == ERROR_NOT_SUPPORTED);
     if (!p->wait) {
       mutex_lock(&out->mutex);
       out->active_bytes = 0;
@@ -507,8 +497,7 @@ void acip_outbound_destroy(acip_transport_t *transport) {
   SAFE_FREE(transport->outbound);
 }
 
-static asciichat_error_t outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                          const acip_send_options_t *options, acip_admission_t *admission) {
+static asciichat_error_t outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options, acip_admission_t *admission) {
   ASCII_OTEL_SCOPE(ACIP_OUTBOUND_SUBMITV);
   if (!transport || !transport->outbound || !buffers || !count || count > SOCKET_IOV_MAX || !admission)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid outbound submission");
@@ -523,22 +512,14 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   if (buffers[0].len < sizeof(header))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing outbound ACIP header");
   memcpy(&header, buffers[0].data, sizeof(header));
-  outbound_packet_t info = {.size = size,
-                            .cost = 3 * (size + WIRE_OVERHEAD) + sizeof(outbound_packet_t) + 128,
-                            .type = NET_TO_HOST_U16(header.type),
-                            .stream = NET_TO_HOST_U32(header.client_id)};
-  info.options = options ? *options
-                         : (acip_send_options_t){.traffic_class = acip_packet_traffic_class(info.type),
-                                                 .delivery = ACIP_DELIVERY_RELIABLE};
-  if ((unsigned)info.options.traffic_class > ACIP_TRAFFIC_VISUAL ||
-      (info.options.delivery != ACIP_DELIVERY_RELIABLE && info.options.delivery != ACIP_DELIVERY_DATAGRAM))
+  outbound_packet_t info = {.size = size, .cost = 3 * (size + WIRE_OVERHEAD) + sizeof(outbound_packet_t) + 128, .type = NET_TO_HOST_U16(header.type), .stream = NET_TO_HOST_U32(header.client_id)};
+  info.options = options ? *options : (acip_send_options_t){.traffic_class = acip_packet_traffic_class(info.type), .delivery = ACIP_DELIVERY_RELIABLE};
+  if ((unsigned)info.options.traffic_class > ACIP_TRAFFIC_VISUAL || (info.options.delivery != ACIP_DELIVERY_RELIABLE && info.options.delivery != ACIP_DELIVERY_DATAGRAM))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid outbound send options");
   if (info.options.delivery != ACIP_DELIVERY_RELIABLE || info.options.deadline_ns) {
     if (!transport->methods->sendv_ex || !transport->methods->validate_send_options)
       return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and deadlines are not supported by this transport");
-    if (info.options.delivery == ACIP_DELIVERY_DATAGRAM &&
-        (info.options.traffic_class == ACIP_TRAFFIC_CONTROL ||
-         info.options.traffic_class != acip_packet_traffic_class(info.type)))
+    if (info.options.delivery == ACIP_DELIVERY_DATAGRAM && (info.options.traffic_class == ACIP_TRAFFIC_CONTROL || info.options.traffic_class != acip_packet_traffic_class(info.type)))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Datagram flow does not match packet type");
     asciichat_error_t result = transport->methods->validate_send_options(transport, &info.options);
     if (result != ASCIICHAT_OK)
@@ -589,9 +570,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
     discard_stream(out, &info);
   // Include backend-owned bytes before reserving room for audio and control.
   size_t backend = backend_bytes(out);
-  size_t reserved = info.video   ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE
-                    : info.audio ? ACIP_OUTBOUND_CONTROL_RESERVE
-                                 : 0;
+  size_t reserved = info.video ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE : info.audio ? ACIP_OUTBOUND_CONTROL_RESERVE : 0;
   size_t limit = ACIP_OUTBOUND_BUDGET - reserved;
   size_t pending = out->bytes + out->active_bytes + backend + transport->methods->reserved_bytes;
   ASCII_OTEL_ATTR_INT("network.queue.pending_bytes", (int64_t)pending);
@@ -599,10 +578,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_PENDING, (double)pending);
   if (out->head)
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_AGE, (double)(info.created - out->head->created) / 1e9);
-  if (out->count >= OUTBOUND_MAX_PACKETS - (info.video   ? 64
-                                            : info.audio ? 32
-                                                         : 0) ||
-      pending > limit || info.cost > limit - pending) {
+  if (out->count >= OUTBOUND_MAX_PACKETS - (info.video ? 64 : info.audio ? 32 : 0) || pending > limit || info.cost > limit - pending) {
     if (info.encoded)
       discard_stream(out, &info);
     atomic_fetch_add_u64(&out->congestion, 1);
@@ -672,13 +648,11 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   return cause.code == result ? import_failure(&cause, &detail) : SET_ERRNO(result, "Outbound submission failed");
 }
 
-asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                        acip_admission_t *admission) {
+asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, acip_admission_t *admission) {
   return outbound_submitv(transport, buffers, count, NULL, admission);
 }
 
-asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                           const acip_send_options_t *options, acip_admission_t *admission) {
+asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options, acip_admission_t *admission) {
   if (!options)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing outbound send options");
   return outbound_submitv(transport, buffers, count, options, admission);
@@ -710,8 +684,7 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
   if (!transport || !transport->outbound)
     return false;
   acip_outbound_t *out = transport->outbound;
-  if (transport->methods->consume_keyframe_request &&
-      transport->methods->consume_keyframe_request(transport, type, id)) {
+  if (transport->methods->consume_keyframe_request && transport->methods->consume_keyframe_request(transport, type, id)) {
     outbound_packet_t stream = {.type = type, .stream = id, .video = true, .encoded = true};
     mutex_lock(&out->mutex);
     discard_stream(out, &stream);

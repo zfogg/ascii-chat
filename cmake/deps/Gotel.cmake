@@ -47,11 +47,34 @@ else()
     set(_asciichat_gotel_shared ${ASCIICHAT_SHARED_DEPS})
 endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
+set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
+if(DEFINED FETCHCONTENT_BASE_DIR)
+    set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
+    set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
+endif()
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
+
+if(_asciichat_fetchcontent_base_dir_was_defined)
+    set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}")
+    set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH
+        "FetchContent source cache" FORCE)
+else()
+    unset(FETCHCONTENT_BASE_DIR)
+    unset(FETCHCONTENT_BASE_DIR CACHE)
+endif()
+
+# gotel's vendored CMake target supplies utf8proc for both gotel and the
+# application.  Configure it after gotel so ascii-chat does not create a
+# second target with the same name before gotel is added.
+set(UTF8PROC_LIBRARIES utf8proc CACHE STRING "utf8proc target supplied by gotel" FORCE)
+if(TARGET gotel)
+    target_include_directories(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+endif()
 
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
     target_include_directories(gotel_cxx SYSTEM PRIVATE "${ALPINE_LIBCXX_INCLUDE_DIR}")
@@ -91,6 +114,8 @@ set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
 target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
 
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
+unset(_asciichat_parent_fetchcontent_base_dir)
+unset(_asciichat_fetchcontent_base_dir_was_defined)
 add_compile_definitions(GOTEL_WITH_SQLITE=1)
 include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                     $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)

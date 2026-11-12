@@ -158,8 +158,7 @@ void gpg_agent_disconnect(int handle_as_int) {
   }
 }
 
-int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *message, size_t message_len,
-                   uint8_t *signature_out, size_t *signature_len_out) {
+int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *message, size_t message_len, uint8_t *signature_out, size_t *signature_len_out) {
   if (handle_as_int < 0 || !keygrip || !message || !signature_out || !signature_len_out) {
     log_error("Invalid arguments");
     return -1;
@@ -289,8 +288,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
       return -1;
     }
     if (response[input] == '%') {
-      if (response_len - input < 3 || !isxdigit((unsigned char)response[input + 1]) ||
-          !isxdigit((unsigned char)response[input + 2])) {
+      if (response_len - input < 3 || !isxdigit((unsigned char)response[input + 1]) || !isxdigit((unsigned char)response[input + 2])) {
         log_error("Invalid percent escape in GPG agent signature");
         return -1;
       }
@@ -307,15 +305,13 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   const size_t prefix_len = sizeof(prefix) - 1;
   const size_t separator_len = sizeof(separator) - 1;
   const size_t expected_len = prefix_len + 32 + separator_len + 32 + sizeof(suffix) - 1;
-  if (decoded_len != expected_len || memcmp(decoded, prefix, prefix_len) != 0 ||
-      memcmp(decoded + prefix_len + 32, separator, separator_len) != 0 ||
+  if (decoded_len != expected_len || memcmp(decoded, prefix, prefix_len) != 0 || memcmp(decoded + prefix_len + 32, separator, separator_len) != 0 ||
       memcmp(decoded + expected_len - (sizeof(suffix) - 1), suffix, sizeof(suffix) - 1) != 0) {
     log_error("Invalid Ed25519 signature S-expression from GPG agent");
     return -1;
   }
   memcpy(signature_out, decoded + prefix_len, ED25519_SIGNATURE_PART_SIZE);
-  memcpy(signature_out + ED25519_SIGNATURE_PART_SIZE, decoded + prefix_len + 32 + separator_len,
-         ED25519_SIGNATURE_PART_SIZE);
+  memcpy(signature_out + ED25519_SIGNATURE_PART_SIZE, decoded + prefix_len + 32 + separator_len, ED25519_SIGNATURE_PART_SIZE);
   *signature_len_out = 64;
 
   // DEBUG: Print signature in hex

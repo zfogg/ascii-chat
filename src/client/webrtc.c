@@ -103,9 +103,7 @@ static void ensure_mutex_initialized(void) {
  * - Header: acip_webrtc_sdp_t (50 bytes)
  * - Payload: SDP string (variable length)
  */
-static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
-                                         const char *sdp, void *user_data) {
+static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type, const char *sdp, void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !sdp_type || !sdp) {
@@ -150,10 +148,9 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
-  log_debug("SDP packet: session_id=%02x%02x%02x%02x..., sender=%02x%02x%02x%02x..., recipient=%02x%02x%02x%02x...",
-            session_id[0], session_id[1], session_id[2], session_id[3], g_session_context.participant_id[0],
-            g_session_context.participant_id[1], g_session_context.participant_id[2],
-            g_session_context.participant_id[3], recipient_id[0], recipient_id[1], recipient_id[2], recipient_id[3]);
+  log_debug("SDP packet: session_id=%02x%02x%02x%02x..., sender=%02x%02x%02x%02x..., recipient=%02x%02x%02x%02x...", session_id[0], session_id[1], session_id[2], session_id[3],
+            g_session_context.participant_id[0], g_session_context.participant_id[1], g_session_context.participant_id[2], g_session_context.participant_id[3], recipient_id[0], recipient_id[1],
+            recipient_id[2], recipient_id[3]);
 
   // Copy SDP string after header
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
@@ -162,8 +159,7 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
   log_info("Sending WebRTC SDP %s to participant (%.8s...) via ACDS", sdp_type, (const char *)recipient_id);
 
   // Send via ACDS transport using generic packet sender
-  asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len, 0);
 
   mutex_unlock(&g_signaling_mutex);
 
@@ -185,9 +181,7 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
  * - Header: acip_webrtc_ice_t (50 bytes)
  * - Payload: candidate string (null-terminated) + mid string (null-terminated)
  */
-static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
-                                         const char *mid, void *user_data) {
+static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate, const char *mid, void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !candidate || !mid) {
@@ -244,8 +238,7 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZ
   log_debug("Sending WebRTC ICE candidate to participant (%.8s..., mid=%s) via ACDS", (const char *)recipient_id, mid);
 
   // Send via ACDS transport using generic packet sender
-  asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len, 0);
 
   mutex_unlock(&g_signaling_mutex);
 
@@ -265,8 +258,7 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZ
 webrtc_signaling_callbacks_t webrtc_get_signaling_callbacks(void) {
   ensure_mutex_initialized();
 
-  webrtc_signaling_callbacks_t callbacks = {
-      .send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
+  webrtc_signaling_callbacks_t callbacks = {.send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
 
   return callbacks;
 }
@@ -286,8 +278,7 @@ void webrtc_set_acds_transport(acip_transport_t *transport) {
   mutex_unlock(&g_signaling_mutex);
 }
 
-void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
-                                const uint8_t participant_id[SESSION_ID_SIZE]) {
+void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!session_id || !participant_id) {
     log_error("Invalid session context parameters");
     return;
@@ -300,8 +291,7 @@ void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
   memcpy(g_session_context.participant_id, participant_id, SESSION_ID_SIZE);
   g_session_context.is_set = true;
 
-  log_info("Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)", (const char *)session_id,
-           (const char *)participant_id);
+  log_info("Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)", (const char *)session_id, (const char *)participant_id);
 
   mutex_unlock(&g_signaling_mutex);
 }

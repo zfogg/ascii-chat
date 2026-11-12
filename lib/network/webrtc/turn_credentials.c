@@ -91,8 +91,7 @@ static size_t base64_encode(const uint8_t *input, size_t input_len, char *output
  * @param output_len Pointer to store output length (set to SHA1_DIGEST_LENGTH)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t hmac_sha1(const uint8_t *data, size_t data_len, const uint8_t *secret, size_t secret_len,
-                                   uint8_t *output, unsigned int *output_len) {
+static asciichat_error_t hmac_sha1(const uint8_t *data, size_t data_len, const uint8_t *secret, size_t secret_len, uint8_t *output, unsigned int *output_len) {
   if (!data || !secret || !output || !output_len) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "HMAC-SHA1: NULL parameter");
   }
@@ -139,8 +138,7 @@ static asciichat_error_t hmac_sha1(const uint8_t *data, size_t data_len, const u
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds,
-                                            turn_credentials_t *out_credentials) {
+asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds, turn_credentials_t *out_credentials) {
   if (!session_id || !secret || !out_credentials) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN credentials: NULL parameter");
   }
@@ -154,8 +152,7 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
   time_t expires_at = now + (time_t)validity_seconds;
 
   // Format username: "{timestamp}:{session_id}"
-  int username_len = safe_snprintf(out_credentials->username, sizeof(out_credentials->username), "%ld:%s",
-                                   (long)expires_at, session_id);
+  int username_len = safe_snprintf(out_credentials->username, sizeof(out_credentials->username), "%ld:%s", (long)expires_at, session_id);
   if (username_len < 0 || (size_t)username_len >= sizeof(out_credentials->username)) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "TURN credentials: username too long");
   }
@@ -164,20 +161,17 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
   uint8_t hmac_result[SHA1_DIGEST_LENGTH];
   unsigned int hmac_len = 0;
 
-  asciichat_error_t result = hmac_sha1((const uint8_t *)out_credentials->username, (size_t)username_len,
-                                       (const uint8_t *)secret, strlen(secret), hmac_result, &hmac_len);
+  asciichat_error_t result = hmac_sha1((const uint8_t *)out_credentials->username, (size_t)username_len, (const uint8_t *)secret, strlen(secret), hmac_result, &hmac_len);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
   if (hmac_len != SHA1_DIGEST_LENGTH) {
-    return SET_ERRNO(ERROR_CRYPTO, "TURN credentials: unexpected HMAC length %u (expected %u)", hmac_len,
-                     SHA1_DIGEST_LENGTH);
+    return SET_ERRNO(ERROR_CRYPTO, "TURN credentials: unexpected HMAC length %u (expected %u)", hmac_len, SHA1_DIGEST_LENGTH);
   }
 
   // Base64-encode the HMAC to get the password
-  size_t encoded_len =
-      base64_encode(hmac_result, hmac_len, out_credentials->password, sizeof(out_credentials->password));
+  size_t encoded_len = base64_encode(hmac_result, hmac_len, out_credentials->password, sizeof(out_credentials->password));
   if (encoded_len == 0) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "TURN credentials: password encoding failed");
   }

@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 @pytest.mark.parametrize("tool_variable", ["DEFER_TEST_BINARY", "DEFER_EXTERNAL_TEST_BINARY"])

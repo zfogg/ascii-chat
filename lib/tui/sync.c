@@ -91,8 +91,7 @@ typedef struct {
    */
 } sync_sample_t;
 
-static sync_sample_t g_sync_samples[3] = {
-    {.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}};
+static sync_sample_t g_sync_samples[3] = {{.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}};
 static _Atomic int g_sync_published = -1;
 static _Atomic int g_sync_selected;
 static _Atomic int g_sync_page_size = 1;
@@ -104,11 +103,9 @@ static platform_thread_t g_sync_thread;
 static int g_sync_fd = -1;
 static _Thread_local bool g_sync_use_color, g_sync_use_utf8;
 
-static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
-                          int line, void *data) {
+static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   sync_sample_t *sample = data;
-  if (!type || (strcmp(type, "mutex") && strcmp(type, "rwlock") && strcmp(type, "cond") && strcmp(type, "atomic") &&
-                strcmp(type, "atomic_ptr")))
+  if (!type || (strcmp(type, "mutex") && strcmp(type, "rwlock") && strcmp(type, "cond") && strcmp(type, "atomic") && strcmp(type, "atomic_ptr")))
     return;
   // Initializers and their owning resources can both register the same
   // primitive. Show its latest name once, rather than counting aliases.
@@ -133,8 +130,7 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   for (const char *p = source; *p; ++p) {
     if (p != source && p[-1] != '/' && p[-1] != '\\')
       continue;
-    if (((!strncmp(p, "lib", 3) || !strncmp(p, "src", 3)) && (p[3] == '/' || p[3] == '\\')) ||
-        (!strncmp(p, "include", 7) && (p[7] == '/' || p[7] == '\\'))) {
+    if (((!strncmp(p, "lib", 3) || !strncmp(p, "src", 3)) && (p[3] == '/' || p[3] == '\\')) || (!strncmp(p, "include", 7) && (p[7] == '/' || p[7] == '\\'))) {
       source = p;
       break;
     }
@@ -168,15 +164,13 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
     const atomic_t *m = (const atomic_t *)key;
     r->value = atomic_load(&m->impl);
     r->changes = m->change_count;
-    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) +
-                 atomic_load(&m->fetch_count);
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) + atomic_load(&m->fetch_count);
     r->last_ns = m->last_store_time_ns;
   } else {
     const atomic_ptr_t *m = (const atomic_ptr_t *)key;
     r->value = (uintptr_t)atomic_load(&m->impl);
     r->changes = m->change_count;
-    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) +
-                 atomic_load(&m->exchange_count);
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) + atomic_load(&m->exchange_count);
     r->last_ns = m->last_store_time_ns;
   }
   if (strncmp(type, "atomic", 6))
@@ -224,8 +218,7 @@ static void *sync_collect_main(void *unused) {
     // Poll the debug shortcut while hidden, but collect registry and waiter
     // snapshots only for the visible overlay. The pairwise rate comparisons
     // otherwise compete with live capture and input throughout the session.
-    if (!ui_sync_is_visible() &&
-        !(ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_previous_interactive() == UI_SCREEN_SYNC)) {
+    if (!ui_sync_is_visible() && !(ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_previous_interactive() == UI_SCREEN_SYNC)) {
       next_sample = 0;
       platform_sleep_ns(10 * NS_PER_MS_INT);
       continue;
@@ -241,10 +234,8 @@ static void *sync_collect_main(void *unused) {
         size_t required = 0;
         bool complete = false;
         sample->count = 0;
-        asciichat_error_t result =
-            named_registry_try_snapshot(sample->capacity, &required, &complete, sync_copy_row, sample);
-        if (result == ASCIICHAT_OK && !complete && required > sample->capacity &&
-            required <= SIZE_MAX / sizeof(sync_row_t)) {
+        asciichat_error_t result = named_registry_try_snapshot(sample->capacity, &required, &complete, sync_copy_row, sample);
+        if (result == ASCIICHAT_OK && !complete && required > sample->capacity && required <= SIZE_MAX / sizeof(sync_row_t)) {
           // Diagnostic storage must not enter memory tracking or the registry.
           sync_row_t *rows = UNTRACKED_MALLOC(required * sizeof(*rows), sync_row_t *);
           if (rows) {
@@ -293,8 +284,7 @@ static void *sync_collect_main(void *unused) {
           // Normalize counts and durations before combining them with equal weight.
           for (size_t i = 0; i < sample->count; ++i) {
             sync_row_t *r = &sample->rows[i];
-            r->total_score = (max_actions ? (double)r->actions / (double)max_actions : 0) +
-                             (max_wait && r->wait_known ? (double)r->wait_ns / (double)max_wait : 0);
+            r->total_score = (max_actions ? (double)r->actions / (double)max_actions : 0) + (max_wait && r->wait_known ? (double)r->wait_ns / (double)max_wait : 0);
           }
           qsort(sample->rows, sample->count, sizeof(*sample->rows), sync_compare_rows);
           atomic_store(&g_sync_published, slot);
@@ -375,8 +365,7 @@ keyboard_key_t ui_sync_handle_key(keyboard_key_t key) {
     ui_controller_select_interactive(-1);
     return KEY_NONE;
   }
-  ui_viewport_t viewport = {.selected = (size_t)atomic_load(&g_sync_selected),
-                            .page_size = (size_t)atomic_load(&g_sync_page_size)};
+  ui_viewport_t viewport = {.selected = (size_t)atomic_load(&g_sync_selected), .page_size = (size_t)atomic_load(&g_sync_page_size)};
   ui_viewport_key(&viewport, (size_t)atomic_load(&g_sync_total), viewport.page_size, key);
   atomic_store(&g_sync_selected, (int)viewport.selected);
   return key == 'q' || key == 3 ? key : KEY_NONE;
@@ -387,10 +376,7 @@ static const char *sync_color(log_color_t color) {
 }
 
 static const char *sync_rate_color(double rate) {
-  return sync_color(rate >= 60   ? LOG_COLOR_ERROR
-                    : rate >= 10 ? LOG_COLOR_WARN
-                    : rate > 0   ? LOG_COLOR_INFO
-                                 : LOG_COLOR_DEBUG);
+  return sync_color(rate >= 60 ? LOG_COLOR_ERROR : rate >= 10 ? LOG_COLOR_WARN : rate > 0 ? LOG_COLOR_INFO : LOG_COLOR_DEBUG);
 }
 
 // Only the presentation worker writes this storage. Diagnostic rendering must
@@ -487,8 +473,7 @@ void ui_sync_render(terminal_size_t size) {
   colored_string_set_output_fd(ui_sync_output_fd() >= 0 ? ui_sync_output_fd() : STDOUT_FILENO);
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   terminal_color_mode_t mode = GET_OPTION(color_mode);
-  g_sync_use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-                     (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+  g_sync_use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) && (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
   g_sync_use_utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
@@ -557,20 +542,17 @@ void ui_sync_render(terminal_size_t size) {
   if ((size_t)selected >= count)
     selected = count ? (int)count - 1 : 0;
   char deadlock[TUI_SYNC_DEADLOCK_BUFFER_SIZE];
-  snprintf(deadlock, sizeof(deadlock), "%s%s%s", sync_color(LOG_COLOR_ERROR),
-           g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!", sync_color(LOG_COLOR_RESET));
+  snprintf(deadlock, sizeof(deadlock), "%s%s%s", sync_color(LOG_COLOR_ERROR), g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!", sync_color(LOG_COLOR_RESET));
   int measured_width = 0;
   for (int pass = 0; pass < 2; ++pass) {
     int *measure = pass == 0 ? &measured_width : NULL;
     char line[TUI_SYNC_LINE_SHORT_BUFFER_SIZE];
     if (!measure)
       sync_write("\033[?2026h\033[H", 11);
-    snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs", total,
-             page + 1, pages, count ? (size_t)page * per_page + selected + 1 : 0, total,
+    snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs", total, page + 1, pages, count ? (size_t)page * per_page + selected + 1 : 0, total,
              sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
     sync_write_numbers(line, size.cols, measure);
-    snprintf(line, sizeof(line), "%s%s | M=%zu RW=%zu C=%zu A=%zu | %zu mutexes in wait cycles%s",
-             cycles ? sync_color(LOG_COLOR_ERROR) : "",
+    snprintf(line, sizeof(line), "%s%s | M=%zu RW=%zu C=%zu A=%zu | %zu mutexes in wait cycles%s", cycles ? sync_color(LOG_COLOR_ERROR) : "",
              !sampled                         ? "Waiting for registry"
              : now - sampled > NS_PER_SEC_INT ? "STALE: collection unavailable"
                                               : "Live registered",
@@ -579,9 +561,8 @@ void ui_sync_render(terminal_size_t size) {
              : limited       ? " | wait tracker capacity reached"
                              : "");
     sync_write_numbers(line, size.cols, measure);
-    snprintf(line, sizeof(line), "%s %-8s %-*s %-12s  %13s %6s %6s %7s %12s%s", sync_color(LOG_COLOR_GREY), "Type",
-             name_width, "Name", "State/value", "Total Actions", "L/s", "U/s", "Change/s", "Total Wait",
-             sync_color(LOG_COLOR_RESET));
+    snprintf(line, sizeof(line), "%s %-8s %-*s %-12s  %13s %6s %6s %7s %12s%s", sync_color(LOG_COLOR_GREY), "Type", name_width, "Name", "State/value", "Total Actions", "L/s", "U/s", "Change/s",
+             "Total Wait", sync_color(LOG_COLOR_RESET));
     sync_write_line(line, size.cols, true, measure);
     sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
@@ -618,11 +599,7 @@ void ui_sync_render(terminal_size_t size) {
       if (r->cycle)
         snprintf(state, sizeof(state), "DEADLOCK");
       else if (!strcmp(r->type, "mutex"))
-        snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
-                 r->cycle   ? "CYCLE"
-                 : r->owner ? "HELD"
-                            : "FREE",
-                 r->owner, r->waiters);
+        snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u", r->cycle ? "CYCLE" : r->owner ? "HELD" : "FREE", r->owner, r->waiters);
       else if (!strcmp(r->type, "rwlock"))
         snprintf(state, sizeof(state), "W=%" PRIxPTR " R=%" PRIu64, r->owner, r->value);
       else if (!strcmp(r->type, "cond"))
@@ -660,15 +637,11 @@ void ui_sync_render(terminal_size_t size) {
       snprintf(padded_wait, sizeof(padded_wait), "%12s", wait);
       sync_color_numbers(padded_wait, colored_wait, sizeof(colored_wait));
       char locks[TUI_SYNC_LOCKS_BUFFER_SIZE], unlocks[TUI_SYNC_UNLOCKS_BUFFER_SIZE];
-      snprintf(locks, sizeof(locks), "%s%6.1f%s", sync_rate_color(r->lock_rate), r->lock_rate,
-               sync_color(LOG_COLOR_RESET));
-      snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate,
-               sync_color(LOG_COLOR_RESET));
+      snprintf(locks, sizeof(locks), "%s%6.1f%s", sync_rate_color(r->lock_rate), r->lock_rate, sync_color(LOG_COLOR_RESET));
+      snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate, sync_color(LOG_COLOR_RESET));
       const ui_table_column_t columns[] = {
-          {"Type", 8, UI_ALIGN_LEFT, false},         {"Name", name_width, UI_ALIGN_LEFT, false},
-          {"State/value", 13, UI_ALIGN_LEFT, false}, {"Total Actions", 13, UI_ALIGN_RIGHT, false},
-          {"L/s", 6, UI_ALIGN_RIGHT, false},         {"U/s", 6, UI_ALIGN_RIGHT, false},
-          {"Change/s", 7, UI_ALIGN_RIGHT, false},    {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
+          {"Type", 8, UI_ALIGN_LEFT, false}, {"Name", name_width, UI_ALIGN_LEFT, false}, {"State/value", 13, UI_ALIGN_LEFT, false}, {"Total Actions", 13, UI_ALIGN_RIGHT, false},
+          {"L/s", 6, UI_ALIGN_RIGHT, false}, {"U/s", 6, UI_ALIGN_RIGHT, false},          {"Change/s", 7, UI_ALIGN_RIGHT, false},    {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
       const char *cells[] = {r->type, name, padded_state, actions, locks, unlocks, changes, colored_wait};
       ui_table_row(line, sizeof(line), columns, cells, 8, name_width + 83, true, (int)i == selected);
       sync_write_line(line, size.cols, true, measure);
@@ -691,13 +664,10 @@ void ui_sync_render(terminal_size_t size) {
       char full_name[TUI_SYNC_FULL_NAME_BUFFER_SIZE], colored_name[TUI_SYNC_COLORED_NAME_BUFFER_SIZE];
       sync_row_label(r, full_name, sizeof(full_name));
       sync_color_numbers(full_name, colored_name, sizeof(colored_name));
-      snprintf(line, sizeof(line), "%s%s%s:%s | %s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET),
-               numbers, colored_name);
+      snprintf(line, sizeof(line), "%s%s%s:%s | %s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET), numbers, colored_name);
       sync_write_line(line, size.cols, true, measure);
-      snprintf(line, sizeof(line),
-               "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s%s",
-               r->owner, r->waiter, r->value, r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0,
-               r->cycle ? " " : "", r->cycle ? deadlock : "");
+      snprintf(line, sizeof(line), "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s%s", r->owner, r->waiter, r->value,
+               r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0, r->cycle ? " " : "", r->cycle ? deadlock : "");
       sync_write_numbers(line, size.cols, measure);
     } else if (!measure) {
       snprintf(line, sizeof(line), "\033[%d;1H\033[K\033[%d;1H\033[K", size.rows - 2, size.rows - 1);
@@ -709,12 +679,9 @@ void ui_sync_render(terminal_size_t size) {
     snprintf(line, sizeof(line),
              "%s0%s/%sEsc%s close | %s?%s help | %sLeft%s/%sRight%s page | %sUp%s/%sDown%s select | "
              "%sHome%s/%sEnd%s first/last",
-             sync_color(LOG_COLOR_FATAL), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
-             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
-             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
-             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
-             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
-             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET));
+             sync_color(LOG_COLOR_FATAL), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
+             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
+             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET));
     sync_write_line(line, size.cols, false, measure);
     if (measure) {
       terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};

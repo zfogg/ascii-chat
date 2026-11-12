@@ -66,6 +66,21 @@ def test_tui_mode_shortcuts(binary, tmp_path, terminal_factory, profile):
 
                     show("?", "Keyboard Shortcuts", "help")
                     text = term.pump()
+                    if mode == "mirror":
+                        assert "Shift-R Cycle text renderer" in text, text
+                        assert "Renderer: Glyph" in text, text
+                        renderer_values = []
+                        expected_renderers = ["Luminance", "Glyph", "Luminance", "Glyph"]
+                        for expected in expected_renderers:
+                            term.write("R")
+                            expected_line = f"Renderer: {expected}"
+                            term.expect(lambda value, expected_line=expected_line: expected_line in value,
+                                        "Renderer value did not update")
+                            renderer_values.append(next(line.strip() for line in term.screen.display if "Renderer:" in line))
+                        assert renderer_values == [f"Renderer: {value}" for value in expected_renderers], renderer_values
+                        term.write("r")
+                        term.expect(lambda value: "Render : Background" in value, "Lowercase r did not cycle render mode")
+                        assert "Renderer: Glyph" in term.pump(), "Lowercase r changed the text renderer"
                     if mode != "mirror":
                         assert "Flip webcam" not in text and "Audio Waveform" not in text, text
                         assert ("Discovery Service" if mode == "discovery-service" else "Server") in text, text

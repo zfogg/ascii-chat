@@ -16,9 +16,9 @@
  */
 struct spectral_processor {
   spectral_config_t config;
-  fftw_plan forward, inverse;
-  double time[SPECTRAL_MAX_SIZE], restored[SPECTRAL_MAX_SIZE];
-  fftw_complex frequency[SPECTRAL_MAX_BINS];
+  fftwf_plan forward, inverse;
+  float time[SPECTRAL_MAX_SIZE], restored[SPECTRAL_MAX_SIZE];
+  fftwf_complex frequency[SPECTRAL_MAX_BINS];
   float input[SPECTRAL_MAX_SIZE], overlap[SPECTRAL_MAX_SIZE], ready[SPECTRAL_MAX_SIZE / 4];
   float window[SPECTRAL_MAX_SIZE], magnitude[SPECTRAL_MAX_BINS];
   float noise[SPECTRAL_MAX_BINS], smoothed[SPECTRAL_MAX_BINS], gains[SPECTRAL_MAX_BINS];
@@ -34,13 +34,8 @@ struct spectral_processor {
 static_mutex_t audio_fftw_planner_lock = STATIC_MUTEX_INIT;
 
 spectral_config_t spectral_default_config(int sample_rate) {
-  return (spectral_config_t){.sample_rate = sample_rate,
-                             .fft_size = 1024,
-                             .noise_gate = true,
-                             .reduction_db = 18.0f,
-                             .crossovers = {250, 2000, 8000},
-                             .thresholds_db = {-18, -18, -18, -18},
-                             .ratios = {2, 3, 3, 2}};
+  return (spectral_config_t){
+      .sample_rate = sample_rate, .fft_size = 1024, .noise_gate = true, .reduction_db = 18.0f, .crossovers = {250, 2000, 8000}, .thresholds_db = {-18, -18, -18, -18}, .ratios = {2, 3, 3, 2}};
 }
 
 void spectral_reset(spectral_processor_t *p) {
@@ -69,16 +64,13 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing spectral output pointer");
   *out = NULL;
-  if (!c || c->sample_rate < 16000 || c->sample_rate > 192000 ||
-      (c->fft_size != 512 && c->fft_size != 1024 && c->fft_size != 2048) || !isfinite(c->reduction_db) ||
-      c->reduction_db < 0 || c->reduction_db > 60)
+  if (!c || c->sample_rate < 16000 || c->sample_rate > 192000 || (c->fft_size != 512 && c->fft_size != 1024 && c->fft_size != 2048) || !isfinite(c->reduction_db) || c->reduction_db < 0 ||
+      c->reduction_db > 60)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral configuration");
   for (int b = 0; b < 4; ++b) {
-    if (!isfinite(c->ratios[b]) || c->ratios[b] < 1 || c->ratios[b] > 20 || !isfinite(c->thresholds_db[b]) ||
-        c->thresholds_db[b] > 0 || c->thresholds_db[b] < -90)
+    if (!isfinite(c->ratios[b]) || c->ratios[b] < 1 || c->ratios[b] > 20 || !isfinite(c->thresholds_db[b]) || c->thresholds_db[b] > 0 || c->thresholds_db[b] < -90)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral compressor band");
-    if (b < 3 && (!isfinite(c->crossovers[b]) || c->crossovers[b] <= 0 || c->crossovers[b] > c->sample_rate / 2.0f ||
-                  (b && c->crossovers[b] <= c->crossovers[b - 1])))
+    if (b < 3 && (!isfinite(c->crossovers[b]) || c->crossovers[b] <= 0 || c->crossovers[b] > c->sample_rate / 2.0f || (b && c->crossovers[b] <= c->crossovers[b - 1])))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral crossover");
   }
   spectral_processor_t *p = SAFE_CALLOC(1, sizeof(*p), spectral_processor_t *);
@@ -87,8 +79,8 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
   p->config = *c;
   (void)NAMED_REGISTER_MUTEX(&audio_fftw_planner_lock, "audio.fftw_planner", NULL);
   static_mutex_lock(&audio_fftw_planner_lock);
-  p->forward = fftw_plan_dft_r2c_1d(c->fft_size, p->time, p->frequency, FFTW_ESTIMATE);
-  p->inverse = fftw_plan_dft_c2r_1d(c->fft_size, p->frequency, p->restored, FFTW_ESTIMATE);
+  p->forward = fftwf_plan_dft_r2c_1d(c->fft_size, p->time, p->frequency, FFTW_ESTIMATE);
+  p->inverse = fftwf_plan_dft_c2r_1d(c->fft_size, p->frequency, p->restored, FFTW_ESTIMATE);
   static_mutex_unlock(&audio_fftw_planner_lock);
   if (!p->forward || !p->inverse) {
     spectral_destroy(p);
@@ -106,9 +98,9 @@ void spectral_destroy(spectral_processor_t *p) {
     return;
   static_mutex_lock(&audio_fftw_planner_lock);
   if (p->forward)
-    fftw_destroy_plan(p->forward);
+    fftwf_destroy_plan(p->forward);
   if (p->inverse)
-    fftw_destroy_plan(p->inverse);
+    fftwf_destroy_plan(p->inverse);
   static_mutex_unlock(&audio_fftw_planner_lock);
   SAFE_FREE(p);
 }
@@ -154,8 +146,7 @@ static float detect_pitch(spectral_processor_t *p) {
   for (int lag = first + 1; lag < last; ++lag) {
     float value = correlation[lag];
     if (value > 0.95f * best && value > correlation[lag - 1] && value >= correlation[lag + 1]) {
-      float delta = 0.5f * (correlation[lag - 1] - correlation[lag + 1]) /
-                    (correlation[lag - 1] - 2 * value + correlation[lag + 1]);
+      float delta = 0.5f * (correlation[lag - 1] - correlation[lag + 1]) / (correlation[lag - 1] - 2 * value + correlation[lag + 1]);
       return p->config.sample_rate / (lag + delta);
     }
   }
@@ -180,7 +171,9 @@ static void correct_pitch(spectral_processor_t *p) {
     double frequency = (expected + delta) / hop;
     int target = (int)round(k * factor);
     if (target <= n / 2) {
-      double magnitude = hypot(p->frequency[k][0], p->frequency[k][1]);
+      double re = p->frequency[k][0];
+      double im = p->frequency[k][1];
+      double magnitude = sqrt(re * re + im * im);
       p->shifted_magnitude[target] += magnitude;
       p->shifted_frequency[target] += magnitude * frequency * factor;
     }
@@ -199,7 +192,7 @@ static void process_frame(spectral_processor_t *p) {
   float dt = (float)hop / p->config.sample_rate;
   for (int i = 0; i < n; ++i)
     p->time[i] = p->input[i] * p->window[i];
-  fftw_execute(p->forward);
+  fftwf_execute(p->forward);
   float energy[SPECTRAL_BAND_COUNT] = {0};
   for (int k = 0; k <= n / 2; ++k) {
     double re = p->frequency[k][0], im = p->frequency[k][1];
@@ -265,7 +258,7 @@ static void process_frame(spectral_processor_t *p) {
   }
   if (p->config.pitch_correct)
     correct_pitch(p);
-  fftw_execute(p->inverse);
+  fftwf_execute(p->inverse);
   // Four overlapping periodic Hann windows have a constant squared sum of 1.5.
   for (int i = 0; i < n; ++i)
     p->overlap[i] += (float)(p->restored[i] * p->window[i] / (n * 1.5));

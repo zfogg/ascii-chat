@@ -42,8 +42,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
 }
 
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks) {
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
   ASCII_OTEL_SCOPE(ACIP_CLIENT_RECEIVE_AND_DISPATCH);
   if (!callbacks)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing client packet callbacks");
@@ -55,15 +54,13 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   return result;
 }
 
-asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                              size_t length, const acip_client_callbacks_t *callbacks) {
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t length, const acip_client_callbacks_t *callbacks) {
   if (!transport || !callbacks || (!payload && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet dispatch input");
   return acip_handle_client_packet(transport, type, payload, length, callbacks);
 }
 
-void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport,
-                              const acip_client_callbacks_t *callbacks) {
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
   if (!session)
     return;
   *session = (acip_client_session_t){.transport = transport};
@@ -77,8 +74,7 @@ asciichat_error_t acip_client_session_receive(acip_client_session_t *session) {
   return acip_client_receive_and_dispatch(session->transport, &session->callbacks);
 }
 
-asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload,
-                                               size_t length) {
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload, size_t length) {
   if (!session)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP client session");
   return acip_client_dispatch_packet(session->transport, type, payload, length, &session->callbacks);
@@ -88,8 +84,7 @@ asciichat_error_t acip_client_session_process_wire(acip_client_session_t *sessio
   if (!session || !wire)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ACIP client wire packet");
   packet_envelope_t envelope = {0};
-  asciichat_error_t result =
-      packet_parse_envelope(wire, length, session->transport ? session->transport->crypto_ctx : NULL, &envelope);
+  asciichat_error_t result = packet_parse_envelope(wire, length, session->transport ? session->transport->crypto_ctx : NULL, &envelope);
   if (result == ASCIICHAT_OK && !envelope.consumed)
     result = acip_client_session_dispatch(session, envelope.type, envelope.data, envelope.len);
   packet_envelope_release(&envelope);
@@ -100,11 +95,9 @@ asciichat_error_t acip_client_session_process_wire(acip_client_session_t *sessio
 // Client Send (to server)
 // =============================================================================
 
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format) {
+asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format) {
   ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME);
-  log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport,
-          pixel_data);
+  log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport, pixel_data);
 
   if (!transport || !pixel_data) {
     log_dev("★ ACIP_SEND_IMAGE_FRAME: Invalid params");
@@ -141,8 +134,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
  * @param height Frame height in pixels
  * @return Error code
  */
-asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
-                                             const void *pixel_data, uint32_t width, uint32_t height) {
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder, const void *pixel_data, uint32_t width, uint32_t height) {
   ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME_H265);
   if (!transport || !encoder || !pixel_data) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Invalid params");
@@ -169,8 +161,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 #endif
   size_t encoded_size = output_buffer_size;
   log_dev("[ACIP_SEND_H265_3] Calling h265_encode");
-  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-                                                output_buffer, &encoded_size);
+  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &encoded_size);
   log_dev("[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu", encode_result, encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
@@ -188,8 +179,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   // Send via transport
   log_dev("[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes", total_size);
-  asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
   return result;

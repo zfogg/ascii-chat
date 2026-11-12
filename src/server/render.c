@@ -247,11 +247,9 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_debug("Client %s requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
-              desired_fps);
+    log_debug("Client %s requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps, desired_fps);
   } else {
-    log_debug("Client %s using default FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
-              desired_fps);
+    log_debug("Client %s using default FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps, desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
@@ -309,8 +307,7 @@ void *client_video_render_thread(void *arg) {
       frame_interval_ns = NS_PER_SEC_INT / (uint64_t)client_fps;
       next_frame_ns = time_get_ns() + frame_interval_ns;
       fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
-      log_debug("Client %s updated render interval: %llums (%d FPS)", thread_client_id,
-                (unsigned long long)(frame_interval_ns / NS_PER_MS_INT), client_fps);
+      log_debug("Client %s updated render interval: %llums (%d FPS)", thread_client_id, (unsigned long long)(frame_interval_ns / NS_PER_MS_INT), client_fps);
     }
 
     // Processing consumes part of the frame interval. Sleep only until the
@@ -320,8 +317,7 @@ void *client_video_render_thread(void *arg) {
       platform_sleep_ns(next_frame_ns - iter_start_ns);
     }
     uint64_t after_sleep_ns = time_get_ns();
-    uint64_t elapsed_intervals =
-        after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
+    uint64_t elapsed_intervals = after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
     if (elapsed_intervals > 1) {
       missed_deadlines_in_window += elapsed_intervals - 1;
     }
@@ -331,8 +327,7 @@ void *client_video_render_thread(void *arg) {
     uint64_t current_time_ns = time_get_ns();
 
     // Check thread state again before acquiring locks (client might have been destroyed during sleep).
-    should_continue = atomic_load_bool(&client->video_render_thread_running) && atomic_load_bool(&client->active) &&
-                      !atomic_load_bool(&client->shutting_down);
+    should_continue = atomic_load_bool(&client->video_render_thread_running) && atomic_load_bool(&client->active) && !atomic_load_bool(&client->shutting_down);
     if (!should_continue) {
       break;
     }
@@ -363,14 +358,11 @@ void *client_video_render_thread(void *arg) {
       last_has_sources = has_video_sources;
     }
 
-    log_debug_every(5 * NS_PER_MS_INT,
-                    "Video render iteration for client %s: has_video_sources=%d, width=%u, height=%u", thread_client_id,
-                    has_video_sources, width_snapshot, height_snapshot);
+    log_debug_every(5 * NS_PER_MS_INT, "Video render iteration for client %s: has_video_sources=%d, width=%u, height=%u", thread_client_id, has_video_sources, width_snapshot, height_snapshot);
 
     // Use default dimensions if client dimensions not received
     if (width_snapshot == 0 || height_snapshot == 0) {
-      log_dev_every(5 * NS_PER_MS_INT, "Using default dimensions for client %s (client reported: width=%u, height=%u)",
-                    thread_client_id, width_snapshot, height_snapshot);
+      log_dev_every(5 * NS_PER_MS_INT, "Using default dimensions for client %s (client reported: width=%u, height=%u)", thread_client_id, width_snapshot, height_snapshot);
       // Use 80x25 as standard terminal size fallback for snapshot/test clients
       width_snapshot = 80;
       height_snapshot = 25;
@@ -394,21 +386,17 @@ void *client_video_render_thread(void *arg) {
       log_dev("render loop: client=%s fps=%.1f", thread_client_id, gen_fps);
     }
 
-    log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %s with dims %ux%u",
-                  thread_client_id, width_snapshot, height_snapshot);
+    log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %s with dims %ux%u", thread_client_id, width_snapshot, height_snapshot);
 
     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
 
     uint64_t frame_create_start_ns = time_get_ns();
     acip_render_settings_t frame_rendering = {0};
-    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-                                                            &frame_size, NULL, &sources_count, &frame_rendering);
+    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size, NULL, &sources_count, &frame_rendering);
     uint64_t frame_create_end_ns = time_get_ns();
     if (sources_count > 0) {
-      stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT,
-                            frame_create_end_ns - frame_create_start_ns);
-      stats_counter_add(stats_runtime_scope(),
-                        ascii_frame ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
+      stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, frame_create_end_ns - frame_create_start_ns);
+      stats_counter_add(stats_runtime_scope(), ascii_frame ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
     }
 
     if (frame_gen_count % 120 == 0) {
@@ -423,8 +411,7 @@ void *client_video_render_thread(void *arg) {
     // The frame data (animated background or test pattern) is still valid content
 
     if (ascii_frame && frame_size > 0) {
-      server_send_video(client, &event_workspace, ascii_frame, frame_size, frame_rendering.width,
-                        frame_rendering.height, sources_count, &frame_rendering);
+      server_send_video(client, &event_workspace, ascii_frame, frame_size, frame_rendering.width, frame_rendering.height, sources_count, &frame_rendering);
       fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
       rendered_frames_in_window++;
       uint64_t render_rate_now_ns = time_get_ns();
@@ -432,11 +419,9 @@ void *client_video_render_thread(void *arg) {
       if (render_rate_elapsed_ns >= NS_PER_SEC_INT) {
         double render_fps = (double)rendered_frames_in_window * NS_PER_SEC_INT / (double)render_rate_elapsed_ns;
         if (render_fps < (double)client_fps * 0.9 || missed_deadlines_in_window > 0) {
-          log_warn("Server video render lagging client=%s fps=%.1f target=%d missed_deadlines=%llu", thread_client_id,
-                   render_fps, client_fps, (unsigned long long)missed_deadlines_in_window);
+          log_warn("Server video render lagging client=%s fps=%.1f target=%d missed_deadlines=%llu", thread_client_id, render_fps, client_fps, (unsigned long long)missed_deadlines_in_window);
         } else {
-          log_debug("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id, render_fps,
-                    client_fps);
+          log_debug("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id, render_fps, client_fps);
         }
         render_rate_window_start_ns = render_rate_now_ns;
         rendered_frames_in_window = 0;
@@ -597,8 +582,7 @@ void *client_audio_render_thread(void *arg) {
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_debug("Audio render thread started for client %s (%s), webrtc=%d", thread_client_id, thread_display_name,
-            is_webrtc);
+  log_debug("Audio render thread started for client %s (%s), webrtc=%d", thread_client_id, thread_display_name, is_webrtc);
 #endif
 
   // Mix buffer: up to OPUS_FRAME_SAMPLES samples for adaptive reading
@@ -612,8 +596,7 @@ void *client_audio_render_thread(void *arg) {
   int opus_frame_accumulated = 0;
 
   // Create an Opus encoder for the interleaved stereo stream.
-  opus_codec_t *opus_encoder =
-      opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
+  opus_codec_t *opus_encoder = opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %s)", thread_client_id);
     return NULL;
@@ -640,8 +623,7 @@ void *client_audio_render_thread(void *arg) {
 
     // Check thread state before acquiring any locks to prevent use-after-destroy.
     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
-    should_continue = (((int)atomic_load_bool(&client->audio_render_thread_running) != 0) &&
-                       ((int)atomic_load_bool(&client->active) != 0) && !atomic_load_bool(&client->shutting_down));
+    should_continue = (((int)atomic_load_bool(&client->audio_render_thread_running) != 0) && ((int)atomic_load_bool(&client->active) != 0) && !atomic_load_bool(&client->shutting_down));
 
     if (!should_continue) {
       log_debug("Audio render thread stopping for client %s (should_continue=false)", thread_client_id);
@@ -697,9 +679,7 @@ void *client_audio_render_thread(void *arg) {
 
     // Only copy if we have samples, otherwise just wait for next frame
     if (samples_to_copy > 0) {
-      SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-                  ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated) * sizeof(float), mix_buffer,
-                  samples_to_copy * sizeof(float));
+      SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated, ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated) * sizeof(float), mix_buffer, samples_to_copy * sizeof(float));
       opus_frame_accumulated += samples_to_copy;
     }
 
@@ -708,8 +688,7 @@ void *client_audio_render_thread(void *arg) {
       // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
       uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
-      int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS,
-                                        opus_buffer, sizeof(opus_buffer));
+      int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer, sizeof(opus_buffer));
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
@@ -728,8 +707,7 @@ void *client_audio_render_thread(void *arg) {
           log_dev_every(4500 * US_PER_MS_INT,
                         "Server audio frame #%d for client %s: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
                         "first4=[%.4f,%.4f,%.4f,%.4f]",
-                        server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
-                        opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
+                        server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size, opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
         }
       }
 
@@ -738,8 +716,7 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated = 0;
 
       if (opus_size <= 0) {
-        log_error_every(US_PER_SEC_INT, "Failed to encode audio to Opus for client %s: opus_size=%d",
-                        client_id_snapshot, opus_size);
+        log_error_every(US_PER_SEC_INT, "Failed to encode audio to Opus for client %s: opus_size=%d", client_id_snapshot, opus_size);
       } else {
         // Wrap Opus data in proper batch packet format for client parsing:
         // Header: sample_rate (4B) + frame_duration (4B) + frame_count (4B)
@@ -748,9 +725,8 @@ void *client_audio_render_thread(void *arg) {
 
         // Fixed values for Opus encoding (standard 48kHz, OPUS_FRAME_SAMPLES samples per frame = 20ms)
         const uint32_t sample_rate = AUDIO_SAMPLE_RATE;
-        const uint32_t frame_duration =
-            CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (OPUS_FRAME_SAMPLES samples / 48kHz = 20ms)
-        const uint32_t frame_count = 1;     // one Opus frame per packet
+        const uint32_t frame_duration = CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (OPUS_FRAME_SAMPLES samples / 48kHz = 20ms)
+        const uint32_t frame_count = 1;                                 // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
         // Calculate total packet size: 16-byte header + frame_sizes + opus data
@@ -761,8 +737,7 @@ void *client_audio_render_thread(void *arg) {
         // Allocate buffer for the complete packet
         uint8_t *packet_buffer = SAFE_MALLOC(total_packet_size, uint8_t *);
         if (!packet_buffer) {
-          log_error("Failed to allocate Opus batch packet buffer for client %s (size=%zu)", client_id_snapshot,
-                    total_packet_size);
+          log_error("Failed to allocate Opus batch packet buffer for client %s (size=%zu)", client_id_snapshot, total_packet_size);
         } else {
           // Build header in network byte order
           uint8_t *ptr = packet_buffer;

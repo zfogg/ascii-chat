@@ -55,8 +55,7 @@ void audio_processor_reset(audio_processor_t *p) {
   spectral_reset(p->spectral_right);
   const audio_processor_config_t *c = &p->config;
   compressor_init(&p->compressor, (float)c->sample_rate);
-  compressor_set_params(&p->compressor, c->comp_threshold_db, c->comp_ratio, c->comp_attack_ns, c->comp_release_ns,
-                        c->comp_makeup_db);
+  compressor_set_params(&p->compressor, c->comp_threshold_db, c->comp_ratio, c->comp_attack_ns, c->comp_release_ns, c->comp_makeup_db);
   noise_gate_init(&p->gate, (float)c->sample_rate);
   noise_gate_set_params(&p->gate, c->gate_threshold, c->gate_attack_ns, c->gate_release_ns, c->gate_hysteresis);
   highpass_filter_init(&p->highpass, c->highpass_hz, (float)c->sample_rate);
@@ -72,14 +71,10 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing audio processor output");
   *out = NULL;
-  if (!c || c->channels < 0 || c->channels > 2 || c->sample_rate < 16000 || c->sample_rate > 192000 ||
-      c->spectral.sample_rate != c->sample_rate || c->agc_level < 1 || c->agc_level > 32767 || c->agc_max_gain < 0 ||
-      c->agc_max_gain > 36 || !isfinite(c->highpass_hz) || c->highpass_hz <= 0 ||
-      c->highpass_hz >= c->sample_rate / 2.0f || !isfinite(c->lowpass_hz) || c->lowpass_hz <= 0 ||
-      c->lowpass_hz > c->sample_rate / 2.0f || !isfinite(c->comp_ratio) || c->comp_ratio < 1 || c->comp_ratio > 20 ||
-      !isfinite(c->comp_threshold_db) || !isfinite(c->comp_makeup_db) || !isfinite(c->gate_threshold) ||
-      c->gate_threshold < 0 || c->gate_threshold > 1 || !isfinite(c->gate_hysteresis) || c->gate_hysteresis < 0 ||
-      c->gate_hysteresis > 1)
+  if (!c || c->channels < 0 || c->channels > 2 || c->sample_rate < 16000 || c->sample_rate > 192000 || c->spectral.sample_rate != c->sample_rate || c->agc_level < 1 || c->agc_level > 32767 ||
+      c->agc_max_gain < 0 || c->agc_max_gain > 36 || !isfinite(c->highpass_hz) || c->highpass_hz <= 0 || c->highpass_hz >= c->sample_rate / 2.0f || !isfinite(c->lowpass_hz) || c->lowpass_hz <= 0 ||
+      c->lowpass_hz > c->sample_rate / 2.0f || !isfinite(c->comp_ratio) || c->comp_ratio < 1 || c->comp_ratio > 20 || !isfinite(c->comp_threshold_db) || !isfinite(c->comp_makeup_db) ||
+      !isfinite(c->gate_threshold) || c->gate_threshold < 0 || c->gate_threshold > 1 || !isfinite(c->gate_hysteresis) || c->gate_hysteresis < 0 || c->gate_hysteresis > 1)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor configuration");
   audio_processor_t *p = SAFE_CALLOC(1, sizeof(*p), audio_processor_t *);
   p->config = *c;

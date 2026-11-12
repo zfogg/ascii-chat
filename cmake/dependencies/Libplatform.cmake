@@ -24,6 +24,11 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 add_subdirectory(${_ascii_chat_repo_root}/deps/libplatform
                  ${CMAKE_BINARY_DIR}/deps/libplatform)
+if(TARGET asciichat-project-includes)
+    target_include_directories(asciichat-project-includes INTERFACE "${_ascii_chat_repo_root}/deps/libplatform/lib")
+endif()
+string(REPLACE "\\" "/" _ascii_chat_source_root "${_ascii_chat_repo_root}")
+target_compile_definitions(libplatform-objects PRIVATE LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
 target_include_directories(libplatform-objects PRIVATE
     ${_ascii_chat_repo_root}/include
     ${_ascii_chat_repo_root}/deps
@@ -54,3 +59,4 @@ endif()
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_repo_root)
+unset(_ascii_chat_source_root)

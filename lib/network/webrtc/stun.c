@@ -120,8 +120,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   int rc;
 
   while (count < max_count) {
-    rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data,
-                               NULL);
+    rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data, NULL);
 
     if (rc < 0) {
       // No more matches (PCRE2_ERROR_NOMATCH or other error)

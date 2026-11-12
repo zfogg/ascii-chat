@@ -44,8 +44,7 @@ void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t su
   version->supports_encryption = supports_encryption;
 }
 
-asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
-                                      size_t count, uint32_t client_id) {
+asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload, size_t count, uint32_t client_id) {
   if (!header || (!payload && count) || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet header arguments");
   size_t length = 0;
@@ -56,16 +55,12 @@ asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t typ
     length += payload[i].len;
     crc = asciichat_crc32_update(crc, payload[i].data, payload[i].len);
   }
-  *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                              .type = HOST_TO_NET_U16(type),
-                              .length = HOST_TO_NET_U32((uint32_t)length),
-                              .crc32 = HOST_TO_NET_U32(crc),
-                              .client_id = HOST_TO_NET_U32(client_id)};
+  *header = (packet_header_t){
+      .magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(type), .length = HOST_TO_NET_U32((uint32_t)length), .crc32 = HOST_TO_NET_U32(crc), .client_id = HOST_TO_NET_U32(client_id)};
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id,
-                                void *output, size_t capacity, size_t *written) {
+asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id, void *output, size_t capacity, size_t *written) {
   if (!output || !written)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet output");
   *written = 0;
@@ -89,8 +84,7 @@ asciichat_error_t packet_validate(const void *packet, size_t length, size_t limi
   packet_header_t header;
   memcpy(&header, packet, sizeof(header));
   size_t payload = length - sizeof(header);
-  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload ||
-      payload > (limit ? limit : MAX_PACKET_SIZE))
+  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload || payload > (limit ? limit : MAX_PACKET_SIZE))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet framing or size");
   if (asciichat_crc32((const uint8_t *)packet + sizeof(header), payload) != NET_TO_HOST_U32(header.crc32))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Packet CRC mismatch");
@@ -120,9 +114,7 @@ uint64_t packet_send_timeout_ns(size_t packet_size) {
   // For large packets, increase timeout proportionally
   if (packet_size > LARGE_PACKET_THRESHOLD) {
     // Add extra timeout per MB above the threshold
-    uint64_t extra_timeout =
-        (uint64_t)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) +
-        NS_PER_MS_INT;
+    uint64_t extra_timeout = (uint64_t)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + NS_PER_MS_INT;
     uint64_t total_timeout = base_timeout + extra_timeout;
 
     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
@@ -146,11 +138,9 @@ uint64_t packet_send_timeout_ns(size_t packet_size) {
  * @param expected_crc Output: expected CRC32
  * @return 0 on success, -1 on error
  */
-static asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
-                                                uint32_t *expected_crc) {
+static asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len, uint32_t *expected_crc) {
   if (!header || !pkt_type || !pkt_len || !expected_crc) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p",
-                     header, pkt_type, pkt_len, expected_crc);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header, pkt_type, pkt_len, expected_crc);
   }
 
   // First validate packet length BEFORE converting from network byte order
@@ -181,22 +171,19 @@ static asciichat_error_t packet_validate_header(const packet_header_t *header, u
   case PACKET_TYPE_PROTOCOL_VERSION:
     // Protocol version packet has fixed size
     if (len != sizeof(protocol_version_packet_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len,
-                       sizeof(protocol_version_packet_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len, sizeof(protocol_version_packet_t));
     }
     break;
   case PACKET_TYPE_ASCII_FRAME:
     // ASCII frame contains header + frame data
     if (len < sizeof(ascii_frame_packet_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len,
-                       sizeof(ascii_frame_packet_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len, sizeof(ascii_frame_packet_t));
     }
     break;
   case PACKET_TYPE_IMAGE_FRAME:
     // Image frame contains header + pixel data
     if (len < sizeof(image_frame_packet_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len,
-                       sizeof(image_frame_packet_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len, sizeof(image_frame_packet_t));
     }
     break;
   case PACKET_TYPE_AUDIO_BATCH:
@@ -219,8 +206,7 @@ static asciichat_error_t packet_validate_header(const packet_header_t *header, u
     break;
   case PACKET_TYPE_CLIENT_JOIN:
     if (len != sizeof(client_info_packet_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len,
-                       sizeof(client_info_packet_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len, sizeof(client_info_packet_t));
     }
     break;
   case PACKET_TYPE_CLIENT_LEAVE:
@@ -232,8 +218,7 @@ static asciichat_error_t packet_validate_header(const packet_header_t *header, u
   case PACKET_TYPE_STREAM_START:
   case PACKET_TYPE_STREAM_STOP:
     if (len != sizeof(uint32_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len,
-                       sizeof(uint32_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len, sizeof(uint32_t));
     }
     break;
   case PACKET_TYPE_SIZE_MESSAGE:
@@ -256,12 +241,10 @@ static asciichat_error_t packet_validate_header(const packet_header_t *header, u
     break;
   case PACKET_TYPE_ERROR_MESSAGE:
     if (len < sizeof(error_packet_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid error packet size: %u (minimum %zu)", len,
-                       sizeof(error_packet_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid error packet size: %u (minimum %zu)", len, sizeof(error_packet_t));
     }
     if (len > sizeof(error_packet_t) + MAX_ERROR_MESSAGE_LENGTH) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet message too large: %u (max %zu)", len,
-                       sizeof(error_packet_t) + (size_t)MAX_ERROR_MESSAGE_LENGTH);
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet message too large: %u (max %zu)", len, sizeof(error_packet_t) + (size_t)MAX_ERROR_MESSAGE_LENGTH);
     }
     break;
   // All crypto handshake packet types - validate using session parameters
@@ -348,8 +331,7 @@ static asciichat_error_t packet_validate_crc32(const void *data, size_t len, uin
 
   uint32_t calculated_crc = asciichat_crc32(data, len);
   if (calculated_crc != expected_crc) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc,
-                     expected_crc);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc, expected_crc);
   }
 
   return ASCIICHAT_OK;
@@ -389,8 +371,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return result;
 
 #ifdef DEBUG_NETWORK
-  log_debug_every(US_PER_SEC_INT, "Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno,
-                  SAFE_STRERROR(errno));
+  log_debug_every(US_PER_SEC_INT, "Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno, SAFE_STRERROR(errno));
 #endif
 
   return 0;
@@ -442,9 +423,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   void *payload = NULL;
   defer_named(release_payload, buffer_release(payload));
   if (pkt_len > 0) {
-    payload = buffer_alloc(
-        packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL,
-        pkt_len);
+    payload = buffer_alloc(packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL, pkt_len);
     if (!payload)
       return SET_ERRNO(ERROR_MEMORY, "Packet payload exceeds buffer budget");
 
@@ -489,8 +468,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  * @param crypto_ctx Crypto context for encryption
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
-                                     crypto_context_t *crypto_ctx) {
+asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx) {
   if (sockfd == INVALID_SOCKET_VALUE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet socket");
   if (len > MAX_PACKET_SIZE) {
@@ -526,8 +504,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
         final_data = temp_compressed;
         final_len = compressed_size;
         compressed_data = temp_compressed;
-        log_debug_every(US_PER_SEC_INT, "Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size,
-                        ratio * 100.0);
+        log_debug_every(US_PER_SEC_INT, "Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size, ratio * 100.0);
       } else {
         buffer_release(temp_compressed);
       }
@@ -537,8 +514,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready || !crypto_ctx->encrypt_data) {
-    log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
-                   (void *)crypto_ctx, ready);
+    log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void *)crypto_ctx, ready);
     asciichat_error_t result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       buffer_release(compressed_data);
@@ -584,10 +560,8 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
  * @param envelope Output: received packet envelope
  * @return Packet receive result
  */
-packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
-                                           packet_envelope_t *envelope) {
-  return receive_packet_secure_with_timeout(sockfd, crypto_ctx, enforce_encryption, envelope,
-                                            RECV_TIMEOUT * NS_PER_SEC_INT);
+packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption, packet_envelope_t *envelope) {
+  return receive_packet_secure_with_timeout(sockfd, crypto_ctx, enforce_encryption, envelope, RECV_TIMEOUT * NS_PER_SEC_INT);
 }
 
 /* ============================================================================
@@ -679,15 +653,12 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   uint8_t *plaintext = NULL;
   size_t plaintext_length = 0;
   bool consumed = false;
-  asciichat_error_t result =
-      acip_security_decrypt(crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, CRYPTO_RECORD_RELIABLE, envelope->data,
-                            envelope->len, &plaintext, &plaintext_length, NULL, &consumed);
+  asciichat_error_t result = acip_security_decrypt(crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, CRYPTO_RECORD_RELIABLE, envelope->data, envelope->len, &plaintext, &plaintext_length, NULL, &consumed);
   if (result != ASCIICHAT_OK)
     return result;
   packet_header_t header;
   memcpy(&header, plaintext, sizeof(header));
-  if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) &&
-      envelope->allocated_size >= plaintext_length) {
+  if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) && envelope->allocated_size >= plaintext_length) {
     memcpy(envelope->allocated_buffer, plaintext, plaintext_length);
     sodium_memzero(plaintext, buffer_capacity(plaintext));
     buffer_release(plaintext);
@@ -755,12 +726,10 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
     const asciichat_error_context_t *frame = &frames[i];
     const char *file = extract_project_relative_path(frame->file, ASCIICHAT_OWNED_SOURCE_DIRS);
 #ifdef NDEBUG
-    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "",
-                           frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>");
+    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "", frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>");
 #else
-    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())\tfull-path=%s", i ? "\n" : "",
-                           frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>",
-                           frame->file ? frame->file : "");
+    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())\tfull-path=%s", i ? "\n" : "", frame->context_message, file, frame->line,
+                           frame->function ? frame->function : "<unknown>", frame->file ? frame->file : "");
 #endif
     if (written < 0)
       break;
@@ -770,8 +739,7 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
   return offset;
 }
 
-asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
-                                    const char *message) {
+asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code, const char *message) {
   if (sockfd == INVALID_SOCKET_VALUE) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
   }
@@ -805,8 +773,7 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
   asciichat_error_t send_result;
 
   if (encryption_ready) {
-    send_result =
-        send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
+    send_result = send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
   } else {
     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
   }
@@ -819,13 +786,9 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code,
-                                             char *message_buffer, size_t message_buffer_size,
-                                             size_t *out_message_length) {
+asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code, char *message_buffer, size_t message_buffer_size, size_t *out_message_length) {
   if (!data || len < sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu", data,
-                     len, out_error_code, message_buffer, message_buffer_size);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu", data, len, out_error_code, message_buffer, message_buffer_size);
   }
 
   const error_packet_t *packet = (const error_packet_t *)data;
@@ -838,8 +801,7 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
 
   size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
   if (total_required > len) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet truncated: expected %zu bytes, have %zu", total_required,
-                     len);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet truncated: expected %zu bytes, have %zu", total_required, len);
   }
 
   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
@@ -861,8 +823,7 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level,
-                                         remote_log_direction_t direction, uint16_t flags, const char *message) {
+asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level, remote_log_direction_t direction, uint16_t flags, const char *message) {
   if (sockfd == INVALID_SOCKET_VALUE) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
   }
@@ -902,8 +863,7 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
   asciichat_error_t send_result;
 
   if (encryption_ready) {
-    int secure_result =
-        send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
+    int secure_result = send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
     send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
   } else {
     send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
@@ -918,16 +878,11 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level,
-                                          remote_log_direction_t *out_direction, uint16_t *out_flags,
-                                          char *message_buffer, size_t message_buffer_size,
-                                          size_t *out_message_length) {
-  if (!data || len < sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
-      message_buffer_size == 0) {
-    return SET_ERRNO(
-        ERROR_INVALID_PARAM,
-        "Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu", data, len,
-        out_level, out_direction, out_flags, message_buffer, message_buffer_size);
+asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level, remote_log_direction_t *out_direction, uint16_t *out_flags, char *message_buffer,
+                                          size_t message_buffer_size, size_t *out_message_length) {
+  if (!data || len < sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer || message_buffer_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu", data, len, out_level, out_direction, out_flags,
+                     message_buffer, message_buffer_size);
   }
 
   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
@@ -953,8 +908,7 @@ asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_leve
 
   size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
   if (total_required > len) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log packet truncated: expected %zu bytes, have %zu",
-                     total_required, len);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log packet truncated: expected %zu bytes, have %zu", total_required, len);
   }
 
   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
@@ -1017,14 +971,13 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
 
   // Create a copy and convert uint16_t fields to network byte order
   crypto_parameters_packet_t net_params = *params;
-  log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", params->kex_public_key_size,
-            params->auth_public_key_size, params->signature_size, params->shared_secret_size);
+  log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", params->kex_public_key_size, params->auth_public_key_size, params->signature_size, params->shared_secret_size);
   net_params.kex_public_key_size = HOST_TO_NET_U16(params->kex_public_key_size);
   net_params.auth_public_key_size = HOST_TO_NET_U16(params->auth_public_key_size);
   net_params.signature_size = HOST_TO_NET_U16(params->signature_size);
   net_params.shared_secret_size = HOST_TO_NET_U16(params->shared_secret_size);
-  log_debug("NETWORK_DEBUG: After htons: kex=%u, auth=%u, sig=%u, secret=%u", net_params.kex_public_key_size,
-            net_params.auth_public_key_size, net_params.signature_size, net_params.shared_secret_size);
+  log_debug("NETWORK_DEBUG: After htons: kex=%u, auth=%u, sig=%u, secret=%u", net_params.kex_public_key_size, net_params.auth_public_key_size, net_params.signature_size,
+            net_params.shared_secret_size);
 
   return send_packet(sockfd, PACKET_TYPE_CRYPTO_PARAMETERS, &net_params, sizeof(net_params));
 }
@@ -1037,15 +990,13 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
 // For transport-agnostic sending, use acip_send_audio_batch() instead.
 // =============================================================================
 
-asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size,
-                                           const uint16_t *frame_sizes, int sample_rate, int frame_duration,
-                                           int frame_count, crypto_context_t *crypto_ctx) {
+asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes, int sample_rate, int frame_duration, int frame_count,
+                                           crypto_context_t *crypto_ctx) {
   if (!opus_data || opus_size == 0 || !frame_sizes || sample_rate <= 0 || frame_duration <= 0 || frame_count <= 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM,
                      "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, frame_sizes=%p, sample_rate=%d, "
                      "frame_duration=%d, frame_count=%d",
-                     (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration,
-                     frame_count);
+                     (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration, frame_count);
   }
 
   // Validate frame_count to prevent integer overflow in size calculations
@@ -1083,8 +1034,7 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
   memcpy(buf + header_size + frame_sizes_bytes, opus_data, opus_size);
 
   // Send packet (with encryption support)
-  asciichat_error_t result =
-      send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
+  asciichat_error_t result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
 
   // Clean up
   buffer_release(packet_data);
@@ -1092,11 +1042,9 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
   return result;
 }
 
-asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
-                                          uint8_t format) {
+asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height, uint8_t format) {
   if (!image_data || width == 0 || height == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: image_data=%p, width=%u, height=%u", image_data, width,
-                     height);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: image_data=%p, width=%u, height=%u", image_data, width, height);
   }
 
   // Validate dimensions to prevent integer overflow
@@ -1151,8 +1099,7 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
   return result;
 }
 
-packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
-                                                        packet_envelope_t *envelope, uint64_t timeout_ns) {
+packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption, packet_envelope_t *envelope, uint64_t timeout_ns) {
   if (!envelope) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet envelope");
     return PACKET_RECV_ERROR;
@@ -1176,9 +1123,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     return PACKET_RECV_ERROR;
   }
   memcpy(packet, &header, sizeof(header));
-  if (payload_length &&
-      recv_with_timeout(sockfd, packet + sizeof(header), payload_length,
-                        MAX(timeout_ns, packet_send_timeout_ns(payload_length))) != (ssize_t)payload_length) {
+  if (payload_length && recv_with_timeout(sockfd, packet + sizeof(header), payload_length, MAX(timeout_ns, packet_send_timeout_ns(payload_length))) != (ssize_t)payload_length) {
     buffer_release(packet);
     // The header has already been consumed, so even an idle payload timeout
     // leaves the byte stream out of sync and must close the connection.
@@ -1187,15 +1132,13 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
   }
   asciichat_error_t result = packet_validate(packet, length, MAX_PACKET_SIZE, NULL);
   packet_type_t type = NET_TO_HOST_U16(header.type);
-  if (result == ASCIICHAT_OK && enforce_encryption && type != PACKET_TYPE_ENCRYPTED &&
-      !packet_is_initial_handshake_type(type))
+  if (result == ASCIICHAT_OK && enforce_encryption && type != PACKET_TYPE_ENCRYPTED && !packet_is_initial_handshake_type(type))
     result = SET_ERRNO(ERROR_CRYPTO, "Unencrypted packet in encrypted session");
   if (result != ASCIICHAT_OK) {
     buffer_release(packet);
     return PACKET_RECV_ERROR;
   }
-  *envelope = (packet_envelope_t){
-      .type = type, .data = packet, .len = length, .allocated_buffer = packet, .allocated_size = length};
+  *envelope = (packet_envelope_t){.type = type, .data = packet, .len = length, .allocated_buffer = packet, .allocated_size = length};
   if (type == PACKET_TYPE_ENCRYPTED) {
     envelope->data = packet + sizeof(header);
     envelope->len = payload_length;

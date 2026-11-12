@@ -10,8 +10,7 @@
 typedef struct {
   asciichat_error_t (*on_frame)(const ascii_frame_packet_t *header, const char *text, void *context);
   asciichat_error_t (*on_samples)(const float *samples, size_t count, void *context);
-  asciichat_error_t (*decode_opus)(const void *data, size_t length, float *samples, size_t capacity, size_t *decoded,
-                                   void *context);
+  asciichat_error_t (*decode_opus)(const void *data, size_t length, float *samples, size_t capacity, size_t *decoded, void *context);
   void (*on_audio_packet)(size_t length, void *context);
   void *context;
   bool terminal_output;                // Drop valid obsolete geometry during terminal/settings resize transitions.
@@ -49,18 +48,13 @@ typedef struct {
    */
 } session_protocol_t;
 
-void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
-                           acip_client_callbacks_t control);
+void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media, acip_client_callbacks_t control);
 /* Dispatch borrows its payload from the shared connection executor. */
-asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
-                                            size_t length);
+asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload, size_t length);
 
 /* Physical capability advertisement for the initial join. */
-void session_protocol_build_capabilities(unsigned short width, unsigned short height,
-                                         terminal_capabilities_packet_t *packet);
-typedef asciichat_error_t (*session_protocol_send_settings_fn)(const options_t *values, uint32_t request,
-                                                               void *context);
+void session_protocol_build_capabilities(unsigned short width, unsigned short height, terminal_capabilities_packet_t *packet);
+typedef asciichat_error_t (*session_protocol_send_settings_fn)(const options_t *values, uint32_t request, void *context);
 /* Call on the connection owner thread. UI publishes automatic dimensions through options.
  * Each connection retains its own last successfully advertised size; failed sends are retried. */
-asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision,
-                                                   session_protocol_send_settings_fn send, void *context);
+asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision, session_protocol_send_settings_fn send, void *context);

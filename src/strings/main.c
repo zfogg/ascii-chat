@@ -34,11 +34,8 @@ int main(int argc, char *argv[]) {
   int dump_adjectives = 0;
   int dump_nouns = 0;
 
-  static struct option long_options[] = {{"count", required_argument, 0, 'n'},
-                                         {"dump-adjectives", no_argument, 0, 'a'},
-                                         {"dump-nouns", no_argument, 0, 'o'},
-                                         {"help", no_argument, 0, 'h'},
-                                         {0, 0, 0, 0}};
+  static struct option long_options[] = {
+      {"count", required_argument, 0, 'n'}, {"dump-adjectives", no_argument, 0, 'a'}, {"dump-nouns", no_argument, 0, 'o'}, {"help", no_argument, 0, 'h'}, {0, 0, 0, 0}};
 
   int opt;
   while ((opt = getopt_long(argc, argv, "n:aoh", long_options, NULL)) != -1) {

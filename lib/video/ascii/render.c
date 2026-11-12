@@ -23,8 +23,7 @@
 
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
-static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE]
-                                                 [IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
+static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
 static _Thread_local bool g_scratch_workspace_busy[ASCII_RENDER_WORKSPACE_POOL_SIZE];
 
 static uint32_t *acquire_scratch(uint32_t *inline_scratch, size_t bytes) {
@@ -64,10 +63,8 @@ void ascii_stabilizer_reset(ascii_stabilizer_t *state) {
   memset(state, 0, sizeof(*state));
 }
 
-asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
-                                           uint64_t configuration) {
-  if (!state || !width || !height || width > SIZE_MAX / height ||
-      width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration) {
+  if (!state || !width || !height || width > SIZE_MAX / height || width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stabilization viewport");
   if (state->cells && state->width == width && state->height == height && state->configuration == configuration)
     return ASCIICHAT_OK;
@@ -94,8 +91,7 @@ static uint32_t temporal_blend_color(uint32_t previous, uint32_t current, unsign
   return result;
 }
 
-uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
-                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color) {
   unsigned motion = 0;
   if (cell->valid) {
@@ -107,8 +103,7 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
   uint32_t output_color = color;
   if (cell->valid && motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
     uint64_t margin = candidate_error / 8 + 128;
-    if (previous_error != UINT64_MAX &&
-        (previous_error <= candidate_error || previous_error - candidate_error <= margin))
+    if (previous_error != UINT64_MAX && (previous_error <= candidate_error || previous_error - candidate_error <= margin))
       result = cell->glyph;
     // Weight depends on elapsed time, avoiding a different response at each FPS.
     unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
@@ -168,8 +163,7 @@ static size_t glyph_bytes(uint32_t key) {
   return first < 128 ? 1 : (first & 0xe0) == 0xc0 ? 2 : (first & 0xf0) == 0xe0 ? 3 : 4;
 }
 
-static void emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cells_t *ops, const uint32_t *glyph,
-                              const uint32_t *fg, const uint32_t *bg, size_t width) {
+static void emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cells_t *ops, const uint32_t *glyph, const uint32_t *fg, const uint32_t *bg, size_t width) {
   if (mode == ASCII_COLOR_NONE && ops->emit_mono) {
     ops->emit_mono(out, glyph, width);
     return;
@@ -194,8 +188,7 @@ static void emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cell
   }
 }
 
-char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode, bool background, bool dither,
-                   const simd_cells_t *ops) {
+char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode, bool background, bool dither, const simd_cells_t *ops) {
   if (!ops || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering backend or color mode");
     return NULL;
@@ -239,8 +232,7 @@ char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode
         // Floyd-Steinberg error propagation is ordered; the other stages remain SIMD.
         for (int x = 0; x < image->w; ++x) {
           uint32_t pixel = frame.packed[x];
-          frame.index[x] = rgb_to_16color_dithered((int)(pixel >> 16), (int)((pixel >> 8) & 255), (int)(pixel & 255), x,
-                                                   y, image->w, image->h, errors);
+          frame.index[x] = rgb_to_16color_dithered((int)(pixel >> 16), (int)((pixel >> 8) & 255), (int)(pixel & 255), x, y, image->w, image->h, errors);
         }
       } else
         ops->quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -251,8 +243,7 @@ char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode
   return ascii_frame_finish(&frame);
 }
 
-char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode,
-                              const simd_cells_t *ops) {
+char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode, const simd_cells_t *ops) {
 #if SIMD_SUPPORT_SSE2
   if (ops == &simd_cells_sse2)
     return render_halfblocks_sse2(rgb, width, height, stride, mode);
@@ -295,8 +286,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
       ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    ops->halfblock(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode,
-                   frame.table);
+    ops->halfblock(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode, frame.table);
     ascii_frame_emit_halfrow(&frame, mode, y + 2 < (size_t)height, ops);
   }
   return ascii_frame_finish(&frame);
@@ -309,11 +299,8 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image or palette");
   size_t bytes, pixels, capacity, rows;
-  if (checked_size_mul((size_t)image->w, (size_t)image->h, &pixels) != ASCIICHAT_OK ||
-      checked_size_mul(pixels, 48u, &capacity) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)image->h, 5u, &rows) != ASCIICHAT_OK ||
-      checked_size_add(capacity, rows, &capacity) != ASCIICHAT_OK ||
-      checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK ||
+  if (checked_size_mul((size_t)image->w, (size_t)image->h, &pixels) != ASCIICHAT_OK || checked_size_mul(pixels, 48u, &capacity) != ASCIICHAT_OK ||
+      checked_size_mul((size_t)image->h, 5u, &rows) != ASCIICHAT_OK || checked_size_add(capacity, rows, &capacity) != ASCIICHAT_OK || checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK ||
       checked_size_mul((size_t)image->w, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK)
     return ERROR_INVALID_PARAM;
   utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
@@ -321,8 +308,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
-  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w &&
-      g_stabilizer_target->height == (size_t)image->h)
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w && g_stabilizer_target->height == (size_t)image->h)
     frame->stabilizer = g_stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
@@ -337,8 +323,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   frame->luma = (uint8_t *)(frame->bg + frame->width);
   return ASCIICHAT_OK;
 }
-void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
-                          const simd_cells_t *ops) {
+void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops) {
   if (frame->stabilizer && !frame->temporal_preselected) {
     const uint64_t elapsed = frame->stabilizer->elapsed_ns;
     const bool recent = elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS;
@@ -381,8 +366,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
       cell->color = frame->packed[x] = color;
       cell->valid = true;
       if (background)
-        frame->luma[x] =
-            (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
+        frame->luma[x] = (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
     }
     if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
       ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -414,28 +398,23 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
   return frame->output.buf;
 }
 
-asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
-                                        ascii_color_t mode) {
+asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode) {
   ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
   outbuf_t *target = g_output_target;
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;
-  if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE ||
-      checked_size_mul((size_t)width, 3, &row_bytes) != ASCIICHAT_OK || row_bytes > INT_MAX)
+  if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE || checked_size_mul((size_t)width, 3, &row_bytes) != ASCIICHAT_OK || row_bytes > INT_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block input");
   if (*stride <= 0)
     *stride = (int)row_bytes;
-  if ((size_t)*stride < row_bytes || checked_size_mul((size_t)*stride, (size_t)height, &extent) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)width, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)width, ((size_t)height + 1) / 2, &capacity) != ASCIICHAT_OK ||
-      checked_size_mul(capacity, 48u, &capacity) != ASCIICHAT_OK ||
+  if ((size_t)*stride < row_bytes || checked_size_mul((size_t)*stride, (size_t)height, &extent) != ASCIICHAT_OK || checked_size_mul((size_t)width, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK ||
+      checked_size_mul((size_t)width, ((size_t)height + 1) / 2, &capacity) != ASCIICHAT_OK || checked_size_mul(capacity, 48u, &capacity) != ASCIICHAT_OK ||
       checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block stride or size");
   prepare_output(frame, capacity, target);
   frame->width = (size_t)width;
   frame->source_height = (size_t)height;
-  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width &&
-      g_stabilizer_target->height == (size_t)height)
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width && g_stabilizer_target->height == (size_t)height)
     frame->stabilizer = g_stabilizer_target;
   frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
   if (!frame->scratch)
@@ -474,8 +453,7 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
       ops->quantize(frame->packed, frame->fg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
       ops->quantize(frame->index, frame->bg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode,
-                   frame->table);
+    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode, frame->table);
   }
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
@@ -512,12 +490,7 @@ static void glyph_block_mask(int block, uint8_t mask[16]) {
       for (int sy = 0; sy < 2; ++sy) {
         for (int sx = 0; sx < 2; ++sx) {
           int px = 2 * x + sx, py = 2 * y + sy;
-          bool set = block == 0    ? py < 4
-                     : block <= 7  ? py >= 8 - block
-                     : block == 8  ? true
-                     : block <= 15 ? px < 16 - block
-                     : block == 16 ? px >= 4
-                                   : false;
+          bool set = block == 0 ? py < 4 : block <= 7 ? py >= 8 - block : block == 8 ? true : block <= 15 ? px < 16 - block : block == 16 ? px >= 4 : false;
           coverage += set ? 1 : 0;
         }
       }
@@ -530,8 +503,7 @@ static uint32_t glyph_key(int index) {
   if (index < GLYPH_ASCII_COUNT)
     return (uint32_t)(index + 32);
   uint32_t cp = 0x2580u + (uint32_t)(index - GLYPH_ASCII_COUNT);
-  const uint8_t bytes[4] = {(uint8_t)(0xe0u | (cp >> 12)), (uint8_t)(0x80u | ((cp >> 6) & 63)),
-                            (uint8_t)(0x80u | (cp & 63)), 0};
+  const uint8_t bytes[4] = {(uint8_t)(0xe0u | (cp >> 12)), (uint8_t)(0x80u | ((cp >> 6) & 63)), (uint8_t)(0x80u | (cp & 63)), 0};
   uint32_t key = 0;
   memcpy(&key, bytes, sizeof(key));
   return key;
@@ -585,10 +557,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
   return ascii_render_glyph_match_mode(image, mode, ops, palette, false);
 }
 
-char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, const simd_cells_t *ops,
-                                    const char *palette, bool background) {
-  if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
-      mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
+char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette, bool background) {
+  if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
     return NULL;
   }
@@ -596,8 +566,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
   int candidates[GLYPH_COUNT];
   // Restrict the atlas to unique palette entries before scoring any cells.
   size_t candidate_count = 0;
-  int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
-      ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
+  int (*shape_correlation)(const int16_t[16], const int16_t[16]) = ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
     if (!ascii_glyph_palette_supported(palette)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains an unsupported character");
@@ -705,8 +674,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         }
       }
       uint32_t rgb = glyph_foreground(&glyphs[best], samples, sums);
-      uint32_t bg_rgb =
-          ((uint32_t)(sums[0] / 128) << 16) | ((uint32_t)(sums[1] / 128) << 8) | (uint32_t)(sums[2] / 128);
+      uint32_t bg_rgb = ((uint32_t)(sums[0] / 128) << 16) | ((uint32_t)(sums[1] / 128) << 8) | (uint32_t)(sums[2] / 128);
       uint32_t selected = glyphs[best].key;
       if (previous) {
         ascii_temporal_cell_t old = *previous;
@@ -722,16 +690,12 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         }
         uint64_t elapsed = frame.stabilizer->elapsed_ns;
         uint64_t effective_elapsed = color_motion > ASCII_TEMPORAL_MOTION_LIMIT ? UINT64_MAX : elapsed;
-        selected = ascii_stabilizer_choose(previous, patch, selected, best_error, previous_error, rgb,
-                                           effective_elapsed, &rgb);
+        selected = ascii_stabilizer_choose(previous, patch, selected, best_error, previous_error, rgb, effective_elapsed, &rgb);
         if (selected != glyphs[best].key) {
           *previous = old;
-          selected = ascii_stabilizer_choose(previous, patch, glyphs[best].key, best_error, previous_error,
-                                             glyph_foreground(&glyphs[previous_index], samples, sums),
-                                             effective_elapsed, &rgb);
+          selected = ascii_stabilizer_choose(previous, patch, glyphs[best].key, best_error, previous_error, glyph_foreground(&glyphs[previous_index], samples, sums), effective_elapsed, &rgb);
         }
-        if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT &&
-            elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+        if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
           unsigned weight = (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS));
           bg_rgb = temporal_blend_color(old.background, bg_rgb, weight);
         }

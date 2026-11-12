@@ -121,8 +121,7 @@ static bool queued_message_is_media(const webrtc_recv_msg_t *msg) {
   packet_header_t header;
   memcpy(&header, msg->data, sizeof(header));
   packet_type_t type = NET_TO_HOST_U16(header.type);
-  return type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_AUDIO_BATCH ||
-         type == PACKET_TYPE_AUDIO_OPUS_BATCH;
+  return type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS_BATCH;
 }
 
 static bool queued_message_is_video(const webrtc_recv_msg_t *msg) {
@@ -161,8 +160,7 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
   size_t control_count = count - video_count - audio_count;
   size_t retained_video_count = video_count > 0 ? 1 : 0;
   size_t non_audio_count = control_count + retained_video_count;
-  size_t keep_audio_count =
-      non_audio_count < WEBRTC_RECV_QUEUE_HIGH_WATER ? WEBRTC_RECV_QUEUE_HIGH_WATER - non_audio_count : 0;
+  size_t keep_audio_count = non_audio_count < WEBRTC_RECV_QUEUE_HIGH_WATER ? WEBRTC_RECV_QUEUE_HIGH_WATER - non_audio_count : 0;
   size_t video_to_discard = video_count - retained_video_count;
   size_t audio_to_discard = audio_count > keep_audio_count ? audio_count - keep_audio_count : 0;
   size_t dropped_video = 0;
@@ -181,9 +179,7 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
     }
   }
   if (dropped_video || dropped_audio) {
-    log_warn_every(US_PER_SEC_INT,
-                   "WebRTC receive backlog: dropped %zu stale video packets and %zu oldest audio packets",
-                   dropped_video, dropped_audio);
+    log_warn_every(US_PER_SEC_INT, "WebRTC receive backlog: dropped %zu stale video packets and %zu oldest audio packets", dropped_video, dropped_audio);
   }
 }
 
@@ -262,14 +258,12 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       return;
     }
     if (wrtc->security && !wrtc->security->ready) {
-      asciichat_error_t result = acip_security_receive(wrtc->security, wrtc->transport, NET_TO_HOST_U16(header.type),
-                                                       msg.data + sizeof(header), payload_len);
+      asciichat_error_t result = acip_security_receive(wrtc->security, wrtc->transport, NET_TO_HOST_U16(header.type), msg.data + sizeof(header), payload_len);
       buffer_release(msg.data);
       if (result != ASCIICHAT_OK) {
         mutex_unlock(&wrtc->queue_mutex);
         asciichat_error_context_t error;
-        log_error("WebRTC peer handshake failed: %s",
-                  HAS_ERRNO(&error) ? error.context_message : asciichat_error_format(NULL, result));
+        log_error("WebRTC peer handshake failed: %s", HAS_ERRNO(&error) ? error.context_message : asciichat_error_format(NULL, result));
         webrtc_abort(wrtc);
         return;
       }
@@ -279,11 +273,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       offset += packet_len;
       continue;
     }
-    packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type),
-                                  .data = msg.data + sizeof(header),
-                                  .len = payload_len,
-                                  .allocated_buffer = msg.data,
-                                  .allocated_size = msg.len};
+    packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type), .data = msg.data + sizeof(header), .len = payload_len, .allocated_buffer = msg.data, .allocated_size = msg.len};
     crypto_context_t *crypto = wrtc->transport->crypto_ctx;
     asciichat_error_t result = ASCIICHAT_OK;
     if (envelope.type == PACKET_TYPE_ENCRYPTED) {
@@ -291,8 +281,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else
         result = packet_decrypt_envelope(&envelope, crypto);
-    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) &&
-               !packet_is_initial_handshake_type(envelope.type)) {
+    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) && !packet_is_initial_handshake_type(envelope.type)) {
       result = SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted WebRTC connection");
     }
     if (result != ASCIICHAT_OK) {
@@ -470,8 +459,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
     if (len < sizeof(header))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incomplete WebRTC header");
     memcpy(&header, data, sizeof(header));
-    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_PROTOCOL_VERSION &&
-        !packet_is_handshake_type(NET_TO_HOST_U16(header.type)))
+    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_PROTOCOL_VERSION && !packet_is_handshake_type(NET_TO_HOST_U16(header.type)))
       return SET_ERRNO(ERROR_INVALID_STATE, "WebRTC peer security is not ready");
   }
   mutex_lock(&wrtc->send_mutex);
@@ -506,8 +494,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
     } else {
       packet_header_t header;
       size_t ciphertext_length = 0;
-      result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, encrypted + sizeof(header),
-                                   plan.ciphertext_capacity, &header, &ciphertext_length);
+      result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, encrypted + sizeof(header), plan.ciphertext_capacity, &header, &ciphertext_length);
       if (result == ASCIICHAT_OK) {
         memcpy(encrypted, &header, sizeof(header));
         data = encrypted;
@@ -534,8 +521,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
 
   uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
   if (send_duration_ns > 20 * NS_PER_MS_INT) {
-    log_warn_every(US_PER_SEC_INT, "WebRTC DataChannel send blocked %.1fms for %zu-byte packet (buffered=%zu)",
-                   (double)send_duration_ns / 1e6, len, buffered_before_send);
+    log_warn_every(US_PER_SEC_INT, "WebRTC DataChannel send blocked %.1fms for %zu-byte packet (buffered=%zu)", (double)send_duration_ns / 1e6, len, buffered_before_send);
   }
 
   if (result != ASCIICHAT_OK) {
@@ -550,8 +536,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
-                                     void **out_allocated_buffer) {
+static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer, size_t *out_len, void **out_allocated_buffer) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
   uint64_t started = time_get_ns();
   uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
@@ -781,9 +766,7 @@ acip_security_t *acip_webrtc_transport_security(acip_transport_t *transport) {
 // WebRTC Transport Creation
 // =============================================================================
 
-static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_conn,
-                                                 webrtc_data_channel_t *data_channel, crypto_context_t *crypto_ctx,
-                                                 acip_security_t *security,
+static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_conn, webrtc_data_channel_t *data_channel, crypto_context_t *crypto_ctx, acip_security_t *security,
                                                  void (*on_ready)(acip_transport_t *, void *), void *user_data) {
   if (!peer_conn || !data_channel) {
     SET_ERRNO(ERROR_INVALID_PARAM, "peer_conn and data_channel are required");
@@ -910,18 +893,15 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
   return transport;
 }
 
-acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_conn, webrtc_data_channel_t *data_channel,
-                                               crypto_context_t *crypto_ctx) {
+acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_conn, webrtc_data_channel_t *data_channel, crypto_context_t *crypto_ctx) {
   return webrtc_transport_create(peer_conn, data_channel, crypto_ctx, NULL, NULL, NULL);
 }
 
-acip_transport_t *acip_webrtc_transport_create_secure(webrtc_peer_connection_t *peer_conn,
-                                                      webrtc_data_channel_t *data_channel, acip_security_t *security,
-                                                      void (*on_ready)(acip_transport_t *, void *), void *user_data) {
+acip_transport_t *acip_webrtc_transport_create_secure(webrtc_peer_connection_t *peer_conn, webrtc_data_channel_t *data_channel, acip_security_t *security, void (*on_ready)(acip_transport_t *, void *),
+                                                      void *user_data) {
   if (!security) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Missing WebRTC security state");
     return NULL;
   }
-  return webrtc_transport_create(peer_conn, data_channel, &security->handshake.crypto_ctx, security, on_ready,
-                                 user_data);
+  return webrtc_transport_create(peer_conn, data_channel, &security->handshake.crypto_ctx, security, on_ready, user_data);
 }

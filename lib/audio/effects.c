@@ -37,8 +37,7 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   compressor_set_params(comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
 }
 
-void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns,
-                           float makeup_dB) {
+void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns, float makeup_dB) {
   comp->threshold_dB = threshold_dB;
   comp->ratio = ratio;
   comp->attack_ns = attack_ns;
@@ -113,8 +112,7 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate) {
   noise_gate_set_params(gate, 0.01f, 10 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
 }
 
-void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns,
-                           float hysteresis) {
+void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns, float hysteresis) {
   if (!gate)
     return;
 
