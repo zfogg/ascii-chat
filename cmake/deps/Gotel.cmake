@@ -66,19 +66,26 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 set(_asciichat_gotel_cmake "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/CMakeLists.txt")
 if(EXISTS "${_asciichat_gotel_cmake}")
     file(READ "${_asciichat_gotel_cmake}" _asciichat_gotel_cmake_contents)
-    set(_asciichat_gotel_utf8proc_add "add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)")
-    set(_asciichat_gotel_utf8proc_guard [=[if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)
+    # Patch the upstream add_subdirectory exactly once. Repeated configure
+    # runs must not nest another guard into the vendored checkout.
+    string(FIND "${_asciichat_gotel_cmake_contents}"
+        "if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)"
+        _asciichat_gotel_guard_offset)
+    string(FIND "${_asciichat_gotel_cmake_contents}"
+        "add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)"
+        _asciichat_gotel_add_offset)
+    if(_asciichat_gotel_guard_offset EQUAL -1 AND NOT _asciichat_gotel_add_offset EQUAL -1)
+        set(_asciichat_gotel_utf8proc_add
+            "add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)")
+        set(_asciichat_gotel_utf8proc_guard [=[if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)
   add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)
 endif()]=])
-    set(_asciichat_gotel_utf8proc_bad [=[if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)
-;  add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)
-;endif()]=])
-    string(REPLACE "${_asciichat_gotel_utf8proc_bad}"
-        "${_asciichat_gotel_utf8proc_guard}"
-        _asciichat_gotel_cmake_repaired "${_asciichat_gotel_cmake_contents}")
-    string(REPLACE "${_asciichat_gotel_utf8proc_add}"
-        "${_asciichat_gotel_utf8proc_guard}"
-        _asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_repaired}")
+        string(REPLACE "${_asciichat_gotel_utf8proc_add}"
+            "${_asciichat_gotel_utf8proc_guard}"
+            _asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_contents}")
+    else()
+        set(_asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_contents}")
+    endif()
     if(NOT _asciichat_gotel_cmake_patched STREQUAL _asciichat_gotel_cmake_contents)
         file(WRITE "${_asciichat_gotel_cmake}" "${_asciichat_gotel_cmake_patched}")
     endif()
