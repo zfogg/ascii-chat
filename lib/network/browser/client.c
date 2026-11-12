@@ -18,6 +18,7 @@
 
 typedef struct client_state client_state_t;
 static client_state_t *client_state(browser_transport_t *transport);
+bool browser_client_ready(browser_transport_t *transport);
 
 /**
  * @file client_wasm.c
@@ -85,6 +86,8 @@ asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uin
   *output_length = 0;
   if (!encrypt)
     return packet_encode((packet_type_t)type, payload, payload_length, client_id, output, output_capacity, output_length);
+  if (!browser_client_ready(transport))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Cannot encrypt browser client packet before handshake completion");
 
   asciichat_error_t error = packet_send_via_transport(browser_transport_base(transport), (packet_type_t)type, payload, payload_length, client_id);
   if (error != ASCIICHAT_OK)

@@ -346,6 +346,8 @@ void mirror_submit_audio_samples(mirror_render_context_t *context, const float *
 char *mirror_render_audio_visualization(mirror_render_context_t *context, unsigned int width, unsigned int height, int source) {
   if (!context)
     return NULL;
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK)
+    return NULL;
   audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   char *text = GET_OPTION(fft) ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y))
                                : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y));

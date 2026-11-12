@@ -19,6 +19,7 @@ export default defineConfig({
         outputFolder: fileURLToPath(
           new URL("./playwright-report", import.meta.url),
         ),
+        open: "never",
       },
     ],
   ],

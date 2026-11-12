@@ -11,8 +11,13 @@ test("native CLI producer and browser WebSocket client render near 60 FPS", asyn
   context,
 }) => {
   test.setTimeout(45_000);
-  const server = new ServerFixture(getRandomPort());
-  const cli = new NativeClientFixture(server.getPort(), 60);
+  const server = new ServerFixture(getRandomPort(), ["--max-clients", "2"]);
+  const cli = new NativeClientFixture(server.getPort(), 60, [
+    "--audio=false",
+    "--splash-screen=false",
+    "--video-codec",
+    "raw",
+  ]);
 
   await server.start();
   await cli.start();

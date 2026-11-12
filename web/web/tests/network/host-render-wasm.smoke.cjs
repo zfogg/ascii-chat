@@ -610,6 +610,10 @@ const path = require("node:path");
           const json = { fft };
           const result = mirror.OptionsBinding.patch(json, -1);
           if (result) throw new Error("mirror audio settings failed");
+          const samples = new Float32Array(4096);
+          for (let i = 0; i < samples.length; ++i)
+            samples[i] = Math.sin((2 * Math.PI * 440 * i) / 48_000);
+          mirrorFrame.submitAudio(samples, 0);
           const frame = mirrorFrame.renderAudio(40, 12, 0);
           if (!frame)
             throw new Error("Mirror audio validation rejected valid output");

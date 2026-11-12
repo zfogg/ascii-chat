@@ -57,7 +57,7 @@ export class ServerFixture {
         );
       }, 20000);
 
-      this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
+      this.logStream = fs.createWriteStream(this.logFile, { flags: "w" });
 
       // Path to binary relative to project root (tests run from web/ subdirectory)
       const binaryPath = getAsciiChatBinaryPath();
@@ -69,6 +69,7 @@ export class ServerFixture {
         tmpdir(),
         `ascii-chat-server-${this.port}.log`,
       );
+      fs.writeFileSync(debugLogFile, "");
       let logLevel = this.env["ASCII_CHAT_TEST_LOG_LEVEL"] ?? "info";
       const modeArgs: string[] = [];
       for (let index = 0; index < this.serverArgs.length; index++) {
@@ -152,10 +153,19 @@ export class ServerFixture {
         }
       });
 
-      // Wait for both listeners because WebSocket initialization can lag TCP.
+      // Wait for the server's own readiness logs instead of opening probe
+      // sockets. A probe is a real accepted connection for the async TCP
+      // backend and can race the first authenticated peer.
       void Promise.all([
-        waitForPort(tcpPort, "127.0.0.1"),
-        waitForPort(wsPort, "127.0.0.1"),
+        this.waitForLog(
+          new RegExp(`Listening on 127\\.0\\.0\\.1:${tcpPort} \\(IPv4\\)`),
+          20_000,
+        ),
+        this.waitForLog(
+          new RegExp(`WebSocket server starting event loop on port ${wsPort}`),
+          20_000,
+        ),
+        this.waitForWebSocketHealth(wsPort, 20_000),
       ]).then(
         () => {
           clearTimeout(timeout);
@@ -247,16 +257,35 @@ export class ServerFixture {
     }
     throw new Error(`Timed out waiting for ${pattern}:\n${this.logs}`);
   }
+
+  private async waitForWebSocketHealth(
+    port: number,
+    timeoutMs: number,
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+        if (response.ok) return;
+      } catch {
+        // The listener may have logged readiness before accepting HTTP work.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`WebSocket health endpoint did not respond on ${port}`);
+  }
 }
 
 /** A real CLI connection that completes before the browser joins. */
 export class NativeClientFixture {
   private process: ChildProcess | null = null;
   private appDataDir: string | null = null;
+  private logFile: string | null = null;
 
   constructor(
     private readonly serverPort: number,
     private readonly fps = 60,
+    private readonly clientArgs: string[] = [],
   ) {}
 
   async start(): Promise<void> {
@@ -264,12 +293,16 @@ export class NativeClientFixture {
     this.appDataDir = fs.mkdtempSync(
       path.join(process.cwd(), ".native-client-appdata-"),
     );
+    this.logFile = path.join(this.appDataDir, "client.log");
     this.process = spawn(
       binaryPath,
       [
         "--no-check-update",
+        "--log-file",
+        this.logFile,
         "client",
         `127.0.0.1:${this.serverPort}`,
+        ...this.clientArgs,
         "--test-pattern",
         "--fps",
         // Keep the native peer at the same source cadence expected by the
@@ -277,23 +310,40 @@ export class NativeClientFixture {
         String(this.fps),
       ],
       {
-        env: { ...process.env, APPDATA: this.appDataDir },
+        env: {
+          ...process.env,
+          APPDATA: this.appDataDir,
+          USERPROFILE: this.appDataDir,
+          XDG_CONFIG_HOME: this.appDataDir,
+          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK: "1",
+        },
       },
     );
-    await new Promise<void>((resolve, reject) => {
-      const process = this.process;
-      if (!process) {
-        reject(new Error("Native client process did not start"));
-        return;
-      }
-      const timer = setTimeout(resolve, 500);
-      process.once("exit", (code) => {
-        clearTimeout(timer);
-        reject(
-          new Error(`Native client exited before connecting (code ${code})`),
+    const childProcess = this.process;
+    const logFile = this.logFile;
+    if (!childProcess || !logFile)
+      throw new Error("Native client process did not start");
+    const deadline = Date.now() + 15_000;
+    while (Date.now() < deadline) {
+      if (childProcess.exitCode !== null) {
+        const details = fs.readFileSync(logFile, "utf8").slice(-8000);
+        throw new Error(
+          `Native client exited before connecting (code ${childProcess.exitCode}):\n${details}`,
         );
-      });
-    });
+      }
+      let details = "";
+      try {
+        details = fs.readFileSync(logFile, "utf8");
+      } catch {
+        // Logging may not have initialized yet.
+      }
+      if (details.includes("CLIENT_CONNECTION_RUNNING")) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    const details = fs.readFileSync(logFile, "utf8").slice(-8000);
+    throw new Error(
+      `Native client did not complete its connection:\n${details}`,
+    );
   }
 
   async stop(): Promise<void> {
@@ -315,6 +365,7 @@ export class NativeClientFixture {
     if (this.appDataDir) {
       fs.rmSync(this.appDataDir, { force: true, recursive: true });
       this.appDataDir = null;
+      this.logFile = null;
     }
   }
 }
