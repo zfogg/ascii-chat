@@ -214,11 +214,11 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/manpage/merger.c
     ${LIB_ROOT}/options/manpage/parser.c
     ${LIB_ROOT}/options/manpage/resources.c
-    ${LIB_ROOT}/options/manpage/content/environment.c
-    ${LIB_ROOT}/options/manpage/content/examples.c
-    ${LIB_ROOT}/options/manpage/content/options.c
-    ${LIB_ROOT}/options/manpage/content/positional.c
-    ${LIB_ROOT}/options/manpage/content/usage.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/environment.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/examples.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/positional.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/usage.c
     ${CMAKE_SOURCE_DIR}/src/common/options/config/config.c
     ${CMAKE_SOURCE_DIR}/src/common/options/config/presets.c
     ${CMAKE_SOURCE_DIR}/src/common/options/config/schema.c

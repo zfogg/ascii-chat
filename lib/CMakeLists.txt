@@ -133,11 +133,11 @@ set(CORE_SRCS
     ${LIB_DIR}/options/manpage/parser.c
     ${LIB_DIR}/options/manpage/formatter.c
     ${LIB_DIR}/options/manpage/merger.c
-    ${LIB_DIR}/options/manpage/content/options.c
-    ${LIB_DIR}/options/manpage/content/environment.c
-    ${LIB_DIR}/options/manpage/content/usage.c
-    ${LIB_DIR}/options/manpage/content/examples.c
-    ${LIB_DIR}/options/manpage/content/positional.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/environment.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/usage.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/examples.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/positional.c
     # options/completions/
     ${LIB_DIR}/options/completions/completions.c
     ${LIB_DIR}/options/completions/bash.c
