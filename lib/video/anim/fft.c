@@ -97,8 +97,11 @@ asciichat_error_t audio_visualization_fft_init(void) {
 static bool visualization_fft_batch(const float *const input, unsigned int columns, float *power_spectrum) {
   static_mutex_lock(&fftw_mutex);
   if (!fftwf_forward || fftw_plan_columns != columns) {
-    if (fftwf_forward)
+    if (fftwf_forward) {
+      static_mutex_lock(&audio_fftw_planner_lock);
       fftwf_destroy_plan(fftwf_forward);
+      static_mutex_unlock(&audio_fftw_planner_lock);
+    }
     int n[] = {FFT_SIZE};
     int howmany = (int)columns;
     int inembed[] = {FFT_SIZE};
@@ -177,7 +180,16 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
 
   /* Preserve the time-history layout: each column is a spectrum from a different
    * overlapping window in the captured audio history. */
-  float windowed[FFT_MAX_COLUMNS * FFT_SIZE], power_spectrum[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
+  float *windowed = SAFE_MALLOC((size_t)width * FFT_SIZE * sizeof(*windowed), float *);
+  float *power_spectrum = SAFE_MALLOC((size_t)width * (FFT_SIZE / 2 + 1) * sizeof(*power_spectrum), float *);
+  if (!windowed || !power_spectrum) {
+    SAFE_FREE(windowed);
+    SAFE_FREE(power_spectrum);
+    SAFE_FREE(samples);
+    SAFE_FREE(cells);
+    SAFE_FREE(colors);
+    return NULL;
+  }
   fft_scale_t scale = get_fft_scale();
   static const char levels[] = " .:-=+*#%@";
   const unsigned int spectrum_height = height;
@@ -206,6 +218,8 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       windowed[(size_t)x * FFT_SIZE + i] = samples[start + i] * fft_window[i];
   }
   if (!visualization_fft_batch(windowed, width, power_spectrum)) {
+    SAFE_FREE(windowed);
+    SAFE_FREE(power_spectrum);
     SAFE_FREE(samples);
     SAFE_FREE(cells);
     SAFE_FREE(colors);
@@ -247,6 +261,8 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   fft_cache.valid = true;
   static_mutex_unlock(&fft_cache_mutex);
   char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
+  SAFE_FREE(windowed);
+  SAFE_FREE(power_spectrum);
   SAFE_FREE(cells);
   SAFE_FREE(colors);
   SAFE_FREE(samples);
