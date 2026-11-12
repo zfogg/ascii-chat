@@ -42,7 +42,9 @@
 // PortAudio callbacks publish bounded, lock-free telemetry samples. The audio
 // worker exports them so the telemetry backend never runs on a device callback.
 #define AUDIO_RT_METRIC_SLOTS 1024
+#if !defined(_MSC_VER)
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_POINTER_LOCK_FREE == 2, "Audio telemetry requires lock-free unsigned and pointer atomics");
+#endif
 typedef struct {
   _Atomic unsigned state; // 0 free, 1 owned, 2 ready
   ascii_otel_metric_t metric;
