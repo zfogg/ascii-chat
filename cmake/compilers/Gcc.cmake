@@ -2,6 +2,11 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
 function(configure_gcc_pre_project)
+    if(WIN32)
+        message(FATAL_ERROR
+            "GCC is not supported as a native Windows toolchain yet; use a Linux/WSL host for GCC. "
+            "The Windows GCC dependency graph currently cannot bootstrap the repository's ICU host tools.")
+    endif()
     find_program(_gcc gcc REQUIRED)
     find_program(_gxx g++ REQUIRED)
     find_program(_ar ar REQUIRED)
@@ -13,10 +18,6 @@ function(configure_gcc_pre_project)
         list(GET _pair 1 _value)
         set(${_name} "${_value}" CACHE FILEPATH "GCC tool" FORCE)
     endforeach()
-    if(WIN32 AND NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
-        set(VCPKG_TARGET_TRIPLET x64-mingw-dynamic CACHE STRING
-            "vcpkg target triplet for the MinGW GCC toolchain")
-    endif()
     message(STATUS "Using GCC toolchain: ${CMAKE_C_COMPILER}")
 endfunction()
 

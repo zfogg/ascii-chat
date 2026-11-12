@@ -82,7 +82,8 @@
       "description": "Debug build using GCC and GNU binutils",
       "inherits": "default",
       "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
     {
       "name": "default-msvc",
@@ -107,7 +108,8 @@
       "description": "Fast developer build using GCC",
       "inherits": "dev",
       "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
     {
       "name": "dev-msvc",
@@ -132,7 +134,8 @@
       "description": "Release build using GCC",
       "inherits": "release",
       "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
     {
       "name": "release-msvc",
