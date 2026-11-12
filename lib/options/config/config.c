@@ -1645,6 +1645,33 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
   asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
   defer(config_file_list_destroy(&config_files));
 
+  // Keep the application config authoritative even when an older platform
+  // runtime is present.  The explicit config path and generated config both
+  // use this directory, so discovery must not silently fall back to the
+  // generic "application" directory.
+  if (search_result == ASCIICHAT_OK && config_files.count == 0) {
+    char *config_dir = get_config_dir();
+    if (config_dir) {
+      size_t dir_len = strlen(config_dir);
+      bool has_separator = dir_len > 0 && (config_dir[dir_len - 1] == '/' || config_dir[dir_len - 1] == '\\');
+      size_t path_len = dir_len + (has_separator ? 0 : 1) + strlen("config.toml") + 1;
+      char *path = SAFE_MALLOC(path_len, char *);
+      if (path) {
+        safe_snprintf(path, path_len, "%s%sconfig.toml", config_dir, has_separator ? "" : "\\");
+        if (config_files.capacity > config_files.count) {
+          config_file_result_t *file = &config_files.files[config_files.count++];
+          file->path = path;
+          file->priority = 0;
+          file->exists = true;
+          file->is_system_config = false;
+          path = NULL;
+        }
+        SAFE_FREE(path);
+      }
+      SAFE_FREE(config_dir);
+    }
+  }
+
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
     return search_result;
