@@ -14,7 +14,7 @@
 
 #define FFT_SIZE 1024
 #define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
-#define FFT_REFRESH_NS (100 * NS_PER_MS_INT)
+#define FFT_REFRESH_NS (NS_PER_SEC_INT / 60)
 
 static static_mutex_t fft_cache_mutex = STATIC_MUTEX_INIT;
 static struct {
@@ -118,28 +118,27 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   memset(cells, ' ', cell_count);
   memset(colors, 0, cell_count * 3);
 
-  /* Each column is a 21 ms Hann-windowed spectrum; adjacent columns overlap heavily. */
+  /* Compute one current spectrum per display frame.  The previous implementation
+   * recomputed the same 1024-point FFT once per terminal column, which made the
+   * visualization scale with terminal width and prevented a real 60 Hz update. */
   float windowed[FFT_SIZE], magnitude[FFT_SIZE / 2 + 1];
   fft_scale_t scale;
   if (!parse_fft_scale_value(GET_OPTION(fft_scale), &scale))
     scale = (fft_scale_t){.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
   static const char levels[] = " .:-=+*#%@";
   const unsigned int spectrum_height = height;
-  for (unsigned int x = 0; x < width; x++) {
-    size_t center = (size_t)x * (VISUALIZATION_HISTORY - 1) / (width - 1);
-    size_t start = center > FFT_SIZE / 2 ? center - FFT_SIZE / 2 : 0;
-    if (start + FFT_SIZE > VISUALIZATION_HISTORY)
-      start = VISUALIZATION_HISTORY - FFT_SIZE;
-    for (size_t i = 0; i < FFT_SIZE; i++) {
-      float window = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
-      windowed[i] = samples[start + i] * window;
-    }
-    if (!visualization_fft(windowed, magnitude)) {
-      SAFE_FREE(samples);
-      static_mutex_unlock(&fft_cache_mutex);
-      return NULL;
-    }
+  size_t start = VISUALIZATION_HISTORY - FFT_SIZE;
+  for (size_t i = 0; i < FFT_SIZE; i++) {
+    float window = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
+    windowed[i] = samples[start + i] * window;
+  }
+  if (!visualization_fft(windowed, magnitude)) {
+    SAFE_FREE(samples);
+    static_mutex_unlock(&fft_cache_mutex);
+    return NULL;
+  }
 
+  for (unsigned int x = 0; x < width; x++) {
     for (unsigned int row = 0; row < spectrum_height; row++) {
       float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
       float bottom_fraction = (float)(spectrum_height - row) / (float)spectrum_height;
