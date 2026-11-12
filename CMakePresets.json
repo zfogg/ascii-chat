@@ -8,7 +8,8 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "26"
+        "CMAKE_CXX_STANDARD": "26",
+        "ASCIICHAT_COMPILER": "AUTO"
       }
     },
     {
@@ -66,6 +67,31 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "OFF"
       }
+    },
+    {
+      "name": "default-llvm",
+      "displayName": "Default (LLVM)",
+      "description": "Debug build using the LLVM/Clang toolchain",
+      "inherits": "default",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "default-gcc",
+      "displayName": "Default (GCC)",
+      "description": "Debug build using GCC and GNU binutils",
+      "inherits": "default",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "default-msvc",
+      "displayName": "Default (MSVC)",
+      "description": "Debug build using MSVC and the Visual C++ tools",
+      "inherits": "default",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "debug",
@@ -285,6 +311,9 @@
       "name": "default",
       "configurePreset": "default"
     },
+    { "name": "default-llvm", "configurePreset": "default-llvm" },
+    { "name": "default-gcc", "configurePreset": "default-gcc" },
+    { "name": "default-msvc", "configurePreset": "default-msvc" },
     {
       "name": "debug",
       "configurePreset": "debug"

@@ -103,14 +103,20 @@ details as public API.
 
 ## Current Build and Test Workflow
 
-The native build uses Clang, Ninja, and the checked-in CMake presets. On
-Windows use the native PowerShell environment and the `default` preset; do not
-substitute MSVC or GCC. Reconfigure an existing build rather than deleting it.
+The native build uses Ninja and the checked-in CMake presets. The compiler
+family can be selected with `ASCIICHAT_COMPILER=AUTO|LLVM|GCC|MSVC`; AUTO
+prefers LLVM, then GCC, then MSVC on Windows. Use a separate build directory
+when changing compiler families and reconfigure rather than deleting it.
 
 ```bash
-# Standard sanitized debug build
+# Standard debug build with automatic compiler selection
 cmake --preset default -B build
 cmake --build build
+
+# Pin a compiler family
+cmake --preset default-llvm -B build-llvm
+cmake --preset default-gcc -B build-gcc
+cmake --preset default-msvc -B build-msvc
 
 # Faster debug build without sanitizer instrumentation
 cmake --preset debug-fast
@@ -299,8 +305,7 @@ ctest --test-dir build --output-on-failure --parallel 0
 
 **IMPORTANT**:
 
-- This project uses Clang only, not MSVC or GCC
-- Use `cmake --preset default` - use Ninja and don't switch to Makefiles or Visual Studio generators
+- Use Ninja and don't switch to Makefiles or Visual Studio generators
 - **Avoid deleting build/** - just re-run `cmake --preset default` and rebuild
 
 ### Running

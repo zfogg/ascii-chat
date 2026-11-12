@@ -1,0 +1,21 @@
+include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
+
+function(configure_gcc_pre_project)
+    find_program(_gcc gcc REQUIRED)
+    find_program(_gxx g++ REQUIRED)
+    find_program(_ar ar REQUIRED)
+    find_program(_ranlib ranlib REQUIRED)
+    find_program(_nm nm REQUIRED)
+    find_program(_objdump objdump REQUIRED)
+    foreach(_pair IN ITEMS "CMAKE_C_COMPILER;${_gcc}" "CMAKE_CXX_COMPILER;${_gxx}" "ASCIICHAT_GCC_AR_EXECUTABLE;${_ar}" "ASCIICHAT_GCC_RANLIB_EXECUTABLE;${_ranlib}" "ASCIICHAT_GCC_NM_EXECUTABLE;${_nm}" "ASCIICHAT_GCC_OBJDUMP_EXECUTABLE;${_objdump}")
+        list(GET _pair 0 _name)
+        list(GET _pair 1 _value)
+        set(${_name} "${_value}" CACHE FILEPATH "GCC tool" FORCE)
+    endforeach()
+    message(STATUS "Using GCC toolchain: ${CMAKE_C_COMPILER}")
+endfunction()
+
+function(configure_gcc_post_project)
+    # GCC flags are already the native dialect used by CompilerFlags.cmake.
+endfunction()

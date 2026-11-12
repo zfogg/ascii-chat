@@ -105,6 +105,11 @@ endfunction()
 function(configure_base_compiler_flags)
     configure_toolchain_capabilities()
 
+    if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+        target_compile_options(asciichat-project-options INTERFACE /W4 /permissive- /D_CRT_SECURE_NO_WARNINGS)
+        return()
+    endif()
+
     # If CLANG_RESOURCE_DIR is set (when building LibTooling tools like defer),
     # pass it to the compiler so clang can find its builtin headers
     if(DEFINED CLANG_RESOURCE_DIR AND CLANG_RESOURCE_DIR)
@@ -231,6 +236,12 @@ endfunction()
 # Args:
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
+    if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG)
+        target_compile_options(asciichat-project-options INTERFACE /Od /Zi /RTC1)
+        target_link_options(asciichat-project-options INTERFACE /DEBUG:FULL)
+        return()
+    endif()
     # Enhanced debug info with macro definitions
     target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
 
@@ -295,6 +306,17 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     set(WITH_DEBUG_INFO FALSE)
     if(ARGC GREATER 5)
         set(WITH_DEBUG_INFO ${ARGV5})
+    endif()
+
+    if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+        target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
+        target_compile_options(asciichat-project-options INTERFACE $<$<CONFIG:RelWithDebInfo>:/O2> $<$<CONFIG:Release>:/O2> /Oi /GL)
+        target_link_options(asciichat-project-options INTERFACE /OPT:REF /OPT:ICF)
+        if(WITH_DEBUG_INFO)
+            target_compile_options(asciichat-project-options INTERFACE /Zi)
+            target_link_options(asciichat-project-options INTERFACE /DEBUG:FULL)
+        endif()
+        return()
     endif()
 
     target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
@@ -604,6 +626,10 @@ endfunction()
 
 # Configure coverage instrumentation (can be combined with any build type)
 function(configure_coverage_flags)
+    if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+        message(WARNING "Coverage instrumentation is not supported by the MSVC toolchain")
+        return()
+    endif()
     message(STATUS "Coverage instrumentation enabled")
     target_compile_definitions(asciichat-project-options INTERFACE COVERAGE_BUILD)
     target_compile_options(asciichat-project-options INTERFACE --coverage -fprofile-arcs -ftest-coverage)

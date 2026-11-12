@@ -21,6 +21,10 @@
 # Import color definitions from Colors.cmake
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
+# Select and configure the native compiler before FindPrograms and project().
+# AUTO prefers LLVM, then GCC, then MSVC on Windows.
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/Init.cmake)
+
 # Centralized program discovery - find all external programs once
 # Other modules should use the ASCIICHAT_* cached variables instead of find_program
 include(${CMAKE_SOURCE_DIR}/cmake/init/FindPrograms.cmake)
