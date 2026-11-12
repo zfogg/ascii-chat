@@ -107,22 +107,22 @@ set(CORE_SRCS
     ${LIB_DIR}/options/config/presets.c
     ${LIB_DIR}/options/json.c
     # options/registry/
-    ${LIB_DIR}/options/registry/metadata.c
-    ${LIB_DIR}/options/registry/general.c
-    ${LIB_DIR}/options/registry/logging.c
-    ${LIB_DIR}/options/registry/configuration.c
-    ${LIB_DIR}/options/registry/terminal.c
-    ${LIB_DIR}/options/registry/webcam.c
-    ${LIB_DIR}/options/registry/display.c
-    ${LIB_DIR}/options/registry/network.c
-    ${LIB_DIR}/options/registry/security.c
-    ${LIB_DIR}/options/registry/media.c
-    ${LIB_DIR}/options/registry/audio.c
-    ${LIB_DIR}/options/registry/database.c
-    ${LIB_DIR}/options/registry/registry.c
-    ${LIB_DIR}/options/registry/core.c
-    ${LIB_DIR}/options/registry/public_api.c
-    ${LIB_DIR}/options/registry/mode_defaults.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/metadata.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/general.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/logging.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/configuration.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/terminal.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/webcam.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/display.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/network.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/security.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/media.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/database.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/registry.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/core.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/public_api.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/mode_defaults.c
     # options/parsing/
     ${LIB_DIR}/options/parsing/parsers.c
     ${LIB_DIR}/options/parsing/validation.c
@@ -199,7 +199,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-    ${LIB_DIR}/options/registry/debug.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/debug.c
 )
 
 # Additional debug sources only in non-Release builds

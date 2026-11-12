@@ -222,22 +222,22 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/config/config.c
     ${LIB_ROOT}/options/config/presets.c
     ${LIB_ROOT}/options/config/schema.c
-    ${LIB_ROOT}/options/registry/audio.c
-    ${LIB_ROOT}/options/registry/configuration.c
-    ${LIB_ROOT}/options/registry/core.c
-    ${LIB_ROOT}/options/registry/database.c
-    ${LIB_ROOT}/options/registry/display.c
-    ${LIB_ROOT}/options/registry/general.c
-    ${LIB_ROOT}/options/registry/logging.c
-    ${LIB_ROOT}/options/registry/media.c
-    ${LIB_ROOT}/options/registry/metadata.c
-    ${LIB_ROOT}/options/registry/network.c
-    ${LIB_ROOT}/options/registry/public_api.c
-    ${LIB_ROOT}/options/registry/registry.c
-    ${LIB_ROOT}/options/registry/security.c
-    ${LIB_ROOT}/options/registry/terminal.c
-    ${LIB_ROOT}/options/registry/webcam.c
-    ${LIB_ROOT}/options/registry/debug.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/configuration.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/core.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/database.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/display.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/general.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/logging.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/media.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/metadata.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/network.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/public_api.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/registry.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/security.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/terminal.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/webcam.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry/debug.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
