@@ -8,8 +8,7 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "26",
-        "ASCIICHAT_COMPILER": "AUTO"
+        "CMAKE_CXX_STANDARD": "26"
       }
     },
     {
