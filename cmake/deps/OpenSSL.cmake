@@ -356,7 +356,7 @@ endif()
 # the host's OpenSSL ABI; do not silently replace it with a source-built copy
 # from the dependency cache.  The musl and iOS branches above remain separate
 # because those targets do not have a usable host OpenSSL installation.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL AND ASCIICHAT_USE_SYSTEM_OPENSSL)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
     find_package(OpenSSL REQUIRED)
     message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} found (system): ${OPENSSL_SSL_LIBRARY}")
     return()
