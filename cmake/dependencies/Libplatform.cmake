@@ -21,40 +21,15 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
+set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
-    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG e63795c
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
 target_include_directories(asciichat-project-includes INTERFACE
     "${_ascii_chat_libplatform_source}/lib")
-
-# Apply the owned-directory source formatting contract to the active pinned
-# source cache while preserving its dependency-specific include layout.
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/symbols.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/backtrace_internal.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/sync.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/debug/memory.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/symbols.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/backtrace.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/include/libplatform/debug/backtrace.h"
-     DESTINATION "${_ascii_chat_libplatform_source}/include/libplatform/debug")
-file(COPY "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/windows/backtrace.c"
-     DESTINATION "${_ascii_chat_libplatform_source}/lib/windows")
 
 # libplatform owns the shared path/logging helpers, so give it the checkout
 # root that CMake already knows instead of letting it fall back to ".".
