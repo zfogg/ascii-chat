@@ -95,16 +95,16 @@ set(CORE_SRCS
     ${LIB_DIR}/options/levenshtein.c
     ${LIB_DIR}/options/rcu.c
     ${LIB_DIR}/options/layout.c
-    ${LIB_DIR}/options/manpage.c
-    ${LIB_DIR}/options/help_api.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     # options/builder/
     ${LIB_DIR}/options/builder/builder.c
     ${LIB_DIR}/options/builder/handlers.c
     ${LIB_DIR}/options/builder/help.c
     # options/config/
-    ${LIB_DIR}/options/config/config.c
-    ${LIB_DIR}/options/config/schema.c
-    ${LIB_DIR}/options/config/presets.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/config.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/schema.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/presets.c
     ${CMAKE_SOURCE_DIR}/src/common/options/json.c
     # options/registry/
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/metadata.c
@@ -125,8 +125,8 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/mode_defaults.c
     # options/parsing/
     ${LIB_DIR}/options/parsing/parsers.c
-    ${LIB_DIR}/options/parsing/validation.c
-    ${LIB_DIR}/options/parsing/actions.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing/actions.c
     # options/manpage/
     ${LIB_DIR}/options/manpage/embedded.c
     ${LIB_DIR}/options/manpage/resources.c

@@ -196,12 +196,12 @@ set(LIB_SRC_COMMON
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${LIB_ROOT}/options/strings.c
     ${LIB_ROOT}/options/parsing/parsers.c
-    ${LIB_ROOT}/options/parsing/validation.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
     ${LIB_ROOT}/options/colorscheme.c
-    ${LIB_ROOT}/options/manpage.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
     ${LIB_ROOT}/options/layout.c
     ${LIB_ROOT}/options/levenshtein.c
-    ${LIB_ROOT}/options/help_api.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     ${LIB_ROOT}/options/completions/completions.c
     ${LIB_ROOT}/options/completions/bash.c
     ${LIB_ROOT}/options/completions/fish.c
@@ -219,9 +219,9 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/manpage/content/options.c
     ${LIB_ROOT}/options/manpage/content/positional.c
     ${LIB_ROOT}/options/manpage/content/usage.c
-    ${LIB_ROOT}/options/config/config.c
-    ${LIB_ROOT}/options/config/presets.c
-    ${LIB_ROOT}/options/config/schema.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/config.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/presets.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config/schema.c
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/audio.c
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/configuration.c
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/core.c
