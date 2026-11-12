@@ -1616,6 +1616,15 @@ static void build_options_schema(void) {
 }
 
 static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
+#ifdef EMSCRIPTEN_BUILD
+  // Browser options are supplied through OptionsBinding.  There is no native
+  // user/system configuration directory in a WASM module, and probing it
+  // would make startup depend on the host filesystem emulation.
+  (void)opts;
+  (void)detected_mode;
+  *fps_set_by_config = false;
+  return ASCIICHAT_OK;
+#endif
   // Isolated MCP renderers never load user/system configuration.
   if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER")) {
     *fps_set_by_config = false;

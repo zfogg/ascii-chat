@@ -402,21 +402,21 @@ int browser_client_init(browser_transport_t *transport) {
     return 0;
   }
   char *argv[] = {"client", NULL};
-  asciichat_error_t err = options_init(1, argv);
+  // Keep browser startup on the same shared initialization path as the CLI.
+  // options_init() relies on logging, timers, buffers, and platform state
+  // established by asciichat_shared_init(), so it must come second.
+  asciichat_error_t err = asciichat_shared_init(NULL, true, true);
+  if (err != ASCIICHAT_OK) {
+    return -1;
+  }
+
+  err = options_init(1, argv);
   if (err != ASCIICHAT_OK)
     return -1;
   /* Browser options are patched immediately after this call, so initialize
    * FFTW even when the default option is off and JavaScript enables it later. */
   if (audio_visualization_fft_init() != ASCIICHAT_OK)
     return -1;
-
-  // Keep browser startup on the same shared initialization path as the CLI.
-  // options_init() relies on logging, timers, buffers, and platform state
-  // established by asciichat_shared_init().
-  err = asciichat_shared_init(NULL, true, true);
-  if (err != ASCIICHAT_OK) {
-    return -1;
-  }
 
   // Honor the requested verbosity and let INFO use stdout (console.log).
   log_init(NULL, GET_OPTION(log_level), false, false);

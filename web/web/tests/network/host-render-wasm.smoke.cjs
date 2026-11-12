@@ -173,15 +173,16 @@ const path = require("node:path");
         flags,
         metadata = new Uint8Array(),
       ) => {
-        return client.validateFrame(
-          bytes,
+        return client.process({
+          type: "frame-validate",
+          encoded: bytes,
+          contract: metadata,
           width,
           height,
-          crc,
+          checksum: crc,
           flags,
-          metadata,
-          bytes.length,
-        ).code;
+          originalSize: bytes.length,
+        }).code;
       };
       for (const fixture of fixtures) {
         const result = verify(
@@ -217,28 +218,30 @@ const path = require("node:path");
         );
         offset += metadata.length;
         const encoded = payload.subarray(offset);
-        const decoded = client.validateFrame(
+        const decoded = client.process({
+          type: "frame-validate",
           encoded,
-          view.getUint32(0),
-          view.getUint32(4),
-          view.getUint32(16),
+          contract: metadata,
+          width: view.getUint32(0),
+          height: view.getUint32(4),
+          checksum: view.getUint32(16),
           flags,
-          metadata,
-          original,
-        );
+          originalSize: original,
+        });
         if (decoded.code)
           throw new Error("Real host frame rejected: " + decoded.code);
         if (
           flags & 2 &&
-          !client.validateFrame(
+          !client.process({
+            type: "frame-validate",
             encoded,
-            view.getUint32(0),
-            view.getUint32(4),
-            view.getUint32(16),
+            contract: metadata,
+            width: view.getUint32(0),
+            height: view.getUint32(4),
+            checksum: view.getUint32(16),
             flags,
-            metadata,
-            original + 1,
-          ).decodeFailed
+            originalSize: original + 1,
+          }).decodeFailed
         )
           throw new Error("Short zstd output accepted");
         const bytes = decoded.bytes;
@@ -516,7 +519,10 @@ const path = require("node:path");
       ackView.setUint32(0, 1);
       ackView.setUint32(12, 90);
       ack.set(acknowledged, 20);
-      const ackResult = client.settingsReceive(ack).code;
+      const ackResult = client.process({
+        type: "settings-receive",
+        payload: ack,
+      }).code;
       if (ackResult) throw new Error("settings ACK failed: " + ackResult);
       const paletteContract = new Uint8Array(21);
       const paletteView = new DataView(paletteContract.buffer);

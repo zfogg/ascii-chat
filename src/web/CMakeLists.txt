@@ -299,6 +299,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/search.c
     ${LIB_ROOT}/log/io.c
     ${LIB_ROOT}/log/wasm.c
+    ${LIB_ROOT}/log/asan.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
 
