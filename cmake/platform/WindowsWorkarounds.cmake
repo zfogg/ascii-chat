@@ -46,7 +46,7 @@ endfunction()
 # Find and configure MSVC libraries for Windows builds
 # Required for Debug and Dev builds with Clang on Windows
 function(find_msvc_libraries)
-    if(NOT WIN32 OR ASCIICHAT_COMPILER STREQUAL "GCC")
+    if(NOT WIN32 OR CMAKE_C_COMPILER_ID STREQUAL "GNU")
         return()
     endif()
 

@@ -17,7 +17,7 @@
 
 # Language standards. MSVC does not expose C++26 to CMake yet and its C mode
 # is intentionally kept at the C17-compatible dialect supported by cl.exe.
-if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_CXX_STANDARD 23)
 else()

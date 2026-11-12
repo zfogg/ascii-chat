@@ -15,7 +15,7 @@
 # Find and enable ccache if available (unless explicitly disabled)
 option(USE_CCACHE "Use ccache for compilation if available" ON)
 
-if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     unset(CMAKE_C_COMPILER_LAUNCHER CACHE)
     unset(CMAKE_CXX_COMPILER_LAUNCHER CACHE)
     set(CMAKE_C_COMPILER_LAUNCHER "")
@@ -23,7 +23,7 @@ if(ASCIICHAT_COMPILER STREQUAL "MSVC")
     message(STATUS "ccache disabled for native MSVC (cl.exe requires the Visual Studio environment directly)")
 endif()
 
-if(USE_CCACHE AND NOT ASCIICHAT_COMPILER STREQUAL "MSVC")
+if(USE_CCACHE AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     # Use centralized ASCIICHAT_CCACHE_EXECUTABLE from FindPrograms.cmake
     if(ASCIICHAT_CCACHE_EXECUTABLE)
         # Only set ccache if not already configured (e.g., by Homebrew LLVM setup)
@@ -61,7 +61,7 @@ endif()
 
 # LLVM setup may already have selected ccache before this module runs.
 # Apply project settings to existing launchers as well as newly selected ones.
-if(USE_CCACHE AND NOT EMSCRIPTEN AND NOT ASCIICHAT_COMPILER STREQUAL "MSVC" AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
+if(USE_CCACHE AND NOT EMSCRIPTEN AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
     execute_process(COMMAND "${ASCIICHAT_CCACHE_EXECUTABLE}" --help
         OUTPUT_VARIABLE _asciichat_ccache_help ERROR_QUIET)
     if(_asciichat_ccache_help MATCHES "KEY=VALUE")

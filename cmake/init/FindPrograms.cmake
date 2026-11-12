@@ -283,7 +283,7 @@ set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}" CACHE
 # Example: _find_llvm_tool(ASCIICHAT_CLANG_EXECUTABLE clang)
 #   -> searches for: clang, clang-23, clang-22, clang-21, clang-20, clang-19, clang-18
 macro(_find_llvm_tool VAR_NAME)
-    if(ASCIICHAT_COMPILER STREQUAL "LLVM")
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     # Build list of names: base names first, then versioned variants
     set(_tool_names ${ARGN})
     foreach(_base IN ITEMS ${ARGN})
@@ -790,7 +790,7 @@ endif()
 # =============================================================================
 
 # clang is required for all builds (ascii-chat is a Clang-only project)
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_CLANG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_EXECUTABLE)
     message(FATAL_ERROR "clang not found. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -798,7 +798,7 @@ if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_CLANG_EXECUTABLE)
 endif()
 
 # clang++ is required for C++ dependencies and tooling
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
     message(FATAL_ERROR "clang++ not found. Required for C++ dependencies and tooling. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -807,14 +807,14 @@ endif()
 
 # llvm-config identifies the LLVM installation on Unix. Windows binaries can
 # be located from the compiler path when llvm-config.exe is unavailable.
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     message(FATAL_ERROR "llvm-config not found. Required to identify LLVM on Unix. Install LLVM:\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()
 
 # llvm-ar is required for static library archiving
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
     message(FATAL_ERROR "llvm-ar not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -822,7 +822,7 @@ if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
 endif()
 
 # llvm-ranlib is required for static library indexing
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-ranlib not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -830,13 +830,13 @@ if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
 endif()
 
 # Windows-specific: llvm-lib is required for BearSSL static library
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-lib not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()
 
 # Windows-specific: clang-cl is required for BearSSL build
-if(ASCIICHAT_COMPILER STREQUAL "LLVM" AND WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
     message(FATAL_ERROR "clang-cl not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()
