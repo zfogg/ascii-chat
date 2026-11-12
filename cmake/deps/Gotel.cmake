@@ -30,7 +30,7 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
 # Keep the vendored C++ facade aligned with the selected compiler's C++ mode.
-if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for the gotel facade" FORCE)
 else()
     set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
