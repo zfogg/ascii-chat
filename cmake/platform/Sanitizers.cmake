@@ -450,12 +450,20 @@ function(apply_sanitizers_to_target TARGET_NAME)
         return()
     endif()
 
-    # Apply compile options
-    target_compile_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
+    # Apply compile options.  A reused build can retain target-local flags
+    # produced by an earlier Clang configure, so filter Clang-only sanitizer
+    # groups at the application boundary as well as during configuration.
+    set(_asciichat_sanitizer_compile_flags ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
+    set(_asciichat_sanitizer_link_flags ${ASCIICHAT_SANITIZER_LINK_FLAGS})
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        list(FILTER _asciichat_sanitizer_compile_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer")
+        list(FILTER _asciichat_sanitizer_link_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer|shared-libsan")
+    endif()
+    target_compile_options(${TARGET_NAME} PRIVATE ${_asciichat_sanitizer_compile_flags})
 
     # Apply link options
-    if(ASCIICHAT_SANITIZER_LINK_FLAGS)
-        target_link_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_LINK_FLAGS})
+    if(_asciichat_sanitizer_link_flags)
+        target_link_options(${TARGET_NAME} PRIVATE ${_asciichat_sanitizer_link_flags})
     endif()
 
     # Windows-specific: Link ASan import library FIRST (must be earliest in import table)
