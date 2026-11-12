@@ -34,13 +34,8 @@ struct spectral_processor {
 static_mutex_t audio_fftw_planner_lock = STATIC_MUTEX_INIT;
 
 spectral_config_t spectral_default_config(int sample_rate) {
-  return (spectral_config_t){.sample_rate = sample_rate,
-                             .fft_size = 1024,
-                             .noise_gate = true,
-                             .reduction_db = 18.0f,
-                             .crossovers = {250, 2000, 8000},
-                             .thresholds_db = {-18, -18, -18, -18},
-                             .ratios = {2, 3, 3, 2}};
+  return (spectral_config_t){
+      .sample_rate = sample_rate, .fft_size = 1024, .noise_gate = true, .reduction_db = 18.0f, .crossovers = {250, 2000, 8000}, .thresholds_db = {-18, -18, -18, -18}, .ratios = {2, 3, 3, 2}};
 }
 
 void spectral_reset(spectral_processor_t *p) {
@@ -69,16 +64,13 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing spectral output pointer");
   *out = NULL;
-  if (!c || c->sample_rate < 16000 || c->sample_rate > 192000 ||
-      (c->fft_size != 512 && c->fft_size != 1024 && c->fft_size != 2048) || !isfinite(c->reduction_db) ||
-      c->reduction_db < 0 || c->reduction_db > 60)
+  if (!c || c->sample_rate < 16000 || c->sample_rate > 192000 || (c->fft_size != 512 && c->fft_size != 1024 && c->fft_size != 2048) || !isfinite(c->reduction_db) || c->reduction_db < 0 ||
+      c->reduction_db > 60)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral configuration");
   for (int b = 0; b < 4; ++b) {
-    if (!isfinite(c->ratios[b]) || c->ratios[b] < 1 || c->ratios[b] > 20 || !isfinite(c->thresholds_db[b]) ||
-        c->thresholds_db[b] > 0 || c->thresholds_db[b] < -90)
+    if (!isfinite(c->ratios[b]) || c->ratios[b] < 1 || c->ratios[b] > 20 || !isfinite(c->thresholds_db[b]) || c->thresholds_db[b] > 0 || c->thresholds_db[b] < -90)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral compressor band");
-    if (b < 3 && (!isfinite(c->crossovers[b]) || c->crossovers[b] <= 0 || c->crossovers[b] > c->sample_rate / 2.0f ||
-                  (b && c->crossovers[b] <= c->crossovers[b - 1])))
+    if (b < 3 && (!isfinite(c->crossovers[b]) || c->crossovers[b] <= 0 || c->crossovers[b] > c->sample_rate / 2.0f || (b && c->crossovers[b] <= c->crossovers[b - 1])))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid spectral crossover");
   }
   spectral_processor_t *p = SAFE_CALLOC(1, sizeof(*p), spectral_processor_t *);
@@ -154,8 +146,7 @@ static float detect_pitch(spectral_processor_t *p) {
   for (int lag = first + 1; lag < last; ++lag) {
     float value = correlation[lag];
     if (value > 0.95f * best && value > correlation[lag - 1] && value >= correlation[lag + 1]) {
-      float delta = 0.5f * (correlation[lag - 1] - correlation[lag + 1]) /
-                    (correlation[lag - 1] - 2 * value + correlation[lag + 1]);
+      float delta = 0.5f * (correlation[lag - 1] - correlation[lag + 1]) / (correlation[lag - 1] - 2 * value + correlation[lag + 1]);
       return p->config.sample_rate / (lag + delta);
     }
   }

@@ -78,8 +78,7 @@ void audio_recording_start(audio_recording_t *recording, uint64_t epoch_ns) {
 
 void audio_recording_submit(audio_recording_source_t source, const float *samples, size_t count, uint64_t start_ns) {
   // This is only a hint: the locked pointer/state check protects destruction.
-  if (!atomic_load_explicit(&recording_accepts_samples, memory_order_acquire) || !samples || !count || source < 0 ||
-      source >= AUDIO_RECORDING_SOURCE_COUNT)
+  if (!atomic_load_explicit(&recording_accepts_samples, memory_order_acquire) || !samples || !count || source < 0 || source >= AUDIO_RECORDING_SOURCE_COUNT)
     return;
   static_mutex_lock_named(&recording_mutex, "audio_recording");
   audio_recording_t *recording = active_recording;
@@ -91,8 +90,7 @@ void audio_recording_submit(audio_recording_source_t source, const float *sample
   uint64_t position = delta / 1000000000ULL * RECORDING_RATE + delta % 1000000000ULL * RECORDING_RATE / 1000000000ULL;
   position *= recording->channels;
   /* Smooth callback jitter while preserving gaps longer than 100 ms. */
-  if (recording->source_started[source] &&
-      position < recording->source_position[source] + RECORDING_RATE * recording->channels / 10)
+  if (recording->source_started[source] && position < recording->source_position[source] + RECORDING_RATE * recording->channels / 10)
     position = recording->source_position[source];
   if (position < recording->read_position) {
     position = recording->read_position;
@@ -114,11 +112,9 @@ void audio_recording_submit(audio_recording_source_t source, const float *sample
   // its missing channels silent rather than shifting the next submission.
   recording->source_position[source] = position + count;
   if (recording->source_position[source] % recording->channels)
-    recording->source_position[source] +=
-        recording->channels - recording->source_position[source] % recording->channels;
+    recording->source_position[source] += recording->channels - recording->source_position[source] % recording->channels;
   for (size_t i = 0; i < count; i++, position++) {
-    if (position >= recording->read_position &&
-        position - recording->read_position < RECORDING_CAPACITY * recording->channels && isfinite(samples[i]))
+    if (position >= recording->read_position && position - recording->read_position < RECORDING_CAPACITY * recording->channels && isfinite(samples[i]))
       recording->mix[position % (RECORDING_CAPACITY * recording->channels)] += samples[i];
   }
   static_mutex_unlock(&recording_mutex);

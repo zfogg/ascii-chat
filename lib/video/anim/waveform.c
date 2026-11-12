@@ -36,10 +36,8 @@ static float waveform_spectral_centroid(const float *samples, size_t sample_coun
   return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;
 }
 
-char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                          bool use_color, int color_mode, bool flip_x, bool flip_y) {
-  if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
-      source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
+char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source, bool use_color, int color_mode, bool flip_x, bool flip_y) {
+  if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT || source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
 
   /* Keep a fixed one-second view so new audio enters on the right smoothly. */

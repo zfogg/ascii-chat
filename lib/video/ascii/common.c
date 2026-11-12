@@ -89,8 +89,7 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
 }
 
 // Cache eviction helper functions
-double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
-                                      uint64_t current_time) {
+double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time, uint64_t current_time) {
   // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
   uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
   uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
@@ -326,8 +325,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
         // Cache entry still exists - safe to update heap position
         uint64_t last_access = atomic_load_u64(&cache_relookup->last_access_time);
         uint32_t access_count = atomic_load_u64(&cache_relookup->access_count);
-        double new_score =
-            calculate_cache_eviction_score(last_access, access_count, cache_relookup->creation_time, current_time);
+        double new_score = calculate_cache_eviction_score(last_access, access_count, cache_relookup->creation_time, current_time);
         utf8_heap_update_score(cache_relookup, new_score);
       }
       // If cache_relookup is NULL, entry was evicted - skip update (not an error)
@@ -446,8 +444,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
 }
 
 // Build 64-entry UTF-8 cache for SIMD color lookup
-void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64],
-                             uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]) {
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]) {
   if (!ascii_chars || !cache64 || !char_index_ramp)
     return;
 

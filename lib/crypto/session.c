@@ -3,8 +3,7 @@
 #include <sodium.h>
 #include <string.h>
 
-static asciichat_error_t emit_message(void *context, unsigned channel, crypto_rekey_message_t type, const void *payload,
-                                      size_t length) {
+static asciichat_error_t emit_message(void *context, unsigned channel, crypto_rekey_message_t type, const void *payload, size_t length) {
   crypto_session_t *session = context;
   if (session->count == CRYPTO_SESSION_MESSAGES || length > CRYPTO_PUBLIC_KEY_SIZE)
     return SET_ERRNO(ERROR_BUFFER_FULL, "Security control queue is full");
@@ -49,13 +48,10 @@ asciichat_error_t crypto_session_lock(crypto_context_t *crypto, crypto_session_t
   crypto_session_t *session = crypto->session;
   mutex_lock(&session->mutex);
   if (!session->failure && !session->records.crypto) {
-    bool server = crypto->server_role_known
-                      ? crypto->server_role
-                      : memcmp(crypto->public_key, crypto->peer_public_key, CRYPTO_PUBLIC_KEY_SIZE) > 0;
+    bool server = crypto->server_role_known ? crypto->server_role : memcmp(crypto->public_key, crypto->peer_public_key, CRYPTO_PUBLIC_KEY_SIZE) > 0;
     session->failure = crypto_record_init(&session->records, crypto, server);
     if (!session->failure)
-      session->failure =
-          crypto_rekey_session_init(&session->rotation, &session->records, emit_message, session, time_get_ns());
+      session->failure = crypto_rekey_session_init(&session->rotation, &session->records, emit_message, session, time_get_ns());
   }
   if (session->failure) {
     asciichat_error_t result = session->failure;
@@ -76,11 +72,9 @@ asciichat_error_t crypto_session_tick(crypto_session_t *session, uint64_t now) {
   return session->failure;
 }
 
-asciichat_error_t crypto_session_receive(crypto_session_t *session, unsigned channel, unsigned delivery,
-                                         crypto_rekey_message_t type, const void *payload, size_t length, uint64_t now,
+asciichat_error_t crypto_session_receive(crypto_session_t *session, unsigned channel, unsigned delivery, crypto_rekey_message_t type, const void *payload, size_t length, uint64_t now,
                                          bool *consumed) {
   if (!session->failure)
-    session->failure =
-        crypto_rekey_session_receive(&session->rotation, channel, delivery, type, payload, length, now, consumed);
+    session->failure = crypto_rekey_session_receive(&session->rotation, channel, delivery, type, payload, length, now, consumed);
   return session->failure;
 }

@@ -206,8 +206,7 @@ const char *get_level_string_padded(log_level_t level) {
   }
   // Verify length
   if (strlen(result) != 5) {
-    log_terminal_printf(STDERR_FILENO, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n",
-                        result, strlen(result));
+    log_terminal_printf(STDERR_FILENO, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n", result, strlen(result));
   }
   return result;
 }
@@ -218,28 +217,28 @@ const char *get_level_string_padded(log_level_t level) {
 
 /* Internal error macro - uses g_log directly, only used in this file */
 #ifdef NDEBUG
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    errno_set_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                              \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
-    int _log_fd = atomic_load_int(&g_log.file);                                                                        \
-    platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
-    platform_write(_log_fd, message, strlen(message));                                                                 \
-    platform_write(_log_fd, "\n", 1);                                                                                  \
-    backtrace_print_simple(0);                                                                                         \
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    errno_set_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                                                                                                              \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                                                                                                 \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                                                                                               \
+    int _log_fd = atomic_load_int(&g_log.file);                                                                                                                                                        \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                                                                                                                           \
+    platform_write(_log_fd, message, strlen(message));                                                                                                                                                 \
+    platform_write(_log_fd, "\n", 1);                                                                                                                                                                  \
+    backtrace_print_simple(0);                                                                                                                                                                         \
   } while (0)
 #else
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                               \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
-    int _log_fd = atomic_load_int(&g_log.file);                                                                        \
-    platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
-    platform_write(_log_fd, message, strlen(message));                                                                 \
-    platform_write(_log_fd, "\n", 1);                                                                                  \
-    backtrace_print_simple(0);                                                                                         \
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                                                                                                               \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                                                                                                 \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                                                                                               \
+    int _log_fd = atomic_load_int(&g_log.file);                                                                                                                                                        \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                                                                                                                           \
+    platform_write(_log_fd, message, strlen(message));                                                                                                                                                 \
+    platform_write(_log_fd, "\n", 1);                                                                                                                                                                  \
+    backtrace_print_simple(0);                                                                                                                                                                         \
   } while (0)
 #endif
 
@@ -520,8 +519,7 @@ static void rotate_log_locked(void) {
   get_current_time_formatted(time_buf);
 
   char log_msg[LOG_LOG_MSG_BUFFER_SIZE];
-  int log_msg_len =
-      safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
+  int log_msg_len = safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
   if (log_msg_len > 0 && log_msg_len < (int)sizeof(log_msg)) {
     (void)platform_write(new_fd, log_msg, (size_t)log_msg_len);
   }
@@ -895,8 +893,7 @@ static void write_to_log_file_atomic(const char *buffer, int length, const char 
 /* Helper: Format log message header using the format system
  * Returns the number of characters written to the buffer
  */
-static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
-                             const char *file, int line, const char *func, bool use_colors, uint64_t time_nanoseconds) {
+static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp, const char *file, int line, const char *func, bool use_colors, uint64_t time_nanoseconds) {
   const log_template_t *format = g_log.format;
   if (!format) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Log format not initialized");
@@ -911,8 +908,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     return -1;
   }
 
-  int written = log_template_apply(format_check, buffer, buffer_size, level, timestamp, file, line, func,
-                                   thread_current_id(), "", use_colors, time_nanoseconds);
+  int written = log_template_apply(format_check, buffer, buffer_size, level, timestamp, file, line, func, thread_current_id(), "", use_colors, time_nanoseconds);
   if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
@@ -930,8 +926,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  */
 static _Atomic bool g_terminal_log_colors;
 
-static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
-                                     const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds,
+static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line, const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds,
                                      bool capture_history) {
   // Prevent logging during shutdown - if logging lifecycle is being destroyed,
   // bail out to avoid use-after-free of the log template
@@ -945,8 +940,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
   // Captured session logs still need formatting, but detecting the console
   // again would block their producer behind the presentation worker's writes.
-  bool use_colors =
-      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting)
     atomic_store(&g_terminal_log_colors, use_colors);
 
@@ -971,8 +965,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   const log_template_t *format = g_log.format_console_only ? g_log.format_console_only : g_log.format;
   int plain_len = 0;
   if (format && lifecycle_is_initialized(&g_log.lifecycle)) { /* Double-check lifecycle is still active */
-    plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line, func,
-                                   thread_current_id(), clean_msg, false, time_nanoseconds);
+    plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line, func, thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
   /* For colored output, apply format with colors enabled */
@@ -980,8 +973,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (use_colors && plain_len > 0) {
     const log_template_t *format_check = g_log.format_console_only ? g_log.format_console_only : g_log.format;
     if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) { /* Re-verify lifecycle before use */
-      colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                       line, func, thread_current_id(), clean_msg, true, time_nanoseconds);
+      colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file, line, func, thread_current_id(), clean_msg, true, time_nanoseconds);
     }
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
@@ -1046,8 +1038,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   // Handle log formatting errors
-  if (colored_len <= 0 || colored_len >= (int)sizeof(colored_log_line) || plain_len <= 0 ||
-      plain_len >= (int)sizeof(plain_log_line)) {
+  if (colored_len <= 0 || colored_len >= (int)sizeof(colored_log_line) || plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
     // Formatting failed - try to output something
     log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", clean_msg);
     (void)fflush(output_stream);
@@ -1107,14 +1098,10 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(timestamp);
   const log_template_t *format = g_log.format;
-  int plain_len = format && plain_log_line
-                      ? log_template_apply(format, plain_log_line, capacity, level, timestamp, file, line, func,
-                                           thread_current_id(), text, false, time_ns)
-                      : -1;
+  int plain_len = format && plain_log_line ? log_template_apply(format, plain_log_line, capacity, level, timestamp, file, line, func, thread_current_id(), text, false, time_ns) : -1;
   size_t start = 0, length = 0;
-  if (!GET_OPTION(quiet) &&
-      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) && plain_len > 0 &&
-      (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
+  if (!GET_OPTION(quiet) && (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) && plain_len > 0 && (size_t)plain_len < capacity &&
+      grep_should_output(plain_log_line, &start, &length))
 #ifdef EMSCRIPTEN_BUILD
     log_plain("%s", text);
 #else
@@ -1125,8 +1112,7 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   g_notice_text = text;
 }
 
-static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const char *file, int line, const char *func,
-                        const char *title, const char *format, va_list args) {
+static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const char *file, int line, const char *func, const char *title, const char *format, va_list args) {
   if (!title || !format || !lifecycle_is_initialized(&g_log.lifecycle))
     return;
   char *body = format_message(format, args);
@@ -1145,10 +1131,7 @@ static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const ch
   g_notice_text = message;
   g_notice_severity = severity;
   g_notice_unfiltered = unfiltered;
-  log_level_t level = severity == UI_NOTICE_FATAL     ? LOG_FATAL
-                      : severity == UI_NOTICE_DANGER  ? LOG_ERROR
-                      : severity == UI_NOTICE_WARNING ? LOG_WARN
-                                                      : LOG_INFO;
+  log_level_t level = severity == UI_NOTICE_FATAL ? LOG_FATAL : severity == UI_NOTICE_DANGER ? LOG_ERROR : severity == UI_NOTICE_WARNING ? LOG_WARN : LOG_INFO;
   if (strlen(message) < 3000) {
     log_msg(level, file, line, func, "%s", message);
   } else {
@@ -1178,8 +1161,7 @@ static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const ch
   SAFE_FREE(body);
 }
 
-void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,
-                   const char *format, ...) {
+void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title, const char *format, ...) {
   va_list args;
   va_start(args, format);
   notice_logv(severity, false, file, line, func, title, format, args);
@@ -1250,8 +1232,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
 
     // Terminal output (check with atomic loads)
-    if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked) &&
-        !ui_controller_is_presenting()) {
+    if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked) && !ui_controller_is_presenting()) {
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
@@ -1262,23 +1243,19 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       bool use_colors = terminal_should_color_output(fd, options_terminal_settings());
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
-      int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
-                                         use_colors, time_ns);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors, time_ns);
 
       if (header_len >= 0 && header_len < (int)sizeof(header_buffer)) {
         if (use_colors) {
           const char *colorized_msg = colorize_log_message(msg_buffer);
           const char **colors = log_get_color_array();
           if (colors) {
-            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s%s%s\n", header_buffer,
-                                colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
+            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
           } else {
-            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                                colorized_msg);
+            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer, colorized_msg);
           }
         } else {
-          log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                              msg_buffer);
+          log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer, msg_buffer);
         }
         (void)fflush(output_stream);
       }
@@ -1407,8 +1384,7 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
   va_end(args);
 }
 
-static void log_colored_msg_internal(log_level_t level, const char *file, int line, const char *func,
-                                     const char *colored_message, const char *plain_message, bool persist) {
+static void log_colored_msg_internal(log_level_t level, const char *file, int line, const char *func, const char *colored_message, const char *plain_message, bool persist) {
   if (!colored_message || !plain_message || !lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
@@ -1418,8 +1394,7 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
 
   bool presenting = ui_controller_is_presenting();
   int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
-  bool use_colors =
-      presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd, options_terminal_settings());
   if (!presenting) {
     atomic_store(&g_terminal_log_colors, use_colors);
   }
@@ -1430,8 +1405,7 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
 
   char colored_header[LOG_HEADER_BUFFER_SIZE] = {0};
   char plain_header[LOG_HEADER_BUFFER_SIZE] = {0};
-  if (format_log_header(colored_header, sizeof(colored_header), level, time_buf, file, line, func, use_colors,
-                        time_ns) < 0) {
+  if (format_log_header(colored_header, sizeof(colored_header), level, time_buf, file, line, func, use_colors, time_ns) < 0) {
     colored_header[0] = '\0';
   }
   if (format_log_header(plain_header, sizeof(plain_header), level, time_buf, file, line, func, false, time_ns) < 0) {
@@ -1496,13 +1470,11 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
   }
 }
 
-void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message,
-                          const char *plain_message) {
+void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message, const char *plain_message) {
   log_colored_msg_internal(level, file, line, func, colored_message, plain_message, true);
 }
 
-void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func,
-                                   const char *colored_message, const char *plain_message) {
+void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message, const char *plain_message) {
   log_colored_msg_internal(level, file, line, func, colored_message, plain_message, false);
 }
 
@@ -1542,8 +1514,7 @@ void log_plain_msg(const char *fmt, ...) {
       get_current_time_formatted(time_buf);
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
-      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_msg", false, time_ns);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c", 0, "log_plain_msg", false, time_ns);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len, NULL);
@@ -1622,8 +1593,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
       get_current_time_formatted(time_buf);
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
-      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_stderr_msg", false, time_ns);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c", 0, "log_plain_stderr_msg", false, time_ns);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len, NULL);
@@ -1716,8 +1686,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
       get_current_time_formatted(time_buf);
 
       char header_buffer[LOG_HEADER_BUFFER_SIZE];
-      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_stdout_msg", false, time_ns);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c", 0, "log_plain_stdout_msg", false, time_ns);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len, NULL);
@@ -1807,8 +1776,7 @@ static const char *log_network_direction_label(remote_log_direction_t direction)
   }
 }
 
-asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction,
-                                  const char *file, int line, const char *func, const char *fmt, ...) {
+asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction, const char *file, int line, const char *func, const char *fmt, ...) {
   if (!fmt) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Format string is NULL");
   }
@@ -1894,8 +1862,7 @@ void log_redetect_terminal_capabilities(void) {
     g_log.terminal_caps_initialized = true;
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
-    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
-              g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
+    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
               g_log.terminal_caps.utf8_support ? "yes" : "no", g_log.terminal_caps.desired_fps);
 
     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
@@ -2305,10 +2272,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   const char *func_color = colors[0]; // DEV/Orange
   const char *tid_color = colors[6];  // GREY
 
-  int len = safe_snprintf(work_buffer, sizeof(work_buffer),
-                          "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp,
-                          reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
-                          file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
+  int len = safe_snprintf(work_buffer, sizeof(work_buffer), "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp, reset, level_color, level_str, reset, tid_color,
+                          (unsigned long long)tid, reset, file_color, file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
 
   if (len <= 0 || len >= (int)sizeof(work_buffer)) {
     return 0;
@@ -2316,10 +2281,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
 
   // Colorize the message part
   const char *colorized_msg = colorize_log_message(message);
-  len = safe_snprintf(work_buffer, sizeof(work_buffer),
-                      "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp, reset,
-                      level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
-                      reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
+  len = safe_snprintf(work_buffer, sizeof(work_buffer), "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp, reset, level_color, level_str, reset, tid_color,
+                      (unsigned long long)tid, reset, file_color, file_path, reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
 
   if (len <= 0 || len >= (int)sizeof(work_buffer) || len >= (int)buf_size) {
     return 0;

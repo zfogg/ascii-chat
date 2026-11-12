@@ -139,8 +139,7 @@ static stats_duration_shard_t *duration_shard(stats_scope_t *scope) {
   cached_shard = NULL;
   for (size_t i = 0; i < STATS_DURATION_SHARDS; ++i) {
     uint64_t expected = 0;
-    if (atomic_load(&scope->shards[i].owner) == owner ||
-        atomic_compare_exchange_strong(&scope->shards[i].owner, &expected, owner)) {
+    if (atomic_load(&scope->shards[i].owner) == owner || atomic_compare_exchange_strong(&scope->shards[i].owner, &expected, owner)) {
       cached_shard = &scope->shards[i];
       break;
     }
@@ -182,8 +181,7 @@ void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_
     duration->max_ns = elapsed_ns;
   duration->observations = duration->observations == UINT64_MAX ? 0 : duration->observations + 1;
   // Unsigned wrap is intentional; an observed decrease causes samplers to rebaseline.
-  duration->total_ns = duration->total_ns > UINT64_MAX - elapsed_ns ? elapsed_ns - (UINT64_MAX - duration->total_ns) - 1
-                                                                    : duration->total_ns + elapsed_ns;
+  duration->total_ns = duration->total_ns > UINT64_MAX - elapsed_ns ? elapsed_ns - (UINT64_MAX - duration->total_ns) - 1 : duration->total_ns + elapsed_ns;
   mutex_unlock(&scope->duration_mutex);
   if (scope->observer)
     scope->observer(STATS_RECORD_DURATION, id, elapsed_ns, scope->observer_context);
@@ -285,15 +283,13 @@ static bool stats_baseline_changed(const stats_snapshot_t *old, const stats_snap
     if (old->capabilities.gauges[i] != current->capabilities.gauges[i])
       return true;
   for (size_t i = 0; i < STATS_DURATION_COUNT; ++i)
-    if (old->capabilities.durations[i] != current->capabilities.durations[i] ||
-        current->durations[i].observations < old->durations[i].observations ||
+    if (old->capabilities.durations[i] != current->capabilities.durations[i] || current->durations[i].observations < old->durations[i].observations ||
         current->durations[i].total_ns < old->durations[i].total_ns)
       return true;
   return false;
 }
 
-asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_snapshot_t *snapshot,
-                                       stats_rates_t *out_rates) {
+asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_snapshot_t *snapshot, stats_rates_t *out_rates) {
   if (!sampler || !snapshot || !out_rates)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing stats sampler, snapshot, or rates output");
   memset(out_rates, 0, sizeof(*out_rates));
@@ -304,8 +300,7 @@ asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_sna
     sampler->latest = *snapshot;
     return ASCIICHAT_OK;
   }
-  uint64_t cutoff =
-      snapshot->sampled_ns > sampler->config.window_ns ? snapshot->sampled_ns - sampler->config.window_ns : 0;
+  uint64_t cutoff = snapshot->sampled_ns > sampler->config.window_ns ? snapshot->sampled_ns - sampler->config.window_ns : 0;
   while (sampler->count > 1) {
     size_t next = (sampler->head + 1) % sampler->capacity;
     if (sampler->history[next].sampled_ns > cutoff)
@@ -318,14 +313,12 @@ asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_sna
   out_rates->ready = true;
   for (size_t i = 0; i < STATS_COUNTER_COUNT; ++i)
     if (snapshot->capabilities.counters[i])
-      out_rates->counters_per_second[i] =
-          (double)(snapshot->counters[i] - baseline->counters[i]) * 1e9 / (double)out_rates->elapsed_ns;
+      out_rates->counters_per_second[i] = (double)(snapshot->counters[i] - baseline->counters[i]) * 1e9 / (double)out_rates->elapsed_ns;
   for (size_t i = 0; i < STATS_DURATION_COUNT; ++i) {
     uint64_t observations = snapshot->durations[i].observations - baseline->durations[i].observations;
     if (snapshot->capabilities.durations[i] && observations) {
       out_rates->duration_valid[i] = true;
-      out_rates->duration_mean_ns[i] =
-          (double)(snapshot->durations[i].total_ns - baseline->durations[i].total_ns) / (double)observations;
+      out_rates->duration_mean_ns[i] = (double)(snapshot->durations[i].total_ns - baseline->durations[i].total_ns) / (double)observations;
     }
   }
   size_t tail = (sampler->head + sampler->count - 1) % sampler->capacity;

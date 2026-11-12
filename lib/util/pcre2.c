@@ -31,8 +31,7 @@ pcre2_code *asciichat_pcre2_compile(const char *pattern, uint32_t flags) {
  * @param subject Original subject string that was matched
  * @return Allocated string containing the matched substring, or NULL if group not matched
  */
-char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
-                                          const char *subject) {
+char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name, const char *subject) {
   if (!regex || !match_data || !group_name || !subject) {
     log_error("invalid parameters");
     return NULL;
@@ -101,8 +100,7 @@ char *asciichat_pcre2_extract_group(pcre2_match_data *match_data, int group_num,
 /**
  * @brief Extract numbered capture group as pointer into subject (non-allocating)
  */
-const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject,
-                                              size_t *out_len) {
+const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject, size_t *out_len) {
   if (!match_data || !subject || !out_len || group_num < 0) {
     return NULL;
   }
@@ -123,8 +121,7 @@ const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int 
 /**
  * @brief Extract numbered capture group and convert to unsigned long
  */
-bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject,
-                                         unsigned long *out_value) {
+bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject, unsigned long *out_value) {
   if (!match_data || !subject || !out_value || group_num < 0) {
     return false;
   }
@@ -161,8 +158,7 @@ bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group
   return true;
 }
 
-int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
-                          uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context) {
+int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset, uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context) {
   int result = pcre2_jit_match(code, subject, length, startoffset, options, match_data, context);
   if (result == PCRE2_ERROR_JIT_BADOPTION || result == PCRE2_ERROR_JIT_STACKLIMIT)
     return pcre2_match(code, subject, length, startoffset, options | PCRE2_NO_JIT, match_data, context);

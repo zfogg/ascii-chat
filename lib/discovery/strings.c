@@ -186,8 +186,7 @@ static lifecycle_t g_regex_lc = LIFECYCLE_INIT;
 static void session_regex_init_once(void) {
   int error_code;
   PCRE2_SIZE error_offset;
-  g_session_format_regex = pcre2_compile((PCRE2_SPTR8)SESSION_STRING_FORMAT_PATTERN, PCRE2_ZERO_TERMINATED, 0,
-                                         &error_code, &error_offset, NULL);
+  g_session_format_regex = pcre2_compile((PCRE2_SPTR8)SESSION_STRING_FORMAT_PATTERN, PCRE2_ZERO_TERMINATED, 0, &error_code, &error_offset, NULL);
 
   if (!g_session_format_regex) {
     PCRE2_UCHAR error_buf[256];
@@ -198,8 +197,7 @@ static void session_regex_init_once(void) {
 
   // JIT is an optional optimization, including for browser builds.
   uint32_t jit_available = 0;
-  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") && pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 &&
-      jit_available) {
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") && pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
     int jit_ret = pcre2_jit_compile(g_session_format_regex, PCRE2_JIT_COMPLETE);
     if (jit_ret < 0) {
       log_debug("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
@@ -234,8 +232,7 @@ asciichat_error_t acds_string_init(void) {
 
 asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   if (!output || output_size < SESSION_STRING_BUFFER_SIZE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "output buffer must be at least %zu bytes",
-                     (size_t)SESSION_STRING_BUFFER_SIZE);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output buffer must be at least %zu bytes", (size_t)SESSION_STRING_BUFFER_SIZE);
   }
 
   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
@@ -325,8 +322,7 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  char adj[DISCOVERY_STRINGS_ADJ_BUFFER_SIZE], noun1[DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE],
-      noun2[DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE];
+  char adj[DISCOVERY_STRINGS_ADJ_BUFFER_SIZE], noun1[DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE], noun2[DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE];
   memcpy(adj, str, adj_len);
   adj[adj_len] = '\0';
   memcpy(noun1, hyphen1 + 1, noun1_len);

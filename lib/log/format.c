@@ -474,8 +474,7 @@ static log_color_t parse_color_level(const char *level_name, log_level_t current
  * @param time_nanoseconds Raw wall-clock time in nanoseconds
  * @return Number of characters written (excluding null terminator), or -1 on error
  */
-static int render_format_content(const char *content, char *buf, size_t buf_size, log_level_t level,
-                                 const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+static int render_format_content(const char *content, char *buf, size_t buf_size, log_level_t level, const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
                                  const char *message, bool use_colors, uint64_t time_nanoseconds) {
   if (!content || !buf || buf_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments: content=%p, buf=%p, buf_size=%zu", content, buf, buf_size);
@@ -488,15 +487,13 @@ static int render_format_content(const char *content, char *buf, size_t buf_size
     return -1;
   }
 
-  int written = log_template_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message,
-                                   use_colors, time_nanoseconds);
+  int written = log_template_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message, use_colors, time_nanoseconds);
   log_template_free(content_format);
 
   return written;
 }
 
-int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
-                       const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
                        const char *message, bool use_colors, uint64_t time_nanoseconds) {
   /* Check all critical pointers - format could be freed by another thread (TOCTOU race) */
   if (!format || !buf || buf_size == 0) {
@@ -702,8 +699,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
       /* Render content recursively */
       char content_buf[LOG_FORMAT_CONTENT_BUFFER_SIZE];
-      int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
-                                              line, func, tid, message, use_colors, time_nanoseconds);
+      int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file, line, func, tid, message, use_colors, time_nanoseconds);
 
       if (content_len < 0 || content_len >= (int)sizeof(content_buf)) {
         written = 0;

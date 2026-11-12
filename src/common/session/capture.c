@@ -180,8 +180,7 @@ struct session_capture_ctx {
  * @param result_width Output parameter for calculated width
  * @param result_height Output parameter for calculated height
  */
-static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width,
-                                         ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
+static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width, ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
   // Calculate original aspect ratio
   float img_aspect = (float)original_width / (float)original_height;
 
@@ -613,8 +612,7 @@ bool session_capture_cancel_open(session_capture_ctx_t *ctx) {
   return busy;
 }
 
-static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const media_playlist_t *list, size_t index,
-                                               bool automatic) {
+static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const media_playlist_t *list, size_t index, bool automatic) {
   const char *path = list->paths[index];
   if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
     return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
@@ -851,8 +849,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
   bool loading = ctx->loader_created;
   if (!loading) {
     uint64_t skip = atomic_exchange_u64(&ctx->playlist_skip, 0);
-    bool ended =
-        ctx->source && media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && media_source_at_end(ctx->source);
+    bool ended = ctx->source && media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && media_source_at_end(ctx->source);
     size_t next;
     bool adjacent = media_playlist_adjacent(&ctx->playlist, skip == 2 ? -1 : 1, &next);
     if (!skip && ended && !adjacent && GET_OPTION(media_loop) && ctx->playlist.count > 1) {
@@ -914,8 +911,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     ctx->face_follow = NULL;
     atomic_store_bool(&ctx->redraw_media, true);
     ctx->next_frame_deadline_ns = 0;
-    log_info("Media playback %s at %.3fs (%s)", leaving ? "hidden" : "selected", media_source_get_position(ctx->source),
-             ctx->media_was_paused ? "paused" : "playing");
+    log_info("Media playback %s at %.3fs (%s)", leaving ? "hidden" : "selected", media_source_get_position(ctx->source), ctx->media_was_paused ? "paused" : "playing");
   }
   bool alternate = atomic_load_bool(&ctx->non_media_active);
   if (alternate && !ctx->webcam_attempted) {
@@ -938,14 +934,12 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     frame = ctx->initial_frame;
     ctx->initial_frame_pending = false;
   } else {
-    frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame)
-                      : media_source_read_video(ctx->source);
+    frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame) : media_source_read_video(ctx->source);
   }
   if (frame && is_file && !alternate) {
     double now = (double)time_get_ns() / 1e9;
     double position = media_source_get_position(ctx->source);
-    if (ctx->face_media_valid && (position < ctx->face_media_position - 0.1 ||
-                                  position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
+    if (ctx->face_media_valid && (position < ctx->face_media_position - 0.1 || position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
       face_follow_image_destroy(ctx->face_follow);
       ctx->face_follow = NULL;
     }
@@ -976,9 +970,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
 #ifndef NDEBUG
         debug = GET_OPTION(face_follow_debug);
 #endif
-        return face_follow_image_process(&ctx->face_follow, ctx->last_media_frame, (double)time_get_ns() / 1e9,
-                                         GET_OPTION(face_follow), debug,
-                                         ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
+        return face_follow_image_process(&ctx->face_follow, ctx->last_media_frame, (double)time_get_ns() / 1e9, GET_OPTION(face_follow), debug, ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
                                          ctx->resize_for_network ? SESSION_MAX_FRAME_HEIGHT : 720);
       }
       return NULL;
@@ -987,8 +979,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_CAPTURE, time_get_ns() - frame_request_time_ns);
   if (frame) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_CAPTURED, 1);
-    stats_runtime_media(frame->w, frame->h, media_source_get_position(ctx->source),
-                        media_source_get_duration(ctx->source));
+    stats_runtime_media(frame->w, frame->h, media_source_get_position(ctx->source), media_source_get_duration(ctx->source));
   }
 
   if (frame) {
@@ -1000,13 +991,11 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     if (ctx->observed_rate_start_ns == 0)
       ctx->observed_rate_start_ns = frame_available_time_ns;
     ctx->observed_rate_frames++;
-    if (ctx->source && media_source_uses_webcam(ctx->source) && GET_OPTION(fps) == 0 &&
-        frame_available_time_ns - ctx->observed_rate_start_ns >= NS_PER_SEC_INT) {
+    if (ctx->source && media_source_uses_webcam(ctx->source) && GET_OPTION(fps) == 0 && frame_available_time_ns - ctx->observed_rate_start_ns >= NS_PER_SEC_INT) {
       double elapsed = (double)(frame_available_time_ns - ctx->observed_rate_start_ns) / (double)NS_PER_SEC_INT;
       unsigned int observed_fps = (unsigned int)(ctx->observed_rate_frames / elapsed + 0.5);
       if (observed_fps > 0) {
-        log_info("Webcam OS delivery: %.3f FPS over %.2f seconds (%llu frames)",
-                 (double)ctx->observed_rate_frames / elapsed, elapsed, (unsigned long long)ctx->observed_rate_frames);
+        log_info("Webcam OS delivery: %.3f FPS over %.2f seconds (%llu frames)", (double)ctx->observed_rate_frames / elapsed, elapsed, (unsigned long long)ctx->observed_rate_frames);
         ui_controller_set_effective_fps(observed_fps);
       }
       ctx->observed_rate_start_ns = frame_available_time_ns;
@@ -1022,8 +1011,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
 
       if (ctx->frame_count % 30 == 0) {
-        log_dev_every(3 * US_PER_SEC_INT, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count,
-                      since_last_ms, to_get_ms);
+        log_dev_every(3 * US_PER_SEC_INT, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count, since_last_ms, to_get_ms);
       }
     }
     last_frame_time_ns = frame_available_time_ns;
@@ -1040,8 +1028,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
 #ifndef NDEBUG
   debug = GET_OPTION(face_follow_debug);
 #endif
-  return face_follow_image_process(&ctx->face_follow, frame, (double)time_get_ns() / 1e9, GET_OPTION(face_follow),
-                                   debug, ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
+  return face_follow_image_process(&ctx->face_follow, frame, (double)time_get_ns() / 1e9, GET_OPTION(face_follow), debug, ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
                                    ctx->resize_for_network ? SESSION_MAX_FRAME_HEIGHT : 720);
 }
 
@@ -1055,15 +1042,13 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   return frame;
 }
 
-asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame,
-                                                                image_t **output) {
+asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame, image_t **output) {
   ASCII_OTEL_SCOPE(SESSION_CAPTURE_PROCESS_FOR_TRANSMISSION_INTO);
   if (!ctx || !frame || !output)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing transmission frame or workspace");
   ssize_t width = frame->w, height = frame->h;
   if (ctx->resize_for_network)
-    calculate_optimal_dimensions(frame->w, frame->h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &width,
-                                 &height);
+    calculate_optimal_dimensions(frame->w, frame->h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &width, &height);
   if (!*output || (*output)->w != width || (*output)->h != height) {
     image_t *replacement = image_new(width, height);
     if (!replacement)
@@ -1110,11 +1095,9 @@ bool session_capture_at_end(session_capture_ctx_t *ctx) {
 
   bool pending = ctx->loader_created;
   size_t next;
-  if (pending || (!ctx->advance_failed && (media_playlist_adjacent(&ctx->playlist, 1, &next) ||
-                                           (GET_OPTION(media_loop) && ctx->playlist.count > 1))))
+  if (pending || (!ctx->advance_failed && (media_playlist_adjacent(&ctx->playlist, 1, &next) || (GET_OPTION(media_loop) && ctx->playlist.count > 1))))
     return false;
-  if (media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && !GET_OPTION(snapshot_mode) &&
-      !GET_OPTION(render_file)[0])
+  if (media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && !GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0])
     return false;
   return media_source_at_end(ctx->source);
 }
@@ -1208,8 +1191,7 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
   return atomic_ptr_load(&ctx->audio_ctx);
 }
 
-void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
-                                       void *user_data) {
+void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update, void *user_data) {
   if (ctx) {
     ctx->audio_update = update;
     ctx->audio_update_data = user_data;

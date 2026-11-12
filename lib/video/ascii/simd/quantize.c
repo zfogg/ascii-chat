@@ -2,10 +2,8 @@
 #include "vector.h"
 
 void FN(simd_quantize_)(const uint32_t *rgb, uint32_t *out, size_t count, unsigned colors) {
-  static const int palette[16][3] = {{0, 0, 0},       {128, 0, 0},   {0, 128, 0},   {128, 128, 0},
-                                     {0, 0, 128},     {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
-                                     {128, 128, 128}, {255, 0, 0},   {0, 255, 0},   {255, 255, 0},
-                                     {0, 0, 255},     {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
+  static const int palette[16][3] = {{0, 0, 0},       {128, 0, 0}, {0, 128, 0}, {128, 128, 0}, {0, 0, 128}, {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
+                                     {128, 128, 128}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0}, {0, 0, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
   size_t i = 0;
   for (; HAS_BLOCK; i += LANES) {
     BEGIN_BLOCK;
@@ -61,8 +59,7 @@ size_t FN(simd_run_)(const uint32_t *glyph, const uint32_t *fg, const uint32_t *
     (void)active;
     vec_t ga = LOAD(glyph + i), fa = LOAD(fg + i), ba = LOAD(bg + i);
 #if defined(SIMD_CELL_SVE)
-    svbool_t equal =
-        BOTH(EQ(ga, SET((int32_t)glyph[0])), BOTH(EQ(fa, SET((int32_t)fg[0])), EQ(ba, SET((int32_t)bg[0]))));
+    svbool_t equal = BOTH(EQ(ga, SET((int32_t)glyph[0])), BOTH(EQ(fa, SET((int32_t)fg[0])), EQ(ba, SET((int32_t)bg[0]))));
     if (svcntp_b32(pg, equal) == active)
       continue;
     uint32_t flags[64];

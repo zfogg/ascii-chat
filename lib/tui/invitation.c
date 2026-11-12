@@ -32,9 +32,8 @@ static void centered_line(frame_buffer_t *buf, const char *text, int len, int co
 }
 
 void invitation_render_logo(frame_buffer_t *buf, int cols, int frame, bool colors, bool compact) {
-  const char *ascii_logo[4] = {
-      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
-      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
+  const char *ascii_logo[4] = {"  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ", "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ",
+                               " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
   if (compact) {
     const char *title = "ascii-chat";
     int len = (int)strlen(title);
@@ -55,15 +54,13 @@ void invitation_render_logo(frame_buffer_t *buf, int cols, int frame, bool color
   }
 }
 
-void invitation_render(frame_buffer_t *buf, terminal_size_t size, const char *session, bool joining, int frame,
-                       bool colors) {
+void invitation_render(frame_buffer_t *buf, terminal_size_t size, const char *session, bool joining, int frame, bool colors) {
   if (!buf || size.cols < 2 || size.rows < 2)
     return;
   int cols = size.cols - 1;
   int rows = size.rows - 1;
   bool ready = session && session[0];
-  const char *label =
-      ready ? (joining ? "Connecting to session:" : "Share this string to connect:") : "Creating session...";
+  const char *label = ready ? (joining ? "Connecting to session:" : "Share this string to connect:") : "Creating session...";
   char command[SESSION_STRING_BUFFER_SIZE + 32];
   snprintf(command, sizeof(command), "Run: ascii-chat %s", ready ? session : "");
   const char *lines[3] = {label, ready ? session : "", ready && !joining ? command : ""};

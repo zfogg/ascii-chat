@@ -157,8 +157,7 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
   asciichat_error_t reported_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
 
-  asciichat_error_t parse_result =
-      packet_parse_error_message(data, len, &reported_error, message, sizeof(message), NULL);
+  asciichat_error_t parse_result = packet_parse_error_message(data, len, &reported_error, message, sizeof(message), NULL);
   const char *client_id = client ? client->client_id : "unknown";
 
   if (parse_result != ASCIICHAT_OK) {
@@ -211,7 +210,7 @@ rwlock_t g_client_manager_rwlock = {0};
 bool g_client_manager_rwlock_initialized = false;
 
 // Forward declarations for internal functions
-void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
+void broadcast_server_state_to_all_clients(void);                                     ///< Notify all clients of state changes
 static int start_client_threads(server_context_t *server_ctx, client_info_t *client); ///< Common thread initialization
 
 static void initialize_default_render_capabilities(client_info_t *client) {
@@ -235,9 +234,7 @@ static void initialize_default_render_capabilities(client_info_t *client) {
   client->terminal_caps.utf8_support = false;
   client->terminal_caps.detection_reliable = false;
   client->client_palette_type = PALETTE_STANDARD;
-  client->client_palette_initialized =
-      initialize_client_palette(PALETTE_STANDARD, NULL, client->client_palette_chars, &client->client_palette_len,
-                                client->client_luminance_palette) == 0;
+  client->client_palette_initialized = initialize_client_palette(PALETTE_STANDARD, NULL, client->client_palette_chars, &client->client_palette_len, client->client_luminance_palette) == 0;
   client->has_terminal_caps = false;
 }
 
@@ -324,8 +321,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   // Send initial server state via ACIP transport
   asciichat_error_t packet_result = acip_send_server_state(client->transport, &net_state);
   if (packet_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to client %s: %s", client_id,
-             asciichat_error_format(NULL, packet_result));
+    log_warn("Failed to send initial server state to client %s: %s", client_id, asciichat_error_format(NULL, packet_result));
   } else {
     log_debug("Sent initial server state to client %s: %u connected clients", client_id, state.connected_client_count);
   }
@@ -334,9 +330,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   return create_client_render_threads(server_ctx, client);
 }
 
-static void server_client_initialize_transport_slot(server_context_t *server_ctx, client_info_t *client,
-                                                    acip_transport_t *transport, const char *new_client_id,
-                                                    const char *client_ip, int slot) {
+static void server_client_initialize_transport_slot(server_context_t *server_ctx, client_info_t *client, acip_transport_t *transport, const char *new_client_id, const char *client_ip, int slot) {
   // Caller holds the client-manager write lock.
   // Free any existing buffers from previous client in this slot
   if (client->incoming_video_buffer) {
@@ -359,8 +353,7 @@ static void server_client_initialize_transport_slot(server_context_t *server_ctx
   client->port = 0; // transport doesn't use port numbers
   atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
-  log_info("Added new transport client %s from %s (transport=%p, type=%d, slot=%d)", new_client_id, client_ip,
-           transport, (int)acip_transport_get_type(transport), slot);
+  log_info("Added new transport client %s from %s (transport=%p, type=%d, slot=%d)", new_client_id, client_ip, transport, (int)acip_transport_get_type(transport), slot);
   atomic_store_bool(&client->shutting_down, false);
   atomic_store_u64(&client->last_sent_grid_sources, 0); // Send thread updates this
   log_debug("transport client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
@@ -401,8 +394,7 @@ static asciichat_error_t server_client_initialize_transport_sync(client_info_t *
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize client send mutex");
   }
   initialize_default_render_capabilities(client);
-  if (g_audio_mixer && client->incoming_audio_buffer &&
-      mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0)
+  if (g_audio_mixer && client->incoming_audio_buffer && mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0)
     log_warn("Failed to add client %s to audio mixer", new_client_id);
   return ASCIICHAT_OK;
 }
@@ -433,8 +425,7 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // Check if we've hit the configured max-clients limit (not the array size)
   if (existing_count >= GET_OPTION(max_clients)) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
-              GET_OPTION(max_clients));
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count, GET_OPTION(max_clients));
     log_error("Maximum client limit reached (%d/%d active clients)", existing_count, GET_OPTION(max_clients));
     return NULL;
   }
@@ -462,14 +453,12 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
 
   server_client_initialize_transport_slot(server_ctx, client, transport, new_client_id, client_ip, slot);
 
-  if (server_client_allocate_transport_buffers(client, new_client_id) != ASCIICHAT_OK ||
-      server_client_initialize_transport_sync(client, new_client_id) != ASCIICHAT_OK) {
+  if (server_client_allocate_transport_buffers(client, new_client_id) != ASCIICHAT_OK || server_client_initialize_transport_sync(client, new_client_id) != ASCIICHAT_OK) {
     goto error_cleanup_transport;
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
-  log_debug("Client count updated: now %d clients (added transport client_id=%s to slot %d)",
-            g_client_manager.client_count, new_client_id, slot);
+  log_debug("Client count updated: now %d clients (added transport client_id=%s to slot %d)", g_client_manager.client_count, new_client_id, slot);
 
   // Add client to uthash table for O(1) lookup
   HASH_ADD_STR(g_client_manager.clients_by_id, client_id, client);
@@ -482,8 +471,7 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // Register client with session_host (for discovery mode support)
   // transport clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
-    client->session_client_id =
-        session_host_add_client(server_ctx->session_host, NULL, ACIP_TRANSPORT_BORROWED, client_ip, 0);
+    client->session_client_id = session_host_add_client(server_ctx->session_host, NULL, ACIP_TRANSPORT_BORROWED, client_ip, 0);
     if (client->session_client_id == 0) {
       log_warn("Failed to register transport client %s with session_host", new_client_id);
     } else {
@@ -516,8 +504,7 @@ typedef struct {
    */
 } server_client_removal_t;
 
-static asciichat_error_t server_client_begin_removal(server_context_t *server_ctx, const char *client_id,
-                                                     server_client_removal_t *removal) {
+static asciichat_error_t server_client_begin_removal(server_context_t *server_ctx, const char *client_id, server_client_removal_t *removal) {
   // Phase 1: Mark client inactive and prepare for cleanup while holding write lock
 
   log_debug("SOCKET_DEBUG: Attempting to remove client %s", client_id);
@@ -567,15 +554,13 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
   // Unregister client from session_host (for discovery mode support)
   // NOTE: Client may not be registered if crypto handshake failed before session_host registration
   if (server_ctx->session_host && removal->client->session_client_id != 0) {
-    asciichat_error_t session_result =
-        session_host_remove_client(server_ctx->session_host, removal->client->session_client_id);
+    asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, removal->client->session_client_id);
     if (session_result != ASCIICHAT_OK) {
       // ERROR_NOT_FOUND (91) is expected if client failed crypto before being registered with session_host
       if (session_result == ERROR_NOT_FOUND) {
         log_debug("Client %s not found in session_host (likely failed crypto before registration)", client_id);
       } else {
-        log_warn("Failed to unregister client %s from session_host: %s", client_id,
-                 asciichat_error_format(NULL, session_result));
+        log_warn("Failed to unregister client %s from session_host: %s", client_id, asciichat_error_format(NULL, session_result));
       }
     } else {
       log_debug("Client %s unregistered from session_host", client_id);
@@ -611,8 +596,7 @@ static void server_client_release_resources_locked(const char *client_id, server
       HASH_DELETE(hh, g_client_manager.clients_by_id, removal->client);
       log_debug("Removed client %s from uthash table", client_id);
     } else {
-      log_warn("Client %s already removed from hash table by another thread (found=%p, expected=%p)", client_id,
-               (void *)hash_entry, (void *)removal->client);
+      log_warn("Client %s already removed from hash table by another thread (found=%p, expected=%p)", client_id, (void *)hash_entry, (void *)removal->client);
     }
   } else {
     log_warn("Failed to remove client %s from hash table (client not found)", client_id);
@@ -629,19 +613,16 @@ static void server_client_reset_slot_locked(const char *client_id, server_client
   // Use exponential backoff for thread termination verification
   int retry_count = 0;
   const int max_retries = 5;
-  while (retry_count < max_retries && (thread_is_initialized(&removal->client->video_render_thread) ||
-                                       thread_is_initialized(&removal->client->audio_render_thread))) {
+  while (retry_count < max_retries && (thread_is_initialized(&removal->client->video_render_thread) || thread_is_initialized(&removal->client->audio_render_thread))) {
     // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
     uint32_t delay_ms = 10 * (1 << retry_count);
-    log_warn("Client %s: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,
-             retry_count + 1, max_retries, delay_ms);
+    log_warn("Client %s: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id, retry_count + 1, max_retries, delay_ms);
     platform_sleep_us(delay_ms * 1000);
     retry_count++;
   }
 
   if (retry_count == max_retries) {
-    log_error("Client %s: Threads did not terminate after %d retries, proceeding with cleanup anyway", client_id,
-              max_retries);
+    log_error("Client %s: Threads did not terminate after %d retries, proceeding with cleanup anyway", client_id, max_retries);
   }
 
   // Only reset client_id to 0 AFTER confirming threads are joined
@@ -677,8 +658,7 @@ static bool server_client_finish_removal(const char *client_id, server_client_re
     // Verify client_id still matches and client is still in shutting_down state
     bool still_shutting_down = atomic_load_bool(&removal->client->shutting_down);
     if (strcmp(removal->client->client_id, client_id) != 0 || !still_shutting_down) {
-      log_warn("Client %s pointer invalidated during thread cleanup (id=%s, shutting_down=%d)", client_id,
-               removal->client->client_id, still_shutting_down);
+      log_warn("Client %s pointer invalidated during thread cleanup (id=%s, shutting_down=%d)", client_id, removal->client->client_id, still_shutting_down);
       rwlock_wrunlock(&g_client_manager_rwlock);
       return false; // Another thread completed the cleanup
     }
@@ -697,8 +677,7 @@ static bool server_client_finish_removal(const char *client_id, server_client_re
   }
   g_client_manager.client_count = remaining_count;
 
-  log_debug("Client removed: client_id=%s (%s) removed, remaining clients: %d", client_id, removal->display_name,
-            remaining_count);
+  log_debug("Client removed: client_id=%s (%s) removed, remaining clients: %d", client_id, removal->display_name, remaining_count);
 
   rwlock_wrunlock(&g_client_manager_rwlock);
 
@@ -766,8 +745,7 @@ static server_state_packet_t server_state_snapshot(void) {
   rwlock_rdlock(&g_client_manager_rwlock);
   uint32_t active = 0;
   for (int i = 0; i < MAX_CLIENTS; ++i)
-    if (atomic_load_bool(&g_client_manager.clients[i].active) &&
-        atomic_load_bool(&g_client_manager.clients[i].is_sending_video))
+    if (atomic_load_bool(&g_client_manager.clients[i].active) && atomic_load_bool(&g_client_manager.clients[i].is_sending_video))
       ++active;
   state.connected_client_count = HOST_TO_NET_U32(g_client_manager.client_count);
   state.active_client_count = HOST_TO_NET_U32(active);
@@ -882,15 +860,11 @@ static inline void cleanup_client_all_buffers(client_info_t *client) {
  * @return 0 on success, -1 on error
  */
 static void acip_server_on_protocol_version(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx);
-static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
-                                       void *client_ctx, void *app_ctx);
-static void acip_server_on_image_frame_h264(uint32_t width, uint32_t height, uint8_t flags, const void *data,
-                                            size_t data_len, void *client_ctx, void *app_ctx);
-static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data,
-                                            size_t data_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_image_frame_h264(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data, size_t data_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx);
-static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
-                                       void *client_ctx, void *app_ctx);
+static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *client_ctx, void *app_ctx);
 static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_client_join(const void *join_data, size_t data_len, void *client_ctx, void *app_ctx);
@@ -901,8 +875,7 @@ static void acip_server_on_capabilities(const void *cap_data, size_t data_len, v
 static void acip_server_on_ping(void *client_ctx, void *app_ctx);
 static void acip_server_on_pong(void *client_ctx, void *app_ctx);
 static void acip_server_on_error(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
-static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
-                                      void *app_ctx);
+static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
 
 /**
  * @brief Global ACIP server callbacks structure
@@ -941,8 +914,7 @@ static void acip_server_on_protocol_version(const protocol_version_packet_t *ver
   handle_protocol_version_packet(client, (void *)version, sizeof(*version));
 }
 
-static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
-                                       void *client_ctx, void *app_ctx) {
+static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
 
@@ -953,17 +925,14 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     return;
   }
 
-  log_dev("CALLBACK_IMAGE_FRAME: client_id=%s width=%u height=%u pixel_format=%u compressed_size=%u data_len=%zu",
-          client->client_id, header->width, header->height, header->pixel_format, header->compressed_size, data_len);
+  log_dev("CALLBACK_IMAGE_FRAME: client_id=%s width=%u height=%u pixel_format=%u compressed_size=%u data_len=%zu", client->client_id, header->width, header->height, header->pixel_format,
+          header->compressed_size, data_len);
 
   size_t center_pixel_offset = ((size_t)(header->height / 2) * header->width + header->width / 2) * 3;
   const uint8_t *first_pixel = pixel_data;
-  const uint8_t *center_pixel =
-      center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset : first_pixel;
-  log_debug_every(US_PER_SEC_INT,
-                  "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x",
-                  client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
-                  first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
+  const uint8_t *center_pixel = center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset : first_pixel;
+  log_debug_every(US_PER_SEC_INT, "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x", client->client_id, header->width, header->height, data_len,
+                  first_pixel[0], first_pixel[1], first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header->width == 0 || header->height == 0) {
@@ -1016,8 +985,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_debug("Client %s has sent %u IMAGE_FRAME packets (%s)", client->client_id, total_received, pretty);
   }
   if (received_in_window > 0) {
-    log_info("Server image ingress client=%s fps=%.1f frames=%u elapsed=%.2fs", client->client_id, receive_fps,
-             received_in_window, (double)receive_window_ns / (double)NS_PER_SEC_INT);
+    log_info("Server image ingress client=%s fps=%.1f frames=%u elapsed=%.2fs", client->client_id, receive_fps, received_in_window, (double)receive_window_ns / (double)NS_PER_SEC_INT);
   }
 
   // Sample a small prefix for duplicate-frame diagnostics; hashing every pixel
@@ -1031,22 +999,18 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // Inspect first few pixels of incoming frame
   uint32_t first_pixel_rgb = 0;
   if (data_len >= 3) {
-    first_pixel_rgb = ((uint32_t)((unsigned char *)pixel_data)[0] << 16) |
-                      ((uint32_t)((unsigned char *)pixel_data)[1] << 8) | (uint32_t)((unsigned char *)pixel_data)[2];
+    first_pixel_rgb = ((uint32_t)((unsigned char *)pixel_data)[0] << 16) | ((uint32_t)((unsigned char *)pixel_data)[1] << 8) | (uint32_t)((unsigned char *)pixel_data)[2];
   }
   if (is_new_frame) {
-    log_dev("RECV_FRAME #%u NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x",
-            client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
-            first_pixel_rgb, client->last_received_frame_hash);
+    log_dev("RECV_FRAME #%u NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x", client->frames_received, client->client_id, header->width, header->height,
+            data_len, incoming_pixel_hash, first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
-    log_dev("RECV_FRAME #%u DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
-            client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
-            first_pixel_rgb);
+    log_dev("RECV_FRAME #%u DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x", client->frames_received, client->client_id, header->width, header->height, data_len,
+            incoming_pixel_hash, first_pixel_rgb);
   }
   if (client->frames_received_logged > 0 && client->frames_received_logged % 60 == 0) {
-    log_info("Incoming video signature client=%s frames=%u state=%s hash=0x%08x size=%ux%u bytes=%zu",
-             client->client_id, client->frames_received_logged, is_new_frame ? "changing" : "duplicate",
+    log_info("Incoming video signature client=%s frames=%u state=%s hash=0x%08x size=%ux%u bytes=%zu", client->client_id, client->frames_received_logged, is_new_frame ? "changing" : "duplicate",
              incoming_pixel_hash, header->width, header->height, data_len);
   }
 
@@ -1063,8 +1027,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
-      log_dev("FRAME_STORAGE: client=%s capacity=%zu data_len=%zu total=%zu", client->client_id, buffer_capacity,
-              data_len, total_size);
+      log_dev("FRAME_STORAGE: client=%s capacity=%zu data_len=%zu total=%zu", client->client_id, buffer_capacity, data_len, total_size);
 
       // CRITICAL: Bounds check BEFORE memcpy to prevent heap-buffer-overflow
       // If buffer is too small, skip frame storage instead of overflowing
@@ -1092,11 +1055,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id,
-                      frame->sequence_number, total_size);
+      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
     } else {
-      log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu",
-                     client->client_id, (void *)frame, frame ? (void *)frame->data : NULL, data_len);
+      log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame, frame ? (void *)frame->data : NULL, data_len);
     }
   } else {
     log_warn_every(NS_PER_SEC_INT * 3, "NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
@@ -1139,16 +1100,14 @@ static int server_receive_decoded_frame(AVCodecContext *ctx, AVFrame *frame) {
   return result;
 }
 
-static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_t flags, const void *data,
-                                         size_t data_len, void *client_ctx, enum AVCodecID codec_id) {
+static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len, void *client_ctx, enum AVCodecID codec_id) {
   ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
   ascii_otel_scope_int(&otel_scope, "media.codec.id", codec_id);
   ascii_otel_scope_int(&otel_scope, "video.width", width);
   ascii_otel_scope_int(&otel_scope, "video.height", height);
   client_info_t *client = client_ctx;
   video_codec_t capability = codec_id == AV_CODEC_ID_H264 ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265;
-  if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, capability) || width == 0 || height == 0 ||
-      width > 8192 || height > 8192 || !data || data_len == 0 || data_len > INT_MAX) {
+  if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, capability) || width == 0 || height == 0 || width > 8192 || height > 8192 || !data || data_len == 0 || data_len > INT_MAX) {
     disconnect_client_for_bad_data(client, "Invalid encoded video frame or unadvertised codec");
     return;
   }
@@ -1188,16 +1147,14 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
       return;
     }
     struct SwsContext *sws =
-        sws_getCachedContext(client->video_sws_ctx, frame->width, frame->height, frame->format, frame->width,
-                             frame->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+        sws_getCachedContext(client->video_sws_ctx, frame->width, frame->height, frame->format, frame->width, frame->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
     client->video_sws_ctx = sws;
     if (!sws)
       return;
     // swscale SIMD output needs aligned rows, including padding after the last row.
     int rgb_size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 32);
     size_t packed_size = (size_t)frame->width * frame->height * 3;
-    if (rgb_size <= 0 || !client->incoming_video_buffer ||
-        packed_size + 8 > client->incoming_video_buffer->allocated_buffer_size)
+    if (rgb_size <= 0 || !client->incoming_video_buffer || packed_size + 8 > client->incoming_video_buffer->allocated_buffer_size)
       return;
     uint8_t *pixels = SAFE_MALLOC((size_t)rgb_size + AV_INPUT_BUFFER_PADDING_SIZE, uint8_t *);
     if (!pixels)
@@ -1206,8 +1163,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
     int rows;
     {
       ASCII_OTEL_SCOPE(FFMPEG_SCALE);
-      rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data,
-                       rgb->linesize);
+      rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data, rgb->linesize);
       if (rows != frame->height)
         ascii_otel_error("FFmpeg server frame scale failed");
     }
@@ -1218,8 +1174,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
         uint32_t dimensions[2] = {HOST_TO_NET_U32(width), HOST_TO_NET_U32(height)};
         memcpy(vf->data, dimensions, sizeof(dimensions));
         for (int y = 0; y < frame->height; y++) {
-          memcpy((uint8_t *)vf->data + sizeof(dimensions) + (size_t)y * width * 3,
-                 rgb->data[0] + (size_t)y * rgb->linesize[0], (size_t)width * 3);
+          memcpy((uint8_t *)vf->data + sizeof(dimensions) + (size_t)y * width * 3, rgb->data[0] + (size_t)y * rgb->linesize[0], (size_t)width * 3);
         }
         vf->size = sizeof(dimensions) + packed_size;
         vf->width = width;
@@ -1237,21 +1192,18 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
     log_warn("%s output decode failed: %d", avcodec_get_name(codec_id), result);
 }
 
-static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *data,
-                                            size_t data_len, void *client_ctx, void *app_ctx) {
+static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   acip_server_on_encoded_frame(width, height, flags, data, data_len, client_ctx, AV_CODEC_ID_HEVC);
 }
 
-static void acip_server_on_image_frame_h264(uint32_t width, uint32_t height, uint8_t flags, const void *data,
-                                            size_t data_len, void *client_ctx, void *app_ctx) {
+static void acip_server_on_image_frame_h264(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   acip_server_on_encoded_frame(width, height, flags, data, data_len, client_ctx, AV_CODEC_ID_H264);
 }
 
 void handle_image_frame_h264_packet(client_info_t *client, const void *data, size_t len) {
-  asciichat_error_t result = acip_handle_server_packet(client->transport, PACKET_TYPE_IMAGE_FRAME_H264, data, len,
-                                                       client, &g_acip_server_callbacks);
+  asciichat_error_t result = acip_handle_server_packet(client->transport, PACKET_TYPE_IMAGE_FRAME_H264, data, len, client, &g_acip_server_callbacks);
   if (result != ASCIICHAT_OK)
     disconnect_client_for_bad_data(client, "Invalid H.264 packet");
 }
@@ -1262,18 +1214,15 @@ static void acip_server_on_audio(const void *audio_data, size_t audio_len, void 
   handle_audio_packet(client, (void *)audio_data, audio_len);
 }
 
-static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
-                                       void *client_ctx, void *app_ctx) {
+static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
-  if (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) ||
-      num_samples % header->channels)
+  if (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) || num_samples % header->channels)
     return;
   client_info_t *client = (client_info_t *)client_ctx;
 
   // ACIP handler already dequantized samples - write directly to audio buffer
   // This is more efficient than calling the existing handler which would re-dequantize
-  log_debug_every(LOG_RATE_DEFAULT, "Received audio batch from client %s (samples=%zu, is_sending_audio=%d)",
-                  client->client_id, num_samples, atomic_load_bool(&client->is_sending_audio));
+  log_debug_every(LOG_RATE_DEFAULT, "Received audio batch from client %s (samples=%zu, is_sending_audio=%d)", client->client_id, num_samples, atomic_load_bool(&client->is_sending_audio));
 
   if (!atomic_load_bool(&client->is_sending_audio)) {
     log_debug("Ignoring audio batch - client %s not in audio streaming mode", client->client_id);
@@ -1312,8 +1261,7 @@ static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, vo
   // Reserved bytes at offset 8-15
   size_t actual_opus_size = opus_len - 16;
 
-  if (actual_opus_size > 0 && actual_opus_size <= AUDIO_OPUS_SERVER_PACKET_CAPACITY && sample_rate == 48000 &&
-      frame_duration == 20) {
+  if (actual_opus_size > 0 && actual_opus_size <= AUDIO_OPUS_SERVER_PACKET_CAPACITY && sample_rate == 48000 && frame_duration == 20) {
     // Create a synthetic Opus batch packet (frame_count=1)
     uint8_t batch_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY + SERVER_OPUS_BATCH_OVERHEAD]; // Max Opus + header
     uint8_t *batch_ptr = batch_buffer;
@@ -1400,8 +1348,7 @@ static void acip_server_on_ping(void *client_ctx, void *app_ctx) {
   mutex_unlock(&client->send_mutex);
 
   if (pong_result != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %s: %s", client->client_id,
-              asciichat_error_string(pong_result));
+    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %s: %s", client->client_id, asciichat_error_string(pong_result));
   }
 }
 
@@ -1432,8 +1379,7 @@ static void acip_server_on_error(const error_packet_t *header, const char *messa
   SAFE_FREE(full_packet);
 }
 
-static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
-                                      void *app_ctx) {
+static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
 
@@ -1478,8 +1424,7 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
       LOG_ERRNO_IF_SET("Packet rate-limit enforcement rejected client");
       asciichat_errno_scope_t notify_scope = errno_scope_begin();
       mutex_lock(&client->send_mutex);
-      asciichat_error_t sent =
-          acip_send_error(client->transport, result == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL, NULL);
+      asciichat_error_t sent = acip_send_error(client->transport, result == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL, NULL);
       mutex_unlock(&client->send_mutex);
       if (sent != ASCIICHAT_OK)
         LOG_ERRNO_IF_SET("Could not notify client about rate-limit decision");

@@ -9,8 +9,7 @@ static asciichat_error_context_t browser_error_frames[ASCIICHAT_ERRNO_MAX_DEPTH]
 static size_t browser_error_count;
 
 size_t browser_error_snapshot(void) {
-  asciichat_errno_snapshot_t snapshot =
-      errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  asciichat_errno_snapshot_t snapshot = errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
   browser_error_count = snapshot.copied;
   return snapshot.total;
 }

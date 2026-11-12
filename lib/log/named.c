@@ -72,8 +72,7 @@ static bool is_type_in_registry(const char *type_str, size_t type_len) {
  * Generic function that detects common keywords: socket, client, connection, fd, file, etc.
  * Returns the type name in out_type for registry lookup.
  */
-static const char *find_generic_type_prefix(const char *start, const char *p, const char **out_type,
-                                            size_t *out_type_len) {
+static const char *find_generic_type_prefix(const char *start, const char *p, const char **out_type, size_t *out_type_len) {
   if (p == start) {
     *out_type = NULL;
     *out_type_len = 0;
@@ -82,8 +81,7 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
 
   const char *word_start = p - 1;
   /* Skip back over whitespace, '=', ':' */
-  while (word_start > start &&
-         (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
+  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
     word_start--;
   }
 
@@ -104,8 +102,7 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
       const char *type;
       size_t len;
     } known_types[] = {
-        {"socket", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},    {"descriptor", 11},
-        {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
+        {"socket", 6}, {"client", 6}, {"connection", 10}, {"fd", 2}, {"file", 4}, {"descriptor", 11}, {"thread", 6}, {"decoder", 7}, {"encoder", 7}, {"context", 7}, {"handler", 7},
     };
 
     for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
@@ -133,8 +130,7 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
  * Walks backwards from hex address to find "keyword=" pattern where keyword is a
  * known pointer-type name (transport, client, socket, mutex, etc.).
  */
-static const char *find_hex_type_prefix_start(const char *start, const char *p, const char **out_type,
-                                              size_t *out_type_len) {
+static const char *find_hex_type_prefix_start(const char *start, const char *p, const char **out_type, size_t *out_type_len) {
   *out_type = NULL;
   *out_type_len = 0;
 
@@ -169,8 +165,7 @@ static const char *find_hex_type_prefix_start(const char *start, const char *p, 
     const char *type;
     size_t len;
   } known_types[] = {
-      {"transport", 9}, {"client", 6}, {"context", 7}, {"crypto", 6}, {"websocket", 9},   {"mutex", 5},
-      {"rwlock", 6},    {"cond", 4},   {"thread", 6},  {"socket", 6}, {"connection", 10},
+      {"transport", 9}, {"client", 6}, {"context", 7}, {"crypto", 6}, {"websocket", 9}, {"mutex", 5}, {"rwlock", 6}, {"cond", 4}, {"thread", 6}, {"socket", 6}, {"connection", 10},
   };
 
   for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
@@ -200,8 +195,7 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
   const char *initial_pos = p - 1;
   const char *word_start = initial_pos;
   /* Skip back over whitespace, '=', ':' */
-  while (word_start > start &&
-         (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
+  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
     word_start--;
   }
 
@@ -222,11 +216,8 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
 
     size_t word_len = word_start - check + 1;
     if (word_len >= 2) {
-      if ((word_len == 2 && strncasecmp(check, "fd", 2) == 0) ||
-          (word_len == 4 && strncasecmp(check, "file", 4) == 0) ||
-          (word_len == 6 && strncasecmp(check, "socket", 6) == 0) ||
-          (word_len == 6 && strncasecmp(check, "sockfd", 6) == 0) ||
-          (word_len == 10 && strncasecmp(check, "descriptor", 10) == 0)) {
+      if ((word_len == 2 && strncasecmp(check, "fd", 2) == 0) || (word_len == 4 && strncasecmp(check, "file", 4) == 0) || (word_len == 6 && strncasecmp(check, "socket", 6) == 0) ||
+          (word_len == 6 && strncasecmp(check, "sockfd", 6) == 0) || (word_len == 10 && strncasecmp(check, "descriptor", 10) == 0)) {
         return check; /* Return start of keyword */
       }
     }
@@ -251,8 +242,7 @@ static const char *find_packet_type_prefix_start(const char *start, const char *
   const char *initial_pos = p - 1;
   const char *word_start = initial_pos;
   /* Skip back over whitespace, '=', ':', '(' */
-  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':' ||
-                                *word_start == '(')) {
+  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':' || *word_start == '(')) {
     word_start--;
   }
 
@@ -335,8 +325,7 @@ static int parse_decimal_digits(const char *start, const char **end) {
   return value;
 }
 
-static bool write_formatted_packet_type(int pkt_value, const char *name, char *output, size_t output_size,
-                                        size_t *out_pos) {
+static bool write_formatted_packet_type(int pkt_value, const char *name, char *output, size_t output_size, size_t *out_pos) {
   named_metadata_t metadata;
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
@@ -386,8 +375,7 @@ static bool write_formatted_fd(int fd_value, const char *name, char *output, siz
   return true;
 }
 
-static bool copy_unformatted_decimal(const char *int_start, const char *int_end, char *output, size_t output_size,
-                                     size_t *out_pos) {
+static bool copy_unformatted_decimal(const char *int_start, const char *int_end, char *output, size_t output_size, size_t *out_pos) {
   size_t int_len = int_end - int_start;
   if (int_len >= output_size - *out_pos) {
     return false;
@@ -414,8 +402,7 @@ static bool type_equals_inside_parens(const char *p, const char *message) {
   return back >= message && *back == '(';
 }
 
-static bool write_formatted_type_equals(int pkt_value, const char *name, char *output, size_t output_size,
-                                        size_t *out_pos) {
+static bool write_formatted_type_equals(int pkt_value, const char *name, char *output, size_t output_size, size_t *out_pos) {
   named_metadata_t metadata;
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
@@ -461,8 +448,7 @@ static void copy_char_to_output(char *output, size_t *out_pos, char c) {
  * @param p Current position in input (updated to skip past hex address)
  * @return true if transformation was applied, false otherwise
  */
-static bool try_format_hex_address(const char *message, const char *hex_start, char *output, size_t output_size,
-                                   size_t *out_pos, const char **p) {
+static bool try_format_hex_address(const char *message, const char *hex_start, char *output, size_t output_size, size_t *out_pos, const char **p) {
   const char *hex_ptr = hex_start + 2; /* Skip "0x" */
 
   /* Parse hex digits */
@@ -636,9 +622,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           check++;
 
           size_t prefix_len = eq_pos - check;
-          if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) ||
-              (prefix_len == 6 && strncmp(check, "socket", 6) == 0) ||
-              (prefix_len == 6 && strncmp(check, "sockfd", 6) == 0) ||
+          if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) || (prefix_len == 6 && strncmp(check, "socket", 6) == 0) || (prefix_len == 6 && strncmp(check, "sockfd", 6) == 0) ||
               (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
             /* Only mark as already-formatted if inside formatted output:
              * - "(" before keyword: parenthesized value like "(sockfd=15)"
@@ -817,8 +801,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
                 int temp_written = 0;
                 if (name) {
                   /* Format with name: type/name (type=value) */
-                  temp_written =
-                      snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
+                  temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
 
                   if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
                     /* Backtrack to remove the prefix we already copied */
@@ -899,8 +882,7 @@ const char *log_named_format_or_original(const char *message) {
 
   /* Apply formatting iteratively until the message stabilizes (no more changes) */
   const char *current = message;
-  size_t max_iterations =
-      3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
+  size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
 
   for (size_t iter = 0; iter < max_iterations; iter++) {
     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));

@@ -238,8 +238,7 @@ client_audio_pipeline_t *audio_get_pipeline(client_connection_t *connection);
  *
  * @ingroup client_audio
  */
-int audio_decode_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_len, float *output,
-                      int max_samples);
+int audio_decode_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_len, float *output, int max_samples);
 
 /**
  * @brief Get the global audio context for use by other subsystems

@@ -98,8 +98,7 @@ static socket_t bind_and_listen(const char *address, int family, int port) {
     return INVALID_SOCKET_VALUE;
   }
 
-  log_info("Listening on %s%s%s:%d (%s)", family == AF_INET6 ? "[" : "",
-           addr_str ? addr_str : (family == AF_INET ? "0.0.0.0" : "::"), family == AF_INET6 ? "]" : "", port,
+  log_info("Listening on %s%s%s:%d (%s)", family == AF_INET6 ? "[" : "", addr_str ? addr_str : (family == AF_INET ? "0.0.0.0" : "::"), family == AF_INET6 ? "]" : "", port,
            family == AF_INET ? "IPv4" : "IPv6");
 
   return server_socket;
@@ -174,11 +173,9 @@ static asciichat_error_t tcp_server_run_events(tcp_server_t *server) {
     return result;
   platform_event_listener_t *listener = NULL;
   if (server->listen_socket != INVALID_SOCKET_VALUE)
-    result = platform_event_listen(server->event_loop, &server->listen_socket, server->config.event_handler,
-                                   server->config.user_data, &listener);
+    result = platform_event_listen(server->event_loop, &server->listen_socket, server->config.event_handler, server->config.user_data, &listener);
   if (result == ASCIICHAT_OK && server->listen_socket6 != INVALID_SOCKET_VALUE)
-    result = platform_event_listen(server->event_loop, &server->listen_socket6, server->config.event_handler,
-                                   server->config.user_data, &listener);
+    result = platform_event_listen(server->event_loop, &server->listen_socket6, server->config.event_handler, server->config.user_data, &listener);
   if (result == ASCIICHAT_OK)
     result = platform_event_loop_tick(server->event_loop, 50, tcp_event_tick, server);
   if (result != ASCIICHAT_OK)

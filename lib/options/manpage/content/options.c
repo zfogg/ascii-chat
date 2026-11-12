@@ -29,8 +29,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
     size_t buffer_capacity = 512;
     char *buffer = SAFE_MALLOC(buffer_capacity, char *);
     size_t offset = 0;
-    offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
-                            ".PP\nNo command-line options are available for this mode.\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\nNo command-line options are available for this mode.\n");
     log_debug("Generated OPTIONS section (fallback - no options found)");
     return buffer;
   }
@@ -41,8 +40,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
   size_t offset = 0;
 
   // Add introductory paragraph explaining mode flags, defaults, and env vars
-  offset +=
-      safe_snprintf(buffer + offset, buffer_capacity - offset, "Each option shows which modes it applies to with\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Each option shows which modes it applies to with\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (modes: ...)\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "notation. Default values are shown with\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (default: ...).\n");
@@ -60,15 +58,12 @@ char *manpage_content_generate_options(const options_config_t *config) {
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Options marked\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B global\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
-                          "must be passed before any mode and apply to all modes.\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
-                          "Mode-specific options are passed after the mode name.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "must be passed before any mode and apply to all modes.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Mode-specific options are passed after the mode name.\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "The default mode (running\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
-                          "with no mode) accepts both global and default mode options with no mode specified.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "with no mode) accepts both global and default mode options with no mode specified.\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
 
   // Build list of unique groups in order of first appearance
@@ -132,8 +127,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
 
       // Write option flags
       if (desc->short_name && desc->short_name != '\0') {
-        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-%c, \\-\\-%s", desc->short_name,
-                                desc->long_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-%c, \\-\\-%s", desc->short_name, desc->long_name);
       } else {
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-\\-%s", desc->long_name);
       }
@@ -141,8 +135,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
       // Add argument placeholder for value-taking options
       if (desc->type != OPTION_TYPE_ACTION) {
         // Check for custom placeholder first, fall back to type-based placeholder
-        const char *placeholder =
-            desc->arg_placeholder ? desc->arg_placeholder : options_get_type_placeholder(desc->type);
+        const char *placeholder = desc->arg_placeholder ? desc->arg_placeholder : options_get_type_placeholder(desc->type);
         if (placeholder && *placeholder) {
           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " \\fI%s\\fR", placeholder);
         }

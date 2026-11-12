@@ -39,8 +39,7 @@ char *manpage_content_generate_environment(const options_config_t *config) {
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    log_debug("[ENVIRONMENT] env=%s, desc=%s", desc->env_var_name ? desc->env_var_name : "NULL",
-              desc->help_text ? desc->help_text : "NULL");
+    log_debug("[ENVIRONMENT] env=%s, desc=%s", desc->env_var_name ? desc->env_var_name : "NULL", desc->help_text ? desc->help_text : "NULL");
 
     // Generate .TP tagged paragraph for this environment variable
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
@@ -72,8 +71,7 @@ static int env_var_compare(const void *a, const void *b) {
   return strcmp(var_a->name, var_b->name);
 }
 
-char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars,
-                                                       size_t manual_count, const char **manual_descs) {
+char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars, size_t manual_count, const char **manual_descs) {
 
   if (!config) {
     char *buffer = SAFE_MALLOC(1, char *);
@@ -133,8 +131,7 @@ char *manpage_content_generate_environment_with_manual(const options_config_t *c
     if (*all_vars[i].description) {
       if (all_vars[i].option_long_name) {
         // For auto-generated variables, just reference the flag
-        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "See: \\fB\\-\\-%s\\fR\n",
-                                all_vars[i].option_long_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "See: \\fB\\-\\-%s\\fR\n", all_vars[i].option_long_name);
       } else {
         // For manual variables, show full description
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", all_vars[i].description);
@@ -144,8 +141,7 @@ char *manpage_content_generate_environment_with_manual(const options_config_t *c
 
   SAFE_FREE(all_vars);
 
-  log_debug("Generated ENVIRONMENT section (%zu manual + %zu auto = %zu total, %zu bytes)", manual_count, num_auto_vars,
-            total_vars, offset);
+  log_debug("Generated ENVIRONMENT section (%zu manual + %zu auto = %zu total, %zu bytes)", manual_count, num_auto_vars, total_vars, offset);
   return buffer;
 }
 

@@ -148,8 +148,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
     return;
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     log_error("Failed to bind SQLite query parameters");
     return;
@@ -229,12 +228,8 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
   }
 
   // Create schema
-  const database_query_id_t schema[] = {DATABASE_QUERY_SchemaSessions,
-                                        DATABASE_QUERY_SchemaParticipants,
-                                        DATABASE_QUERY_SchemaRateEvents,
-                                        DATABASE_QUERY_SchemaIdxSessionsId,
-                                        DATABASE_QUERY_SchemaIdxSessionsActivity,
-                                        DATABASE_QUERY_SchemaIdxParticipantsSession,
+  const database_query_id_t schema[] = {DATABASE_QUERY_SchemaSessions,      DATABASE_QUERY_SchemaParticipants,        DATABASE_QUERY_SchemaRateEvents,
+                                        DATABASE_QUERY_SchemaIdxSessionsId, DATABASE_QUERY_SchemaIdxSessionsActivity, DATABASE_QUERY_SchemaIdxParticipantsSession,
                                         DATABASE_QUERY_SchemaIdxRateEvents};
   for (size_t i = 0; i < sizeof(schema) / sizeof(schema[0]); ++i) {
     rc = sqlite3_exec(*db, database_queries[schema[i]].sql, NULL, NULL, &err_msg);
@@ -274,8 +269,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
       rc = SQLITE_OK;
   }
   sqlite3_finalize(legacy_table);
-  const database_query_id_t migration_schema[] = {DATABASE_QUERY_BeginTransaction, DATABASE_QUERY_SchemaKeyPolicy,
-                                                  DATABASE_QUERY_SchemaIdentityKeys};
+  const database_query_id_t migration_schema[] = {DATABASE_QUERY_BeginTransaction, DATABASE_QUERY_SchemaKeyPolicy, DATABASE_QUERY_SchemaIdentityKeys};
   for (size_t i = 0; rc == SQLITE_OK && i < sizeof(migration_schema) / sizeof(migration_schema[0]); ++i)
     rc = sqlite3_exec(*db, database_queries[migration_schema[i]].sql, NULL, NULL, &err_msg);
   if (rc == SQLITE_OK && has_legacy_keys) {
@@ -284,9 +278,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     const char *legacy_import = database_queries[DATABASE_QUERY_ImportLegacySessionKeys].sql;
     rc = sqlite3_exec(*db, legacy_import, NULL, NULL, &err_msg);
   }
-  const database_query_id_t migration_backfill[] = {DATABASE_QUERY_BackfillSessionIdentityKeys,
-                                                    DATABASE_QUERY_BackfillSessionKeyPolicy,
-                                                    DATABASE_QUERY_CommitTransaction};
+  const database_query_id_t migration_backfill[] = {DATABASE_QUERY_BackfillSessionIdentityKeys, DATABASE_QUERY_BackfillSessionKeyPolicy, DATABASE_QUERY_CommitTransaction};
   for (size_t i = 0; rc == SQLITE_OK && i < sizeof(migration_backfill) / sizeof(migration_backfill[0]); ++i)
     rc = sqlite3_exec(*db, database_queries[migration_backfill[i]].sql, NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
@@ -315,8 +307,7 @@ void database_close(sqlite3 *db) {
 // Session Operations
 // ============================================================================
 
-static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_session_create_t *req,
-                                                     const acds_config_t *config, acip_session_created_t *resp) {
+static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config, acip_session_created_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_CREATE);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
@@ -328,8 +319,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
   if (req->reserved_string_len > 0) {
     const char *reserved_str = (const char *)(req + 1);
-    size_t len = req->reserved_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->reserved_string_len
-                                                                              : (ACIP_MAX_SESSION_STRING_LEN - 1);
+    size_t len = req->reserved_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->reserved_string_len : (ACIP_MAX_SESSION_STRING_LEN - 1);
     memcpy(session_string, reserved_str, len);
     session_string[len] = '\0';
 
@@ -356,9 +346,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
 
   // Calculate max_participants
-  uint8_t max_participants = req->max_participants > 0 && req->max_participants <= MAX_SESSION_PARTICIPANTS
-                                 ? req->max_participants
-                                 : MAX_SESSION_PARTICIPANTS;
+  uint8_t max_participants = req->max_participants > 0 && req->max_participants <= MAX_SESSION_PARTICIPANTS ? req->max_participants : MAX_SESSION_PARTICIPANTS;
 
   // Insert into database
   const char *sql = database_queries[DATABASE_QUERY_CreateSession].sql;
@@ -374,31 +362,20 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   log_info("expose_ip_publicly=%d, server_address='%s' server_port=%u, session_type=%u, "
            "has_password=%u",
            req->expose_ip_publicly, req->server_address, req->server_port, req->session_type, req->has_password);
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_pubkey"), req->identity_pubkey, 32,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":password_hash"),
-                         req->has_password ? (const char *)req->password_hash : NULL, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":max_participants"), max_participants) !=
-       SQLITE_OK) ||
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_pubkey"), req->identity_pubkey, 32, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":password_hash"), req->has_password ? (const char *)req->password_hash : NULL, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":max_participants"), max_participants) != SQLITE_OK) ||
       (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":capabilities"), req->capabilities) != SQLITE_OK) ||
-      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":has_password"), req->has_password ? 1 : 0) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":expose_ip_publicly"),
-                        req->expose_ip_publicly ? 1 : 0) != SQLITE_OK) ||
+      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":has_password"), req->has_password ? 1 : 0) != SQLITE_OK) ||
+      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":expose_ip_publicly"), req->expose_ip_publicly ? 1 : 0) != SQLITE_OK) ||
       (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":session_type"), req->session_type) != SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":server_address"), req->server_address, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":server_address"), req->server_address, -1, SQLITE_STATIC) != SQLITE_OK) ||
       (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":server_port"), req->server_port) != SQLITE_OK) ||
       (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":created_at"), (sqlite3_int64)now) != SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":expires_at"), (sqlite3_int64)expires_at) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) !=
-       SQLITE_OK)) {
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":expires_at"), (sqlite3_int64)expires_at) != SQLITE_OK) ||
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -425,14 +402,13 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
 
-  log_info("Session created: %s (session_id=%02x%02x%02x%02x..., max_participants=%d, has_password=%d)", session_string,
-           session_id[0], session_id[1], session_id[2], session_id[3], max_participants, req->has_password ? 1 : 0);
+  log_info("Session created: %s (session_id=%02x%02x%02x%02x..., max_participants=%d, has_password=%d)", session_string, session_id[0], session_id[1], session_id[2], session_id[3], max_participants,
+           req->has_password ? 1 : 0);
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
-                                          acip_session_created_t *resp) {
+asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config, acip_session_created_t *resp) {
   if (!req)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing create request");
   return database_session_create_keys(db, req, (const uint8_t (*)[32]) & req->identity_pubkey, 1, config, resp);
@@ -440,10 +416,8 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
 
 /** Persist a validated set as one savepoint, rolling back session and policy
  * together when any member insert fails. The caller owns the connection mutex. */
-static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const acip_session_create_t *req,
-                                                             const uint8_t (*keys)[32], size_t count,
-                                                             const acds_config_t *config, acip_session_created_t *resp,
-                                                             const void *metadata, size_t metadata_length) {
+static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32], size_t count, const acds_config_t *config,
+                                                             acip_session_created_t *resp, const void *metadata, size_t metadata_length) {
   if (!db || !req || !keys || !config || !resp || count == 0 || count > MAX_SESSION_KEYS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key set");
   memset(resp, 0, sizeof(*resp));
@@ -465,8 +439,7 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   if (result == ASCIICHAT_OK) {
     int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_InsertSessionKeyPolicy].sql, &stmt);
     if (rc == SQLITE_OK) {
-      rc = sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), resp->session_string, -1,
-                             SQLITE_STATIC);
+      rc = sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), resp->session_string, -1, SQLITE_STATIC);
       if (rc == SQLITE_OK)
         rc = sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":restricted"), count > 1);
       if (rc == SQLITE_OK)
@@ -482,8 +455,7 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   }
   if (result == ASCIICHAT_OK && metadata_length)
     result = database_session_transport_set(db, resp->session_id, metadata, metadata_length);
-  if (result == ASCIICHAT_OK &&
-      sqlite3_exec(db, database_queries[DATABASE_QUERY_CommitKeySet].sql, NULL, NULL, NULL) != SQLITE_OK)
+  if (result == ASCIICHAT_OK && sqlite3_exec(db, database_queries[DATABASE_QUERY_CommitKeySet].sql, NULL, NULL, NULL) != SQLITE_OK)
     result = SET_ERRNO(ERROR_CONFIG, "Could not commit session key set");
   if (result != ASCIICHAT_OK) {
     if (sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackToKeySet].sql, NULL, NULL, NULL) == SQLITE_OK)
@@ -493,30 +465,24 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   return result;
 }
 
-asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req,
-                                                              const uint8_t (*keys)[32], size_t count,
-                                                              const acds_config_t *config, acip_session_created_t *resp,
-                                                              const void *metadata, size_t metadata_length) {
+asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32], size_t count, const acds_config_t *config,
+                                                              acip_session_created_t *resp, const void *metadata, size_t metadata_length) {
   if (!db)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing database");
   // SQLite serializes statements, but a shared connection also needs to keep
   // other client threads out of this multi-statement savepoint.
   sqlite3_mutex *mutex = sqlite3_db_mutex(db);
   sqlite3_mutex_enter(mutex);
-  asciichat_error_t result =
-      database_session_create_keys_locked(db, req, keys, count, config, resp, metadata, metadata_length);
+  asciichat_error_t result = database_session_create_keys_locked(db, req, keys, count, config, resp, metadata, metadata_length);
   sqlite3_mutex_leave(mutex);
   return result;
 }
 
-asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
-                                               size_t count, const acds_config_t *config,
-                                               acip_session_created_t *resp) {
+asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32], size_t count, const acds_config_t *config, acip_session_created_t *resp) {
   return database_session_create_keys_with_transport(db, req, keys, count, config, resp, NULL, 0);
 }
 
-asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
-                                          acip_session_info_t *resp) {
+asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config, acip_session_info_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LOOKUP);
   if (!db || !session_string || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_string, config, or resp is NULL");
@@ -534,8 +500,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session lookup: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -577,22 +542,18 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
   sqlite3_finalize(stmt);
 
-  log_debug("Session lookup: %s (found, participants=%d/%d)", session_string, resp->current_participants,
-            resp->max_participants);
+  log_debug("Session lookup: %s (found, participants=%d/%d)", session_string, resp->current_participants, resp->max_participants);
 
   return ASCIICHAT_OK;
 }
 
 /** Check the current policy and proof while the caller holds the connection mutex.
  * A protocol rejection is ASCIICHAT_OK with a nonzero ACIP response error. */
-static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip_session_join_t *req,
-                                                         const acds_config_t *config, const char *session_string,
-                                                         acip_session_joined_t *resp) {
+static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config, const char *session_string, acip_session_joined_t *resp) {
   sqlite3_stmt *policy = NULL;
   int policy_rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_GetSessionKeyPolicy].sql, &policy);
   if (policy_rc == SQLITE_OK) {
-    policy_rc = sqlite3_bind_text(policy, sqlite3_bind_parameter_index(policy, ":session_string"), session_string, -1,
-                                  SQLITE_STATIC);
+    policy_rc = sqlite3_bind_text(policy, sqlite3_bind_parameter_index(policy, ":session_string"), session_string, -1, SQLITE_STATIC);
     if (policy_rc == SQLITE_OK)
       policy_rc = sqlite3_step(policy);
   }
@@ -605,9 +566,7 @@ static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip
   // service-wide optional identity setting. An advertised key alone is no proof.
   if ((restricted && !database_session_verify_key(db, session_string, req->identity_pubkey)) ||
       ((restricted || config->require_client_identity) &&
-       (!acds_validate_timestamp(req->timestamp, 300) ||
-        acds_verify_session_join(req->identity_pubkey, req->timestamp, session_string, req->signature) !=
-            ASCIICHAT_OK))) {
+       (!acds_validate_timestamp(req->timestamp, 300) || acds_verify_session_join(req->identity_pubkey, req->timestamp, session_string, req->signature) != ASCIICHAT_OK))) {
     resp->error_code = ACIP_ERROR_INVALID_SIGNATURE;
     SAFE_STRNCPY(resp->error_message, "Session key authorization failed", sizeof(resp->error_message));
     return ASCIICHAT_OK;
@@ -618,9 +577,8 @@ static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip
 
 /** Commit a join using fresh state; the caller holds the connection mutex.
  * Password verification has already completed against the supplied snapshot. */
-static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_session_join_t *req,
-                                                      const acds_config_t *config, const session_entry_t *verified,
-                                                      acip_session_joined_t *resp, session_entry_t **joined) {
+static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config, const session_entry_t *verified, acip_session_joined_t *resp,
+                                                      session_entry_t **joined) {
   // Generate participant ID
   uint8_t participant_id[SESSION_ID_SIZE];
   generate_uuid(participant_id);
@@ -681,12 +639,9 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant insert: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), req->identity_pubkey, 32,
-                         SQLITE_STATIC) != SQLITE_OK) ||
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), req->identity_pubkey, 32, SQLITE_STATIC) != SQLITE_OK) ||
       (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":joined_at"), (sqlite3_int64)now) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
@@ -711,10 +666,8 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
   const char *update_sql = database_queries[DATABASE_QUERY_IncrementParticipants].sql;
   rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
-    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) !=
-         SQLITE_OK) ||
-        (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
-                           SQLITE_STATIC) != SQLITE_OK)) {
+    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) != SQLITE_OK) ||
+        (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
       sqlite3_finalize(stmt);
       sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
       session_entry_destroy(session);
@@ -738,10 +691,8 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
     const char *initiator_sql = database_queries[DATABASE_QUERY_SetSessionInitiator].sql;
     rc = ascii_otel_sqlite_prepare(db, initiator_sql, &stmt);
     if (rc == SQLITE_OK) {
-      if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":initiator_id"), participant_id, 16,
-                             SQLITE_STATIC) != SQLITE_OK) ||
-          (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
-                             SQLITE_STATIC) != SQLITE_OK)) {
+      if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":initiator_id"), participant_id, 16, SQLITE_STATIC) != SQLITE_OK) ||
+          (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
         sqlite3_finalize(stmt);
         sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
         session_entry_destroy(session);
@@ -772,8 +723,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
 }
 
 /** Format the committed snapshot after releasing the shared SQLite mutex. */
-static void database_session_join_response(session_entry_t *session, const acds_config_t *config,
-                                           acip_session_joined_t *resp) {
+static void database_session_join_response(session_entry_t *session, const acds_config_t *config, acip_session_joined_t *resp) {
   const char *session_string = session->session_string;
   // Fill response
   resp->success = 1;
@@ -794,13 +744,11 @@ static void database_session_join_response(session_entry_t *session, const acds_
 
   log_debug("SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x..., "
             "initiator=%02x%02x..., host_established=%d, peer_count=%d",
-            resp->session_id[0], resp->session_id[1], resp->session_id[2], resp->session_id[3], resp->participant_id[0],
-            resp->participant_id[1], resp->participant_id[2], resp->participant_id[3], resp->initiator_id[0],
-            resp->initiator_id[1], resp->host_established, resp->peer_count);
+            resp->session_id[0], resp->session_id[1], resp->session_id[2], resp->session_id[3], resp->participant_id[0], resp->participant_id[1], resp->participant_id[2], resp->participant_id[3],
+            resp->initiator_id[0], resp->initiator_id[1], resp->host_established, resp->peer_count);
 
   // IP disclosure logic
-  log_debug("has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
-            session->expose_ip_publicly, session->server_address);
+  log_debug("has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password, session->expose_ip_publicly, session->server_address);
   bool reveal_ip = session->has_password || session->expose_ip_publicly;
   log_debug("reveal_ip=%d", reveal_ip);
 
@@ -810,8 +758,7 @@ static void database_session_join_response(session_entry_t *session, const acds_
     // Generate TURN credentials for WebRTC sessions
     if (session->session_type == SESSION_TYPE_WEBRTC && config->turn_secret[0] != '\0') {
       turn_credentials_t turn_creds;
-      asciichat_error_t turn_result =
-          turn_generate_credentials(session_string, config->turn_secret, 86400, &turn_creds);
+      asciichat_error_t turn_result = turn_generate_credentials(session_string, config->turn_secret, 86400, &turn_creds);
       if (turn_result == ASCIICHAT_OK) {
         SAFE_STRNCPY(resp->turn_username, turn_creds.username, sizeof(resp->turn_username));
         SAFE_STRNCPY(resp->turn_password, turn_creds.password, sizeof(resp->turn_password));
@@ -819,20 +766,17 @@ static void database_session_join_response(session_entry_t *session, const acds_
       }
     }
 
-    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)", session_string,
-             session->current_participants + 1, session->max_participants, resp->server_address, resp->server_port,
-             session->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
+    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)", session_string, session->current_participants + 1, session->max_participants, resp->server_address,
+             resp->server_port, session->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
   } else {
-    log_info("Participant joined session %s (participants=%d/%d, IP WITHHELD)", session_string,
-             session->current_participants + 1, session->max_participants);
+    log_info("Participant joined session %s (participants=%d/%d, IP WITHHELD)", session_string, session->current_participants + 1, session->max_participants);
   }
 
   ascii_otel_call_session_used(session_string);
 
   session_entry_destroy(session);
 }
-asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
-                                        acip_session_joined_t *resp) {
+asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config, acip_session_joined_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
@@ -841,16 +785,13 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   memset(resp, 0, sizeof(*resp));
   resp->success = 0;
 
-  if (req->session_string_len == 0 || req->session_string_len >= sizeof(req->session_string) ||
-      memchr(req->session_string, '\0', (size_t)req->session_string_len) ||
-      req->session_string[req->session_string_len] != '\0' ||
-      (req->has_password && !memchr(req->password, '\0', sizeof(req->password))))
+  if (req->session_string_len == 0 || req->session_string_len >= sizeof(req->session_string) || memchr(req->session_string, '\0', (size_t)req->session_string_len) ||
+      req->session_string[req->session_string_len] != '\0' || (req->has_password && !memchr(req->password, '\0', sizeof(req->password))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed join request");
 
   // Extract session string
   char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
-  size_t len = req->session_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->session_string_len
-                                                                           : (ACIP_MAX_SESSION_STRING_LEN - 1);
+  size_t len = req->session_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->session_string_len : (ACIP_MAX_SESSION_STRING_LEN - 1);
   memcpy(session_string, req->session_string, len);
   session_string[len] = '\0';
 
@@ -913,8 +854,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   return result;
 }
 
-asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t participant_id[SESSION_ID_SIZE]) {
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
   if (!db || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
@@ -932,8 +872,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
   }
 
   int session_id_index = sqlite3_bind_parameter_index(stmt, ":session_id");
-  rc = session_id_index ? sqlite3_bind_blob(stmt, session_id_index, session_id, SESSION_ID_SIZE, SQLITE_STATIC)
-                        : SQLITE_RANGE;
+  rc = session_id_index ? sqlite3_bind_blob(stmt, session_id_index, session_id, SESSION_ID_SIZE, SQLITE_STATIC) : SQLITE_RANGE;
   if (rc != SQLITE_OK) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind session lookup parameter");
@@ -977,10 +916,8 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant delete: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
@@ -1009,10 +946,8 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
   const char *update_sql = database_queries[DATABASE_QUERY_DecrementParticipants].sql;
   rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
-    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) !=
-         SQLITE_OK) ||
-        (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                           SQLITE_STATIC) != SQLITE_OK)) {
+    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) != SQLITE_OK) ||
+        (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
       sqlite3_finalize(stmt);
       sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
       return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
@@ -1025,8 +960,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
   const char *check_sql = database_queries[DATABASE_QUERY_GetParticipantCount].sql;
   rc = ascii_otel_sqlite_prepare(db, check_sql, &stmt);
   if (rc == SQLITE_OK) {
-    if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                           SQLITE_STATIC) != SQLITE_OK)) {
+    if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
       sqlite3_finalize(stmt);
       sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
       return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
@@ -1042,8 +976,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
         const char *del_session_sql = database_queries[DATABASE_QUERY_DeleteSession].sql;
         rc = ascii_otel_sqlite_prepare(db, del_session_sql, &stmt);
         if (rc == SQLITE_OK) {
-          if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                                 SQLITE_STATIC) != SQLITE_OK)) {
+          if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
             sqlite3_finalize(stmt);
             sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackTransaction].sql, NULL, NULL, NULL);
             return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
@@ -1087,8 +1020,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
     return NULL;
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     log_error("Failed to bind SQLite query parameters");
     return NULL;
@@ -1118,8 +1050,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
     return NULL;
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     log_error("Failed to bind SQLite query parameters");
     return NULL;
@@ -1152,8 +1083,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   const char *log_sql = database_queries[DATABASE_QUERY_FindExpiredSessions].sql;
   sqlite3_stmt *stmt = NULL;
   if (ascii_otel_sqlite_prepare(db, log_sql, &stmt) == SQLITE_OK) {
-    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time) !=
-         SQLITE_OK)) {
+    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time) != SQLITE_OK)) {
       sqlite3_finalize(stmt);
       log_error("Failed to bind SQLite query parameters");
       return;
@@ -1163,8 +1093,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
       uint64_t last_activity = (uint64_t)sqlite3_column_int64(stmt, 1);
       uint64_t inactive_ms = now - last_activity;
       uint64_t inactive_hours = inactive_ms / (SEC_PER_HOUR * MS_PER_SEC_INT);
-      log_info("Session %s inactive for %lu hours, deleting", session_string ? session_string : "<unknown>",
-               inactive_hours);
+      log_info("Session %s inactive for %lu hours, deleting", session_string ? session_string : "<unknown>", inactive_hours);
     }
     sqlite3_finalize(stmt);
   }
@@ -1172,8 +1101,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   // Delete inactive sessions (CASCADE deletes participants)
   const char *del_sql = database_queries[DATABASE_QUERY_DeleteExpiredSessions].sql;
   if (ascii_otel_sqlite_prepare(db, del_sql, &stmt) == SQLITE_OK) {
-    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time) !=
-         SQLITE_OK)) {
+    if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time) != SQLITE_OK)) {
       sqlite3_finalize(stmt);
       log_error("Failed to bind SQLite query parameters");
       return;
@@ -1189,9 +1117,8 @@ void database_session_cleanup_expired(sqlite3 *db) {
   }
 }
 
-asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
-                                               const char *host_address, uint16_t host_port, uint8_t connection_type) {
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t host_participant_id[SESSION_ID_SIZE], const char *host_address, uint16_t host_port,
+                                               uint8_t connection_type) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_UPDATE_HOST);
   if (!db || !session_id || !host_participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or host_participant_id is NULL");
@@ -1210,17 +1137,12 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host update: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_participant_id"), host_participant_id, 16,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":host_address"), host_address ? host_address : "",
-                         -1, SQLITE_STATIC) != SQLITE_OK) ||
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_participant_id"), host_participant_id, 16, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":host_address"), host_address ? host_address : "", -1, SQLITE_STATIC) != SQLITE_OK) ||
       (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":host_port"), host_port) != SQLITE_OK) ||
-      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":host_connection_type"), connection_type) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK)) {
+      (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":host_connection_type"), connection_type) != SQLITE_OK) ||
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1241,8 +1163,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
     return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for host update");
   }
 
-  log_info("Session host updated: participant=%02x%02x..., address=%s:%u, type=%d", host_participant_id[0],
-           host_participant_id[1], host_address ? host_address : "(none)", host_port, connection_type);
+  log_info("Session host updated: participant=%02x%02x..., address=%s:%u, type=%d", host_participant_id[0], host_participant_id[1], host_address ? host_address : "(none)", host_port, connection_type);
 
   if (migrating)
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
@@ -1265,8 +1186,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host clear: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1310,10 +1230,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare migration start: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":migration_start_ns"), (sqlite3_int64)now_ns) !=
-       SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":migration_start_ns"), (sqlite3_int64)now_ns) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1334,14 +1252,12 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for migration start");
   }
 
-  log_info("Session migration started (session=%02x%02x..., start_ns=%" PRIu64 ")", session_id[0], session_id[1],
-           now_ns);
+  log_info("Session migration started (session=%02x%02x..., start_ns=%" PRIu64 ")", session_id[0], session_id[1], now_ns);
 
   return ASCIICHAT_OK;
 }
 
-bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         uint64_t migration_window_ms) {
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], uint64_t migration_window_ms) {
   ASCII_OTEL_SCOPE(DATABASE_MIGRATION_READY);
   if (!db || !session_id) {
     return false;
@@ -1355,8 +1271,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[S
     return false;
   }
 
-  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) !=
-       SQLITE_OK)) {
+  if ((sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     log_error("Failed to bind SQLite query parameters");
     return false;
@@ -1372,8 +1287,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[S
       uint64_t migration_window_ns = migration_window_ms * NS_PER_MS_INT;
       if (elapsed_ns >= migration_window_ns) {
         ready = true;
-        log_debug("Migration window complete (session=%02x%02x..., elapsed=%lu ns, window=%lu ns)", session_id[0],
-                  session_id[1], elapsed_ns, migration_window_ns);
+        log_debug("Migration window complete (session=%02x%02x..., elapsed=%lu ns, window=%lu ns)", session_id[0], session_id[1], elapsed_ns, migration_window_ns);
       }
     }
   }
@@ -1386,9 +1300,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[S
 // Multi-Key Management Functions
 // ============================================================================
 
-asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string,
-                                           const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE],
-                                           uint32_t key_version) {
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint32_t key_version) {
   ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
   if (!db || !session_string || !identity_pubkey || sodium_is_zero(identity_pubkey, 32)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for add_key");
@@ -1401,13 +1313,10 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare add_key statement: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32,
-                         SQLITE_STATIC) != SQLITE_OK) ||
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC) != SQLITE_OK) ||
       (sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":key_version"), key_version) != SQLITE_OK) ||
-      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":added_at"), database_get_current_time_ms()) !=
-       SQLITE_OK)) {
+      (sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":added_at"), database_get_current_time_ms()) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1425,8 +1334,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
-                                              const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_REVOKE_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
@@ -1439,10 +1347,8 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare revoke_key statement: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1460,8 +1366,7 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
   return ASCIICHAT_OK;
 }
 
-bool database_session_verify_key(sqlite3 *db, const char *session_string,
-                                 const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
+bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_VERIFY_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return false;
@@ -1474,10 +1379,8 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string,
     return false;
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK) ||
-      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK) ||
+      (sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     log_error("Failed to bind SQLite query parameters");
     return false;
@@ -1489,8 +1392,7 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string,
   return valid;
 }
 
-asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
-                                            size_t max_keys, size_t *count_out) {
+asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32], size_t max_keys, size_t *count_out) {
   ASCII_OTEL_SCOPE(DATABASE_GET_KEYS);
   if (!db || !session_string || !keys_out || !count_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_keys");
@@ -1503,8 +1405,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare get_keys statement: %s", sqlite3_errmsg(db));
   }
 
-  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
-                         SQLITE_STATIC) != SQLITE_OK)) {
+  if ((sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1601,8 +1502,7 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
-                                          size_t *row_count, uint64_t *sessions, uint64_t *participants) {
+asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity, size_t *row_count, uint64_t *sessions, uint64_t *participants) {
   ASCII_OTEL_SCOPE(DATABASE_STATS_SNAPSHOT);
   if (!db || (!rows && capacity) || !row_count || !sessions || !participants)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid database stats snapshot");
@@ -1612,8 +1512,7 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   const char *sql = database_queries[DATABASE_QUERY_GetStatsSnapshot].sql;
   if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot query active session statistics");
-  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":now"),
-                          (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT)) != SQLITE_OK)) {
+  if ((sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":now"), (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT)) != SQLITE_OK)) {
     sqlite3_finalize(stmt);
     return SET_ERRNO(ERROR_CONFIG, "Failed to bind SQLite query parameters");
   }
@@ -1639,34 +1538,29 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                                 const void *metadata, size_t length) {
+asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const void *metadata, size_t length) {
   if (!db || !session_id || !metadata || length < 10 || length > 521)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport metadata");
   sqlite3_stmt *statement = NULL;
   int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_SetSessionTransports].sql, &statement);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id,
-                           SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":metadata"), metadata, (int)length,
-                           SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":metadata"), metadata, (int)length, SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
     rc = sqlite3_step(statement);
   sqlite3_finalize(statement);
   return rc == SQLITE_DONE ? ASCIICHAT_OK : SET_ERRNO(ERROR_CONFIG, "Cannot store discovery transport metadata");
 }
 
-asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata,
-                                                 size_t capacity, size_t *length) {
+asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata, size_t capacity, size_t *length) {
   if (!db || !session_id || !metadata || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport metadata output");
   *length = 0;
   sqlite3_stmt *statement = NULL;
   int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_GetSessionTransports].sql, &statement);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id,
-                           SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
     rc = sqlite3_step(statement);
   asciichat_error_t result = ASCIICHAT_OK;
@@ -1688,10 +1582,8 @@ asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t sess
 /* The authority check belongs to the signaling layer holding handoff_mutex.
  * Persist endpoint and transport ownership together so failure cannot leave a
  * successor paired with the previous host's transport advertisements. */
-asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE],
-                                                              const uint8_t host[SESSION_ID_SIZE], const char *address,
-                                                              uint16_t port, uint8_t type, const void *metadata,
-                                                              size_t length) {
+asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE], const uint8_t host[SESSION_ID_SIZE], const char *address, uint16_t port,
+                                                              uint8_t type, const void *metadata, size_t length) {
   if (!db || !session || !host || (!metadata && length) || (length && (length < 10 || length > 521)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host transport update");
   // Savepoints belong to the shared connection, so exclude other client
@@ -1709,19 +1601,16 @@ asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const
     sqlite3_stmt *statement = NULL;
     int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_SetSessionTransportHost].sql, &statement);
     if (rc == SQLITE_OK)
-      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session,
-                             SESSION_ID_SIZE, SQLITE_TRANSIENT);
+      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session, SESSION_ID_SIZE, SQLITE_TRANSIENT);
     if (rc == SQLITE_OK)
-      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":host_id"), host, SESSION_ID_SIZE,
-                             SQLITE_TRANSIENT);
+      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":host_id"), host, SESSION_ID_SIZE, SQLITE_TRANSIENT);
     if (rc == SQLITE_OK)
       rc = sqlite3_step(statement);
     sqlite3_finalize(statement);
     if (rc != SQLITE_DONE)
       result = SET_ERRNO(ERROR_CONFIG, "Cannot bind transports to the new host");
   }
-  if (result == ASCIICHAT_OK &&
-      sqlite3_exec(db, database_queries[DATABASE_QUERY_CommitHostTransportRefresh].sql, NULL, NULL, NULL) != SQLITE_OK)
+  if (result == ASCIICHAT_OK && sqlite3_exec(db, database_queries[DATABASE_QUERY_CommitHostTransportRefresh].sql, NULL, NULL, NULL) != SQLITE_OK)
     result = SET_ERRNO(ERROR_CONFIG, "Cannot commit host transport update");
   if (result != ASCIICHAT_OK) {
     sqlite3_exec(db, database_queries[DATABASE_QUERY_RollbackHostTransportRefresh].sql, NULL, NULL, NULL);

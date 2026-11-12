@@ -18,8 +18,7 @@ asciichat_error_t consensus_handoff_decode(const void *data, size_t length, cons
     return SET_ERRNO(ERROR_INVALID_PARAM, "Truncated handoff frame");
   const uint8_t *p = data;
   if (p[0] != CONSENSUS_HANDOFF_VERSION || p[1] < HANDOFF_SAMPLE_START || p[1] > HANDOFF_SAMPLE_ACK ||
-      (p[1] == HANDOFF_SAMPLE_DATA ? length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES
-                                   : length != CONSENSUS_HANDOFF_HEADER))
+      (p[1] == HANDOFF_SAMPLE_DATA ? length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES : length != CONSENSUS_HANDOFF_HEADER))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid handoff version, kind or length");
   memset(m, 0, sizeof(*m));
   m->kind = p[1];
@@ -49,8 +48,7 @@ void consensus_handoff_encode(const consensus_handoff_message_t *m, uint8_t out[
   out[54] = (uint8_t)(m->port >> 8);
   out[55] = (uint8_t)m->port;
 }
-void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[SESSION_ID_SIZE],
-                            const uint8_t host[SESSION_ID_SIZE]) {
+void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[SESSION_ID_SIZE], const uint8_t host[SESSION_ID_SIZE]) {
   memset(s, 0, sizeof(*s));
   memcpy(s->session, session, SESSION_ID_SIZE);
   memcpy(s->host, host, SESSION_ID_SIZE);
@@ -113,8 +111,7 @@ void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[SESS
  * replies must match the current generation, round, and selected successor.
  * @return ASCIICHAT_OK if accepted, or a protocol error without accepting the frame.
  */
-asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consensus_handoff_message_t *m, size_t length,
-                                            uint64_t now) {
+asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consensus_handoff_message_t *m, size_t length, uint64_t now) {
   if (memcmp(s->session, m->session, SESSION_ID_SIZE) != 0)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Wrong handoff session");
   consensus_handoff_peer_t *p = find_peer(s, m->participant);
@@ -130,8 +127,7 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     p->pending_nat_tier = m->nat_tier <= 4 ? m->nat_tier : 255;
     p->pending_port = m->port;
   } else if (m->kind == HANDOFF_SAMPLE_DATA) {
-    if (!p->measuring || m->sequence != p->sequence ||
-        length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES)
+    if (!p->measuring || m->sequence != p->sequence || length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unmatched handoff probe");
     p->measuring = false;
     uint64_t elapsed = now - p->probe_started_ms;
@@ -149,8 +145,7 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     p->upload_kbps = (uint32_t)((uint64_t)CONSENSUS_HANDOFF_PROBE_BYTES * 8 / elapsed);
     p->measured_ms = now;
   } else if (m->kind == HANDOFF_READY || m->kind == HANDOFF_REJECT) {
-    if (m->generation != s->generation || m->sequence != s->round ||
-        memcmp(m->participant, s->successor, SESSION_ID_SIZE))
+    if (m->generation != s->generation || m->sequence != s->round || memcmp(m->participant, s->successor, SESSION_ID_SIZE))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Obsolete handoff preparation");
     if (m->kind == HANDOFF_READY && now <= s->prepare_deadline_ms)
       s->ready = true;
@@ -164,17 +159,12 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
   return ASCIICHAT_OK;
 }
 // Record decisions, not periodic ticks or per-peer measurements.
-static void handoff_record_action(consensus_handoff_t *state, const consensus_handoff_message_t *action, uint64_t now,
-                                  size_t candidates) {
+static void handoff_record_action(consensus_handoff_t *state, const consensus_handoff_message_t *action, uint64_t now, size_t candidates) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_SELECTION);
-  const char *outcome = action->kind == HANDOFF_PREPARE  ? "selected"
-                        : action->kind == HANDOFF_COMMIT ? "committed"
-                                                         : "failed";
+  const char *outcome = action->kind == HANDOFF_PREPARE ? "selected" : action->kind == HANDOFF_COMMIT ? "committed" : "failed";
   ASCII_OTEL_ATTR_STRING("host.selection.phase", "successor");
   ASCII_OTEL_ATTR_STRING("host.selection.outcome", outcome);
-  ASCII_OTEL_ATTR_STRING("host.selection.reason", action->kind == HANDOFF_PREPARE  ? "best_eligible_quality"
-                                                  : action->kind == HANDOFF_COMMIT ? "prepared_successor"
-                                                                                   : "no_eligible_successor");
+  ASCII_OTEL_ATTR_STRING("host.selection.reason", action->kind == HANDOFF_PREPARE ? "best_eligible_quality" : action->kind == HANDOFF_COMMIT ? "prepared_successor" : "no_eligible_successor");
   ASCII_OTEL_ATTR_INT("host.generation", state->generation);
   ASCII_OTEL_ATTR_INT("host.selection.round", state->round);
   if (action->kind != HANDOFF_COMMIT)
@@ -185,10 +175,7 @@ static void handoff_record_action(consensus_handoff_t *state, const consensus_ha
     ASCII_OTEL_ATTR_INT("host.selection.upload_kbps", peer->upload_kbps);
     ASCII_OTEL_ATTR_INT("host.selection.nat_tier", peer->nat_tier);
   }
-  ascii_otel_metric(action->kind == HANDOFF_PREPARE  ? ASCII_OTEL_METRIC_HOST_SELECTIONS
-                    : action->kind == HANDOFF_COMMIT ? ASCII_OTEL_METRIC_HOST_COMMITS
-                                                     : ASCII_OTEL_METRIC_HOST_FAILURES,
-                    1);
+  ascii_otel_metric(action->kind == HANDOFF_PREPARE ? ASCII_OTEL_METRIC_HOST_SELECTIONS : action->kind == HANDOFF_COMMIT ? ASCII_OTEL_METRIC_HOST_COMMITS : ASCII_OTEL_METRIC_HOST_FAILURES, 1);
   if (action->kind != HANDOFF_PREPARE && state->failure_deadline_ms >= CONSENSUS_HANDOFF_RECOVERY_MS) {
     uint64_t started = state->failure_deadline_ms - CONSENSUS_HANDOFF_RECOVERY_MS;
     if (now >= started)
@@ -258,8 +245,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   uint8_t zero[SESSION_ID_SIZE] = {0};
   if (memcmp(s->successor, zero, sizeof(s->successor))) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
-    if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
-        (s->ready || now < s->prepare_deadline_ms))
+    if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS && (s->ready || now < s->prepare_deadline_ms))
       return false;
     if (p && !s->ready)
       p->rejected = true;
@@ -270,8 +256,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   size_t count = 0;
   for (size_t i = 0; i < s->count; ++i) {
     consensus_handoff_peer_t *p = &s->peers[i];
-    if (!p->valid || p->rejected || !p->capabilities || now - p->measured_ms > CONSENSUS_HANDOFF_FRESH_MS ||
-        memcmp(p->id, s->host, SESSION_ID_SIZE) == 0)
+    if (!p->valid || p->rejected || !p->capabilities || now - p->measured_ms > CONSENSUS_HANDOFF_FRESH_MS || memcmp(p->id, s->host, SESSION_ID_SIZE) == 0)
       continue;
     participant_metrics_t *m = &metrics[count++];
     memset(m, 0, sizeof(*m));

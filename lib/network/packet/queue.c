@@ -35,8 +35,7 @@ struct packet_queue {
 };
 
 packet_queue_t *packet_queue_create_config(const packet_queue_config_t *config) {
-  if (!config || !config->max_bytes ||
-      (config->overflow != PACKET_QUEUE_REJECT && config->overflow != PACKET_QUEUE_DROP_OLDEST)) {
+  if (!config || !config->max_bytes || (config->overflow != PACKET_QUEUE_REJECT && config->overflow != PACKET_QUEUE_DROP_OLDEST)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Queue needs a byte limit and a valid overflow policy");
     return NULL;
   }
@@ -83,8 +82,7 @@ void packet_queue_free_packet(queued_packet_t *packet) {
   buffer_release(packet);
 }
 
-static asciichat_error_t push(packet_queue_t *queue, packet_type_t type, const void *data, size_t length,
-                              uint32_t client_id) {
+static asciichat_error_t push(packet_queue_t *queue, packet_type_t type, const void *data, size_t length, uint32_t client_id) {
   if (!queue || length > UINT32_MAX || (length && !data) || type == 0 || type > 10000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid queued packet");
   mutex_lock(&queue->mutex);
@@ -96,8 +94,7 @@ static asciichat_error_t push(packet_queue_t *queue, packet_type_t type, const v
     mutex_unlock(&queue->mutex);
     return SET_ERRNO(ERROR_BUFFER, "Packet exceeds queue byte limit");
   }
-  bool full = (queue->config.max_packets && queue->count >= queue->config.max_packets) ||
-              length > queue->config.max_bytes - queue->bytes;
+  bool full = (queue->config.max_packets && queue->count >= queue->config.max_packets) || length > queue->config.max_bytes - queue->bytes;
   if (full && queue->config.overflow == PACKET_QUEUE_REJECT) {
     mutex_unlock(&queue->mutex);
     return SET_ERRNO(ERROR_BUFFER, "Packet queue is full");
@@ -108,8 +105,7 @@ static asciichat_error_t push(packet_queue_t *queue, packet_type_t type, const v
     return SET_ERRNO(ERROR_MEMORY, "Queue memory budget exhausted");
   }
   /* Do not drop existing packets unless the new packet can be admitted. */
-  while (queue->head && ((queue->config.max_packets && queue->count >= queue->config.max_packets) ||
-                         length > queue->config.max_bytes - queue->bytes)) {
+  while (queue->head && ((queue->config.max_packets && queue->count >= queue->config.max_packets) || length > queue->config.max_bytes - queue->bytes)) {
     packet_node_t *old = pop_locked(queue);
     queue->dropped++;
     packet_queue_free_packet(&old->packet);
@@ -134,8 +130,7 @@ static asciichat_error_t push(packet_queue_t *queue, packet_type_t type, const v
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_queue_push_take(packet_queue_t *queue, packet_type_t type, void **data, size_t length,
-                                         uint32_t client_id) {
+asciichat_error_t packet_queue_push_take(packet_queue_t *queue, packet_type_t type, void **data, size_t length, uint32_t client_id) {
   if (!data || (length && !*data) || length > buffer_capacity(*data))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid owned packet buffer");
   asciichat_error_t result = push(queue, type, *data, length, client_id);
@@ -144,8 +139,7 @@ asciichat_error_t packet_queue_push_take(packet_queue_t *queue, packet_type_t ty
   return result;
 }
 
-asciichat_error_t packet_queue_push_shared(packet_queue_t *queue, packet_type_t type, const void *data, size_t length,
-                                           uint32_t client_id) {
+asciichat_error_t packet_queue_push_shared(packet_queue_t *queue, packet_type_t type, const void *data, size_t length, uint32_t client_id) {
   if (length > buffer_capacity(data))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Shared packet exceeds buffer capacity");
   const void *shared = buffer_share(data);
@@ -157,8 +151,7 @@ asciichat_error_t packet_queue_push_shared(packet_queue_t *queue, packet_type_t 
   return result;
 }
 
-asciichat_error_t packet_queue_push_copy(packet_queue_t *queue, packet_type_t type, const void *data, size_t length,
-                                         uint32_t client_id) {
+asciichat_error_t packet_queue_push_copy(packet_queue_t *queue, packet_type_t type, const void *data, size_t length, uint32_t client_id) {
   if (!queue || (length && !data) || length > queue->config.max_bytes)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet copy");
   void *copy = NULL;
@@ -237,8 +230,7 @@ bool packet_queue_is_full(packet_queue_t *queue) {
   if (!queue)
     return false;
   mutex_lock(&queue->mutex);
-  bool full = (queue->config.max_packets && queue->count >= queue->config.max_packets) ||
-              queue->bytes >= queue->config.max_bytes;
+  bool full = (queue->config.max_packets && queue->count >= queue->config.max_packets) || queue->bytes >= queue->config.max_bytes;
   mutex_unlock(&queue->mutex);
   return full;
 }
@@ -257,8 +249,7 @@ void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t 
 }
 
 bool packet_queue_validate_packet(const queued_packet_t *packet) {
-  return packet && NET_TO_HOST_U64(packet->header.magic) == PACKET_MAGIC && NET_TO_HOST_U16(packet->header.type) > 0 &&
-         NET_TO_HOST_U16(packet->header.type) <= 10000 && NET_TO_HOST_U32(packet->header.length) == packet->data_len &&
-         (!packet->data_len ||
-          (packet->data && NET_TO_HOST_U32(packet->header.crc32) == asciichat_crc32(packet->data, packet->data_len)));
+  return packet && NET_TO_HOST_U64(packet->header.magic) == PACKET_MAGIC && NET_TO_HOST_U16(packet->header.type) > 0 && NET_TO_HOST_U16(packet->header.type) <= 10000 &&
+         NET_TO_HOST_U32(packet->header.length) == packet->data_len &&
+         (!packet->data_len || (packet->data && NET_TO_HOST_U32(packet->header.crc32) == asciichat_crc32(packet->data, packet->data_len)));
 }

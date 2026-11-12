@@ -27,17 +27,12 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len);
 int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len);
 asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length);
 asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length);
-int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
-                          size_t *out_len);
-int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
-                          size_t *out_len);
+int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size, size_t *out_len);
+int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size, size_t *out_len);
 asciichat_error_t client_settings_receive(const void *payload, size_t length);
 char *client_settings_values(void);
-asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height,
-                                        uint32_t checksum, uint32_t flags, const void *metadata,
-                                        size_t metadata_length);
-asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
-                                           size_t output_length);
+asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height, uint32_t checksum, uint32_t flags, const void *metadata, size_t metadata_length);
+asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output, size_t output_length);
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out);
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out);
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out);
@@ -46,8 +41,7 @@ int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out);
 int client_get_crypto_error_message(char *output, size_t output_size);
 crypto_context_t *client_security_context(void);
-int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
-                                    const uint8_t *expected_server_public_key);
+int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key, const uint8_t *expected_server_public_key);
 
 void client_cleanup(void);
 

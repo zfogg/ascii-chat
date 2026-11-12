@@ -228,15 +228,13 @@ void thread_pool_destroy(thread_pool_t *pool) {
     return;
   }
 
-  log_debug("Destroying thread pool '%s' (thread_count=%zu, work_queue_mode=%d)", pool->name, pool->thread_count,
-            pool->is_work_queue_mode);
+  log_debug("Destroying thread pool '%s' (thread_count=%zu, work_queue_mode=%d)", pool->name, pool->thread_count, pool->is_work_queue_mode);
 
   // Stop all threads first (if not already stopped)
   if (pool->thread_count > 0) {
     log_debug("Thread pool '%s' has %zu threads, stopping them first", pool->name, pool->thread_count);
     thread_pool_stop_all(pool);
-    log_debug("After thread_pool_stop_all: pool->threads=%p, pool->thread_count=%zu", (void *)pool->threads,
-              pool->thread_count);
+    log_debug("After thread_pool_stop_all: pool->threads=%p, pool->thread_count=%zu", (void *)pool->threads, pool->thread_count);
   }
 
   mutex_lock(&pool->threads_mutex);
@@ -245,8 +243,7 @@ void thread_pool_destroy(thread_pool_t *pool) {
   if (threads_still_running) {
     // A timed-out thread still owns access to this pool. Retain the pool and
     // its synchronization objects so that worker cannot race freed memory.
-    log_error("Keeping thread pool '%s' alive because %zu worker thread(s) have not exited", pool->name,
-              pool->thread_count);
+    log_error("Keeping thread pool '%s' alive because %zu worker thread(s) have not exited", pool->name, pool->thread_count);
     return;
   }
 
@@ -279,8 +276,7 @@ void thread_pool_destroy(thread_pool_t *pool) {
   log_debug("Thread pool destroyed (freed memory)");
 }
 
-asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
-                                         void *work_arg) {
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg) {
   if (!name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "work name is required");
   }
@@ -333,8 +329,7 @@ asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
-                                    const char *thread_name) {
+asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id, const char *thread_name) {
   if (!pool) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "pool is NULL");
   }
@@ -396,8 +391,7 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
   pool->thread_count++;
   mutex_unlock(&pool->threads_mutex);
 
-  log_debug("Spawned thread '%s' (stop_id=%d) in pool '%s' (total_threads=%zu)", entry->name, stop_id, pool->name,
-            pool->thread_count);
+  log_debug("Spawned thread '%s' (stop_id=%d) in pool '%s' (total_threads=%zu)", entry->name, stop_id, pool->name, pool->thread_count);
 
   return ASCIICHAT_OK;
 }
@@ -449,11 +443,9 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     int join_result = thread_join_timeout(&entry->thread, NULL, THREAD_JOIN_TIMEOUT_NS);
     if (join_result != 0) {
       if (join_result == ETIMEDOUT) {
-        log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout; retaining its pool entry.", entry->name,
-                 entry->stop_id);
+        log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout; retaining its pool entry.", entry->name, entry->stop_id);
       } else {
-        log_error("Failed to join thread '%s' in pool '%s' (error %d); retaining its pool entry", entry->name,
-                  pool->name, join_result);
+        log_error("Failed to join thread '%s' in pool '%s' (error %d); retaining its pool entry", entry->name, pool->name, join_result);
       }
       entry->next = still_running;
       still_running = entry;
@@ -540,8 +532,7 @@ asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig) {
 
   mutex_unlock(&pool->threads_mutex);
 
-  log_debug("Sent signal %d to %d/%zu threads in pool '%s' (%d failures)", sig, sent_count, pool->thread_count,
-            pool->name, failed_count);
+  log_debug("Sent signal %d to %d/%zu threads in pool '%s' (%d failures)", sig, sent_count, pool->thread_count, pool->name, failed_count);
 
   if (failed_count > 0 && sent_count == 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to send signal to any threads in pool '%s'", pool->name);

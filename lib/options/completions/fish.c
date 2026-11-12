@@ -50,15 +50,13 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       // Enum values as completions
       // Output short option once with first value
       if (opt->short_name != '\0') {
-        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name,
-                meta->enum_values[0]);
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name, meta->enum_values[0]);
         fish_escape_help(output, opt->help_text);
         fprintf(output, "'\n");
       }
       // Output long option with all values
       for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name,
-                meta->enum_values[i]);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name, meta->enum_values[i]);
         fish_escape_help(output, opt->help_text);
         fprintf(output, "'\n");
       }
@@ -71,15 +69,13 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       // Example values as completions (practical values, higher priority than calculated ranges)
       // Output short option once with first example
       if (opt->short_name != '\0') {
-        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name,
-                meta->examples[0]);
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name, meta->examples[0]);
         fish_escape_help(output, opt->help_text);
         fprintf(output, "'\n");
       }
       // Output long option with all examples
       for (size_t i = 0; meta->examples[i] != NULL; i++) {
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name,
-                meta->examples[i]);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name, meta->examples[i]);
         fish_escape_help(output, opt->help_text);
         fprintf(output, "'\n");
       }
@@ -88,17 +84,13 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       exclusive = true;
       // Numeric range - suggest min, middle, max values
       if (opt->short_name != '\0') {
-        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%d' -d 'numeric (%d-%d)'\n", condition, opt->short_name,
-                meta->numeric_range.min, meta->numeric_range.min, meta->numeric_range.max);
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%d' -d 'numeric (%d-%d)'\n", condition, opt->short_name, meta->numeric_range.min, meta->numeric_range.min, meta->numeric_range.max);
       }
-      fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (%d-%d)'\n", condition, opt->long_name,
-              meta->numeric_range.min, meta->numeric_range.min, meta->numeric_range.max);
+      fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (%d-%d)'\n", condition, opt->long_name, meta->numeric_range.min, meta->numeric_range.min, meta->numeric_range.max);
       if (meta->numeric_range.max > meta->numeric_range.min) {
         int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (middle)'\n", condition, opt->long_name,
-                middle);
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (max)'\n", condition, opt->long_name,
-                meta->numeric_range.max);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (middle)'\n", condition, opt->long_name, middle);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (max)'\n", condition, opt->long_name, meta->numeric_range.max);
       }
       return;
     }
@@ -132,36 +124,35 @@ asciichat_error_t completions_generate_fish(FILE *output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
-  fprintf(output,
-          "# Fish completion script for ascii-chat\n"
-          "# Generated from options registry - DO NOT EDIT MANUALLY\n"
-          "\n"
-          "complete -c ascii-chat -f\n"
-          "\n"
-          "function __fish_ascii_chat_using_mode\n"
-          "    set -l cmd (commandline -opc)\n"
-          "    for arg in $cmd\n"
-          "        if contains -- $arg server client mirror discovery-service mcp-server\n"
-          "            echo $arg\n"
-          "            return 0\n"
-          "        end\n"
-          "    end\n"
-          "    return 1\n"
-          "end\n"
-          "\n"
-          "function __fish_ascii_chat_mode_is\n"
-          "    test (string match -q $argv[1] (command __fish_ascii_chat_using_mode))\n"
-          "end\n"
-          "\n"
-          "function __fish_ascii_chat_no_mode\n"
-          "    not __fish_ascii_chat_using_mode > /dev/null\n"
-          "end\n"
-          "\n"
-          "# Modes\n"
-          "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a server -d 'Run a video chat server'\n"
-          "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a client -d 'Connect to a video chat server'\n"
-          "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mirror -d 'View webcam locally without network'\n"
-          "\n");
+  fprintf(output, "# Fish completion script for ascii-chat\n"
+                  "# Generated from options registry - DO NOT EDIT MANUALLY\n"
+                  "\n"
+                  "complete -c ascii-chat -f\n"
+                  "\n"
+                  "function __fish_ascii_chat_using_mode\n"
+                  "    set -l cmd (commandline -opc)\n"
+                  "    for arg in $cmd\n"
+                  "        if contains -- $arg server client mirror discovery-service mcp-server\n"
+                  "            echo $arg\n"
+                  "            return 0\n"
+                  "        end\n"
+                  "    end\n"
+                  "    return 1\n"
+                  "end\n"
+                  "\n"
+                  "function __fish_ascii_chat_mode_is\n"
+                  "    test (string match -q $argv[1] (command __fish_ascii_chat_using_mode))\n"
+                  "end\n"
+                  "\n"
+                  "function __fish_ascii_chat_no_mode\n"
+                  "    not __fish_ascii_chat_using_mode > /dev/null\n"
+                  "end\n"
+                  "\n"
+                  "# Modes\n"
+                  "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a server -d 'Run a video chat server'\n"
+                  "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a client -d 'Connect to a video chat server'\n"
+                  "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mirror -d 'View webcam locally without network'\n"
+                  "\n");
 
   /* Binary options - use unified display API matching help system */
   size_t binary_count = 0;
@@ -215,8 +206,7 @@ asciichat_error_t completions_generate_fish(FILE *output) {
   }
   fprintf(output, "\n");
 
-  fprintf(output,
-          "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mcp-server -d 'Render ASCII art through MCP'\n");
+  fprintf(output, "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mcp-server -d 'Render ASCII art through MCP'\n");
   size_t mcp_count = 0;
   const option_descriptor_t *mcp_opts = options_registry_get_for_display(MODE_MCP_SERVER, false, &mcp_count);
   for (size_t i = 0; i < mcp_count; i++) {
@@ -226,8 +216,7 @@ asciichat_error_t completions_generate_fish(FILE *output) {
 
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+  const option_descriptor_t *discovery_svc_opts = options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   fprintf(output, "# Discovery-service options (same as 'ascii-chat discovery-service --help')\n");
   if (discovery_svc_opts) {

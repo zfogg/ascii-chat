@@ -57,8 +57,7 @@ asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_metrics,
-                                              participant_metrics_t *out_metrics) {
+asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_metrics, participant_metrics_t *out_metrics) {
   if (!wire_metrics || !out_metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -92,8 +91,7 @@ asciichat_error_t consensus_metrics_collection_create(consensus_metrics_collecti
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_t *collection,
-                                                   const participant_metrics_t *metrics) {
+asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_t *collection, const participant_metrics_t *metrics) {
   if (!collection || !metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to collection_add");
   }
@@ -101,8 +99,7 @@ asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_
   // Resize if needed
   if (collection->count >= collection->capacity) {
     int new_capacity = collection->capacity * 2;
-    participant_metrics_t *new_metrics =
-        SAFE_MALLOC(new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+    participant_metrics_t *new_metrics = SAFE_MALLOC(new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
 
     if (!new_metrics) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate metrics array");
@@ -129,8 +126,7 @@ asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_metrics_collection_get(const consensus_metrics_collection_t *collection,
-                                                   const participant_metrics_t **out_metrics, int *out_count) {
+asciichat_error_t consensus_metrics_collection_get(const consensus_metrics_collection_t *collection, const participant_metrics_t **out_metrics, int *out_count) {
   if (!collection || !out_metrics || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to collection_get");
   }

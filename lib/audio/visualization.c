@@ -29,12 +29,10 @@ static float history[AUDIO_VISUALIZATION_SOURCE_COUNT][VISUALIZATION_HISTORY];
 static size_t write_position[AUDIO_VISUALIZATION_SOURCE_COUNT];
 static static_mutex_t history_mutex = STATIC_MUTEX_INIT;
 
-static void visualization_color_for_frequency(float centroid_hz, unsigned char *red, unsigned char *green,
-                                              unsigned char *blue) {
+static void visualization_color_for_frequency(float centroid_hz, unsigned char *red, unsigned char *green, unsigned char *blue) {
   static const waveform_color_stop_t stops[] = {
-      {45.0f, 255, 72, 176},    {100.0f, 255, 54, 106},    {220.0f, 255, 104, 72},  {350.0f, 190, 86, 220},
-      {700.0f, 74, 112, 255},   {1400.0f, 55, 190, 255},   {2800.0f, 55, 226, 180}, {5200.0f, 150, 244, 92},
-      {10000.0f, 255, 224, 76}, {18000.0f, 255, 246, 150},
+      {45.0f, 255, 72, 176},   {100.0f, 255, 54, 106},  {220.0f, 255, 104, 72},  {350.0f, 190, 86, 220},   {700.0f, 74, 112, 255},
+      {1400.0f, 55, 190, 255}, {2800.0f, 55, 226, 180}, {5200.0f, 150, 244, 92}, {10000.0f, 255, 224, 76}, {18000.0f, 255, 246, 150},
   };
   const size_t stop_count = sizeof(stops) / sizeof(stops[0]);
   if (centroid_hz <= stops[0].frequency) {
@@ -59,8 +57,7 @@ static void visualization_color_for_frequency(float centroid_hz, unsigned char *
   *blue = stops[stop_count - 1].blue;
 }
 
-void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red,
-                                   unsigned char *green, unsigned char *blue) {
+void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red, unsigned char *green, unsigned char *blue) {
   visualization_color_for_frequency(frequency_hz, red, green, blue);
   float brightness = 0.5f + 0.5f * level;
   float white_mix = 0.0f;
@@ -91,8 +88,7 @@ void audio_visualization_submit_stereo(audio_visualization_source_t source, cons
 }
 
 void audio_visualization_submit(audio_visualization_source_t source, const float *samples, size_t count) {
-  if ((!GET_OPTION(waveform) && !GET_OPTION(fft)) || !samples || source < AUDIO_VISUALIZATION_SOURCE_MIC ||
-      source > AUDIO_VISUALIZATION_SOURCE_REMOTE)
+  if ((!GET_OPTION(waveform) && !GET_OPTION(fft)) || !samples || source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_REMOTE)
     return;
   static_mutex_lock_named(&history_mutex, "audio_visualization_history");
   size_t position = write_position[source];
@@ -145,14 +141,12 @@ static char *visualization_color(char *out, const unsigned char *color, bool bac
     uint8_t index = rgb_to_256color(color[0], color[1], color[2]);
     return background ? append_256color_bg(out, index) : append_256color_fg(out, index);
   }
-  return background ? append_truecolor_bg(out, color[0], color[1], color[2])
-                    : append_truecolor_fg(out, color[0], color[1], color[2]);
+  return background ? append_truecolor_bg(out, color[0], color[1], color[2]) : append_truecolor_fg(out, color[0], color[1], color[2]);
 }
 
 /* Encode the same visualization grid for native terminals and browser rasterization.
  * Half-block grids have two vertical samples per terminal row. */
-char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors, unsigned int width,
-                           unsigned int height, bool use_color, bool flip_x, bool flip_y) {
+char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors, unsigned int width, unsigned int height, bool use_color, bool flip_x, bool flip_y) {
   int mode = GET_OPTION(render_mode);
   int color_mode = GET_OPTION(color_mode);
   if (color_mode == COLOR_MODE_AUTO)
@@ -160,8 +154,7 @@ char *visualization_encode(const char *cells, const unsigned char *colors, bool 
   use_color = use_color && color_mode != COLOR_MODE_NONE;
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
   const palette_def_t *builtin = get_builtin_palette(palette_type);
-  const char *palette =
-      palette_type == PALETTE_CUSTOM ? GET_OPTION(palette_custom) : (builtin ? builtin->chars : PALETTE_CHARS_STANDARD);
+  const char *palette = palette_type == PALETTE_CUSTOM ? GET_OPTION(palette_custom) : (builtin ? builtin->chars : PALETTE_CHARS_STANDARD);
   if (!palette || !*palette)
     palette = PALETTE_CHARS_STANDARD;
   const char *characters[256];

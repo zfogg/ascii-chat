@@ -61,10 +61,9 @@ static const char *SSH_PUBLIC_KEY_REGEX_PATTERN = "ssh-ed25519"                 
  * Captures:
  *   - base64_data: Multiline base64 content (including newlines/whitespace)
  */
-static const char *OPENSSH_PEM_REGEX_PATTERN =
-    "-----BEGIN OPENSSH PRIVATE KEY-----\\s*" // Header with optional whitespace
-    "(?<base64_data>[A-Za-z0-9+/=\\s]+?)"     // Multiline base64 (lazy match)
-    "\\s*-----END OPENSSH PRIVATE KEY-----";  // Footer with optional whitespace
+static const char *OPENSSH_PEM_REGEX_PATTERN = "-----BEGIN OPENSSH PRIVATE KEY-----\\s*" // Header with optional whitespace
+                                               "(?<base64_data>[A-Za-z0-9+/=\\s]+?)"     // Multiline base64 (lazy match)
+                                               "\\s*-----END OPENSSH PRIVATE KEY-----";  // Footer with optional whitespace
 
 /**
  * GPG keygrip extraction format:
@@ -130,8 +129,7 @@ static void crypto_regex_free_match_data(pcre2_match_data *match_data) {
  * PUBLIC API IMPLEMENTATION
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char **key_type_out, char **hex_key_out,
-                                    char **comment_out) {
+bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char **key_type_out, char **hex_key_out, char **comment_out) {
   if (!line || !ip_port_out || !key_type_out || !hex_key_out || !comment_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return false;

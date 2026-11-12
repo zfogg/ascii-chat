@@ -26,9 +26,7 @@
  * @param[in] resource_name Human-readable name for logging
  * @return ASCIICHAT_OK on success, ERROR_CONFIG on failure
  */
-static asciichat_error_t load_single_resource(const char **out_content, size_t *out_len,
-                                              int (*get_resource_func)(FILE **out_file, const char **out_content,
-                                                                       size_t *out_len),
+static asciichat_error_t load_single_resource(const char **out_content, size_t *out_len, int (*get_resource_func)(FILE **out_file, const char **out_content, size_t *out_len),
                                               const char *resource_name) {
   if (!out_content || !out_len) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output pointers for %s", resource_name);
@@ -82,8 +80,7 @@ static asciichat_error_t load_single_resource(const char **out_content, size_t *
     size_t bytes_read = fread(buffer, 1, (size_t)file_size, file);
 
     if (bytes_read != (size_t)file_size) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to read complete %s file (%zu/%lu bytes read)", resource_name,
-                           bytes_read, (unsigned long)file_size);
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to read complete %s file (%zu/%lu bytes read)", resource_name, bytes_read, (unsigned long)file_size);
     }
 
     // Ensure null termination
@@ -114,8 +111,7 @@ asciichat_error_t manpage_resources_load(manpage_resources_t *resources) {
   resources->allocated = false;
 
   // Load template resource
-  asciichat_error_t err = load_single_resource(&resources->template_content, &resources->template_len,
-                                               get_manpage_template, "man page template");
+  asciichat_error_t err = load_single_resource(&resources->template_content, &resources->template_len, get_manpage_template, "man page template");
   if (err != ASCIICHAT_OK) {
     return err;
   }

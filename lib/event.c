@@ -293,8 +293,7 @@ static void tick_loop(uv_timer_t *timer) {
   loop->tick_fn(loop->tick_arg);
 }
 
-asciichat_error_t platform_event_loop_tick(platform_event_loop_t *loop, uint64_t interval, platform_event_task_fn fn,
-                                           void *arg) {
+asciichat_error_t platform_event_loop_tick(platform_event_loop_t *loop, uint64_t interval, platform_event_task_fn fn, void *arg) {
   if (!loop || !interval || !fn || loop->tick_initialized)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid event loop tick");
   int status = uv_timer_init(&loop->uv, &loop->tick);
@@ -323,8 +322,7 @@ static void read_stream(uv_stream_t *handle, ssize_t count, const uv_buf_t *buff
   }
 }
 
-asciichat_error_t platform_event_stream_start(platform_event_stream_t *stream, platform_event_read_fn read,
-                                              platform_event_close_fn close, void *arg) {
+asciichat_error_t platform_event_stream_start(platform_event_stream_t *stream, platform_event_read_fn read, platform_event_close_fn close, void *arg) {
   if (!stream || stream->closing || !read)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stream callbacks");
   // Retain cleanup callbacks even when configuring or starting reads fails.
@@ -407,8 +405,7 @@ static platform_event_stream_t *create_stream(uv_loop_t *loop) {
   return stream;
 }
 
-asciichat_error_t platform_event_stream_adopt(platform_event_loop_t *loop, socket_t *socket,
-                                              platform_event_stream_t **out) {
+asciichat_error_t platform_event_stream_adopt(platform_event_loop_t *loop, socket_t *socket, platform_event_stream_t **out) {
   if (!loop || !socket || !out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket adoption");
   *out = NULL;
@@ -448,8 +445,7 @@ static void accepted(uv_stream_t *handle, int status) {
   listener->accept(stream, listener->arg);
 }
 
-asciichat_error_t platform_event_listen(platform_event_loop_t *loop, socket_t *socket, platform_event_accept_fn accept,
-                                        void *arg, platform_event_listener_t **out) {
+asciichat_error_t platform_event_listen(platform_event_loop_t *loop, socket_t *socket, platform_event_accept_fn accept, void *arg, platform_event_listener_t **out) {
   if (!loop || !socket || !accept || !out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid event listener");
   *out = NULL;
@@ -491,8 +487,7 @@ static void write_complete(uv_write_t *request, int status) {
   if (stream->queue_changed)
     stream->queue_changed(stream->queue_context, stream->queued);
   --stream->writes;
-  bool recycle =
-      !stream->closing && stream->recycled_count < 8 && !write->storage.mapped && write->storage.capacity <= 256 * 1024;
+  bool recycle = !stream->closing && stream->recycled_count < 8 && !write->storage.mapped && write->storage.capacity <= 256 * 1024;
   if (recycle) {
     write->next = stream->recycled;
     stream->recycled = write;
@@ -526,8 +521,7 @@ static void submit_output(platform_event_stream_t *stream) {
   if (zerocopy && write->storage.mapped && write->size - write->offset >= SOCKET_ZEROCOPY_THRESHOLD) {
     size_t sent = 0;
     bool supported;
-    asciichat_error_t result = socket_zerocopy_try(stream_socket(stream), &write->storage, write->offset,
-                                                   write->size - write->offset, &sent, &supported);
+    asciichat_error_t result = socket_zerocopy_try(stream_socket(stream), &write->storage, write->offset, write->size - write->offset, &sent, &supported);
     if (result != ASCIICHAT_OK) {
       write_complete(&write->request, UV_EIO);
       return;
@@ -545,8 +539,7 @@ static void submit_output(platform_event_stream_t *stream) {
   }
   // No kernel-pinned submission is outstanding here. libuv handles readiness,
   // partial writes, and completion on every platform for the remaining bytes.
-  uv_buf_t buffer =
-      uv_buf_init((char *)write->storage.data + write->offset, (unsigned int)(write->size - write->offset));
+  uv_buf_t buffer = uv_buf_init((char *)write->storage.data + write->offset, (unsigned int)(write->size - write->offset));
   int status = uv_write(&write->request, (uv_stream_t *)&stream->tcp, &buffer, 1, write_complete);
   if (status < 0)
     write_complete(&write->request, status);
@@ -634,8 +627,7 @@ void platform_event_stream_request_close(platform_event_stream_t *stream, asciic
   uv_mutex_unlock(&stream->mutex);
 }
 
-asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, const socket_buffer_t *buffers,
-                                              size_t count, platform_event_write_fn done, void *arg) {
+asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, const socket_buffer_t *buffers, size_t count, platform_event_write_fn done, void *arg) {
   if (!stream || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid asynchronous write");
   size_t size = 0;
@@ -645,8 +637,7 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, c
     size += buffers[i].len;
   }
   uv_mutex_lock(&stream->mutex);
-  if (stream->closing || stream->close_requested || !size || stream->writes >= EVENT_WRITE_COUNT_LIMIT ||
-      size > EVENT_WRITE_LIMIT - stream->queued) {
+  if (stream->closing || stream->close_requested || !size || stream->writes >= EVENT_WRITE_COUNT_LIMIT || size > EVENT_WRITE_LIMIT - stream->queued) {
     uv_mutex_unlock(&stream->mutex);
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Asynchronous output queue full");
   }
@@ -709,8 +700,7 @@ size_t platform_event_stream_queued_bytes(const platform_event_stream_t *stream)
   return bytes;
 }
 
-void platform_event_stream_observe_queue(platform_event_stream_t *stream, platform_event_queue_fn observer,
-                                         void *context) {
+void platform_event_stream_observe_queue(platform_event_stream_t *stream, platform_event_queue_fn observer, void *context) {
   if (!stream)
     return;
   uv_mutex_lock(&stream->mutex);
@@ -765,8 +755,7 @@ static void loop_work_done(uv_work_t *request, int status) {
   work->done(work->arg);
   SAFE_FREE(work);
 }
-asciichat_error_t platform_event_loop_work(platform_event_loop_t *loop, platform_event_task_fn run,
-                                           platform_event_task_fn done, void *arg) {
+asciichat_error_t platform_event_loop_work(platform_event_loop_t *loop, platform_event_task_fn run, platform_event_task_fn done, void *arg) {
   if (!loop || !run || !done)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid event worker");
   loop_work_t *work = SAFE_CALLOC(1, sizeof(*work), loop_work_t *);
@@ -798,8 +787,7 @@ static void finish_work(uv_work_t *request, int status) {
   stream_closed((uv_handle_t *)&stream->tcp);
 }
 
-asciichat_error_t platform_event_stream_work(platform_event_stream_t *stream, platform_event_work_fn run,
-                                             platform_event_work_done_fn done, void *arg) {
+asciichat_error_t platform_event_stream_work(platform_event_stream_t *stream, platform_event_work_fn run, platform_event_work_done_fn done, void *arg) {
   if (!stream || stream->closing || stream->working || !run || !done)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stream work already active or closing");
   event_work_t *work = SAFE_CALLOC(1, sizeof(*work), event_work_t *);
@@ -819,8 +807,7 @@ asciichat_error_t platform_event_stream_work(platform_event_stream_t *stream, pl
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t platform_event_stream_peer(platform_event_stream_t *stream, struct sockaddr_storage *address,
-                                             socklen_t *length) {
+asciichat_error_t platform_event_stream_peer(platform_event_stream_t *stream, struct sockaddr_storage *address, socklen_t *length) {
   if (!stream || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer address output");
   int size = (int)*length;

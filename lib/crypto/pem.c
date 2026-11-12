@@ -38,45 +38,45 @@
 
 /* ========== VECTOR MACROS (from BearSSL tools) ========== */
 
-#define VECTOR(type)                                                                                                   \
-  struct {                                                                                                             \
-    type *buf;                                                                                                         \
-    size_t ptr, len;                                                                                                   \
+#define VECTOR(type)                                                                                                                                                                                   \
+  struct {                                                                                                                                                                                             \
+    type *buf;                                                                                                                                                                                         \
+    size_t ptr, len;                                                                                                                                                                                   \
   }
 
 // clang-format off
 #define VEC_INIT {0, 0, 0}
 // clang-format on
 
-#define VEC_CLEAR(vec)                                                                                                 \
-  do {                                                                                                                 \
-    SAFE_FREE((vec).buf);                                                                                              \
-    (vec).buf = NULL;                                                                                                  \
-    (vec).ptr = 0;                                                                                                     \
-    (vec).len = 0;                                                                                                     \
+#define VEC_CLEAR(vec)                                                                                                                                                                                 \
+  do {                                                                                                                                                                                                 \
+    SAFE_FREE((vec).buf);                                                                                                                                                                              \
+    (vec).buf = NULL;                                                                                                                                                                                  \
+    (vec).ptr = 0;                                                                                                                                                                                     \
+    (vec).len = 0;                                                                                                                                                                                     \
   } while (0)
 
-#define VEC_CLEAREXT(vec, fun)                                                                                         \
-  do {                                                                                                                 \
-    size_t vec_tmp;                                                                                                    \
-    for (vec_tmp = 0; vec_tmp < (vec).ptr; vec_tmp++) {                                                                \
-      (fun)(&(vec).buf[vec_tmp]);                                                                                      \
-    }                                                                                                                  \
-    VEC_CLEAR(vec);                                                                                                    \
+#define VEC_CLEAREXT(vec, fun)                                                                                                                                                                         \
+  do {                                                                                                                                                                                                 \
+    size_t vec_tmp;                                                                                                                                                                                    \
+    for (vec_tmp = 0; vec_tmp < (vec).ptr; vec_tmp++) {                                                                                                                                                \
+      (fun)(&(vec).buf[vec_tmp]);                                                                                                                                                                      \
+    }                                                                                                                                                                                                  \
+    VEC_CLEAR(vec);                                                                                                                                                                                    \
   } while (0)
 
-#define VEC_ADD(vec, x)                                                                                                \
-  do {                                                                                                                 \
-    (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &(vec).ptr, &(vec).len, 1);                              \
-    (vec).buf[(vec).ptr++] = (x);                                                                                      \
+#define VEC_ADD(vec, x)                                                                                                                                                                                \
+  do {                                                                                                                                                                                                 \
+    (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &(vec).ptr, &(vec).len, 1);                                                                                                              \
+    (vec).buf[(vec).ptr++] = (x);                                                                                                                                                                      \
   } while (0)
 
-#define VEC_ADDMANY(vec, xp, num)                                                                                      \
-  do {                                                                                                                 \
-    size_t vec_num = (num);                                                                                            \
-    (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &(vec).ptr, &(vec).len, vec_num);                        \
-    memcpy((vec).buf + (vec).ptr, (xp), vec_num * sizeof *((vec).buf));                                                \
-    (vec).ptr += vec_num;                                                                                              \
+#define VEC_ADDMANY(vec, xp, num)                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    size_t vec_num = (num);                                                                                                                                                                            \
+    (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &(vec).ptr, &(vec).len, vec_num);                                                                                                        \
+    memcpy((vec).buf + (vec).ptr, (xp), vec_num * sizeof *((vec).buf));                                                                                                                                \
+    (vec).ptr += vec_num;                                                                                                                                                                              \
   } while (0)
 
 #define VEC_ELT(vec, idx) ((vec).buf[idx])
@@ -345,8 +345,7 @@ static br_x509_certificate *read_certificates_from_memory(const unsigned char *b
       }
 
       // Check if name matches CERTIFICATE or X509 CERTIFICATE (ignoring trailing dashes)
-      if ((name_len == 11 && strncmp(name, "CERTIFICATE", 11) == 0) ||
-          (name_len == 16 && strncmp(name, "X509 CERTIFICATE", 16) == 0)) {
+      if ((name_len == 11 && strncmp(name, "CERTIFICATE", 11) == 0) || (name_len == 16 && strncmp(name, "X509 CERTIFICATE", 16) == 0)) {
         br_x509_certificate xc;
         xc.data = pos[u].data;
         xc.data_len = pos[u].data_len;

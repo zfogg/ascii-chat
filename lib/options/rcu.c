@@ -393,8 +393,7 @@ asciichat_error_t options_state_init(void) {
   }
 
   // Check if already initialized in this process using lifecycle
-  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid &&
-      atomic_ptr_load(&g_options) != NULL) {
+  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid && atomic_ptr_load(&g_options) != NULL) {
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
@@ -672,9 +671,7 @@ bool options_remote_render_field(const char *name) {
   const runtime_field_t *field = find_field(name);
   if (!field)
     return false;
-  const char *allowed[] = {
-      "width",          "height",           "fps",      "color_mode", "color_filter", "render_mode", "palette_type",
-      "palette_custom", "palette_explicit", "renderer", "stabilize",  "matrix_rain"};
+  const char *allowed[] = {"width", "height", "fps", "color_mode", "color_filter", "render_mode", "palette_type", "palette_custom", "palette_explicit", "renderer", "stabilize", "matrix_rain"};
   for (size_t i = 0; i < sizeof(allowed) / sizeof(*allowed); ++i)
     if (!strcmp(field->name, allowed[i]))
       return true;
@@ -682,27 +679,22 @@ bool options_remote_render_field(const char *name) {
 }
 
 static asciichat_error_t validate_field(const runtime_field_t *field, const options_t *candidate) {
-  if (!strcmp(field->name, "audio_source") &&
-      (candidate->audio_source < AUDIO_SOURCE_ALL || candidate->audio_source > AUDIO_SOURCE_MEDIA))
+  if (!strcmp(field->name, "audio_source") && (candidate->audio_source < AUDIO_SOURCE_ALL || candidate->audio_source > AUDIO_SOURCE_MEDIA))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option 'audio_source'");
   const registry_entry_t *entry = registry_find_entry_by_name(field->cli);
   const char *ptr = (const char *)candidate + field->offset;
   if (entry && entry->validate_fn && !entry->validate_fn(candidate))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option '%s'", field->name);
   if (field->type == OPTIONS_VALUE_INT || field->type == OPTIONS_VALUE_DOUBLE) {
-    double value = field->type == OPTIONS_VALUE_INT ? *(const int *)ptr
-                   : field->size == sizeof(float)   ? *(const float *)ptr
-                                                    : *(const double *)ptr;
+    double value = field->type == OPTIONS_VALUE_INT ? *(const int *)ptr : field->size == sizeof(float) ? *(const float *)ptr : *(const double *)ptr;
     if (!isfinite(value))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Nonfinite option '%s'", field->name);
     // Zero disables Zalgo at runtime; the CLI's explicit intensity starts at one.
     if (!strcmp(field->name, "zalgo") && value == 0)
       return ASCIICHAT_OK;
-    if (entry && (entry->metadata.numeric_range.min || entry->metadata.numeric_range.max) &&
-        (value < entry->metadata.numeric_range.min || value > entry->metadata.numeric_range.max))
+    if (entry && (entry->metadata.numeric_range.min || entry->metadata.numeric_range.max) && (value < entry->metadata.numeric_range.min || value > entry->metadata.numeric_range.max))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' is out of range", field->name);
-    if (field->type == OPTIONS_VALUE_INT && entry && entry->metadata.enum_values &&
-        entry->metadata.input_type == OPTION_INPUT_ENUM) {
+    if (field->type == OPTIONS_VALUE_INT && entry && entry->metadata.enum_values && entry->metadata.input_type == OPTION_INPUT_ENUM) {
       bool found = false;
       for (size_t i = 0; entry->metadata.enum_values[i]; ++i) {
         int enum_value = entry->metadata.enum_integer_values ? entry->metadata.enum_integer_values[i] : (int)i;
@@ -753,8 +745,7 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
     if (!strcmp(field->name, "flip_x"))
       candidate->flip_x_explicit = true;
     // An animation selection is one coherent change, including its exclusions.
-    if (value &&
-        (!strcmp(field->name, "matrix_rain") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft"))) {
+    if (value && (!strcmp(field->name, "matrix_rain") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft"))) {
       candidate->matrix_rain = !strcmp(field->name, "matrix_rain");
       candidate->waveform = !strcmp(field->name, "waveform");
       candidate->fft = !strcmp(field->name, "fft");
@@ -796,15 +787,12 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate,
-                                        bool remote_only) {
-  if (!current || !candidate || current == candidate || !patch || !patch->edits || !patch->count ||
-      patch->count > OPTIONS_PATCH_MAX_EDITS)
+asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate, bool remote_only) {
+  if (!current || !candidate || current == candidate || !patch || !patch->edits || !patch->count || patch->count > OPTIONS_PATCH_MAX_EDITS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid options patch");
   *candidate = *current;
   for (size_t i = 0; i < patch->count; ++i) {
-    if (remote_only &&
-        (!options_remote_render_field(patch->edits[i].name) || patch->edits[i].operation != OPTIONS_ASSIGN))
+    if (remote_only && (!options_remote_render_field(patch->edits[i].name) || patch->edits[i].operation != OPTIONS_ASSIGN))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option is not a remote render preference");
     asciichat_error_t error = edit_candidate(candidate, &patch->edits[i]);
     if (error != ASCIICHAT_OK)
@@ -912,12 +900,10 @@ asciichat_error_t options_toggle(const char *name) {
   return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_BOOL, .operation = OPTIONS_TOGGLE});
 }
 asciichat_error_t options_adjust(const char *name, double amount) {
-  return apply_one(
-      (options_edit_t){.name = name, .type = OPTIONS_VALUE_DOUBLE, .operation = OPTIONS_ADD, .value.number = amount});
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_DOUBLE, .operation = OPTIONS_ADD, .value.number = amount});
 }
 asciichat_error_t options_cycle(const char *name, int count) {
-  return apply_one(
-      (options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .operation = OPTIONS_CYCLE, .value.integer = count});
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .operation = OPTIONS_CYCLE, .value.integer = count});
 }
 
 static void *json_allocate(void *context, size_t size) {
@@ -935,8 +921,7 @@ static void json_release(void *context, void *ptr) {
 }
 static const yyjson_alc runtime_json_allocator = {json_allocate, json_reallocate, json_release, NULL};
 
-static asciichat_error_t parse_json_edits(const char *json, size_t length, yyjson_doc **doc, options_edit_t *edits,
-                                          size_t *count) {
+static asciichat_error_t parse_json_edits(const char *json, size_t length, yyjson_doc **doc, options_edit_t *edits, size_t *count) {
   if (!json || !length || length > 4096)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid settings payload size");
   *doc = yyjson_read_opts((char *)json, length, 0, &runtime_json_allocator, NULL);
@@ -984,8 +969,7 @@ static asciichat_error_t parse_json_edits(const char *json, size_t length, yyjso
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t options_prepare_json(const options_t *current, const char *json, size_t length, options_t *candidate,
-                                       bool remote_only) {
+asciichat_error_t options_prepare_json(const options_t *current, const char *json, size_t length, options_t *candidate, bool remote_only) {
   yyjson_doc *doc = NULL;
   options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
   size_t count = 0;
@@ -997,8 +981,7 @@ asciichat_error_t options_prepare_json(const options_t *current, const char *jso
   return error;
 }
 
-asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t expected_revision,
-                                     options_origin_t origin, options_patch_result_t *result) {
+asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t expected_revision, options_origin_t origin, options_patch_result_t *result) {
   yyjson_doc *doc = NULL;
   options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
   size_t count = 0;
@@ -1019,12 +1002,9 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only &&
-        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
-         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
-         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
-         !strcmp(field->name, "audio_enabled")))
+    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") || !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
+                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
+                         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
       exposed = true;
     if (!exposed)
       continue;
@@ -1037,8 +1017,7 @@ char *options_values_json(const options_t *values, bool remote_only) {
       yyjson_mut_obj_add_bool(doc, root, field->name, *(const bool *)ptr);
       break;
     case OPTIONS_VALUE_DOUBLE:
-      yyjson_mut_obj_add_real(doc, root, field->name,
-                              field->size == sizeof(float) ? *(const float *)ptr : *(const double *)ptr);
+      yyjson_mut_obj_add_real(doc, root, field->name, field->size == sizeof(float) ? *(const float *)ptr : *(const double *)ptr);
       break;
     case OPTIONS_VALUE_STRING:
       yyjson_mut_obj_add_str(doc, root, field->name, ptr);
