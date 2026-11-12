@@ -197,10 +197,10 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/strings.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/parsers.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
-    ${LIB_ROOT}/options/colorscheme.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
-    ${LIB_ROOT}/options/layout.c
-    ${LIB_ROOT}/options/levenshtein.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/layout.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/levenshtein.c
     ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     ${CMAKE_SOURCE_DIR}/src/common/options/completions/completions.c
     ${CMAKE_SOURCE_DIR}/src/common/options/completions/bash.c

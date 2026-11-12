@@ -87,14 +87,14 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/shortcuts.c
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
-    ${LIB_DIR}/options/colorscheme.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
     ${CMAKE_SOURCE_DIR}/src/common/options/options.c
     ${CMAKE_SOURCE_DIR}/src/common/options/common.c
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${CMAKE_SOURCE_DIR}/src/common/options/strings.c
-    ${LIB_DIR}/options/levenshtein.c
     ${CMAKE_SOURCE_DIR}/src/common/options/runtime.c
-    ${LIB_DIR}/options/layout.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/layout.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/levenshtein.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
     ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     # options/builder/
