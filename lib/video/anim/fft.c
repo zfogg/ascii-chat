@@ -32,6 +32,8 @@ static double fftw_input[FFT_SIZE];
 static fftw_complex fftw_output[FFT_SIZE / 2 + 1];
 static fftw_plan fftw_forward;
 extern static_mutex_t audio_fftw_planner_lock;
+static float fft_window[FFT_SIZE];
+static bool fft_window_ready;
 
 static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
   parsed->mode = FFT_SCALE_DB;
@@ -67,6 +69,11 @@ asciichat_error_t audio_visualization_fft_init(void) {
     static_mutex_lock(&audio_fftw_planner_lock);
     fftw_forward = fftw_plan_dft_r2c_1d(FFT_SIZE, fftw_input, fftw_output, FFTW_ESTIMATE);
     static_mutex_unlock(&audio_fftw_planner_lock);
+  }
+  if (!fft_window_ready) {
+    for (size_t i = 0; i < FFT_SIZE; i++)
+      fft_window[i] = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
+    fft_window_ready = true;
   }
   bool ready = fftw_forward != NULL;
   static_mutex_unlock(&fftw_mutex);
@@ -118,27 +125,27 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   memset(cells, ' ', cell_count);
   memset(colors, 0, cell_count * 3);
 
-  /* Compute one current spectrum per display frame.  The previous implementation
-   * recomputed the same 1024-point FFT once per terminal column, which made the
-   * visualization scale with terminal width and prevented a real 60 Hz update. */
+  /* Preserve the time-history layout: each column is a spectrum from a different
+   * overlapping window in the captured audio history. */
   float windowed[FFT_SIZE], magnitude[FFT_SIZE / 2 + 1];
   fft_scale_t scale;
   if (!parse_fft_scale_value(GET_OPTION(fft_scale), &scale))
     scale = (fft_scale_t){.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
   static const char levels[] = " .:-=+*#%@";
   const unsigned int spectrum_height = height;
-  size_t start = VISUALIZATION_HISTORY - FFT_SIZE;
-  for (size_t i = 0; i < FFT_SIZE; i++) {
-    float window = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
-    windowed[i] = samples[start + i] * window;
-  }
-  if (!visualization_fft(windowed, magnitude)) {
-    SAFE_FREE(samples);
-    static_mutex_unlock(&fft_cache_mutex);
-    return NULL;
-  }
-
   for (unsigned int x = 0; x < width; x++) {
+    size_t center = (size_t)x * (VISUALIZATION_HISTORY - 1) / (width - 1);
+    size_t start = center > FFT_SIZE / 2 ? center - FFT_SIZE / 2 : 0;
+    if (start + FFT_SIZE > VISUALIZATION_HISTORY)
+      start = VISUALIZATION_HISTORY - FFT_SIZE;
+    for (size_t i = 0; i < FFT_SIZE; i++)
+      windowed[i] = samples[start + i] * fft_window[i];
+    if (!visualization_fft(windowed, magnitude)) {
+      SAFE_FREE(samples);
+      static_mutex_unlock(&fft_cache_mutex);
+      return NULL;
+    }
+
     for (unsigned int row = 0; row < spectrum_height; row++) {
       float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
       float bottom_fraction = (float)(spectrum_height - row) / (float)spectrum_height;
