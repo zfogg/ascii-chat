@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 INSTALLER = ROOT / "scripts" / "install-llvm-dev.ps1"
 MEMBERS = (
     "include/llvm/Support/CommandLine.h",

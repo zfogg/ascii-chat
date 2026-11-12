@@ -245,7 +245,8 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
   log_debug("Starting splash with display context");
 
   // Use the display context we just created for splash animation
-  splash_intro_start(state->display);
+  if (splash_should_display(true))
+    splash_intro_start(state->display);
   if (splash_is_running()) {
     log_set_terminal_output(false);
   }

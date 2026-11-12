@@ -552,6 +552,8 @@ int main(int argc, char *argv[]) {
       .config_directory = "ascii-chat",
       .data_directory = "ascii-chat",
   };
+  // Register the application identity before options_init() so libplatform's
+  // automatic config search uses %APPDATA%\\ascii-chat, not its generic default.
   (void)platform_set_application_config(&platform_config);
 
   asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);

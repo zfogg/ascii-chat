@@ -1400,12 +1400,21 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     if (desc->env_var_name) {
       env_value = SAFE_GETENV(desc->env_var_name);
     }
+    // Windows' environment wrapper returns an empty string for a missing
+    // variable. Treat that the same as an unset variable so empty process
+    // environment entries do not override option defaults.
+    if (env_value && env_value[0] == '\0') {
+      env_value = NULL;
+    }
     // Check shorter alias names as fallback if primary not set
     if (!env_value) {
       if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_PORT") == 0) {
         env_value = SAFE_GETENV("PORT");
       } else if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
         env_value = SAFE_GETENV("WS_PORT");
+      }
+      if (env_value && env_value[0] == '\0') {
+        env_value = NULL;
       }
     }
 

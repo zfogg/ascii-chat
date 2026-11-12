@@ -498,6 +498,13 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     g_probe_requested_ns = time_get_ns();
   size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
   bool ended = g_help_sync_open || !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+  if (superseded && ended) {
+    // A prompt can take ownership while a large media frame is being sent.
+    // The frame is deliberately allowed to stop at a row boundary, but its
+    // already-presented rows must not remain underneath the prompt.
+    static const char clear_aborted_media[] = "\033[r\033[0m\033[2J\033[H";
+    ended = write_output_chunk(fd, clear_aborted_media, sizeof(clear_aborted_media) - 1) == sizeof(clear_aborted_media) - 1;
+  }
   if (!ended)
     g_probe_requested_ns = 0;
   // Switching screens intentionally cancels the remainder of an old media frame.

@@ -20,12 +20,22 @@
 // NETWORK CATEGORY - Network protocol options
 // ============================================================================
 static bool parse_mcp_bind(const char *arg, void *field, char **error) {
-  options_t *opts = (options_t *)((char *)field - offsetof(options_t, address));
-  return parse_server_bind_address(arg, opts, NULL, 0, error) == 1;
+  if (!arg || !field || (!is_valid_ipv4(arg) && !is_valid_ipv6(arg))) {
+    if (error)
+      *error = platform_strdup("Bind address must be a numeric IPv4 or IPv6 address");
+    return false;
+  }
+  SAFE_STRNCPY((char *)field, arg, OPTIONS_BUFF_SIZE);
+  return true;
 }
 static bool parse_mcp_bind6(const char *arg, void *field, char **error) {
-  options_t *opts = (options_t *)((char *)field - offsetof(options_t, address6));
-  return parse_server_bind_address(arg, opts, NULL, 0, error) == 1;
+  if (!arg || !field || (!is_valid_ipv4(arg) && !is_valid_ipv6(arg))) {
+    if (error)
+      *error = platform_strdup("Bind address must be a numeric IPv4 or IPv6 address");
+    return false;
+  }
+  SAFE_STRNCPY((char *)field, arg, OPTIONS_BUFF_SIZE);
+  return true;
 }
 static bool validate_webrtc_bind_address(const void *data) {
   const char *address = ((const options_t *)data)->webrtc_bind_address;

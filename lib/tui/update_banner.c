@@ -413,11 +413,16 @@ static void update_child_exited(uv_process_t *process, int64_t status, int signa
 }
 
 // A separate process can be terminated on shutdown even while DNS or TLS is blocked.
-static asciichat_error_t update_check_background(update_check_result_t *result) {
+static asciichat_error_t update_check_background(update_check_result_t *result, bool *used_cache) {
+  if (used_cache)
+    *used_cache = false;
   if (shutdown_is_requested() || atomic_load(&g_update_cancel_requested))
     return ERROR_SIGNAL_INTERRUPT;
-  if (update_check_try_fresh_cache(result))
+  if (update_check_try_fresh_cache(result)) {
+    if (used_cache)
+      *used_cache = true;
     return ASCIICHAT_OK;
+  }
   char executable[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(executable, sizeof(executable)))
     return SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot locate executable for background update check");
@@ -473,12 +478,13 @@ static void *update_check_thread_func(void *arg) {
   bool force = arg != NULL;
   uint64_t visible_until = time_get_ns() + 2 * NS_PER_SEC_INT;
   update_check_result_t result;
+  bool used_cache = false;
   bool background = !force && !splash_should_display(true) && (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT || GET_OPTION(detected_mode) == MODE_DISCOVERY);
   asciichat_error_t err;
   if (background) {
     asciichat_errno_scope_t scope = errno_scope_begin();
     bool previous_notifications = errno_notifications_suppress(true);
-    err = update_check_background(&result);
+    err = update_check_background(&result, &used_cache);
     if (err != ASCIICHAT_OK && err != ERROR_SIGNAL_INTERRUPT)
       log_debug("Automatic update check failed: %s", asciichat_error_string(err));
     errno_notifications_suppress(previous_notifications);
@@ -505,7 +511,10 @@ static void *update_check_thread_func(void *arg) {
       log_info("%s", notification);
       splash_set_update_notification(notification);
     } else {
-      log_info("Already on latest version: %s", result.current_version);
+      if (used_cache)
+        log_info("Using cached update check result: %s", result.current_version);
+      else
+        log_info("Already on latest version: %s", result.current_version);
     }
 
     // Store every terminal state for the reusable update overlay.

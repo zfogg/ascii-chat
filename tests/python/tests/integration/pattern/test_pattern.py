@@ -7,6 +7,7 @@ import sys
 import time
 
 import pytest
+from ascii_chat_tests.cli import cli_command
 from ascii_chat_tests.terminal import Terminal
 
 pytestmark = [pytest.mark.integration, pytest.mark.native]
@@ -64,16 +65,15 @@ def test_test_pattern_stdout_is_valid_utf8_for_five_seconds(binary, test_environ
         term.close()
 
 
-def test_test_pattern_200x100_has_stable_vertical_bounds(binary, test_environment):
-    """A large live frame must not bounce when diagnostics interleave output."""
-    term = Terminal([
-        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "--audio=false",
-        "--width", "200", "--height", "100", "--splash-screen=false",
-    ], rows=100, cols=200, environment=test_environment)
+def test_webcam_200x100_has_stable_vertical_bounds(binary, test_environment):
+    """A live webcam-sized frame must not move vertically during a long run."""
+    term = Terminal(cli_command(
+        binary, "mirror", "--test-pattern", "--audio=false", "--width", "200", "--height", "100",
+    ), rows=100, cols=200, environment=test_environment)
     started = False
     samples = 0
     try:
-        deadline = time.monotonic() + 5.0
+        deadline = time.monotonic() + 20.0
         while time.monotonic() < deadline:
             try:
                 chunk = term.output.get(timeout=0.1)

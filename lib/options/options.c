@@ -1535,9 +1535,15 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
     for (int i = mode_index + 1; i < argc; i++) {
       bool takes_arg = false;
       bool takes_optional_arg = false;
-
       // Check if this is a binary-level option (shouldn't appear after mode)
-      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+      bool binary_level = is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg);
+      // API/MCP bind options are mode options even when they precede the mode.
+      // Keep them available to the mode parser instead of dropping them with
+      // binary-level options.
+      const char *arg_name = argv[i];
+      if (strncmp(arg_name, "--address", 9) == 0 || strncmp(arg_name, "--address6", 10) == 0 || strncmp(arg_name, "--port", 6) == 0)
+        binary_level = false;
+      if (binary_level) {
         // Skip binary-level option and its argument if needed
         if (!strchr(argv[i], '=') && i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument

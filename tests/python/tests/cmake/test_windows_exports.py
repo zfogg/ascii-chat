@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[3]
+ROOT = pathlib.Path(__file__).resolve().parents[4]
 
 
 @unittest.skipUnless(shutil.which("clang") and shutil.which("llvm-nm") and shutil.which("cmake"),

@@ -301,15 +301,10 @@ static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animat
 }
 
 static void draw_media(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
+  (void)size;
   (void)animation;
   ui_session_t *s = context;
   frame_buffer_append(output, frame_buffer_get_content(s->media), frame_buffer_get_length(s->media));
-  if (frame_buffer_get_length(s->media) && GET_OPTION(fps_counter)) {
-    unsigned frames = 0;
-    for (unsigned i = 0; i < 120; ++i)
-      frames += s->presentation_times[i] && s->last_render_ns - s->presentation_times[i] < 1000000000ULL;
-    frame_buffer_printf(output, "\033[1;%dH\033[0mFPS: %3u", size.cols > 9 ? size.cols - 8 : 1, frames);
-  }
 }
 
 const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {

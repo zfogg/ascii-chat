@@ -1111,9 +1111,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-    const char *cursor_home_sequence = "\033[H";
+    // Media output must not inherit a scrolling region left by another UI
+    // screen or by terminal-side diagnostic handling. A plain home command
+    // homes within that region, so a later frame can begin on a different
+    // physical row after the terminal scrolls.
+    const char *cursor_home_sequence = "\033[r\033[H";
     const char *erase_below_sequence = "\033[J";
-    size_t cursor_seq_len = 3;
+    size_t cursor_seq_len = 6;
     size_t erase_below_len = 3;
     // The frame is shorter than the terminal in some configurations.  Erase
     // from the final frame cursor to the bottom of the screen in the same
