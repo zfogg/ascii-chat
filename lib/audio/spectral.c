@@ -180,7 +180,9 @@ static void correct_pitch(spectral_processor_t *p) {
     double frequency = (expected + delta) / hop;
     int target = (int)round(k * factor);
     if (target <= n / 2) {
-      double magnitude = hypot(p->frequency[k][0], p->frequency[k][1]);
+      double re = p->frequency[k][0];
+      double im = p->frequency[k][1];
+      double magnitude = sqrt(re * re + im * im);
       p->shifted_magnitude[target] += magnitude;
       p->shifted_frequency[target] += magnitude * frequency * factor;
     }
