@@ -94,8 +94,7 @@ asciichat_error_t audio_visualization_fft_init(void) {
     int inembed[] = {FFT_SIZE};
     int onembed[] = {FFT_SIZE / 2 + 1};
     static_mutex_lock(&audio_fftw_planner_lock);
-    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1,
-                                            FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
+    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1, FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
     static_mutex_unlock(&audio_fftw_planner_lock);
   }
   bool ready = fftwf_forward != NULL;
