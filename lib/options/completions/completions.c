@@ -14,12 +14,41 @@
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <libflags/builder.h>
+#include <libflags/completions/completions.h>
 
 /* Forward declarations for format-specific generators */
 asciichat_error_t completions_generate_bash(FILE *output);
 asciichat_error_t completions_generate_fish(FILE *output);
 asciichat_error_t completions_generate_zsh(FILE *output);
 asciichat_error_t completions_generate_powershell(FILE *output);
+
+/**
+ * Generate the portable shell formats from the shared libflags schema.
+ *
+ * ascii-chat owns the registry and its mode-specific metadata; libflags owns
+ * the shell syntax and escaping for the common option list.  PowerShell is
+ * kept on the ascii-chat path until libflags grows a PowerShell backend.
+ */
+static asciichat_error_t completions_generate_with_libflags(completion_format_t format, FILE *output) {
+  const options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
+  if (!config)
+    return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
+
+  flags_schema_builder_t *builder = options_config_build_flags_schema(config);
+  if (!builder) {
+    options_config_destroy((options_config_t *)config);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
+  }
+
+  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH   ? FLAGS_COMPLETION_BASH
+                                   : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH
+                                                                      : FLAGS_COMPLETION_ZSH;
+  bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
+  flags_schema_builder_destroy(builder);
+  options_config_destroy((options_config_t *)config);
+  return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
+}
 
 asciichat_error_t completions_generate_for_shell(completion_format_t format, FILE *output) {
   if (!output) {
@@ -28,11 +57,9 @@ asciichat_error_t completions_generate_for_shell(completion_format_t format, FIL
 
   switch (format) {
   case COMPLETION_FORMAT_BASH:
-    return completions_generate_bash(output);
   case COMPLETION_FORMAT_FISH:
-    return completions_generate_fish(output);
   case COMPLETION_FORMAT_ZSH:
-    return completions_generate_zsh(output);
+    return completions_generate_with_libflags(format, output);
   case COMPLETION_FORMAT_POWERSHELL:
     return completions_generate_powershell(output);
   default:
