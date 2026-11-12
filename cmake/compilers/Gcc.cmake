@@ -13,6 +13,10 @@ function(configure_gcc_pre_project)
         list(GET _pair 1 _value)
         set(${_name} "${_value}" CACHE FILEPATH "GCC tool" FORCE)
     endforeach()
+    if(WIN32 AND NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
+        set(VCPKG_TARGET_TRIPLET x64-mingw-dynamic CACHE STRING
+            "vcpkg target triplet for the MinGW GCC toolchain")
+    endif()
     message(STATUS "Using GCC toolchain: ${CMAKE_C_COMPILER}")
 endfunction()
 
