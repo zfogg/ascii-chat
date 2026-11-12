@@ -93,7 +93,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${LIB_DIR}/options/strings.c
     ${LIB_DIR}/options/levenshtein.c
-    ${LIB_DIR}/options/rcu.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/runtime.c
     ${LIB_DIR}/options/layout.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
     ${CMAKE_SOURCE_DIR}/src/common/options/help.c
