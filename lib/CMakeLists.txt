@@ -98,9 +98,9 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
     ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     # options/builder/
-    ${LIB_DIR}/options/builder/builder.c
-    ${LIB_DIR}/options/builder/handlers.c
-    ${LIB_DIR}/options/builder/help.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/builder.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/handlers.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/help.c
     # options/config/
     ${CMAKE_SOURCE_DIR}/src/common/options/config/config.c
     ${CMAKE_SOURCE_DIR}/src/common/options/config/schema.c
@@ -124,26 +124,26 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/public_api.c
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/mode_defaults.c
     # options/parsing/
-    ${LIB_DIR}/options/parsing/parsers.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing/parsers.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/actions.c
     # options/manpage/
-    ${LIB_DIR}/options/manpage/embedded.c
-    ${LIB_DIR}/options/manpage/resources.c
-    ${LIB_DIR}/options/manpage/parser.c
-    ${LIB_DIR}/options/manpage/formatter.c
-    ${LIB_DIR}/options/manpage/merger.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/embedded.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/resources.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/parser.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/formatter.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/merger.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/options.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/environment.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/usage.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/examples.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/positional.c
     # options/completions/
-    ${LIB_DIR}/options/completions/completions.c
-    ${LIB_DIR}/options/completions/bash.c
-    ${LIB_DIR}/options/completions/fish.c
-    ${LIB_DIR}/options/completions/zsh.c
-    ${LIB_DIR}/options/completions/powershell.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/completions.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/bash.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/fish.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/zsh.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/powershell.c
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)

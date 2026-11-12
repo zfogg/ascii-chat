@@ -195,25 +195,25 @@ set(LIB_SRC_COMMON
     ${CMAKE_SOURCE_DIR}/src/common/options/common.c
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${LIB_ROOT}/options/strings.c
-    ${LIB_ROOT}/options/parsing/parsers.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing/parsers.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
     ${LIB_ROOT}/options/colorscheme.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage.c
     ${LIB_ROOT}/options/layout.c
     ${LIB_ROOT}/options/levenshtein.c
     ${CMAKE_SOURCE_DIR}/src/common/options/help.c
-    ${LIB_ROOT}/options/completions/completions.c
-    ${LIB_ROOT}/options/completions/bash.c
-    ${LIB_ROOT}/options/completions/fish.c
-    ${LIB_ROOT}/options/completions/zsh.c
-    ${LIB_ROOT}/options/completions/powershell.c
-    ${LIB_ROOT}/options/builder/builder.c
-    ${LIB_ROOT}/options/builder/handlers.c
-    ${LIB_ROOT}/options/builder/help.c
-    ${LIB_ROOT}/options/manpage/formatter.c
-    ${LIB_ROOT}/options/manpage/merger.c
-    ${LIB_ROOT}/options/manpage/parser.c
-    ${LIB_ROOT}/options/manpage/resources.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/completions.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/bash.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/fish.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/zsh.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/completions/powershell.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/builder.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/handlers.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/builder/help.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/formatter.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/merger.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/parser.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/manpage/resources.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/environment.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/examples.c
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/options.c
