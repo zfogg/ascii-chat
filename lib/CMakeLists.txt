@@ -24,7 +24,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
 set(CORE_SRCS
-    /deps/libplatform/lib/posix/system.c
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
     ${LIB_DIR}/media/input.c
