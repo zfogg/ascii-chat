@@ -2,6 +2,19 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
 function(configure_msvc_pre_project)
+    # Native cl.exe cannot parse the repository's defer marker syntax. Use the
+    # standalone Python/libclang transformer for C sources, then compile the
+    # generated sources with cl.exe as usual.
+    find_program(_msvc_python python3 python)
+    find_file(_msvc_libclang libclang.dll
+        PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "C:/Program Files/LLVM/bin")
+    if(NOT _msvc_python OR NOT _msvc_libclang)
+        message(FATAL_ERROR "MSVC builds require Python and LLVM libclang.dll for defer source transformation")
+    endif()
+    set(DEFER_BACKEND PYTHON CACHE STRING "defer transformer backend" FORCE)
+    set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
+    set(DEFER_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "defer Python interpreter" FORCE)
+    set(DEFER_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     find_program(_vswhere vswhere PATHS "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer" "C:/Program Files (x86)/Microsoft Visual Studio/Installer")
     if(_vswhere)
         execute_process(COMMAND "${_vswhere}" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath OUTPUT_VARIABLE _vs_root OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
@@ -25,6 +38,10 @@ function(configure_msvc_pre_project)
     find_file(_dumpbin dumpbin.exe PATHS "${_msvc_bin}" NO_DEFAULT_PATH REQUIRED)
     set(CMAKE_C_COMPILER "${_cl}" CACHE FILEPATH "MSVC C compiler" FORCE)
     set(CMAKE_CXX_COMPILER "${_cl}" CACHE FILEPATH "MSVC C++ compiler" FORCE)
+    # CMake's stock MSVC Debug flags add /RTC1, which conflicts with the
+    # optimized SIMD translation units used by ascii-chat.
+    set(CMAKE_C_FLAGS_DEBUG "/Od /Zi" CACHE STRING "MSVC Debug C flags" FORCE)
+    set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi" CACHE STRING "MSVC Debug C++ flags" FORCE)
     set(ASCIICHAT_MSVC_LINK_EXECUTABLE "${_link}" CACHE FILEPATH "MSVC linker" FORCE)
     set(ASCIICHAT_MSVC_LIB_EXECUTABLE "${_lib}" CACHE FILEPATH "MSVC librarian" FORCE)
     set(ASCIICHAT_MSVC_DUMPBIN_EXECUTABLE "${_dumpbin}" CACHE FILEPATH "MSVC dumpbin" FORCE)
