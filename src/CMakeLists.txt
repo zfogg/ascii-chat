@@ -132,6 +132,9 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
         ascii-chat-core
         ascii-chat-panic
         ascii-chat-platform
+        # Keep the mapped libplatform target explicit for static/object-library
+        # link branches; its symbols are not carried by the object targets.
+        libplatform
     )
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
