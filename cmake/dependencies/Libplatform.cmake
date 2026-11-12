@@ -25,15 +25,9 @@ set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
     GIT_TAG 2f176043d7655e5c5e2a1fe44dfb39411c0bcb48
-    SOURCE_DIR "${_ascii_chat_libplatform_source}")
-FetchContent_GetProperties(libplatform)
-if(NOT libplatform_POPULATED)
-    FetchContent_Populate(libplatform)
-endif()
-if(NOT TARGET libplatform)
-    add_subdirectory("${libplatform_SOURCE_DIR}"
-                     "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
-endif()
+    SOURCE_DIR "${_ascii_chat_libplatform_source}"
+    BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
+FetchContent_MakeAvailable(libplatform)
 
 target_include_directories(asciichat-project-includes INTERFACE
     "${_ascii_chat_libplatform_source}/lib")
