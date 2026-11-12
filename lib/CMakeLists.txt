@@ -88,9 +88,9 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
-    ${LIB_DIR}/options/options.c
-    ${LIB_DIR}/options/common.c
-    ${LIB_DIR}/options/enums.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/common.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${LIB_DIR}/options/strings.c
     ${LIB_DIR}/options/levenshtein.c
     ${LIB_DIR}/options/rcu.c
@@ -105,7 +105,7 @@ set(CORE_SRCS
     ${LIB_DIR}/options/config/config.c
     ${LIB_DIR}/options/config/schema.c
     ${LIB_DIR}/options/config/presets.c
-    ${LIB_DIR}/options/json.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/json.c
     # options/registry/
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/metadata.c
     ${CMAKE_SOURCE_DIR}/src/common/options/registry/general.c

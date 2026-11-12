@@ -191,9 +191,9 @@ set(LIB_SRC_COMMON
     # Options system
     ${LIB_ROOT}/options/rcu.c
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
-    ${LIB_ROOT}/options/options.c
-    ${LIB_ROOT}/options/common.c
-    ${LIB_ROOT}/options/enums.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/common.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${LIB_ROOT}/options/strings.c
     ${LIB_ROOT}/options/parsing/parsers.c
     ${LIB_ROOT}/options/parsing/validation.c
