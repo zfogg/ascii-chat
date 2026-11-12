@@ -24,7 +24,10 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 6f39f12e5e16654dd3bd3d2c5bd1d14ba9df4ef0
+    # Keep the cache clone on the mapped libplatform revision used by the
+    # repository submodule. The copied compatibility files below are layered
+    # onto this exact source, so headers and implementation stay in sync.
+    GIT_TAG 6cf051cb5ba96a24452afe6e9fd45d0853d415bc
     SOURCE_DIR "${_ascii_chat_libplatform_source}")
 FetchContent_MakeAvailable(libplatform)
 
