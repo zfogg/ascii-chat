@@ -260,19 +260,36 @@ function(configure_asan_ubsan_sanitizers)
             # Linux - includes LeakSanitizer
             # Use -shared-libsan to link sanitizer runtimes as shared libraries
             # This is required when the main binary loads shared libraries that are also sanitized
-            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
-                -fsanitize=address
-                -fsanitize=undefined
-                -fsanitize=leak
-                -fsanitize=integer
-                -fsanitize=nullability
-                -fsanitize=implicit-conversion
-                -fsanitize=float-divide-by-zero
-                -fsanitize-address-use-after-scope
-                -fno-omit-frame-pointer
-                -fno-optimize-sibling-calls
-                -shared-libsan
-            )
+            if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+                # GCC does not implement Clang's integer, nullability, or
+                # implicit-conversion sanitizer groups.
+                list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                )
+            else()
+                list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                    -shared-libsan
+                )
+            endif()
             # Find the clang runtime library directory for rpath
             # First try --print-runtime-dir (may return non-existent path on some systems)
             execute_process(
