@@ -723,6 +723,7 @@ target_link_libraries(ascii-chat-core PRIVATE
     ${UTF8PROC_LIBRARIES}
     libflags::flags
 )
+target_include_directories(ascii-chat-core PRIVATE "${libflags_SOURCE_DIR}/include")
 
 # PCRE2: Configure for core module (for session string format validation)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
