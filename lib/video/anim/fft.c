@@ -29,9 +29,9 @@ static struct {
 } fft_cache;
 
 static static_mutex_t fftw_mutex = STATIC_MUTEX_INIT;
-static double fftw_input[FFT_MAX_COLUMNS * FFT_SIZE];
-static fftw_complex fftw_output[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
-static fftw_plan fftw_forward;
+static float fftwf_input[FFT_MAX_COLUMNS * FFT_SIZE];
+static fftwf_complex fftwf_output[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
+static fftwf_plan fftwf_forward;
 static unsigned int fftw_plan_columns;
 extern static_mutex_t audio_fftw_planner_lock;
 static float fft_window[FFT_SIZE];
@@ -96,33 +96,33 @@ asciichat_error_t audio_visualization_fft_init(void) {
 
 static bool visualization_fft_batch(const float *const input, unsigned int columns, float *power_spectrum) {
   static_mutex_lock(&fftw_mutex);
-  if (!fftw_forward || fftw_plan_columns != columns) {
-    if (fftw_forward)
-      fftw_destroy_plan(fftw_forward);
+  if (!fftwf_forward || fftw_plan_columns != columns) {
+    if (fftwf_forward)
+      fftwf_destroy_plan(fftwf_forward);
     int n[] = {FFT_SIZE};
     int howmany = (int)columns;
     int inembed[] = {FFT_SIZE};
     int onembed[] = {FFT_SIZE / 2 + 1};
     static_mutex_lock(&audio_fftw_planner_lock);
-    fftw_forward = fftw_plan_many_dft_r2c(1, n, howmany, fftw_input, inembed, 1, FFT_SIZE, fftw_output, onembed, 1,
-                                          FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
+    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1,
+                                            FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
     static_mutex_unlock(&audio_fftw_planner_lock);
-    fftw_plan_columns = fftw_forward ? columns : 0;
+    fftw_plan_columns = fftwf_forward ? columns : 0;
   }
-  if (!fftw_forward) {
+  if (!fftwf_forward) {
     static_mutex_unlock(&fftw_mutex);
     return false;
   }
   for (size_t i = 0; i < (size_t)columns * FFT_SIZE; i++)
-    fftw_input[i] = input[i];
-  fftw_execute(fftw_forward);
-  const double normalization = (double)FFT_SIZE * 0.25;
+    fftwf_input[i] = input[i];
+  fftwf_execute(fftwf_forward);
+  const float normalization = (float)FFT_SIZE * 0.25f;
   for (size_t column = 0; column < columns; column++)
     for (size_t i = 0; i <= FFT_SIZE / 2; i++) {
       size_t output = column * (FFT_SIZE / 2 + 1) + i;
-      power_spectrum[output] = (float)((fftw_output[output][0] * fftw_output[output][0] +
-                                        fftw_output[output][1] * fftw_output[output][1]) /
-                                       (normalization * normalization));
+      power_spectrum[output] = (fftwf_output[output][0] * fftwf_output[output][0] +
+                                fftwf_output[output][1] * fftwf_output[output][1]) /
+                              (normalization * normalization);
     }
   static_mutex_unlock(&fftw_mutex);
   return true;
