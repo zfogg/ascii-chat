@@ -23,6 +23,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libflags/flags.h>
+#include <libflags/builder.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/utf8.h>
@@ -31,6 +32,67 @@
 #include <string.h>
 #include <limits.h>
 #include <stdarg.h>
+
+static flags_value_type_t option_type_to_flags_type(option_type_t type) {
+  switch (type) {
+  case OPTION_TYPE_BOOL:
+    return FLAGS_TYPE_BOOL;
+  case OPTION_TYPE_INT:
+    return FLAGS_TYPE_INT64;
+  case OPTION_TYPE_DOUBLE:
+    return FLAGS_TYPE_DOUBLE;
+  case OPTION_TYPE_STRING:
+    return FLAGS_TYPE_STRING;
+  case OPTION_TYPE_CALLBACK:
+  case OPTION_TYPE_ACTION:
+  default:
+    return FLAGS_TYPE_CUSTOM;
+  }
+}
+
+flags_schema_builder_t *options_config_build_flags_schema(const options_config_t *config) {
+  if (!config)
+    return NULL;
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder)
+    return NULL;
+  for (size_t i = 0; i < config->num_descriptors; ++i) {
+    const option_descriptor_t *source = &config->descriptors[i];
+    flags_option_spec_t target = {
+        .name = source->long_name,
+        .metavar = source->arg_placeholder,
+        .description = source->help_text,
+        .environment_name = source->env_var_name,
+        .short_name = source->short_name,
+        .type = option_type_to_flags_type(source->type),
+        .behavior = source->type == OPTION_TYPE_ACTION ? FLAGS_BEHAVIOR_ACTION : FLAGS_BEHAVIOR_VALUE,
+        .argument_requirement = source->type == OPTION_TYPE_BOOL && !source->optional_arg
+                                    ? FLAGS_ARGUMENT_NONE
+                                    : (source->optional_arg ? FLAGS_ARGUMENT_OPTIONAL : FLAGS_ARGUMENT_REQUIRED),
+        .repeatable = false,
+        .secret = source->long_name && (strstr(source->long_name, "password") || strstr(source->long_name, "key")),
+        .storage_offset = source->offset,
+        .storage_size = source->type == OPTION_TYPE_BOOL     ? sizeof(bool)
+                        : source->type == OPTION_TYPE_INT    ? sizeof(int64_t)
+                        : source->type == OPTION_TYPE_DOUBLE ? sizeof(double)
+                                                             : sizeof(char *),
+        .default_value = source->default_value,
+        .dynamic_string = source->owns_memory};
+    if (source->metadata.enum_values) {
+      size_t count = 0;
+      while (source->metadata.enum_values[count])
+        ++count;
+      target.enum_values = (const char *const *)source->metadata.enum_values;
+      target.enum_value_count = count;
+      target.type = FLAGS_TYPE_ENUM;
+    }
+    if (!source->long_name || !flags_schema_builder_add_option(builder, &target)) {
+      flags_schema_builder_destroy(builder);
+      return NULL;
+    }
+  }
+  return builder;
+}
 
 // Use platform utilities
 #include <libplatform/terminal.h>

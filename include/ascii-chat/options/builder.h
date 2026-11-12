@@ -152,6 +152,7 @@
 #include <stdio.h>
 #include "../common.h"
 #include "../options/options.h" // For option_mode_bitmask_t
+#include <libflags/builder.h>
 
 /**
  * @brief Custom help section descriptor
@@ -535,6 +536,9 @@ void options_builder_destroy(options_builder_t *builder);
  * @return Immutable config (must be freed with options_config_destroy)
  */
 options_config_t *options_builder_build(options_builder_t *builder);
+
+/** Builds a generic libflags schema view of the application registry. */
+flags_schema_builder_t *options_config_build_flags_schema(const options_config_t *config);
 
 /**
  * @brief Free options config
