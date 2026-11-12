@@ -104,19 +104,27 @@ details as public API.
 ## Current Build and Test Workflow
 
 The native build uses Ninja and the checked-in CMake presets. The compiler
-family can be selected with `ASCIICHAT_COMPILER=AUTO|LLVM|GCC|MSVC`; AUTO
-prefers LLVM, then GCC, then MSVC on Windows. Use a separate build directory
-when changing compiler families and reconfigure rather than deleting it.
+family is selected through CMake's native `CMAKE_C_COMPILER` and
+`CMAKE_CXX_COMPILER` cache variables in the compiler-specific presets. The
+generic `default` preset auto-detects LLVM, then GCC, then MSVC on Windows.
+After `project()`, compiler-specific logic uses CMake's detected
+`CMAKE_C_COMPILER_ID` rather than a second compiler-identity variable. Use a
+separate build directory when changing compiler families and reconfigure
+rather than deleting it.
 
 ```bash
 # Standard debug build with automatic compiler selection
 cmake --preset default -B build
 cmake --build build
 
-# Pin a compiler family
+# Pin a compiler family (each preset selects CMAKE_C_COMPILER/CXX_COMPILER)
 cmake --preset default-llvm -B build-llvm
 cmake --preset default-gcc -B build-gcc
 cmake --preset default-msvc -B build-msvc
+
+# Fast developer and optimized release variants
+cmake --preset dev-llvm -B build-dev-llvm
+cmake --preset release-llvm -B build-release-llvm
 
 # Faster debug build without sanitizer instrumentation
 cmake --preset debug-fast
