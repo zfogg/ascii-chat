@@ -139,8 +139,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   for (int i = 0; i < state->count; i++) {
     if (strcmp(state->servers[i].name, discovery->name) == 0 && state->servers[i].port == discovery->port) {
       if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
-        SAFE_STRNCPY(state->servers[i].session_string, discovery->txt + sizeof("session_string=") - 1,
-                     sizeof(state->servers[i].session_string));
+        SAFE_STRNCPY(state->servers[i].session_string, discovery->txt + sizeof("session_string=") - 1, sizeof(state->servers[i].session_string));
       // Update TTL if newer
       if (discovery->ttl > state->servers[i].ttl) {
         state->servers[i].ttl = discovery->ttl;
@@ -160,8 +159,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   // Copy service information
   SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
   if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
-    SAFE_STRNCPY(server->session_string, discovery->txt + sizeof("session_string=") - 1,
-                 sizeof(server->session_string));
+    SAFE_STRNCPY(server->session_string, discovery->txt + sizeof("session_string=") - 1, sizeof(server->session_string));
   SAFE_STRNCPY(server->ipv4, discovery->ipv4, sizeof(server->ipv4));
   SAFE_STRNCPY(server->ipv6, discovery->ipv6, sizeof(server->ipv6));
   server->port = discovery->port;
@@ -238,8 +236,7 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
   }
 
   // Start mDNS query for _ascii-chat._tcp services
-  asciichat_error_t query_result =
-      asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", discovery_mdns_callback, &state);
+  asciichat_error_t query_result = asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", discovery_mdns_callback, &state);
 
   if (query_result != ASCIICHAT_OK) {
     log_info("mDNS: Query failed - no servers found via service discovery");
@@ -311,8 +308,7 @@ static void *mdns_thread_fn(void *arg) {
 
   // Call the public mDNS query function in this module
   int discovered_count = 0;
-  ui_mdns_server_t *discovered_servers =
-      discovery_mdns_query((int)(ctx->timeout_ms > 0 ? ctx->timeout_ms : 2000), 20, true, &discovered_count);
+  ui_mdns_server_t *discovered_servers = discovery_mdns_query((int)(ctx->timeout_ms > 0 ? ctx->timeout_ms : 2000), 20, true, &discovered_count);
 
   if (!discovered_servers || discovered_count == 0) {
     log_debug("mDNS: No servers found (this is normal if no servers are on LAN)");
@@ -345,12 +341,10 @@ static void *mdns_thread_fn(void *arg) {
           SAFE_STRNCPY(ctx->state->result->server_address, best_addr, sizeof(ctx->state->result->server_address) - 1);
           ctx->state->result->server_address[sizeof(ctx->state->result->server_address) - 1] = '\0';
 
-          SAFE_STRNCPY(ctx->state->result->mdns_service_name, server->name,
-                       sizeof(ctx->state->result->mdns_service_name) - 1);
+          SAFE_STRNCPY(ctx->state->result->mdns_service_name, server->name, sizeof(ctx->state->result->mdns_service_name) - 1);
           ctx->state->result->mdns_service_name[sizeof(ctx->state->result->mdns_service_name) - 1] = '\0';
 
-          log_info("mDNS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address,
-                   ctx->state->result->server_port);
+          log_info("mDNS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address, ctx->state->result->server_port);
           cond_signal(&ctx->state->signal);
         }
       }
@@ -497,12 +491,10 @@ static void *acds_thread_fn(void *arg) {
       memcpy(ctx->state->result->session_id, join_result.session_id, SESSION_ID_SIZE);
       memcpy(ctx->state->result->participant_id, join_result.participant_id, SESSION_ID_SIZE);
 
-      SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
-                   sizeof(ctx->state->result->server_address) - 1);
+      SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address, sizeof(ctx->state->result->server_address) - 1);
       ctx->state->result->server_port = join_result.server_port;
 
-      log_info("ACDS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address,
-               ctx->state->result->server_port);
+      log_info("ACDS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address, ctx->state->result->server_port);
       cond_signal(&ctx->state->signal);
     }
   }
@@ -538,8 +530,7 @@ void discovery_config_init_defaults(discovery_config_t *config) {
   config->expected_pubkey = NULL;
 }
 
-asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config,
-                                            discovery_result_t *result) {
+asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config, discovery_result_t *result) {
   if (!session_string || !config || !result) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return ERROR_INVALID_PARAM;
@@ -662,8 +653,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     return ERROR_NOT_FOUND;
   }
 
-  log_info("Discovery: Session '%s' discovered via %s", session_string,
-           result->source == DISCOVERY_SOURCE_MDNS ? "mDNS" : "ACDS");
+  log_info("Discovery: Session '%s' discovered via %s", session_string, result->source == DISCOVERY_SOURCE_MDNS ? "mDNS" : "ACDS");
 
   return ASCIICHAT_OK;
 }

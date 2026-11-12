@@ -376,8 +376,7 @@ char *get_discovery_database_dir(void) {
   if (platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &data_dirs) == ASCIICHAT_OK) {
     for (size_t i = 0; i < data_dirs.count; i++) {
       platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
-      if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
-          platform_access(candidate->path, PLATFORM_ACCESS_WRITE) == 0) {
+      if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK && platform_access(candidate->path, PLATFORM_ACCESS_WRITE) == 0) {
         char *selected_dir = candidate->path;
         candidate->path = NULL;
         platform_directory_list_destroy(&data_dirs);
@@ -762,8 +761,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
       }
 
       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
-      safe_snprintf(resolved_buf, sizeof(resolved_buf), "%s%s%s", safe_base, needs_sep ? PATH_SEPARATOR_STR : "",
-                    input);
+      safe_snprintf(resolved_buf, sizeof(resolved_buf), "%s%s%s", safe_base, needs_sep ? PATH_SEPARATOR_STR : "", input);
 
       // Normalize the resolved path
       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];

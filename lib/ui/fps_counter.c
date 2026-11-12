@@ -217,14 +217,13 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
     const char *style = terminal_has_dark_background() ? "\033[97;40m" : "\033[30;47m";
-    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 9, style, value,
-                         counter->effective_fps) == ASCIICHAT_OK)
+    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 9, style, value, counter->effective_fps) == ASCIICHAT_OK)
       counter->last_fps = value;
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {
     if (counter->report_frames)
-      log_debug("FPS_OUTPUT: frames=%llu elapsed_ms=%.3f write_ms=%.3f", (unsigned long long)counter->report_frames,
-                (double)(now - counter->report_start) / NS_PER_MS_INT, (double)counter->report_writes / NS_PER_MS_INT);
+      log_debug("FPS_OUTPUT: frames=%llu elapsed_ms=%.3f write_ms=%.3f", (unsigned long long)counter->report_frames, (double)(now - counter->report_start) / NS_PER_MS_INT,
+                (double)counter->report_writes / NS_PER_MS_INT);
     counter->report_start = now;
     counter->report_writes = counter->report_frames = 0;
   }

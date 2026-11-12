@@ -102,9 +102,8 @@ h265_server_client_t *h265_server_get_client_decoder(h265_server_context_t *ctx,
   return NULL;
 }
 
-asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, const uint8_t *h265_packet,
-                                                 size_t packet_size, uint8_t *output_rgba, uint16_t *output_width,
-                                                 uint16_t *output_height, size_t *output_size) {
+asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, const uint8_t *h265_packet, size_t packet_size, uint8_t *output_rgba, uint16_t *output_width, uint16_t *output_height,
+                                                 size_t *output_size) {
   if (!client || !h265_packet || !output_rgba || !output_width || !output_height || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid arguments to decode_and_convert");
   }
@@ -117,8 +116,7 @@ asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, c
   uint8_t ascii_buf[H265_ASCII_SCRATCH_COLUMNS * H265_ASCII_SCRATCH_ROWS];
   size_t ascii_size = sizeof(ascii_buf);
 
-  asciichat_error_t result =
-      h265_decode(client_dec->decoder, h265_packet, packet_size, output_width, output_height, ascii_buf, &ascii_size);
+  asciichat_error_t result = h265_decode(client_dec->decoder, h265_packet, packet_size, output_width, output_height, ascii_buf, &ascii_size);
 
   if (result != ASCIICHAT_OK) {
     return result;
@@ -127,8 +125,7 @@ asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, c
   size_t required_rgba_size = (size_t)(*output_width) * (*output_height) * 4;
   if (*output_size < required_rgba_size) {
     *output_size = required_rgba_size;
-    return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small: need %zu, have %zu", required_rgba_size,
-                     *output_size);
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small: need %zu, have %zu", required_rgba_size, *output_size);
   }
 
   for (size_t i = 0; i < ascii_size && i < (size_t)(*output_width) * (*output_height); i++) {
@@ -164,8 +161,7 @@ void h265_server_remove_client(h265_server_context_t *ctx, uint32_t client_id) {
   }
 }
 
-void h265_server_client_get_stats(h265_server_client_t *client, uint64_t *total_frames, uint64_t *keyframes,
-                                  uint16_t *last_width, uint16_t *last_height) {
+void h265_server_client_get_stats(h265_server_client_t *client, uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t *last_height) {
   if (!client)
     return;
 

@@ -39,8 +39,7 @@ image_t *image_new(size_t width, size_t height) {
   if (image_validate_dimensions(width, height) != ASCIICHAT_OK)
     return NULL;
   size_t pixels_size;
-  if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK ||
-      pixels_size > IMAGE_MAX_PIXELS_SIZE)
+  if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK || pixels_size > IMAGE_MAX_PIXELS_SIZE)
     return NULL;
   const size_t offset = (sizeof(image_t) + BUFFER_DEFAULT_ALIGNMENT - 1) & ~(size_t)(BUFFER_DEFAULT_ALIGNMENT - 1);
   size_t total;
@@ -134,8 +133,7 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   // Handle edge cases
   if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions for resize: src=%dx%d dst=%dx%d", src_w, src_h, dst_w,
-              dst_h);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions for resize: src=%dx%d dst=%dx%d", src_w, src_h, dst_w, dst_h);
     return;
   }
 
@@ -203,27 +201,21 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
   }
 #endif
 
-  if (red < min_weight || red > max_weight || green < min_weight || green > max_weight || blue < min_weight ||
-      blue > max_weight) {
-    log_warn("Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)", red, green,
-             blue);
+  if (red < min_weight || red > max_weight || green < min_weight || green > max_weight || blue < min_weight || blue > max_weight) {
+    log_warn("Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)", red, green, blue);
   }
 
   // A corrupted startup value must not turn into a black/invalid palette.
   // Restore the canonical luminance weights instead of clamping it to +/-255.
-  const bool invalid_weight = red < min_weight || red > max_weight || green < min_weight || green > max_weight ||
-                              blue < min_weight || blue > max_weight;
+  const bool invalid_weight = red < min_weight || red > max_weight || green < min_weight || green > max_weight || blue < min_weight || blue > max_weight;
   const float effective_red = invalid_weight ? 0.2989f : red;
   const float effective_green = invalid_weight ? 0.5866f : green;
   const float effective_blue = invalid_weight ? 0.1145f : blue;
 
   // Clamp weights to safe range to prevent overflow
-  const float safe_red =
-      (effective_red < min_weight) ? min_weight : ((effective_red > max_weight) ? max_weight : effective_red);
-  const float safe_green =
-      (effective_green < min_weight) ? min_weight : ((effective_green > max_weight) ? max_weight : effective_green);
-  const float safe_blue =
-      (effective_blue < min_weight) ? min_weight : ((effective_blue > max_weight) ? max_weight : effective_blue);
+  const float safe_red = (effective_red < min_weight) ? min_weight : ((effective_red > max_weight) ? max_weight : effective_red);
+  const float safe_green = (effective_green < min_weight) ? min_weight : ((effective_green > max_weight) ? max_weight : effective_green);
+  const float safe_blue = (effective_blue < min_weight) ? min_weight : ((effective_blue > max_weight) ? max_weight : effective_blue);
 
   const unsigned short max_ushort = 65535;
   const unsigned short min_ushort = 0;

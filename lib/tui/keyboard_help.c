@@ -49,8 +49,7 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
 }
 
 void keyboard_help_toggle_terminal(int fd) {
-  int parent =
-      ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen() : ui_controller_current_screen();
+  int parent = ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen() : ui_controller_current_screen();
   ascii_otel_ui_usage(keyboard_help_screen_name(parent), "shortcut", 0);
   if (ui_controller_current_screen() == UI_SCREEN_HELP) {
     // Keep the underlying worker active throughout dismissal. An intermediate
@@ -63,8 +62,7 @@ void keyboard_help_toggle_terminal(int fd) {
   atomic_store(&g_help_previous, ui_controller_interactive_screen());
   atomic_store(&g_help_parent, ui_controller_current_screen());
   terminal_size_t minimum;
-  char *text =
-      ui_session_context_help_render(ui_controller_size(), (ui_screen_t)keyboard_help_parent_screen(), &minimum);
+  char *text = ui_session_context_help_render(ui_controller_size(), (ui_screen_t)keyboard_help_parent_screen(), &minimum);
   if (!text)
     return;
   if (!GET_OPTION(snapshot_mode))

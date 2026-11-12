@@ -11,12 +11,10 @@ asciichat_error_t browser_security_init(crypto_context_t *ctx) {
   return result;
 }
 
-asciichat_error_t browser_security_packet(crypto_context_t *ctx, bool seal, uint32_t channel, uint32_t delivery,
-                                          const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
+asciichat_error_t browser_security_packet(crypto_context_t *ctx, bool seal, uint32_t channel, uint32_t delivery, const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
                                           size_t *out_length, uint64_t *sequence) {
   const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  if (!packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
-      capacity < length + (seal ? overhead : 0))
+  if (!packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead || capacity < length + (seal ? overhead : 0))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser security packet buffer");
   *out_length = 0;
   *sequence = 0;
@@ -27,10 +25,8 @@ asciichat_error_t browser_security_packet(crypto_context_t *ctx, bool seal, uint
   asciichat_errno_scope_t scope;
   if (quiet)
     scope = errno_scope_begin();
-  asciichat_error_t result =
-      seal ? acip_security_seal(ctx, channel, delivery, packet, length, &result_packet, &result_length)
-           : acip_security_open(ctx, channel, delivery, packet, length, &result_packet, &result_length, sequence,
-                                &consumed);
+  asciichat_error_t result = seal ? acip_security_seal(ctx, channel, delivery, packet, length, &result_packet, &result_length)
+                                  : acip_security_open(ctx, channel, delivery, packet, length, &result_packet, &result_length, sequence, &consumed);
   if (quiet)
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   if (result == ASCIICHAT_OK && !consumed) {
@@ -51,8 +47,7 @@ asciichat_error_t browser_security_tick(crypto_context_t *ctx) {
   return result;
 }
 
-asciichat_error_t browser_security_output(crypto_context_t *ctx, uint8_t *output, size_t capacity, size_t *length,
-                                          uint32_t *channel) {
+asciichat_error_t browser_security_output(crypto_context_t *ctx, uint8_t *output, size_t capacity, size_t *length, uint32_t *channel) {
   // The largest control is a public key plus the common framing and record overhead.
   if (!output || !length || !channel || capacity < 256)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser security control buffer");

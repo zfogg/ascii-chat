@@ -84,8 +84,7 @@ static asciichat_error_t toggle_mute(double *saved_volume) {
       break;
     double current = snapshot->values.speakers_volume;
     double restore = *saved_volume > 0.0 ? *saved_volume : 0.5;
-    options_edit_t edit = {
-        .name = "speakers_volume", .type = OPTIONS_VALUE_DOUBLE, .value.number = current > 0.01 ? 0.0 : restore};
+    options_edit_t edit = {.name = "speakers_volume", .type = OPTIONS_VALUE_DOUBLE, .value.number = current > 0.01 ? 0.0 : restore};
     options_patch_t patch = {.edits = &edit, .count = 1, .expected_revision = snapshot->revision};
     result = options_apply_patch(&patch, NULL);
     if (result == ERROR_INVALID_STATE) {
@@ -134,8 +133,7 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     options_adjust("speakers_volume", key == KEY_DOWN ? -0.1 : 0.1);
 
     double verify_volume = GET_OPTION(speakers_volume);
-    log_info("Volume DOWN: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
-             verify_volume * 100.0);
+    log_info("Volume DOWN: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0, verify_volume * 100.0);
     return UI_ACTION_VOLUME;
   }
 
@@ -145,8 +143,7 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     options_adjust("speakers_volume", key == KEY_DOWN ? -0.1 : 0.1);
 
     double verify_volume = GET_OPTION(speakers_volume);
-    log_info("Volume UP: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
-             verify_volume * 100.0);
+    log_info("Volume UP: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0, verify_volume * 100.0);
     return UI_ACTION_SETTINGS;
   }
 
@@ -215,8 +212,7 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     log_info("✓ X KEY PRESSED - handling horizontal flip");
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_toggle("flip_x");
-    log_info("Horizontal flip: %s (was: %s)", !current_flip_x ? "enabled" : "disabled",
-             current_flip_x ? "enabled" : "disabled");
+    log_info("Horizontal flip: %s (was: %s)", !current_flip_x ? "enabled" : "disabled", current_flip_x ? "enabled" : "disabled");
     return UI_ACTION_SETTINGS;
   }
 

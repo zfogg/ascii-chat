@@ -136,8 +136,7 @@ static void api_write_result(http_response_t *response, const char *format, cons
         }
         out += (size_t)written;
       }
-      written = safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"",
-                              (unsigned long long)frame->timestamp_ms);
+      written = safe_snprintf(json + out, cap - out, "{\"timestamp_ms\":%llu,\"text\":\"", (unsigned long long)frame->timestamp_ms);
       if (written < 0) {
         SAFE_FREE(json);
         (void)http_response_set_status(response, 500);
@@ -185,10 +184,7 @@ static void api_write_result(http_response_t *response, const char *format, cons
     (void)http_response_set_header(response, "Content-Type", "text/html; charset=utf-8");
     (void)http_response_write(response, "<pre>", 5);
     for (size_t i = 0; i < result->ascii_length; ++i) {
-      const char *escaped = result->ascii[i] == '&'   ? "&amp;"
-                            : result->ascii[i] == '<' ? "&lt;"
-                            : result->ascii[i] == '>' ? "&gt;"
-                                                      : NULL;
+      const char *escaped = result->ascii[i] == '&' ? "&amp;" : result->ascii[i] == '<' ? "&lt;" : result->ascii[i] == '>' ? "&gt;" : NULL;
       (void)http_response_write(response, escaped ? escaped : &result->ascii[i], escaped ? strlen(escaped) : 1);
     }
     (void)http_response_write(response, "</pre>", 6);
@@ -223,8 +219,7 @@ static void api_wakeup(void *user_data) {
       (void)http_renderer_cancel(pending->renderer_job);
       http_response_release(&pending->response);
     }
-    if (!pending->renderer_job || !atomic_load_bool(&pending->completed) ||
-        !http_renderer_job_is_done(pending->renderer_job)) {
+    if (!pending->renderer_job || !atomic_load_bool(&pending->completed) || !http_renderer_job_is_done(pending->renderer_job)) {
       link = &pending->next;
       continue;
     }
@@ -267,8 +262,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   ASCII_OTEL_ATTR_STRING("http.request.method", info->method);
   ASCII_OTEL_ATTR_INT("http.protocol", info->protocol);
   if (!strcmp(info->method, "GET") && !strcmp(info->path, "/health")) {
-    static const char body[] =
-        "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
+    static const char body[] = "{\"status\":\"ok\",\"service\":\"ascii-chat-api\",\"version\":\"" ASCII_CHAT_VERSION_FULL "\"}";
     (void)http_response_set_header(response, "Content-Type", "application/json");
     (void)http_response_write(response, body, sizeof(body) - 1);
     api_finish(response, 200);
@@ -291,8 +285,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
     if (!platform_strcasecmp(info->headers[i].name, "content-type"))
       content_type = info->headers[i].value;
   bool multipart = content_type && !strncmp(content_type, "multipart/form-data;", 20);
-  if (!content_type ||
-      (!multipart && strncmp(content_type, "image/", 6) && strncmp(content_type, "application/octet-stream", 24))) {
+  if (!content_type || (!multipart && strncmp(content_type, "image/", 6) && strncmp(content_type, "application/octet-stream", 24))) {
     api_finish(response, 415);
     return;
   }
@@ -376,8 +369,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
       api_finish(response, 400);
       return;
     }
-    if (!api_decode_query_component(p, key_len, key, sizeof(key)) ||
-        !api_decode_query_component(eq + 1, value_len, value, sizeof(value))) {
+    if (!api_decode_query_component(p, key_len, key, sizeof(key)) || !api_decode_query_component(eq + 1, value_len, value, sizeof(value))) {
       api_finish(response, 400);
       return;
     }
@@ -440,8 +432,7 @@ static void api_request(http_request_t *request, http_response_t *response, void
   ASCII_OTEL_ATTR_INT("http.render.height", render_request.options.height);
   char path[PLATFORM_MAX_PATH_LENGTH];
   int fd = -1;
-  if (platform_create_temp_file(path, sizeof(path), "ascii-api", &fd) != 0 ||
-      platform_write(fd, body, length) != (ssize_t)length) {
+  if (platform_create_temp_file(path, sizeof(path), "ascii-api", &fd) != 0 || platform_write(fd, body, length) != (ssize_t)length) {
     if (fd >= 0)
       platform_close(fd);
     api_finish(response, 500);
@@ -545,21 +536,14 @@ int api_server_main(void) {
     socklen_t bind_length = 0;
     err = parse_numeric_socket_address(GET_OPTION(address), (uint16_t)GET_OPTION(port), &bind_address, &bind_length);
     if (err == ASCIICHAT_OK) {
-      quic_config_t quic_config = {.alpn = "h3",
-                                   .certificate_file = tls_cert,
-                                   .private_key_file = tls_key,
-                                   .enable_http3 = true,
-                                   .http_server = server};
-      err =
-          quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config, &http3_endpoint);
+      quic_config_t quic_config = {.alpn = "h3", .certificate_file = tls_cert, .private_key_file = tls_key, .enable_http3 = true, .http_server = server};
+      err = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config, &http3_endpoint);
       if (err == ASCIICHAT_OK && GET_OPTION(address6) && *GET_OPTION(address6)) {
         struct sockaddr_storage bind_address6;
         socklen_t bind_length6 = 0;
-        err = parse_numeric_socket_address(GET_OPTION(address6), (uint16_t)GET_OPTION(port), &bind_address6,
-                                           &bind_length6);
+        err = parse_numeric_socket_address(GET_OPTION(address6), (uint16_t)GET_OPTION(port), &bind_address6, &bind_length6);
         if (err == ASCIICHAT_OK)
-          err = quic_endpoint_open((const struct sockaddr *)&bind_address6, bind_length6, true, &quic_config,
-                                   &http3_endpoint6);
+          err = quic_endpoint_open((const struct sockaddr *)&bind_address6, bind_length6, true, &quic_config, &http3_endpoint6);
       }
     }
     if (err != ASCIICHAT_OK) {

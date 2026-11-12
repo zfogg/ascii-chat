@@ -36,13 +36,10 @@ void FN(simd_lookup_)(const uint8_t *luma, const uint32_t table[64], uint32_t *o
 #if defined(__aarch64__)
       glyph.val[byte] = vqtbl4q_u8(tables[byte], index);
 #else
-      uint8x8x4_t low = {{vget_low_u8(tables[byte].val[0]), vget_high_u8(tables[byte].val[0]),
-                          vget_low_u8(tables[byte].val[1]), vget_high_u8(tables[byte].val[1])}};
-      uint8x8x4_t high = {{vget_low_u8(tables[byte].val[2]), vget_high_u8(tables[byte].val[2]),
-                           vget_low_u8(tables[byte].val[3]), vget_high_u8(tables[byte].val[3])}};
+      uint8x8x4_t low = {{vget_low_u8(tables[byte].val[0]), vget_high_u8(tables[byte].val[0]), vget_low_u8(tables[byte].val[1]), vget_high_u8(tables[byte].val[1])}};
+      uint8x8x4_t high = {{vget_low_u8(tables[byte].val[2]), vget_high_u8(tables[byte].val[2]), vget_low_u8(tables[byte].val[3]), vget_high_u8(tables[byte].val[3])}};
       uint8x8_t il = vget_low_u8(index), ih = vget_high_u8(index);
-      glyph.val[byte] = vcombine_u8(vorr_u8(vtbl4_u8(low, il), vtbl4_u8(high, vsub_u8(il, vdup_n_u8(32)))),
-                                    vorr_u8(vtbl4_u8(low, ih), vtbl4_u8(high, vsub_u8(ih, vdup_n_u8(32)))));
+      glyph.val[byte] = vcombine_u8(vorr_u8(vtbl4_u8(low, il), vtbl4_u8(high, vsub_u8(il, vdup_n_u8(32)))), vorr_u8(vtbl4_u8(low, ih), vtbl4_u8(high, vsub_u8(ih, vdup_n_u8(32)))));
 #endif
     }
     vst4q_u8((uint8_t *)(out + i), glyph);
@@ -68,8 +65,7 @@ void FN(simd_lookup_)(const uint8_t *luma, const uint32_t table[64], uint32_t *o
       glyph[byte] = _mm_setzero_si128();
       for (unsigned group = 0; group < 4; ++group) {
         __m128i lut = _mm_loadu_si128((const __m128i *)(bytes[byte] + 16 * group));
-        __m128i selected =
-            _mm_and_si128(_mm_shuffle_epi8(lut, low), _mm_cmpeq_epi8(high, _mm_set1_epi8((char)(16 * group))));
+        __m128i selected = _mm_and_si128(_mm_shuffle_epi8(lut, low), _mm_cmpeq_epi8(high, _mm_set1_epi8((char)(16 * group))));
         glyph[byte] = _mm_or_si128(glyph[byte], selected);
       }
     }
@@ -97,8 +93,7 @@ void FN(simd_lookup_)(const uint8_t *luma, const uint32_t table[64], uint32_t *o
     uint32_t input;
     memcpy(&input, luma + i, 4);
     __m128i zero = _mm_setzero_si128();
-    vec_t index =
-        (vec_t)_mm_srli_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128((int)input), zero), zero), 2);
+    vec_t index = (vec_t)_mm_srli_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128((int)input), zero), zero), 2);
     vec_t glyph = SET(0);
     // SSE2 has no byte shuffle or gather. Compare ranges of equal palette entries
     // in parallel, rather than replacing the stage with four scalar lookups.

@@ -26,8 +26,7 @@ static bool valid_sgr(const uint32_t *p, size_t n, bool *neutral) {
       while (count--)
         if (p[++i] > 255)
           return false;
-    } else if (!(v <= 9 || (v >= 22 && v <= 29) || (v >= 30 && v <= 37) || v == 39 || (v >= 40 && v <= 47) || v == 49 ||
-                 (v >= 90 && v <= 97) || (v >= 100 && v <= 107))) {
+    } else if (!(v <= 9 || (v >= 22 && v <= 29) || (v >= 30 && v <= 37) || v == 39 || (v >= 40 && v <= 47) || v == 49 || (v >= 90 && v <= 97) || (v >= 100 && v <= 107))) {
       return false;
     } else if (v == 0) {
       *neutral = true;
@@ -38,10 +37,8 @@ static bool valid_sgr(const uint32_t *p, size_t n, bool *neutral) {
   return true;
 }
 
-static asciichat_error_t validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
-                                           const acip_render_settings_t *settings, uint32_t effects) {
-  if (!text || !length || !width || !height || width > 16384 || height > 16384 ||
-      (uint64_t)width * height > FRAME_RENDER_MAX_BYTES || length > FRAME_RENDER_MAX_BYTES)
+static asciichat_error_t validate_contract(const char *text, size_t length, uint32_t width, uint32_t height, const acip_render_settings_t *settings, uint32_t effects) {
+  if (!text || !length || !width || !height || width > 16384 || height > 16384 || (uint64_t)width * height > FRAME_RENDER_MAX_BYTES || length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame bounds");
   uint32_t palette[256];
   size_t palette_count = 0;
@@ -185,13 +182,11 @@ static asciichat_error_t validate_contract(const char *text, size_t length, uint
   if (!ended_row && col == width)
     ++row;
   if (row != height || (!ended_row && col != width))
-    return SET_ERRNO(ERROR_INVALID_FRAME, "Frame geometry does not match %ux%u (%u rows, %u final cells)", width,
-                     height, row, col);
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Frame geometry does not match %ux%u (%u rows, %u final cells)", width, height, row, col);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
-                                                  const acip_render_settings_t *settings, uint32_t effects) {
+asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height, const acip_render_settings_t *settings, uint32_t effects) {
   asciichat_error_t result = validate_contract(text, length, width, height, settings, effects);
   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_CHECKED, 1);
   if (result != ASCIICHAT_OK) {
@@ -206,16 +201,14 @@ asciichat_error_t session_frame_validate(const char *text, size_t length, uint32
   return session_frame_validate_contract(text, length, width, height, NULL, 0);
 }
 
-asciichat_error_t frame_render_contract_decode(const void *wire, size_t available, acip_render_settings_t *settings,
-                                               uint32_t *effects, size_t *length) {
+asciichat_error_t frame_render_contract_decode(const void *wire, size_t available, acip_render_settings_t *settings, uint32_t *effects, size_t *length) {
   if (!wire || !settings || !effects || !length || available < FRAME_RENDER_CONTRACT_HEADER)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Truncated rendered frame contract");
   uint32_t fields[5];
   memcpy(fields, wire, sizeof(fields));
   for (size_t i = 0; i < 5; ++i)
     fields[i] = NET_TO_HOST_U32(fields[i]);
-  if (fields[0] != FRAME_RENDER_CONTRACT_SCHEMA || fields[2] > RENDER_MODE_HALF_BLOCK ||
-      (fields[3] & ~(FRAME_RENDER_CONTRACT_RAIN | FRAME_RENDER_CONTRACT_GRID)) || !fields[4] || fields[4] > 255 ||
+  if (fields[0] != FRAME_RENDER_CONTRACT_SCHEMA || fields[2] > RENDER_MODE_HALF_BLOCK || (fields[3] & ~(FRAME_RENDER_CONTRACT_RAIN | FRAME_RENDER_CONTRACT_GRID)) || !fields[4] || fields[4] > 255 ||
       fields[4] > available - FRAME_RENDER_CONTRACT_HEADER)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame contract schema/mode/effects/palette length");
   memset(settings, 0, sizeof(*settings));
@@ -230,15 +223,13 @@ asciichat_error_t frame_render_contract_decode(const void *wire, size_t availabl
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t frame_render_contract_encode(const acip_render_settings_t *settings, uint32_t effects, uint8_t *wire,
-                                               size_t *length) {
+asciichat_error_t frame_render_contract_encode(const acip_render_settings_t *settings, uint32_t effects, uint8_t *wire, size_t *length) {
   if (!settings || !wire || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing rendered frame contract");
   size_t n = strnlen(settings->palette, sizeof(settings->palette));
   if (!n || n > 255)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendered frame contract palette");
-  uint32_t fields[] = {HOST_TO_NET_U32(FRAME_RENDER_CONTRACT_SCHEMA), HOST_TO_NET_U32(settings->revision),
-                       HOST_TO_NET_U32(settings->caps.render_mode), HOST_TO_NET_U32(effects), HOST_TO_NET_U32(n)};
+  uint32_t fields[] = {HOST_TO_NET_U32(FRAME_RENDER_CONTRACT_SCHEMA), HOST_TO_NET_U32(settings->revision), HOST_TO_NET_U32(settings->caps.render_mode), HOST_TO_NET_U32(effects), HOST_TO_NET_U32(n)};
   memcpy(wire, fields, sizeof(fields));
   memcpy(wire + sizeof(fields), settings->palette, n);
   *length = sizeof(fields) + n;

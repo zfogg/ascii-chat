@@ -393,8 +393,7 @@ typedef struct acip_transport acip_transport_t;
  *
  * @ingroup session
  */
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
-                                                    acip_transport_ownership_t ownership);
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport, acip_transport_ownership_t ownership);
 
 /**
  * @brief Detach the selected transport and transfer its ownership responsibility.

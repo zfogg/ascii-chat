@@ -123,8 +123,7 @@ asciichat_error_t network_connection_prepare_security(network_connection_t *c, b
   /* QUIC protects its own endpoints, but ACIP encryption is also required
    * for the application identity and intermediary trust boundary. */
   bool transport_satisfies_acip_encryption = c->secure && acip_transport_get_type(c->transport) != ACIP_TRANSPORT_QUIC;
-  asciichat_error_t result =
-      acip_security_init_options(&c->security, server, transport_satisfies_acip_encryption, password);
+  asciichat_error_t result = acip_security_init_options(&c->security, server, transport_satisfies_acip_encryption, password);
   if (result == ASCIICHAT_OK && !server) {
     crypto_handshake_context_t *ctx = &c->security.handshake;
     SAFE_STRNCPY(ctx->server_hostname, c->peer, sizeof(ctx->server_hostname));
@@ -134,8 +133,7 @@ asciichat_error_t network_connection_prepare_security(network_connection_t *c, b
   return result;
 }
 
-static network_connection_t *connection_create(network_server_t *s, acip_transport_t *transport, const char *peer,
-                                               bool secure, bool ready) {
+static network_connection_t *connection_create(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure, bool ready) {
   network_connection_t *c = SAFE_CALLOC(1, sizeof(*c), network_connection_t *);
   if (!c)
     return NULL;
@@ -272,22 +270,18 @@ static asciichat_error_t connection_packet(const void *data, size_t length, void
     return SET_ERRNO(ERROR_NETWORK, "Connection is stopping");
   packet_header_t header;
   memcpy(&header, data, sizeof(header));
-  packet_envelope_t envelope = {
-      .type = NET_TO_HOST_U16(header.type), .data = (uint8_t *)data + sizeof(header), .len = length - sizeof(header)};
+  packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type), .data = (uint8_t *)data + sizeof(header), .len = length - sizeof(header)};
   asciichat_error_t result = ASCIICHAT_OK;
-  if (!c->authenticated_peer && network_connection_state(c) == NETWORK_READY && c->transport->crypto_ctx &&
-      c->transport->crypto_ctx->encrypt_data) {
+  if (!c->authenticated_peer && network_connection_state(c) == NETWORK_READY && c->transport->crypto_ctx && c->transport->crypto_ctx->encrypt_data) {
     acip_transport_type_t transport_type = acip_transport_get_type(c->transport);
-    bool backend_decrypted =
-        !c->stream && (transport_type == ACIP_TRANSPORT_TCP || transport_type == ACIP_TRANSPORT_QUIC);
+    bool backend_decrypted = !c->stream && (transport_type == ACIP_TRANSPORT_TCP || transport_type == ACIP_TRANSPORT_QUIC);
     if (envelope.type != PACKET_TYPE_ENCRYPTED && !backend_decrypted)
       return SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted connection");
     if (envelope.type == PACKET_TYPE_ENCRYPTED)
       result = packet_decrypt_envelope(&envelope, c->transport->crypto_ctx);
     if (result == ASCIICHAT_OK && envelope.allocated_buffer) {
       const packet_header_t *inner = envelope.allocated_buffer;
-      if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED ||
-          asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
+      if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED || asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
         result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted packet");
     }
   }
@@ -425,8 +419,7 @@ static void *connection_receive(void *arg) {
   if (c->server)
     errno_scope_end(open_scope, ASCIICHAT_ERRNO_HANDLED);
   c->transport->receive_timeout_ns = 100 * NS_PER_MS_INT;
-  while (result == ASCIICHAT_OK && !APP_CALLBACK_BOOL(should_exit) &&
-         (!c->server || !atomic_load_bool(&c->server->stopping)) && network_connection_state(c) < NETWORK_CLOSING) {
+  while (result == ASCIICHAT_OK && !APP_CALLBACK_BOOL(should_exit) && (!c->server || !atomic_load_bool(&c->server->stopping)) && network_connection_state(c) < NETWORK_CLOSING) {
     if (connection_deadline(c) == 1) {
       result = ERROR_NETWORK_TIMEOUT;
       if (c->server)
@@ -473,8 +466,7 @@ static void *websocket_accept(void *arg) {
   SAFE_FREE(ctx);
   return c ? connection_receive(c) : NULL;
 }
-static asciichat_error_t server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure,
-                                      bool ready) {
+static asciichat_error_t server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure, bool ready) {
   if (!s || !transport)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing adopted connection");
   network_connection_t *c = connection_create(s, transport, peer, secure, ready);
@@ -488,12 +480,10 @@ static asciichat_error_t server_adopt(network_server_t *s, acip_transport_t *tra
   }
   return result;
 }
-asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer,
-                                       bool secure) {
+asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure) {
   return server_adopt(s, transport, peer, secure, true);
 }
-asciichat_error_t network_server_adopt_negotiating(network_server_t *s, acip_transport_t *transport, const char *peer,
-                                                   bool secure) {
+asciichat_error_t network_server_adopt_negotiating(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure) {
   return server_adopt(s, transport, peer, secure, false);
 }
 static void *websocket_run(void *arg) {
@@ -558,8 +548,7 @@ asciichat_error_t network_server_create(const network_server_config_t *config, n
   if (!s)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate network server");
   s->config = *config;
-  s->config.max_connections =
-      config->max_connections ? MIN(config->max_connections, NETWORK_CONNECTION_LIMIT) : NETWORK_CONNECTION_LIMIT;
+  s->config.max_connections = config->max_connections ? MIN(config->max_connections, NETWORK_CONNECTION_LIMIT) : NETWORK_CONNECTION_LIMIT;
   if (!s->config.handshake_timeout_ms)
     s->config.handshake_timeout_ms = 30000;
   if (!s->config.partial_timeout_ms)
@@ -607,8 +596,7 @@ asciichat_error_t network_server_start(network_server_t *s) {
   if (!s || atomic_load_bool(&s->stopping))
     return SET_ERRNO(ERROR_INVALID_STATE, "Network server stopped before startup");
   if (s->websocket_initialized && !s->websocket_started) {
-    asciichat_error_t result =
-        platform_thread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
+    asciichat_error_t result = platform_thread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
     if (result != ASCIICHAT_OK)
       return result;
     s->websocket_started = true;
@@ -698,19 +686,13 @@ const network_server_config_t *network_server_config(network_server_t *s) {
 
 static bool connect_cancelled(void *data) {
   const network_connect_config_t *config = data;
-  return APP_CALLBACK_BOOL(should_exit) ||
-         (config && config->should_exit_callback && config->should_exit_callback(config->callback_data));
+  return APP_CALLBACK_BOOL(should_exit) || (config && config->should_exit_callback && config->should_exit_callback(config->callback_data));
 }
-static asciichat_error_t connection_open_tcp(const char *name, const connection_endpoint_t *endpoint,
-                                             const network_connect_config_t *settings, crypto_context_t *crypto,
-                                             acip_transport_t **out) {
+static asciichat_error_t connection_open_tcp(const char *name, const connection_endpoint_t *endpoint, const network_connect_config_t *settings, crypto_context_t *crypto, acip_transport_t **out) {
   (void)name;
   socket_t socket = INVALID_SOCKET_VALUE;
-  parallel_connect_config_t config = {.hostname = endpoint->host,
-                                      .port = endpoint->port,
-                                      .timeout_ms = settings ? settings->timeout_ms : 3000,
-                                      .should_exit_callback = connect_cancelled,
-                                      .callback_data = (void *)settings};
+  parallel_connect_config_t config = {
+      .hostname = endpoint->host, .port = endpoint->port, .timeout_ms = settings ? settings->timeout_ms : 3000, .should_exit_callback = connect_cancelled, .callback_data = (void *)settings};
   asciichat_error_t result = parallel_connect(&config, &socket);
   if (result != ASCIICHAT_OK)
     return result;
@@ -720,9 +702,7 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_NETWORK, "Cannot adopt connected TCP socket");
 }
 
-static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpoint,
-                                              const network_connect_config_t *settings, quic_endpoint_t **owner,
-                                              acip_transport_t **transport) {
+static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpoint, const network_connect_config_t *settings, quic_endpoint_t **owner, acip_transport_t **transport) {
   struct sockaddr_storage remote, local;
   socklen_t remote_length = 0, local_length = sizeof(local);
   asciichat_errno_scope_t scope = errno_scope_begin();
@@ -742,8 +722,7 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
   socket_t route = socket_create("quic_route", remote.ss_family, SOCK_DGRAM, 0);
   if (route == INVALID_SOCKET_VALUE)
     return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
-  if (socket_connect(route, (const struct sockaddr *)&remote, remote_length) != 0 ||
-      socket_getsockname(route, (struct sockaddr *)&local, &local_length) != 0) {
+  if (socket_connect(route, (const struct sockaddr *)&remote, remote_length) != 0 || socket_getsockname(route, (struct sockaddr *)&local, &local_length) != 0) {
     socket_close(route);
     return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
   }
@@ -776,8 +755,7 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
       if (result != ERROR_INVALID_STATE || cancelled || time_get_ns() - start >= timeout) {
         if (result == ERROR_INVALID_STATE) {
           errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
-          result = cancelled ? SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection cancelled")
-                             : SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC TLS connection timed out");
+          result = cancelled ? SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection cancelled") : SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC TLS connection timed out");
         } else {
           errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
         }
@@ -803,9 +781,7 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
   return result;
 }
 
-asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port,
-                                          const network_connect_config_t *settings, network_connection_t **out,
-                                          connection_endpoint_t *resolved) {
+asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port, const network_connect_config_t *settings, network_connection_t **out, connection_endpoint_t *resolved) {
   ASCII_OTEL_SCOPE(CONNECTION_CREATE);
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection output");
@@ -818,14 +794,9 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
     return result;
   acip_transport_t *transport = NULL;
   quic_endpoint_t *quic_endpoint = NULL;
-  ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
-                         endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket"
-                         : endpoint.protocol == CONNECTION_ENDPOINT_QUIC    ? "quic"
-                                                                            : "tcp");
+  ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol", endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket" : endpoint.protocol == CONNECTION_ENDPOINT_QUIC ? "quic" : "tcp");
   ASCII_OTEL_ATTR_INT("server.port", endpoint.port);
-  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms
-                                                       : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000
-                                                                                                            : 3000);
+  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000 : 3000);
   if (endpoint.protocol == CONNECTION_ENDPOINT_QUIC) {
     result = connection_open_quic(&endpoint, settings, &quic_endpoint, &transport);
     if (result != ASCIICHAT_OK)
@@ -841,8 +812,7 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (!transport)
     return SET_ERRNO(ERROR_NETWORK_CONNECT, "Cannot establish connection to %s", address);
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
-    uint64_t deadline =
-        time_get_ns() + (settings ? (uint64_t)settings->timeout_ms * NS_PER_MS_INT : 15 * NS_PER_SEC_INT);
+    uint64_t deadline = time_get_ns() + (settings ? (uint64_t)settings->timeout_ms * NS_PER_MS_INT : 15 * NS_PER_SEC_INT);
     while (!acip_transport_is_connected(transport) && time_get_ns() < deadline && !connect_cancelled((void *)settings))
       platform_sleep_ms(10);
     if (!acip_transport_is_connected(transport)) {
@@ -850,10 +820,7 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
       return SET_ERRNO(ERROR_NETWORK_CONNECT, "WebSocket establishment failed or cancelled");
     }
   }
-  network_connection_t *c = connection_create(NULL, transport, endpoint.host,
-                                              endpoint.protocol == CONNECTION_ENDPOINT_QUIC ||
-                                                  strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0,
-                                              false);
+  network_connection_t *c = connection_create(NULL, transport, endpoint.host, endpoint.protocol == CONNECTION_ENDPOINT_QUIC || strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0, false);
   if (!c) {
     acip_transport_destroy(transport);
     if (quic_endpoint) {
@@ -876,8 +843,7 @@ asciichat_error_t network_connection_adopt(acip_transport_t *transport, network_
   *out = connection_create(NULL, transport, "peer", true, true);
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot own authenticated transport");
 }
-asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *transport, const char *peer, bool secure,
-                                                       network_connection_t **out) {
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *transport, const char *peer, bool secure, network_connection_t **out) {
   if (!transport || !out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection adoption parameters");
   *out = connection_create(NULL, transport, peer, secure, false);
@@ -897,8 +863,7 @@ uint8_t network_connection_crypto_mode(network_connection_t *c) {
   return c->adopted_security ? c->adopted_security->mode : c->security.mode;
 }
 
-asciichat_error_t network_connection_run(network_connection_t *c, const network_connection_callbacks_t *callbacks,
-                                         void *context) {
+asciichat_error_t network_connection_run(network_connection_t *c, const network_connection_callbacks_t *callbacks, void *context) {
   if (!c || c->server || !callbacks || !callbacks->packet || c->opened)
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection already has an execution owner");
   c->callbacks = *callbacks;

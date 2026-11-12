@@ -84,10 +84,10 @@ typedef struct {
   char key_path[DISCOVERY_SERVICE_MAIN_KEY_PATH_BUFFER_SIZE];           ///< Ed25519 identity key file path
   char log_file[DISCOVERY_SERVICE_MAIN_LOG_FILE_BUFFER_SIZE];           ///< Log file path (empty = stderr)
   log_level_t log_level;                                                ///< Logging verbosity level
-  bool require_server_identity; ///< Require servers to provide signed identity when creating sessions
-  bool require_client_identity; ///< Require clients to provide signed identity when joining sessions
-  bool require_server_verify;   ///< ACDS policy: require servers to verify client identity during handshake
-  bool require_client_verify;   ///< ACDS policy: require clients to verify server identity during handshake
+  bool require_server_identity;                                         ///< Require servers to provide signed identity when creating sessions
+  bool require_client_identity;                                         ///< Require clients to provide signed identity when joining sessions
+  bool require_server_verify;                                           ///< ACDS policy: require servers to verify client identity during handshake
+  bool require_client_verify;                                           ///< ACDS policy: require clients to verify server identity during handshake
 
   // WebRTC connectivity servers
   uint8_t stun_count;                                               ///< Number of configured STUN servers (0-4)

@@ -87,8 +87,7 @@ void tui_stats_render(terminal_size_t size, const void *data) {
     return;
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   terminal_color_mode_t mode = GET_OPTION(color_mode);
-  bool color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-               (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+  bool color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) && (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
   const char *blue = color ? ui_text_color_prefix(LOG_COLOR_DEBUG) : "";
   frame_buffer_cursor_home(buffer);
   frame_buffer_printf(buffer, "\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n", blue, view->mode);

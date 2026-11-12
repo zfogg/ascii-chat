@@ -20,8 +20,7 @@ asciichat_error_t http_basic_auth_parse(const char *authorization, http_basic_cr
     ++authorization;
 
   static const char scheme[] = "Basic";
-  if (platform_strncasecmp(authorization, scheme, sizeof(scheme) - 1) != 0 ||
-      (authorization[sizeof(scheme) - 1] != ' ' && authorization[sizeof(scheme) - 1] != '\t'))
+  if (platform_strncasecmp(authorization, scheme, sizeof(scheme) - 1) != 0 || (authorization[sizeof(scheme) - 1] != ' ' && authorization[sizeof(scheme) - 1] != '\t'))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Authorization is not Basic authentication");
 
   const char *encoded = authorization + sizeof(scheme) - 1;
@@ -33,9 +32,7 @@ asciichat_error_t http_basic_auth_parse(const char *authorization, http_basic_cr
 
   uint8_t decoded[sizeof(*out) + 1];
   size_t decoded_length = 0;
-  if (sodium_base642bin(decoded, sizeof(decoded) - 1, encoded, encoded_length, NULL, &decoded_length, NULL,
-                        sodium_base64_VARIANT_ORIGINAL) != 0 ||
-      decoded_length == 0) {
+  if (sodium_base642bin(decoded, sizeof(decoded) - 1, encoded, encoded_length, NULL, &decoded_length, NULL, sodium_base64_VARIANT_ORIGINAL) != 0 || decoded_length == 0) {
     sodium_memzero(decoded, sizeof(decoded));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Basic authorization encoding");
   }
@@ -47,8 +44,7 @@ asciichat_error_t http_basic_auth_parse(const char *authorization, http_basic_cr
   }
 
   char *separator = memchr(decoded, ':', decoded_length);
-  if (!separator || separator == (char *)decoded || (size_t)(separator - (char *)decoded) >= sizeof(out->username) ||
-      decoded_length - (size_t)(separator - (char *)decoded) - 1 == 0 ||
+  if (!separator || separator == (char *)decoded || (size_t)(separator - (char *)decoded) >= sizeof(out->username) || decoded_length - (size_t)(separator - (char *)decoded) - 1 == 0 ||
       decoded_length - (size_t)(separator - (char *)decoded) - 1 >= sizeof(out->password)) {
     sodium_memzero(decoded, sizeof(decoded));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Basic authorization must contain username and password");
@@ -110,14 +106,12 @@ bool http_basic_auth_authorize(const http_basic_auth_config_t *config, const cha
     return false;
   }
   http_basic_credentials_t credentials;
-  bool authorized = authorization && http_basic_auth_parse(authorization, &credentials) == ASCIICHAT_OK &&
-                    http_basic_auth_matches(&credentials, config->username, config->password);
+  bool authorized = authorization && http_basic_auth_parse(authorization, &credentials) == ASCIICHAT_OK && http_basic_auth_matches(&credentials, config->username, config->password);
   http_basic_credentials_clear(&credentials);
   return authorized;
 }
 
-bool http_server_authorize(const http_basic_auth_config_t *config, const struct http_request_info *request,
-                           struct http_response *response) {
+bool http_server_authorize(const http_basic_auth_config_t *config, const struct http_request_info *request, struct http_response *response) {
   if (!config || !request || !response) {
     (void)SET_ERRNO(ERROR_INVALID_PARAM, "Basic authorization request arguments are required");
     return false;
@@ -138,8 +132,7 @@ bool http_server_authorize(const http_basic_auth_config_t *config, const struct 
     return false;
   const char *realm = config->realm && config->realm[0] ? config->realm : "ascii-chat";
   char challenge[256];
-  if (safe_snprintf(challenge, sizeof(challenge), "Basic realm=\"%s\"", realm) < 0 ||
-      http_response_set_header(response, "WWW-Authenticate", challenge) != ASCIICHAT_OK)
+  if (safe_snprintf(challenge, sizeof(challenge), "Basic realm=\"%s\"", realm) < 0 || http_response_set_header(response, "WWW-Authenticate", challenge) != ASCIICHAT_OK)
     return false;
   (void)http_response_finish(response);
   return false;

@@ -133,8 +133,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
         packet_len = (packet_data[offset] << 8) | packet_data[offset + 1];
         offset += 2;
       } else if (length_type == 2) {
-        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) |
-                     packet_data[offset + 3];
+        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) | packet_data[offset + 3];
         offset += 4;
       } else {
         // Indeterminate length - skip
@@ -160,8 +159,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
       } else if (first_len == 255) {
         if (offset + 4 > bytes_read)
           break;
-        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) |
-                     packet_data[offset + 3];
+        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) | packet_data[offset + 3];
         offset += 4;
       } else {
         // Partial body length - not expected for key packets
@@ -276,8 +274,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   // Use gpg to list the key and get the keygrip
   char cmd[BUFFER_SIZE_LARGE];
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s " PLATFORM_SHELL_NULL_REDIRECT,
-                escaped_key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s " PLATFORM_SHELL_NULL_REDIRECT, escaped_key_id);
 
   FILE *fp = NULL;
   if (platform_popen("gpg_export", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
@@ -401,8 +398,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Assuan data lines escape %, CR and LF, including bytes inside the S-expression.
   size_t decoded = 0;
   for (size_t i = 0; i < (size_t)bytes_read; ++i) {
-    if (response[i] == '%' && i + 2 < (size_t)bytes_read && isxdigit((unsigned char)response[i + 1]) &&
-        isxdigit((unsigned char)response[i + 2])) {
+    if (response[i] == '%' && i + 2 < (size_t)bytes_read && isxdigit((unsigned char)response[i + 1]) && isxdigit((unsigned char)response[i + 2])) {
       unsigned char high = (unsigned char)tolower((unsigned char)response[i + 1]);
       unsigned char low = (unsigned char)tolower((unsigned char)response[i + 2]);
       high = high <= '9' ? high - '0' : high - 'a' + 10;

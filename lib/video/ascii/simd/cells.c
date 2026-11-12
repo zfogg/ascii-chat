@@ -27,8 +27,7 @@ size_t simd_run_scalar(const uint32_t *glyph, const uint32_t *fg, const uint32_t
   }
   return count ? i : 0;
 }
-void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg,
-                           size_t count, unsigned mode, const uint32_t keys[5]) {
+void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg, size_t count, unsigned mode, const uint32_t keys[5]) {
   for (size_t i = 0; i < count; ++i) {
     uint32_t t = top[i], b = bottom[i];
     unsigned yt = (76 * (t >> 16) + 150 * ((t >> 8) & 255) + 29 * (t & 255)) >> 8;
@@ -39,15 +38,7 @@ void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t
       fg[i] = bg[i] = UINT32_MAX;
   }
 }
-#define CELLS(isa, mono, dot)                                                                                          \
-  {simd_luminance_##isa,                                                                                               \
-   simd_pack_##isa,                                                                                                    \
-   simd_lookup_##isa,                                                                                                  \
-   simd_quantize_##isa,                                                                                                \
-   simd_halfblock_##isa,                                                                                               \
-   simd_run_##isa,                                                                                                     \
-   mono,                                                                                                               \
-   dot}
+#define CELLS(isa, mono, dot) {simd_luminance_##isa, simd_pack_##isa, simd_lookup_##isa, simd_quantize_##isa, simd_halfblock_##isa, simd_run_##isa, mono, dot}
 #if SIMD_SUPPORT_SSE2
 #define GLYPH_CORRELATION_X86 glyph_shape_correlation_sse2
 const simd_cells_t simd_cells_sse2 = CELLS(sse2, NULL, GLYPH_CORRELATION_X86);

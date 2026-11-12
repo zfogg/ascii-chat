@@ -62,12 +62,7 @@ static bool g_log_help;
 static bool g_log_help_too_small;
 static uint64_t g_log_last_tail_sequence;
 static mutex_t g_log_viewer_mutex;
-enum {
-  LOG_VIEWER_MUTEX_UNINITIALIZED,
-  LOG_VIEWER_MUTEX_INITIALIZING,
-  LOG_VIEWER_MUTEX_READY,
-  LOG_VIEWER_MUTEX_DESTROYING
-};
+enum { LOG_VIEWER_MUTEX_UNINITIALIZED, LOG_VIEWER_MUTEX_INITIALIZING, LOG_VIEWER_MUTEX_READY, LOG_VIEWER_MUTEX_DESTROYING };
 static atomic_t g_log_viewer_mutex_state = {0};
 
 static bool terminal_screen_logs_mutex_init(void) {
@@ -284,8 +279,7 @@ static void terminal_screen_render_impl(const terminal_screen_config_t *config) 
     return;
   frame_buffer_reset(g_frame_buf);
   terminal_screen_compose(g_frame_buf, size, config, g_session_log_buffer);
-  ui_controller_write(frame_buffer_get_screen_output_fd(), frame_buffer_get_content(g_frame_buf),
-                      frame_buffer_get_length(g_frame_buf));
+  ui_controller_write(frame_buffer_get_screen_output_fd(), frame_buffer_get_content(g_frame_buf), frame_buffer_get_length(g_frame_buf));
 }
 
 static void terminal_screen_render_owned(const terminal_screen_config_t *config) {
@@ -388,8 +382,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   snapshot->config = *config;
   memcpy(snapshot->header, config->user_data, config->user_data_size);
-  terminal_size_t minimum = {.cols = config->minimum_cols,
-                             .rows = config->fixed_header_lines + (log_search_is_entering() ? 4 : 2)};
+  terminal_size_t minimum = {.cols = config->minimum_cols, .rows = config->fixed_header_lines + (log_search_is_entering() ? 4 : 2)};
   (void)ui_controller_submit(config->screen, config->output_fd, minimum, render_screen_snapshot, snapshot, bytes);
   SAFE_FREE(snapshot);
 }

@@ -119,8 +119,7 @@ static void update_center_line(frame_buffer_t *out, int row, int left, int width
   frame_buffer_printf(out, "\033[%d;%dH%s", row, left + padding, colored_string(color, clipped));
 }
 
-static void update_border(frame_buffer_t *out, int row, int left, int width, const char *first, const char *horizontal,
-                          const char *last, log_color_t color) {
+static void update_border(frame_buffer_t *out, int row, int left, int width, const char *first, const char *horizontal, const char *last, log_color_t color) {
   frame_buffer_printf(out, "\033[%d;%dH%s", row, left, colored_string(color, first));
   int edges = (first[0] ? 1 : 0) + (last[0] ? 1 : 0);
   const char *stroke = colored_string(color, horizontal);
@@ -144,8 +143,7 @@ static bool update_select_key(int key, int count) {
   return true;
 }
 
-static void render_update_dialog(terminal_size_t size, const update_check_result_t *result, bool startup,
-                                 bool checking) {
+static void render_update_dialog(terminal_size_t size, const update_check_result_t *result, bool startup, bool checking) {
   bool available = !checking && result->update_available;
   bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
   log_color_t cyan = LOG_COLOR_DEBUG;
@@ -188,54 +186,38 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     return;
   frame_buffer_printf(out, startup ? "\033[?25l\033[0m\033[2J\033[H" : "\033[?25l\033[0m");
   ui_popup_frame(out, top, left, width, height, cyan);
-  const char *title = checking                  ? "Check for updates"
-                      : available               ? "Update available"
-                      : result->check_succeeded ? "You're up to date"
-                                                : "Update check unavailable";
+  const char *title = checking ? "Check for updates" : available ? "Update available" : result->check_succeeded ? "You're up to date" : "Update check unavailable";
   char heading[TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE];
   snprintf(heading, sizeof(heading), "\033[1m%s", title);
-  update_center_line(out, top + (checking ? 1 : 2), left + 2, width - 4, heading,
-                     checking                  ? cyan
-                     : available               ? yellow
-                     : result->check_succeeded ? green
-                                               : yellow);
+  update_center_line(out, top + (checking ? 1 : 2), left + 2, width - 4, heading, checking ? cyan : available ? yellow : result->check_succeeded ? green : yellow);
   if (checking) {
     ui_spinner_render(out, top + 3, left + (width - 7) / 2, time_get_ns());
     update_center_line(out, top + 7, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
     update_center_line(out, top + 9, left + 2, width - 4, "Video chat in your terminal", muted);
   } else if (result->check_succeeded) {
-    char installed[TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE], latest[TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE],
-        installed_version[TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE];
-    snprintf(installed_version, sizeof(installed_version), "%s%s", result->current_version[0] == 'v' ? "" : "v",
-             result->current_version);
-    snprintf(installed, sizeof(installed), "Installed  %s",
-             colored_string(available ? yellow : green, installed_version));
+    char installed[TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE], latest[TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE], installed_version[TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE];
+    snprintf(installed_version, sizeof(installed_version), "%s%s", result->current_version[0] == 'v' ? "" : "v", result->current_version);
+    snprintf(installed, sizeof(installed), "Installed  %s", colored_string(available ? yellow : green, installed_version));
     snprintf(latest, sizeof(latest), "Latest     %s", colored_string(green, result->latest_version));
     update_center_line(out, top + 4, left + 2, width - 4, installed, LOG_COLOR_RESET);
     update_center_line(out, top + 5, left + 2, width - 4, latest, LOG_COLOR_RESET);
     if (available) {
       update_center_line(out, top + 6, left + 2, width - 4, "A new version of ascii-chat is available.", muted);
       char command[TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE];
-      update_check_get_upgrade_suggestion(update_check_detect_install_method(), result->latest_version, command,
-                                          sizeof(command));
+      update_check_get_upgrade_suggestion(update_check_detect_install_method(), result->latest_version, command, sizeof(command));
       int command_width = display_width(command) + 6;
       if (command_width > width - 6)
         command_width = width - 6;
       int command_left = left + (width - command_width) / 2;
-      update_border(out, top + 7, command_left, command_width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+",
-                    cyan);
-      frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + 8, command_left, colored_string(cyan, vertical),
-                          command_width - 2, "", colored_string(cyan, vertical));
+      update_border(out, top + 7, command_left, command_width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+", cyan);
+      frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + 8, command_left, colored_string(cyan, vertical), command_width - 2, "", colored_string(cyan, vertical));
       update_center_line(out, top + 8, command_left + 2, command_width - 4, command, cyan);
-      update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+",
-                    cyan);
+      update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+", cyan);
       char instructions[TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE];
       truncate_with_ellipsis("Full instructions on ascii-chat.com", instructions, sizeof(instructions), width - 4);
       int instructions_left = left + 2 + (width - 4 - display_width(instructions)) / 2;
-      char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE],
-          styled_instructions[TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE];
-      (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
-                                      !GET_OPTION(strip_ansi));
+      char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE], styled_instructions[TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE];
+      (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com", !GET_OPTION(strip_ansi));
       char *domain = strstr(instructions, "ascii-chat.com");
       if (domain) {
         *domain = '\0';
@@ -243,10 +225,8 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
       } else {
         snprintf(styled_instructions, sizeof(styled_instructions), "%s", instructions);
       }
-      frame_buffer_printf(out, "\033[%d;%dH%s", top + 10, instructions_left,
-                          colored_string(LOG_COLOR_WHITE, styled_instructions));
-      update_center_line(out, top + 11, left + 2, width - 4,
-                         "Binaries for every OS with release notes on GitHub:", muted);
+      frame_buffer_printf(out, "\033[%d;%dH%s", top + 10, instructions_left, colored_string(LOG_COLOR_WHITE, styled_instructions));
+      update_center_line(out, top + 11, left + 2, width - 4, "Binaries for every OS with release notes on GitHub:", muted);
       update_center_line(out, top + 12, left + 2, width - 4, result->release_url, cyan);
     } else {
       update_center_line(out, top + 7, left + 2, width - 4, "Checked just now", muted);
@@ -257,8 +237,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   }
   int button_row = top + (available ? 16 : checking ? 13 : 11);
   if (failed) {
-    update_center_line(out, button_row - 3, left + 2, width - 4, "Update command failed. See the logs and retry.",
-                       yellow);
+    update_center_line(out, button_row - 3, left + 2, width - 4, "Update command failed. See the logs and retry.", yellow);
   }
   update_border(out, button_row - 2, left + 2, width - 4, "", horizontal, "", cyan);
   int selected = atomic_load(&g_update_selected_action) % count;
@@ -295,8 +274,7 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     return false;
   }
   atomic_store(&g_update_selected_action, 0);
-  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 23},
-                           render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 23}, render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
     return false;
   bool update = false;
   while (!shutdown_is_requested()) {
@@ -342,10 +320,8 @@ void update_banner_print_instructions(void) {
   memcpy(&result, &g_update_result, sizeof(result));
   mutex_unlock(&g_update_result_mutex);
 
-  char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE],
-      instructions[TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE];
-  (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
-                                  !GET_OPTION(strip_ansi));
+  char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE], instructions[TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE];
+  (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com", !GET_OPTION(strip_ansi));
   snprintf(instructions, sizeof(instructions), "Full instructions on %s", domain_link);
   char output[TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE];
   int len = snprintf(output, sizeof(output),
@@ -353,8 +329,7 @@ void update_banner_print_instructions(void) {
                      "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
                      "Binaries for every OS with release notes on GitHub:\n%s\n\n"
                      "%s\n\n",
-                     result.current_version, result.latest_version, result.release_url,
-                     colored_string(LOG_COLOR_WHITE, instructions));
+                     result.current_version, result.latest_version, result.release_url, colored_string(LOG_COLOR_WHITE, instructions));
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }
@@ -385,8 +360,7 @@ bool update_banner_install_update(void) {
     exit_code = platform_execute_subprocess("brew", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_SCOOP) {
     // Scoop is a PowerShell script/shim, rather than a native executable.
-    const char *argv[] = {"powershell", "-NoProfile", "-Command",
-                          "$ErrorActionPreference = 'Stop'; scoop update ascii-chat; if (!$?) { exit 1 }", NULL};
+    const char *argv[] = {"powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; scoop update ascii-chat; if (!$?) { exit 1 }", NULL};
     exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_ARCH_AUR) {
     const char *helper = update_check_get_aur_helper();
@@ -400,10 +374,7 @@ bool update_banner_install_update(void) {
     exit_code = platform_execute_subprocess(helper, argv, NULL, 0, NULL, NULL);
   } else {
 #ifdef _WIN32
-    const char *argv[] = {
-        "powershell", "-NoProfile", "-ExecutionPolicy",
-        "Bypass",     "-Command",   "$ErrorActionPreference = 'Stop'; irm https://ascii-chat.com/install.ps1 | iex",
-        NULL};
+    const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop'; irm https://ascii-chat.com/install.ps1 | iex", NULL};
     exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
 #else
     const char *argv[] = {"bash", "-o", "pipefail", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
@@ -460,12 +431,7 @@ static asciichat_error_t update_check_background(update_check_result_t *result) 
     streams[i].flags = UV_IGNORE;
   update_child_result_t child_result = {0};
   uv_process_t child = {.data = &child_result};
-  uv_process_options_t options = {.file = executable,
-                                  .args = args,
-                                  .exit_cb = update_child_exited,
-                                  .stdio_count = 3,
-                                  .stdio = streams,
-                                  .flags = UV_PROCESS_WINDOWS_HIDE};
+  uv_process_options_t options = {.file = executable, .args = args, .exit_cb = update_child_exited, .stdio_count = 3, .stdio = streams, .flags = UV_PROCESS_WINDOWS_HIDE};
   rc = uv_spawn(&loop, &child, &options);
   if (rc != 0) {
     uv_loop_close(&loop);
@@ -507,9 +473,7 @@ static void *update_check_thread_func(void *arg) {
   bool force = arg != NULL;
   uint64_t visible_until = time_get_ns() + 2 * NS_PER_SEC_INT;
   update_check_result_t result;
-  bool background = !force && !splash_should_display(true) &&
-                    (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT ||
-                     GET_OPTION(detected_mode) == MODE_DISCOVERY);
+  bool background = !force && !splash_should_display(true) && (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT || GET_OPTION(detected_mode) == MODE_DISCOVERY);
   asciichat_error_t err;
   if (background) {
     asciichat_errno_scope_t scope = errno_scope_begin();
@@ -557,10 +521,8 @@ static void *update_check_thread_func(void *arg) {
   mutex_unlock(&g_update_result_mutex);
   // With no splash, the check runs in the background instead of holding up
   // the first frame. Notify interactively once its result is available.
-  if (!force && err == ASCIICHAT_OK && result.update_available && !splash_should_display(true) &&
-      (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT) &&
-      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() &&
-      terminal_can_prompt_user(!GET_OPTION(snapshot_mode)) && !update_check_is_dismissed(&result)) {
+  if (!force && err == ASCIICHAT_OK && result.update_available && !splash_should_display(true) && (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT) &&
+      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() && terminal_can_prompt_user(!GET_OPTION(snapshot_mode)) && !update_check_is_dismissed(&result)) {
     bool expected = false;
     if (atomic_compare_exchange_strong(&g_update_overlay, &expected, true)) {
       atomic_store(&g_update_selected_action, 0);
@@ -587,8 +549,7 @@ static void update_banner_start_check_impl(bool force) {
   memset(&g_update_result, 0, sizeof(g_update_result));
   g_update_result_set = false;
   mutex_unlock(&g_update_result_mutex);
-  if (platform_thread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) ==
-      0) {
+  if (platform_thread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
   } else {
     ascii_otel_ui_usage("update", "check_failed", 0);
@@ -631,8 +592,7 @@ void update_banner_toggle_overlay(void) {
 static void update_banner_present_overlay(void) {
   const bool snapshot = true;
   asciichat_errno_scope_t scope = errno_scope_begin();
-  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 24},
-                           render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 24}, render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
     g_update_overlay = false;
     LOG_ERRNO_IF_SET("Cannot show update checker");
   }
@@ -659,8 +619,7 @@ static void update_banner_open_release(void) {
   mutex_unlock(&g_update_result_mutex);
   // The URL can originate in the disk cache. Keep it a single HTTPS argument,
   // including when Windows passes it through cmd's start builtin.
-  if (!result.check_succeeded || strncmp(result.release_url, "https://", 8) != 0 || !result.release_url[8] ||
-      strpbrk(result.release_url, "\"'&|^<>%!`()\\") != NULL)
+  if (!result.check_succeeded || strncmp(result.release_url, "https://", 8) != 0 || !result.release_url[8] || strpbrk(result.release_url, "\"'&|^<>%!`()\\") != NULL)
     return;
   for (const unsigned char *ch = (const unsigned char *)result.release_url; *ch; ++ch) {
     if (*ch <= ' ' || *ch == 127)

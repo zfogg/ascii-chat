@@ -104,8 +104,7 @@ static void cleanup_old_events(rate_event_t *event, uint64_t cutoff_ns) {
   event->head = 0; // Reset circular buffer head
 }
 
-static asciichat_error_t memory_check(void *backend_data, const char *ip_address, rate_event_type_t event_type,
-                                      const rate_limit_config_t *config, bool *allowed) {
+static asciichat_error_t memory_check(void *backend_data, const char *ip_address, rate_event_type_t event_type, const rate_limit_config_t *config, bool *allowed) {
   memory_backend_t *backend = (memory_backend_t *)backend_data;
 
   // Use provided config or default
@@ -138,8 +137,7 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
   *allowed = (event_count < limit->max_events);
 
   if (!*allowed) {
-    log_warn("Rate limit exceeded for %s (event: %s, count: %u/%u)", ip_address,
-             rate_limiter_event_type_string(event_type), event_count, limit->max_events);
+    log_warn("Rate limit exceeded for %s (event: %s, count: %u/%u)", ip_address, rate_limiter_event_type_string(event_type), event_count, limit->max_events);
   }
 
   return ASCIICHAT_OK;
