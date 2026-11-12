@@ -106,6 +106,11 @@ static const char *render_mode_to_string(int mode) {
   }
 }
 
+/** @brief Get text renderer name. */
+static const char *renderer_to_string(int renderer) {
+  return renderer == ASCII_RENDERER_GLYPH ? "Glyph" : "Luminance";
+}
+
 /**
  * @brief Get color filter name
  */
@@ -147,7 +152,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "x / X  Flip webcam horizontally",
       "y / Y  Flip webcam vertically",
       "w / W  Toggle Face Follow",
-      "r / R  Cycle render mode",
+      "r      Cycle render mode",
+      "Shift-R Cycle text renderer",
       "-      FPS counter",
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",
@@ -168,10 +174,11 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[4], sizeof(settings[4]), "Color  : %s", color_mode_to_string(GET_OPTION(color_mode)));
   snprintf(settings[5], sizeof(settings[5]), "Filter : %s", color_filter_to_string(GET_OPTION(color_filter)));
   snprintf(settings[6], sizeof(settings[6]), "Render : %s", render_mode_to_string(GET_OPTION(render_mode)));
-  snprintf(settings[7], sizeof(settings[7]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)),
+  snprintf(settings[7], sizeof(settings[7]), "Renderer: %s", renderer_to_string(GET_OPTION(renderer)));
+  snprintf(settings[8], sizeof(settings[8]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)),
            status_indicator(GET_OPTION(flip_x)));
-  snprintf(settings[8], sizeof(settings[8]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
-  int settings_count = 9;
+  snprintf(settings[9], sizeof(settings[9]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
+  int settings_count = 10;
   snprintf(settings[settings_count++], sizeof(settings[0]), "Animations (number key toggle):");
   snprintf(settings[settings_count++], sizeof(settings[0]), "-------------------------------");
   snprintf(settings[settings_count++], sizeof(settings[0]), "(1) Matrix \"Digital Rain\" : %s",
