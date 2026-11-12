@@ -62,13 +62,18 @@ set(_asciichat_gotel_cmake "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/CMa
 if(EXISTS "${_asciichat_gotel_cmake}")
     file(READ "${_asciichat_gotel_cmake}" _asciichat_gotel_cmake_contents)
     set(_asciichat_gotel_utf8proc_add "add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)")
-    set(_asciichat_gotel_utf8proc_guard
-        "if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)\n"
-        "  add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)\n"
-        "endif()")
+    set(_asciichat_gotel_utf8proc_guard [=[if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)
+  add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)
+endif()]=])
+    set(_asciichat_gotel_utf8proc_bad [=[if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)
+;  add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)
+;endif()]=])
+    string(REPLACE "${_asciichat_gotel_utf8proc_bad}"
+        "${_asciichat_gotel_utf8proc_guard}"
+        _asciichat_gotel_cmake_repaired "${_asciichat_gotel_cmake_contents}")
     string(REPLACE "${_asciichat_gotel_utf8proc_add}"
         "${_asciichat_gotel_utf8proc_guard}"
-        _asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_contents}")
+        _asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_repaired}")
     if(NOT _asciichat_gotel_cmake_patched STREQUAL _asciichat_gotel_cmake_contents)
         file(WRITE "${_asciichat_gotel_cmake}" "${_asciichat_gotel_cmake_patched}")
     endif()
