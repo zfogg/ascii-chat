@@ -2244,9 +2244,14 @@ static asciichat_error_t finalize_media_options(options_t *opts) {
   }
   js_log_options("After --no-compress check");
 
-  // Set media_from_stdin flag if media_file is "-"
+  // Let libflags classify the generic file-stream sentinel; ascii-chat keeps
+  // ownership of the application-specific seek and output compatibility rules.
   js_log_options("Before media_from_stdin check");
-  if (opts->media_file[0] != '\0' && strcmp(opts->media_file, "-") == 0) {
+  static const flags_option_spec_t media_file_schema = {
+      .name = "file", .type = FLAGS_TYPE_FILE, .dash_behavior = FLAGS_DASH_STDIN};
+  flags_stream_value_t media_stream = {0};
+  if (opts->media_file[0] != '\0' && flags_classify_stream(&media_file_schema, opts->media_file, &media_stream) &&
+      media_stream.kind == FLAGS_STREAM_STDIN) {
     js_log_options("In media_from_stdin block");
     opts->media_from_stdin = true;
     js_log_options("Set media_from_stdin to true");
