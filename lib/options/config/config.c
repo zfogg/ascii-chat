@@ -31,6 +31,8 @@
 #include <ascii-chat/os/question.h>
 #include <sys/stat.h>
 #include <libplatform/filesystem.h>
+#include <libflags/builder.h>
+#include <libflags/config.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -44,6 +46,91 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
+
+/**
+ * Build the generic scalar/string portion of ascii-chat's TOML schema.
+ *
+ * The application schema remains authoritative for mode filtering and custom
+ * callbacks. This bridge deliberately admits only storage layouts that
+ * libflags can bind without an adapter; the legacy path continues to handle
+ * enums, callbacks, and mode-specific normalization during this migration.
+ */
+static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mode) {
+  size_t count = 0;
+  const config_option_metadata_t *metadata = config_schema_get_all(&count);
+  if (!metadata)
+    return NULL;
+
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder)
+    return NULL;
+
+  for (size_t i = 0; i < count; ++i) {
+    const config_option_metadata_t *meta = &metadata[i];
+    option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1U << mode);
+    if (!meta->toml_key ||
+        (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_bit)))
+      continue;
+
+    flags_value_type_t type;
+    size_t minimum_size;
+    switch (meta->type) {
+    case OPTION_TYPE_BOOL:
+      type = FLAGS_TYPE_BOOL;
+      minimum_size = sizeof(bool);
+      break;
+    case OPTION_TYPE_INT:
+      if (meta->field_size != sizeof(int))
+        continue;
+      type = FLAGS_TYPE_INT64;
+      minimum_size = sizeof(int32_t);
+      break;
+    case OPTION_TYPE_DOUBLE:
+      if (meta->field_size != sizeof(double))
+        continue;
+      type = FLAGS_TYPE_DOUBLE;
+      minimum_size = sizeof(double);
+      break;
+    case OPTION_TYPE_STRING:
+      type = FLAGS_TYPE_STRING;
+      minimum_size = sizeof(char);
+      break;
+    default:
+      continue;
+    }
+    if (meta->field_size < minimum_size)
+      continue;
+
+    const flags_option_spec_t option = {.name = meta->toml_key,
+                                        .metavar = "VALUE",
+                                        .description = meta->description,
+                                        .type = type,
+                                        .behavior = FLAGS_BEHAVIOR_VALUE,
+                                        .argument_requirement = FLAGS_ARGUMENT_REQUIRED,
+                                        .storage_offset = meta->field_offset,
+                                        .storage_size = meta->field_size,
+                                        .dynamic_string = false};
+    if (!flags_schema_builder_add_option(builder, &option)) {
+      flags_schema_builder_destroy(builder);
+      return NULL;
+    }
+  }
+  return builder;
+}
+
+/** Applies generic scalar TOML values before ascii-chat's richer validation. */
+static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mode, options_t *opts) {
+  flags_schema_builder_t *builder = config_build_libflags_schema(mode);
+  if (!builder)
+    return;
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));
+  bool loaded = context && flags_config_load_toml(context, path);
+  if (!loaded)
+    log_warn("Generic libflags config import skipped some values from '%s'", path);
+  if (context)
+    flags_destroy(context);
+  flags_schema_builder_destroy(builder);
+}
 
 /**
  * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned
@@ -1208,6 +1295,11 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
     return ASCIICHAT_OK; // Non-fatal error
   }
+
+  // Import the generic scalar/string subset first. The legacy schema below
+  // remains responsible for callbacks, enums, mode diagnostics, and the
+  // application-specific validation contract.
+  config_apply_libflags_scalars(config_path_expanded, detected_mode, opts);
 
   // Apply configuration using schema-driven parser with bitmask validation
   asciichat_errno_scope_t schema_scope = errno_scope_begin();
