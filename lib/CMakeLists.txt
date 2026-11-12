@@ -23,7 +23,10 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
+set(_ascii_chat_posix_system_source "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c")
+set_source_files_properties("${_ascii_chat_posix_system_source}" PROPERTIES COMPILE_OPTIONS "-include${CMAKE_SOURCE_DIR}/include/ascii-chat/common.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/log/log.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/os/socket.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/util/time.h")
 set(CORE_SRCS
+    ${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
     ${LIB_DIR}/media/input.c
