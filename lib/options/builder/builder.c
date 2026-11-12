@@ -73,7 +73,7 @@ flags_schema_builder_t *options_config_build_flags_schema(const options_config_t
         .secret = source->long_name && (strstr(source->long_name, "password") || strstr(source->long_name, "key")),
         .storage_offset = source->offset,
         .storage_size = source->type == OPTION_TYPE_BOOL     ? sizeof(bool)
-                        : source->type == OPTION_TYPE_INT    ? sizeof(int64_t)
+                        : source->type == OPTION_TYPE_INT    ? sizeof(int)
                         : source->type == OPTION_TYPE_DOUBLE ? sizeof(double)
                                                              : sizeof(char *),
         .default_value = source->default_value,
