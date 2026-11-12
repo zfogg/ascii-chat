@@ -188,7 +188,10 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
 
   // ===== TEXT RENDERER CONTROL =====
   case 'R': {
-    options_cycle("renderer", 2);
+    if (options_cycle("renderer", 2) != ASCIICHAT_OK) {
+      log_warn("Could not change text renderer");
+      return UI_ACTION_SETTINGS;
+    }
     log_info("Text renderer: %s", GET_OPTION(renderer) == ASCII_RENDERER_GLYPH ? "Glyph" : "Luminance");
     return UI_ACTION_SETTINGS;
   }
