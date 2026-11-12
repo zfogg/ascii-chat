@@ -53,6 +53,15 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
 
+# gotel's util/utf8.c includes its sibling header as "util/utf8.h".
+# The vendored target does not expose its C source root to that translation
+# unit when consumed from a parent project, so provide the missing include
+# directory at the integration boundary.
+if(TARGET gotel)
+    target_include_directories(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+endif()
+
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
     target_include_directories(gotel_cxx SYSTEM PRIVATE "${ALPINE_LIBCXX_INCLUDE_DIR}")
 endif()
