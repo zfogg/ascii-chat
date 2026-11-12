@@ -78,6 +78,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <libplatform/system.h>
+#include <libflags/flags.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/systemd.h>
 #include <libplatform/terminal.h>
@@ -1700,9 +1701,11 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
 
   bool cli_encrypt = false, cli_no_encrypt = false;
   bool cli_flip_x = false, cli_flip_y = false;
-  for (int i = 1; i < mode_argc; ++i) {
-    if (strcmp(mode_argv[i], "--") == 0)
-      break;
+  flags_parse_result_t argument_split = {0};
+  const bool split_ok = flags_split_arguments(mode_argc, mode_argv, &argument_split);
+  const int option_scan_end =
+      split_ok && argument_split.options_ended ? argument_split.first_positional_index : mode_argc;
+  for (int i = 1; i < option_scan_end; ++i) {
     cli_encrypt |= strcmp(mode_argv[i], "--encrypt") == 0 || strcmp(mode_argv[i], "-E") == 0 ||
                    strncmp(mode_argv[i], "--encrypt=", 10) == 0;
     cli_no_encrypt |= strcmp(mode_argv[i], "--no-encrypt") == 0 || strncmp(mode_argv[i], "--no-encrypt=", 13) == 0;
