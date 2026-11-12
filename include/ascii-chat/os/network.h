@@ -47,6 +47,5 @@ static inline uint64_t htonll(uint64_t val) {
 #define ntohll(x) htonll(x)
 #endif
 #endif
-#endif
 
 /** @} */
