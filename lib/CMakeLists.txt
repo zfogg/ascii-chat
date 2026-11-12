@@ -721,6 +721,7 @@ endif()
 target_link_libraries(ascii-chat-core PRIVATE
     ${SQLITE3_LIBRARIES}
     ${UTF8PROC_LIBRARIES}
+    libflags::flags
 )
 
 # PCRE2: Configure for core module (for session string format validation)
