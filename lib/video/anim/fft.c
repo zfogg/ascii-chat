@@ -10,7 +10,9 @@
 
 #include <math.h>
 #include <string.h>
+#ifndef __EMSCRIPTEN__
 #include <fftw3.h>
+#endif
 
 #define FFT_SIZE 1024
 #define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
@@ -27,11 +29,13 @@ static struct {
   bool valid;
 } fft_cache;
 
+#ifndef __EMSCRIPTEN__
 static static_mutex_t fftw_mutex = STATIC_MUTEX_INIT;
 static double fftw_input[FFT_SIZE];
 static fftw_complex fftw_output[FFT_SIZE / 2 + 1];
 static fftw_plan fftw_forward;
 extern static_mutex_t audio_fftw_planner_lock;
+#endif
 
 static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
   parsed->mode = FFT_SCALE_DB;
@@ -58,6 +62,47 @@ static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
          parsed->max_db > parsed->min_db;
 }
 
+#ifdef __EMSCRIPTEN__
+static void visualization_fft(float *real, float *imaginary) {
+  for (size_t i = 1, j = 0; i < FFT_SIZE; i++) {
+    size_t bit = FFT_SIZE >> 1;
+    for (; j & bit; bit >>= 1)
+      j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      float swap = real[i];
+      real[i] = real[j];
+      real[j] = swap;
+      swap = imaginary[i];
+      imaginary[i] = imaginary[j];
+      imaginary[j] = swap;
+    }
+  }
+  for (size_t length = 2; length <= FFT_SIZE; length <<= 1) {
+    float angle = -6.28318530718f / (float)length;
+    float step_real = cosf(angle), step_imaginary = sinf(angle);
+    for (size_t base = 0; base < FFT_SIZE; base += length) {
+      float twiddle_real = 1.0f, twiddle_imaginary = 0.0f;
+      for (size_t offset = 0; offset < length / 2; offset++) {
+        size_t even = base + offset, odd = even + length / 2;
+        float odd_real = real[odd] * twiddle_real - imaginary[odd] * twiddle_imaginary;
+        float odd_imaginary = real[odd] * twiddle_imaginary + imaginary[odd] * twiddle_real;
+        real[odd] = real[even] - odd_real;
+        imaginary[odd] = imaginary[even] - odd_imaginary;
+        real[even] += odd_real;
+        imaginary[even] += odd_imaginary;
+        float next_real = twiddle_real * step_real - twiddle_imaginary * step_imaginary;
+        twiddle_imaginary = twiddle_real * step_imaginary + twiddle_imaginary * step_real;
+        twiddle_real = next_real;
+      }
+    }
+  }
+}
+
+asciichat_error_t audio_visualization_fft_init(void) {
+  return ASCIICHAT_OK;
+}
+#else
 asciichat_error_t audio_visualization_fft_init(void) {
   (void)NAMED_REGISTER_MUTEX(&fft_cache_mutex, "audio.visualization.fft_cache", NULL);
   (void)NAMED_REGISTER_MUTEX(&fftw_mutex, "audio.visualization.fftw", NULL);
@@ -72,7 +117,9 @@ asciichat_error_t audio_visualization_fft_init(void) {
   static_mutex_unlock(&fftw_mutex);
   return ready ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot create FFTW visualization plan");
 }
+#endif
 
+#ifndef __EMSCRIPTEN__
 static bool visualization_fft(const float *input, float *magnitude) {
   static_mutex_lock(&fftw_mutex);
   if (!fftw_forward) {
@@ -87,6 +134,7 @@ static bool visualization_fft(const float *input, float *magnitude) {
   static_mutex_unlock(&fftw_mutex);
   return true;
 }
+#endif
 
 char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
                                      bool use_color, int color_mode, bool flip_x, bool flip_y) {
@@ -119,7 +167,11 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   memset(colors, 0, cell_count * 3);
 
   /* Each column is a 21 ms Hann-windowed spectrum; adjacent columns overlap heavily. */
+#ifdef __EMSCRIPTEN__
+  float real[FFT_SIZE], imaginary[FFT_SIZE];
+#else
   float windowed[FFT_SIZE], magnitude[FFT_SIZE / 2 + 1];
+#endif
   fft_scale_t scale;
   if (!parse_fft_scale_value(GET_OPTION(fft_scale), &scale))
     scale = (fft_scale_t){.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
@@ -132,13 +184,22 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       start = VISUALIZATION_HISTORY - FFT_SIZE;
     for (size_t i = 0; i < FFT_SIZE; i++) {
       float window = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
+#ifdef __EMSCRIPTEN__
+      real[i] = samples[start + i] * window;
+      imaginary[i] = 0.0f;
+#else
       windowed[i] = samples[start + i] * window;
+#endif
     }
+#ifdef __EMSCRIPTEN__
+    visualization_fft(real, imaginary);
+#else
     if (!visualization_fft(windowed, magnitude)) {
       SAFE_FREE(samples);
       static_mutex_unlock(&fft_cache_mutex);
       return NULL;
     }
+#endif
 
     for (unsigned int row = 0; row < spectrum_height; row++) {
       float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
@@ -153,7 +214,12 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       float power = 0.0f;
       size_t bins = 0;
       for (size_t bin = low_bin; bin < high_bin; bin++) {
-        power += magnitude[bin] * magnitude[bin];
+#ifdef __EMSCRIPTEN__
+        float bin_magnitude = hypotf(real[bin], imaginary[bin]) / (FFT_SIZE * 0.25f);
+#else
+        float bin_magnitude = magnitude[bin];
+#endif
+        power += bin_magnitude * bin_magnitude;
         bins++;
       }
       /* The default dB range leaves room for quiet speech while keeping loud music detailed. */

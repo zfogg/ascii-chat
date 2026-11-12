@@ -354,7 +354,6 @@ set(LIB_SRC_COMMON
 set(LIB_SRC_MIRROR_ONLY
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
     ${LIB_ROOT}/audio/visualization.c
-    ${LIB_ROOT}/audio/spectral.c
     ${LIB_ROOT}/video/anim/waveform.c
     ${LIB_ROOT}/video/anim/fft.c
 )
@@ -492,10 +491,8 @@ target_link_libraries(mirror-web PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
-    ${FFTW_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
-target_include_directories(mirror-web PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # Apply sanitizers
 apply_sanitizers_to_target(mirror-web)
