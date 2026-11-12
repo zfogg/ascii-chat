@@ -540,6 +540,9 @@ options_config_t *options_builder_build(options_builder_t *builder);
 /** Builds a generic libflags schema view of the application registry. */
 flags_schema_builder_t *options_config_build_flags_schema(const options_config_t *config);
 
+/** Configures automatic ascii-chat environment names on a libflags context. */
+bool options_config_configure_flags_environment(flags_context_t *context, const char *prefix);
+
 /**
  * @brief Free options config
  *

@@ -94,6 +94,16 @@ flags_schema_builder_t *options_config_build_flags_schema(const options_config_t
   return builder;
 }
 
+bool options_config_configure_flags_environment(flags_context_t *context, const char *prefix) {
+  if (!context)
+    return false;
+  const flags_environment_config_t environment = {
+      .prefix = prefix ? prefix : "ASCII_CHAT_",
+      .derive_names = true,
+  };
+  return flags_set_environment_config(context, &environment);
+}
+
 // Use platform utilities
 #include <libplatform/terminal.h>
 // Error strings are released with SAFE_FREE, including static mimalloc builds.
