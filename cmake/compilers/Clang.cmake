@@ -1,5 +1,5 @@
 # =============================================================================
-# LLVM Toolchain Configuration Module
+# Clang Toolchain Configuration Module
 # =============================================================================
 # Determines LLVM root directory in ONE place using llvm-config.
 # Trusts the PATH ordering: user ensures desired llvm-config is found first.
@@ -13,15 +13,15 @@
 # - LLVM tools (llvm-ar, llvm-ranlib)
 #
 # Functions:
-#   - configure_llvm_pre_project(): Sets up compiler before project()
-#   - configure_llvm_post_project(): Sets up library paths after project()
+#   - configure_clang_pre_project(): Sets up compiler before project()
+#   - configure_clang_post_project(): Sets up library paths after project()
 #   - find_llvm_tools(): Finds llvm-ar and llvm-ranlib
-#   - fix_llvm_ranlib(): Fixes LLVM ranlib not being called automatically (after project())
+#   - fix_clang_ranlib(): Fixes the Clang archive tool not being called automatically (after project())
 #
 # Prerequisites:
-#   - configure_llvm_pre_project() must run before project()
-#   - configure_llvm_post_project() must run after project()
-#   - fix_llvm_ranlib() must run after project()
+#   - configure_clang_pre_project() must run before project()
+#   - configure_clang_post_project() must run after project()
+#   - fix_clang_ranlib() must run after project()
 # =============================================================================
 
 # =============================================================================
@@ -31,7 +31,7 @@
 # Trust the PATH: user ensures desired llvm-config is in PATH first
 # =============================================================================
 
-function(configure_llvm_pre_project)
+function(configure_clang_pre_project)
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
     if(ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
@@ -274,7 +274,7 @@ endfunction()
 # This section must run after project() to configure linking
 # =============================================================================
 
-function(configure_llvm_post_project)
+function(configure_clang_post_project)
     if(NOT APPLE)
         return()
     endif()
@@ -517,7 +517,7 @@ endfunction()
 #   - Must run after project()
 # =============================================================================
 
-function(fix_llvm_ranlib)
+function(fix_clang_ranlib)
     if(WIN32 AND CMAKE_C_COMPILER MATCHES "clang-cl" AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
         # llvm-lib creates the COFF archive and index in one invocation.
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")

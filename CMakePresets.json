@@ -69,9 +69,9 @@
       }
     },
     {
-      "name": "default-llvm",
-      "displayName": "Default (LLVM)",
-      "description": "Debug build using the LLVM/Clang toolchain",
+      "name": "default-clang",
+      "displayName": "Default (Clang)",
+      "description": "Debug build using the Clang toolchain",
       "inherits": "default",
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
@@ -95,9 +95,9 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "dev-llvm",
-      "displayName": "Dev (LLVM)",
-      "description": "Fast developer build using LLVM",
+      "name": "dev-clang",
+      "displayName": "Dev (Clang)",
+      "description": "Fast developer build using Clang",
       "inherits": "dev",
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
@@ -121,9 +121,9 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "release-llvm",
-      "displayName": "Release (LLVM)",
-      "description": "Release build using LLVM",
+      "name": "release-clang",
+      "displayName": "Release (Clang)",
+      "description": "Release build using Clang",
       "inherits": "release",
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
@@ -364,13 +364,13 @@
       "name": "default",
       "configurePreset": "default"
     },
-    { "name": "default-llvm", "configurePreset": "default-llvm" },
+    { "name": "default-clang", "configurePreset": "default-clang" },
     { "name": "default-gcc", "configurePreset": "default-gcc" },
     { "name": "default-msvc", "configurePreset": "default-msvc" },
-    { "name": "dev-llvm", "configurePreset": "dev-llvm" },
+    { "name": "dev-clang", "configurePreset": "dev-clang" },
     { "name": "dev-gcc", "configurePreset": "dev-gcc" },
     { "name": "dev-msvc", "configurePreset": "dev-msvc" },
-    { "name": "release-llvm", "configurePreset": "release-llvm" },
+    { "name": "release-clang", "configurePreset": "release-clang" },
     { "name": "release-gcc", "configurePreset": "release-gcc" },
     { "name": "release-msvc", "configurePreset": "release-msvc" },
     {

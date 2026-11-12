@@ -73,7 +73,7 @@
  *
  * LLVM, GCC, and MSVC (on Windows) are supported native toolchains, with Ninja
  * as the normal generator. `default` uses AUTO selection in the order LLVM,
- * GCC, then MSVC; use `default-llvm`, `default-gcc`, or `default-msvc` to pin a
+ * Clang, then GCC, then MSVC; use `default-clang`, `default-gcc`, or `default-msvc` to pin a
  * family. Keep separate build directories when switching compiler installations
  * or sanitizer runtimes.
  * The native defer tool requires LLVM 19 or newer, its C++ development headers

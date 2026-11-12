@@ -1,8 +1,8 @@
 # Shared compiler/toolchain conventions.
 include_guard(GLOBAL)
 
-set(ASCIICHAT_COMPILER "AUTO" CACHE STRING "Native compiler family (AUTO, LLVM, GCC, or MSVC)")
-set_property(CACHE ASCIICHAT_COMPILER PROPERTY STRINGS AUTO LLVM GCC MSVC)
+set(ASCIICHAT_COMPILER "AUTO" CACHE STRING "Native compiler family (AUTO, CLANG, GCC, or MSVC)")
+set_property(CACHE ASCIICHAT_COMPILER PROPERTY STRINGS AUTO CLANG GCC MSVC)
 
 function(asciichat_compiler_is FAMILY RESULT)
     if(ASCIICHAT_COMPILER STREQUAL FAMILY)
