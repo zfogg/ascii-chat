@@ -34,6 +34,10 @@ static fftw_plan fftw_forward;
 extern static_mutex_t audio_fftw_planner_lock;
 static float fft_window[FFT_SIZE];
 static bool fft_window_ready;
+static static_mutex_t fft_scale_mutex = STATIC_MUTEX_INIT;
+static char fft_scale_text[32];
+static fft_scale_t fft_scale_cached;
+static bool fft_scale_cached_valid;
 
 static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
   parsed->mode = FFT_SCALE_DB;
@@ -60,6 +64,20 @@ static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
          parsed->max_db > parsed->min_db;
 }
 
+static fft_scale_t get_fft_scale(void) {
+  const char *text = GET_OPTION(fft_scale);
+  static_mutex_lock(&fft_scale_mutex);
+  if (!fft_scale_cached_valid || strcmp(fft_scale_text, text ? text : "") != 0) {
+    if (!parse_fft_scale_value(text, &fft_scale_cached))
+      fft_scale_cached = (fft_scale_t){.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
+    SAFE_STRNCPY(fft_scale_text, text ? text : "", sizeof(fft_scale_text));
+    fft_scale_cached_valid = true;
+  }
+  fft_scale_t result = fft_scale_cached;
+  static_mutex_unlock(&fft_scale_mutex);
+  return result;
+}
+
 asciichat_error_t audio_visualization_fft_init(void) {
   (void)NAMED_REGISTER_MUTEX(&fft_cache_mutex, "audio.visualization.fft_cache", NULL);
   (void)NAMED_REGISTER_MUTEX(&fftw_mutex, "audio.visualization.fftw", NULL);
@@ -80,7 +98,7 @@ asciichat_error_t audio_visualization_fft_init(void) {
   return ready ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot create FFTW visualization plan");
 }
 
-static bool visualization_fft(const float *input, float *magnitude) {
+static bool visualization_fft(const float *input, float *power_spectrum) {
   static_mutex_lock(&fftw_mutex);
   if (!fftw_forward) {
     static_mutex_unlock(&fftw_mutex);
@@ -89,8 +107,10 @@ static bool visualization_fft(const float *input, float *magnitude) {
   for (size_t i = 0; i < FFT_SIZE; i++)
     fftw_input[i] = input[i];
   fftw_execute(fftw_forward);
+  const double normalization = (double)FFT_SIZE * 0.25;
   for (size_t i = 0; i <= FFT_SIZE / 2; i++)
-    magnitude[i] = (float)hypot(fftw_output[i][0], fftw_output[i][1]) / (FFT_SIZE * 0.25f);
+    power_spectrum[i] = (float)((fftw_output[i][0] * fftw_output[i][0] + fftw_output[i][1] * fftw_output[i][1]) /
+                                (normalization * normalization));
   static_mutex_unlock(&fftw_mutex);
   return true;
 }
@@ -108,31 +128,62 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source &&
       fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
       now - fft_cache.updated_ns < FFT_REFRESH_NS) {
-    char *frame =
-        visualization_encode(fft_cache.cells, fft_cache.colors, false, width, height, use_color, flip_x, flip_y);
+    size_t cached_cells = (size_t)width * height;
+    char *cached = SAFE_MALLOC(cached_cells, char *);
+    unsigned char *cached_colors = SAFE_MALLOC(cached_cells * 3, unsigned char *);
+    if (!cached || !cached_colors) {
+      SAFE_FREE(cached);
+      SAFE_FREE(cached_colors);
+      static_mutex_unlock(&fft_cache_mutex);
+      return NULL;
+    }
+    memcpy(cached, fft_cache.cells, cached_cells);
+    memcpy(cached_colors, fft_cache.colors, cached_cells * 3);
     static_mutex_unlock(&fft_cache_mutex);
+    char *frame = visualization_encode(cached, cached_colors, false, width, height, use_color, flip_x, flip_y);
+    SAFE_FREE(cached);
+    SAFE_FREE(cached_colors);
     return frame;
   }
+  static_mutex_unlock(&fft_cache_mutex);
   float *samples = SAFE_MALLOC(VISUALIZATION_HISTORY * sizeof(float), float *);
-  if (!samples) {
-    static_mutex_unlock(&fft_cache_mutex);
+  if (!samples)
     return NULL;
-  }
   audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
   size_t cell_count = (size_t)width * height;
-  char *cells = fft_cache.cells;
-  unsigned char *colors = fft_cache.colors;
+  char *cells = SAFE_MALLOC(cell_count, char *);
+  unsigned char *colors = SAFE_MALLOC(cell_count * 3, unsigned char *);
+  if (!cells || !colors) {
+    SAFE_FREE(cells);
+    SAFE_FREE(colors);
+    SAFE_FREE(samples);
+    return NULL;
+  }
   memset(cells, ' ', cell_count);
   memset(colors, 0, cell_count * 3);
 
   /* Preserve the time-history layout: each column is a spectrum from a different
    * overlapping window in the captured audio history. */
-  float windowed[FFT_SIZE], magnitude[FFT_SIZE / 2 + 1];
-  fft_scale_t scale;
-  if (!parse_fft_scale_value(GET_OPTION(fft_scale), &scale))
-    scale = (fft_scale_t){.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
+  float windowed[FFT_SIZE], power_spectrum[FFT_SIZE / 2 + 1];
+  fft_scale_t scale = get_fft_scale();
   static const char levels[] = " .:-=+*#%@";
   const unsigned int spectrum_height = height;
+  size_t low_bins[MAX_TERMINAL_HEIGHT * 2], high_bins[MAX_TERMINAL_HEIGHT * 2], band_counts[MAX_TERMINAL_HEIGHT * 2];
+  float band_hz[MAX_TERMINAL_HEIGHT * 2];
+  for (unsigned int row = 0; row < spectrum_height; row++) {
+    float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
+    float bottom_fraction = (float)(spectrum_height - row) / (float)spectrum_height;
+    float low_hz = 35.0f * powf(18000.0f / 35.0f, top_fraction);
+    float high_hz = 35.0f * powf(18000.0f / 35.0f, bottom_fraction);
+    size_t low_bin = (size_t)fmaxf(1.0f, floorf(low_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
+    size_t high_bin = (size_t)fmaxf((float)(low_bin + 1), ceilf(high_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
+    if (high_bin > FFT_SIZE / 2)
+      high_bin = FFT_SIZE / 2;
+    low_bins[row] = low_bin;
+    high_bins[row] = high_bin;
+    band_counts[row] = high_bin - low_bin;
+    band_hz[row] = sqrtf(low_hz * high_hz);
+  }
   for (unsigned int x = 0; x < width; x++) {
     size_t center = (size_t)x * (VISUALIZATION_HISTORY - 1) / (width - 1);
     size_t start = center > FFT_SIZE / 2 ? center - FFT_SIZE / 2 : 0;
@@ -140,30 +191,19 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       start = VISUALIZATION_HISTORY - FFT_SIZE;
     for (size_t i = 0; i < FFT_SIZE; i++)
       windowed[i] = samples[start + i] * fft_window[i];
-    if (!visualization_fft(windowed, magnitude)) {
+    if (!visualization_fft(windowed, power_spectrum)) {
       SAFE_FREE(samples);
-      static_mutex_unlock(&fft_cache_mutex);
+      SAFE_FREE(cells);
+      SAFE_FREE(colors);
       return NULL;
     }
 
     for (unsigned int row = 0; row < spectrum_height; row++) {
-      float top_fraction = (float)(spectrum_height - row - 1) / (float)spectrum_height;
-      float bottom_fraction = (float)(spectrum_height - row) / (float)spectrum_height;
-      float low_hz = 35.0f * powf(18000.0f / 35.0f, top_fraction);
-      float high_hz = 35.0f * powf(18000.0f / 35.0f, bottom_fraction);
-      size_t low_bin = (size_t)fmaxf(1.0f, floorf(low_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
-      size_t high_bin =
-          (size_t)fmaxf((float)(low_bin + 1), ceilf(high_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
-      if (high_bin > FFT_SIZE / 2)
-        high_bin = FFT_SIZE / 2;
       float power = 0.0f;
-      size_t bins = 0;
-      for (size_t bin = low_bin; bin < high_bin; bin++) {
-        power += magnitude[bin] * magnitude[bin];
-        bins++;
-      }
+      for (size_t bin = low_bins[row]; bin < high_bins[row]; bin++)
+        power += power_spectrum[bin];
       /* The default dB range leaves room for quiet speech while keeping loud music detailed. */
-      float amplitude = bins ? sqrtf(power / (float)bins) : 0.0f;
+      float amplitude = band_counts[row] ? sqrtf(power / (float)band_counts[row]) : 0.0f;
       float intensity;
       if (scale.mode == FFT_SCALE_LINEAR)
         intensity = fminf(1.0f, amplitude * 4.0f);
@@ -176,20 +216,24 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
       size_t cell = (size_t)row * width + x;
       cells[cell] = levels[level];
-      float band_hz = sqrtf(low_hz * high_hz);
-      visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
+      visualization_color_for_level(band_hz[row], intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
                                     &colors[cell * 3 + 2]);
     }
   }
 
+  static_mutex_lock(&fft_cache_mutex);
+  memcpy(fft_cache.cells, cells, cell_count);
+  memcpy(fft_cache.colors, colors, cell_count * 3);
   fft_cache.width = width;
   fft_cache.height = height;
   fft_cache.source = source;
   fft_cache.color_mode = color_mode;
   fft_cache.updated_ns = time_get_ns();
   fft_cache.valid = true;
-  char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
-  SAFE_FREE(samples);
   static_mutex_unlock(&fft_cache_mutex);
+  char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
+  SAFE_FREE(cells);
+  SAFE_FREE(colors);
+  SAFE_FREE(samples);
   return frame;
 }
