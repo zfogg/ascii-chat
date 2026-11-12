@@ -1,14 +1,5 @@
 # ascii-chat Development Guide for Claude
 
-> **Current repository guidance (updated 2026-11-08)**
->
-> This guide retains the detailed subsystem notes below, but the repository has
-> changed substantially since the original version was written. The current
-> source of truth for a workflow is the checked-in CMake preset, workflow,
-> topic page, or skill named in the relevant section. If this guide conflicts
-> with those files, inspect the current implementation and update this guide
-> as part of the same change.
-
 ## Current State and Recent Direction
 
 The recent development cycle has broadened ascii-chat from a TCP/WebSocket-

@@ -1,7 +1,7 @@
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
-if(NOT CMAKE_C_COMPILER)
+if(NOT ASCIICHAT_COMPILER_FAMILY)
     # Configure presets may provide CMAKE_C_COMPILER before project().  Use
     # that native CMake variable as the explicit compiler selection when it is
     # available; compiler IDs are populated only after project().
