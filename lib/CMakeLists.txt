@@ -994,7 +994,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
