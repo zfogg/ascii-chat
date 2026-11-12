@@ -38,7 +38,7 @@ endfunction()
 
 function(configure_compiler_post_project)
     asciichat_configure_common_tools()
-    if(ASCIICHAT_COMPILER_FAMILY STREQUAL "MSVC")
+    if(_ASCIICHAT_COMPILER_MODULE STREQUAL "MSVC")
         # MSVC's librarian creates the archive index itself.
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>" PARENT_SCOPE)
         set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>" PARENT_SCOPE)
