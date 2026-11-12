@@ -450,6 +450,19 @@ function(apply_sanitizers_to_target TARGET_NAME)
         return()
     endif()
 
+    # Remove stale Clang-only sanitizer suppressions from the common project
+    # options target before they propagate to GCC targets.
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND TARGET asciichat-project-options)
+        get_target_property(_asciichat_project_options
+            asciichat-project-options INTERFACE_COMPILE_OPTIONS)
+        if(_asciichat_project_options)
+            list(FILTER _asciichat_project_options EXCLUDE REGEX
+                "implicit-conversion|nullability|sanitize=integer")
+            set_property(TARGET asciichat-project-options PROPERTY
+                INTERFACE_COMPILE_OPTIONS "${_asciichat_project_options}")
+        endif()
+    endif()
+
     # Apply compile options.  A reused build can retain target-local flags
     # produced by an earlier Clang configure, so filter Clang-only sanitizer
     # groups at the application boundary as well as during configuration.
