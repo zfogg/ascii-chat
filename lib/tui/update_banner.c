@@ -479,9 +479,7 @@ static void *update_check_thread_func(void *arg) {
   uint64_t visible_until = time_get_ns() + 2 * NS_PER_SEC_INT;
   update_check_result_t result;
   bool used_cache = false;
-  bool background = !force && !splash_should_display(true) &&
-                    (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT ||
-                     GET_OPTION(detected_mode) == MODE_DISCOVERY);
+  bool background = !force && !splash_should_display(true) && (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT || GET_OPTION(detected_mode) == MODE_DISCOVERY);
   asciichat_error_t err;
   if (background) {
     asciichat_errno_scope_t scope = errno_scope_begin();

@@ -1100,8 +1100,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       return SET_ERRNO(ERROR_MEMORY, "Failed to copy config file path");
     }
   } else {
-    asciichat_error_t validate_result =
-        path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    asciichat_error_t validate_result = path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
     if (validate_result != ASCIICHAT_OK) {
       SAFE_FREE(validated_config_path);
       SAFE_FREE(config_path_expanded);

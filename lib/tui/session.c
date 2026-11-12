@@ -300,8 +300,7 @@ static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animat
   ui_session_logs_render(output, size, context);
 }
 
-static void draw_media(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
-                       void *context) {
+static void draw_media(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   (void)size;
   (void)animation;
   ui_session_t *s = context;

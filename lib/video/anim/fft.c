@@ -106,8 +106,7 @@ static bool visualization_fft_batch(const float *const input, unsigned int colum
     int inembed[] = {FFT_SIZE};
     int onembed[] = {FFT_SIZE / 2 + 1};
     static_mutex_lock(&audio_fftw_planner_lock);
-    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1,
-                                            FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
+    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1, FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
     static_mutex_unlock(&audio_fftw_planner_lock);
     fftw_plan_columns = fftwf_forward ? columns : 0;
   }
@@ -122,9 +121,7 @@ static bool visualization_fft_batch(const float *const input, unsigned int colum
   for (size_t column = 0; column < columns; column++)
     for (size_t i = 0; i <= FFT_SIZE / 2; i++) {
       size_t output = column * (FFT_SIZE / 2 + 1) + i;
-      power_spectrum[output] = (fftwf_output[output][0] * fftwf_output[output][0] +
-                                fftwf_output[output][1] * fftwf_output[output][1]) /
-                              (normalization * normalization);
+      power_spectrum[output] = (fftwf_output[output][0] * fftwf_output[output][0] + fftwf_output[output][1] * fftwf_output[output][1]) / (normalization * normalization);
     }
   static_mutex_unlock(&fftw_mutex);
   return true;
@@ -241,8 +238,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
       size_t cell = (size_t)row * width + x;
       cells[cell] = levels[level];
-      visualization_color_for_level(band_hz[row], intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
-                                    &colors[cell * 3 + 2]);
+      visualization_color_for_level(band_hz[row], intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1], &colors[cell * 3 + 2]);
     }
   }
 

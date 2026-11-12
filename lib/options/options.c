@@ -1541,8 +1541,7 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Keep them available to the mode parser instead of dropping them with
       // binary-level options.
       const char *arg_name = argv[i];
-      if (strncmp(arg_name, "--address", 9) == 0 || strncmp(arg_name, "--address6", 10) == 0 ||
-          strncmp(arg_name, "--port", 6) == 0)
+      if (strncmp(arg_name, "--address", 9) == 0 || strncmp(arg_name, "--address6", 10) == 0 || strncmp(arg_name, "--port", 6) == 0)
         binary_level = false;
       if (binary_level) {
         // Skip binary-level option and its argument if needed

@@ -503,8 +503,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     // The frame is deliberately allowed to stop at a row boundary, but its
     // already-presented rows must not remain underneath the prompt.
     static const char clear_aborted_media[] = "\033[r\033[0m\033[2J\033[H";
-    ended = write_output_chunk(fd, clear_aborted_media, sizeof(clear_aborted_media) - 1) ==
-            sizeof(clear_aborted_media) - 1;
+    ended = write_output_chunk(fd, clear_aborted_media, sizeof(clear_aborted_media) - 1) == sizeof(clear_aborted_media) - 1;
   }
   if (!ended)
     g_probe_requested_ns = 0;
