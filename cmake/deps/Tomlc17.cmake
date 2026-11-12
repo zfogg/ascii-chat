@@ -53,12 +53,16 @@ function(configure_tomlc17)
         message(FATAL_ERROR "tomlc17 source file not found: ${DEP_DIR}/src/tomlc17.c")
     endif()
 
+    set(_tomlc17_source_properties
+        SKIP_PRECOMPILE_HEADERS ON
+        SKIP_LINTING ON)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        list(APPEND _tomlc17_source_properties
+            COMPILE_FLAGS "-fno-sanitize=implicit-conversion")
+    endif()
     set_source_files_properties(
         ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
-        PROPERTIES
-        SKIP_PRECOMPILE_HEADERS ON
-        SKIP_LINTING ON
-        COMPILE_FLAGS "-fno-sanitize=implicit-conversion"
+        PROPERTIES ${_tomlc17_source_properties}
         DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endfunction()
