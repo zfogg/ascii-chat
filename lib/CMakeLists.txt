@@ -23,8 +23,9 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
+set(_ascii_chat_posix_system_source "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c")
+set_source_files_properties("${_ascii_chat_posix_system_source}" PROPERTIES COMPILE_OPTIONS "-include${CMAKE_SOURCE_DIR}/include/ascii-chat/common.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/log/log.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/os/socket.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/util/time.h")
 set(CORE_SRCS
-    /deps/libplatform/lib/posix/system.c
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
     ${LIB_DIR}/media/input.c
@@ -599,12 +600,6 @@ ascii_chat_add_face_detector(ascii-chat-video)
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
-if(TARGET fftw3f)
-    set(FFTW_FLOAT_LIBRARY fftw3f)
-else()
-    find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
-endif()
-target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
     target_link_libraries(ascii-chat-platform INTERFACE ${FFMPEG_LIBRARIES})
@@ -1948,15 +1943,10 @@ target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
 
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_LIBRARIES})
-target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
-    target_link_options(ascii-chat-shared PRIVATE "${FFTW_FLOAT_LIBRARY}")
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})
-target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
 
 target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
 if(TARGET ascii-chat-shared)
