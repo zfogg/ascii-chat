@@ -54,6 +54,26 @@ set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
 
+# Gotel's vendored utf8proc CMake project predates the shared dependency target
+# used by ascii-chat and unconditionally creates a second target named
+# `utf8proc`. Guard that dependency at configure time so Gotel reuses the
+# already-configured target on every compiler family.
+set(_asciichat_gotel_cmake "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/CMakeLists.txt")
+if(EXISTS "${_asciichat_gotel_cmake}")
+    file(READ "${_asciichat_gotel_cmake}" _asciichat_gotel_cmake_contents)
+    set(_asciichat_gotel_utf8proc_add "add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)")
+    set(_asciichat_gotel_utf8proc_guard
+        "if(NOT TARGET utf8proc AND NOT TARGET utf8proc::utf8proc)\n"
+        "  add_subdirectory(vendor/utf8proc EXCLUDE_FROM_ALL)\n"
+        "endif()")
+    string(REPLACE "${_asciichat_gotel_utf8proc_add}"
+        "${_asciichat_gotel_utf8proc_guard}"
+        _asciichat_gotel_cmake_patched "${_asciichat_gotel_cmake_contents}")
+    if(NOT _asciichat_gotel_cmake_patched STREQUAL _asciichat_gotel_cmake_contents)
+        file(WRITE "${_asciichat_gotel_cmake}" "${_asciichat_gotel_cmake_patched}")
+    endif()
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
 
