@@ -2,6 +2,8 @@
 include(FetchContent)
 
 set(LIBFLAGS_BUILD_TESTS OFF CACHE BOOL "Disable standalone libflags tests in ascii-chat" FORCE)
+set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17" CACHE PATH
+    "tomlc17 source shared with ascii-chat" FORCE)
 # libplatform is configured before ascii-chat's library targets are created;
 # provide the eventual shared utf8proc target name up front.
 set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
@@ -17,7 +19,7 @@ endif()
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
-    GIT_TAG d5e6673
+    GIT_TAG 8350e7b
     SOURCE_DIR "${_ascii_chat_libflags_source}")
 FetchContent_MakeAvailable(libflags)
 unset(_ascii_chat_libflags_source)
