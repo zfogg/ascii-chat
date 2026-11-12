@@ -469,6 +469,14 @@ function(apply_sanitizers_to_target TARGET_NAME)
     set(_asciichat_sanitizer_compile_flags ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
     set(_asciichat_sanitizer_link_flags ${ASCIICHAT_SANITIZER_LINK_FLAGS})
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        get_target_property(_asciichat_target_compile_options
+            ${TARGET_NAME} COMPILE_OPTIONS)
+        if(_asciichat_target_compile_options)
+            list(FILTER _asciichat_target_compile_options EXCLUDE REGEX
+                "implicit-conversion|nullability|sanitize=integer")
+            set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_OPTIONS
+                "${_asciichat_target_compile_options}")
+        endif()
         list(FILTER _asciichat_sanitizer_compile_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer")
         list(FILTER _asciichat_sanitizer_link_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer|shared-libsan")
     endif()
