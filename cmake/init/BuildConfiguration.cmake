@@ -20,6 +20,7 @@
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])cl(\.exe)?$")
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_CXX_STANDARD 23)
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for gotel" FORCE)
 else()
     set(CMAKE_C_STANDARD 23)
     set(CMAKE_CXX_STANDARD 26)
