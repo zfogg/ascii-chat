@@ -131,8 +131,7 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   }
 
   FT_Bitmap *src_bitmap = &face->glyph->bitmap;
-  if (!src_bitmap->buffer || src_bitmap->width == 0 || src_bitmap->rows == 0 || src_bitmap->width > INT_MAX ||
-      src_bitmap->rows > INT_MAX) {
+  if (!src_bitmap->buffer || src_bitmap->width == 0 || src_bitmap->rows == 0 || src_bitmap->width > INT_MAX || src_bitmap->rows > INT_MAX) {
     return NULL;
   }
 
@@ -161,8 +160,7 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   default:
     return NULL;
   }
-  if (source_pitch == 0 || source_pitch < minimum_source_pitch || src_bitmap->rows > SIZE_MAX / source_pitch ||
-      src_bitmap->rows > SIZE_MAX / (size_t)src_bitmap->width) {
+  if (source_pitch == 0 || source_pitch < minimum_source_pitch || src_bitmap->rows > SIZE_MAX / source_pitch || src_bitmap->rows > SIZE_MAX / (size_t)src_bitmap->width) {
     return NULL;
   }
 
@@ -197,9 +195,7 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
         destination[col] = (uint8_t)(((source[col / 2] >> (col % 2 == 0 ? 4 : 0)) & 0x0fU) * 17U);
         break;
       case FT_PIXEL_MODE_GRAY:
-        destination[col] = src_bitmap->num_grays > 1 && src_bitmap->num_grays != 256
-                               ? (uint8_t)((source[col] * 255U) / (src_bitmap->num_grays - 1))
-                               : source[col];
+        destination[col] = src_bitmap->num_grays > 1 && src_bitmap->num_grays != 256 ? (uint8_t)((source[col] * 255U) / (src_bitmap->num_grays - 1)) : source[col];
         break;
       case FT_PIXEL_MODE_BGRA:
         destination[col] = source[col * 4 + 3];
@@ -255,8 +251,7 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
     // Cycle through available glyphs
     // Coverage order measured from the bundled Matrix-Resurrected font at 10px.
     // Adjacent alternatives preserve image shading when the rain mutates symbols.
-    static const uint8_t glyphs[6][4] = {{15, 18, 19, 15}, {20, 1, 26, 25}, {23, 0, 3, 13},
-                                         {12, 16, 24, 17}, {9, 4, 22, 21},  {2, 11, 14, 5}};
+    static const uint8_t glyphs[6][4] = {{15, 18, 19, 15}, {20, 1, 26, 25}, {23, 0, 3, 13}, {12, 16, 24, 17}, {9, 4, 22, 21}, {2, 11, 14, 5}};
     int group = digital_rain_glyph_group(ascii_char);
     if (group >= 0)
       return matrix_start + glyphs[group][ascii_char % 4];
@@ -270,8 +265,7 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
 /**
  * Alpha-composite a FreeType bitmap glyph at pixel (px,py) with fg/bg colors.
  */
-static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, uint8_t fr, uint8_t fg, uint8_t fb,
-                       uint8_t br, uint8_t bg, uint8_t bb) {
+static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
   // Clip once, outside the pixel loop, so WASM can vectorize alpha blending.
   int first_col = px < 0 ? -px : 0;
   int last_col = (int)bm->width;
@@ -340,8 +334,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
       return SET_ERRNO(ERROR_NOT_FOUND, "Cannot open font '%s' (FreeType error %d)", cfg->font_spec, face_error);
     // Older FreeType versions recognize an HVF SFNT wrapper, then reject its
     // missing TrueType outline tables instead of reporting an unknown format.
-    if (face_error == FT_Err_Unknown_File_Format || face_error == FT_Err_Unimplemented_Feature ||
-        face_error == FT_Err_Locations_Missing)
+    if (face_error == FT_Err_Unknown_File_Format || face_error == FT_Err_Unimplemented_Feature || face_error == FT_Err_Locations_Missing)
       return SET_ERRNO(ERROR_NOT_SUPPORTED,
                        "Unsupported font format: '%s' (FreeType error %d). HVF fonts require HVF-enabled FreeType "
                        "2.15+ on macOS 15.4+ or iOS 18.4+",
@@ -352,8 +345,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Some older FreeType drivers can open an SFNT container without supporting
   // its outlines. Check the parsed table directory before accepting that face.
   FT_ULong hvf_size = 0;
-  bool is_hvf = FT_IS_SFNT(r->ft_face) &&
-                FT_Load_Sfnt_Table(r->ft_face, FT_MAKE_TAG('h', 'v', 'g', 'l'), 0, NULL, &hvf_size) == 0;
+  bool is_hvf = FT_IS_SFNT(r->ft_face) && FT_Load_Sfnt_Table(r->ft_face, FT_MAKE_TAG('h', 'v', 'g', 'l'), 0, NULL, &hvf_size) == 0;
   const char *font_format = FT_Get_Font_Format(r->ft_face);
   if (is_hvf) {
     bool supported = false;
@@ -365,16 +357,13 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
       FT_Done_Face(r->ft_face);
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
-      return SET_ERRNO(ERROR_NOT_SUPPORTED,
-                       "Unsupported HVF font '%s': requires HVF-enabled FreeType 2.15+ on macOS 15.4+ or iOS 18.4+",
-                       cfg->font_spec);
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Unsupported HVF font '%s': requires HVF-enabled FreeType 2.15+ on macOS 15.4+ or iOS 18.4+", cfg->font_spec);
     }
   }
   log_debug("Loaded font '%s' using FreeType format %s", cfg->font_spec, font_format ? font_format : "unknown");
 
   // Detect if this is the matrix font (needs character mapping to Private Use Area)
-  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) ||
-                      (cfg->font_data != NULL && GET_OPTION(matrix_rain));
+  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) || (cfg->font_data != NULL && GET_OPTION(matrix_rain));
   if (r->is_matrix_font) {
     log_debug("Detected matrix font - will use Private Use Area character mapping");
   }
@@ -396,16 +385,14 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
       FT_Done_Face(r->ft_face);
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
-      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' has no usable bitmap size (FreeType error %d)", cfg->font_spec,
-                       err);
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' has no usable bitmap size (FreeType error %d)", cfg->font_spec, err);
     }
   } else {
     // Scalable font: use FT_Set_Char_Size
     // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
     // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
     int err = FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
-    log_debug("[SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d", cfg->font_size_pt,
-              (long)(cfg->font_size_pt * 64.0), err);
+    log_debug("[SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d", cfg->font_size_pt, (long)(cfg->font_size_pt * 64.0), err);
     if (err != 0) {
       FT_Done_Face(r->ft_face);
       FT_Done_FreeType(r->ft_lib);
@@ -453,8 +440,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     FT_Done_Face(r->ft_face);
     FT_Done_FreeType(r->ft_lib);
     SAFE_FREE(r);
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' cannot render glyphs (FreeType error %d)", cfg->font_spec,
-                     load_err);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' cannot render glyphs (FreeType error %d)", cfg->font_spec, load_err);
   }
 
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
@@ -475,11 +461,9 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   bool stretch_mode = GET_OPTION(stretch);
   if (stretch_mode) {
     r->cell_w++;
-    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d",
-              advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
+    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d", advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   } else {
-    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d",
-              advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
+    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d", advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   }
 
   // For both bitmap and scalable fonts, use the actual glyph bitmap height
@@ -507,16 +491,14 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
     if (r->cell_h < min_acceptable || r->cell_h > max_acceptable) {
       // Loaded height is far from expected, apply correction
-      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (out of range [%d,%d], 2x width=%d)", r->cell_h,
-                corrected_h, min_acceptable, max_acceptable, r->cell_w);
+      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (out of range [%d,%d], 2x width=%d)", r->cell_h, corrected_h, min_acceptable, max_acceptable, r->cell_w);
       r->cell_h = corrected_h;
     } else if (corrected_h != r->cell_h) {
       // Loaded height is close to expected, fine-tune by small amount only
       int delta = corrected_h - r->cell_h;
       if (delta > 4 || delta < -4) {
         // Only apply if difference is more than 4px
-        log_debug("ASPECT_RATIO: Fine-tuning cell_h from %d to %d (within acceptable range, 2x width=%d)", r->cell_h,
-                  corrected_h, r->cell_w);
+        log_debug("ASPECT_RATIO: Fine-tuning cell_h from %d to %d (within acceptable range, 2x width=%d)", r->cell_h, corrected_h, r->cell_w);
         r->cell_h = corrected_h;
       } else {
         log_debug("ASPECT_RATIO: Keeping cell_h=%d (close to target %d, delta=%d)", r->cell_h, corrected_h, delta);
@@ -537,15 +519,12 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;
-  log_debug("calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)", r->width_px,
-            r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
+  log_debug("calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)", r->width_px, r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
   // Pitch in bytes: each pixel is 4 bytes (RGBA), already aligned to 4-byte boundary
   int base_pitch = r->width_px * 4;
   r->pitch = base_pitch;
-  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (RGBA, no padding needed)", r->width_px, base_pitch,
-            r->pitch);
-  log_debug("Allocating framebuffer: %d bytes total (%d pitch * %d height)", (int)((size_t)r->pitch * r->height_px),
-            r->pitch, r->height_px);
+  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (RGBA, no padding needed)", r->width_px, base_pitch, r->pitch);
+  log_debug("Allocating framebuffer: %d bytes total (%d pitch * %d height)", (int)((size_t)r->pitch * r->height_px), r->pitch, r->height_px);
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
 
   r->vt = vterm_new(r->rows, r->cols);
@@ -718,8 +697,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   int offset_y = (r->height_px - grid_height_px) / 2;
 
   static int frame_count = 0;
-  static char prev_row_sigs[RENDER_DEBUG_SIGNATURE_ROWS][RENDER_DEBUG_SIGNATURE_BUFFER_SIZE] = {
-      0}; // Store signatures of previous frame's rows
+  static char prev_row_sigs[RENDER_DEBUG_SIGNATURE_ROWS][RENDER_DEBUG_SIGNATURE_BUFFER_SIZE] = {0}; // Store signatures of previous frame's rows
   frame_count++;
 
   // Log if any row signature changed to detect vertical shifts
@@ -759,8 +737,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         if (!indexed_rgb_valid[index]) {
           VTermColor foreground = cell.fg;
           vterm_screen_convert_color_to_rgb(r->vts, &foreground);
-          indexed_rgb[index] =
-              ((uint32_t)foreground.rgb.red << 16) | ((uint32_t)foreground.rgb.green << 8) | foreground.rgb.blue;
+          indexed_rgb[index] = ((uint32_t)foreground.rgb.red << 16) | ((uint32_t)foreground.rgb.green << 8) | foreground.rgb.blue;
           indexed_rgb_valid[index] = true;
         }
         fr = (uint8_t)(indexed_rgb[index] >> 16);
@@ -781,8 +758,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         if (!indexed_rgb_valid[index]) {
           VTermColor background = cell.bg;
           vterm_screen_convert_color_to_rgb(r->vts, &background);
-          indexed_rgb[index] =
-              ((uint32_t)background.rgb.red << 16) | ((uint32_t)background.rgb.green << 8) | background.rgb.blue;
+          indexed_rgb[index] = ((uint32_t)background.rgb.red << 16) | ((uint32_t)background.rgb.green << 8) | background.rgb.blue;
           indexed_rgb_valid[index] = true;
         }
         br = (uint8_t)(indexed_rgb[index] >> 16);
@@ -798,16 +774,13 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       uint32_t foreground = ((uint32_t)fr << 16) | ((uint32_t)fg << 8) | fb;
       uint32_t background = ((uint32_t)br << 16) | ((uint32_t)bg << 8) | bb;
       // Retain the low 32 bits without overflowing the intermediate products.
-      uint32_t cell_hash = (uint32_t)((uint64_t)cell.chars[0] * UINT64_C(2654435761) ^
-                                      (uint64_t)foreground * UINT64_C(2246822519) ^ background);
+      uint32_t cell_hash = (uint32_t)((uint64_t)cell.chars[0] * UINT64_C(2654435761) ^ (uint64_t)foreground * UINT64_C(2246822519) ^ background);
       cell_hash ^= cell_hash >> 16;
       rendered_cell_t *cached_cell = &r->cells[cell_hash % CELL_CACHE_SIZE];
       bool contained = px >= 0 && py >= 0 && px + r->cell_w <= r->width_px && py + r->cell_h <= r->height_px;
-      if (contained && cached_cell->valid && cached_cell->character == cell.chars[0] &&
-          cached_cell->foreground == foreground && cached_cell->background == background) {
+      if (contained && cached_cell->valid && cached_cell->character == cell.chars[0] && cached_cell->foreground == foreground && cached_cell->background == background) {
         for (int dy = 0; dy < r->cell_h; dy++) {
-          memcpy(r->framebuffer + (py + dy) * r->pitch + px * 4, cached_cell->pixels + dy * r->cell_w * 4,
-                 (size_t)r->cell_w * 4);
+          memcpy(r->framebuffer + (py + dy) * r->pitch + px * 4, cached_cell->pixels + dy * r->cell_w * 4, (size_t)r->cell_w * 4);
         }
         if (cell.chars[0] && cell.chars[0] != ' ') {
           occupied_cell_count++;
@@ -818,8 +791,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       // Block elements represent cell geometry, independent of font bearings and line spacing.
       bool block = cell.chars[0] == 0x2580 || cell.chars[0] == 0x2584 || cell.chars[0] == 0x2588;
       for (int dy = 0; dy < r->cell_h; dy++) {
-        bool block_foreground =
-            block && (cell.chars[0] == 0x2588 || (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
+        bool block_foreground = block && (cell.chars[0] == 0x2588 || (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
@@ -851,12 +823,9 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           HASH_FIND_INT(r->glyph_cache, &char_to_render, cache_entry);
           if (cache_entry) {
             // Overhanging glyphs must retain the normal cross-cell drawing order.
-            contained = contained && cache_entry->bitmap_left >= 0 &&
-                        cache_entry->bitmap_left + cache_entry->width <= r->cell_w &&
-                        r->baseline - cache_entry->bitmap_top >= 0 &&
+            contained = contained && cache_entry->bitmap_left >= 0 && cache_entry->bitmap_left + cache_entry->width <= r->cell_w && r->baseline - cache_entry->bitmap_top >= 0 &&
                         r->baseline - cache_entry->bitmap_top + cache_entry->rows <= r->cell_h;
-            blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top, fr,
-                       fg, fb, br, bg, bb);
+            blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top, fr, fg, fb, br, bg, bb);
             glyph_rendered_count++;
           }
         } else if (cell.chars[0] >= 0x2800 && cell.chars[0] <= 0x28ff) {
@@ -875,8 +844,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
               for (int dy = 0; dy < dot_h; dy++) {
                 for (int dx = 0; dx < dot_w; dx++) {
                   int x = left + dx, y = top + dy;
-                  if (x < px || x >= px + r->cell_w || y < py || y >= py + r->cell_h || x < 0 || x >= r->width_px ||
-                      y < 0 || y >= r->height_px)
+                  if (x < px || x >= px + r->cell_w || y < py || y >= py + r->cell_h || x < 0 || x >= r->width_px || y < 0 || y >= r->height_px)
                     continue;
                   uint8_t *pixel = r->framebuffer + y * r->pitch + x * 4;
                   pixel[0] = fr;
@@ -897,8 +865,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           cached_cell->pixels = SAFE_MALLOC((size_t)r->cell_w * r->cell_h * 4, uint8_t *);
         if (cached_cell->pixels) {
           for (int dy = 0; dy < r->cell_h; dy++) {
-            memcpy(cached_cell->pixels + dy * r->cell_w * 4, r->framebuffer + (py + dy) * r->pitch + px * 4,
-                   (size_t)r->cell_w * 4);
+            memcpy(cached_cell->pixels + dy * r->cell_w * 4, r->framebuffer + (py + dy) * r->pitch + px * 4, (size_t)r->cell_w * 4);
           }
           cached_cell->character = cell.chars[0];
           cached_cell->foreground = foreground;
@@ -910,11 +877,9 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   }
   render_zalgo(r, offset_x, offset_y);
   uint64_t rendered_ns = time_get_ns();
-  log_debug_every(US_PER_SEC_INT, "RECORD_RASTER: input_bytes=%zu parse_ms=%.2f paint_ms=%.2f cells=%dx%d", len,
-                  (double)(parsed_ns - stage_start_ns) / NS_PER_MS_INT,
+  log_debug_every(US_PER_SEC_INT, "RECORD_RASTER: input_bytes=%zu parse_ms=%.2f paint_ms=%.2f cells=%dx%d", len, (double)(parsed_ns - stage_start_ns) / NS_PER_MS_INT,
                   (double)(rendered_ns - parsed_ns) / NS_PER_MS_INT, r->cols, r->rows);
-  log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells out of %d cells", glyph_rendered_count,
-                  occupied_cell_count, r->rows * r->cols);
+  log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells out of %d cells", glyph_rendered_count, occupied_cell_count, r->rows * r->cols);
 
   return ASCIICHAT_OK;
 }

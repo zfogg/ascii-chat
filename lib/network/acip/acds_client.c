@@ -42,8 +42,7 @@
 // Cryptographic Signature Helpers
 // ============================================================================
 
-asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
-                                           uint8_t capabilities, uint8_t max_participants,
+asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp, uint8_t capabilities, uint8_t max_participants,
                                            uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   if (!identity_seckey || !signature_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
@@ -65,14 +64,12 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519
     return SET_ERRNO(ERROR_CRYPTO, "Ed25519 signature generation failed");
   }
 
-  log_debug("Generated SESSION_CREATE signature (timestamp=%llu, caps=%u, max=%u)", (unsigned long long)timestamp,
-            capabilities, max_participants);
+  log_debug("Generated SESSION_CREATE signature (timestamp=%llu, caps=%u, max=%u)", (unsigned long long)timestamp, capabilities, max_participants);
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
-                                             uint8_t capabilities, uint8_t max_participants,
+asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp, uint8_t capabilities, uint8_t max_participants,
                                              const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!identity_pubkey || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
@@ -99,8 +96,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED255
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
-                                         const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
+asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp, const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   if (!identity_seckey || !session_string || !signature_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -128,15 +124,12 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_P
     return SET_ERRNO(ERROR_CRYPTO, "Ed25519 signature generation failed");
   }
 
-  log_debug("Generated SESSION_JOIN signature (timestamp=%llu, session='%s')", (unsigned long long)timestamp,
-            session_string);
+  log_debug("Generated SESSION_JOIN signature (timestamp=%llu, session='%s')", (unsigned long long)timestamp, session_string);
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
-                                           const char *session_string,
-                                           const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
+asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp, const char *session_string, const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!identity_pubkey || !session_string || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -175,16 +168,14 @@ bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
 
   if (timestamp_ms > now_ms + 60000) {
     int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
-    log_warn("Timestamp is in the future: %llu > %llu (skew: %lld ms)", (unsigned long long)timestamp_ms,
-             (unsigned long long)now_ms, (long long)skew);
+    log_warn("Timestamp is in the future: %llu > %llu (skew: %lld ms)", (unsigned long long)timestamp_ms, (unsigned long long)now_ms, (long long)skew);
     return false;
   }
 
   uint64_t min_valid_timestamp = (now_ms >= window_ms) ? (now_ms - window_ms) : 0;
   if (timestamp_ms < min_valid_timestamp) {
     int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
-    log_warn("Timestamp is too old: %llu < %llu (age: %lld ms, max: %u seconds)", (unsigned long long)timestamp_ms,
-             (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
+    log_warn("Timestamp is too old: %llu < %llu (age: %lld ms, max: %u seconds)", (unsigned long long)timestamp_ms, (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
     return false;
   }
 
@@ -194,8 +185,7 @@ bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
 }
 #include <ascii-chat/network/acip/acds_protocol.h>
 
-static asciichat_error_t protocol_fail(acds_protocol_t *p, asciichat_error_t error, const char *message,
-                                       bool terminal) {
+static asciichat_error_t protocol_fail(acds_protocol_t *p, asciichat_error_t error, const char *message, bool terminal) {
   p->state = ACDS_FAILED;
   p->terminal = terminal;
   SAFE_STRNCPY(p->error, message, sizeof(p->error));
@@ -237,12 +227,10 @@ static bool valid_name(const char *name) {
   return true;
 }
 
-asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_create_params_t *params,
-                                       uint8_t total_keys, uint8_t key_index) {
+asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_create_params_t *params, uint8_t total_keys, uint8_t key_index) {
   if (!p || !params)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery create parameters");
-  if (total_keys > MAX_SESSION_KEYS || key_index >= (total_keys ? total_keys : 1) || params->max_participants == 0 ||
-      params->max_participants > MAX_SESSION_PARTICIPANTS)
+  if (total_keys > MAX_SESSION_KEYS || key_index >= (total_keys ? total_keys : 1) || params->max_participants == 0 || params->max_participants > MAX_SESSION_PARTICIPANTS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key count/index or participant limit");
   if (params->reserved_string && params->reserved_string[0])
     return protocol_fail(p, ERROR_NOT_SUPPORTED, "Reserved session names are not supported", true);
@@ -258,20 +246,15 @@ asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_cr
   req.expose_ip_publicly = params->acds_expose_ip;
   SAFE_STRNCPY(req.server_address, params->server_address, sizeof(req.server_address));
   req.server_port = params->server_port;
-  asciichat_error_t result = acds_sign_session_create(params->identity_seckey, req.timestamp, req.capabilities,
-                                                      req.max_participants, req.signature);
+  asciichat_error_t result = acds_sign_session_create(params->identity_seckey, req.timestamp, req.capabilities, req.max_participants, req.signature);
   if (result != ASCIICHAT_OK)
     return protocol_fail(p, result, "Could not sign session creation", true);
   if (params->has_password &&
-      crypto_pwhash_str((char *)req.password_hash, params->password,
-                        strnlen(params->password, sizeof(params->password)), crypto_pwhash_OPSLIMIT_INTERACTIVE,
-                        crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+      crypto_pwhash_str((char *)req.password_hash, params->password, strnlen(params->password, sizeof(params->password)), crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
     return protocol_fail(p, ERROR_CRYPTO, "Could not hash session password", true);
   p->state = ACDS_CREATING;
   size_t endpoint_length = strnlen(params->webtransport_url, sizeof(params->webtransport_url));
-  if (endpoint_length == sizeof(params->webtransport_url) ||
-      (endpoint_length &&
-       (endpoint_length < 9 || strncmp(params->webtransport_url, "https://", sizeof("https://") - 1)))) {
+  if (endpoint_length == sizeof(params->webtransport_url) || (endpoint_length && (endpoint_length < 9 || strncmp(params->webtransport_url, "https://", sizeof("https://") - 1)))) {
     sodium_memzero(&req, sizeof(req));
     return protocol_fail(p, ERROR_INVALID_PARAM, "Invalid public WebTransport endpoint", true);
   }
@@ -320,8 +303,7 @@ asciichat_error_t acds_protocol_join(acds_protocol_t *p, const acds_session_join
   req.has_password = params->has_password;
   if (params->has_password)
     SAFE_STRNCPY(req.password, params->password, sizeof(req.password));
-  asciichat_error_t result =
-      acds_sign_session_join(params->identity_seckey, req.timestamp, params->session_string, req.signature);
+  asciichat_error_t result = acds_sign_session_join(params->identity_seckey, req.timestamp, params->session_string, req.signature);
   if (result != ASCIICHAT_OK)
     return protocol_fail(p, result, "Could not sign session join", true);
   p->state = ACDS_JOINING;
@@ -343,10 +325,7 @@ asciichat_error_t acds_protocol_enter(acds_protocol_t *p, bool create, const cha
   p->join.session_string = p->name;
   if (!create)
     return acds_protocol_lookup(p, name);
-  acds_session_create_params_t params = {.capabilities = 3,
-                                         .max_participants = MAX_SESSION_PARTICIPANTS,
-                                         .session_type = SESSION_TYPE_WEBRTC,
-                                         .has_password = p->join.has_password};
+  acds_session_create_params_t params = {.capabilities = 3, .max_participants = MAX_SESSION_PARTICIPANTS, .session_type = SESSION_TYPE_WEBRTC, .has_password = p->join.has_password};
   memcpy(params.identity_pubkey, p->join.identity_pubkey, sizeof(params.identity_pubkey));
   memcpy(params.identity_seckey, p->join.identity_seckey, sizeof(params.identity_seckey));
   memcpy(params.password, p->join.password, sizeof(params.password));
@@ -410,8 +389,7 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
         return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension", true);
       size_t url_length = ((size_t)extension[8] << 8) | extension[9];
       if (url_length >= sizeof(p->webtransport_url) || extra != 10 + url_length ||
-          (url_length && (url_length < 9 || memcmp(extension + 10, "https://", sizeof("https://") - 1) ||
-                          memchr(extension + 10, 0, url_length))))
+          (url_length && (url_length < 9 || memcmp(extension + 10, "https://", sizeof("https://") - 1) || memchr(extension + 10, 0, url_length))))
         return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint", true);
       p->quic_port = (uint16_t)((uint16_t)extension[6] << 8 | extension[7]);
       memcpy(p->webtransport_url, extension + 10, url_length);
@@ -422,8 +400,7 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
     p->joined.turn_username[sizeof(p->joined.turn_username) - 1] = 0;
     p->joined.turn_password[sizeof(p->joined.turn_password) - 1] = 0;
     if (!p->joined.success)
-      return protocol_fail(p, network_error_from_acip(p->joined.error_code),
-                           p->joined.error_message[0] ? p->joined.error_message : "Session join rejected", true);
+      return protocol_fail(p, network_error_from_acip(p->joined.error_code), p->joined.error_message[0] ? p->joined.error_message : "Session join rejected", true);
     if (p->require_webrtc && p->joined.session_type != SESSION_TYPE_WEBRTC && !p->webtransport_url[0])
       return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebTransport or WebRTC", true);
     p->state = ACDS_JOINED;
@@ -432,8 +409,7 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
     return ASCIICHAT_OK;
   }
   // Signaling and participant notifications are delivered by the caller's transport adapter.
-  if (p->state == ACDS_JOINED && type != PACKET_TYPE_ACIP_SESSION_CREATED && type != PACKET_TYPE_ACIP_SESSION_INFO &&
-      type != PACKET_TYPE_ACIP_SESSION_JOINED)
+  if (p->state == ACDS_JOINED && type != PACKET_TYPE_ACIP_SESSION_CREATED && type != PACKET_TYPE_ACIP_SESSION_INFO && type != PACKET_TYPE_ACIP_SESSION_JOINED)
     return ASCIICHAT_OK;
   return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Unexpected discovery response", true);
 }
@@ -453,16 +429,14 @@ asciichat_error_t acds_handshake_begin(acip_transport_t *transport, uint8_t mode
   protocol_version_packet_init(&version, mode);
   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
 }
-asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                         packet_type_t type, const void *payload, size_t length) {
+asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t type, const void *payload, size_t length) {
   if (!ctx || !transport || (!payload && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handshake packet");
   switch (type) {
   case PACKET_TYPE_CRYPTO_PARAMETERS:
     if (ctx->state != CRYPTO_HANDSHAKE_INIT || length != sizeof(crypto_parameters_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery crypto parameters");
-    if ((((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
-        ctx->crypto_ctx.encrypt_data)
+    if ((((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) != ctx->crypto_ctx.encrypt_data)
       return SET_ERRNO(ERROR_CRYPTO, "Discovery server changed requested encryption");
     return crypto_handshake_set_parameters(ctx, payload);
   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
@@ -478,11 +452,9 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_t
   }
 }
 
-asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length,
-                                      void **allocation) {
+asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length, void **allocation) {
   asciichat_error_t result = packet_receive_via_transport(transport, type, payload, length, allocation);
-  if (result != ASCIICHAT_OK || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET ||
-      !transport->crypto_ctx || !transport->crypto_ctx->encrypt_data)
+  if (result != ASCIICHAT_OK || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET || !transport->crypto_ctx || !transport->crypto_ctx->encrypt_data)
     return result;
   if (*type != PACKET_TYPE_ENCRYPTED)
     return SET_ERRNO(ERROR_CRYPTO, "Discovery signaling requires encrypted packets");
@@ -494,15 +466,13 @@ asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t
   *length = envelope.len;
   if (result == ASCIICHAT_OK) {
     const packet_header_t *inner = envelope.allocated_buffer;
-    if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED ||
-        asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
+    if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED || asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted discovery packet");
   }
   return result;
 }
 
-asciichat_error_t acds_transport_metadata_encode(uint16_t port, const char *url, void *output, size_t capacity,
-                                                 size_t *length) {
+asciichat_error_t acds_transport_metadata_encode(uint16_t port, const char *url, void *output, size_t capacity, size_t *length) {
   if (!url || !output || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery transport output");
   *length = 0;
@@ -522,8 +492,7 @@ asciichat_error_t acds_transport_metadata_encode(uint16_t port, const char *url,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_transport_metadata_decode(const void *data, size_t length, uint16_t *port, char *url,
-                                                 size_t capacity) {
+asciichat_error_t acds_transport_metadata_decode(const void *data, size_t length, uint16_t *port, char *url, size_t capacity) {
   if (!port || !url || !capacity || (!data && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery transport input or output");
   *port = 0;
@@ -534,8 +503,7 @@ asciichat_error_t acds_transport_metadata_decode(const void *data, size_t length
   if (length < 10 || memcmp(bytes, "ACQT", sizeof("ACQT") - 1) || bytes[4] != 1 || bytes[5])
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension");
   size_t size = ((size_t)bytes[8] << 8) | bytes[9];
-  if (size >= 512 || size >= capacity || length != 10 + size ||
-      (size && (size < 9 || memcmp(bytes + 10, "https://", sizeof("https://") - 1) || memchr(bytes + 10, 0, size))))
+  if (size >= 512 || size >= capacity || length != 10 + size || (size && (size < 9 || memcmp(bytes + 10, "https://", sizeof("https://") - 1) || memchr(bytes + 10, 0, size))))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint");
   *port = (uint16_t)((uint16_t)bytes[6] << 8 | bytes[7]);
   memcpy(url, bytes + 10, size);

@@ -144,8 +144,7 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
   void *item = q->slots[q->head];
   q->head = (q->head + 1) % q->capacity;
   q->count--;
-  ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH,
-                    q->count);
+  ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH, q->count);
   pipeline_frame_t *telemetry_frame = item;
   double age = (double)(time_get_ns() - telemetry_frame->captured_ns) / 1e9;
   ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_WAIT : ASCII_OTEL_METRIC_ENCODE_WAIT, age);
@@ -172,12 +171,10 @@ static void frame_queue_flush(frame_queue_t *q, void (*free_fn)(void *)) {
     void *item = q->slots[q->head];
     q->head = (q->head + 1) % q->capacity;
     q->count--;
-    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH,
-                      q->count);
+    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH, q->count);
     pipeline_frame_t *telemetry_frame = item;
     double age = (double)(time_get_ns() - telemetry_frame->captured_ns) / 1e9;
-    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_WAIT : ASCII_OTEL_METRIC_ENCODE_WAIT,
-                      age);
+    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_WAIT : ASCII_OTEL_METRIC_ENCODE_WAIT, age);
     ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, age);
     if (item && free_fn)
       free_fn(item);
@@ -199,8 +196,7 @@ static pipeline_frame_t *make_frame_copy(const image_t *src, frame_slot_t *slots
   if (slots) {
     for (size_t i = 0; i < PIPELINE_FRAME_SLOTS; ++i) {
       bool expected = false;
-      if (atomic_compare_exchange_strong_explicit(&slots[i].busy, &expected, true, memory_order_acquire,
-                                                  memory_order_relaxed)) {
+      if (atomic_compare_exchange_strong_explicit(&slots[i].busy, &expected, true, memory_order_acquire, memory_order_relaxed)) {
         f = &slots[i].frame;
         f->slot = &slots[i];
         if (slots[i].capacity < bytes) {
@@ -323,9 +319,7 @@ static void *pipeline_capture_thread(void *arg) {
   uint64_t snapshot_target_frames = 1;
   media_source_t *capture_source = session_capture_get_media_source(pipeline->capture);
   media_source_type_t capture_source_type = media_source_get_type(capture_source);
-  bool snapshot_uses_frame_target =
-      (capture_source_type == MEDIA_SOURCE_FILE || capture_source_type == MEDIA_SOURCE_STDIN) &&
-      !media_source_uses_webcam(capture_source);
+  bool snapshot_uses_frame_target = (capture_source_type == MEDIA_SOURCE_FILE || capture_source_type == MEDIA_SOURCE_STDIN) && !media_source_uses_webcam(capture_source);
   if (snapshot_mode) {
     // Initialize duration estimate BEFORE encoding frames so PTS scaling works from frame 1
     extern uint64_t g_snapshot_actual_duration_ms;
@@ -335,9 +329,7 @@ static void *pipeline_capture_thread(void *arg) {
       double target_frames = snapshot_delay * session_capture_get_target_fps(pipeline->capture);
       snapshot_target_frames = (uint64_t)(target_frames + 0.999999);
     }
-    log_debug(
-        "[PIPELINE_CAPTURE] Snapshot mode: initialized g_snapshot_actual_duration_ms=%llu ms (snapshot_delay=%.2f)",
-        (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
+    log_debug("[PIPELINE_CAPTURE] Snapshot mode: initialized g_snapshot_actual_duration_ms=%llu ms (snapshot_delay=%.2f)", (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
   }
 
   uint64_t previous_serial = 0;
@@ -436,25 +428,21 @@ static void *pipeline_capture_thread(void *arg) {
       // Calculate elapsed time from first capture
       double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
       double snapshot_delay = GET_OPTION(snapshot_delay);
-      bool snapshot_complete =
-          snapshot_uses_frame_target ? snapshot_frames_captured >= snapshot_target_frames : elapsed >= snapshot_delay;
+      bool snapshot_complete = snapshot_uses_frame_target ? snapshot_frames_captured >= snapshot_target_frames : elapsed >= snapshot_delay;
 
       if (snapshot_complete) {
-        log_debug(
-            "[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
-            "encode queue to drain",
-            elapsed, snapshot_delay);
+        log_debug("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
+                  "encode queue to drain",
+                  elapsed, snapshot_delay);
 
         // Update with actual measured duration so encoder can scale frames accurately
         extern uint64_t g_snapshot_actual_duration_ms;
         extern uint64_t g_snapshot_last_capture_elapsed_ns;
-        uint64_t actual_ms =
-            snapshot_uses_frame_target ? (uint64_t)(snapshot_delay * 1000.0) : (uint64_t)(elapsed * 1000.0);
+        uint64_t actual_ms = snapshot_uses_frame_target ? (uint64_t)(snapshot_delay * 1000.0) : (uint64_t)(elapsed * 1000.0);
         g_snapshot_actual_duration_ms = actual_ms;
         uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
-        log_debug("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
-                  (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
+        log_debug("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu", (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
 
         break;
       }
@@ -485,8 +473,7 @@ static void *pipeline_encode_thread(void *arg) {
       // An empty queue is final only after the producer has exited.
       if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->encode_queue) == 0)
         break; // No producer remains and the queue has drained.
-      log_debug_every(1 * US_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)",
-                      (unsigned long long)frames_processed);
+      log_debug_every(1 * US_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)", (unsigned long long)frames_processed);
       continue; // timeout, keep waiting
     }
 
@@ -500,8 +487,7 @@ static void *pipeline_encode_thread(void *arg) {
     }
 
     if (frames_processed == 0 || frames_processed % 30 == 0) {
-      log_debug_every(US_PER_SEC_INT, "[PIPELINE_ENCODE] Processing frame %llu: %dx%d",
-                      (unsigned long long)frames_processed, frame->w, frame->h);
+      log_debug_every(US_PER_SEC_INT, "[PIPELINE_ENCODE] Processing frame %llu: %dx%d", (unsigned long long)frames_processed, frame->w, frame->h);
     }
 
     if (recording_epoch != frame->source_epoch) {
@@ -515,8 +501,7 @@ static void *pipeline_encode_thread(void *arg) {
     pipeline->encode_error = session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
     if (pipeline->encode_error == ASCIICHAT_OK) {
       ascii_otel_pipeline_progress(2, 0);
-      ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_LATENCY,
-                        (double)(time_get_ns() - frame->acquisition_started_ns) / 1e9);
+      ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_LATENCY, (double)(time_get_ns() - frame->acquisition_started_ns) / 1e9);
     }
     if (pipeline->encode_error != ASCIICHAT_OK) {
       atomic_store_bool(&pipeline->stop, true);
@@ -529,8 +514,7 @@ static void *pipeline_encode_thread(void *arg) {
     free_frame(frame);
   }
 
-  log_debug("[PIPELINE_ENCODE] Encode thread exiting (total frames encoded=%llu)",
-            (unsigned long long)frames_processed);
+  log_debug("[PIPELINE_ENCODE] Encode thread exiting (total frames encoded=%llu)", (unsigned long long)frames_processed);
   return NULL;
 }
 
@@ -538,8 +522,7 @@ static void *pipeline_encode_thread(void *arg) {
  * Public API
  * ============================================================================ */
 
-asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                          session_pipeline_t **out) {
+asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, session_display_ctx_t *display, session_pipeline_t **out) {
   if (!capture || !display || !out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL argument");
   }
@@ -570,8 +553,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   // Playback FPS also has a default when no recording was requested. It must
   // not enable the encoder's lossless queue for a live-only session.
   p->has_render_file = has_file;
-  log_debug("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0,
-            p->has_render_file ? 1 : 0);
+  log_debug("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0, p->has_render_file ? 1 : 0);
 
   atomic_store_bool(&p->stop, false);
   atomic_store_bool(&p->capture_finished, false);
@@ -627,8 +609,7 @@ static void *pipeline_input_thread(void *data) {
   return NULL;
 }
 
-asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit,
-                                            session_keyboard_handler_fn keyboard_handler, void *user_data) {
+asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit, session_keyboard_handler_fn keyboard_handler, void *user_data) {
   if (!pipeline || !should_exit) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL argument");
   }
@@ -657,8 +638,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   // ASCII conversion and render-file encoding substantially slower than capture.
   while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop)) {
     bool exit_check = should_exit(user_data);
-    log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
-                    atomic_load_bool(&pipeline->stop));
+    log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check, atomic_load_bool(&pipeline->stop));
 
     platform_wakeup_wait(pipeline->display_ready, 100 * NS_PER_MS_INT);
     pipeline_frame_t *frame = atomic_ptr_exchange(&pipeline->display_pending, NULL);
@@ -722,8 +702,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
           log_debug_every(US_PER_SEC_INT,
                           "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
                           "publish_ms=%.2f",
-                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
-                          convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
+                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms, convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
         session_display_release_ascii(pipeline->display, ascii);
       } else {
@@ -792,8 +771,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   NAMED_UNREGISTER(&pipeline->display_pending);
   frame_queue_destroy(pipeline->encode_queue);
   NAMED_UNREGISTER(&pipeline->capture_finished);
-  asciichat_error_t err = pipeline->capture_failure.code != ASCIICHAT_OK ? errno_import(&pipeline->capture_failure)
-                                                                         : pipeline->encode_error;
+  asciichat_error_t err = pipeline->capture_failure.code != ASCIICHAT_OK ? errno_import(&pipeline->capture_failure) : pipeline->encode_error;
   if (pipeline->capture_failure.code != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Media capture failed");
   SAFE_FREE(pipeline);

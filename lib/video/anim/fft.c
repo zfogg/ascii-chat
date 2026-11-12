@@ -53,9 +53,8 @@ static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
     return false;
   char *max_end = NULL;
   parsed->max_db = strtof(end + 1, &max_end);
-  return max_end != end + 1 && *max_end == '\0' && isfinite(parsed->min_db) && isfinite(parsed->max_db) &&
-         parsed->min_db >= -120.0f && parsed->max_db <= 0.0f && parsed->max_db - parsed->min_db >= 12.0f &&
-         parsed->max_db > parsed->min_db;
+  return max_end != end + 1 && *max_end == '\0' && isfinite(parsed->min_db) && isfinite(parsed->max_db) && parsed->min_db >= -120.0f && parsed->max_db <= 0.0f &&
+         parsed->max_db - parsed->min_db >= 12.0f && parsed->max_db > parsed->min_db;
 }
 
 asciichat_error_t audio_visualization_fft_init(void) {
@@ -88,21 +87,17 @@ static bool visualization_fft(const float *input, float *magnitude) {
   return true;
 }
 
-char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color, int color_mode, bool flip_x, bool flip_y) {
-  if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
-      source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
+char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source, bool use_color, int color_mode, bool flip_x, bool flip_y) {
+  if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT || source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
 
   if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
     height *= 2;
   static_mutex_lock(&fft_cache_mutex);
   uint64_t now = time_get_ns();
-  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source &&
-      fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
+  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source && fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
       now - fft_cache.updated_ns < FFT_REFRESH_NS) {
-    char *frame =
-        visualization_encode(fft_cache.cells, fft_cache.colors, false, width, height, use_color, flip_x, flip_y);
+    char *frame = visualization_encode(fft_cache.cells, fft_cache.colors, false, width, height, use_color, flip_x, flip_y);
     static_mutex_unlock(&fft_cache_mutex);
     return frame;
   }
@@ -146,8 +141,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       float low_hz = 35.0f * powf(18000.0f / 35.0f, top_fraction);
       float high_hz = 35.0f * powf(18000.0f / 35.0f, bottom_fraction);
       size_t low_bin = (size_t)fmaxf(1.0f, floorf(low_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
-      size_t high_bin =
-          (size_t)fmaxf((float)(low_bin + 1), ceilf(high_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
+      size_t high_bin = (size_t)fmaxf((float)(low_bin + 1), ceilf(high_hz * FFT_SIZE / AUDIO_VISUALIZATION_SAMPLE_RATE));
       if (high_bin > FFT_SIZE / 2)
         high_bin = FFT_SIZE / 2;
       float power = 0.0f;
@@ -171,8 +165,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       size_t cell = (size_t)row * width + x;
       cells[cell] = levels[level];
       float band_hz = sqrtf(low_hz * high_hz);
-      visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
-                                    &colors[cell * 3 + 2]);
+      visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1], &colors[cell * 3 + 2]);
     }
   }
 

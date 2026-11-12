@@ -93,8 +93,7 @@ static asciichat_error_t otel_status(otlp_status_t status, const char *operation
   // Error recording logs locally; do not export that diagnostic back into a failing exporter.
   bool previous = in_log;
   in_log = true;
-  asciichat_error_t result =
-      SET_ERRNO(error, "%s failed: %s (OTLP status %d)", operation, otlp_strerror(status), (int)status);
+  asciichat_error_t result = SET_ERRNO(error, "%s failed: %s (OTLP status %d)", operation, otlp_strerror(status), (int)status);
   in_log = previous;
   return result;
 }
@@ -104,11 +103,9 @@ static const gotel_operation_t operations[] = {
 #include <ascii-chat/otel_operations.def>
 #undef ASCII_OTEL_OPERATION
 };
-static const double metric_bounds[] = {.0001, .001, .005, .01, .025, .05,  .1,   .25,   .5,    1,      2,
-                                       5,     10,   50,   100, 500,  1000, 5000, 10000, 50000, 100000, 1000000};
+static const double metric_bounds[] = {.0001, .001, .005, .01, .025, .05, .1, .25, .5, 1, 2, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 1000000};
 static const gotel_metric_t metrics[] = {
-#define ASCII_OTEL_METRIC(id, name, type, unit)                                                                        \
-  {name, unit, OTLP_METRIC_##type, metric_bounds, sizeof(metric_bounds) / sizeof(metric_bounds[0])},
+#define ASCII_OTEL_METRIC(id, name, type, unit) {name, unit, OTLP_METRIC_##type, metric_bounds, sizeof(metric_bounds) / sizeof(metric_bounds[0])},
 #include <ascii-chat/otel_metrics.def>
 #undef ASCII_OTEL_METRIC
 };
@@ -151,9 +148,7 @@ static void release(void) {
   atomic_fetch_sub_explicit(&readers, 1, memory_order_seq_cst);
 }
 const char *ascii_otel_current_operation(void) {
-  return current_scope && current_scope->scope.operation < ASCII_OTEL_OPERATION_COUNT
-             ? operations[current_scope->scope.operation].name
-             : "";
+  return current_scope && current_scope->scope.operation < ASCII_OTEL_OPERATION_COUNT ? operations[current_scope->scope.operation].name : "";
 }
 bool ascii_otel_enabled(void) {
   return atomic_ptr_load(&host) != NULL;
@@ -175,27 +170,24 @@ enum {
 #undef ASCII_STATS_GAUGE
 #undef ASCII_STATS_DURATION
 };
-_Static_assert(stats_metric_count == STATS_COUNTER_COUNT + STATS_GAUGE_COUNT + STATS_DURATION_COUNT,
-               "Every typed stat needs a telemetry metric");
+_Static_assert(stats_metric_count == STATS_COUNTER_COUNT + STATS_GAUGE_COUNT + STATS_DURATION_COUNT, "Every typed stat needs a telemetry metric");
 
 ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned id) {
-  if (!((kind == STATS_RECORD_COUNTER && id < STATS_COUNTER_COUNT) ||
-        (kind == STATS_RECORD_GAUGE && id < STATS_GAUGE_COUNT) ||
-        (kind == STATS_RECORD_DURATION && id < STATS_DURATION_COUNT)))
+  if (!((kind == STATS_RECORD_COUNTER && id < STATS_COUNTER_COUNT) || (kind == STATS_RECORD_GAUGE && id < STATS_GAUGE_COUNT) || (kind == STATS_RECORD_DURATION && id < STATS_DURATION_COUNT)))
     return ASCII_OTEL_METRIC_COUNT;
   ascii_otel_metric_t metric;
   switch (((unsigned)kind << 16) | id) {
-#define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                 \
-  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id:                                                              \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+#define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                                                                                                 \
+  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id:                                                                                                                                              \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
     break;
-#define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                   \
-  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id:                                                                  \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+#define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                                                                                                   \
+  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id:                                                                                                                                                  \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
     break;
-#define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                \
-  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id:                                                            \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+#define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                                                                                                \
+  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id:                                                                                                                                            \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
     break;
 #include <ascii-chat/stats/telemetry.def>
 #undef ASCII_STATS_COUNTER
@@ -294,18 +286,14 @@ void ascii_otel_pipeline_progress(unsigned stage, unsigned expected) {
   }
 }
 double ascii_otel_pipeline_age(uint64_t now, uint64_t capture, uint64_t progress, bool expected) {
-  return expected && capture && progress && now >= capture && now >= progress && now - capture < 2 * NS_PER_SEC_INT
-             ? (double)(now - progress) / 1e9
-             : 0;
+  return expected && capture && progress && now >= capture && now >= progress && now - capture < 2 * NS_PER_SEC_INT ? (double)(now - progress) / 1e9 : 0;
 }
 static void pipeline_health(gotel_host_t *h, uint64_t now) {
   uint64_t capture = atomic_load(&pipeline_capture_ns);
   unsigned expected = atomic_load(&pipeline_expected);
   uint64_t display = atomic_load(&pipeline_display_ns), encode = atomic_load(&pipeline_encode_ns);
-  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_DISPLAY_STALL,
-                            ascii_otel_pipeline_age(now, capture, display, (expected & 1) != 0));
-  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_ENCODE_STALL,
-                            ascii_otel_pipeline_age(now, capture, encode, (expected & 2) != 0));
+  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_DISPLAY_STALL, ascii_otel_pipeline_age(now, capture, display, (expected & 1) != 0));
+  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_ENCODE_STALL, ascii_otel_pipeline_age(now, capture, encode, (expected & 2) != 0));
 }
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
@@ -319,18 +307,15 @@ static void *export_worker(void *arg) {
   while (!atomic_load_explicit(&stopping, memory_order_acquire)) {
     uint64_t start = time_get_ns();
     (void)otel_status(gotel_tick(h), "gotel_tick");
-    (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_LATENCY, (double)(time_get_ns() - start) / 1e9),
-                      "gotel_metric_record");
+    (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_LATENCY, (double)(time_get_ns() - start) / 1e9), "gotel_metric_record");
     if (!last_health || start - last_health >= NS_PER_SEC_INT) {
       last_health = start;
       pipeline_health(h, time_get_ns());
       platform_process_stats_t process;
       if (platform_process_stats(&process) == ASCIICHAT_OK) {
         (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_CPU, process.cpu_seconds), "gotel_metric_record");
-        (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_RSS, (double)process.resident_bytes),
-                          "gotel_metric_record");
-        (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_THREADS, (double)process.threads),
-                          "gotel_metric_record");
+        (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_RSS, (double)process.resident_bytes), "gotel_metric_record");
+        (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_THREADS, (double)process.threads), "gotel_metric_record");
       }
       otlp_exporter_stats_t stats = {0};
       (void)otel_status(gotel_stats(h, &stats), "gotel_stats");
@@ -343,8 +328,7 @@ static void *export_worker(void *arg) {
       if (failures > observed_failures) {
         collector_failed = true;
         if (!last_failure_warning || start - last_failure_warning >= 30 * NS_PER_SEC_INT) {
-          log_warn("Telemetry collector export failed (%llu failures); export continues in background",
-                   (unsigned long long)failures);
+          log_warn("Telemetry collector export failed (%llu failures); export continues in background", (unsigned long long)failures);
           last_failure_warning = start;
         }
       } else if (collector_failed && sent > observed_sent) {
@@ -357,24 +341,13 @@ static void *export_worker(void *arg) {
       observed_sent = sent;
       uint64_t failed = stats.dropped_err + stats.dropped_logs_err + stats.dropped_metrics_err;
       uint64_t pending = accepted > sent + failed ? accepted - sent - failed : 0;
-      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE,
-                                            (double)pending / (3.0 * atomic_load(&exporter_queue_capacity))),
-                        "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE, (double)pending / (3.0 * atomic_load(&exporter_queue_capacity))), "gotel_metric_record");
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_SENT, (double)sent), "gotel_metric_record");
-      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_DROP,
-                                            (double)(failed + stats.dropped_full + stats.dropped_logs_full +
-                                                     stats.dropped_metrics_full)),
-                        "gotel_metric_record");
-      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRY, (double)stats.network_err),
-                        "gotel_metric_record");
-      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_REJECT, (double)stats.rejected_spans),
-                        "gotel_metric_record");
-      (void)otel_status(
-          gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRIES, (double)atomic_load(&exporter_retries)),
-          "gotel_metric_record");
-      (void)otel_status(
-          gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_BATCHES, (double)atomic_load(&exporter_batches)),
-          "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_DROP, (double)(failed + stats.dropped_full + stats.dropped_logs_full + stats.dropped_metrics_full)), "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRY, (double)stats.network_err), "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_REJECT, (double)stats.rejected_spans), "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRIES, (double)atomic_load(&exporter_retries)), "gotel_metric_record");
+      (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_BATCHES, (double)atomic_load(&exporter_batches)), "gotel_metric_record");
     }
     platform_sleep_ms(10);
   }
@@ -392,15 +365,11 @@ void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, c
   s->retained = h != NULL;
   if (h) {
     gotel_context_t context = gotel_current_context();
-    bool lifetime_parent = current_scope && (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
-                                             current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
+    bool lifetime_parent = current_scope && (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN || current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
     // Lifetime spans finish only at shutdown. Completed operations must remain
     // inspectable while a server is running, including after abrupt termination.
     if (!parent && context.valid) {
-      gotel_parent_mode_t mode =
-          lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0
-              ? GOTEL_PARENT_INDEPENDENT
-              : GOTEL_PARENT_BOUNDED;
+      gotel_parent_mode_t mode = lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0 ? GOTEL_PARENT_INDEPENDENT : GOTEL_PARENT_BOUNDED;
       context = gotel_operation_parent(context, mode);
       parent = &context;
     }
@@ -448,15 +417,13 @@ void ascii_otel_call_session_used(const char *session_string) {
   ASCII_OTEL_SCOPE_PARENT(CALL_SESSION_USED, &root);
   ASCII_OTEL_ATTR_STRING("ascii-chat.session.string", session_string);
 }
-void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action,
-                       int transport) {
+void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport) {
   if (!scope->retained || !scope->scope.span)
     return;
   const char *packet = acip_packet_type_name(type);
   char name[OTEL_NAME_BUFFER_SIZE], version[OTEL_VERSION_BUFFER_SIZE];
   safe_snprintf(name, sizeof(name), "%s.%s", operations[scope->scope.operation].name, packet);
-  safe_snprintf(version, sizeof(version), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
-                PROTOCOL_VERSION_PATCH);
+  safe_snprintf(version, sizeof(version), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
   (void)otel_status(otlp_span_set_name(scope->scope.span, name), "otlp_span_set_name");
   gotel_attr_string(&scope->scope, "network.protocol.name", "acip");
   gotel_attr_string(&scope->scope, "network.protocol.version", version);
@@ -464,10 +431,7 @@ void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_
   gotel_attr_int(&scope->scope, "network.packet.type", type);
   gotel_attr_int(&scope->scope, "network.packet.size", (int64_t)payload_size);
   gotel_attr_string(&scope->scope, "network.packet.operation", action);
-  const char *carrier = transport == ACIP_TRANSPORT_TCP         ? "tcp"
-                        : transport == ACIP_TRANSPORT_WEBSOCKET ? "websocket"
-                        : transport == ACIP_TRANSPORT_WEBRTC    ? "webrtc"
-                                                                : "unknown";
+  const char *carrier = transport == ACIP_TRANSPORT_TCP ? "tcp" : transport == ACIP_TRANSPORT_WEBSOCKET ? "websocket" : transport == ACIP_TRANSPORT_WEBRTC ? "webrtc" : "unknown";
   gotel_attr_string(&scope->scope, "acip.transport", carrier);
 }
 void ascii_otel_shutdown(void) {
@@ -516,10 +480,8 @@ void ascii_otel_shutdown(void) {
     log_warn("Telemetry flush deadline reached; pending records discarded");
   log_debug("Telemetry exporter stopped: spans=%llu/%llu logs=%llu/%llu metrics=%llu/%llu network_errors=%llu "
             "http_4xx=%llu dropped=%llu rejected=%llu",
-            (unsigned long long)stats.sent, (unsigned long long)stats.emitted, (unsigned long long)stats.sent_logs,
-            (unsigned long long)stats.emitted_logs, (unsigned long long)stats.sent_metrics,
-            (unsigned long long)stats.emitted_metrics, (unsigned long long)stats.network_err,
-            (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
+            (unsigned long long)stats.sent, (unsigned long long)stats.emitted, (unsigned long long)stats.sent_logs, (unsigned long long)stats.emitted_logs, (unsigned long long)stats.sent_metrics,
+            (unsigned long long)stats.emitted_metrics, (unsigned long long)stats.network_err, (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
             (unsigned long long)stats.rejected_spans);
 }
 static const gotel_command_rule_t command_argument_rules[] = {
@@ -566,13 +528,11 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     timeout_cli |= !strcmp(argv[i], "--otel-timeout") || !strncmp(argv[i], "--otel-timeout=", 15);
   }
   unsigned signals;
-  asciichat_error_t parsed = otel_status(gotel_parse_signals(o->otel_enabled_telemetry, &signals),
-                                         "Parse otel-enabled-telemetry (traces,logs,metrics or none)");
+  asciichat_error_t parsed = otel_status(gotel_parse_signals(o->otel_enabled_telemetry, &signals), "Parse otel-enabled-telemetry (traces,logs,metrics or none)");
   if (parsed != ASCIICHAT_OK)
     return parsed;
-  if (!isfinite(o->otel_realtime_sample_rate) || o->otel_realtime_sample_rate < 0 || o->otel_realtime_sample_rate > 1 ||
-      o->otel_queue_capacity < 2 || (o->otel_queue_capacity & (o->otel_queue_capacity - 1)) || o->otel_timeout < 1 ||
-      o->otel_metrics_interval < 1 || o->otel_realtime_max_per_second < 1)
+  if (!isfinite(o->otel_realtime_sample_rate) || o->otel_realtime_sample_rate < 0 || o->otel_realtime_sample_rate > 1 || o->otel_queue_capacity < 2 ||
+      (o->otel_queue_capacity & (o->otel_queue_capacity - 1)) || o->otel_timeout < 1 || o->otel_metrics_interval < 1 || o->otel_realtime_max_per_second < 1)
     return SET_ERRNO(ERROR_CONFIG, "Invalid telemetry sampling, queue capacity, or interval");
   const char *log_names[] = {"dev", "debug", "info", "warn", "error", "fatal"};
   const int log_levels[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};
@@ -633,8 +593,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   SAFE_SNPRINTF(address6_brackets, sizeof(address6_brackets), "[%s]", o->address6);
   SAFE_SNPRINTF(address_brackets_port, sizeof(address_brackets_port), "[%s]:%d", o->address, o->port);
   SAFE_SNPRINTF(address6_brackets_port, sizeof(address6_brackets_port), "[%s]:%d", o->address6, o->port);
-  const char *sensitive_values[] = {o->address,       o->address6,       address_port,          address6_port,
-                                    address_brackets, address6_brackets, address_brackets_port, address6_brackets_port};
+  const char *sensitive_values[] = {o->address, o->address6, address_port, address6_port, address_brackets, address6_brackets, address_brackets_port, address6_brackets_port};
   gotel_command_policy_t argument_policy = {
 #ifdef NDEBUG
       .mode = GOTEL_COMMAND_REDACT_SELECTED,
@@ -647,18 +606,14 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
       .rule_count = sizeof(command_argument_rules) / sizeof(command_argument_rules[0]),
   };
   asciichat_error_t arguments_status =
-      otel_status(gotel_command_args_init_policy(&command_args, "ascii-chat", mode, argc, (const char *const *)argv,
-                                                 &argument_policy),
-                  "Sanitize telemetry command arguments");
+      otel_status(gotel_command_args_init_policy(&command_args, "ascii-chat", mode, argc, (const char *const *)argv, &argument_policy), "Sanitize telemetry command arguments");
   if (arguments_status != ASCIICHAT_OK)
     return arguments_status;
   config.argc = command_args.argc;
   config.argv = command_args.argv;
   gotel_env_storage_t env;
-  asciichat_error_t env_status =
-      otel_status(gotel_options_apply_env(&config, &env, OPT_OTEL_ENDPOINT_DEFAULT), "Configure OTEL environment");
-  if (env_status == ASCIICHAT_OK &&
-      (endpoint_cli || SAFE_GETENV("ASCII_CHAT_OTEL_ENDPOINT") || strcmp(endpoint, OPT_OTEL_ENDPOINT_DEFAULT)))
+  asciichat_error_t env_status = otel_status(gotel_options_apply_env(&config, &env, OPT_OTEL_ENDPOINT_DEFAULT), "Configure OTEL environment");
+  if (env_status == ASCIICHAT_OK && (endpoint_cli || SAFE_GETENV("ASCII_CHAT_OTEL_ENDPOINT") || strcmp(endpoint, OPT_OTEL_ENDPOINT_DEFAULT)))
     env_status = otel_status(gotel_options_set_endpoint(&config, &env, endpoint), "Configure telemetry endpoint");
   if (timeout_cli || SAFE_GETENV("ASCII_CHAT_OTEL_TIMEOUT")) {
     config.exporter.connect_timeout_ms = (uint32_t)o->otel_timeout;
@@ -743,8 +698,7 @@ void ascii_otel_exit(int code) {
       (void)otel_status(otlp_span_set_status(command_scope.span, OTLP_STATUS_CODE_UNSET, ""), "otlp_span_set_status");
   }
 }
-void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes, uint32_t width, uint32_t height,
-                               asciichat_error_t code) {
+void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes, uint32_t width, uint32_t height, asciichat_error_t code) {
   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_REJECTED, 1);
   gotel_context_t parent = ascii_otel_context();
   ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};
@@ -763,13 +717,12 @@ void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t
 ascii_otel_operation_t ascii_otel_failure_operation(asciichat_error_t code, const char *origin) {
   if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
     return ASCII_OTEL_OPERATION_COUNT;
-  if ((code >= ERROR_CRYPTO && code <= ERROR_CRYPTO_VERIFICATION) || code == ERROR_CRYPTO_INIT ||
-      code == ERROR_INVALID_PASSWORD || code == ERROR_INVALID_SIGNATURE)
+  if ((code >= ERROR_CRYPTO && code <= ERROR_CRYPTO_VERIFICATION) || code == ERROR_CRYPTO_INIT || code == ERROR_INVALID_PASSWORD || code == ERROR_INVALID_SIGNATURE)
     return ASCII_OTEL_FAILURE_CRYPTO;
   if (code == ERROR_NETWORK_PROTOCOL || code == ERROR_NETWORK_SIZE || code == ERROR_UNKNOWN_PACKET)
     return ASCII_OTEL_FAILURE_PROTOCOL;
-  if ((code >= ERROR_SESSION_NOT_FOUND && code <= ERROR_SESSION_FULL) || code == ERROR_ACDS_STRING_TAKEN ||
-      code == ERROR_ACDS_STRING_INVALID || (origin && !strncmp(origin, "ascii-chat.discovery.", 21)))
+  if ((code >= ERROR_SESSION_NOT_FOUND && code <= ERROR_SESSION_FULL) || code == ERROR_ACDS_STRING_TAKEN || code == ERROR_ACDS_STRING_INVALID ||
+      (origin && !strncmp(origin, "ascii-chat.discovery.", 21)))
     return ASCII_OTEL_FAILURE_DISCOVERY;
   return ASCII_OTEL_OPERATION_COUNT;
 }
@@ -788,9 +741,7 @@ void ascii_otel_error_code(asciichat_error_t code, const char *message) {
   ascii_otel_operation_t operation = ascii_otel_failure_operation(code, origin);
   if (operation == ASCII_OTEL_OPERATION_COUNT)
     return;
-  const char *category = operation == ASCII_OTEL_FAILURE_CRYPTO     ? "crypto"
-                         : operation == ASCII_OTEL_FAILURE_PROTOCOL ? "protocol"
-                                                                    : "discovery";
+  const char *category = operation == ASCII_OTEL_FAILURE_CRYPTO ? "crypto" : operation == ASCII_OTEL_FAILURE_PROTOCOL ? "protocol" : "discovery";
   gotel_context_t parent = ascii_otel_context();
   ascii_otel_scope_t report __attribute__((cleanup(ascii_otel_scope_end))) = {0};
   if (!scope_retained(&report, operation, &parent))
@@ -815,9 +766,7 @@ void ascii_otel_http(ascii_otel_scope_t *s, const char *hostname, const char *pa
   gotel_error(&s->scope, "http.transport", "HTTP operation did not complete");
   char url[OTEL_URL_BUFFER_SIZE], name[OTEL_NAME_EXTENDED_BUFFER_SIZE];
   int n = safe_snprintf(url, sizeof(url), "https://%s%s", hostname, path);
-  if (n >= 0 && (size_t)n < sizeof(url) &&
-      otel_status(gotel_http_name(name, sizeof(name), "ascii-chat", false, "GET", url), "Name HTTP telemetry span") ==
-          ASCIICHAT_OK) {
+  if (n >= 0 && (size_t)n < sizeof(url) && otel_status(gotel_http_name(name, sizeof(name), "ascii-chat", false, "GET", url), "Name HTTP telemetry span") == ASCIICHAT_OK) {
     if (s->scope.span)
       (void)otel_status(otlp_span_set_name(s->scope.span, name), "otlp_span_set_name");
     gotel_http_attributes(&s->scope, "GET", 0);
@@ -848,8 +797,7 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
   gotel_sqlite_t *a = NULL;
   sequel_analysis_options_t analysis = {.format = true};
   gotel_sqlite_options_t options = {.analysis = &analysis};
-  if (otel_status(gotel_sqlite_attach_with_options(h, db, "ascii-chat.storage", queries, count, &options, &a),
-                  "Attach SQLite telemetry") != ASCIICHAT_OK)
+  if (otel_status(gotel_sqlite_attach_with_options(h, db, "ascii-chat.storage", queries, count, &options, &a), "Attach SQLite telemetry") != ASCIICHAT_OK)
     log_warn("Could not attach SQLite telemetry");
   release();
 }
@@ -861,8 +809,7 @@ void ascii_otel_sqlite_catalog(sqlite3 *db, const gotel_query_catalog_t *catalog
   gotel_sqlite_t *a = NULL;
   sequel_analysis_options_t analysis = {.format = true};
   gotel_sqlite_options_t options = {.analysis = &analysis};
-  if (otel_status(gotel_sqlite_attach_catalog_with_options(h, db, "ascii-chat.storage", catalog, &options, &a),
-                  "Attach SQLite telemetry") != ASCIICHAT_OK)
+  if (otel_status(gotel_sqlite_attach_catalog_with_options(h, db, "ascii-chat.storage", catalog, &options, &a), "Attach SQLite telemetry") != ASCIICHAT_OK)
     log_warn("Could not attach SQLite telemetry");
   release();
 }

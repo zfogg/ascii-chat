@@ -22,8 +22,7 @@ const char *connection_endpoint_protocol_name(connection_endpoint_protocol_t pro
   }
 }
 
-static asciichat_error_t connection_endpoint_from_parts(connection_endpoint_t *endpoint_out, const url_parts_t *parts,
-                                                        connection_endpoint_protocol_t protocol, uint16_t default_port,
+static asciichat_error_t connection_endpoint_from_parts(connection_endpoint_t *endpoint_out, const url_parts_t *parts, connection_endpoint_protocol_t protocol, uint16_t default_port,
                                                         const char *input) {
   if (!endpoint_out || !parts || !parts->host) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid endpoint parse state");
@@ -42,8 +41,7 @@ static asciichat_error_t connection_endpoint_from_parts(connection_endpoint_t *e
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port,
-                                              connection_endpoint_t *endpoint_out) {
+asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port, connection_endpoint_t *endpoint_out) {
   if (!input || !*input || !endpoint_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "input or endpoint_out is NULL");
   }

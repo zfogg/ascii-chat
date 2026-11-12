@@ -200,10 +200,8 @@ typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int 
  *
  * @ingroup session
  */
-asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                      session_should_exit_fn should_exit, session_capture_fn capture_cb,
-                                      session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
-                                      void *user_data);
+asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display, session_should_exit_fn should_exit, session_capture_fn capture_cb,
+                                      session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler, void *user_data);
 
 #ifdef __cplusplus
 }

@@ -49,8 +49,7 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
     if (result != ASCIICHAT_OK)
       return result;
     client->handshake_ctx->client_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->handshake_ctx->client_public_key.key, client->handshake_ctx->client_private_key.public_key,
-           sizeof(client->handshake_ctx->client_private_key.public_key));
+    memcpy(client->handshake_ctx->client_public_key.key, client->handshake_ctx->client_private_key.public_key, sizeof(client->handshake_ctx->client_private_key.public_key));
     policy.has_identity = true;
   }
   uint8_t mode;
@@ -99,11 +98,8 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   memcpy(&client->config, config, sizeof(acds_client_config_t));
   client->connected = false;
 
-  network_connect_config_t settings = {.timeout_ms = config->timeout_ms,
-                                       .should_exit_callback = config->should_exit_callback,
-                                       .callback_data = config->callback_data};
-  asciichat_error_t pconn_result = network_connection_open("acds", config->server_address, config->server_port,
-                                                           &settings, &client->connection, NULL);
+  network_connect_config_t settings = {.timeout_ms = config->timeout_ms, .should_exit_callback = config->should_exit_callback, .callback_data = config->callback_data};
+  asciichat_error_t pconn_result = network_connection_open("acds", config->server_address, config->server_port, &settings, &client->connection, NULL);
   if (pconn_result == ASCIICHAT_OK) {
     client->connected = true;
     client->transport = network_connection_transport(client->connection);
@@ -162,8 +158,7 @@ static asciichat_error_t client_protocol_receive(acds_client_t *client, acds_pro
   buffer_release(allocation);
   return result;
 }
-asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params,
-                                      acds_session_create_result_t *result) {
+asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params, acds_session_create_result_t *result) {
   if (!client || !client->connected || !params || !result)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery create parameters");
   acds_protocol_t protocol;
@@ -207,8 +202,7 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *name, a
   acds_protocol_destroy(&protocol);
   return error;
 }
-asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params,
-                                    acds_session_join_result_t *result) {
+asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params, acds_session_join_result_t *result) {
   if (!client || !client->connected || !params || !result)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery join parameters");
   acds_protocol_t protocol;

@@ -213,8 +213,7 @@ asciichat_error_t completions_generate_powershell(FILE *output) {
 
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+  const option_descriptor_t *discovery_svc_opts = options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
     for (size_t i = 0; i < discovery_svc_count; i++) {
@@ -223,49 +222,47 @@ asciichat_error_t completions_generate_powershell(FILE *output) {
     SAFE_FREE(discovery_svc_opts);
   }
 
-  fprintf(
-      output,
-      "  )\n"
-      "\n"
-      "  $options = $binaryOptions\n"
-      "  \n"
-      "  if ($mode -eq 'server') {\n"
-      "    $options += $serverOptions\n"
-      "  } elseif ($mode -eq 'client') {\n"
-      "    $options += $clientOptions\n"
-      "  } elseif ($mode -eq 'mirror') {\n"
-      "    $options += $mirrorOptions\n"
-      "  } elseif ($mode -eq 'mcp-server') {\n"
-      "    $options += $mcpOptions\n"
-      "  } elseif ($mode -eq 'discovery-service') {\n"
-      "    $options += $discoverySvcOptions\n"
-      "  }\n"
-      "\n"
-      "  $previousIndex = $words.Count - 1\n"
-      "  if ($wordToComplete) { $previousIndex-- }\n"
-      "  $valueOption = $options | Where-Object { $_.Name -eq $words[$previousIndex] } | Select-Object -First 1\n"
-      "  if ($valueOption.Values -and -not $wordToComplete.StartsWith('-')) {\n"
-      "    $valueOption.Values | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
-      "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $valueOption.Description)\n"
-      "    }\n"
-      "    return\n"
-      "  }\n"
-      "\n"
-      "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
-      "    @('server', 'client', 'mirror', 'discovery-service', 'mcp-server') | Where-Object { $_ -like "
-      "\"$wordToComplete*\" } | "
-      "ForEach-Object {\n"
-      "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
-      "    }\n"
-      "  } else {\n"
-      "    $options | Sort-Object -Property Name -Unique | Where-Object { $_.Name -like \"$wordToComplete*\" } | "
-      "ForEach-Object {\n"
-      "      [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterName', $_.Description)\n"
-      "    }\n"
-      "  }\n"
-      "}\n"
-      "\n"
-      "Register-ArgumentCompleter -Native -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n");
+  fprintf(output, "  )\n"
+                  "\n"
+                  "  $options = $binaryOptions\n"
+                  "  \n"
+                  "  if ($mode -eq 'server') {\n"
+                  "    $options += $serverOptions\n"
+                  "  } elseif ($mode -eq 'client') {\n"
+                  "    $options += $clientOptions\n"
+                  "  } elseif ($mode -eq 'mirror') {\n"
+                  "    $options += $mirrorOptions\n"
+                  "  } elseif ($mode -eq 'mcp-server') {\n"
+                  "    $options += $mcpOptions\n"
+                  "  } elseif ($mode -eq 'discovery-service') {\n"
+                  "    $options += $discoverySvcOptions\n"
+                  "  }\n"
+                  "\n"
+                  "  $previousIndex = $words.Count - 1\n"
+                  "  if ($wordToComplete) { $previousIndex-- }\n"
+                  "  $valueOption = $options | Where-Object { $_.Name -eq $words[$previousIndex] } | Select-Object -First 1\n"
+                  "  if ($valueOption.Values -and -not $wordToComplete.StartsWith('-')) {\n"
+                  "    $valueOption.Values | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
+                  "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $valueOption.Description)\n"
+                  "    }\n"
+                  "    return\n"
+                  "  }\n"
+                  "\n"
+                  "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
+                  "    @('server', 'client', 'mirror', 'discovery-service', 'mcp-server') | Where-Object { $_ -like "
+                  "\"$wordToComplete*\" } | "
+                  "ForEach-Object {\n"
+                  "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
+                  "    }\n"
+                  "  } else {\n"
+                  "    $options | Sort-Object -Property Name -Unique | Where-Object { $_.Name -like \"$wordToComplete*\" } | "
+                  "ForEach-Object {\n"
+                  "      [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterName', $_.Description)\n"
+                  "    }\n"
+                  "  }\n"
+                  "}\n"
+                  "\n"
+                  "Register-ArgumentCompleter -Native -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n");
 
   return ASCIICHAT_OK;
 }

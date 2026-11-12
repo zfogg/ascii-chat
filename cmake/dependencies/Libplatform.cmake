@@ -22,13 +22,15 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
 set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
+set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
     # Keep the cache clone on the mapped libplatform revision used by the
     # repository submodule. The copied compatibility files below are layered
     # onto this exact source, so headers and implementation stay in sync.
     GIT_TAG 6cf051cb5ba96a24452afe6e9fd45d0853d415bc
-    SOURCE_DIR "${_ascii_chat_libplatform_source}")
+    SOURCE_DIR "${_ascii_chat_libplatform_source}"
+    BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
 target_include_directories(asciichat-project-includes INTERFACE

@@ -233,8 +233,7 @@ void session_audio_remove_source(session_audio_ctx_t *ctx, uint32_t source_id);
  *
  * @ingroup session
  */
-asciichat_error_t session_audio_write_source(session_audio_ctx_t *ctx, uint32_t source_id, const float *samples,
-                                             size_t num_samples);
+asciichat_error_t session_audio_write_source(session_audio_ctx_t *ctx, uint32_t source_id, const float *samples, size_t num_samples);
 
 /**
  * @brief Mix all sources except one and return the result (host only)

@@ -10,5 +10,4 @@
 asciichat_error_t session_frame_validate(const char *text, size_t length, uint32_t width, uint32_t height);
 
 #include <ascii-chat/network/render_contract.h>
-asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
-                                                  const acip_render_settings_t *settings, uint32_t effects);
+asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height, const acip_render_settings_t *settings, uint32_t effects);

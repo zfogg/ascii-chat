@@ -298,8 +298,7 @@ grep_parse_result_t grep_parse_pattern(const char *input) {
     bool implicit_flags_valid = closing_slash && closing_slash > input && *implicit_flags != '\0';
     if (implicit_flags_valid) {
       for (const char *flag = implicit_flags; *flag; flag++) {
-        if (!strchr("imsxgIF", *flag) && *flag != 'A' && *flag != 'B' && *flag != 'C' &&
-            !(*flag >= '0' && *flag <= '9')) {
+        if (!strchr("imsxgIF", *flag) && *flag != 'A' && *flag != 'B' && *flag != 'C' && !(*flag >= '0' && *flag <= '9')) {
           implicit_flags_valid = false;
           break;
         }
@@ -429,8 +428,7 @@ asciichat_error_t grep_init(const char *pattern) {
   // Allocate or expand pattern array
   if (g_filter_state.pattern_count >= g_filter_state.pattern_capacity) {
     int new_capacity = (g_filter_state.pattern_capacity == 0) ? 4 : g_filter_state.pattern_capacity * 2;
-    grep_pattern_t *new_patterns =
-        SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(grep_pattern_t), grep_pattern_t *);
+    grep_pattern_t *new_patterns = SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(grep_pattern_t), grep_pattern_t *);
     if (!new_patterns) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array");
     }
@@ -605,8 +603,7 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
     if (this_match) {
       any_match = true;
       // Update matched_pattern if this one has more context
-      if (!matched_pattern || (pat->context_before + pat->context_after) >
-                                  (matched_pattern->context_before + matched_pattern->context_after)) {
+      if (!matched_pattern || (pat->context_before + pat->context_after) > (matched_pattern->context_before + matched_pattern->context_after)) {
         matched_pattern = pat;
       }
     }
@@ -616,8 +613,7 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
   if (any_match && matched_pattern) {
     // Output context_before lines from circular buffer
     if (matched_pattern->context_before > 0 && g_filter_state.buffer_size > 0) {
-      int num_lines = (matched_pattern->context_before < g_filter_state.buffer_size) ? matched_pattern->context_before
-                                                                                     : g_filter_state.buffer_size;
+      int num_lines = (matched_pattern->context_before < g_filter_state.buffer_size) ? matched_pattern->context_before : g_filter_state.buffer_size;
 
       // Calculate starting position in circular buffer
       int start_pos = (g_filter_state.buffer_pos - num_lines + g_filter_state.buffer_size) % g_filter_state.buffer_size;
@@ -653,8 +649,7 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
   return false; // No match, suppress line
 }
 
-char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
-                                  size_t match_len) {
+char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start, size_t match_len) {
   const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
   if (result) {
     size_t result_len = strlen(result) + 1;
@@ -667,8 +662,7 @@ char *grep_highlight_colored_copy(const char *colored_text, const char *plain_te
   return NULL;
 }
 
-const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
-                                   size_t match_len) {
+const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start, size_t match_len) {
   static __thread char highlight_buffer[LOG_TERMINAL_BUFFER_SIZE];
 
   if (!colored_text || !plain_text || match_len == 0) {
@@ -842,8 +836,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       size_t i = 0;
       while (i < match_byte_len) {
         // Check for [0m or [00m reset codes
-        if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
-            match_src[i + 3] == 'm') {
+        if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' && match_src[i + 3] == 'm') {
           // Found [0m - copy it and re-apply background (if room)
           if (dst + 4 >= dst_end)
             break;                 // Not enough space for the reset code itself
@@ -857,8 +850,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
             get_highlight_color(&r2, &g2, &b2);
             dst = append_truecolor_bg(dst, r2, g2, b2);
           }
-        } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
-                   match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
+        } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
           // Found [00m - copy it and re-apply background (if room)
           if (dst + 5 >= dst_end)
             break;                 // Not enough space for the reset code itself
@@ -940,8 +932,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
 
   while (i < match_byte_len) {
     // Check for [0m or [00m reset codes
-    if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
-        match_src[i + 3] == 'm') {
+    if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' && match_src[i + 3] == 'm') {
       // Found [0m - copy it and re-apply background (if room)
       if (dst + 4 >= dst_end)
         break;                 // Not enough space for even the reset code
@@ -955,8 +946,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         get_highlight_color(&r2, &g2, &b2);
         dst = append_truecolor_bg(dst, r2, g2, b2);
       }
-    } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
-               match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
+    } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
       // Found [00m - copy it and re-apply background (if room)
       if (dst + 5 >= dst_end)
         break;                 // Not enough space for even the reset code
@@ -1107,8 +1097,7 @@ asciichat_error_t grep_save_patterns(void) {
 
 asciichat_error_t grep_restore_patterns(void) {
   grep_pattern_t *copy = NULL;
-  asciichat_error_t result =
-      grep_copy_patterns(g_filter_state.saved_patterns, g_filter_state.saved_pattern_count, &copy);
+  asciichat_error_t result = grep_copy_patterns(g_filter_state.saved_patterns, g_filter_state.saved_pattern_count, &copy);
   if (result != ASCIICHAT_OK)
     return result;
   for (int i = 0; i < g_filter_state.pattern_count; i++)

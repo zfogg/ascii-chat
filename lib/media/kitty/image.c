@@ -12,8 +12,7 @@
 #include <stddef.h>
 
 asciichat_error_t kitty_image_write(FILE *stream, const uint8_t *rgba, int width, int height, int pitch) {
-  if (!stream || !rgba || width <= 0 || height <= 0 || width > INT_MAX / 4 || pitch < width * 4 ||
-      (size_t)height > SIZE_MAX / (size_t)pitch)
+  if (!stream || !rgba || width <= 0 || height <= 0 || width > INT_MAX / 4 || pitch < width * 4 || (size_t)height > SIZE_MAX / (size_t)pitch)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Kitty image dimensions or pixels");
 
   // 3072 raw bytes produce the protocol maximum of 4096 base64 bytes.
@@ -28,8 +27,7 @@ asciichat_error_t kitty_image_write(FILE *stream, const uint8_t *rgba, int width
     if (count > KITTY_RAW_CHUNK_SIZE)
       count = KITTY_RAW_CHUNK_SIZE;
     bool more = offset + count < total;
-    int prefix = first ? snprintf(packet, sizeof(packet), "\033_Ga=T,f=32,s=%d,v=%d,t=d,q=2,m=%d;", width, height, more)
-                       : snprintf(packet, sizeof(packet), "\033_Gm=%d;", more);
+    int prefix = first ? snprintf(packet, sizeof(packet), "\033_Ga=T,f=32,s=%d,v=%d,t=d,q=2,m=%d;", width, height, more) : snprintf(packet, sizeof(packet), "\033_Gm=%d;", more);
     size_t used = (size_t)prefix;
     for (size_t i = 0; i < count; i += 3) {
       uint32_t triple = 0;

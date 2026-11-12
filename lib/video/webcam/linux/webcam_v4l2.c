@@ -127,10 +127,7 @@ static int webcam_v4l2_init_swscale(webcam_context_t *ctx, enum AVPixelFormat sr
   }
 
   // Create new swscale context for conversion to RGB24
-  LOG_IO("swscaler", {
-    ctx->sws_ctx = sws_getContext(ctx->width, ctx->height, src_fmt, ctx->width, ctx->height, AV_PIX_FMT_RGB24,
-                                  SWS_BILINEAR, NULL, NULL, NULL);
-  });
+  LOG_IO("swscaler", { ctx->sws_ctx = sws_getContext(ctx->width, ctx->height, src_fmt, ctx->width, ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL); });
 
   if (!ctx->sws_ctx) {
     log_error("Failed to create swscale context for format conversion");
@@ -262,8 +259,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
     if (webcam_v4l2_init_mjpeg_decoder(ctx) == 0) {
-      log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width,
-                ctx->height);
+      log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width, ctx->height);
       log_info("MJPEG format selected: pixelformat=0x%x", ctx->pixelformat);
       return 0;
     } else {
@@ -307,8 +303,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     return -1;
   }
 
-  log_error("Failed to set V4L2 format: device supports none of (RGB24, NV12, I420, YUYV, UYVY) (errno=%d: %s)",
-            saved_errno, SAFE_STRERROR(saved_errno));
+  log_error("Failed to set V4L2 format: device supports none of (RGB24, NV12, I420, YUYV, UYVY) (errno=%d: %s)", saved_errno, SAFE_STRERROR(saved_errno));
   errno = saved_errno;
   return -1;
 }
@@ -518,8 +513,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   // Start background camera thread
-  asciichat_error_t thread_err =
-      platform_thread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
+  asciichat_error_t thread_err = platform_thread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
   if (thread_err != ASCIICHAT_OK) {
     lifecycle_shutdown(&context->async_lifecycle);
     for (int i = 0; i < context->buffer_count; i++) {
@@ -667,8 +661,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Validate buffer pointer
   if (!ctx->buffers || !ctx->buffers[buf.index].start) {
-    log_error("V4L2 buffer %u not initialized (start=%p, buffers=%p)", buf.index,
-              ctx->buffers ? ctx->buffers[buf.index].start : NULL, ctx->buffers);
+    log_error("V4L2 buffer %u not initialized (start=%p, buffers=%p)", buf.index, ctx->buffers ? ctx->buffers[buf.index].start : NULL, ctx->buffers);
     return NULL;
   }
 
@@ -739,8 +732,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
     int dst_linesize[1] = {ctx->width * 3};
 
-    sws_scale(ctx->sws_ctx, (const uint8_t *const *)ctx->mjpeg_decoded_frame->data, ctx->mjpeg_decoded_frame->linesize,
-              0, ctx->height, dst_data, dst_linesize);
+    sws_scale(ctx->sws_ctx, (const uint8_t *const *)ctx->mjpeg_decoded_frame->data, ctx->mjpeg_decoded_frame->linesize, 0, ctx->height, dst_data, dst_linesize);
 
     // Re-queue the buffer for future use
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
@@ -789,8 +781,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, SAFE_STRERROR(errno),
-              ctx->fd, buf.type, buf.memory);
+    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, SAFE_STRERROR(errno), ctx->fd, buf.type, buf.memory);
     // Still return the image - the frame data was already copied
   }
 

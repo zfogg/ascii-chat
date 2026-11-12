@@ -71,8 +71,7 @@ static bool g_sokol_time_initialized = false;
  * - 10-45 seconds: "N seconds {suffix}" (exact value)
  * - 45+ seconds: moment.js thresholds continue
  */
-static int format_human_readable_time_ago(double total_seconds, int minutes, int hours, int days, int months, int years,
-                                          const char *suffix, char *buffer, size_t buffer_size) {
+static int format_human_readable_time_ago(double total_seconds, int minutes, int hours, int days, int months, int years, const char *suffix, char *buffer, size_t buffer_size) {
   int written = 0;
 
   if (total_seconds < 3) {
@@ -447,12 +446,11 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   // Minutes omit fractions; days omit seconds.
   else if (nanoseconds < NS_PER_HOUR_INT) {
     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu", (unsigned long long)(total_seconds / 60),
-                            (unsigned long long)(total_seconds % 60));
+    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu", (unsigned long long)(total_seconds / 60), (unsigned long long)(total_seconds % 60));
   } else if (nanoseconds >= NS_PER_DAY_INT) {
     uint64_t total_minutes = nanoseconds / NS_PER_MIN_INT;
-    written = safe_snprintf(buffer, buffer_size, "%llud %llu:%02llu", (unsigned long long)(total_minutes / (24 * 60)),
-                            (unsigned long long)((total_minutes / 60) % 24), (unsigned long long)(total_minutes % 60));
+    written = safe_snprintf(buffer, buffer_size, "%llud %llu:%02llu", (unsigned long long)(total_minutes / (24 * 60)), (unsigned long long)((total_minutes / 60) % 24),
+                            (unsigned long long)(total_minutes % 60));
   }
   // Hours use H:MM:SS.
   else {
@@ -462,8 +460,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
     uint64_t minutes = remaining / 60;
     uint64_t seconds = remaining % 60;
 
-    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu:%02llu", (unsigned long long)hours,
-                            (unsigned long long)minutes, (unsigned long long)seconds);
+    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu:%02llu", (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)seconds);
   }
 
   if (written < 0 || (size_t)written >= buffer_size) {
@@ -495,8 +492,7 @@ int time_human_readable_unsigned(uint64_t nanoseconds, char *buffer, size_t buff
   int months = days / 30; // Approximate
   int years = months / 12;
 
-  int written =
-      format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, "ago", buffer, buffer_size);
+  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, "ago", buffer, buffer_size);
 
   if (written < 0 || (size_t)written >= buffer_size) {
     return -1;
@@ -523,8 +519,7 @@ int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size) {
   int years = months / 12;
 
   const char *suffix = is_future ? "from now" : "ago";
-  int written =
-      format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
 
   if (written < 0 || (size_t)written >= buffer_size) {
     return -1;
@@ -721,8 +716,7 @@ bool time_format_is_valid_strftime(const char *format_str) {
 
 int time_format_now(const char *format_str, char *buf, size_t buf_size) {
   if (!format_str || !buf || buf_size < 2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "invalid arguments - format_str=%p, buf=%p, buf_size=%zu", format_str, buf,
-              buf_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid arguments - format_str=%p, buf=%p, buf_size=%zu", format_str, buf, buf_size);
     return 0;
   }
 

@@ -3,8 +3,7 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
-asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure,
-                                             const char *password_override) {
+asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure, const char *password_override) {
   if (!security)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing peer security state");
   memset(security, 0, sizeof(*security));
@@ -27,8 +26,7 @@ asciichat_error_t acip_security_init_options(acip_security_t *security, bool ser
   if (result != ASCIICHAT_OK)
     return result;
   crypto_handshake_context_t *ctx = &security->handshake;
-  result = policy.has_password ? crypto_handshake_init_with_password("webrtc_peer", ctx, server, password)
-                               : crypto_handshake_init("webrtc_peer", ctx, server);
+  result = policy.has_password ? crypto_handshake_init_with_password("webrtc_peer", ctx, server, password) : crypto_handshake_init("webrtc_peer", ctx, server);
   if (result != ASCIICHAT_OK)
     return result;
   ctx->require_client_auth = server && options->require_server_verify;

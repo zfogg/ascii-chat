@@ -75,8 +75,7 @@ typedef struct {
  * @param participant_id Our participant UUID
  * @param is_initiator True if we created the session
  */
-void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
-                    const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator);
+void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator);
 
 /**
  * @brief Determine negotiation result

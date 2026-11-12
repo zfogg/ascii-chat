@@ -27,8 +27,7 @@ char *render_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stri
       simd_quantize_sse2(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       simd_quantize_sse2(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    simd_halfblock_sse2(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode,
-                        frame.table);
+    simd_halfblock_sse2(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode, frame.table);
     ascii_frame_emit_halfrow(&frame, mode, y + 2 < (size_t)height, &simd_cells_sse2);
   }
   return ascii_frame_finish(&frame);

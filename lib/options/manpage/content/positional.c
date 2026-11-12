@@ -47,8 +47,7 @@ char *manpage_content_generate_positional(const options_config_t *config) {
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", pos_arg->name);
 
     if (pos_arg->help_text) {
-      offset +=
-          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->help_text));
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->help_text));
     }
 
     // Add examples if present
@@ -58,8 +57,7 @@ char *manpage_content_generate_positional(const options_config_t *config) {
       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".nf\n");
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
-        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n",
-                                escape_groff_special(pos_arg->examples[j]));
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->examples[j]));
       }
       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".fi\n");
       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");

@@ -106,8 +106,7 @@ option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
   size_t combined_count = 0;
 
   /* All completion modes to iterate through */
-  asciichat_mode_t modes[] = {MODE_DISCOVERY,         MODE_SERVER,    MODE_CLIENT, MODE_MIRROR,
-                              MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
+  asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
 
   for (size_t m = 0; m < modes_len; m++) {
@@ -125,8 +124,7 @@ option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
         }
         if (!already_has) {
           combined_count++;
-          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
-              combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
           if (temp) {
             combined_opts = temp;
             combined_opts[combined_count - 1] = mode_opts[i];

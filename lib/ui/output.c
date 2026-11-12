@@ -19,9 +19,7 @@ asciichat_error_t ui_output_write(int fd, const char *data, size_t length) {
   ui_output_write_fn writer = (ui_output_write_fn)atomic_ptr_load(&g_writer);
   if (writer)
     return writer(fd, data, length);
-  return platform_write_all(fd, data, length) == length
-             ? ASCIICHAT_OK
-             : SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot write complete UI output");
+  return platform_write_all(fd, data, length) == length ? ASCIICHAT_OK : SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot write complete UI output");
 }
 asciichat_error_t ui_output_printf(int fd, const char *format, ...) {
   if (!format)
