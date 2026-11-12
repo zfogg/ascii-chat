@@ -1333,6 +1333,11 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
+#if defined(_MSC_VER)
+/* MSVC C has no GNU statement expressions or typeof; options are initialized
+ * before public option access in the native application. */
+#define GET_OPTION(field) (options_get()->field)
+#else
 #define GET_OPTION(field)                                                                                              \
   ({                                                                                                                   \
     const options_t *_opts = options_get();                                                                            \
@@ -1342,6 +1347,7 @@ const terminal_options_t *options_terminal_settings_ptr(void);
     static typeof(((options_t *)0)->field) _default = {0};                                                             \
     (_opts ? (_opts->field) : _default);                                                                               \
   })
+#endif
 
 /**
  * @brief Check if an option was explicitly set via command-line
