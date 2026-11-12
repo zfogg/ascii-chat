@@ -476,6 +476,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
+            libflags::flags
             ${TEST_LDFLAGS}
         )
 
