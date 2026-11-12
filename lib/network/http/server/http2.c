@@ -65,8 +65,7 @@ static int on_begin_headers(nghttp2_session *session, const nghttp2_frame *frame
   return 0;
 }
 
-static int on_header(nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name, size_t name_length,
-                     const uint8_t *value, size_t value_length, uint8_t flags, void *user_data) {
+static int on_header(nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name, size_t name_length, const uint8_t *value, size_t value_length, uint8_t flags, void *user_data) {
   (void)flags;
   (void)user_data;
   request_state_t *request = get_request(session, frame->hd.stream_id);
@@ -94,14 +93,12 @@ static int on_header(nghttp2_session *session, const nghttp2_frame *frame, const
   return (request->method || request->path) ? 0 : NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 
-static int on_data(nghttp2_session *session, uint8_t flags, int32_t stream_id, const uint8_t *data, size_t length,
-                   void *user_data) {
+static int on_data(nghttp2_session *session, uint8_t flags, int32_t stream_id, const uint8_t *data, size_t length, void *user_data) {
   (void)flags;
   (void)user_data;
   request_state_t *request = get_request(session, stream_id);
   http2_connection_t *connection = user_data;
-  if (!request || request->body_length > connection->max_body_length ||
-      length > connection->max_body_length - request->body_length)
+  if (!request || request->body_length > connection->max_body_length || length > connection->max_body_length - request->body_length)
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   size_t required = request->body_length + length;
   if (request->body_capacity < required) {
@@ -126,8 +123,7 @@ static int on_data(nghttp2_session *session, uint8_t flags, int32_t stream_id, c
 
 static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, void *user_data) {
   http2_connection_t *connection = user_data;
-  if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) ||
-      (frame->hd.type != NGHTTP2_HEADERS && frame->hd.type != NGHTTP2_DATA))
+  if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) || (frame->hd.type != NGHTTP2_HEADERS && frame->hd.type != NGHTTP2_DATA))
     return 0;
   request_state_t *request = get_request(session, frame->hd.stream_id);
   if (!request || request->dispatched || !request->method || !request->path)
@@ -145,9 +141,7 @@ static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, v
     *query = 0;
     view.query = query + 1;
   }
-  return connection->on_request(connection, &view, connection->user_data) == ASCIICHAT_OK
-             ? 0
-             : NGHTTP2_ERR_CALLBACK_FAILURE;
+  return connection->on_request(connection, &view, connection->user_data) == ASCIICHAT_OK ? 0 : NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
 static int on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data) {
@@ -167,8 +161,7 @@ static int on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_t
   return 0;
 }
 
-static ssize_t read_response(nghttp2_session *session, int32_t stream_id, uint8_t *buffer, size_t length,
-                             uint32_t *flags, nghttp2_data_source *source, void *user_data) {
+static ssize_t read_response(nghttp2_session *session, int32_t stream_id, uint8_t *buffer, size_t length, uint32_t *flags, nghttp2_data_source *source, void *user_data) {
   (void)session;
   (void)stream_id;
   (void)user_data;
@@ -186,8 +179,7 @@ static ssize_t read_response(nghttp2_session *session, int32_t stream_id, uint8_
   return (ssize_t)copied;
 }
 
-asciichat_error_t http2_connection_create(http2_connection_t **out, http2_request_fn on_request, void *user_data,
-                                          size_t max_request_body_length, size_t max_response_body_length) {
+asciichat_error_t http2_connection_create(http2_connection_t **out, http2_request_fn on_request, void *user_data, size_t max_request_body_length, size_t max_response_body_length) {
   if (!out || !on_request || max_request_body_length == 0 || max_response_body_length == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/2 request callback");
   http2_connection_t *connection = SAFE_CALLOC(1, sizeof(*connection), http2_connection_t *);
@@ -254,11 +246,9 @@ asciichat_error_t http2_connection_next_output(http2_connection_t *connection, c
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http2_connection_submit_response(http2_connection_t *connection, int32_t stream_id, unsigned status,
-                                                   const http_header_t *headers, size_t header_count, const void *body,
+asciichat_error_t http2_connection_submit_response(http2_connection_t *connection, int32_t stream_id, unsigned status, const http_header_t *headers, size_t header_count, const void *body,
                                                    size_t body_length) {
-  if (!connection || status < 100 || status > 599 || body_length > connection->max_response_body_length ||
-      (!body && body_length))
+  if (!connection || status < 100 || status > 599 || body_length > connection->max_response_body_length || (!body && body_length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response");
   if (header_count > HTTP2_MAX_HEADERS || (header_count && !headers))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response headers");
@@ -296,12 +286,10 @@ asciichat_error_t http2_connection_submit_response(http2_connection_t *connectio
       SAFE_FREE(response);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response header");
     }
-    fields[i + 1] = (nghttp2_nv){(uint8_t *)headers[i].name, (uint8_t *)headers[i].value, strlen(headers[i].name),
-                                 strlen(headers[i].value), NGHTTP2_NV_FLAG_NONE};
+    fields[i + 1] = (nghttp2_nv){(uint8_t *)headers[i].name, (uint8_t *)headers[i].value, strlen(headers[i].name), strlen(headers[i].value), NGHTTP2_NV_FLAG_NONE};
   }
   nghttp2_data_provider provider = {.source = {.ptr = response}, .read_callback = read_response};
-  int result =
-      nghttp2_submit_response(connection->session, stream_id, fields, header_count + 1, body_length ? &provider : NULL);
+  int result = nghttp2_submit_response(connection->session, stream_id, fields, header_count + 1, body_length ? &provider : NULL);
   SAFE_FREE(fields);
   SAFE_FREE(status_text);
   if (!body_length)

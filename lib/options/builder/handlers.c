@@ -59,8 +59,7 @@ const option_builder_handler_t g_builder_handlers[] = {
     [OPTION_TYPE_INT] = {is_set_int, apply_env_int, apply_cli_int, format_help_placeholder_int},
     [OPTION_TYPE_STRING] = {is_set_string, apply_env_string, apply_cli_string, format_help_placeholder_string},
     [OPTION_TYPE_DOUBLE] = {is_set_double, apply_env_double, apply_cli_double, format_help_placeholder_double},
-    [OPTION_TYPE_CALLBACK] = {is_set_callback, apply_env_callback, apply_cli_callback,
-                              format_help_placeholder_callback},
+    [OPTION_TYPE_CALLBACK] = {is_set_callback, apply_env_callback, apply_cli_callback, format_help_placeholder_callback},
     [OPTION_TYPE_ACTION] = {is_set_action, apply_env_action, apply_cli_action, format_help_placeholder_action},
 };
 static bool is_set_bool(const void *field, const option_descriptor_t *desc) {
@@ -140,8 +139,7 @@ static asciichat_error_t apply_env_bool(void *field, const char *env_value, cons
 
   bool value = false;
   if (env_value) {
-    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, OPT_VALUE_TRUE) == 0 || strcmp(env_value, "yes") == 0 ||
-             strcmp(env_value, "on") == 0);
+    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, OPT_VALUE_TRUE) == 0 || strcmp(env_value, "yes") == 0 || strcmp(env_value, "on") == 0);
   } else if (desc && desc->default_value) {
     unsigned char default_byte = 0;
     memcpy(&default_byte, desc->default_value, 1);
@@ -208,8 +206,7 @@ static asciichat_error_t apply_env_double(void *field, const char *env_value, co
   errno = 0;
   double value = strtod(env_value, &endptr);
   if (endptr == env_value || *endptr != '\0' || errno == ERANGE || !isfinite(value))
-    return SET_ERRNO(ERROR_USAGE, "Invalid floating-point value for environment variable %s: %s",
-                     desc->env_var_name ? desc->env_var_name : "unknown", env_value);
+    return SET_ERRNO(ERROR_USAGE, "Invalid floating-point value for environment variable %s: %s", desc->env_var_name ? desc->env_var_name : "unknown", env_value);
   memcpy(field, &value, sizeof(double));
   return ASCIICHAT_OK;
 }
@@ -220,15 +217,13 @@ static asciichat_error_t apply_env_callback(void *field, const char *env_value, 
   }
   // The legacy environment variable remains a boolean enable switch.
   if (strcmp(desc->long_name, "test-pattern") == 0) {
-    *(bool *)field = strcmp(env_value, "1") == 0 || strcasecmp(env_value, "true") == 0 ||
-                     strcasecmp(env_value, "yes") == 0 || strcasecmp(env_value, "on") == 0;
+    *(bool *)field = strcmp(env_value, "1") == 0 || strcasecmp(env_value, "true") == 0 || strcasecmp(env_value, "yes") == 0 || strcasecmp(env_value, "on") == 0;
     return ASCIICHAT_OK;
   }
   char *error_msg = NULL;
   bool ok = desc->parse_fn(env_value, field, &error_msg);
   if (!ok) {
-    log_warn("Invalid value for environment variable '%s': %s", desc->env_var_name ? desc->env_var_name : "unknown",
-             error_msg ? error_msg : "parse failed");
+    log_warn("Invalid value for environment variable '%s': %s", desc->env_var_name ? desc->env_var_name : "unknown", error_msg ? error_msg : "parse failed");
   }
   if (error_msg) {
     SAFE_FREE(error_msg);
@@ -250,27 +245,23 @@ static asciichat_error_t apply_env_action(void *field, const char *env_value, co
 // Returns ERROR_USAGE if value is invalid
 static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value, const option_descriptor_t *desc) {
   if (!value_str || value_str[0] == '\0') {
-    return SET_ERRNO(ERROR_USAGE, "Option --%s requires a value (true/false, yes/no, 1/0, on/off)",
-                     desc ? desc->long_name : "unknown");
+    return SET_ERRNO(ERROR_USAGE, "Option --%s requires a value (true/false, yes/no, 1/0, on/off)", desc ? desc->long_name : "unknown");
   }
 
   // Check for true values
-  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 ||
-      strcasecmp(value_str, "1") == 0 || strcasecmp(value_str, "on") == 0) {
+  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 || strcasecmp(value_str, "on") == 0) {
     *out_value = true;
     return ASCIICHAT_OK;
   }
 
   // Check for false values
-  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 ||
-      strcasecmp(value_str, "0") == 0 || strcasecmp(value_str, "off") == 0) {
+  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 || strcasecmp(value_str, "off") == 0) {
     *out_value = false;
     return ASCIICHAT_OK;
   }
 
   // Invalid value
-  return SET_ERRNO(ERROR_USAGE, "Invalid boolean value for --%s: '%s' (use: true/false, yes/no, 1/0, on/off)",
-                   desc ? desc->long_name : "unknown", value_str);
+  return SET_ERRNO(ERROR_USAGE, "Invalid boolean value for --%s: '%s' (use: true/false, yes/no, 1/0, on/off)", desc ? desc->long_name : "unknown", value_str);
 }
 
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
@@ -306,8 +297,7 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   char *endptr;
   long value = strtol(opt_value, &endptr, 10);
   if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
-    return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown",
-                     opt_value);
+    return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown", opt_value);
   }
   int int_value = (int)value;
 
@@ -315,12 +305,9 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   if (desc && desc->metadata.numeric_range.max != 0) {
     if (int_value < desc->metadata.numeric_range.min || int_value > desc->metadata.numeric_range.max) {
       if (desc->long_name && strcmp(desc->long_name, "webcam-index") == 0) {
-        return SET_ERRNO(ERROR_USAGE,
-                         "Webcam index %d is invalid; use a non-negative index (run --list-webcams to see devices)",
-                         int_value);
+        return SET_ERRNO(ERROR_USAGE, "Webcam index %d is invalid; use a non-negative index (run --list-webcams to see devices)", int_value);
       }
-      return SET_ERRNO(ERROR_USAGE, "Value %d out of range [%d-%d]", int_value, desc->metadata.numeric_range.min,
-                       desc->metadata.numeric_range.max);
+      return SET_ERRNO(ERROR_USAGE, "Value %d out of range [%d-%d]", int_value, desc->metadata.numeric_range.min, desc->metadata.numeric_range.max);
     }
   }
 

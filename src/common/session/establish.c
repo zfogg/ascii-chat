@@ -11,10 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 
-asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port,
-                                               const network_connect_config_t *config, network_connection_t **owner,
-                                               char *password, size_t capacity, network_connection_prepare_fn prepare,
-                                               void (*detach)(void *), void *context) {
+asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port, const network_connect_config_t *config, network_connection_t **owner, char *password,
+                                               size_t capacity, network_connection_prepare_fn prepare, void (*detach)(void *), void *context) {
   if (!owner || *owner || !password || capacity < PASSWORD_BUFFER_SIZE || !prepare)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session establishment parameters");
   const char *selected_address = address;

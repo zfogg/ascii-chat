@@ -16,8 +16,7 @@ bool packet_decoder_pending(const packet_decoder_t *decoder) {
   return decoder && decoder->header_used != 0;
 }
 
-asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *data, size_t length,
-                                      packet_decoder_fn emit, void *arg) {
+asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *data, size_t length, packet_decoder_fn emit, void *arg) {
   if (!decoder || (!data && length) || !emit || decoder->failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet decoder input");
   const uint8_t *input = data;

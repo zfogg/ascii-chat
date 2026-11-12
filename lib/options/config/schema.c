@@ -175,8 +175,7 @@ static size_t get_field_size(option_type_t type, size_t offset) {
     return OPTIONS_BUFF_SIZE;
   case OPTION_TYPE_CALLBACK:
     // CALLBACK options store into regular options_t fields; infer by offset.
-    if (offset == offsetof(options_t, log_file) || offset == offsetof(options_t, port) ||
-        offset == offsetof(options_t, palette_custom) || offset == offsetof(options_t, yt_dlp_options)) {
+    if (offset == offsetof(options_t, log_file) || offset == offsetof(options_t, port) || offset == offsetof(options_t, palette_custom) || offset == offsetof(options_t, yt_dlp_options)) {
       return OPTIONS_BUFF_SIZE;
     }
     if (offset == offsetof(options_t, media_seek_timestamp)) {
@@ -227,8 +226,7 @@ static char *store_dynamic_string(const char *str) {
 
   // Grow string storage if needed
   if (g_dynamic_strings_count >= g_dynamic_strings_capacity) {
-    size_t new_capacity =
-        g_dynamic_strings_capacity == 0 ? SCHEMA_INITIAL_STRING_CAPACITY : g_dynamic_strings_capacity * 2;
+    size_t new_capacity = g_dynamic_strings_capacity == 0 ? SCHEMA_INITIAL_STRING_CAPACITY : g_dynamic_strings_capacity * 2;
     char **new_strings = SAFE_REALLOC(g_dynamic_strings, new_capacity * sizeof(char *), char **);
     if (!new_strings) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate new strings");

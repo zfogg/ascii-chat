@@ -83,14 +83,12 @@ const char *get_known_hosts_path(void) {
 // Format: IP:port x25519 <hex> [comment]
 // IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat
 // IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat
-asciichat_error_t check_known_host(const char *server_ip, uint16_t port,
-                                   const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   return check_known_host_with_key(server_ip, port, server_key, NULL, NULL);
 }
 
-asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port,
-                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE],
-                                            uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE], bool *has_expected_key) {
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE], uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE],
+                                            bool *has_expected_key) {
   if (has_expected_key)
     *has_expected_key = false;
   // Validate parameters first
@@ -300,8 +298,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
 
     // If we found a normal identity key entry, this is a mismatch
     // Server previously had identity key but now has none
-    NOTICE(DANGER, "SERVER IDENTITY REMOVED",
-           "Server previously had identity key but now has none - potential security issue");
+    NOTICE(DANGER, "SERVER IDENTITY REMOVED", "Server previously had identity key but now has none - potential security issue");
     return ERROR_CRYPTO_VERIFICATION; // Mismatch - server changed from identity to no-identity
   }
 
@@ -364,8 +361,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
-                                 const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   // Validate parameters first
   if (!server_ip || !server_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
@@ -445,8 +441,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
   int fprintf_result;
   if (is_placeholder) {
     // Server has no identity key - store as placeholder
-    fprintf_result = safe_fprintf(f, "%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n",
-                                  ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
+    fprintf_result = safe_fprintf(f, "%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n", ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
   } else {
     // Server has identity key - store normally
     fprintf_result = safe_fprintf(f, "%s %s %s %s\n", ip_with_port, X25519_KEY_TYPE, hex, ASCII_CHAT_APP_NAME);
@@ -454,15 +449,13 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
 
   // Check if fprintf failed
   if (fprintf_result < 0) {
-    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED",
-           "Failed to write to known_hosts file: %s\nHost trust has not been persisted.", path);
+    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED", "Failed to write to known_hosts file: %s\nHost trust has not been persisted.", path);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to write to known_hosts file: %s", path);
   }
 
   // Flush to ensure data is written
   if (fflush(f) != 0) {
-    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED",
-           "Failed to flush known_hosts file: %s\nHost trust has not been persisted.", path);
+    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED", "Failed to flush known_hosts file: %s\nHost trust has not been persisted.", path);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to flush known_hosts file: %s", path);
   }
 
@@ -536,8 +529,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   // Write back the filtered lines
-  fd = platform_open("known_hosts_file_write", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC,
-                     FILE_PERM_PRIVATE);
+  fd = platform_open("known_hosts_file_write", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
   f = platform_fdopen("known_hosts_write_stream", fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
@@ -643,8 +635,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 
 // Display MITM warning with key comparison and prompt user for confirmation
 // Returns true if user accepts the risk and wants to continue, false otherwise
-bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE],
-                          const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]) {
+bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]) {
   public_key_t public_key = {.type = KEY_TYPE_ED25519};
   char expected_identity[KEY_IDENTITY_BUFFER_SIZE] = "No stored public identity available.\n";
   char received_identity[KEY_IDENTITY_BUFFER_SIZE] = "";
@@ -697,8 +688,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
          "\n"
          "Host key verification failed.\n"
          "\n",
-         received_identity, expected_identity, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port,
-         escaped_ip_with_port, ip_with_port, ip_with_port);
+         received_identity, expected_identity, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port, escaped_ip_with_port, ip_with_port, ip_with_port);
 
   return false;
 }
@@ -770,9 +760,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   // Localhost is inherently trusted (same machine, no network exposure)
   // This matches SSH behavior (ssh-keyscan doesn't prompt for localhost)
   if (is_localhost_address(server_ip)) {
-    log_debug(
-        "SECURITY: Localhost address %s detected - skipping unknown host prompt (localhost is inherently trusted)",
-        ip_with_port);
+    log_debug("SECURITY: Localhost address %s detected - skipping unknown host prompt (localhost is inherently trusted)", ip_with_port);
     return true; // Silently trust localhost
   }
 

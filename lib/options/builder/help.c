@@ -135,8 +135,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     }
 
     if (usage->show_options) {
-      const char *options_text =
-          (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
       const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
     }
@@ -203,8 +202,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
       char long_flag[BUFFER_SIZE_SMALL];
       safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
       // Color short flag, add comma, color long flag
-      safe_snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag),
-                    colored_string(LOG_COLOR_WARN, long_flag));
+      safe_snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
     } else {
       char long_flag[BUFFER_SIZE_SMALL];
       safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -245,8 +243,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
  * @param for_binary_help Whether this is for binary-level help
  * @return Maximum width needed for this section (minimum 20, maximum 75)
  */
-static int calculate_section_max_col_width(const options_config_t *config, const char *section_type,
-                                           asciichat_mode_t mode, bool for_binary_help) {
+static int calculate_section_max_col_width(const options_config_t *config, const char *section_type, asciichat_mode_t mode, bool for_binary_help) {
   if (!config || !section_type) {
     return 20; // Minimum width
   }
@@ -289,8 +286,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       }
 
       if (usage->show_options) {
-        const char *options_text =
-            (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+        const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
         len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", options_text);
       }
 
@@ -368,8 +364,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Filter by mode and visibility
-      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group || desc->hide_from_mode_help ||
-          desc->hide_from_binary_help) {
+      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group || desc->hide_from_mode_help || desc->hide_from_binary_help) {
         continue;
       }
 
@@ -380,22 +375,18 @@ static int calculate_section_max_col_width(const options_config_t *config, const
         safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len +=
-            safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
-                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s", colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                    colored_string(LOG_COLOR_WARN, long_flag));
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s", colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                      colored_string(LOG_COLOR_INFO, placeholder));
+          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s", colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -476,22 +467,18 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
 
     // Add mode if present (magenta color)
     if (usage->mode) {
-      len +=
-          safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
+      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
     }
 
     // Add positional args if present (green color)
     if (usage->positional) {
-      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                           colored_string(LOG_COLOR_INFO, usage->positional));
+      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
     }
 
     // Add options suffix if requested (yellow color)
     if (usage->show_options) {
-      const char *options_text =
-          (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-      len +=
-          safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
+      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
     }
 
     // Print with layout function using global column width
@@ -507,8 +494,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
  * - mode: magenta (using LOG_COLOR_FATAL)
  * - args/flags: yellow (using LOG_COLOR_WARN)
  */
-static void print_examples_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width,
-                                   asciichat_mode_t mode, bool for_binary_help) {
+static void print_examples_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width, asciichat_mode_t mode, bool for_binary_help) {
   if (!config || !stream || config->num_examples == 0) {
     return;
   }
@@ -575,20 +561,15 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
               current_token[token_len] = '\0';
               // Flags (start with -) are yellow, everything else is white
               if (current_token[0] == '-') {
-                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                     colored_string(LOG_COLOR_WARN, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
               } else {
-                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                     colored_string(LOG_COLOR_RESET, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_RESET, current_token));
               }
               token_len = 0;
             }
             // Add the separator (space, pipe, redirect, etc) in white
             if (*p != ' ') {
-              len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                                   colored_string(LOG_COLOR_RESET, (*p == '|')   ? "|"
-                                                                   : (*p == '>') ? ">"
-                                                                                 : "<"));
+              len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_RESET, (*p == '|') ? "|" : (*p == '>') ? ">" : "<"));
             } else {
               len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
             }
@@ -606,11 +587,9 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
         if (token_len > 0) {
           current_token[token_len] = '\0';
           if (current_token[0] == '-') {
-            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                 colored_string(LOG_COLOR_WARN, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
           } else {
-            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                 colored_string(LOG_COLOR_RESET, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_RESET, current_token));
           }
         }
       } else {
@@ -626,11 +605,9 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
               current_token[token_len] = '\0';
               // Color flags (start with -) yellow, arguments green
               if (current_token[0] == '-') {
-                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                                     colored_string(LOG_COLOR_WARN, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_WARN, current_token));
               } else {
-                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                                     colored_string(LOG_COLOR_INFO, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_INFO, current_token));
               }
               token_len = 0;
             }
@@ -648,11 +625,9 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
         if (token_len > 0) {
           current_token[token_len] = '\0';
           if (current_token[0] == '-') {
-            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                 colored_string(LOG_COLOR_WARN, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
           } else {
-            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                 colored_string(LOG_COLOR_INFO, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_INFO, current_token));
           }
         }
       }
@@ -791,8 +766,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if doesn't apply to mode
-      if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc->group ||
-          strcmp(desc->group, current_group) != 0) {
+      if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc->group || strcmp(desc->group, current_group) != 0) {
         continue;
       }
 
@@ -807,14 +781,11 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
-        option_len +=
-            safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
-                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s", colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                    colored_string(LOG_COLOR_WARN, long_flag));
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s", colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder (colored green)
@@ -822,8 +793,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                      colored_string(LOG_COLOR_INFO, placeholder));
+          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s", colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -836,16 +806,13 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       // Skip adding default if the description already mentions it
-      bool description_has_default =
-          desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
+      bool description_has_default = desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
-          desc_len +=
-              safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                            colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
+          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)", colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
         }
       }
 
@@ -901,8 +868,7 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
  * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections.
  * Used with options_config_print_usage_section to allow custom content in between.
  */
-void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
-                                                      asciichat_mode_t mode) {
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width, asciichat_mode_t mode) {
   if (!config || !stream) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Config or stream is NULL");
     return;
@@ -1021,8 +987,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
-      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group ||
-          strcmp(desc->group, current_group) != 0) {
+      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group || strcmp(desc->group, current_group) != 0) {
         continue;
       }
 
@@ -1038,13 +1003,11 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
         colored_len +=
-            safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
-                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+            safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s", colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
-                                     colored_string(LOG_COLOR_WARN, long_flag));
+        colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s", colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder (colored green)
@@ -1052,8 +1015,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
-                                       colored_string(LOG_COLOR_INFO, placeholder));
+          colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s", colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -1066,18 +1028,14 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       }
 
       // Skip adding default if the description already mentions it
-      bool description_has_default =
-          desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
+      bool description_has_default = desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
-        int default_len = mode == MODE_MCP_SERVER && !strcmp(desc->long_name, "max-clients")
-                              ? safe_snprintf(default_buf, sizeof(default_buf), "available CPUs")
-                              : format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+        int default_len = mode == MODE_MCP_SERVER && !strcmp(desc->long_name, "max-clients") ? safe_snprintf(default_buf, sizeof(default_buf), "available CPUs")
+                                                                                             : format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
-          desc_len +=
-              safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                            colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
+          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)", colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
         }
       }
 
@@ -1118,8 +1076,7 @@ void options_config_print_options_sections(const options_config_t *config, FILE 
  * @param description Brief description of the mode/binary
  * @param desc Output file stream (usually stdout)
  */
-void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name,
-                                 const char *description, FILE *desc) {
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name, const char *description, FILE *desc) {
   if (!config || !desc) {
     if (desc) {
       fprintf(desc, "Error: Failed to create options config\n");
@@ -1162,8 +1119,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     if (space && mode >= 0) {
       // Mode-specific help: color the mode name
       int binary_len = space - program_name;
-      (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1),
-                    description);
+      (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1), description);
     } else {
       // Binary-level help: use colored_string for the program name too
       (void)fprintf(desc, "%s - %s\n\n", colored_string(LOG_COLOR_FATAL, program_name), description);
@@ -1197,8 +1153,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       if (!for_binary_help) {
         // For mode-specific help, show the current mode's usage line and the generic [mode] --help line
         bool is_current_mode = (usage->mode && mode_name && strcmp(usage->mode, mode_name) == 0);
-        bool is_generic_help_line =
-            (!usage->mode && usage->positional && strcmp(usage->positional, "[mode] --help") == 0);
+        bool is_generic_help_line = (!usage->mode && usage->positional && strcmp(usage->positional, "[mode] --help") == 0);
 
         if (!is_current_mode && !is_generic_help_line) {
           continue;
@@ -1214,25 +1169,20 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       if (usage->mode) {
         if (!for_binary_help && usage->positional && strcmp(usage->positional, "--help") == 0) {
           // Mode-specific help: show [mode] --help as generic placeholder
-          len +=
-              safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, "[mode]"));
+          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, "[mode]"));
         } else {
           // Binary help or non-help usage: show actual mode name
-          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                               colored_string(LOG_COLOR_FATAL, usage->mode));
+          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
         }
       }
 
       if (usage->positional) {
-        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                             colored_string(LOG_COLOR_INFO, usage->positional));
+        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
       }
 
       if (usage->show_options) {
-        const char *options_text =
-            (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                             colored_string(LOG_COLOR_WARN, options_text));
+        const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
       }
 
       layout_print_two_column_row(desc, usage_buf, usage->description, usage_examples_col_width, term_width, 0);
@@ -1303,11 +1253,9 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
             char colored_first_part[OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE];
             safe_snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
             char colored_result[OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE];
-            safe_snprintf(colored_result, sizeof(colored_result), "%s",
-                          colored_string(LOG_COLOR_INFO, colored_first_part));
+            safe_snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
 
-            layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", positional_max_col_width,
-                                        term_width, 0);
+            layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", positional_max_col_width, term_width, 0);
           }
           (void)fprintf(desc, "\n");
         }
@@ -1355,8 +1303,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (strncmp(src, "Space", 5) == 0 &&
-                       (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
+            } else if (strncmp(src, "Space", 5) == 0 && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "Space");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -1367,8 +1314,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (strncmp(src, "arrows", 6) == 0 &&
-                       (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
+            } else if (strncmp(src, "arrows", 6) == 0 && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "arrows");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -1379,8 +1325,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'm' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
-                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+            } else if (*src == 'm' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) && (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "m");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -1391,8 +1336,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'c' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
-                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+            } else if (*src == 'c' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) && (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "c");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -1403,8 +1347,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'f' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
-                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+            } else if (*src == 'f' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) && (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "f");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -1415,8 +1358,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'r' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
-                       (*(src + 1) == ')')) {
+            } else if (*src == 'r' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) && (*(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "r");
               size_t len = strlen(colored);
               if (len <= remaining) {

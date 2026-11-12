@@ -101,8 +101,7 @@ static const char *log_level_to_string(log_level_t level) {
   }
 }
 
-void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func,
-                    const char *message) {
+void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func, const char *message) {
   if (fd < 0 || !message) {
     return;
   }
@@ -304,8 +303,7 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
                          "{\"header\":{\"timestamp\":\"%s\",\"level\":\"%s\",\"tid\":%lu,"
                          "\"file\":\"%s\",\"line\":%d,\"func\":\"%s\"},"
                          "\"body\":{\"message\":\"%s\"}}\n",
-                         timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : "", line,
-                         func ? escaped_func : "", escaped_message);
+                         timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : "", line, func ? escaped_func : "", escaped_message);
 
   /* Write to fd if successful */
   if (written > 0 && written < (int)sizeof(json_buffer)) {

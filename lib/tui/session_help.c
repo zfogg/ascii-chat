@@ -66,8 +66,7 @@ static void format_volume_bar(double volume, char *bar_output, size_t bar_output
 
   // Build bar: "[======    ] 80%"
   // Use simple ASCII characters to avoid UTF-8 encoding issues
-  snprintf(bar_output, bar_output_size, "[%.*s%.*s] %d%%", filled, "==========", empty, "          ",
-           (int)(volume * 100.0));
+  snprintf(bar_output, bar_output_size, "[%.*s%.*s] %d%%", filled, "==========", empty, "          ", (int)(volume * 100.0));
 }
 
 /**
@@ -106,6 +105,11 @@ static const char *render_mode_to_string(int mode) {
   }
 }
 
+/** @brief Get text renderer name. */
+static const char *renderer_to_string(int renderer) {
+  return renderer == ASCII_RENDERER_GLYPH ? "Glyph" : "Luminance";
+}
+
 /**
  * @brief Get color filter name
  */
@@ -136,18 +140,16 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       browser ? NULL : "< / >  Previous/next media (restart)",
       has_media ? "Space  Play/Pause (files only)" : NULL,
       has_media ? "[      Toggle Media Playback" : NULL,
-      has_media ? (terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "← / →  Seek backward/forward 30s"
-                                                                    : "Left / Right  Seek backward/forward 30s")
-                : NULL,
+      has_media ? (terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "← / →  Seek backward/forward 30s" : "Left / Right  Seek backward/forward 30s") : NULL,
       "m / M  Mute/Unmute audio",
-      terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)"
-                                                       : "Up / Down  Volume up/down (10%)",
+      terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)" : "Up / Down  Volume up/down (10%)",
       "c / C  Cycle color mode",
       "f / F  Cycle color filter",
       "x / X  Flip webcam horizontally",
       "y / Y  Flip webcam vertically",
       "w / W  Toggle Face Follow",
-      "r / R  Cycle render mode",
+      "r      Cycle render mode",
+      "Shift-R Cycle text renderer",
       "-      FPS counter",
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",
@@ -168,21 +170,17 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[4], sizeof(settings[4]), "Color  : %s", color_mode_to_string(GET_OPTION(color_mode)));
   snprintf(settings[5], sizeof(settings[5]), "Filter : %s", color_filter_to_string(GET_OPTION(color_filter)));
   snprintf(settings[6], sizeof(settings[6]), "Render : %s", render_mode_to_string(GET_OPTION(render_mode)));
-  snprintf(settings[7], sizeof(settings[7]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)),
-           status_indicator(GET_OPTION(flip_x)));
-  snprintf(settings[8], sizeof(settings[8]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
-  int settings_count = 9;
+  snprintf(settings[7], sizeof(settings[7]), "Renderer: %s", renderer_to_string(GET_OPTION(renderer)));
+  snprintf(settings[8], sizeof(settings[8]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)), status_indicator(GET_OPTION(flip_x)));
+  snprintf(settings[9], sizeof(settings[9]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
+  int settings_count = 10;
   snprintf(settings[settings_count++], sizeof(settings[0]), "Animations (number key toggle):");
   snprintf(settings[settings_count++], sizeof(settings[0]), "-------------------------------");
-  snprintf(settings[settings_count++], sizeof(settings[0]), "(1) Matrix \"Digital Rain\" : %s",
-           status_indicator(GET_OPTION(matrix_rain)));
-  snprintf(settings[settings_count++], sizeof(settings[0]), "(2) Audio Waveform : %s",
-           status_indicator(GET_OPTION(waveform)));
-  snprintf(settings[settings_count++], sizeof(settings[0]), "(3) Audio Frequencies (FFT) : %s",
-           status_indicator(GET_OPTION(fft)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(1) Matrix \"Digital Rain\" : %s", status_indicator(GET_OPTION(matrix_rain)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(2) Audio Waveform : %s", status_indicator(GET_OPTION(waveform)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(3) Audio Frequencies (FFT) : %s", status_indicator(GET_OPTION(fft)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(z) Zalgo intensity : %d", GET_OPTION(zalgo));
-  snprintf(settings[settings_count++], sizeof(settings[0]), "(-) FPS Counter : %s",
-           status_indicator(GET_OPTION(fps_counter)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(-) FPS Counter : %s", status_indicator(GET_OPTION(fps_counter)));
   bool server = !browser && (GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_MCP_SERVER);
   bool discovery = !browser && GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
   ui_help_entry_t entries[SESSION_HELP_ENTRY_CAPACITY];
@@ -192,11 +190,9 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     const char *line = navigation[i];
     if (!line || i == 1)
       continue;
-    if (line[0] == '?' || line[0] == ']' || line[0] == '=' || line[0] == '0' || line[0] == '`' || line[0] == 'o' ||
-        !strncmp(line, "F12", 3))
+    if (line[0] == '?' || line[0] == ']' || line[0] == '=' || line[0] == '0' || line[0] == '`' || line[0] == 'o' || !strncmp(line, "F12", 3))
       continue;
-    if ((server || discovery) && i > 1 && line[0] != '?' && strncmp(line, "Esc", 3) && line[0] != ']' &&
-        line[0] != '=' && line[0] != '0' && line[0] != '`' && strncmp(line, "F12", 3))
+    if ((server || discovery) && i > 1 && line[0] != '?' && strncmp(line, "Esc", 3) && line[0] != ']' && line[0] != '=' && line[0] != '0' && line[0] != '`' && strncmp(line, "F12", 3))
       continue;
     const char *end = strstr(line, "  ");
     if (end) {
@@ -267,10 +263,9 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
                                           {"0", "Sync primitives"},
                                           {"]", "Log viewer"},
                                           {"?", "Close this help"}};
-  static const ui_help_entry_t errors[] = {
-      {"` / Esc", "Close error stacks"}, {"Tab", "Current/history page"}, {"Up / Down", "Select and scroll errors"},
-      {"s", "Change sort order"},        {"x", "Clear selected error"},   {"=", "Running app statistics"},
-      {"0", "Sync primitives"},          {"?", "Close this help"}};
+  static const ui_help_entry_t errors[] = {{"` / Esc", "Close error stacks"}, {"Tab", "Current/history page"}, {"Up / Down", "Select and scroll errors"},
+                                           {"s", "Change sort order"},        {"x", "Clear selected error"},   {"=", "Running app statistics"},
+                                           {"0", "Sync primitives"},          {"?", "Close this help"}};
   static const ui_help_entry_t update[] = {{"F12 / Esc", "Close update checker"},
                                            {"Left / Right / Tab", "Select button"},
                                            {"Enter", "Activate selected button"},
@@ -284,10 +279,8 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
                                         {"=", "Running app statistics"},
                                         {"0", "Sync primitives"},
                                         {"?", "Close this help"}};
-  static const ui_help_entry_t media[] = {
-      {"Enter", "Play the entered paths or URLs"},  {"Esc / Ctrl-O", "Cancel media input"},
-      {"Left / Right", "Move the text cursor"},     {"Home / End", "Beginning/end of input"},
-      {"Backspace / Delete", "Delete a character"}, {"?", "Help when the input is empty"}};
+  static const ui_help_entry_t media[] = {{"Enter", "Play the entered paths or URLs"}, {"Esc / Ctrl-O", "Cancel media input"},       {"Left / Right", "Move the text cursor"},
+                                          {"Home / End", "Beginning/end of input"},    {"Backspace / Delete", "Delete a character"}, {"?", "Help when the input is empty"}};
   const ui_help_entry_t *entries = NULL;
   size_t count = 0;
   const char *title = NULL;

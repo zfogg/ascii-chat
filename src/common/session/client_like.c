@@ -47,8 +47,7 @@ static bool client_like_display_should_exit_adapter(void *user_data);
 static bool client_like_is_networked(session_client_like_kind_t kind);
 
 static asciichat_error_t client_like_validate_mirror_webcam_selection(const session_client_like_config_t *config) {
-  if (!config || config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR || !terminal_is_stdout_tty() ||
-      GET_OPTION(test_pattern) || GET_OPTION(waveform) || GET_OPTION(fft)) {
+  if (!config || config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR || !terminal_is_stdout_tty() || GET_OPTION(test_pattern) || GET_OPTION(waveform) || GET_OPTION(fft)) {
     return ASCIICHAT_OK;
   }
 
@@ -68,9 +67,7 @@ static asciichat_error_t client_like_validate_mirror_webcam_selection(const sess
   unsigned int selected_index = (unsigned int)GET_OPTION(webcam_index);
   if (selected_index >= device_count) {
     if (device_count == 0) {
-      result =
-          SET_ERRNO(ERROR_WEBCAM, "Webcam index %u is unavailable: no webcam devices were found (run --list-webcams)",
-                    selected_index);
+      result = SET_ERRNO(ERROR_WEBCAM, "Webcam index %u is unavailable: no webcam devices were found (run --list-webcams)", selected_index);
     } else {
       result = SET_ERRNO(ERROR_WEBCAM,
                          "Webcam index %u is unavailable: %u webcam device(s) found; valid indices are 0-%u "
@@ -170,8 +167,7 @@ static void client_like_setup_terminal_logging(void) {
 
   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
   const char *output = GET_OPTION(render_file);
-  bool should_force_stderr = terminal_should_force_stderr() || GET_OPTION(render_kitty) ||
-                             strcmp(output, "--kitty") == 0 || strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0;
+  bool should_force_stderr = terminal_should_force_stderr() || GET_OPTION(render_kitty) || strcmp(output, "--kitty") == 0 || strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0;
   log_debug("terminal_should_force_stderr()=%d", should_force_stderr);
 
   if (should_force_stderr) {
@@ -183,10 +179,8 @@ static void client_like_setup_terminal_logging(void) {
   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
   // (implemented via should_force_stderr check above)
   const char *render_file_early = GET_OPTION(render_file);
-  log_debug("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)", render_file_early ? render_file_early : "(null)",
-            (void *)render_file_early);
-  if (render_file_early && render_file_early[0] != '\0' &&
-      (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
+  log_debug("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)", render_file_early ? render_file_early : "(null)", (void *)render_file_early);
+  if (render_file_early && render_file_early[0] != '\0' && (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
     log_info("--render-file=- will output binary video to stdout, logging sent to stderr");
   }
 }
@@ -246,8 +240,7 @@ static asciichat_error_t client_like_create_session_display(client_like_state_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t client_like_prepare_session_splash(const session_client_like_config_t *config,
-                                                            client_like_state_t *state, bool *stop) {
+static asciichat_error_t client_like_prepare_session_splash(const session_client_like_config_t *config, client_like_state_t *state, bool *stop) {
   asciichat_error_t result = ASCIICHAT_OK;
   log_debug("Starting splash with display context");
 
@@ -299,16 +292,14 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
 }
 
 static void client_like_configure_session_logging(const session_client_like_config_t *config) {
-  log_debug("About to disable terminal logging (snapshot=%d, discovery=%d)", GET_OPTION(snapshot_mode),
-            config->discovery != NULL);
+  log_debug("About to disable terminal logging (snapshot=%d, discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
   // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
   // Discovery participants should show logs, only hosts should have logs disabled for rendering
   bool should_disable_logging = !GET_OPTION(snapshot_mode) && (config->discovery == NULL);
   if (should_disable_logging) {
     log_set_terminal_output(false);
   } else {
-    log_debug("Skipping log disable (snapshot=%d or discovery=%d)", GET_OPTION(snapshot_mode),
-              config->discovery != NULL);
+    log_debug("Skipping log disable (snapshot=%d or discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
   }
 }
 
@@ -344,8 +335,7 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
   if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
     log_debug("Probing media source FPS");
     asciichat_errno_scope_t probe_scope = errno_scope_begin();
-    state->probe_source = media_source_create_interruptible(state->capture_config.type, state->capture_config.path,
-                                                            client_like_capture_should_exit_adapter, NULL);
+    state->probe_source = media_source_create_interruptible(state->capture_config.type, state->capture_config.path, client_like_capture_should_exit_adapter, NULL);
     if (state->probe_source) {
       ASSERT_NO_ERRNO_SINCE(probe_scope);
       errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
@@ -365,8 +355,7 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
   return 60;
 }
 
-static asciichat_error_t client_like_configure_media_capture(const session_client_like_config_t *config,
-                                                             client_like_state_t *state) {
+static asciichat_error_t client_like_configure_media_capture(const session_client_like_config_t *config, client_like_state_t *state) {
   // capture_config starts zeroed with the session state.
   state->capture_config.resize_for_network = client_like_is_networked(config->kind);
   state->capture_config.should_exit_callback = client_like_capture_should_exit_adapter;
@@ -375,8 +364,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
   // Select media source based on options (priority order)
   state->media_url_val = GET_OPTION(media_url);
   state->media_file_val = GET_OPTION(media_file);
-  log_debug("media_url=%s, media_file=%s", state->media_url_val ? state->media_url_val : "(null)",
-            state->media_file_val ? state->media_file_val : "(null)");
+  log_debug("media_url=%s, media_file=%s", state->media_url_val ? state->media_url_val : "(null)", state->media_file_val ? state->media_file_val : "(null)");
 
   if (state->media_url_val && strlen(state->media_url_val) > 0) {
     ui_controller_title_activity(UI_TITLE_LOADING_URL);
@@ -434,16 +422,14 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     log_debug("Set display render FPS to %u for correct video encoding duration", state->capture_config.target_fps);
   }
 
-  asciichat_error_t render_init_result =
-      session_display_init_render_file(state->display, state->capture_config.target_fps);
+  asciichat_error_t render_init_result = session_display_init_render_file(state->display, state->capture_config.target_fps);
   if (render_init_result != ASCIICHAT_OK) {
     return render_init_result;
   }
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t client_like_create_network_capture(const session_client_like_config_t *config,
-                                                            client_like_state_t *state) {
+static asciichat_error_t client_like_create_network_capture(const session_client_like_config_t *config, client_like_state_t *state) {
   log_debug("Setting up network transports");
 
   bool networked_mode = client_like_is_networked(config->kind);
@@ -474,8 +460,7 @@ static asciichat_error_t client_like_create_network_capture(const session_client
   const char *render_file_opt = GET_OPTION(render_file);
   int frame_height = GET_OPTION(height);
   bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
-  bool has_media_source = (state->media_url_val && strlen(state->media_url_val) > 0) ||
-                          (state->media_file_val && strlen(state->media_file_val) > 0) || GET_OPTION(test_pattern);
+  bool has_media_source = (state->media_url_val && strlen(state->media_url_val) > 0) || (state->media_file_val && strlen(state->media_file_val) > 0) || GET_OPTION(test_pattern);
 
   // Enable audio capture if render-file is active and media source exists
   if (render_file_opt && strlen(render_file_opt) > 0 && has_media_source) {
@@ -484,8 +469,7 @@ static asciichat_error_t client_like_create_network_capture(const session_client
   }
 
   state->stdin_render_mode =
-      (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty() && height_explicitly_set &&
-       !has_media_source && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
+      (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty() && height_explicitly_set && !has_media_source && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
 
   if (state->stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
@@ -504,8 +488,7 @@ static asciichat_error_t client_like_create_network_capture(const session_client
 
     asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &g_stdin_reader);
     if (stdin_err != ASCIICHAT_OK) {
-      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize stdin frame reader: %s",
-                       asciichat_error_string(stdin_err));
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
     }
 
     // For stdin render mode, create a minimal capture context for compatibility
@@ -618,8 +601,7 @@ static uint64_t client_like_restore_video_after_audio_failure(uint64_t revision)
       {.name = "waveform", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
       {.name = "fft", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
   };
-  const options_patch_t patch = {
-      .edits = edits, .count = 2, .expected_revision = revision, .origin = OPTIONS_ORIGIN_LOCAL};
+  const options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = revision, .origin = OPTIONS_ORIGIN_LOCAL};
   options_patch_result_t result = {0};
   asciichat_errno_scope_t scope = errno_scope_begin();
   asciichat_error_t error = options_apply_patch(&patch, &result);
@@ -632,8 +614,7 @@ static uint64_t client_like_restore_video_after_audio_failure(uint64_t revision)
 static void *client_like_update_mirror_audio(media_source_t *source, void *data) {
   client_like_state_t *state = data;
   bool file_audio = media_source_has_audio(source);
-  bool needed = GET_OPTION(audio_enabled) && (file_audio || GET_OPTION(waveform) || GET_OPTION(fft) ||
-                                              GET_OPTION(test_audio) || GET_OPTION(render_file)[0]);
+  bool needed = GET_OPTION(audio_enabled) && (file_audio || GET_OPTION(waveform) || GET_OPTION(fft) || GET_OPTION(test_audio) || GET_OPTION(render_file)[0]);
   if (!needed) {
     if (state->audio_ctx && state->audio_ctx->running) {
       if (audio_stop_duplex(state->audio_ctx) != ASCIICHAT_OK)
@@ -657,8 +638,7 @@ static void *client_like_update_mirror_audio(media_source_t *source, void *data)
       return NULL;
     }
   }
-  state->audio_ctx->capture_media_source =
-      file_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC ? source : NULL;
+  state->audio_ctx->capture_media_source = file_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC ? source : NULL;
   state->audio_ctx->monitor_local_media = true;
   state->audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), file_audio);
   media_source_set_audio_context(source, state->audio_ctx);
@@ -684,8 +664,7 @@ static void client_like_start_session_audio(const session_client_like_config_t *
   }
 }
 
-static asciichat_error_t client_like_run_session_attempts(const session_client_like_config_t *config,
-                                                          client_like_state_t *state) {
+static asciichat_error_t client_like_run_session_attempts(const session_client_like_config_t *config, client_like_state_t *state) {
   asciichat_error_t result = ASCIICHAT_OK;
   // Connection/attempt loop - wraps run_fn with reconnection logic
   int attempt = 0;
@@ -708,8 +687,7 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
       ASCII_OTEL_ATTR_STRING("session.attempt.kind", attempt > 1 ? "reconnect" : "initial");
       result = config->run_fn(state->capture, state->display, config->run_user_data);
       ASCII_OTEL_ATTR_INT("session.result", result);
-      if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT &&
-          config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR && !APP_CALLBACK_BOOL(should_exit))
+      if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR && !APP_CALLBACK_BOOL(should_exit))
         ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTION_FAILURE, 1);
       if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT)
         ascii_otel_error("Session attempt failed");
@@ -798,8 +776,7 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
   return result;
 }
 
-static asciichat_error_t client_like_cleanup_session(const session_client_like_config_t *config,
-                                                     client_like_state_t *state, asciichat_error_t result) {
+static asciichat_error_t client_like_cleanup_session(const session_client_like_config_t *config, client_like_state_t *state, asciichat_error_t result) {
   ASCII_OTEL_SCOPE(SESSION_CLEANUP);
   // Preparation can fail before the normal update check wait above.
   update_banner_cancel_check();
@@ -936,8 +913,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       goto cleanup;
     }
     client_like_start_session_audio(config, &state);
-    if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER") && state.should_init_audio &&
-        GET_OPTION(audio_capture_source) == AUDIO_CAPTURE_SOURCE_MIC && !state.audio_available) {
+    if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER") && state.should_init_audio && GET_OPTION(audio_capture_source) == AUDIO_CAPTURE_SOURCE_MIC && !state.audio_available) {
       result = SET_ERRNO(ERROR_AUDIO, "Requested microphone capture could not start");
       goto cleanup;
     }

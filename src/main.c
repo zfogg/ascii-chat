@@ -225,17 +225,17 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 // Register with descriptive name for debug output
 #ifndef NDEBUG
-#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
-  do {                                                                                                                 \
-    static bool _global_atomics_registered = false;                                                                    \
-    if (!_global_atomics_registered) {                                                                                 \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                            \
-      _global_atomics_registered = true;                                                                               \
-    }                                                                                                                  \
+#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    static bool _global_atomics_registered = false;                                                                                                                                                    \
+    if (!_global_atomics_registered) {                                                                                                                                                                 \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                                                                                                            \
+      _global_atomics_registered = true;                                                                                                                                                               \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
-  do {                                                                                                                 \
+#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
   } while (0)
 #endif
 
@@ -277,10 +277,7 @@ void set_interrupt_callback(void (*cb)(void)) {
  */
 static void handle_sigterm(int sig) {
   // Write to stderr about which signal was received for debugging
-  const char *sig_name = (sig == SIGTERM)  ? "SIGTERM"
-                         : (sig == SIGINT) ? "SIGINT"
-                         : (sig == SIGHUP) ? "SIGHUP"
-                                           : "UNKNOWN";
+  const char *sig_name = (sig == SIGTERM) ? "SIGTERM" : (sig == SIGINT) ? "SIGINT" : (sig == SIGHUP) ? "SIGHUP" : "UNKNOWN";
   char log_out[MAIN_LOG_OUT_BUFFER_SIZE];
   safe_snprintf(log_out, sizeof(log_out), "Signal '%s' received", sig_name);
 
@@ -576,11 +573,8 @@ int main(int argc, char *argv[]) {
     }
     if (!strchr(argv[i], '=')) {
       const char *name = argv[i] + (argv[i][1] == '-' ? 2 : 1);
-      const registry_entry_t *descriptor = argv[i][1] == '-'
-                                               ? registry_find_entry_by_name(name)
-                                               : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
-      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION &&
-          i + 1 < argc) {
+      const registry_entry_t *descriptor = argv[i][1] == '-' ? registry_find_entry_by_name(name) : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
+      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
         bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
         for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
           if (strcmp(argv[i + 1], mode->name) == 0)
@@ -710,9 +704,7 @@ int main(int argc, char *argv[]) {
       continue; // Value is part of this arg, no need to skip next
     }
 
-    const registry_entry_t *descriptor =
-        arg[1] == '-' ? registry_find_entry_by_name(opt_name)
-                      : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
+    const registry_entry_t *descriptor = arg[1] == '-' ? registry_find_entry_by_name(opt_name) : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
     if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
       bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
       for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
@@ -811,8 +803,7 @@ int main(int argc, char *argv[]) {
   // Documentation actions should not be preceded by startup diagnostics.
   bool early_quiet_output = false;
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--version") == 0 ||
-        strcmp(argv[i], "-V") == 0) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
       early_quiet_output = true;
       break;
     }
@@ -880,8 +871,7 @@ int main(int argc, char *argv[]) {
     if (HAS_ERRNO(&error_ctx)) {
       NOTICE(WARNING, "INVALID OPTIONS", "%s", error_ctx.context_message);
     } else {
-      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options %s",
-             asciichat_error_format(NULL, options_result));
+      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options %s", asciichat_error_format(NULL, options_result));
     }
 
     // Clean up options state before exiting
@@ -929,8 +919,7 @@ int main(int argc, char *argv[]) {
         // File ends with .log - replace with .json
         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
         // Replace .log with .json
-        asciichat_error_t strcpy_result =
-            SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
+        asciichat_error_t strcpy_result = SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
         if (strcpy_result != ASCIICHAT_OK) {
           log_error("Failed to write .json extension: %s", asciichat_error_format(NULL, strcpy_result));
         }
@@ -950,8 +939,7 @@ int main(int argc, char *argv[]) {
 
   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
-  bool final_format_console_only =
-      early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
+  bool final_format_console_only = early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
   if (final_format && final_format[0] != '\0') {
     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
     if (fmt_result != ASCIICHAT_OK) {
@@ -982,8 +970,7 @@ int main(int argc, char *argv[]) {
   // Apply quiet mode - disables terminal output
   // Status screen mode only disables terminal output if terminal is interactive
   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-  if (GET_OPTION(quiet) ||
-      (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen) && terminal_is_interactive())) {
+  if (GET_OPTION(quiet) || (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen) && terminal_is_interactive())) {
     log_set_terminal_output(false);
   }
 
@@ -1147,8 +1134,7 @@ int main(int argc, char *argv[]) {
   // Mode entry points use options_get() to access parsed options
   if (title_init_result == ASCIICHAT_OK) {
     asciichat_errno_scope_t title_scope = errno_scope_begin();
-    asciichat_error_t title_result =
-        platform_process_title_set_args("ascii-chat: ", mode->name, argc, argv, opts->mode_arg_index);
+    asciichat_error_t title_result = platform_process_title_set_args("ascii-chat: ", mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
       log_debug("Could not set process title for %s mode", mode->name);
     } else {

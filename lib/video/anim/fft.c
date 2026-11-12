@@ -61,9 +61,8 @@ static bool parse_fft_scale_value(const char *arg, fft_scale_t *parsed) {
     return false;
   char *max_end = NULL;
   parsed->max_db = strtof(end + 1, &max_end);
-  return max_end != end + 1 && *max_end == '\0' && isfinite(parsed->min_db) && isfinite(parsed->max_db) &&
-         parsed->min_db >= -120.0f && parsed->max_db <= 0.0f && parsed->max_db - parsed->min_db >= 12.0f &&
-         parsed->max_db > parsed->min_db;
+  return max_end != end + 1 && *max_end == '\0' && isfinite(parsed->min_db) && isfinite(parsed->max_db) && parsed->min_db >= -120.0f && parsed->max_db <= 0.0f &&
+         parsed->max_db - parsed->min_db >= 12.0f && parsed->max_db > parsed->min_db;
 }
 
 static fft_scale_t get_fft_scale(void) {
@@ -131,18 +130,15 @@ static bool visualization_fft_batch(const float *const input, unsigned int colum
   return true;
 }
 
-char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color, int color_mode, bool flip_x, bool flip_y) {
-  if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
-      source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
+char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source, bool use_color, int color_mode, bool flip_x, bool flip_y) {
+  if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT || source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
 
   if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
     height *= 2;
   static_mutex_lock(&fft_cache_mutex);
   uint64_t now = time_get_ns();
-  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source &&
-      fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
+  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source && fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
       now - fft_cache.updated_ns < FFT_REFRESH_NS) {
     size_t cached_cells = (size_t)width * height;
     char *cached = SAFE_MALLOC(cached_cells, char *);

@@ -97,8 +97,7 @@ typedef enum session_client_like_kind {
  * @param user_data User data passed through from config.run_user_data
  * @return ASCIICHAT_OK, or error code to abort (cleanup still runs)
  */
-typedef asciichat_error_t (*session_client_like_run_fn)(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                                        void *user_data);
+typedef asciichat_error_t (*session_client_like_run_fn)(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data);
 
 /* ============================================================================
  * Configuration Structure

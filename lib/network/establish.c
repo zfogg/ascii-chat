@@ -1,12 +1,10 @@
 #include <ascii-chat/network/establish.h>
 
-asciichat_error_t network_connection_establish(const network_establish_config_t *config, network_connection_t **owner,
-                                               network_establish_result_t *attempt) {
+asciichat_error_t network_connection_establish(const network_establish_config_t *config, network_connection_t **owner, network_establish_result_t *attempt) {
   if (!config || !owner || *owner || !attempt || !config->prepare || config->protocol > NETWORK_PROTOCOL_DISCOVERY)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid connection establishment parameters");
   *attempt = (network_establish_result_t){0};
-  asciichat_error_t result = network_connection_open(config->name, config->address, config->default_port,
-                                                     config->connect, owner, &attempt->endpoint);
+  asciichat_error_t result = network_connection_open(config->name, config->address, config->default_port, config->connect, owner, &attempt->endpoint);
   if (result != ASCIICHAT_OK)
     return result;
   result = config->prepare(*owner, &attempt->endpoint, config->password, config->context);

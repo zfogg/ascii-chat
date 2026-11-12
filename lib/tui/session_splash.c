@@ -24,14 +24,12 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));
 
   if (ctx->discovery.enabled) {
-    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining,
-                      (int)(ctx->animation.seconds * 60), ctx->use_colors);
+    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining, (int)(ctx->animation.seconds * 60), ctx->use_colors);
     return;
   }
 
   char tagline_with_version[TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE];
-  snprintf(tagline_with_version, sizeof(tagline_with_version), "Video chat in your terminal + %s",
-           ASCII_CHAT_VERSION_STRING);
+  snprintf(tagline_with_version, sizeof(tagline_with_version), "Video chat in your terminal + %s", ASCII_CHAT_VERSION_STRING);
   const char *tagline = tagline_with_version;
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx->use_colors);
   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);

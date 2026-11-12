@@ -274,8 +274,7 @@ bool session_host_is_running(session_host_t *host);
  * and WebRTC. Ownership transfers only on success. NULL registers a participant
  * whose transport will be supplied later. on_client_join runs after admission.
  */
-uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport,
-                                 acip_transport_ownership_t ownership, const char *ip, int port);
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport, acip_transport_ownership_t ownership, const char *ip, int port);
 
 /**
  * @brief Add a memory participant (host's own media)
@@ -326,8 +325,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
  *
  * @ingroup session
  */
-asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
-                                            size_t count);
+asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples, size_t count);
 
 /**
  * @brief Remove a client by ID
@@ -521,8 +519,7 @@ typedef struct acip_transport acip_transport_t;
  *
  * @ingroup session
  */
-asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
-                                                    acip_transport_t *transport, acip_transport_ownership_t ownership);
+asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id, acip_transport_t *transport, acip_transport_ownership_t ownership);
 
 /**
  * @brief Get the current transport for a specific client in the host
@@ -555,8 +552,7 @@ bool session_host_client_has_transport(session_host_t *host, uint32_t client_id)
 /** @} */
 
 /** Process a packet delivered by an event-driven transport. */
-asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t type,
-                                              const void *data, size_t len);
+asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t type, const void *data, size_t len);
 /** Run one shared host video cycle without starting a thread. */
 asciichat_error_t session_host_render_video(session_host_t *host);
 

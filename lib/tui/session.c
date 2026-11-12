@@ -65,9 +65,7 @@ ui_session_t *ui_session_create(void) {
   s->saved_volume = 1;
   s->dirty = true;
   s->splash.use_colors = true;
-  animation_init(&s->animation, "session_splash",
-                 (animation_config_t){
-                     .type = ANIMATION_SPLASH_RAINBOW, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
+  animation_init(&s->animation, "session_splash", (animation_config_t){.type = ANIMATION_SPLASH_RAINBOW, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
   return s;
 }
 
@@ -178,13 +176,10 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   bool changed = s->active != view->screen;
   s->active = view->screen;
   bool covered = view->screen >= 0 && ui_too_small(s->size, view->minimum);
-  bool transition = changed || covered != s->covered || s->size.cols != s->presented_size.cols ||
-                    s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
+  bool transition = changed || covered != s->covered || s->size.cols != s->presented_size.cols || s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
                     view->minimum.rows != s->minimum.rows;
   s->covered = covered;
-  bool visible =
-      (view->screen == UI_SCREEN_SPLASH || view->screen == UI_SCREEN_HELP || view->screen == UI_SCREEN_MDNS) &&
-      !covered;
+  bool visible = (view->screen == UI_SCREEN_SPLASH || view->screen == UI_SCREEN_HELP || view->screen == UI_SCREEN_MDNS) && !covered;
   if (visible != s->animation.visible) {
     // Account for the elapsed interval under the old visibility before changing
     // it, so resuming after an idle modal does not advance a paused animation.
@@ -222,8 +217,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       bool colors = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-                    (mode != TERM_COLOR_AUTO ||
-                     detect_terminal_capabilities(options_terminal_settings()).color_level != TERM_COLOR_NONE);
+                    (mode != TERM_COLOR_AUTO || detect_terminal_capabilities(options_terminal_settings()).color_level != TERM_COLOR_NONE);
       frame_buffer_printf(s->frame, "\033[%d;1H", top + 2);
       invitation_render_logo(s->frame, s->size.cols, (int)(s->splash.animation.seconds * 60), colors, false);
     }
@@ -233,16 +227,14 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   return frame_buffer_get_content(s->frame);
 }
 
-static void draw_help(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
-                      void *context) {
+static void draw_help(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   (void)size;
   (void)animation;
   const char *text = context;
   frame_buffer_append(output, text, strlen(text));
 }
 
-static void draw_splash(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
-                        void *context) {
+static void draw_splash(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   ui_session_t *s = context;
   s->splash.animation = *animation;
   ui_session_splash_render(output, size, &s->splash);
@@ -256,8 +248,7 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
   const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
   snprintf(detail, sizeof(detail), "%s | %s rows from tail", ui_status_log_controls(), colored_offset);
   ui_status_t status = {.mode_name = "", .start_time = s->started, .detail = detail};
-  terminal_screen_config_t config = {
-      .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
+  terminal_screen_config_t config = {.fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
   terminal_screen_compose(output, size, &config, s->logs);
 }
 
@@ -304,8 +295,7 @@ bool ui_session_logs_key(keyboard_key_t key) {
   return ui_session_logs_key_sized(key, ui_controller_size());
 }
 
-static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
-                      void *context) {
+static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   (void)animation;
   ui_session_logs_render(output, size, context);
 }
@@ -330,8 +320,7 @@ const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
     visible |= 1u << UI_SCREEN_LOGS;
   if (s->help)
     visible |= 1u << UI_SCREEN_HELP;
-  ui_session_view_t view = {
-      .screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = !s->help, .context = s};
+  ui_session_view_t view = {.screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = !s->help, .context = s};
   char *help = NULL;
   if (view.screen == UI_SCREEN_HELP) {
     help = ui_session_help_render(s->size, true, true, &view.minimum);
