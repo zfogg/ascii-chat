@@ -111,6 +111,12 @@ typedef struct {
  * @brief Component enable/disable flags
  * @brief Default flags with all processing enabled
  */
+#ifdef __cplusplus
+#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                \
+  client_audio_pipeline_flags_t{true, true, true, true, true, true, true, true, true}
+#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL                                                                            \
+  client_audio_pipeline_flags_t{false, false, false, false, false, false, false, false, false}
+#else
 #define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                \
   ((client_audio_pipeline_flags_t){                                                                                    \
       .echo_cancel = true,                                                                                             \
@@ -139,6 +145,7 @@ typedef struct {
       .highpass = false,                                                                                               \
       .lowpass = false,                                                                                                \
   })
+#endif
 
 /**
  * @brief Pipeline configuration parameters
