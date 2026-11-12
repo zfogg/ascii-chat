@@ -78,19 +78,15 @@ static client_state_t *client_state(browser_transport_t *transport) {
   return transport ? browser_transport_client_state(transport) : NULL;
 }
 
-asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uint32_t type, uint32_t client_id,
-                                             bool encrypt, const uint8_t *payload, size_t payload_length,
-                                             uint8_t *output, size_t output_capacity, size_t *output_length) {
-  if (!transport || !output || !output_length || (payload_length && !payload) || type > UINT16_MAX ||
-      payload_length > SIZE_MAX - sizeof(packet_header_t) - 512)
+asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uint32_t type, uint32_t client_id, bool encrypt, const uint8_t *payload, size_t payload_length, uint8_t *output,
+                                             size_t output_capacity, size_t *output_length) {
+  if (!transport || !output || !output_length || (payload_length && !payload) || type > UINT16_MAX || payload_length > SIZE_MAX - sizeof(packet_header_t) - 512)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser client packet input");
   *output_length = 0;
   if (!encrypt)
-    return packet_encode((packet_type_t)type, payload, payload_length, client_id, output, output_capacity,
-                         output_length);
+    return packet_encode((packet_type_t)type, payload, payload_length, client_id, output, output_capacity, output_length);
 
-  asciichat_error_t error = packet_send_via_transport(browser_transport_base(transport), (packet_type_t)type, payload,
-                                                      payload_length, client_id);
+  asciichat_error_t error = packet_send_via_transport(browser_transport_base(transport), (packet_type_t)type, payload, payload_length, client_id);
   if (error != ASCIICHAT_OK)
     return error;
   const size_t wire_length = browser_transport_output_size(transport);
@@ -104,8 +100,7 @@ asciichat_error_t browser_client_send_packet(browser_transport_t *transport, uin
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, bool discovery, const uint8_t *input,
-                                                size_t input_length, uint8_t *payload, size_t payload_capacity,
+asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, bool discovery, const uint8_t *input, size_t input_length, uint8_t *payload, size_t payload_capacity,
                                                 browser_client_packet_result_t *result) {
   if (!transport || !input || !result || input_length < sizeof(packet_header_t))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser client transport packet");
@@ -116,13 +111,10 @@ asciichat_error_t browser_client_receive_packet(browser_transport_t *transport, 
     return error;
   const packet_type_t outer_type = (packet_type_t)NET_TO_HOST_U16(header.type);
   const size_t header_size = sizeof(packet_header_t);
-  if (!browser_client_ready(transport) &&
-      (outer_type == PACKET_TYPE_PROTOCOL_VERSION || packet_is_handshake_type(outer_type))) {
+  if (!browser_client_ready(transport) && (outer_type == PACKET_TYPE_PROTOCOL_VERSION || packet_is_handshake_type(outer_type))) {
     result->handshake = true;
-    return discovery ? browser_client_acds_handshake_receive(transport, outer_type, input + header_size,
-                                                             input_length - header_size)
-                     : browser_client_handshake_receive(transport, outer_type, input + header_size,
-                                                        input_length - header_size);
+    return discovery ? browser_client_acds_handshake_receive(transport, outer_type, input + header_size, input_length - header_size)
+                     : browser_client_handshake_receive(transport, outer_type, input + header_size, input_length - header_size);
   }
   packet_envelope_t envelope = {0};
   error = packet_parse_envelope(input, input_length, browser_transport_base(transport)->crypto_ctx, &envelope);
@@ -156,8 +148,7 @@ asciichat_error_t browser_client_settings_receive(browser_transport_t *transport
   asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
   if (result != ASCIICHAT_OK)
     return result;
-  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
-            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *), *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
   state->remote_render_settings.caps.utf8_support = true;
   acip_render_settings_options(&state->remote_render_settings, current);
   result = options_prepare_json(current, json, json_length, candidate, true);
@@ -207,10 +198,8 @@ static int apply_client_crypto_options(browser_transport_t *transport) {
   if (state->has_client_identity_key) {
     ctx->client_private_key.type = KEY_TYPE_ED25519;
     memcpy(ctx->client_private_key.key.ed25519, state->client_identity_key, sizeof(state->client_identity_key));
-    memcpy(ctx->client_private_key.public_key, state->client_identity_key + crypto_sign_SEEDBYTES,
-           (size_t)crypto_sign_PUBLICKEYBYTES);
-    memcpy(ctx->client_public_key.key, state->client_identity_key + crypto_sign_SEEDBYTES,
-           (size_t)crypto_sign_PUBLICKEYBYTES);
+    memcpy(ctx->client_private_key.public_key, state->client_identity_key + crypto_sign_SEEDBYTES, (size_t)crypto_sign_PUBLICKEYBYTES);
+    memcpy(ctx->client_public_key.key, state->client_identity_key + crypto_sign_SEEDBYTES, (size_t)crypto_sign_PUBLICKEYBYTES);
     ctx->client_public_key.type = KEY_TYPE_ED25519;
   }
 
@@ -223,9 +212,7 @@ static int apply_client_crypto_options(browser_transport_t *transport) {
 }
 
 /** Configure browser-provided authentication material for the next handshake. */
-int browser_client_configure_crypto_options(browser_transport_t *transport, const char *password,
-                                            const uint8_t *identity_secret_key,
-                                            const uint8_t *expected_server_public_key) {
+int browser_client_configure_crypto_options(browser_transport_t *transport, const char *password, const uint8_t *identity_secret_key, const uint8_t *expected_server_public_key) {
   client_state_t *state = client_state(transport);
   if (!state || !state->initialized) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
@@ -249,9 +236,7 @@ int browser_client_configure_crypto_options(browser_transport_t *transport, cons
 
   if (identity_secret_key) {
     uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES];
-    if (crypto_sign_ed25519_sk_to_pk(derived_public_key, identity_secret_key) != 0 ||
-        sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES) !=
-            0) {
+    if (crypto_sign_ed25519_sk_to_pk(derived_public_key, identity_secret_key) != 0 || sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES) != 0) {
       sodium_memzero(derived_public_key, sizeof(derived_public_key));
       SET_ERRNO(ERROR_INVALID_PARAM, "Client identity secret key is invalid");
       return -1;
@@ -262,8 +247,7 @@ int browser_client_configure_crypto_options(browser_transport_t *transport, cons
   }
 
   if (expected_server_public_key) {
-    memcpy(state->expected_server_identity_key, expected_server_public_key,
-           sizeof(state->expected_server_identity_key));
+    memcpy(state->expected_server_identity_key, expected_server_public_key, sizeof(state->expected_server_identity_key));
     state->has_expected_server_identity_key = true;
   }
   return 0;
@@ -334,8 +318,7 @@ int browser_client_parse_gpg_private_key(const char *armored_key, uint8_t *secre
 
   if (openpgp_parse_armored_seckey(armored_key, public_key, seed) != ASCIICHAT_OK)
     goto cleanup;
-  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
-      sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 || sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
     goto cleanup;
   }
@@ -365,8 +348,7 @@ int browser_client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t 
 
   if (openpgp_parse_binary_seckey(key_data, key_data_len, public_key, seed) != ASCIICHAT_OK)
     goto cleanup;
-  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
-      sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 || sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
     goto cleanup;
   }
@@ -428,8 +410,10 @@ int browser_client_init(browser_transport_t *transport) {
   if (audio_visualization_fft_init() != ASCIICHAT_OK)
     return -1;
 
-  // Initialize platform layer
-  err = platform_init();
+  // Keep browser startup on the same shared initialization path as the CLI.
+  // options_init() relies on logging, timers, buffers, and platform state
+  // established by asciichat_shared_init().
+  err = asciichat_shared_init(NULL, true, true);
   if (err != ASCIICHAT_OK) {
     return -1;
   }
@@ -563,8 +547,7 @@ const uint8_t *browser_client_public_key_bytes(browser_transport_t *transport) {
  * @param out_len Output parameter for ciphertext length
  * @return 0 on success, -1 on error
  */
-int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t *plaintext, size_t plaintext_len,
-                                  uint8_t *ciphertext, size_t ciphertext_size, size_t *out_len) {
+int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size, size_t *out_len) {
   client_state_t *state = client_state(transport);
   if (!state || !state->handshake_complete) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
@@ -572,8 +555,7 @@ int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t 
   }
 
   const size_t overhead = 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  if (!plaintext || !ciphertext || !out_len || plaintext_len > SIZE_MAX - overhead ||
-      ciphertext_size < plaintext_len + overhead) {
+  if (!plaintext || !ciphertext || !out_len || plaintext_len > SIZE_MAX - overhead || ciphertext_size < plaintext_len + overhead) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client encryption buffers or lengths");
     return -1;
   }
@@ -586,8 +568,7 @@ int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t 
   }
   memcpy(&header, plaintext, sizeof(header));
   acip_traffic_class_t channel = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
-  asciichat_error_t result = acip_security_seal(&state->crypto_handshake_ctx.crypto_ctx, channel,
-                                                ACIP_DELIVERY_RELIABLE, plaintext, plaintext_len, &wire, &length);
+  asciichat_error_t result = acip_security_seal(&state->crypto_handshake_ctx.crypto_ctx, channel, ACIP_DELIVERY_RELIABLE, plaintext, plaintext_len, &wire, &length);
   if (result == ASCIICHAT_OK) {
     *out_len = length - sizeof(packet_header_t);
     memcpy(ciphertext, wire + sizeof(packet_header_t), *out_len);
@@ -605,8 +586,7 @@ int browser_client_encrypt_packet(browser_transport_t *transport, const uint8_t 
  * @param out_len Output parameter for plaintext length
  * @return 0 on success, -1 on error
  */
-int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len,
-                                  uint8_t *plaintext, size_t plaintext_size, size_t *out_len) {
+int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size, size_t *out_len) {
   client_state_t *state = client_state(transport);
   if (!state || !state->handshake_complete) {
     SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
@@ -623,8 +603,7 @@ int browser_client_decrypt_packet(browser_transport_t *transport, const uint8_t 
   uint64_t sequence;
   bool consumed = false;
   asciichat_error_t result =
-      acip_security_decrypt(&state->crypto_handshake_ctx.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE,
-                            ciphertext, ciphertext_len, &plain, &length, &sequence, &consumed);
+      acip_security_decrypt(&state->crypto_handshake_ctx.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, ciphertext, ciphertext_len, &plain, &length, &sequence, &consumed);
   if (result == ASCIICHAT_OK && !consumed) {
     memcpy(plaintext, plain, length);
     *out_len = length;
@@ -656,13 +635,11 @@ asciichat_error_t browser_client_acds_handshake_begin(browser_transport_t *trans
   }
   return result;
 }
-asciichat_error_t browser_client_acds_handshake_receive(browser_transport_t *transport, uint32_t type,
-                                                        const void *payload, size_t length) {
+asciichat_error_t browser_client_acds_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
-  asciichat_error_t result =
-      acds_handshake_receive(&state->crypto_handshake_ctx, browser_transport_base(transport), type, payload, length);
+  asciichat_error_t result = acds_handshake_receive(&state->crypto_handshake_ctx, browser_transport_base(transport), type, payload, length);
   if (result != ASCIICHAT_OK) {
     browser_transport_set_state(transport, BROWSER_TRANSPORT_ERROR);
     return result;
@@ -708,8 +685,7 @@ asciichat_error_t browser_client_handshake_begin(browser_transport_t *transport)
   return acds_handshake_begin(browser_transport_base(transport), state->crypto_mode);
 }
 
-asciichat_error_t browser_client_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload,
-                                                   size_t length) {
+asciichat_error_t browser_client_handshake_receive(browser_transport_t *transport, uint32_t type, const void *payload, size_t length) {
   client_state_t *state = client_state(transport);
   if (!state)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client transport is not initialized");
@@ -721,8 +697,7 @@ asciichat_error_t browser_client_handshake_receive(browser_transport_t *transpor
     if (!payload || length != sizeof(protocol_version_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
     const protocol_version_packet_t *version = payload;
-    if (NET_TO_HOST_U16(version->protocol_version) != PROTOCOL_VERSION_MAJOR ||
-        version->supports_encryption != state->crypto_mode)
+    if (NET_TO_HOST_U16(version->protocol_version) != PROTOCOL_VERSION_MAJOR || version->supports_encryption != state->crypto_mode)
       return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
     state->version_received = true;
     if (state->crypto_mode == ACIP_CRYPTO_NONE) {
@@ -736,21 +711,15 @@ asciichat_error_t browser_client_handshake_receive(browser_transport_t *transpor
     caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
     caps.preferred_kex = KEX_ALGO_X25519;
     caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(state->crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
-    caps.preferred_cipher =
-        ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
     caps.requires_verification = state->has_expected_server_identity_key;
-    asciichat_error_t result = packet_send_via_transport(browser_transport_base(transport),
-                                                         PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    asciichat_error_t result = packet_send_via_transport(browser_transport_base(transport), PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
     if (result != ASCIICHAT_OK || !state->has_expected_server_identity_key)
       return result;
-    return packet_send_via_transport(browser_transport_base(transport), PACKET_TYPE_CRYPTO_CLIENT_HELLO,
-                                     state->expected_server_identity_key, sizeof(state->expected_server_identity_key),
-                                     0);
+    return packet_send_via_transport(browser_transport_base(transport), PACKET_TYPE_CRYPTO_CLIENT_HELLO, state->expected_server_identity_key, sizeof(state->expected_server_identity_key), 0);
   }
   if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
-    if (!payload || length != sizeof(crypto_parameters_packet_t) ||
-        (((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
-            ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode))
+    if (!payload || length != sizeof(crypto_parameters_packet_t) || (((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) != ACIP_CRYPTO_HAS_ENCRYPT(state->crypto_mode))
       return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
   }
   return browser_client_acds_handshake_receive(transport, type, payload, length);
@@ -771,8 +740,7 @@ void browser_client_reset_handshake(browser_transport_t *transport) {
 
 /* Browser transport marshals framing, then invokes the SAME network content
  * contract as native before any terminal parser or recording receives bytes. */
-asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, const char *text, size_t length,
-                                                uint32_t width, uint32_t height, uint32_t checksum, uint32_t flags,
+asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, const char *text, size_t length, uint32_t width, uint32_t height, uint32_t checksum, uint32_t flags,
                                                 const void *metadata, size_t metadata_length) {
   client_state_t *state = client_state(transport);
   if (!state)
@@ -787,8 +755,7 @@ asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, 
     asciichat_error_t decoded = frame_render_contract_decode(metadata, metadata_length, &settings, &effects, &consumed);
     if (decoded != ASCIICHAT_OK)
       return decoded;
-    if (settings.revision && settings.revision == state->remote_render_settings.revision &&
-        state->remote_render_settings.palette[0] && state->remote_render_settings.caps.utf8_support &&
+    if (settings.revision && settings.revision == state->remote_render_settings.revision && state->remote_render_settings.palette[0] && state->remote_render_settings.caps.utf8_support &&
         strcmp(settings.palette, state->remote_render_settings.palette) != 0)
       return SET_ERRNO(ERROR_INVALID_FRAME, "Browser frame palette contradicts acknowledged revision");
     if (consumed != metadata_length)
@@ -801,10 +768,8 @@ asciichat_error_t browser_client_validate_frame(browser_transport_t *transport, 
   return session_frame_validate_contract(text, length, width, height, contract ? &settings : NULL, effects);
 }
 
-asciichat_error_t browser_client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
-                                                   size_t output_length) {
-  if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length ||
-      output_length > FRAME_RENDER_MAX_BYTES)
+asciichat_error_t browser_client_decode_frame_data(const void *encoded, size_t encoded_length, void *output, size_t output_length) {
+  if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length || output_length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid browser frame decompression bounds");
   return decompress_data_exact(encoded, encoded_length, output, output_length);
 }

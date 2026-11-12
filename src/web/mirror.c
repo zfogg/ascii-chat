@@ -64,8 +64,10 @@ void mirror_render_context_destroy(mirror_render_context_t *context) {
  * @return 0 on success, -1 on error
  */
 int mirror_init(void) {
-  // Initialize platform layer
-  asciichat_error_t err = platform_init();
+  // The options layer expects the shared runtime (logging, timers, buffers,
+  // and platform state) to be initialized first, just like the CLI startup
+  // path.  Browser modules do not enter the CLI dispatcher, so do it here.
+  asciichat_error_t err = asciichat_shared_init(NULL, false, true);
   if (err != ASCIICHAT_OK) {
     return -1;
   }
