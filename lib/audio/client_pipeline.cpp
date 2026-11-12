@@ -112,7 +112,7 @@ extern "C" {
 // ============================================================================
 
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
-  return (client_audio_pipeline_config_t){
+  return client_audio_pipeline_config_t{
       .channels = AUDIO_CHANNELS,
       .encoder_channels = AUDIO_CHANNELS,
       .sample_rate = AUDIO_SAMPLE_RATE,
