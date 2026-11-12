@@ -94,6 +94,56 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
+      "name": "dev-llvm",
+      "displayName": "Dev (LLVM)",
+      "description": "Fast developer build using LLVM",
+      "inherits": "dev",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-gcc",
+      "displayName": "Dev (GCC)",
+      "description": "Fast developer build using GCC",
+      "inherits": "dev",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-msvc",
+      "displayName": "Dev (MSVC)",
+      "description": "Fast developer build using MSVC",
+      "inherits": "dev",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-llvm",
+      "displayName": "Release (LLVM)",
+      "description": "Release build using LLVM",
+      "inherits": "release",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "LLVM" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-gcc",
+      "displayName": "Release (GCC)",
+      "description": "Release build using GCC",
+      "inherits": "release",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "GCC" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "Release (MSVC)",
+      "description": "Release build using MSVC",
+      "inherits": "release",
+      "cacheVariables": { "ASCIICHAT_COMPILER": "MSVC" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
       "name": "debug",
       "displayName": "Debug",
       "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
@@ -314,6 +364,12 @@
     { "name": "default-llvm", "configurePreset": "default-llvm" },
     { "name": "default-gcc", "configurePreset": "default-gcc" },
     { "name": "default-msvc", "configurePreset": "default-msvc" },
+    { "name": "dev-llvm", "configurePreset": "dev-llvm" },
+    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
+    { "name": "dev-msvc", "configurePreset": "dev-msvc" },
+    { "name": "release-llvm", "configurePreset": "release-llvm" },
+    { "name": "release-gcc", "configurePreset": "release-gcc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc" },
     {
       "name": "debug",
       "configurePreset": "debug"

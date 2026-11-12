@@ -30,7 +30,7 @@
  * Not all platforms provide htonll/ntohll, so we define portable versions.
  * Uses compiler builtins when available for optimal performance.
  */
-#ifndef htonll
+#if !defined(_WIN32) && !defined(htonll)
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define htonll(x) (x)
 #define ntohll(x) (x)
@@ -45,6 +45,7 @@ static inline uint64_t htonll(uint64_t val) {
          ((val & 0x00FF000000000000ULL) >> 40) | ((val & 0xFF00000000000000ULL) >> 56);
 }
 #define ntohll(x) htonll(x)
+#endif
 #endif
 #endif
 

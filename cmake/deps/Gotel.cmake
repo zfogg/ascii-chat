@@ -29,8 +29,12 @@ target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
-# Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
-set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+# Keep the vendored C++ facade aligned with the selected compiler's C++ mode.
+if(ASCIICHAT_COMPILER STREQUAL "MSVC")
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for the gotel facade" FORCE)
+else()
+    set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+endif()
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
@@ -52,6 +56,13 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
+
+# gotel's util/utf8.c includes util/utf8.h relative to the C source root;
+# explicitly expose that root for compilers that do not add it implicitly.
+if(TARGET gotel)
+    target_include_directories(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+endif()
 
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
     target_include_directories(gotel_cxx SYSTEM PRIVATE "${ALPINE_LIBCXX_INCLUDE_DIR}")

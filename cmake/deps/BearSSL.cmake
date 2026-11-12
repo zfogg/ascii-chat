@@ -215,24 +215,31 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
         if(NOT EXISTS "${BEARSSL_LIB}")
             message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, building from source...")
 
-            # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
-            apply_patch(
-                TARGET_DIR "${BEARSSL_SOURCE_DIR}"
-                PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/deps/patches/bearssl-0-windows-clang.patch"
-                PATCH_NUM 0
-                DESCRIPTION "Fix Windows+Clang header conflicts"
-                ASSUME_UNCHANGED src/inner.h
-            )
+            # Apply the compatibility patch only for clang-cl. Native MSVC
+            # uses the upstream headers and compiler directly.
+            if(ASCIICHAT_COMPILER STREQUAL "LLVM")
+                apply_patch(
+                    TARGET_DIR "${BEARSSL_SOURCE_DIR}"
+                    PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/deps/patches/bearssl-0-windows-clang.patch"
+                    PATCH_NUM 0
+                    DESCRIPTION "Fix Windows+Clang header conflicts"
+                    ASSUME_UNCHANGED src/inner.h
+                )
+            endif()
 
             # Use centralized build tools from FindPrograms.cmake
             if(NOT ASCIICHAT_NMAKE_EXECUTABLE)
                 message(FATAL_ERROR "nmake not found. Required for building BearSSL on Windows.")
             endif()
             set(NMAKE_EXECUTABLE "${ASCIICHAT_NMAKE_EXECUTABLE}")
-            if(NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
-                message(FATAL_ERROR "clang-cl not found. Required for building BearSSL on Windows.")
+            if(ASCIICHAT_COMPILER STREQUAL "LLVM")
+                if(NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
+                    message(FATAL_ERROR "clang-cl not found. Required for building BearSSL with LLVM on Windows.")
+                endif()
+                set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
+            else()
+                set(CLANG_CL_EXECUTABLE "${CMAKE_C_COMPILER}")
             endif()
-            set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
 
             # Prefer llvm-lib over MSVC lib.exe for consistency across architectures
             if(ASCIICHAT_LLVM_LIB_EXECUTABLE)

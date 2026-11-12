@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <limits.h>
+#include <string.h>
 
 /* ============================================================================
  * Unaligned Memory Access Helpers
@@ -62,7 +63,7 @@
  */
 static inline uint16_t bytes_read_u16_unaligned(const void *ptr) {
   uint16_t value;
-  __builtin_memcpy(&value, ptr, sizeof(value));
+  memcpy(&value, ptr, sizeof(value));
   return value;
 }
 
@@ -85,7 +86,7 @@ static inline uint16_t bytes_read_u16_unaligned(const void *ptr) {
  */
 static inline uint32_t bytes_read_u32_unaligned(const void *ptr) {
   uint32_t value;
-  __builtin_memcpy(&value, ptr, sizeof(value));
+  memcpy(&value, ptr, sizeof(value));
   return value;
 }
 
@@ -107,7 +108,7 @@ static inline uint32_t bytes_read_u32_unaligned(const void *ptr) {
  * @endcode
  */
 static inline void bytes_write_u16_unaligned(void *ptr, uint16_t value) {
-  __builtin_memcpy(ptr, &value, sizeof(value));
+  memcpy(ptr, &value, sizeof(value));
 }
 
 /**
@@ -128,7 +129,7 @@ static inline void bytes_write_u16_unaligned(void *ptr, uint16_t value) {
  * @endcode
  */
 static inline void bytes_write_u32_unaligned(void *ptr, uint32_t value) {
-  __builtin_memcpy(ptr, &value, sizeof(value));
+  memcpy(ptr, &value, sizeof(value));
 }
 
 /* ============================================================================

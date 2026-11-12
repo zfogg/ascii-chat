@@ -138,6 +138,13 @@ asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *f
                                             __VA_ARGS__);                                                              \
   })
 
+#ifdef _MSC_VER
+#undef SET_ERRNO_SYS
+#define SET_ERRNO_SYS(code, ...)                                                                                       \
+  errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, platform_get_last_error(),            \
+                                          __VA_ARGS__)
+#endif
+
 bool errno_has(asciichat_error_context_t *context);
 bool errno_has_thread_error(uint64_t thread_id, asciichat_error_context_t *context);
 bool errno_has_code(asciichat_error_t code);

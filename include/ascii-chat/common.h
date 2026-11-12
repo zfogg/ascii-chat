@@ -261,6 +261,32 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @{
  */
 
+/* MSVC has no GNU statement expressions, so keep the same checked allocation
+ * contract through small helper functions. */
+#ifdef _MSC_VER
+static inline void *asciichat_safe_malloc(size_t size) {
+  void *ptr = ALLOC_MALLOC(size);
+  if (!ptr) {
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
+  }
+  return ptr;
+}
+static inline void *asciichat_safe_calloc(size_t count, size_t size) {
+  void *ptr = ALLOC_CALLOC(count, size);
+  if (!ptr) {
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", count, size);
+  }
+  return ptr;
+}
+static inline void *asciichat_safe_realloc(void *old_ptr, size_t size) {
+  void *ptr = ALLOC_REALLOC(old_ptr, size);
+  if (!ptr) {
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
+  }
+  return ptr;
+}
+#endif
+
 /* Safe memory allocation with error checking - returns allocated pointer */
 #define SAFE_MALLOC(size, cast)                                                                                        \
   ({                                                                                                                   \
@@ -290,6 +316,15 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     }                                                                                                                  \
     (cast)(tmp_ptr);                                                                                                   \
   })
+
+#ifdef _MSC_VER
+#undef SAFE_MALLOC
+#undef SAFE_CALLOC
+#undef SAFE_REALLOC
+#define SAFE_MALLOC(size, cast) ((cast)asciichat_safe_malloc((size_t)(size)))
+#define SAFE_CALLOC(count, size, cast) ((cast)asciichat_safe_calloc((size_t)(count), (size_t)(size)))
+#define SAFE_REALLOC(ptr, size, cast) ((cast)asciichat_safe_realloc((ptr), (size_t)(size)))
+#endif
 
 /* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
