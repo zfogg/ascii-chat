@@ -171,8 +171,7 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
   }
 
   // ===== RENDER MODE CONTROL =====
-  case KEY_R:
-  case 'R': {
+  case 'r': {
     int current_mode = (int)GET_OPTION(render_mode);
     int next_mode = next_render_mode(current_mode);
     options_cycle("render_mode", 3);
@@ -181,6 +180,16 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     if (next_mode >= 0 && next_mode <= 2) {
       log_info("Render mode: %s", mode_names[next_mode]);
     }
+    return UI_ACTION_SETTINGS;
+  }
+
+  // ===== TEXT RENDERER CONTROL =====
+  case 'R': {
+    if (options_cycle("renderer", 2) != ASCIICHAT_OK) {
+      log_warn("Could not change text renderer");
+      return UI_ACTION_SETTINGS;
+    }
+    log_info("Text renderer: %s", GET_OPTION(renderer) == ASCII_RENDERER_GLYPH ? "Glyph" : "Luminance");
     return UI_ACTION_SETTINGS;
   }
 
