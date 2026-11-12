@@ -919,7 +919,7 @@ ascii-chat/
 │   ├── targets/                # Build target definitions and custom commands for code generation
 │   ├── tools/                  # CMake utility scripts for template substitution and binary embedding
 │   ├── platform/               # Platform-specific CMake configuration (Windows, macOS, Linux)
-│   ├── compiler/               # Compiler detection and flag configuration for Clang
+│   ├── compilers/              # Compiler-family selection and toolchain configuration
 │   ├── toolchains/             # CMake toolchain files for cross-compilation and build environments
 │   ├── init/                   # CMake initialization and project setup helpers
 │   ├── install/                # Installation configuration and packaging rules
