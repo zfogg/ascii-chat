@@ -22,11 +22,12 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
 set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
+set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 2f176043d7655e5c5e2a1fe44dfb39411c0bcb48
+    GIT_TAG e63795c
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
-    BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
+    BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
 target_include_directories(asciichat-project-includes INTERFACE
@@ -78,4 +79,5 @@ endif()
 
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
+unset(_ascii_chat_libplatform_build)
 unset(_ascii_chat_source_root)

@@ -1191,12 +1191,12 @@ static void *presentation_main(void *unused) {
           .screen = active,
           .minimum = errors && active != UI_SCREEN_HELP ? (terminal_size_t){1, 1} : screen->minimum,
           .dirty = screen->dirty || errors_changed || volume_changed || help_changed,
-          .refresh_ns = active == UI_SCREEN_PROMPT   ? 50 * NS_PER_MS_INT
-                        : active == UI_SCREEN_LOGS   ? 100 * NS_PER_MS_INT
-                        : active == UI_SCREEN_UPDATE ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
-                        : active == UI_SCREEN_RENDER_PROGRESS
-                            ? 125 * NS_PER_MS_INT
-                            : active == UI_SCREEN_NOTICE || active == UI_SCREEN_ERROR ? 0
+          .refresh_ns = active == UI_SCREEN_PROMPT            ? 50 * NS_PER_MS_INT
+                        : active == UI_SCREEN_LOGS            ? 100 * NS_PER_MS_INT
+                        : active == UI_SCREEN_UPDATE          ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
+                        : active == UI_SCREEN_RENDER_PROGRESS ? 125 * NS_PER_MS_INT
+                        : active == UI_SCREEN_NOTICE || active == UI_SCREEN_ERROR
+                            ? 0
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS && active != UI_SCREEN_HELP
                                    ? 16 * NS_PER_MS_INT
                                    : 0),

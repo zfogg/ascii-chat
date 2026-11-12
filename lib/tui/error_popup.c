@@ -265,7 +265,8 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   if (error->has_wsa_error)
     frame_buffer_printf(body, "Socket error: %d\n", error->wsa_error);
 #ifdef ASCIICHAT_DIAGNOSTIC_UI
-  sanitize(file, sizeof(file), error->file ? extract_project_relative_path(error->file, ASCIICHAT_OWNED_SOURCE_DIRS) : "?");
+  sanitize(file, sizeof(file),
+           error->file ? extract_project_relative_path(error->file, ASCIICHAT_OWNED_SOURCE_DIRS) : "?");
   sanitize(function, sizeof(function), error->function);
   safe_snprintf(line, sizeof(line), "%d", error->line);
   frame_buffer_printf(body, "%sSource: %s %s:%s%s\n", grey, colors ? colored_string(LOG_COLOR_DEBUG, file) : file,

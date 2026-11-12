@@ -202,7 +202,7 @@ static asciichat_error_t apply_env_string(void *field, const char *env_value, co
 }
 
 static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
-  if (!env_value)
+  if (!env_value || env_value[0] == '\0')
     return ASCIICHAT_OK; // Preserve the existing value when the environment is unset.
   char *endptr;
   errno = 0;
