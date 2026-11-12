@@ -31,13 +31,13 @@ asciichat_error_t completions_generate_powershell(FILE *output);
  * kept on the ascii-chat path until libflags grows a PowerShell backend.
  */
 static asciichat_error_t completions_generate_with_libflags(completion_format_t format, FILE *output) {
-  const options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
+  options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
   if (!config)
     return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
 
   flags_schema_builder_t *builder = options_config_build_flags_schema(config);
   if (!builder) {
-    options_config_destroy((options_config_t *)config);
+    options_config_destroy(config);
     return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
   }
 
@@ -46,7 +46,7 @@ static asciichat_error_t completions_generate_with_libflags(completion_format_t 
                                                                       : FLAGS_COMPLETION_ZSH;
   bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
   flags_schema_builder_destroy(builder);
-  options_config_destroy((options_config_t *)config);
+  options_config_destroy(config);
   return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
 }
 
