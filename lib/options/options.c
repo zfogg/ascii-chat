@@ -79,6 +79,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <libplatform/system.h>
 #include <libflags/flags.h>
+#include <libflags/commands.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/systemd.h>
 #include <libplatform/terminal.h>
@@ -309,99 +310,59 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     }
   }
 
-  log_dev("argv[0] '%s' is not a mode name, looking for first non-option argument", argv[0]);
-
-  // Find the first non-option argument (potential mode or session string)
-  // Also detect mirror-specific options to infer mode if no positional arg found
-  int first_positional_idx = -1;
-  bool has_mirror_specific_option = false;
-  for (int i = 1; i < argc; i++) {
-    // Skip options and their arguments
-    if (argv[i][0] == '-') {
-      bool takes_arg = false;
-      bool takes_optional_arg = false;
-
-      // Check if this is a binary-level option
-      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-        // For --option=value format, don't skip the next argument
-        // (the value is part of the current argument)
-        const char *equals = strchr(argv[i], '=');
-        if (!equals) {
-          // No equals sign, so value might be in next argument
-          if (takes_arg && i + 1 < argc) {
-            i++; // Skip required argument
-          } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
-            // For optional arguments, skip if it doesn't look like a mode/session string
-            const char *next_arg = argv[i + 1];
-            bool looks_like_mode_or_session = false;
-
-            // Check if it looks like a mode name
-            const char *const mode_names[] = {"server",     "client",     "mirror", "discovery-service",
-                                              "mcp-server", "api-server", NULL};
-            for (int j = 0; mode_names[j] != NULL; j++) {
-              if (strcmp(next_arg, mode_names[j]) == 0) {
-                looks_like_mode_or_session = true;
-                break;
-              }
-            }
-
-            // Check if it looks like a session string (word-word-word)
-            if (!looks_like_mode_or_session && is_session_string(next_arg)) {
-              looks_like_mode_or_session = true;
-            }
-
-            // If it doesn't look like a mode/session, it's the optional argument for this option
-            if (!looks_like_mode_or_session) {
-              i++; // Skip optional argument
-            }
-          }
-        }
-      } else {
-        // Extract option name (without leading dashes)
-        const char *opt_name = argv[i];
-        char short_name = '\0';
-
-        if (opt_name[0] == '-') {
-          if (opt_name[1] == '-') {
-            // Long option: skip "--"
-            opt_name = opt_name + 2;
-          } else {
-            // Short option: extract char and store
-            short_name = opt_name[1];
-            opt_name = opt_name + 1;
-          }
-        }
-
-        // Check if this option is mirror-specific by querying mirror config
-        if (is_mirror_mode_option(opt_name, short_name)) {
-          has_mirror_specific_option = true;
-          // Skip the argument if this option takes one
-          if (i + 1 < argc && argv[i + 1][0] != '-') {
-            i++; // Skip required argument
-          }
-        } else {
-          // Other mode-specific option - skip argument if it takes one
-          if (i + 1 < argc && argv[i + 1][0] != '-') {
-            i++; // Skip potential argument
-          }
-        }
-      }
-      continue;
-    }
-
-    // Found a positional argument
-    first_positional_idx = i;
-    break;
+  log_dev("argv[0] '%s' is not a mode name, resolving command and positionals with libflags", argv[0]);
+  flags_command_t *root = flags_command_create(NULL, "ascii-chat", "ascii-chat root command");
+  flags_command_t *server = flags_command_create(root, "server", "server mode");
+  flags_command_t *client = flags_command_create(root, "client", "client mode");
+  flags_command_t *mirror = flags_command_create(root, "mirror", "mirror mode");
+  flags_command_t *discovery_service = flags_command_create(root, "discovery-service", "discovery service mode");
+  flags_command_t *mcp_server = flags_command_create(root, "mcp-server", "MCP server mode");
+  flags_command_t *api_server = flags_command_create(root, "api-server", "API server mode");
+  static const flags_option_spec_t command_options[] = {
+      {.name = "log-file", .short_name = 'L', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
+      {.name = "log-level", .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
+      {.name = "config", .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
+      {.name = "color", .argument_requirement = FLAGS_ARGUMENT_OPTIONAL},
+      {.name = "config-create", .argument_requirement = FLAGS_ARGUMENT_OPTIONAL},
+      {.name = "file", .short_name = 'f', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
+      {.name = "url", .short_name = 'u', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
+  };
+  if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server) {
+    flags_command_destroy(root);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to construct command schema");
   }
+  for (size_t i = 0; i < sizeof(command_options) / sizeof(command_options[0]); ++i)
+    flags_command_add_option(root, &command_options[i]);
+  flags_command_set_implicit_for_option(root, mirror, "file");
+  flags_command_set_implicit_for_option(root, mirror, "url");
+  flags_command_resolution_t resolution;
+  if (!flags_resolve_command_ex(root, argc, argv, &resolution)) {
+    flags_command_destroy(root);
+    return SET_ERRNO(ERROR_USAGE, "Unable to resolve command");
+  }
+  flags_command_t *resolved_command = resolution.command;
+  int first_positional_idx = resolution.first_positional_index;
+  if (resolution.used_implicit_command) {
+    *out_mode = MODE_MIRROR;
+    flags_command_destroy(root);
+    return ASCIICHAT_OK;
+  }
+  if (resolved_command != root) {
+    const char *name = flags_command_name(resolved_command);
+    const asciichat_mode_t modes[] = {MODE_SERVER,     MODE_CLIENT,    MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+                                      MODE_MCP_SERVER, MODE_API_SERVER};
+    for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i)
+      if (strcmp(name, mode_names_check[i]) == 0) {
+        *out_mode = modes[i];
+        *out_mode_index = resolution.command_index;
+        flags_command_destroy(root);
+        return ASCIICHAT_OK;
+      }
+  }
+  flags_command_destroy(root);
 
   // If no positional argument found, check for mirror-specific options
   if (first_positional_idx == -1) {
-    if (has_mirror_specific_option) {
-      // User specified mirror-specific option (-f or -u) without explicit mode keyword
-      *out_mode = MODE_MIRROR;
-      *out_mode_index = -1;
-      return ASCIICHAT_OK;
-    }
     // Otherwise default to discovery mode (start new session)
     *out_mode = MODE_DISCOVERY;
     *out_mode_index = -1;
