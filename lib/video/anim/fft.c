@@ -13,6 +13,7 @@
 #include <fftw3.h>
 
 #define FFT_SIZE 1024
+#define FFT_MAX_COLUMNS MAX_TERMINAL_WIDTH
 #define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
 #define FFT_REFRESH_NS (NS_PER_SEC_INT / 60)
 
@@ -28,9 +29,10 @@ static struct {
 } fft_cache;
 
 static static_mutex_t fftw_mutex = STATIC_MUTEX_INIT;
-static double fftw_input[FFT_SIZE];
-static fftw_complex fftw_output[FFT_SIZE / 2 + 1];
+static double fftw_input[FFT_MAX_COLUMNS * FFT_SIZE];
+static fftw_complex fftw_output[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
 static fftw_plan fftw_forward;
+static unsigned int fftw_plan_columns;
 extern static_mutex_t audio_fftw_planner_lock;
 static float fft_window[FFT_SIZE];
 static bool fft_window_ready;
@@ -83,34 +85,45 @@ asciichat_error_t audio_visualization_fft_init(void) {
   (void)NAMED_REGISTER_MUTEX(&fftw_mutex, "audio.visualization.fftw", NULL);
   (void)NAMED_REGISTER_MUTEX(&audio_fftw_planner_lock, "audio.fftw_planner", NULL);
   static_mutex_lock(&fftw_mutex);
-  if (!fftw_forward) {
-    static_mutex_lock(&audio_fftw_planner_lock);
-    fftw_forward = fftw_plan_dft_r2c_1d(FFT_SIZE, fftw_input, fftw_output, FFTW_ESTIMATE);
-    static_mutex_unlock(&audio_fftw_planner_lock);
-  }
   if (!fft_window_ready) {
     for (size_t i = 0; i < FFT_SIZE; i++)
       fft_window[i] = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
     fft_window_ready = true;
   }
-  bool ready = fftw_forward != NULL;
   static_mutex_unlock(&fftw_mutex);
-  return ready ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot create FFTW visualization plan");
+  return ASCIICHAT_OK;
 }
 
-static bool visualization_fft(const float *input, float *power_spectrum) {
+static bool visualization_fft_batch(const float *const input, unsigned int columns, float *power_spectrum) {
   static_mutex_lock(&fftw_mutex);
+  if (!fftw_forward || fftw_plan_columns != columns) {
+    if (fftw_forward)
+      fftw_destroy_plan(fftw_forward);
+    int n[] = {FFT_SIZE};
+    int howmany = (int)columns;
+    int inembed[] = {FFT_SIZE};
+    int onembed[] = {FFT_SIZE / 2 + 1};
+    static_mutex_lock(&audio_fftw_planner_lock);
+    fftw_forward = fftw_plan_many_dft_r2c(1, n, howmany, fftw_input, inembed, 1, FFT_SIZE, fftw_output, onembed, 1,
+                                          FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
+    static_mutex_unlock(&audio_fftw_planner_lock);
+    fftw_plan_columns = fftw_forward ? columns : 0;
+  }
   if (!fftw_forward) {
     static_mutex_unlock(&fftw_mutex);
     return false;
   }
-  for (size_t i = 0; i < FFT_SIZE; i++)
+  for (size_t i = 0; i < (size_t)columns * FFT_SIZE; i++)
     fftw_input[i] = input[i];
   fftw_execute(fftw_forward);
   const double normalization = (double)FFT_SIZE * 0.25;
-  for (size_t i = 0; i <= FFT_SIZE / 2; i++)
-    power_spectrum[i] = (float)((fftw_output[i][0] * fftw_output[i][0] + fftw_output[i][1] * fftw_output[i][1]) /
-                                (normalization * normalization));
+  for (size_t column = 0; column < columns; column++)
+    for (size_t i = 0; i <= FFT_SIZE / 2; i++) {
+      size_t output = column * (FFT_SIZE / 2 + 1) + i;
+      power_spectrum[output] = (float)((fftw_output[output][0] * fftw_output[output][0] +
+                                        fftw_output[output][1] * fftw_output[output][1]) /
+                                       (normalization * normalization));
+    }
   static_mutex_unlock(&fftw_mutex);
   return true;
 }
@@ -164,7 +177,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
 
   /* Preserve the time-history layout: each column is a spectrum from a different
    * overlapping window in the captured audio history. */
-  float windowed[FFT_SIZE], power_spectrum[FFT_SIZE / 2 + 1];
+  float windowed[FFT_MAX_COLUMNS * FFT_SIZE], power_spectrum[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
   fft_scale_t scale = get_fft_scale();
   static const char levels[] = " .:-=+*#%@";
   const unsigned int spectrum_height = height;
@@ -190,18 +203,20 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     if (start + FFT_SIZE > VISUALIZATION_HISTORY)
       start = VISUALIZATION_HISTORY - FFT_SIZE;
     for (size_t i = 0; i < FFT_SIZE; i++)
-      windowed[i] = samples[start + i] * fft_window[i];
-    if (!visualization_fft(windowed, power_spectrum)) {
-      SAFE_FREE(samples);
-      SAFE_FREE(cells);
-      SAFE_FREE(colors);
-      return NULL;
-    }
+      windowed[(size_t)x * FFT_SIZE + i] = samples[start + i] * fft_window[i];
+  }
+  if (!visualization_fft_batch(windowed, width, power_spectrum)) {
+    SAFE_FREE(samples);
+    SAFE_FREE(cells);
+    SAFE_FREE(colors);
+    return NULL;
+  }
 
+  for (unsigned int x = 0; x < width; x++) {
     for (unsigned int row = 0; row < spectrum_height; row++) {
       float power = 0.0f;
       for (size_t bin = low_bins[row]; bin < high_bins[row]; bin++)
-        power += power_spectrum[bin];
+        power += power_spectrum[(size_t)x * (FFT_SIZE / 2 + 1) + bin];
       /* The default dB range leaves room for quiet speech while keeping loud music detailed. */
       float amplitude = band_counts[row] ? sqrtf(power / (float)band_counts[row]) : 0.0f;
       float intensity;
