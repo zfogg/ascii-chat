@@ -18,19 +18,10 @@ function(configure_gcc_pre_project)
         list(GET _pair 1 _value)
         set(${_name} "${_value}" CACHE FILEPATH "GCC tool" FORCE)
     endforeach()
-    # GCC remains the project compiler. Use the source-backed Python/libclang
-    # transformer for defer because the released native transformer currently
-    # assumes every selected compiler supports Clang's resource-dir query.
-    find_program(_gcc_python python3 python REQUIRED)
-    find_file(_gcc_libclang NAMES libclang.so libclang.so.1
-        PATHS /usr/lib /usr/lib64 /usr/lib/llvm/*/lib /usr/local/lib)
-    if(NOT _gcc_libclang)
-        message(FATAL_ERROR "GCC builds require libclang.so for defer source transformation")
-    endif()
-    set(DEFER_BACKEND PYTHON CACHE STRING "defer transformer backend" FORCE)
-    set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
-    set(DEFER_PYTHON_COMMAND "${_gcc_python}" CACHE FILEPATH "defer Python interpreter" FORCE)
-    set(DEFER_LIBCLANG_PATH "${_gcc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
+    # Run the native Linux defer transformer. This keeps source transformation
+    # on the GCC host instead of sending a Python/libclang worker through a
+    # Windows-mounted source tree.
+    set(DEFER_BACKEND NATIVE CACHE STRING "defer transformer backend" FORCE)
     message(STATUS "Using GCC toolchain: ${CMAKE_C_COMPILER}")
 endfunction()
 
