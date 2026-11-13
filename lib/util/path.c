@@ -434,6 +434,7 @@ bool path_is_absolute(const char *path) {
   return false;
 #else
   return path[0] == PATH_DELIM;
+#endif
 }
 
 bool path_is_within_base(const char *path, const char *base) {
