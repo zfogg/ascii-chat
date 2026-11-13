@@ -84,7 +84,7 @@ typedef struct {
 } websocket_connection_data_t;
 
 // Forward declaration for websocket_protocols (defined later in file)
-static struct lws_protocols websocket_protocols[];
+static struct lws_protocols websocket_protocols[3];
 
 static void websocket_configure_socket(struct lws *wsi) {
   // Optimize TCP for high-throughput large message transfer.
@@ -623,7 +623,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 /**
  * @brief Protocol definition for ACIP over WebSocket
  */
-static struct lws_protocols websocket_protocols[] = {
+static struct lws_protocols websocket_protocols[3] = {
     {
         "http",                              // Default HTTP protocol (for WebSocket upgrade)
         websocket_server_callback,           // Use same callback for all protocols
