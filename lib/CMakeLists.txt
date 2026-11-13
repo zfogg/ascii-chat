@@ -1575,7 +1575,7 @@ else()
     set(ASCIICHAT_SYMBOL_NM_EXECUTABLE "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
 endif()
 
-if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
+if(ASCIICHAT_SYMBOL_NM_EXECUTABLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
     # On Unix, check the shared object directly
     if(WIN32)
