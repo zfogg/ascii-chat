@@ -490,7 +490,6 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 
   return false;
 }
-#endif
 
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
@@ -509,10 +508,10 @@ bool path_looks_like_path(const char *value) {
   if (isalpha((unsigned char)value[0]) && value[1] == ':' && value[2] == PATH_DELIM) {
     return true;
   }
+#endif
 
   return false;
 }
-#endif
 
 static asciichat_error_t map_role_to_error(path_role_t role) {
   switch (role) {
