@@ -355,6 +355,8 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
+    ${LIB_ROOT}/ui/status.c
+    ${LIB_ROOT}/tui/update_banner.c
     ${LIB_ROOT}/tui/invitation.c
     ${LIB_ROOT}/tui/too_small.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/session_log_buffer.c
@@ -375,6 +377,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c
     ${LIB_ROOT}/stats/descriptors.c
+    ${LIB_ROOT}/stats/runtime.c
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
@@ -411,6 +414,7 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/traffic.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
+    ${LIB_ROOT}/network/tcp/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/security.c
 )
 
