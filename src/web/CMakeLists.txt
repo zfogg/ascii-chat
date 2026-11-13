@@ -81,6 +81,7 @@ include(${_cmake_dir}/deps/Utf8proc.cmake)
 set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
+set(LIBPLATFORM_ROOT ${DEPS_ROOT}/ascii-chat-deps/libplatform)
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -90,7 +91,8 @@ asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
     ${CMAKE_BINARY_DIR}/generated
-    ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
+    ${LIBPLATFORM_ROOT}/include
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
@@ -118,27 +120,25 @@ set(WEB_SRC_MIRROR
 
 # Platform abstraction layer for WASM
 set(PLATFORM_SRC
-    ${LIB_ROOT}/platform/wasm/init.c
-    ${LIB_ROOT}/platform/wasm/terminal.c
-    ${LIB_ROOT}/platform/wasm/thread.c
-    ${LIB_ROOT}/platform/wasm/filesystem.c
-    ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
-    ${LIB_ROOT}/platform/wasm/time.c
-    ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/process_title.c
-    ${LIB_ROOT}/platform/filesystem.c
-    ${LIB_ROOT}/platform/wasm/stubs/util.c
-    ${LIB_ROOT}/platform/wasm/stubs/actions.c
-    ${LIB_ROOT}/platform/wasm/stubs/manpage.c
-    ${LIB_ROOT}/platform/wasm/stubs/video.c
-    ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
-    ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c
-    ${LIB_ROOT}/platform/wasm/stubs/audio.c
-    ${LIB_ROOT}/platform/wasm/stubs/network.c
-    ${LIB_ROOT}/platform/wasm/stubs/misc.c
-    ${LIB_ROOT}/platform/wasm/stubs/comprehensive.c
-    ${LIB_ROOT}/platform/wasm/ffmpeg_decoder.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/init.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/terminal.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/thread.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/filesystem.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/system.c        # Provides real platform_write() override for xterm.js
+    ${LIBPLATFORM_ROOT}/lib/wasm/time.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/string.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/util.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/actions.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/manpage.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/video.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/mode_defaults.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/backtrace.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/log.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/audio.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/network.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/misc.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/comprehensive.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/ffmpeg_decoder.c
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
 )
 
@@ -525,7 +525,7 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/opus.c
     ${LIB_ROOT}/ringbuffer.c
     ${LIB_ROOT}/util/aspect_ratio.c
-    ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
+    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
 )
 
 # Create WASM client module
