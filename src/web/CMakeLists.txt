@@ -74,6 +74,14 @@ include(${_cmake_dir}/deps/Libvterm.cmake)
 include(${_cmake_dir}/deps/FFTW.cmake)
 include(${_cmake_dir}/deps/Utf8proc.cmake)
 
+if(NOT TARGET ascii-chat-utf8proc)
+    add_library(ascii-chat-utf8proc STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/ascii-chat-deps/utf8proc/utf8proc.c)
+    target_include_directories(ascii-chat-utf8proc PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/ascii-chat-deps/utf8proc)
+    set(UTF8PROC_LIBRARIES ascii-chat-utf8proc)
+endif()
+
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
 

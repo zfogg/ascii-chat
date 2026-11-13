@@ -19,7 +19,7 @@ static emscripten::val frame_value(const asciichat_error_context_t &frame) {
   emscripten::val result = emscripten::val::object();
   result.set("code", static_cast<int>(frame.code));
   result.set("message", std::string(frame.context_message));
-  result.set("file", std::string(frame.file ? extract_project_relative_path(frame.file) : ""));
+  result.set("file", std::string(frame.file ? extract_project_relative_path(frame.file, ASCIICHAT_OWNED_SOURCE_DIRS) : ""));
 #ifdef NDEBUG
   result.set("fullFile", std::string());
 #else
