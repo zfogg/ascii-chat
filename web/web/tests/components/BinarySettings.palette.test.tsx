@@ -104,11 +104,11 @@ test.each([
   const select = screen.getByLabelText(
     "Text Art Render Algorithm",
   ) as HTMLSelectElement;
-  expect(select.value).toBe("luminance");
-  fireEvent.change(select, { target: { value: "glyph" } });
+  expect(select.value).toBe("glyph");
+  fireEvent.change(select, { target: { value: "luminance" } });
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
-    renderer: "glyph",
+    renderer: "luminance",
   });
   expect(
     select.compareDocumentPosition(screen.getByText("Palette")) &
@@ -156,7 +156,8 @@ test.each([
   fireEvent.click(screen.getByRole("checkbox", { name: "Reduce flicker" }));
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
-    stabilize: true,
+    stabilize: false,
+    stabilizeExplicit: true,
   });
 });
 

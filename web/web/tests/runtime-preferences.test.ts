@@ -216,7 +216,11 @@ describe("browser preference transactions", () => {
   });
   it("submits stabilization to the engine", () => {
     const c = createEngine();
-    applyMirrorWasmSettings({ ...DEFAULT_SETTINGS, stabilize: true });
+    applyMirrorWasmSettings({
+      ...DEFAULT_SETTINGS,
+      stabilize: true,
+      stabilizeExplicit: true,
+    });
     expect(c.patches[0]).toMatchObject({ stabilize: true });
   });
   it("submits renderer and palette selection to the engine", () => {
