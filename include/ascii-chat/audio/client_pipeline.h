@@ -111,33 +111,33 @@ typedef struct {
  * @brief Component enable/disable flags
  * @brief Default flags with all processing enabled
  */
-#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                \
-  ((client_audio_pipeline_flags_t){                                                                                    \
-      .echo_cancel = true,                                                                                             \
-      .noise_suppress = true,                                                                                          \
-      .agc = true,                                                                                                     \
-      .vad = true,                                                                                                     \
-      .jitter_buffer = true,                                                                                           \
-      .compressor = true,                                                                                              \
-      .noise_gate = true,                                                                                              \
-      .highpass = true,                                                                                                \
-      .lowpass = true,                                                                                                 \
+#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                                                                                                \
+  ((client_audio_pipeline_flags_t){                                                                                                                                                                    \
+      .echo_cancel = true,                                                                                                                                                                             \
+      .noise_suppress = true,                                                                                                                                                                          \
+      .agc = true,                                                                                                                                                                                     \
+      .vad = true,                                                                                                                                                                                     \
+      .jitter_buffer = true,                                                                                                                                                                           \
+      .compressor = true,                                                                                                                                                                              \
+      .noise_gate = true,                                                                                                                                                                              \
+      .highpass = true,                                                                                                                                                                                \
+      .lowpass = true,                                                                                                                                                                                 \
   })
 
 /**
  * @brief Minimal flags for testing (only codec, no processing)
  */
-#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL                                                                            \
-  ((client_audio_pipeline_flags_t){                                                                                    \
-      .echo_cancel = false,                                                                                            \
-      .noise_suppress = false,                                                                                         \
-      .agc = false,                                                                                                    \
-      .vad = false,                                                                                                    \
-      .jitter_buffer = false,                                                                                          \
-      .compressor = false,                                                                                             \
-      .noise_gate = false,                                                                                             \
-      .highpass = false,                                                                                               \
-      .lowpass = false,                                                                                                \
+#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL                                                                                                                                                            \
+  ((client_audio_pipeline_flags_t){                                                                                                                                                                    \
+      .echo_cancel = false,                                                                                                                                                                            \
+      .noise_suppress = false,                                                                                                                                                                         \
+      .agc = false,                                                                                                                                                                                    \
+      .vad = false,                                                                                                                                                                                    \
+      .jitter_buffer = false,                                                                                                                                                                          \
+      .compressor = false,                                                                                                                                                                             \
+      .noise_gate = false,                                                                                                                                                                             \
+      .highpass = false,                                                                                                                                                                               \
+      .lowpass = false,                                                                                                                                                                                \
   })
 
 /**
@@ -320,8 +320,7 @@ client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipel
  * 8. Compressor
  * 9. Opus encode
  */
-int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *input, int num_samples,
-                                  uint8_t *opus_out, int opus_out_size);
+int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *input, int num_samples, uint8_t *opus_out, int opus_out_size);
 
 /** @} */
 
@@ -348,8 +347,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
  * Note: Output should be fed to speakers AND to echo reference
  * via client_audio_pipeline_feed_echo_ref().
  */
-int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint8_t *opus_in, int opus_len,
-                                   float *output, int max_samples);
+int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint8_t *opus_in, int opus_len, float *output, int max_samples);
 
 /**
  * @brief Get audio frame from jitter buffer for playback callback
@@ -389,9 +387,7 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
  *
  * REAL-TIME SAFE: No mutexes, no allocations, no blocking.
  */
-void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, const float *render_samples,
-                                          int render_count, const float *capture_samples, int capture_count,
-                                          float *processed_output);
+void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, const float *render_samples, int render_count, const float *capture_samples, int capture_count, float *processed_output);
 
 /** @} */
 

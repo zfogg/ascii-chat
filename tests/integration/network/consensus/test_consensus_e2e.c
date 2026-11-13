@@ -145,14 +145,12 @@ static void start_server(void) {
     // Debug: write to file before attempting exec (pipes might not work if exec fails immediately)
     FILE *debug_file = fopen("/tmp/test_server_exec.log", "a");
     if (debug_file) {
-      fprintf(debug_file, "[SERVER_EXEC] CWD=%s, Binary=%s, exists=%s\n", cwd, binary_path,
-              access(binary_path, X_OK) == 0 ? "YES" : "NO");
+      fprintf(debug_file, "[SERVER_EXEC] CWD=%s, Binary=%s, exists=%s\n", cwd, binary_path, access(binary_path, X_OK) == 0 ? "YES" : "NO");
       fflush(debug_file);
       fclose(debug_file);
     }
 
-    execl(binary_path, "ascii-chat", "--log-level", "debug", "server", "--port", port_str, "--max-clients", "4",
-          "--status-screen=false", "--no-encrypt", (char *)NULL);
+    execl(binary_path, "ascii-chat", "--log-level", "debug", "server", "--port", port_str, "--max-clients", "4", "--status-screen=false", "--no-encrypt", (char *)NULL);
 
     // If exec fails, write error to file and stderr
     int save_errno = errno;
@@ -220,14 +218,12 @@ static void start_client(int client_num) {
     // Debug: write to file before attempting exec
     FILE *debug_file = fopen("/tmp/test_client_exec.log", "a");
     if (debug_file) {
-      fprintf(debug_file, "[CLIENT_EXEC] CWD=%s, Binary=%s, exists=%s\n", cwd, binary_path,
-              access(binary_path, X_OK) == 0 ? "YES" : "NO");
+      fprintf(debug_file, "[CLIENT_EXEC] CWD=%s, Binary=%s, exists=%s\n", cwd, binary_path, access(binary_path, X_OK) == 0 ? "YES" : "NO");
       fflush(debug_file);
       fclose(debug_file);
     }
 
-    execl(binary_path, "ascii-chat", "--log-level", "debug", "client", addr_str, "--snapshot", "--snapshot-delay", "2",
-          "--status-screen=false", "--no-encrypt", (char *)NULL);
+    execl(binary_path, "ascii-chat", "--log-level", "debug", "client", addr_str, "--snapshot", "--snapshot-delay", "2", "--status-screen=false", "--no-encrypt", (char *)NULL);
 
     // If exec fails
     int save_errno = errno;
@@ -366,18 +362,15 @@ Test(consensus_e2e, consensus_ring_formation) {
 
   // Read all output
   for (int i = 0; i < 2; i++) {
-    read_from_pipe(client_procs[i].stdout_pipe[0], client_procs[i].stdout_buf, &client_procs[i].stdout_len,
-                   LOG_BUFFER_SIZE);
-    read_from_pipe(client_procs[i].stderr_pipe[0], client_procs[i].stderr_buf, &client_procs[i].stderr_len,
-                   LOG_BUFFER_SIZE);
+    read_from_pipe(client_procs[i].stdout_pipe[0], client_procs[i].stdout_buf, &client_procs[i].stdout_len, LOG_BUFFER_SIZE);
+    read_from_pipe(client_procs[i].stderr_pipe[0], client_procs[i].stderr_buf, &client_procs[i].stderr_len, LOG_BUFFER_SIZE);
   }
 
   read_from_pipe(server_proc.stdout_pipe[0], server_proc.stdout_buf, &server_proc.stdout_len, LOG_BUFFER_SIZE);
   read_from_pipe(server_proc.stderr_pipe[0], server_proc.stderr_buf, &server_proc.stderr_len, LOG_BUFFER_SIZE);
 
   // Verify server received connections
-  cr_assert(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0,
-            "Server should have output from client connections");
+  cr_assert(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0, "Server should have output from client connections");
 
   cleanup_processes();
 }
@@ -399,10 +392,8 @@ Test(consensus_e2e, consensus_protocol_execution) {
 
   // Collect all output
   for (int i = 0; i < 2; i++) {
-    read_from_pipe(client_procs[i].stdout_pipe[0], client_procs[i].stdout_buf, &client_procs[i].stdout_len,
-                   LOG_BUFFER_SIZE);
-    read_from_pipe(client_procs[i].stderr_pipe[0], client_procs[i].stderr_buf, &client_procs[i].stderr_len,
-                   LOG_BUFFER_SIZE);
+    read_from_pipe(client_procs[i].stdout_pipe[0], client_procs[i].stdout_buf, &client_procs[i].stdout_len, LOG_BUFFER_SIZE);
+    read_from_pipe(client_procs[i].stderr_pipe[0], client_procs[i].stderr_buf, &client_procs[i].stderr_len, LOG_BUFFER_SIZE);
   }
 
   read_from_pipe(server_proc.stdout_pipe[0], server_proc.stdout_buf, &server_proc.stdout_len, LOG_BUFFER_SIZE);

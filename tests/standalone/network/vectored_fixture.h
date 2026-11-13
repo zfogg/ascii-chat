@@ -26,10 +26,10 @@
 #include <math.h>
 
 #ifndef CHECK
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
   } while (0)
 #endif
 #define BUDGET (10 * NS_PER_SEC_INT)
@@ -60,14 +60,12 @@ static inline void crypto_pair(crypto_context_t *a, crypto_context_t *b) {
 // These cases exercise complete packet writes and encryption, independent of
 // latest-frame admission. The original owner retains its idle outbound worker;
 // this synchronous view borrows the same backend without enqueueing media.
-static inline asciichat_error_t send_wire_vectors(acip_transport_t *transport, packet_type_t type,
-                                                  const socket_buffer_t *payload, size_t count, uint32_t client_id) {
+static inline asciichat_error_t send_wire_vectors(acip_transport_t *transport, packet_type_t type, const socket_buffer_t *payload, size_t count, uint32_t client_id) {
   acip_transport_t wire = *transport;
   wire.outbound = NULL;
   return packet_send_via_transportv(&wire, type, payload, count, client_id);
 }
-static inline asciichat_error_t send_wire_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                                 size_t size, uint32_t client_id) {
+static inline asciichat_error_t send_wire_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t size, uint32_t client_id) {
   socket_buffer_t slice = {payload, size};
   return send_wire_vectors(transport, type, &slice, 1, client_id);
 }
@@ -114,8 +112,7 @@ static inline asciichat_error_t assembled_send(socket_t sock, crypto_context_t *
   packet_header_t header;
   CHECK(len >= sizeof(header));
   memcpy(&header, data, sizeof(header));
-  asciichat_error_t result = acip_security_seal(crypto, acip_packet_traffic_class(NET_TO_HOST_U16(header.type)),
-                                                ACIP_DELIVERY_RELIABLE, data, len, &wire, &wire_size);
+  asciichat_error_t result = acip_security_seal(crypto, acip_packet_traffic_class(NET_TO_HOST_U16(header.type)), ACIP_DELIVERY_RELIABLE, data, len, &wire, &wire_size);
   if (result == ASCIICHAT_OK) {
     socket_buffer_t slice = {wire, wire_size};
     result = socket_sendv_all(sock, &slice, 1, BUDGET);
@@ -171,15 +168,12 @@ static inline void roundtrip(size_t len, bool encrypted, size_t iterations, bool
   CHECK(thread_join(&thread, NULL) == 0);
   uint64_t elapsed = time_get_ns() - start;
   qsort(durations, iterations, sizeof(uint64_t), compare_u64);
-  log_warn("network-bench mode=%s encrypted=%d bytes=%zu iterations=%zu MiB/s=%.2f p50_us=%.1f p95_us=%.1f p99_us=%.1f",
-           baseline ? "assembled" : "vectored", encrypted, len, iterations,
-           (double)len * (double)iterations / ((double)elapsed / 1e9) / 1048576.0, durations[iterations / 2] / 1000.0,
-           durations[iterations * 95 / 100] / 1000.0, durations[iterations * 99 / 100] / 1000.0);
+  log_warn("network-bench mode=%s encrypted=%d bytes=%zu iterations=%zu MiB/s=%.2f p50_us=%.1f p95_us=%.1f p99_us=%.1f", baseline ? "assembled" : "vectored", encrypted, len, iterations,
+           (double)len * (double)iterations / ((double)elapsed / 1e9) / 1048576.0, durations[iterations / 2] / 1000.0, durations[iterations * 95 / 100] / 1000.0,
+           durations[iterations * 99 / 100] / 1000.0);
   socket_io_stats_t stats = socket_io_stats_get();
-  log_warn("network-io calls=%llu bytes=%llu zerocopy_calls=%llu completions=%llu copied=%llu",
-           (unsigned long long)stats.send_calls, (unsigned long long)stats.sent_bytes,
-           (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions,
-           (unsigned long long)stats.zerocopy_copied);
+  log_warn("network-io calls=%llu bytes=%llu zerocopy_calls=%llu completions=%llu copied=%llu", (unsigned long long)stats.send_calls, (unsigned long long)stats.sent_bytes,
+           (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions, (unsigned long long)stats.zerocopy_copied);
   buffer_release(durations);
   buffer_release(payload);
   acip_transport_destroy(sender);
@@ -270,8 +264,7 @@ static inline void full_duplex(void) {
   pair(sockets);
   crypto_context_t crypto[2];
   crypto_pair(&crypto[0], &crypto[1]);
-  acip_transport_t *transports[2] = {acip_tcp_transport_create("duplex-a", sockets[0], &crypto[0]),
-                                     acip_tcp_transport_create("duplex-b", sockets[1], &crypto[1])};
+  acip_transport_t *transports[2] = {acip_tcp_transport_create("duplex-a", sockets[0], &crypto[0]), acip_tcp_transport_create("duplex-b", sockets[1], &crypto[1])};
   size_t len = 128 * 1024;
   uint8_t *payload = buffer_alloc(NULL, len);
   CHECK(payload && transports[0] && transports[1]);
@@ -328,8 +321,7 @@ static inline void zerocopy_cancellation(void) {
   memset(owned.data, 0xa5, owned.capacity);
   bool supported, copied;
   uint64_t before = time_get_ns();
-  asciichat_error_t result =
-      socket_send_zerocopy(sockets[0], &owned, owned.capacity, 50 * NS_PER_MS_INT, &supported, &copied);
+  asciichat_error_t result = socket_send_zerocopy(sockets[0], &owned, owned.capacity, 50 * NS_PER_MS_INT, &supported, &copied);
   CHECK(time_get_ns() - before < 2 * NS_PER_SEC_INT);
   if (supported)
     CHECK(result == ERROR_NETWORK);
@@ -349,11 +341,7 @@ static inline void malformed_and_disconnect(void) {
     pair(sockets);
     acip_transport_t *receiver = acip_tcp_transport_create("invalid-receiver", sockets[1], NULL);
     receiver->receive_timeout_ns = 20 * NS_PER_MS_INT;
-    packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                              .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
-                              .length = HOST_TO_NET_U32(1),
-                              .crc32 = 0,
-                              .client_id = 0};
+    packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME), .length = HOST_TO_NET_U32(1), .crc32 = 0, .client_id = 0};
     if (kind == 0)
       header.length = HOST_TO_NET_U32((uint32_t)MAX_PACKET_SIZE + 1);
     if (kind == 1)
@@ -383,8 +371,7 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
   case PACKET_TYPE_AUDIO_BATCH: {
     // Golden network-order PCM32 for 0, +1, -1, and +0.5. This must also
     // agree with the receive-side PCM contract, rather than host float bytes.
-    const uint8_t pcm[] = {0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff,
-                           0x80, 0x00, 0x00, 0x01, 0x3f, 0xff, 0xff, 0xff};
+    const uint8_t pcm[] = {0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0x80, 0x00, 0x00, 0x01, 0x3f, 0xff, 0xff, 0xff};
     audio_batch_packet_t header;
     memcpy(&header, body, sizeof(header));
     CHECK(NET_TO_HOST_U32(header.batch_count) == 1 && NET_TO_HOST_U32(header.total_samples) == 4);
@@ -393,8 +380,7 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
     CHECK(memcmp(body + sizeof(header), pcm, sizeof(pcm)) == 0);
     float decoded[4];
     CHECK(audio_dequantize_samples(body + sizeof(header), 4, decoded) == ASCIICHAT_OK);
-    CHECK(decoded[0] == 0.0f && decoded[1] > 0.999f && decoded[2] < -0.999f && decoded[3] > 0.499f &&
-          decoded[3] < 0.501f);
+    CHECK(decoded[0] == 0.0f && decoded[1] > 0.999f && decoded[2] < -0.999f && decoded[3] > 0.499f && decoded[3] < 0.501f);
     break;
   }
   case PACKET_TYPE_AUDIO_OPUS_BATCH: {
@@ -422,8 +408,7 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
     CHECK(NET_TO_HOST_U32(header.original_size) == 4096);
     char decoded[4096];
     if (NET_TO_HOST_U32(header.flags) & FRAME_FLAG_IS_COMPRESSED) {
-      CHECK(decompress_data(body + sizeof(header), body_len - sizeof(header), decoded, sizeof(decoded)) ==
-            ASCIICHAT_OK);
+      CHECK(decompress_data(body + sizeof(header), body_len - sizeof(header), decoded, sizeof(decoded)) == ASCIICHAT_OK);
     } else {
       CHECK(body_len == sizeof(header) + sizeof(decoded));
       memcpy(decoded, body + sizeof(header), sizeof(decoded));
@@ -484,8 +469,7 @@ static inline void peer_exchange(socket_t sock, bool server) {
       receive_packets(&ctx);
   }
   socket_io_stats_t stats = socket_io_stats_get();
-  log_warn("Cross-OS encrypted exchange passed; zerocopy=%llu completions=%llu copied=%llu",
-           (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions,
+  log_warn("Cross-OS encrypted exchange passed; zerocopy=%llu completions=%llu copied=%llu", (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions,
            (unsigned long long)stats.zerocopy_copied);
   buffer_release(payload);
   acip_transport_destroy(transport);

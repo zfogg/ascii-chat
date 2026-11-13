@@ -143,8 +143,7 @@ ASCIICHAT_API int validate_opt_log_level(const char *value_str, char *error_msg,
  *
  * @ingroup options
  */
-ASCIICHAT_API int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t address_size,
-                                          bool is_client, char *error_msg, size_t error_msg_size);
+ASCIICHAT_API int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client, char *error_msg, size_t error_msg_size);
 
 /**
  * @brief Validate non-negative float value

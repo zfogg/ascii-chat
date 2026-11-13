@@ -48,8 +48,5 @@ bool RendererSessionBinding::active_ = false;
 
 EMSCRIPTEN_BINDINGS(ascii_chat_renderer_module) {
   emscripten::function("rendererApiVersion", +[]() { return 1; });
-  emscripten::class_<RendererSessionBinding>("RendererSessionBinding")
-      .constructor<>()
-      .function("valid", &RendererSessionBinding::valid)
-      .function("error", &RendererSessionBinding::error);
+  emscripten::class_<RendererSessionBinding>("RendererSessionBinding").constructor<>().function("valid", &RendererSessionBinding::valid).function("error", &RendererSessionBinding::error);
 }

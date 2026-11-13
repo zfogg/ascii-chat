@@ -139,8 +139,7 @@ void asciichat_instr_runtime_global_destroy(void);
  * @note Thread-safe: uses per-thread runtime context
  * @note Reentrant-safe: nested calls are detected and skipped
  */
-void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
-                              const char *snippet, uint8_t is_macro_expansion);
+void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet, uint8_t is_macro_expansion);
 
 /**
  * @brief Check if coverage logging is enabled

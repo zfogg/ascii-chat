@@ -179,13 +179,7 @@ Test(ui_components, invalid_widget_arguments_set_context) {
 Test(ui_components, help_measure_includes_settings_and_popup_chrome) {
   const ui_help_entry_t entries[] = {{"Ctrl-U / Left", "Older logs"}, {"0", "Sync primitives"}};
   const char *settings[] = {"Current Settings:", "Volume : 100%", "Audio : enabled"};
-  ui_help_menu_t m = {.title = "Help",
-                      .entries = entries,
-                      .count = 2,
-                      .settings = settings,
-                      .settings_count = 3,
-                      .footer = "? closes",
-                      .top_margin = 5};
+  ui_help_menu_t m = {.title = "Help", .entries = entries, .count = 2, .settings = settings, .settings_count = 3, .footer = "? closes", .top_margin = 5};
   terminal_size_t size = ui_help_menu_measure(&m);
   cr_assert_geq(size.cols, 40);
   cr_assert_eq(size.rows, 16);

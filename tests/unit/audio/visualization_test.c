@@ -94,10 +94,8 @@ Test(audio_visualization, waveform_and_fft_render_bounded_plain_and_colored_fram
       options_t options = *options_get();
       options.render_mode = modes[i];
       cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-      char *wave =
-          audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
-      char *fft =
-          audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
+      char *wave = audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
+      char *fft = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
       cr_assert_not_null(wave);
       cr_assert_not_null(fft);
       cr_assert_gt(strlen(wave), 0);

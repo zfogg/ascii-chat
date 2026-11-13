@@ -9,10 +9,10 @@
 #include <ascii-chat/options/rcu.h>
 #include <libplatform/system.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
   } while (0)
 
 static void render(terminal_size_t size, const void *snapshot) {
@@ -29,8 +29,7 @@ static void await_dimensions(int width, int height) {
 }
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
-  HANDLE buffer = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                                            CONSOLE_TEXTMODE_BUFFER, NULL);
+  HANDLE buffer = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
   CHECK(buffer != INVALID_HANDLE_VALUE);
   int fd = _open_osfhandle((intptr_t)buffer, _O_RDWR);
   CHECK(fd >= 0);
@@ -58,8 +57,7 @@ int main(void) {
   CHECK(options_state_init() == ASCIICHAT_OK);
   CHECK(options_set_bool("auto_width", true) == ASCIICHAT_OK);
   CHECK(options_set_bool("auto_height", true) == ASCIICHAT_OK);
-  CHECK(ui_controller_submit(UI_SCREEN_MEDIA, fd, (terminal_size_t){.cols = 1, .rows = 1}, render, "frame", 6) ==
-        ASCIICHAT_OK);
+  CHECK(ui_controller_submit(UI_SCREEN_MEDIA, fd, (terminal_size_t){.cols = 1, .rows = 1}, render, "frame", 6) == ASCIICHAT_OK);
   await_dimensions(50, 20);
   CHECK(SetConsoleWindowInfo(buffer, TRUE, &first));
   await_dimensions(40, 15);

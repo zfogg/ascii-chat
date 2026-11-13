@@ -208,8 +208,8 @@ typedef struct __attribute__((packed)) {
 
   uint8_t has_password;                           ///< 0 = no password, 1 = password protected
   uint8_t password_hash[ACIP_PASSWORD_HASH_SIZE]; ///< Argon2id hash (only if has_password == 1)
-  uint8_t expose_ip_publicly; ///< 0 = require verification, 1 = allow public IP disclosure (explicit --acds-expose-ip
-                              ///< opt-in)
+  uint8_t expose_ip_publicly;                     ///< 0 = require verification, 1 = allow public IP disclosure (explicit --acds-expose-ip
+                                                  ///< opt-in)
 
   uint8_t reserved_string_len; ///< 0 = auto-generate, >0 = use provided string
   // char  reserved_string[];        ///< Variable length, follows if len > 0

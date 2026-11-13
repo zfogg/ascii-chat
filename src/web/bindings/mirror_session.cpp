@@ -17,8 +17,7 @@ static int init_mirror(OptionsPatch options) {
     asciichat_error_context_t context = {};
     bool has_context = HAS_ERRNO(&context);
     mirror_cleanup();
-    return SET_ERRNO(static_cast<asciichat_error_t>(result), "%s",
-                     has_context ? context.context_message : "Invalid initial mirror options");
+    return SET_ERRNO(static_cast<asciichat_error_t>(result), "%s", has_context ? context.context_message : "Invalid initial mirror options");
   }
   return 0;
 }

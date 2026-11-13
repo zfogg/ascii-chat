@@ -58,26 +58,24 @@ flags_schema_builder_t *options_config_build_flags_schema(const options_config_t
     return NULL;
   for (size_t i = 0; i < config->num_descriptors; ++i) {
     const option_descriptor_t *source = &config->descriptors[i];
-    flags_option_spec_t target = {
-        .name = source->long_name,
-        .metavar = source->arg_placeholder,
-        .description = source->help_text,
-        .environment_name = source->env_var_name,
-        .short_name = source->short_name,
-        .type = option_type_to_flags_type(source->type),
-        .behavior = source->type == OPTION_TYPE_ACTION ? FLAGS_BEHAVIOR_ACTION : FLAGS_BEHAVIOR_VALUE,
-        .argument_requirement = source->type == OPTION_TYPE_BOOL && !source->optional_arg
-                                    ? FLAGS_ARGUMENT_NONE
-                                    : (source->optional_arg ? FLAGS_ARGUMENT_OPTIONAL : FLAGS_ARGUMENT_REQUIRED),
-        .repeatable = false,
-        .secret = source->long_name && (strstr(source->long_name, "password") || strstr(source->long_name, "key")),
-        .storage_offset = source->offset,
-        .storage_size = source->type == OPTION_TYPE_BOOL     ? sizeof(bool)
-                        : source->type == OPTION_TYPE_INT    ? sizeof(int)
-                        : source->type == OPTION_TYPE_DOUBLE ? sizeof(double)
-                                                             : sizeof(char *),
-        .default_value = source->default_value,
-        .dynamic_string = source->owns_memory};
+    flags_option_spec_t target = {.name = source->long_name,
+                                  .metavar = source->arg_placeholder,
+                                  .description = source->help_text,
+                                  .environment_name = source->env_var_name,
+                                  .short_name = source->short_name,
+                                  .type = option_type_to_flags_type(source->type),
+                                  .behavior = source->type == OPTION_TYPE_ACTION ? FLAGS_BEHAVIOR_ACTION : FLAGS_BEHAVIOR_VALUE,
+                                  .argument_requirement =
+                                      source->type == OPTION_TYPE_BOOL && !source->optional_arg ? FLAGS_ARGUMENT_NONE : (source->optional_arg ? FLAGS_ARGUMENT_OPTIONAL : FLAGS_ARGUMENT_REQUIRED),
+                                  .repeatable = false,
+                                  .secret = source->long_name && (strstr(source->long_name, "password") || strstr(source->long_name, "key")),
+                                  .storage_offset = source->offset,
+                                  .storage_size = source->type == OPTION_TYPE_BOOL     ? sizeof(bool)
+                                                  : source->type == OPTION_TYPE_INT    ? sizeof(int)
+                                                  : source->type == OPTION_TYPE_DOUBLE ? sizeof(double)
+                                                                                       : sizeof(char *),
+                                  .default_value = source->default_value,
+                                  .dynamic_string = source->owns_memory};
     if (source->metadata.enum_values) {
       size_t count = 0;
       while (source->metadata.enum_values[count])
@@ -1476,8 +1474,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     const char *env_value = NULL;
     char derived_env_name[256];
     const char *env_name = desc->env_var_name;
-    if (!env_name && desc->long_name &&
-        flags_derive_environment_name("ASCII_CHAT_", desc->long_name, derived_env_name, sizeof(derived_env_name)))
+    if (!env_name && desc->long_name && flags_derive_environment_name("ASCII_CHAT_", desc->long_name, derived_env_name, sizeof(derived_env_name)))
       env_name = derived_env_name;
     if (env_name)
       env_value = SAFE_GETENV(env_name);

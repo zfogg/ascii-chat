@@ -205,8 +205,7 @@ void thread_pool_destroy(thread_pool_t *pool);
  * @param work_arg Argument passed to work function
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
-                                         void *work_arg);
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
 
 /**
  * @brief Spawn a worker thread in the pool
@@ -235,8 +234,7 @@ asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, 
  * @param thread_name Thread name for debugging (max 63 chars, NULL=auto-generate)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
-                                    const char *thread_name);
+asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id, const char *thread_name);
 
 /**
  * @brief Stop all threads in the pool in stop_id order

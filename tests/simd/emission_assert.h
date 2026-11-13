@@ -5,12 +5,12 @@
 
 // Run the same cell interpreter without a platform-specific Criterion library.
 #define Test(suite, name, ...) static void suite##_##name(void)
-#define cr_assert(condition, ...)                                                                                      \
-  do {                                                                                                                 \
-    if (!(condition)) {                                                                                                \
-      fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition);                                                  \
-      abort();                                                                                                         \
-    }                                                                                                                  \
+#define cr_assert(condition, ...)                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    if (!(condition)) {                                                                                                                                                                                \
+      fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition);                                                                                                                                  \
+      abort();                                                                                                                                                                                         \
+    }                                                                                                                                                                                                  \
   } while (0)
 #define cr_assert_eq(a, b, ...) cr_assert((a) == (b))
 #define cr_assert_lt(a, b, ...) cr_assert((a) < (b))

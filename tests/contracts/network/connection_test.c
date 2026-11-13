@@ -33,8 +33,7 @@ static asciichat_error_t opened(network_connection_t *connection, void *arg) {
     network_connection_ready(connection);
   return ASCIICHAT_OK;
 }
-static asciichat_error_t packet(network_connection_t *connection, packet_type_t type, const void *data, size_t length,
-                                void *arg) {
+static asciichat_error_t packet(network_connection_t *connection, packet_type_t type, const void *data, size_t length, void *arg) {
   fixture_t *f = arg;
   cr_assert_worker((network_connection_context(connection)) == (f));
   cr_assert_worker(type == PACKET_TYPE_PING && length == sizeof(uint64_t));
@@ -133,11 +132,7 @@ static void rtc_opened(webrtc_data_channel_t *dc, void *arg) {
 static void rtc_pair(rtc_endpoint_t endpoints[2]) {
   for (int i = 0; i < 2; ++i) {
     endpoints[i].other = &endpoints[1 - i];
-    webrtc_config_t config = {.bind_address = "127.0.0.1",
-                              .on_local_description = rtc_description,
-                              .on_local_candidate = rtc_candidate,
-                              .on_datachannel_open = rtc_opened,
-                              .user_data = &endpoints[i]};
+    webrtc_config_t config = {.bind_address = "127.0.0.1", .on_local_description = rtc_description, .on_local_candidate = rtc_candidate, .on_datachannel_open = rtc_opened, .user_data = &endpoints[i]};
     cr_assert_eq(webrtc_create_peer_connection(&config, &endpoints[i].pc), ASCIICHAT_OK);
   }
   cr_assert_eq(webrtc_create_datachannel(endpoints[0].pc, "acip", &endpoints[0].dc), ASCIICHAT_OK);
@@ -179,8 +174,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   cr_assert_eq(platform_thread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
   platform_sleep_ms(50);
   char endpoint[128];
-  safe_snprintf(endpoint, sizeof(endpoint), "%s://%s:%u%s", websocket ? "ws" : "tcp",
-                backend >= 3 ? "ｌｏｃａｌｈｏｓｔ" : "127.0.0.1", websocket ? ws : tcp, backend == 3 ? "/日本語" : "");
+  safe_snprintf(endpoint, sizeof(endpoint), "%s://%s:%u%s", websocket ? "ws" : "tcp", backend >= 3 ? "ｌｏｃａｌｈｏｓｔ" : "127.0.0.1", websocket ? ws : tcp, backend == 3 ? "/日本語" : "");
   network_connection_t *client = NULL;
   socket_t fragmented = INVALID_SOCKET_VALUE;
   asciichat_error_t open_result = ASCIICHAT_OK;
@@ -195,9 +189,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   } else if (corrupt == 2) {
     fragmented = socket_create("fragmented_peer", AF_INET, SOCK_STREAM, 0);
     cr_assert_neq(fragmented, INVALID_SOCKET_VALUE);
-    struct sockaddr_in address = {.sin_family = AF_INET,
-                                  .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
-                                  .sin_port = HOST_TO_NET_U16(websocket ? ws : tcp)};
+    struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK), .sin_port = HOST_TO_NET_U16(websocket ? ws : tcp)};
     cr_assert_eq(socket_connect(fragmented, (struct sockaddr *)&address, sizeof(address)), 0);
     if (websocket)
       upgrade_websocket(fragmented, ws);
@@ -227,18 +219,14 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   if (!reject && !stall) {
     uint64_t payload = 42;
     if (corrupt) {
-      packet_header_t header = {.magic = HOST_TO_NET_U64(corrupt == 1 ? 0 : PACKET_MAGIC),
-                                .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
+      packet_header_t header = {.magic = HOST_TO_NET_U64(corrupt == 1 ? 0 : PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
       acip_transport_t *transport = network_connection_transport(client);
       if (rtc) {
-        cr_assert_eq(
-            webrtc_datachannel_send(endpoints[0].dc, (const uint8_t *)&header, corrupt == 2 ? 5 : sizeof(header)),
-            ASCIICHAT_OK);
+        cr_assert_eq(webrtc_datachannel_send(endpoints[0].dc, (const uint8_t *)&header, corrupt == 2 ? 5 : sizeof(header)), ASCIICHAT_OK);
       } else if (corrupt == 2) {
         uint8_t frame[11] = {0x82, 0x85, 0, 0, 0, 0};
         memcpy(frame + 6, &header, 5);
-        socket_buffer_t partial = {websocket ? (const void *)frame : (const void *)&header,
-                                   websocket ? sizeof(frame) : 5};
+        socket_buffer_t partial = {websocket ? (const void *)frame : (const void *)&header, websocket ? sizeof(frame) : 5};
         cr_assert_eq(socket_sendv_all(fragmented, &partial, 1, NS_PER_SEC_INT), ASCIICHAT_OK);
       } else {
         cr_assert_eq(acip_transport_send(transport, &header, corrupt == 2 ? 5 : sizeof(header)), ASCIICHAT_OK);
@@ -317,8 +305,7 @@ static bool cancel_connect(void *data) {
 
 static void establishment_controls(void) {
   cancellation_t cancel = {.cancel_after = 1};
-  network_connect_config_t config = {
-      .timeout_ms = 120, .should_exit_callback = cancel_connect, .callback_data = &cancel};
+  network_connect_config_t config = {.timeout_ms = 120, .should_exit_callback = cancel_connect, .callback_data = &cancel};
   network_connection_t *connection = NULL;
   cr_assert_neq(network_connection_open("cancelled", "tcp://127.0.0.1", 1, &config, &connection, NULL), ASCIICHAT_OK);
   cr_assert(cancel.calls == 1 && !connection);
@@ -406,12 +393,7 @@ Test(network_connections, establishment_controls) {
 Test(network_connections, tcp_packet_rejection_is_delivered_before_close) {
   fixture_t f = {.packet_rejection = ERROR_SESSION_FULL};
   uint16_t port = unused_port();
-  network_server_config_t config = {.port = port,
-                                    .ipv4_address = "127.0.0.1",
-                                    .bind_ipv4 = true,
-                                    .max_connections = 4,
-                                    .callbacks = {opened, packet, closing, closed},
-                                    .user_data = &f};
+  network_server_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .max_connections = 4, .callbacks = {opened, packet, closing, closed}, .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
   platform_thread_t thread;
@@ -536,15 +518,13 @@ Test(network_connections, websocket_concurrent_close) {
   ws->service_running = false;
   // Keep a replacement thread blocked: concurrent close calls must return
   // without trying to join this owner-managed service thread.
-  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture),
-               ASCIICHAT_OK);
+  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
   ws->service_running = true;
   platform_thread_t threads[8];
   concurrent_close_worker_t workers[8];
   for (size_t i = 0; i < 8; ++i) {
     workers[i] = (concurrent_close_worker_t){.fixture = &fixture, .index = i};
-    cr_assert_eq(platform_thread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
-                 ASCIICHAT_OK);
+    cr_assert_eq(platform_thread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]), ASCIICHAT_OK);
   }
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
   while (atomic_load_int(&fixture.returned) != 8 && time_get_ns() < deadline)

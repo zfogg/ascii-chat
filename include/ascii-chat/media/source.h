@@ -501,5 +501,4 @@ void media_source_set_exit_callback(media_source_t *source, bool (*should_exit_c
 bool media_source_uses_webcam(media_source_t *source);
 asciichat_error_t media_source_start_video(media_source_t *source);
 
-media_source_t *media_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *),
-                                                  void *data);
+media_source_t *media_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *), void *data);

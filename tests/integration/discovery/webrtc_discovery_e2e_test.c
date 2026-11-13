@@ -122,8 +122,7 @@ TestSuite(webrtc_discovery_e2e, .init = setup_webrtc_e2e_tests, .fini = teardown
 // Process Management Utilities
 // =============================================================================
 
-static pid_t spawn_process_with_log(const char *binary_path, char *const argv[], const char *name,
-                                    const char *log_path) {
+static pid_t spawn_process_with_log(const char *binary_path, char *const argv[], const char *name, const char *log_path) {
   pid_t pid = fork();
   if (pid == 0) {
     // Child: redirect output to log file
@@ -142,8 +141,7 @@ static pid_t spawn_process_with_log(const char *binary_path, char *const argv[],
   if (pid > 0 && process_count < MAX_PROCESSES) {
     tracked_processes[process_count].pid = pid;
     tracked_processes[process_count].name = name;
-    SAFE_STRNCPY(tracked_processes[process_count].log_path, log_path,
-                 sizeof(tracked_processes[process_count].log_path));
+    SAFE_STRNCPY(tracked_processes[process_count].log_path, log_path, sizeof(tracked_processes[process_count].log_path));
     tracked_processes[process_count].running = true;
     process_count++;
   }
@@ -218,8 +216,7 @@ static void terminate_process(pid_t pid) {
  * @param output_size Size of output buffer
  * @return true if pattern found, false if timeout or error
  */
-static bool wait_for_log_pattern(const char *log_path, const char *pattern, int timeout_ms, char *output,
-                                 size_t output_size) {
+static bool wait_for_log_pattern(const char *log_path, const char *pattern, int timeout_ms, char *output, size_t output_size) {
   int elapsed_ms = 0;
   FILE *log_file = NULL;
   char line[MAX_LOG_LINE_LENGTH];
@@ -289,8 +286,7 @@ static bool extract_session_string(const char *log_line, char *session_string, s
 
       // Copy until whitespace, quote, or end of line
       size_t j = 0;
-      while (j < size - 1 && *start && *start != ' ' && *start != '"' && *start != '\'' && *start != '\n' &&
-             *start != '\r') {
+      while (j < size - 1 && *start && *start != ' ' && *start != '"' && *start != '\'' && *start != '\n' && *start != '\r') {
         session_string[j++] = *start++;
       }
       session_string[j] = '\0';
@@ -379,8 +375,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
 
   // Wait for session string in host logs (server mode uses "Session String:")
   char session_line[MAX_LOG_LINE_LENGTH] = {0};
-  bool session_found =
-      wait_for_log_pattern(host_log, "Session String:", HOST_STARTUP_TIMEOUT_MS, session_line, sizeof(session_line));
+  bool session_found = wait_for_log_pattern(host_log, "Session String:", HOST_STARTUP_TIMEOUT_MS, session_line, sizeof(session_line));
   cr_assert(session_found, "Host failed to create session (log: %s)", host_log);
 
   // Extract session string
@@ -424,8 +419,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   // ============================================================
 
   // Look for WebRTC DataChannel establishment in logs
-  const char *webrtc_patterns[] = {"WebRTC DataChannel established", "WebRTC DataChannel successfully established",
-                                   NULL};
+  const char *webrtc_patterns[] = {"WebRTC DataChannel established", "WebRTC DataChannel successfully established", NULL};
 
   bool webrtc_connected = false;
   for (int i = 0; webrtc_patterns[i] != NULL && !webrtc_connected; i++) {

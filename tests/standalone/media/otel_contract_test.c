@@ -8,10 +8,10 @@
 #include "../../../lib/discovery/queries.h"
 
 #ifndef CHECK
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    if (!(value))                                                                                                                                                                                      \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                                                                                                     \
   } while (0)
 #endif
 
@@ -113,9 +113,7 @@ static void sqlite_prepare_contract(void) {
   gotel_host_t *h = start(1);
   sqlite3 *db = NULL;
   CHECK(sqlite3_open(":memory:", &db) == SQLITE_OK);
-  const gotel_query_t queries[] = {{"BoundValue", "SELECT ?"},
-                                   {"Malformed", "SELECT 'fixture-secret"},
-                                   {"LiteralValue", "SELECT 17, 'fixture-literal-secret'"}};
+  const gotel_query_t queries[] = {{"BoundValue", "SELECT ?"}, {"Malformed", "SELECT 'fixture-secret"}, {"LiteralValue", "SELECT 17, 'fixture-literal-secret'"}};
   ascii_otel_sqlite(db, queries, 3);
   sqlite3_stmt *statement = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, queries[0].sql, &statement) == SQLITE_OK);
@@ -226,8 +224,7 @@ static void catalog_contract(void) {
   int previous_limit = sqlite3_limit(db, SQLITE_LIMIT_LENGTH, 4096);
   sqlite3_stmt *oversized_stmt = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_UpdateHost].sql, &oversized_stmt) == SQLITE_OK);
-  CHECK(sqlite3_bind_text(oversized_stmt, sqlite3_bind_parameter_index(oversized_stmt, ":host_address"), oversized, -1,
-                          SQLITE_STATIC) == SQLITE_TOOBIG);
+  CHECK(sqlite3_bind_text(oversized_stmt, sqlite3_bind_parameter_index(oversized_stmt, ":host_address"), oversized, -1, SQLITE_STATIC) == SQLITE_TOOBIG);
   CHECK(sqlite3_finalize(oversized_stmt) == SQLITE_OK);
   CHECK(database_session_update_host(db, joined.session_id, joined.participant_id, oversized, 1234, 1) != ASCIICHAT_OK);
   sqlite3_limit(db, SQLITE_LIMIT_LENGTH, previous_limit);

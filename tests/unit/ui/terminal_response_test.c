@@ -129,8 +129,7 @@ static bool send_test_query(void) {
 
 Test(terminal_response, background_queries_refresh_and_preserve_shortcuts) {
   keyboard_stream_reset();
-  const char *replies[] = {"o\033]11;rgb:ffff/ffff/ffff\033\\q", "o\033]11;rgb:00/00/00\aq", "o\033]11;rgb:f/f/f\aq",
-                           "o\033]11;rgb:0000/0000/0000\aq"};
+  const char *replies[] = {"o\033]11;rgb:ffff/ffff/ffff\033\\q", "o\033]11;rgb:00/00/00\aq", "o\033]11;rgb:f/f/f\aq", "o\033]11;rgb:0000/0000/0000\aq"};
   for (unsigned i = 0; i < 4; ++i) {
     query_reply = replies[i];
     uint8_t r, g, b;

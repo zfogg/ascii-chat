@@ -96,18 +96,13 @@ Test(stereo, invalid_resampler_arguments_set_errno_without_mutating_state_or_out
     size_t frames;
     double input_rate, output_rate;
   } cases[] = {
-      {NULL, input, output, 2, 48000, 48000},  {&state, NULL, output, 2, 48000, 48000},
-      {&state, input, NULL, 2, 48000, 48000},  {&state, input, output, 0, 48000, 48000},
-      {&state, input, output, 2, NAN, 48000},  {&state, input, output, 2, INFINITY, 48000},
-      {&state, input, output, 2, 7999, 48000}, {&state, input, output, 2, 192001, 48000},
-      {&state, input, output, 2, 48000, NAN},  {&state, input, output, 2, 48000, INFINITY},
-      {&state, input, output, 2, 48000, 7999}, {&state, input, output, 2, 48000, 192001},
+      {NULL, input, output, 2, 48000, 48000}, {&state, NULL, output, 2, 48000, 48000},     {&state, input, NULL, 2, 48000, 48000},  {&state, input, output, 0, 48000, 48000},
+      {&state, input, output, 2, NAN, 48000}, {&state, input, output, 2, INFINITY, 48000}, {&state, input, output, 2, 7999, 48000}, {&state, input, output, 2, 192001, 48000},
+      {&state, input, output, 2, 48000, NAN}, {&state, input, output, 2, 48000, INFINITY}, {&state, input, output, 2, 48000, 7999}, {&state, input, output, 2, 48000, 192001},
   };
   for (size_t i = 0; i < ARRAY_SIZE(cases); i++) {
     CLEAR_ERRNO_ALL();
-    cr_assert_eq(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate,
-                                       cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate),
-                 0);
+    cr_assert_eq(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate, cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate), 0);
     asciichat_error_context_t error;
     cr_assert(HAS_ERRNO(&error), "Missing resampler error for case %zu", i);
     cr_assert_eq(error.code, ERROR_INVALID_PARAM);

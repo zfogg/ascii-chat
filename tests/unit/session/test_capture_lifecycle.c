@@ -90,8 +90,7 @@ Test(session_capture_lifecycle, transmission_workspace_reuses_storage_accepts_al
 Test(session_capture_lifecycle, microphone_fallback_borrows_context_and_preserves_exact_captured_samples) {
   audio_context_t microphone = {0};
   cr_assert_eq(audio_init(&microphone), ASCIICHAT_OK);
-  session_capture_config_t config = {
-      .type = MEDIA_SOURCE_TEST, .enable_audio = true, .audio_fallback_to_mic = true, .mic_audio_ctx = &microphone};
+  session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .enable_audio = true, .audio_fallback_to_mic = true, .mic_audio_ctx = &microphone};
   capture = session_mirror_capture_create(&config);
   cr_assert_not_null(capture);
   cr_assert(session_capture_has_audio(capture));
@@ -114,8 +113,7 @@ static bool cancel(void *context) {
 }
 Test(session_capture_lifecycle, cancelled_creation_and_empty_network_capture_do_not_open_local_sources) {
   unsigned calls = 0;
-  session_capture_config_t config = {
-      .type = MEDIA_SOURCE_TEST, .should_exit_callback = cancel, .callback_data = &calls};
+  session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .should_exit_callback = cancel, .callback_data = &calls};
   cr_assert_null(session_mirror_capture_create(&config));
   cr_assert_eq(calls, 1);
   capture = session_network_capture_create(0);
@@ -139,8 +137,7 @@ Test(session_capture_lifecycle, paused_file_redraw_retains_frame_without_countin
   cr_assert_not_null(file);
   const char header[] = "P6\n4 2\n255\n";
   cr_assert_eq(fwrite(header, 1, sizeof(header) - 1, file), sizeof(header) - 1);
-  const rgb_pixel_t pixels[8] = {{255, 0, 0}, {0, 255, 0},  {0, 0, 255},     {255, 255, 255},
-                                 {0, 0, 0},   {80, 80, 80}, {160, 160, 160}, {240, 240, 240}};
+  const rgb_pixel_t pixels[8] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}, {80, 80, 80}, {160, 160, 160}, {240, 240, 240}};
   cr_assert_eq(fwrite(pixels, sizeof(*pixels), 8, file), 8);
   cr_assert_eq(fclose(file), 0);
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = path, .target_fps = 60, .loop = true};

@@ -39,8 +39,7 @@ int main(void) {
     if (!capture.output)
       return 1;
     for (int i = 0; i < 1024; ++i) {
-      if (fwrite(block, 1, sizeof(block), stdout) != sizeof(block) ||
-          fwrite(block, 1, sizeof(block), stderr) != sizeof(block))
+      if (fwrite(block, 1, sizeof(block), stdout) != sizeof(block) || fwrite(block, 1, sizeof(block), stderr) != sizeof(block))
         return 2;
     }
     log_io_stop(capture, "backend");

@@ -94,8 +94,7 @@ static error_code_test_case_t error_code_cases[] = {
 };
 
 ParameterizedTestParameters(common, error_code_definitions) {
-  return cr_make_param_array(error_code_test_case_t, error_code_cases,
-                             sizeof(error_code_cases) / sizeof(error_code_cases[0]));
+  return cr_make_param_array(error_code_test_case_t, error_code_cases, sizeof(error_code_cases) / sizeof(error_code_cases[0]));
 }
 
 ParameterizedTest(error_code_test_case_t *tc, common, error_code_definitions) {
@@ -170,10 +169,8 @@ ParameterizedTest(min_max_test_case_t *tc, common, min_max_macros) {
   int min_result = MIN(tc->a, tc->b);
   int max_result = MAX(tc->a, tc->b);
 
-  cr_assert_eq(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b,
-               tc->expected_min);
-  cr_assert_eq(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b,
-               tc->expected_max);
+  cr_assert_eq(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_min);
+  cr_assert_eq(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_max);
 }
 
 Test(common, array_size_macro) {

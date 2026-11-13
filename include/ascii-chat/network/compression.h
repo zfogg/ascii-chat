@@ -93,8 +93,7 @@
  *
  * @warning Caller must buffer_release() the output buffer to avoid memory leaks.
  */
-asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size,
-                                int compression_level);
+asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level);
 
 /**
  * @brief Decompress data using zstd

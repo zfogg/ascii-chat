@@ -41,9 +41,7 @@ Test(subprocess_contract, executable_is_independent_of_display_name_and_exit_sta
   cr_assert_str_eq(output, "");
   cr_assert_eq(platform_execute_subprocess("/bin/sh", exit_args, NULL, 0, NULL, NULL), 23);
   const char *missing[] = {"missing", NULL};
-  cr_assert_eq(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output),
-                                           NULL, NULL),
-               127);
+  cr_assert_eq(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output), NULL, NULL), 127);
   cr_assert_str_eq(output, "");
 }
 Test(subprocess_contract, captured_output_has_exact_capacity_and_overflow_is_drained) {

@@ -287,13 +287,7 @@ typedef enum {
 } audio_source_t;
 
 /** Audio source policy for local capture and media playback. */
-typedef enum {
-  AUDIO_CAPTURE_SOURCE_AUTO = 0,
-  AUDIO_CAPTURE_SOURCE_MIC = 1,
-  AUDIO_CAPTURE_SOURCE_MEDIA = 2,
-  AUDIO_CAPTURE_SOURCE_BOTH = 3,
-  AUDIO_CAPTURE_SOURCE_REMOTE = 4
-} audio_capture_source_t;
+typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDIO_CAPTURE_SOURCE_MEDIA = 2, AUDIO_CAPTURE_SOURCE_BOTH = 3, AUDIO_CAPTURE_SOURCE_REMOTE = 4 } audio_capture_source_t;
 
 /**
  * @name Configuration Constants
@@ -370,14 +364,14 @@ typedef enum {
 #define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
 
 /** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                               \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
+#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                                                                                                               \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
   "%colored_message"
 
 /** @brief Default log format string - debug mode (verbose with thread name, file relative path, line, and function) */
-#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
-  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "             \
+#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                                                                                                 \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
+  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                                                                                             \
   "%colored_message"
 
 /** @brief Default log template string (selected based on build mode)
@@ -954,8 +948,7 @@ typedef enum {
  */
 #define OPTION_MODE_SERVER_LIKE (OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC)
 #define OPTION_MODE_CLIENT_LIKE (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
-#define OPTION_MODE_NETWORKED                                                                                          \
-  (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)
+#define OPTION_MODE_NETWORKED (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)
 
 /**
  * @brief Consolidated options structure
@@ -981,7 +974,7 @@ typedef struct options_state {
   // Mode Detection (auto-detected during options_init)
   // ============================================================================
   asciichat_mode_t detected_mode; ///< Mode detected from command-line arguments
-  int mode_arg_index; ///< Explicit mode token in original argv, or -1 for implicit discovery/session strings
+  int mode_arg_index;             ///< Explicit mode token in original argv, or -1 for implicit discovery/session strings
 
   // ============================================================================
   // Binary-Level Options (parsed first, before mode selection)
@@ -1023,8 +1016,8 @@ typedef struct options_state {
   int quic_port;                                     ///< QUIC UDP port, or zero to use the TCP server port.
   int quic_fallback_port;                            ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                   ///< Maximum concurrent clients (server only)
-  char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
-                                                   ///< + null)
+  char session_string[SESSION_STRING_BUFFER_SIZE];   ///< Session string for ACDS discovery (calculated max size: 38 chars
+                                                     ///< + null)
 
   // ============================================================================
   // Discovery Service Options (server only)
@@ -1040,11 +1033,11 @@ typedef struct options_state {
   int discovery_port;                               ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
                                                     ///< exclusive with discovery_port)
-  char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
-                                                 ///< HTTPS URL)
-  bool webrtc; ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
-  char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default:
-                                                   ///< ~/.ascii-chat/discovery.db)
+  char discovery_service_key[OPTIONS_BUFF_SIZE];    ///< discovery server public key for trust verification (SSH/GPG key or
+                                                    ///< HTTPS URL)
+  bool webrtc;                                      ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
+  char discovery_database_path[OPTIONS_BUFF_SIZE];  ///< discovery database file path (default:
+                                                    ///< ~/.ascii-chat/discovery.db)
 
   // ============================================================================
   // LAN Discovery Options
@@ -1075,35 +1068,35 @@ typedef struct options_state {
   // ============================================================================
   // Media File Streaming Options
   // ============================================================================
-  media_playlist_t media_playlist;    ///< Ordered CLI artifacts shared with live media input
-  char media_file[OPTIONS_BUFF_SIZE]; ///< Media file path or "-" for stdin
-  char media_url[OPTIONS_BUFF_SIZE];  ///< Network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over media_file
-  bool media_loop;                    ///< Loop media file playback
-  bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
-  double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
-  bool pause;                         ///< Start playback paused (toggle with spacebar)
+  media_playlist_t media_playlist;                         ///< Ordered CLI artifacts shared with live media input
+  char media_file[OPTIONS_BUFF_SIZE];                      ///< Media file path or "-" for stdin
+  char media_url[OPTIONS_BUFF_SIZE];                       ///< Network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over media_file
+  bool media_loop;                                         ///< Loop media file playback
+  bool media_from_stdin;                                   ///< Reading from stdin (detected from "--file -")
+  double media_seek_timestamp;                             ///< Seek to timestamp in seconds before playback
+  bool pause;                                              ///< Start playback paused (toggle with spacebar)
   char yt_dlp_options[OPTIONS_YT_DLP_OPTIONS_BUFFER_SIZE]; ///< Arbitrary yt-dlp options (e.g.,
                                                            ///< "--cookies-from-browser=chrome --embed-subs")
 
   // ============================================================================
   // Display Options
   // ============================================================================
-  int color;                        ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
-  terminal_color_mode_t color_mode; ///< Color mode (auto/none/16/256/truecolor)
-  color_filter_t color_filter;      ///< Monochromatic color filter (none/black/white/green/etc)
+  int color;                                                     ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
+  terminal_color_mode_t color_mode;                              ///< Color mode (auto/none/16/256/truecolor)
+  color_filter_t color_filter;                                   ///< Monochromatic color filter (none/black/white/green/etc)
   char color_scheme_name[OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE]; ///< Color scheme name (e.g., "pastel", "nord")
   terminal_render_mode_t render_mode;                            ///< Render mode (foreground/background/half-block)
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
-  int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                 ///< Target framerate (0 = auto, 1-144)
-  bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
-  bool face_follow;        ///< Automatically frame and follow the selected face
-  bool face_follow_debug;  ///< Developer diagnostic face outline
-  bool flip_x;             ///< Effective horizontal orientation
-  bool flip_x_explicit;    ///< User selected an orientation for this process lifetime
-  bool media_input;        ///< Active input is a file/URL rather than the webcam
-  bool flip_y;             ///< Flip video vertically (Y-axis)
+  int stats_interval;                                            ///< Periodic plain statistics on stdout; zero disables.
+  int fps;                                                       ///< Target framerate (0 = auto, 1-144)
+  bool fps_explicitly_set;                                       ///< True if FPS was explicitly configured by the user
+  bool face_follow;                                              ///< Automatically frame and follow the selected face
+  bool face_follow_debug;                                        ///< Developer diagnostic face outline
+  bool flip_x;                                                   ///< Effective horizontal orientation
+  bool flip_x_explicit;                                          ///< User selected an orientation for this process lifetime
+  bool media_input;                                              ///< Active input is a file/URL rather than the webcam
+  bool flip_y;                                                   ///< Flip video vertically (Y-axis)
 
   // ============================================================================
   // Audio Configuration
@@ -1187,9 +1180,8 @@ typedef struct options_state {
 
   // Multi-key support: When multiple --key flags are provided, all keys are stored here
   // encrypt_key is duplicated in identity_keys[0] for backward compatibility
-  char identity_keys[MAX_SESSION_KEYS]
-                    [OPTIONS_BUFF_SIZE]; ///< All identity keys (populated when --key is used multiple times)
-  size_t num_identity_keys;              ///< Number of identity keys loaded (0 means single-key mode using encrypt_key)
+  char identity_keys[MAX_SESSION_KEYS][OPTIONS_BUFF_SIZE]; ///< All identity keys (populated when --key is used multiple times)
+  size_t num_identity_keys;                                ///< Number of identity keys loaded (0 means single-key mode using encrypt_key)
 
   // ============================================================================
   // Identity Verification Options (ACDS + Crypto Handshake)
@@ -1211,8 +1203,8 @@ typedef struct options_state {
   bool webrtc_relay_only;                      ///< --webrtc-relay-only: Require TURN relay candidates
   bool webrtc_disable_turn;                    ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
   bool webrtc_skip_host;                       ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
-  int webrtc_ice_timeout_ms;     ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
-  int webrtc_reconnect_attempts; ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
+  int webrtc_ice_timeout_ms;                   ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
+  int webrtc_reconnect_attempts;               ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)
@@ -1334,14 +1326,14 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-#define GET_OPTION(field)                                                                                              \
-  ({                                                                                                                   \
-    const options_t *_opts = options_get();                                                                            \
-    if (!_opts) {                                                                                                      \
-      log_warn("GET_OPTION(" #field ") called but options not initialized");                                           \
-    }                                                                                                                  \
-    static typeof(((options_t *)0)->field) _default = {0};                                                             \
-    (_opts ? (_opts->field) : _default);                                                                               \
+#define GET_OPTION(field)                                                                                                                                                                              \
+  ({                                                                                                                                                                                                   \
+    const options_t *_opts = options_get();                                                                                                                                                            \
+    if (!_opts) {                                                                                                                                                                                      \
+      log_warn("GET_OPTION(" #field ") called but options not initialized");                                                                                                                           \
+    }                                                                                                                                                                                                  \
+    static typeof(((options_t *)0)->field) _default = {0};                                                                                                                                             \
+    (_opts ? (_opts->field) : _default);                                                                                                                                                               \
   })
 
 /**

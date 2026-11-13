@@ -56,8 +56,7 @@ static void fallback_setup(void) {
   cr_assert_eq(platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer"), 0);
   cr_assert_eq(platform_setenv("ADDR2LINE_PATH", script), 0);
 }
-Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_results, .init = fallback_setup,
-     .fini = fallback_cleanup) {
+Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_results, .init = fallback_setup, .fini = fallback_cleanup) {
   cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
   char **symbols = symbol_cache_resolve_batch(addresses, 4, NULL);
@@ -132,17 +131,13 @@ Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncati
   cr_assert_not(symbol_module_is_project(NULL));
   char output[256];
   bool external;
-  cr_assert_eq(
-      symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL),
-      ASCIICHAT_OK);
+  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
   cr_assert_not(external);
   cr_assert_str_eq(output, "lib/audio/audio.c");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
   cr_assert(external);
   cr_assert_not_null(strstr(output, "c/d/e/f/source.c"));
   strcpy(output, "unchanged");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL),
-               ERROR_BUFFER_OVERFLOW);
+  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
   cr_assert_str_eq(output, "unchanged");
 }

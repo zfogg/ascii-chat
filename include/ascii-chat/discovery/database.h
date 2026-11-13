@@ -22,10 +22,8 @@
 #include "discovery-service/main.h"
 #include "../network/acip/acds.h"
 
-asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                                 const void *metadata, size_t length);
-asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata,
-                                                 size_t capacity, size_t *length);
+asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const void *metadata, size_t length);
+asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata, size_t capacity, size_t *length);
 
 /**
  * @brief Discovery database handle (sqlite3 wrapper)
@@ -65,20 +63,16 @@ void database_close(sqlite3 *db);
  * @param resp Session creation response (output)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
-                                          acip_session_created_t *resp);
+asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config, acip_session_created_t *resp);
 
 /** Create an explicit Ed25519 key set atomically. More than one key opts into
  * allowlisted joins; count=1 preserves the legacy admission policy. The caller
  * must verify each create proof before calling this persistence API. */
-asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
-                                               size_t count, const acds_config_t *config, acip_session_created_t *resp);
+asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32], size_t count, const acds_config_t *config, acip_session_created_t *resp);
 
 /** Persist advertised transports in the same transaction as the session and key set. */
-asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req,
-                                                              const uint8_t (*keys)[32], size_t count,
-                                                              const acds_config_t *config, acip_session_created_t *resp,
-                                                              const void *metadata, size_t metadata_length);
+asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32], size_t count, const acds_config_t *config,
+                                                              acip_session_created_t *resp, const void *metadata, size_t metadata_length);
 
 /**
  * @brief Lookup session by string
@@ -89,8 +83,7 @@ asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const
  * @param resp Session info response (output)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
-                                          acip_session_info_t *resp);
+asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config, acip_session_info_t *resp);
 
 /**
  * @brief Join existing session
@@ -101,8 +94,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
  * @param resp Join response (output)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
-                                        acip_session_joined_t *resp);
+asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config, acip_session_joined_t *resp);
 
 /**
  * @brief Leave session
@@ -112,8 +104,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
  * @param participant_id Participant UUID
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t participant_id[SESSION_ID_SIZE]);
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Find session by session_id
@@ -162,9 +153,8 @@ void database_session_cleanup_expired(sqlite3 *db);
  * @param connection_type How to reach host (ACIP_CONNECTION_TYPE_*)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
-                                               const char *host_address, uint16_t host_port, uint8_t connection_type);
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t host_participant_id[SESSION_ID_SIZE], const char *host_address, uint16_t host_port,
+                                               uint8_t connection_type);
 
 /**
  * @brief Clear session host (discovery mode - host migration)
@@ -201,8 +191,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
  * @param migration_window_ms Collection window duration in milliseconds
  * @return true if collection window has completed, false otherwise
  */
-bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         uint64_t migration_window_ms);
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], uint64_t migration_window_ms);
 
 // ============================================================================
 // Multi-Key Management (for session key rotation and multiple identities)
@@ -217,9 +206,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[S
  * @param key_version Key version for tracking rotation
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string,
-                                           const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE],
-                                           uint32_t key_version);
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint32_t key_version);
 
 /**
  * @brief Revoke a key from a session
@@ -229,8 +216,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
  * @param identity_pubkey Ed25519 public key to revoke (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
-                                              const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
+asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Check if a key is valid for a session (exists and not revoked)
@@ -240,8 +226,7 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
  * @param identity_pubkey Ed25519 public key to check (32 bytes)
  * @return true if key is valid, false otherwise
  */
-bool database_session_verify_key(sqlite3 *db, const char *session_string,
-                                 const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
+bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Get all active keys for a session
@@ -253,8 +238,7 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string,
  * @param count_out Output: number of keys retrieved
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
-                                            size_t max_keys, size_t *count_out);
+asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32], size_t max_keys, size_t *count_out);
 
 // ============================================================================
 // Statistics Queries
@@ -290,10 +274,7 @@ typedef struct {
   bool host_ready;
   bool migrating;
 } database_session_stats_t;
-asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
-                                          size_t *row_count, uint64_t *sessions, uint64_t *participants);
+asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity, size_t *row_count, uint64_t *sessions, uint64_t *participants);
 
-asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE],
-                                                              const uint8_t host[SESSION_ID_SIZE], const char *address,
-                                                              uint16_t port, uint8_t type, const void *metadata,
-                                                              size_t length);
+asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE], const uint8_t host[SESSION_ID_SIZE], const char *address, uint16_t port,
+                                                              uint8_t type, const void *metadata, size_t length);

@@ -6,12 +6,7 @@
 #include <ascii-chat/asciichat_errno.h>
 
 typedef struct audio_recording audio_recording_t;
-typedef enum {
-  AUDIO_RECORDING_MIC,
-  AUDIO_RECORDING_MEDIA,
-  AUDIO_RECORDING_REMOTE,
-  AUDIO_RECORDING_SOURCE_COUNT
-} audio_recording_source_t;
+typedef enum { AUDIO_RECORDING_MIC, AUDIO_RECORDING_MEDIA, AUDIO_RECORDING_REMOTE, AUDIO_RECORDING_SOURCE_COUNT } audio_recording_source_t;
 
 /* One session recording subscribes to PCM copies; playback and capture retain ownership. */
 asciichat_error_t audio_recording_create(audio_recording_t **out);

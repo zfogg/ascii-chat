@@ -93,13 +93,11 @@ typedef struct {
 
 asciichat_error_t consensus_handoff_decode(const void *data, size_t length, consensus_handoff_message_t *out);
 void consensus_handoff_encode(const consensus_handoff_message_t *message, uint8_t out[CONSENSUS_HANDOFF_HEADER]);
-void consensus_handoff_init(consensus_handoff_t *state, const uint8_t session[SESSION_ID_SIZE],
-                            const uint8_t host[SESSION_ID_SIZE]);
+void consensus_handoff_init(consensus_handoff_t *state, const uint8_t session[SESSION_ID_SIZE], const uint8_t host[SESSION_ID_SIZE]);
 asciichat_error_t consensus_handoff_join(consensus_handoff_t *state, const uint8_t id[SESSION_ID_SIZE]);
 void consensus_handoff_leave(consensus_handoff_t *state, const uint8_t id[SESSION_ID_SIZE]);
 /* Caller authenticates participant/session against the transport identity. */
-asciichat_error_t consensus_handoff_receive(consensus_handoff_t *state, const consensus_handoff_message_t *message,
-                                            size_t length, uint64_t now_ms);
+asciichat_error_t consensus_handoff_receive(consensus_handoff_t *state, const consensus_handoff_message_t *message, size_t length, uint64_t now_ms);
 /* Returns one action, or false when the state is unchanged. */
 bool consensus_handoff_tick(consensus_handoff_t *state, uint64_t now_ms, consensus_handoff_message_t *action);
 

@@ -19,8 +19,7 @@ int main(int argc, char **argv) {
   if (start == std::string::npos)
     return 1;
   const auto number = version.data() + start + sizeof("clang version ") - 1;
-  if (std::from_chars(number, version.data() + version.size(), clang_major).ec != std::errc{} ||
-      clang_major != LLVM_VERSION_MAJOR)
+  if (std::from_chars(number, version.data() + version.size(), clang_major).ec != std::errc{} || clang_major != LLVM_VERSION_MAJOR)
     return 1;
   CXIndex index = clang_createIndex(0, 0);
   if (!index)

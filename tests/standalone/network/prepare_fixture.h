@@ -11,10 +11,10 @@
 #include <string.h>
 
 #ifndef CHECK
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
   } while (0)
 #endif
 
@@ -27,10 +27,7 @@ static inline void crypto_pair(crypto_context_t *a, crypto_context_t *b) {
 }
 
 static inline packet_header_t inner_header(size_t size) {
-  return (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                           .type = HOST_TO_NET_U16(PACKET_TYPE_PING),
-                           .length = HOST_TO_NET_U32((uint32_t)size),
-                           .client_id = 7};
+  return (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING), .length = HOST_TO_NET_U32((uint32_t)size), .client_id = 7};
 }
 
 static inline void fixtures(void) {
@@ -80,8 +77,7 @@ static inline void fixtures(void) {
       // Exclusive wire buffers decrypt in place, while shared wire owners
       // retain unchanged ciphertext and use the allocation fallback.
       for (unsigned mode = 0; mode < 3; ++mode) {
-        CHECK(acip_packet_encrypt(&crypto, &plan, NULL, ciphertext, sizeof(ciphertext), &outer, &length) ==
-              ASCIICHAT_OK);
+        CHECK(acip_packet_encrypt(&crypto, &plan, NULL, ciphertext, sizeof(ciphertext), &outer, &length) == ASCIICHAT_OK);
         size_t wire_size = sizeof(outer) + length;
         uint8_t *wire = buffer_alloc(NULL, wire_size);
         CHECK(wire);
@@ -90,11 +86,7 @@ static inline void fixtures(void) {
         const void *shared = mode == 1 ? buffer_share(wire) : NULL;
         if (mode == 2)
           wire[wire_size - 1] ^= 1;
-        packet_envelope_t envelope = {.type = PACKET_TYPE_ENCRYPTED,
-                                      .data = wire + sizeof(outer),
-                                      .len = length,
-                                      .allocated_buffer = wire,
-                                      .allocated_size = wire_size};
+        packet_envelope_t envelope = {.type = PACKET_TYPE_ENCRYPTED, .data = wire + sizeof(outer), .len = length, .allocated_buffer = wire, .allocated_size = wire_size};
         asciichat_error_t result = packet_decrypt_envelope(&envelope, &peer);
         if (mode == 2) {
           CHECK(result == ERROR_CRYPTO && envelope.allocated_buffer == wire);
@@ -169,14 +161,12 @@ static inline void tcp_fixture(bool async, bool encrypted) {
   socket_pair(sockets);
   crypto_context_t crypto, peer;
   crypto_pair(&crypto, &peer);
-  acip_transport_t *sender = async ? acip_async_tcp_client_create(&sockets[0], encrypted ? &crypto : NULL)
-                                   : acip_tcp_transport_create("prepare-send", sockets[0], encrypted ? &crypto : NULL);
+  acip_transport_t *sender = async ? acip_async_tcp_client_create(&sockets[0], encrypted ? &crypto : NULL) : acip_tcp_transport_create("prepare-send", sockets[0], encrypted ? &crypto : NULL);
   CHECK(sender);
   socket_buffer_t payload[] = {{"123", 3}, {NULL, 0}, {"456789", 6}};
   CHECK(packet_send_via_transportv(sender, PACKET_TYPE_PING, payload, 3, 7) == ASCIICHAT_OK);
   packet_envelope_t envelope = {0};
-  CHECK(receive_packet_secure_with_timeout(sockets[1], encrypted ? &peer : NULL, encrypted, &envelope,
-                                           5 * NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
+  CHECK(receive_packet_secure_with_timeout(sockets[1], encrypted ? &peer : NULL, encrypted, &envelope, 5 * NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   CHECK(envelope.type == PACKET_TYPE_PING && envelope.len == (encrypted ? 9 : sizeof(packet_header_t) + 9));
   CHECK(memcmp((uint8_t *)envelope.allocated_buffer + sizeof(packet_header_t), "123456789", 9) == 0);
   buffer_release(envelope.allocated_buffer);
@@ -186,8 +176,7 @@ static inline void tcp_fixture(bool async, bool encrypted) {
   CHECK(acip_transport_sendv(sender, invalid, 2) == ERROR_NETWORK_SIZE);
   CHECK(acip_transport_is_connected(sender));
   CHECK(packet_send_via_transportv(sender, PACKET_TYPE_PING, payload, 3, 7) == ASCIICHAT_OK);
-  CHECK(receive_packet_secure_with_timeout(sockets[1], encrypted ? &peer : NULL, encrypted, &envelope,
-                                           5 * NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
+  CHECK(receive_packet_secure_with_timeout(sockets[1], encrypted ? &peer : NULL, encrypted, &envelope, 5 * NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   CHECK(envelope.type == PACKET_TYPE_PING && envelope.len == (encrypted ? 9 : sizeof(packet_header_t) + 9));
   CHECK(memcmp((uint8_t *)envelope.allocated_buffer + sizeof(packet_header_t), "123456789", 9) == 0);
   buffer_release(envelope.allocated_buffer);
@@ -250,9 +239,7 @@ static inline void websocket_fixture(const char *url, void (*before_destroy)(aci
   size_t length = 0;
   uint64_t sequence;
   bool consumed;
-  CHECK(acip_security_open(&peer, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data, size, &plain, &length,
-                           &sequence, &consumed) == ASCIICHAT_OK &&
-        !consumed);
+  CHECK(acip_security_open(&peer, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data, size, &plain, &length, &sequence, &consumed) == ASCIICHAT_OK && !consumed);
   CHECK(length == sizeof(outer) + 9 && memcmp(plain + sizeof(outer), "123456789", 9) == 0);
   buffer_release(plain);
   buffer_release(owner);

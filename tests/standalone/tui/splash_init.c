@@ -78,8 +78,7 @@ static bool competing_initializers(bool discovery) {
   if (platform_thread_create(&first, "splash_init_first", set_splash_state, data) != ASCIICHAT_OK)
     return false;
   bool started = await_flag(&initializing);
-  bool contender =
-      started && platform_thread_create(&second, "splash_init_second", set_splash_state, data) == ASCIICHAT_OK;
+  bool contender = started && platform_thread_create(&second, "splash_init_second", set_splash_state, data) == ASCIICHAT_OK;
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
   while (contender && !atomic_load(&waited) && !atomic_load(&premature_lock) && time_get_ns() < deadline)
     platform_sleep_ms(1);
@@ -89,8 +88,8 @@ static bool competing_initializers(bool discovery) {
   if (contender)
     joined &= thread_join(&second, NULL) == ASCIICHAT_OK;
   if (!started || !contender || !serialized || !joined) {
-    log_error("Splash first-call race: discovery=%d started=%d contender=%d waited=%d premature_lock=%d joined=%d",
-              discovery, started, contender, atomic_load(&waited), atomic_load(&premature_lock), joined);
+    log_error("Splash first-call race: discovery=%d started=%d contender=%d waited=%d premature_lock=%d joined=%d", discovery, started, contender, atomic_load(&waited), atomic_load(&premature_lock),
+              joined);
     return false;
   }
   return true;

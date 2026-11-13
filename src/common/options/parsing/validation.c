@@ -33,8 +33,7 @@ asciichat_error_t validate_glyph_palette(const options_t *opts) {
   // display glyphs may not all have a glyph-match atlas entry, but selecting
   // one must remain valid at option/configuration time; the renderer applies
   // its own fallback when it cannot score a glyph.
-  if (((opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set) || opts->renderer_explicit) &&
-      !ascii_glyph_palette_supported(palette))
+  if (((opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set) || opts->renderer_explicit) && !ascii_glyph_palette_supported(palette))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
   return ASCIICHAT_OK;
 }
@@ -287,8 +286,7 @@ int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t 
   // U+FF4C...U+FF48 ("ｌｏｃａｌｈｏｓｔ") resolve like their ASCII spelling.
   char normalized_value[OPTIONS_BUFF_SIZE];
   size_t normalized_length = 0;
-  for (const unsigned char *p = (const unsigned char *)value_str;
-       *p && normalized_length + 1 < sizeof(normalized_value);) {
+  for (const unsigned char *p = (const unsigned char *)value_str; *p && normalized_length + 1 < sizeof(normalized_value);) {
     if (p[0] == 0xef && p[1] == 0xbc && p[2] >= 0x81 && p[2] <= 0xbe) {
       normalized_value[normalized_length++] = (char)(p[2] - 0x20);
       p += 3;

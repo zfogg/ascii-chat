@@ -21,8 +21,7 @@ static void assert_audio_ok(asciichat_error_t result, const char *operation) {
   asciichat_error_context_t error = {0};
   (void)HAS_ERRNO(&error);
   const PaHostErrorInfo *host = Pa_GetLastHostErrorInfo();
-  cr_assert_eq(result, ASCIICHAT_OK, "%s failed (%d): %s; host API %d code %ld: %s", operation, result,
-               error.context_message, host ? (int)host->hostApiType : -1, host ? host->errorCode : 0,
+  cr_assert_eq(result, ASCIICHAT_OK, "%s failed (%d): %s; host API %d code %ld: %s", operation, result, error.context_message, host ? (int)host->hostApiType : -1, host ? host->errorCode : 0,
                host && host->errorText ? host->errorText : "no host detail");
 }
 

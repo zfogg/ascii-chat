@@ -41,8 +41,7 @@ char *manpage_content_generate_environment(const options_config_t *config);
  *
  * @ingroup options_manpage
  */
-char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars,
-                                                       size_t manual_count, const char **manual_descs);
+char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars, size_t manual_count, const char **manual_descs);
 
 /**
  * @brief Free generated environment content

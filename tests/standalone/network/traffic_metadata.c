@@ -7,10 +7,10 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 
-#define CHECK(expression)                                                                                              \
-  do {                                                                                                                 \
-    if (!(expression))                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                             \
+#define CHECK(expression)                                                                                                                                                                              \
+  do {                                                                                                                                                                                                 \
+    if (!(expression))                                                                                                                                                                                 \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
   } while (0)
 
 typedef struct {
@@ -19,8 +19,7 @@ typedef struct {
   atomic_t delivery, deadline, datagrams, fail_datagram, blocked, request_keyframe;
 } capture_t;
 
-static asciichat_error_t capture_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                      const acip_send_options_t *options) {
+static asciichat_error_t capture_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options) {
   capture_t *capture = transport->impl_data;
   if (count != 1 || !buffers[0].data || buffers[0].len < sizeof(packet_header_t) || !options)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid captured packet");
@@ -36,9 +35,7 @@ static asciichat_error_t capture_send(acip_transport_t *transport, const socket_
 static asciichat_error_t capture_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
   capture_t *capture = transport->impl_data;
   bool enabled = atomic_load_bool(&capture->datagrams);
-  *out = (acip_transport_capabilities_t){.independent_streams = !atomic_load_bool(&capture->blocked),
-                                         .datagrams = enabled,
-                                         .max_datagram_payload = enabled ? 1200 : 0};
+  *out = (acip_transport_capabilities_t){.independent_streams = !atomic_load_bool(&capture->blocked), .datagrams = enabled, .max_datagram_payload = enabled ? 1200 : 0};
   return ASCIICHAT_OK;
 }
 
@@ -79,11 +76,9 @@ int main(void) {
   const struct {
     packet_type_t type;
     acip_traffic_class_t expected;
-  } cases[] = {
-      {PACKET_TYPE_PROTOCOL_VERSION, ACIP_TRAFFIC_CONTROL}, {PACKET_TYPE_AUDIO_MESSAGE, ACIP_TRAFFIC_AUDIO},
-      {PACKET_TYPE_AUDIO_BATCH, ACIP_TRAFFIC_AUDIO},        {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO},
-      {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL},       {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL},
-      {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL},  {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL}};
+  } cases[] = {{PACKET_TYPE_PROTOCOL_VERSION, ACIP_TRAFFIC_CONTROL}, {PACKET_TYPE_AUDIO_MESSAGE, ACIP_TRAFFIC_AUDIO},    {PACKET_TYPE_AUDIO_BATCH, ACIP_TRAFFIC_AUDIO},
+               {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO},   {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL},     {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL},
+               {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL},  {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL}};
   const uint8_t keyframe = 1;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     CHECK(packet_send_via_transport(&transport, cases[i].type, &keyframe, 1, (uint32_t)i) == ASCIICHAT_OK);
@@ -104,11 +99,9 @@ int main(void) {
   CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NOT_SUPPORTED);
   CHECK(atomic_load_u64(&capture.count) == sizeof(cases) / sizeof(cases[0]));
   acip_transport_capabilities_t caps;
-  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.independent_streams &&
-        !caps.datagrams && !caps.max_datagram_payload);
+  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.independent_streams && !caps.datagrams && !caps.max_datagram_payload);
   atomic_store_bool(&capture.datagrams, true);
-  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.datagrams &&
-        caps.max_datagram_payload == 1200);
+  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload == 1200);
   header.type = HOST_TO_NET_U16(PACKET_TYPE_AUDIO_BATCH);
   options.delivery = ACIP_DELIVERY_DATAGRAM;
   options.deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT;
@@ -118,8 +111,7 @@ int main(void) {
     CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
-  CHECK(atomic_load_u64(&capture.delivery) == ACIP_DELIVERY_DATAGRAM &&
-        atomic_load_u64(&capture.deadline) == options.deadline_ns);
+  CHECK(atomic_load_u64(&capture.delivery) == ACIP_DELIVERY_DATAGRAM && atomic_load_u64(&capture.deadline) == options.deadline_ns);
   options.deadline_ns = 1;
   CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NETWORK_TIMEOUT);
   options.deadline_ns = 0;
@@ -171,8 +163,7 @@ int main(void) {
 
   /* Media datagrams require negotiated support; other traffic stays reliable. */
   capture_t preferred = {0};
-  acip_transport_t preferred_transport = {
-      .methods = &methods, .impl_data = &preferred, .prefer_audio_datagrams = true, .prefer_visual_datagrams = true};
+  acip_transport_t preferred_transport = {.methods = &methods, .impl_data = &preferred, .prefer_audio_datagrams = true, .prefer_visual_datagrams = true};
   CHECK(acip_outbound_create(&preferred_transport) == ASCIICHAT_OK);
   for (unsigned i = 0; i < 6; ++i) {
     atomic_store_bool(&preferred.datagrams, i != 0 && i != 3);

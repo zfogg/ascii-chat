@@ -102,8 +102,7 @@ Test(media_pipeline, reusable_render_matches_owned_output) {
   const int widths[] = {40, 40, 600, 20};
   for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]); ++i) {
     char *owned = ascii_convert_with_capabilities_fit(source, widths[i], 6, &caps, true, false, " .:#", false);
-    char *reused =
-        ascii_convert_with_capabilities_workspace(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace);
+    char *reused = ascii_convert_with_capabilities_workspace(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace);
     cr_assert(owned && reused && strcmp(owned, reused) == 0);
     cr_assert_eq(workspace->w, widths[i]);
     SAFE_FREE(owned);
@@ -117,8 +116,7 @@ Test(media_pipeline, reusable_render_matches_owned_output) {
       caps.color_level = color;
       for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]); ++i) {
         char *owned = ascii_convert_with_capabilities_fit(source, widths[i], 6, &caps, true, false, " .:#", false);
-        char *borrowed =
-            ascii_convert_with_buffers(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace, &output);
+        char *borrowed = ascii_convert_with_buffers(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace, &output);
         cr_assert(owned && borrowed && borrowed == output.buf && strcmp(owned, borrowed) == 0);
         SAFE_FREE(owned);
       }
@@ -129,8 +127,7 @@ Test(media_pipeline, reusable_render_matches_owned_output) {
   caps.color_level = TERM_COLOR_TRUECOLOR;
   for (unsigned i = 0; i < 1000; ++i) {
     source->pixels[0].r = (uint8_t)i;
-    cr_assert_eq(ascii_convert_with_buffers(source, 20, 6, &caps, true, false, " .:#", false, &workspace, &output),
-                 buffer);
+    cr_assert_eq(ascii_convert_with_buffers(source, 20, 6, &caps, true, false, " .:#", false, &workspace, &output), buffer);
   }
   SAFE_FREE(output.buf);
   image_destroy(workspace);

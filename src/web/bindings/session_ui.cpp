@@ -79,8 +79,7 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
-  emscripten::function(
-      "browser_ui_audio", +[](int value) { return static_cast<int>(options_set_bool("audio_enabled", value != 0)); });
+  emscripten::function("browser_ui_audio", +[](int value) { return static_cast<int>(options_set_bool("audio_enabled", value != 0)); });
   emscripten::function("browser_ui_fps", +[]() { return static_cast<int>(GET_OPTION(fps_counter)); });
   emscripten::function("browser_ui_volume", +[]() { return static_cast<double>(GET_OPTION(speakers_volume)); });
   emscripten::class_<SessionUiBinding>("SessionUiBinding")

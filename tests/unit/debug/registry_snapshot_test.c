@@ -10,8 +10,7 @@ typedef struct {
   uint64_t generation;
 } observation_t;
 
-static void visit(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line,
-                  void *data) {
+static void visit(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   (void)name;
   (void)type;
   (void)file;
@@ -33,8 +32,7 @@ Test(registry_snapshot, metadata_and_protected_snapshots_follow_rename_and_remov
   cr_assert_eq(named_init(), ASCIICHAT_OK);
   int object = 42, value = 0;
   uintptr_t key = (uintptr_t)&object;
-  cr_assert_str_eq(named_register_fmt(key, "fixture", "%p", __FILE__, __LINE__, __func__, "source.%d", 17),
-                   "source.17");
+  cr_assert_str_eq(named_register_fmt(key, "fixture", "%p", __FILE__, __LINE__, __func__, "source.%d", 17), "source.17");
   named_metadata_t before;
   cr_assert(named_metadata_copy(key, &before));
   cr_assert_str_eq(before.name, "source.17");

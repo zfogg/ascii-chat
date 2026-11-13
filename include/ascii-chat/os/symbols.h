@@ -103,8 +103,7 @@ bool symbol_module_is_project(const char *module_name);
  * Project sources use repository-relative paths. External sources retain at
  * most four parent directories and the filename.
  */
-asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output,
-                                            size_t output_size, bool *external, const char *const *owned_dirs);
+asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output, size_t output_size, bool *external, const char *const *owned_dirs);
 
 /* ============================================================================
  * Symbol Cache Lifecycle

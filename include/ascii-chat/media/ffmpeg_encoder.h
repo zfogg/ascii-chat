@@ -186,12 +186,10 @@ typedef struct ffmpeg_encoder_s ffmpeg_encoder_t;
  *
  * @see ffmpeg_encoder_write_frame, ffmpeg_encoder_destroy, ffmpeg_encoder_formats
  */
-asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
-                                        ffmpeg_encoder_t **out);
+asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps, ffmpeg_encoder_t **out);
 
 /** Create an encoder that scales RGBA input to the requested video dimensions. */
-asciichat_error_t ffmpeg_encoder_create_scaled(const char *output_path, int source_width, int source_height,
-                                               int width_px, int height_px, int fps, ffmpeg_encoder_t **out);
+asciichat_error_t ffmpeg_encoder_create_scaled(const char *output_path, int source_width, int source_height, int width_px, int height_px, int fps, ffmpeg_encoder_t **out);
 
 /**
  * Write a single video frame to the output file.
@@ -226,8 +224,7 @@ asciichat_error_t ffmpeg_encoder_create_scaled(const char *output_path, int sour
  *
  * @see ffmpeg_encoder_create, ffmpeg_encoder_destroy
  */
-asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_t *rgb, int pitch,
-                                             uint64_t captured_ns);
+asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_t *rgb, int pitch, uint64_t captured_ns);
 
 /**
  * Write audio samples to the output file.

@@ -84,8 +84,7 @@ Test(signaling, ice_candidate_and_mid_have_separate_terminators_and_candidate_on
   for (unsigned direct = 0; direct < 2; ++direct) {
     webrtc_signaling_callbacks_t cb = callbacks(direct);
     cr_assert_eq(cb.send_ice(session, remote, candidate, mid, cb.user_data), ASCIICHAT_OK);
-    const uint8_t *data =
-        payload(PACKET_TYPE_ACIP_WEBRTC_ICE, sizeof(acip_webrtc_ice_t) + sizeof(candidate) + sizeof(mid));
+    const uint8_t *data = payload(PACKET_TYPE_ACIP_WEBRTC_ICE, sizeof(acip_webrtc_ice_t) + sizeof(candidate) + sizeof(mid));
     acip_webrtc_ice_t header;
     memcpy(&header, data, sizeof(header));
     cr_assert_arr_eq(header.session_id, session, 16);

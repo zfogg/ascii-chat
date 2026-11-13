@@ -60,8 +60,7 @@ Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_r
   cr_assert_not_null(query);
   char name[64] = "owned-lan-fixture", host[64] = "owned-host";
   const char *txt[] = {"session_string=swift-river-mountain"};
-  asciichat_mdns_service_t service = {
-      .name = name, .host = host, .type = "_ascii-chat._tcp", .port = 32123, .txt_records = txt, .txt_count = 1};
+  asciichat_mdns_service_t service = {.name = name, .host = host, .type = "_ascii-chat._tcp", .port = 32123, .txt_records = txt, .txt_count = 1};
   cr_assert_eq(asciichat_mdns_advertise(advertiser, &service), ASCIICHAT_OK);
   service.port = 0;
   cr_assert_eq(asciichat_mdns_advertise(advertiser, &service), ERROR_INVALID_PARAM);
@@ -238,13 +237,11 @@ Test(mdns_integration, query_initialization) {
   // Test callback that counts invocations
   int callback_count = 0;
 
-  asciichat_error_t result =
-      asciichat_mdns_query(mdns, "_ascii-chat-test._tcp.local", counting_callback, &callback_count);
+  asciichat_error_t result = asciichat_mdns_query(mdns, "_ascii-chat-test._tcp.local", counting_callback, &callback_count);
 
   // Query may fail in some environments (e.g., restricted networks, containers)
   // Just verify it doesn't crash - both success and graceful failure are acceptable
-  cr_assert(result == ASCIICHAT_OK || result == ERROR_NETWORK,
-            "Query should either succeed or fail gracefully (got error %d)", result);
+  cr_assert(result == ASCIICHAT_OK || result == ERROR_NETWORK, "Query should either succeed or fail gracefully (got error %d)", result);
 
   asciichat_mdns_destroy(mdns);
 }

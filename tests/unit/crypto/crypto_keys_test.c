@@ -85,31 +85,13 @@ typedef struct {
 } hex_decode_test_case_t;
 
 static hex_decode_test_case_t hex_decode_cases[] = {
-    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-     .expected_len = 32,
-     .expected_result = 0,
-     .description = "valid 64-char hex string"},
-    {.hex = "0123456789abcdef",
-     .expected_len = 32,
-     .expected_result = -1,
-     .description = "invalid length (16 chars, need 32)"},
-    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg",
-     .expected_len = 32,
-     .expected_result = -1,
-     .description = "invalid characters (contains 'g')"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", .expected_len = 32, .expected_result = 0, .description = "valid 64-char hex string"},
+    {.hex = "0123456789abcdef", .expected_len = 32, .expected_result = -1, .description = "invalid length (16 chars, need 32)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg", .expected_len = 32, .expected_result = -1, .description = "invalid characters (contains 'g')"},
     {.hex = "", .expected_len = 32, .expected_result = -1, .description = "empty string"},
-    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
-     .expected_len = 32,
-     .expected_result = -1,
-     .description = "too long (65 chars)"},
-    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde",
-     .expected_len = 32,
-     .expected_result = -1,
-     .description = "too short (63 chars)"},
-    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-     .expected_len = 16,
-     .expected_result = -1,
-     .description = "wrong expected length"}};
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0", .expected_len = 32, .expected_result = -1, .description = "too long (65 chars)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde", .expected_len = 32, .expected_result = -1, .description = "too short (63 chars)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", .expected_len = 16, .expected_result = -1, .description = "wrong expected length"}};
 
 ParameterizedTestParameters(crypto_keys, hex_decode_tests) {
   size_t nb_cases = sizeof(hex_decode_cases) / sizeof(hex_decode_cases[0]);
@@ -194,24 +176,9 @@ static parse_public_key_test_case_t parse_public_key_cases[] = {
      .description = "GitLab username (should fetch first Ed25519 key)",
      .input_is_null = false,
      .requires_network = true},
-    {.input = "gpg:0x1234567890ABCDEF",
-     .expected_type = KEY_TYPE_GPG,
-     .expected_result = 0,
-     .description = "GPG key ID",
-     .input_is_null = false,
-     .requires_network = true},
-    {.input = "invalid-key-format",
-     .expected_type = KEY_TYPE_UNKNOWN,
-     .expected_result = -1,
-     .description = "invalid key format",
-     .input_is_null = false,
-     .requires_network = false},
-    {.input = "AAAAC3NzaC1lZ",
-     .expected_type = KEY_TYPE_UNKNOWN,
-     .expected_result = -1,
-     .description = "truncated base64 key (too short)",
-     .input_is_null = false,
-     .requires_network = false},
+    {.input = "gpg:0x1234567890ABCDEF", .expected_type = KEY_TYPE_GPG, .expected_result = 0, .description = "GPG key ID", .input_is_null = false, .requires_network = true},
+    {.input = "invalid-key-format", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "invalid key format", .input_is_null = false, .requires_network = false},
+    {.input = "AAAAC3NzaC1lZ", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "truncated base64 key (too short)", .input_is_null = false, .requires_network = false},
     {.input = "AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFml@#$%^&*",
      .expected_type = KEY_TYPE_UNKNOWN,
      .expected_result = -1,
@@ -230,18 +197,8 @@ static parse_public_key_test_case_t parse_public_key_cases[] = {
      .description = "base64 RSA key (should be rejected, not Ed25519)",
      .input_is_null = false,
      .requires_network = false},
-    {.input = "",
-     .expected_type = KEY_TYPE_UNKNOWN,
-     .expected_result = -1,
-     .description = "empty input",
-     .input_is_null = false,
-     .requires_network = false},
-    {.input = "",
-     .expected_type = KEY_TYPE_UNKNOWN,
-     .expected_result = -1,
-     .description = "NULL input",
-     .input_is_null = true,
-     .requires_network = false}};
+    {.input = "", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "empty input", .input_is_null = false, .requires_network = false},
+    {.input = "", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "NULL input", .input_is_null = true, .requires_network = false}};
 ParameterizedTestParameters(crypto_keys, parse_public_key_tests) {
   size_t nb_cases = sizeof(parse_public_key_cases) / sizeof(parse_public_key_cases[0]);
   return cr_make_param_array(parse_public_key_test_case_t, parse_public_key_cases, nb_cases);
@@ -333,9 +290,8 @@ Test(crypto_keys, public_key_to_x25519_ed25519) {
 
   // Use a valid Ed25519 public key (generated from a known seed)
   // This is the public key from libsodium's test vectors
-  const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a,
-                                        0xa7, 0x4d, 0x1b, 0x7e, 0xbc, 0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4,
-                                        0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
+  const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a, 0xa7, 0x4d, 0x1b, 0x7e, 0xbc,
+                                        0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4, 0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
   memcpy(key.key, valid_ed25519_pk, 32);
 
   uint8_t x25519_key[32];
@@ -399,11 +355,9 @@ Test(crypto_keys, private_key_to_x25519_ed25519) {
   // This is from libsodium's test vectors
   const uint8_t valid_ed25519_sk[64] = {
       // 32-byte seed
-      0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5,
-      0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+      0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
       // 32-byte public key
-      0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72,
-      0xf3, 0xda, 0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a};
+      0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a};
   memcpy(key.key.ed25519, valid_ed25519_sk, 64);
 
   uint8_t x25519_key[32];
@@ -598,9 +552,8 @@ Theory((key_type_t key_type), crypto_keys, key_type_validation) {
   // Initialize with valid data based on key type
   if (key_type == KEY_TYPE_ED25519) {
     // Use valid Ed25519 public key from libsodium test vectors
-    const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a,
-                                          0xa7, 0x4d, 0x1b, 0x7e, 0xbc, 0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4,
-                                          0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
+    const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a, 0xa7, 0x4d, 0x1b, 0x7e, 0xbc,
+                                          0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4, 0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
     memcpy(key.key, valid_ed25519_pk, 32);
   } else if (key_type != KEY_TYPE_UNKNOWN) {
     // For X25519 and GPG, any data works

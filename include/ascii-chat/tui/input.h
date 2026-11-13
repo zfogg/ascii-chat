@@ -45,5 +45,4 @@ typedef struct {
 
 /** Collect paste boundaries and optional application-classified text bursts.
  * Once ready, the caller consumes/clears paste before reading another event. */
-keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void),
-                                     bool (*classify_paste)(const char *));
+keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void), bool (*classify_paste)(const char *));

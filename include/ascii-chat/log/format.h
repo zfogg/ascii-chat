@@ -140,8 +140,7 @@ void log_template_free(log_template_t *format);
  *
  * @ingroup logging
  */
-int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
-                       const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
                        const char *message, bool use_colors, uint64_t time_nanoseconds);
 
 #ifdef __cplusplus

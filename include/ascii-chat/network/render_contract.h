@@ -16,10 +16,8 @@ extern "C" {
 /* Explicit, big-endian wire prefix: schema, revision, render mode, effects,
  * palette byte length, followed by that many UTF-8 bytes (no NUL). Text sizes,
  * compression and CRC in the legacy frame header continue to describe TEXT. */
-asciichat_error_t frame_render_contract_encode(const acip_render_settings_t *settings, uint32_t effects, uint8_t *wire,
-                                               size_t *length);
-asciichat_error_t frame_render_contract_decode(const void *wire, size_t available, acip_render_settings_t *settings,
-                                               uint32_t *effects, size_t *length);
+asciichat_error_t frame_render_contract_encode(const acip_render_settings_t *settings, uint32_t effects, uint8_t *wire, size_t *length);
+asciichat_error_t frame_render_contract_decode(const void *wire, size_t available, acip_render_settings_t *settings, uint32_t *effects, size_t *length);
 
 #ifdef __cplusplus
 }

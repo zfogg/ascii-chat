@@ -70,8 +70,8 @@ typedef struct session_entry {
 
   char password_hash[ACIP_PASSWORD_HASH_SIZE]; ///< Argon2id hash (if has_password)
   bool has_password;                           ///< Password protection flag
-  bool expose_ip_publicly; ///< Allow IP disclosure without verification (explicit opt-in via --acds-expose-ip)
-  uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
+  bool expose_ip_publicly;                     ///< Allow IP disclosure without verification (explicit opt-in via --acds-expose-ip)
+  uint8_t session_type;                        ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
 
   uint64_t created_at;       ///< Unix timestamp (ms) - when session was created
   uint64_t expires_at;       ///< Unix timestamp (ms) - absolute max lifetime (created_at + 24h)
@@ -91,8 +91,8 @@ typedef struct session_entry {
   uint8_t host_connection_type;                 ///< acip_connection_type_t: how to reach host
 
   // Host migration state (when host disconnects)
-  bool in_migration;           ///< Currently collecting HOST_LOST packets
-  uint64_t migration_start_ns; ///< When migration started in nanoseconds (for collection window timeout)
+  bool in_migration;                                                     ///< Currently collecting HOST_LOST packets
+  uint64_t migration_start_ns;                                           ///< When migration started in nanoseconds (for collection window timeout)
   host_lost_candidate_t *migration_candidates[MAX_SESSION_PARTICIPANTS]; ///< Candidates received during migration
 
   participant_t *participants[MAX_SESSION_PARTICIPANTS]; ///< Participant array (in-memory only)

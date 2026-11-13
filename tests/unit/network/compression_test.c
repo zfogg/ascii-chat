@@ -41,8 +41,7 @@ static asciichat_error_t test_send_ascii_frame_packet(socket_t sockfd, const cha
   return (result == 0) ? ASCIICHAT_OK : ERROR_NETWORK;
 }
 
-static asciichat_error_t test_send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width,
-                                                      uint16_t height, uint8_t format) {
+static asciichat_error_t test_send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height, uint8_t format) {
   (void)format;
   if (!image_data || width == 0 || height == 0 || sockfd < 0) {
     return ERROR_INVALID_PARAM;
@@ -181,8 +180,7 @@ Theory((size_t data_size), compression, compression_roundtrip_property) {
   int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
 
   cr_assert_eq(decompress_result, 0, "Decompression should succeed for size %zu", data_size);
-  cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
-               "Compression roundtrip must preserve data for size %zu", data_size);
+  cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0, "Compression roundtrip must preserve data for size %zu", data_size);
 
   SAFE_FREE(original_data);
   buffer_release(compressed_data);
@@ -207,15 +205,13 @@ Theory((size_t data_size), compression, compressible_data_property) {
 
   if (result == 0 && compressed_data != NULL) {
     float ratio = (float)compressed_size / (float)data_size;
-    cr_assert_lt(ratio, 0.5f, "Highly compressible data should compress to <50%% for size %zu (got %.2f%%)", data_size,
-                 ratio * 100.0f);
+    cr_assert_lt(ratio, 0.5f, "Highly compressible data should compress to <50%% for size %zu (got %.2f%%)", data_size, ratio * 100.0f);
 
     char *decompressed_data = SAFE_MALLOC(data_size, void *);
     if (decompressed_data != NULL) {
       int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
       if (decompress_result == 0) {
-        cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
-                     "Roundtrip must work for compressible data size %zu", data_size);
+        cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0, "Roundtrip must work for compressible data size %zu", data_size);
       }
       SAFE_FREE(decompressed_data);
     }
@@ -233,9 +229,7 @@ TheoryDataPoints(compression, compression_threshold_property) = {
 Theory((size_t original_size), compression, compression_threshold_property) {
   cr_assume(original_size > 0 && original_size <= 2000);
 
-  size_t test_compressed_sizes[] = {(size_t)(original_size * 0.5f), (size_t)(original_size * 0.7f),
-                                    (size_t)(original_size * 0.85f), (size_t)(original_size * 1.0f),
-                                    (size_t)(original_size * 1.2f)};
+  size_t test_compressed_sizes[] = {(size_t)(original_size * 0.5f), (size_t)(original_size * 0.7f), (size_t)(original_size * 0.85f), (size_t)(original_size * 1.0f), (size_t)(original_size * 1.2f)};
 
   bool expected_results[] = {true, true, false, false, false};
 
@@ -243,10 +237,8 @@ Theory((size_t original_size), compression, compression_threshold_property) {
     size_t compressed_size = test_compressed_sizes[i];
     bool result = should_compress(original_size, compressed_size);
 
-    cr_assert_eq(result, expected_results[i],
-                 "should_compress(%zu, %zu) = %s, expected %s (ratio=%.2f, threshold=%.2f)", original_size,
-                 compressed_size, result ? "true" : "false", expected_results[i] ? "true" : "false",
-                 (float)compressed_size / original_size, COMPRESSION_RATIO_THRESHOLD);
+    cr_assert_eq(result, expected_results[i], "should_compress(%zu, %zu) = %s, expected %s (ratio=%.2f, threshold=%.2f)", original_size, compressed_size, result ? "true" : "false",
+                 expected_results[i] ? "true" : "false", (float)compressed_size / original_size, COMPRESSION_RATIO_THRESHOLD);
   }
 }
 
@@ -752,13 +744,12 @@ typedef struct {
   const char *pattern_type;
 } compression_data_test_case_t;
 
-static compression_data_test_case_t compression_data_cases[] = {
-    {"Highly compressible data", 1000, 'A', true, "repeating"},
-    {"Moderately compressible", 1000, 'X', true, "repeating"},
-    {"Random-like data", 1000, '\0', false, "random"}, // Will be filled with random
-    {"Small data", 10, 'B', false, "small"},
-    {"Large compressible data", 10000, 'C', true, "large_repeating"},
-    {"Mixed pattern data", 500, 'D', true, "mixed"}};
+static compression_data_test_case_t compression_data_cases[] = {{"Highly compressible data", 1000, 'A', true, "repeating"},
+                                                                {"Moderately compressible", 1000, 'X', true, "repeating"},
+                                                                {"Random-like data", 1000, '\0', false, "random"}, // Will be filled with random
+                                                                {"Small data", 10, 'B', false, "small"},
+                                                                {"Large compressible data", 10000, 'C', true, "large_repeating"},
+                                                                {"Mixed pattern data", 500, 'D', true, "mixed"}};
 
 ParameterizedTestParameters(compression, data_patterns) {
   size_t nb_cases = sizeof(compression_data_cases) / sizeof(compression_data_cases[0]);
@@ -797,9 +788,8 @@ typedef struct {
   const char *description;
 } compression_frame_test_case_t;
 
-static compression_frame_test_case_t compression_frame_cases[] = {
-    {1, 1, 1, "Tiny frame"},          {100, 10, 10, "Small frame"},           {1000, 32, 32, "Medium frame"},
-    {10000, 100, 100, "Large frame"}, {100000, 320, 240, "Very large frame"}, {1000000, 640, 480, "Huge frame"}};
+static compression_frame_test_case_t compression_frame_cases[] = {{1, 1, 1, "Tiny frame"},          {100, 10, 10, "Small frame"},           {1000, 32, 32, "Medium frame"},
+                                                                  {10000, 100, 100, "Large frame"}, {100000, 320, 240, "Very large frame"}, {1000000, 640, 480, "Huge frame"}};
 
 ParameterizedTestParameters(compression, frame_sizes) {
   size_t nb_cases = sizeof(compression_frame_cases) / sizeof(compression_frame_cases[0]);
@@ -826,9 +816,8 @@ typedef struct {
   const char *description;
 } compression_image_format_test_case_t;
 
-static compression_image_format_test_case_t compression_image_format_cases[] = {
-    {0x12345678, "Standard RGB format"}, {0x87654321, "Reversed format"},    {0x00000000, "Zero format"},
-    {0xFFFFFFFF, "Max format"},          {0xDEADBEEF, "Hex pattern format"}, {0xCAFEBABE, "Another hex pattern"}};
+static compression_image_format_test_case_t compression_image_format_cases[] = {{0x12345678, "Standard RGB format"}, {0x87654321, "Reversed format"},    {0x00000000, "Zero format"},
+                                                                                {0xFFFFFFFF, "Max format"},          {0xDEADBEEF, "Hex pattern format"}, {0xCAFEBABE, "Another hex pattern"}};
 
 ParameterizedTestParameters(compression, image_formats) {
   size_t nb_cases = sizeof(compression_image_format_cases) / sizeof(compression_image_format_cases[0]);
@@ -858,10 +847,8 @@ typedef struct {
   bool test_negative_dimensions;
 } compression_error_test_case_t;
 
-static compression_error_test_case_t compression_error_cases[] = {{"NULL frame data", true, false, false, false},
-                                                                  {"Zero frame size", false, true, false, false},
-                                                                  {"Invalid socket", false, false, true, false},
-                                                                  {"Negative dimensions", false, false, false, true}};
+static compression_error_test_case_t compression_error_cases[] = {
+    {"NULL frame data", true, false, false, false}, {"Zero frame size", false, true, false, false}, {"Invalid socket", false, false, true, false}, {"Negative dimensions", false, false, false, true}};
 
 ParameterizedTestParameters(compression, error_conditions) {
   size_t nb_cases = sizeof(compression_error_cases) / sizeof(compression_error_cases[0]);
@@ -897,8 +884,7 @@ typedef struct {
   const char *description;
 } compression_stress_test_case_t;
 
-static compression_stress_test_case_t compression_stress_cases[] = {
-    {5, "Light stress test"}, {20, "Medium stress test"}, {50, "Heavy stress test"}, {100, "Intensive stress test"}};
+static compression_stress_test_case_t compression_stress_cases[] = {{5, "Light stress test"}, {20, "Medium stress test"}, {50, "Heavy stress test"}, {100, "Intensive stress test"}};
 
 ParameterizedTestParameters(compression, stress_tests) {
   size_t nb_cases = sizeof(compression_stress_cases) / sizeof(compression_stress_cases[0]);

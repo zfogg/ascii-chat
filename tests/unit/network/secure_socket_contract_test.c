@@ -53,8 +53,7 @@ TestSuite(secure_socket_contract, .init = setup, .fini = teardown, .timeout = 15
 
 static size_t read_secure(packet_type_t expected, bool encrypted, void *output, size_t capacity) {
   packet_envelope_t envelope;
-  cr_assert_eq(receive_packet_secure_with_timeout(receiver_fd, &receiver, encrypted, &envelope, 1000000000ULL),
-               PACKET_RECV_SUCCESS);
+  cr_assert_eq(receive_packet_secure_with_timeout(receiver_fd, &receiver, encrypted, &envelope, 1000000000ULL), PACKET_RECV_SUCCESS);
   cr_assert_eq(envelope.type, expected);
   const uint8_t *payload = envelope.data;
   size_t length = envelope.len;
@@ -76,8 +75,7 @@ Test(secure_socket_contract, encrypted_sender_protects_an_entire_network_order_h
     payload[i] = (uint8_t)(i * 17);
   const size_t lengths[] = {0, 7, sizeof(payload)};
   for (size_t i = 0; i < 3; ++i) {
-    cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, lengths[i] ? payload : NULL, lengths[i], &sender),
-                 ASCIICHAT_OK);
+    cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, lengths[i] ? payload : NULL, lengths[i], &sender), ASCIICHAT_OK);
     packet_type_t type;
     void *ciphertext = NULL;
     size_t ciphertext_len = 0, plaintext_len = 0;
@@ -87,9 +85,7 @@ Test(secure_socket_contract, encrypted_sender_protects_an_entire_network_order_h
     uint8_t *plaintext = NULL;
     uint64_t sequence;
     bool consumed;
-    cr_assert_eq(acip_security_decrypt(&receiver, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, ciphertext,
-                                       ciphertext_len, &plaintext, &plaintext_len, &sequence, &consumed),
-                 ASCIICHAT_OK);
+    cr_assert_eq(acip_security_decrypt(&receiver, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, ciphertext, ciphertext_len, &plaintext, &plaintext_len, &sequence, &consumed), ASCIICHAT_OK);
     cr_assert(!consumed);
     buffer_release(ciphertext);
     cr_assert_eq(plaintext_len, sizeof(packet_header_t) + lengths[i]);
@@ -108,8 +104,7 @@ Test(secure_socket_contract, encrypted_sender_protects_an_entire_network_order_h
 Test(secure_socket_contract, handshake_and_explicit_plaintext_bypass_encryption_but_ready_data_roundtrips) {
   const uint8_t payload[] = {0, 0xff, 'x'};
   uint8_t output[8];
-  cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_CRYPTO_CLIENT_HELLO, payload, sizeof(payload), &sender),
-               ASCIICHAT_OK);
+  cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_CRYPTO_CLIENT_HELLO, payload, sizeof(payload), &sender), ASCIICHAT_OK);
   cr_assert_eq(read_secure(PACKET_TYPE_CRYPTO_CLIENT_HELLO, true, output, sizeof(output)), sizeof(payload));
   cr_assert_arr_eq(output, payload, sizeof(payload));
   sender.encrypt_data = false;
@@ -121,11 +116,9 @@ Test(secure_socket_contract, handshake_and_explicit_plaintext_bypass_encryption_
   cr_assert_arr_eq(output, payload, sizeof(payload));
   cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, payload, sizeof(payload), NULL), ASCIICHAT_OK);
   cr_assert_eq(read_secure(PACKET_TYPE_PING, false, output, sizeof(output)), sizeof(payload));
-  cr_assert_eq(send_packet_secure(INVALID_SOCKET_VALUE, PACKET_TYPE_PING, payload, sizeof(payload), &sender),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(send_packet_secure(INVALID_SOCKET_VALUE, PACKET_TYPE_PING, payload, sizeof(payload), &sender), ERROR_INVALID_PARAM);
   cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, NULL, 1, &sender), ERROR_INVALID_PARAM);
-  cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, payload, MAX_PACKET_SIZE + 1ULL, &sender),
-               ERROR_NETWORK_SIZE);
+  cr_assert_eq(send_packet_secure(sender_fd, PACKET_TYPE_PING, payload, MAX_PACKET_SIZE + 1ULL, &sender), ERROR_NETWORK_SIZE);
 }
 
 Test(secure_socket_contract, authenticated_malformed_inner_packets_are_rejected_and_the_next_valid_packet_survives) {
@@ -142,8 +135,7 @@ Test(secure_socket_contract, authenticated_malformed_inner_packets_are_rejected_
     size_t length = 0;
     crypto_session_t *session;
     cr_assert_eq(crypto_session_lock(&sender, &session), ASCIICHAT_OK);
-    cr_assert_eq(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, plaintext,
-                                         scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext), ciphertext,
+    cr_assert_eq(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, plaintext, scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext), ciphertext,
                                          sizeof(ciphertext), &length),
                  ASCIICHAT_OK);
     crypto_session_unlock(session);
@@ -151,8 +143,7 @@ Test(secure_socket_contract, authenticated_malformed_inner_packets_are_rejected_
       ciphertext[length - 1] ^= 1;
     cr_assert_eq(packet_send(sender_fd, PACKET_TYPE_ENCRYPTED, ciphertext, length), ASCIICHAT_OK);
     packet_envelope_t envelope;
-    packet_recv_result_t result =
-        receive_packet_secure_with_timeout(receiver_fd, &receiver, true, &envelope, 1000000000ULL);
+    packet_recv_result_t result = receive_packet_secure_with_timeout(receiver_fd, &receiver, true, &envelope, 1000000000ULL);
     if (scenario < 5) {
       cr_assert_eq(result, PACKET_RECV_ERROR, "Malformed scenario %u was accepted", scenario);
       cr_assert_null(envelope.allocated_buffer);
@@ -177,17 +168,13 @@ Test(secure_socket_contract, remote_log_sender_preserves_fields_and_marks_only_t
   for (unsigned encrypted = 0; encrypted < 2; ++encrypted) {
     for (unsigned variant = 0; variant < 4; ++variant) {
       const char *input = variant == 0 ? NULL : variant == 1 ? "short message" : variant == 2 ? exact : message;
-      cr_assert_eq(packet_send_remote_log(sender_fd, encrypted ? &sender : NULL, LOG_WARN,
-                                          REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, 0x80, input),
-                   ASCIICHAT_OK);
+      cr_assert_eq(packet_send_remote_log(sender_fd, encrypted ? &sender : NULL, LOG_WARN, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, 0x80, input), ASCIICHAT_OK);
       size_t length = read_secure(PACKET_TYPE_REMOTE_LOG, encrypted != 0, payload, sizeof(payload));
       log_level_t level;
       remote_log_direction_t direction;
       uint16_t flags;
       size_t message_len;
-      cr_assert_eq(
-          packet_parse_remote_log(payload, length, &level, &direction, &flags, decoded, sizeof(decoded), &message_len),
-          ASCIICHAT_OK);
+      cr_assert_eq(packet_parse_remote_log(payload, length, &level, &direction, &flags, decoded, sizeof(decoded), &message_len), ASCIICHAT_OK);
       cr_assert_eq(level, LOG_WARN);
       cr_assert_eq(direction, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT);
       cr_assert_eq(flags, 0x80 | (variant == 3 ? REMOTE_LOG_FLAG_TRUNCATED : 0));
@@ -197,10 +184,8 @@ Test(secure_socket_contract, remote_log_sender_preserves_fields_and_marks_only_t
         cr_assert_arr_eq(decoded, input, message_len);
     }
   }
-  cr_assert_eq(packet_send_remote_log(sender_fd, NULL, (log_level_t)99, REMOTE_LOG_DIRECTION_UNKNOWN, 0, "bad"),
-               ERROR_INVALID_PARAM);
-  cr_assert_eq(packet_send_remote_log(INVALID_SOCKET_VALUE, NULL, LOG_INFO, REMOTE_LOG_DIRECTION_UNKNOWN, 0, "bad"),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(packet_send_remote_log(sender_fd, NULL, (log_level_t)99, REMOTE_LOG_DIRECTION_UNKNOWN, 0, "bad"), ERROR_INVALID_PARAM);
+  cr_assert_eq(packet_send_remote_log(INVALID_SOCKET_VALUE, NULL, LOG_INFO, REMOTE_LOG_DIRECTION_UNKNOWN, 0, "bad"), ERROR_INVALID_PARAM);
 }
 
 Test(secure_socket_contract, opus_batch_and_rgb_image_senders_use_network_order_with_exact_payloads) {

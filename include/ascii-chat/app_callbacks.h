@@ -54,44 +54,44 @@ const app_callbacks_t *app_callbacks_get(void);
  * Call a void(void) callback safely
  * Usage: APP_CALLBACK_VOID(audio_stop_thread)
  */
-#define APP_CALLBACK_VOID(callback_name)                                                                               \
-  do {                                                                                                                 \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    if (__cb && __cb->callback_name) {                                                                                 \
-      __cb->callback_name();                                                                                           \
-    }                                                                                                                  \
+#define APP_CALLBACK_VOID(callback_name)                                                                                                                                                               \
+  do {                                                                                                                                                                                                 \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                                                                                                 \
+    if (__cb && __cb->callback_name) {                                                                                                                                                                 \
+      __cb->callback_name();                                                                                                                                                                           \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 /**
  * Call a void(void) callback and return bool
  * Usage: bool result = APP_CALLBACK_BOOL(should_exit)
  */
-#define APP_CALLBACK_BOOL(callback_name)                                                                               \
-  ({                                                                                                                   \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : false;                                                     \
+#define APP_CALLBACK_BOOL(callback_name)                                                                                                                                                               \
+  ({                                                                                                                                                                                                   \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                                                                                                 \
+    (__cb && __cb->callback_name) ? __cb->callback_name() : false;                                                                                                                                     \
   })
 
 /**
  * Call a uint64_t(void) callback
  * Usage: uint64_t now = APP_CALLBACK_UINT64(platform_get_monotonic_time_us)
  */
-#define APP_CALLBACK_UINT64(callback_name)                                                                             \
-  ({                                                                                                                   \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL;                                                      \
+#define APP_CALLBACK_UINT64(callback_name)                                                                                                                                                             \
+  ({                                                                                                                                                                                                   \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                                                                                                 \
+    (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL;                                                                                                                                      \
   })
 
 /**
  * Call a void(unsigned int) callback
  * Usage: APP_CALLBACK_VOID_UINT(platform_sleep_ms, ms)
  */
-#define APP_CALLBACK_VOID_UINT(callback_name, value)                                                                   \
-  do {                                                                                                                 \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    if (__cb && __cb->callback_name) {                                                                                 \
-      __cb->callback_name(value);                                                                                      \
-    }                                                                                                                  \
+#define APP_CALLBACK_VOID_UINT(callback_name, value)                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                                                                                                 \
+    if (__cb && __cb->callback_name) {                                                                                                                                                                 \
+      __cb->callback_name(value);                                                                                                                                                                      \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 #endif

@@ -75,9 +75,7 @@ public:
       output.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes * h, pixels)));
     } else {
       for (int row = 0; row < h; ++row) {
-        output.call<void>(
-            "set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)),
-            row * row_bytes);
+        output.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)), row * row_bytes);
       }
     }
     return true;

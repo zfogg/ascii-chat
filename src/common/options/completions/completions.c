@@ -41,9 +41,7 @@ static asciichat_error_t completions_generate_with_libflags(completion_format_t 
     return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
   }
 
-  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH   ? FLAGS_COMPLETION_BASH
-                                   : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH
-                                                                      : FLAGS_COMPLETION_ZSH;
+  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH : FLAGS_COMPLETION_ZSH;
   bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
   flags_schema_builder_destroy(builder);
   options_config_destroy(config);

@@ -31,8 +31,7 @@ static media_source_t *transaction_source_create(media_source_type_t type, const
     return media_source_create(MEDIA_SOURCE_TEST, NULL);
   return media_source_create(type, path);
 }
-static media_source_t *transaction_source_create_interruptible(media_source_type_t type, const char *path,
-                                                               bool (*cancel)(void *), void *data) {
+static media_source_t *transaction_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *), void *data) {
   (void)cancel;
   (void)data;
   return transaction_source_create(type, path);
@@ -346,8 +345,7 @@ Test(capture_transactions, missing_camera_keeps_animations_available_and_restore
 }
 Test(capture_transactions, file_audio_selection_and_bounded_reads_use_the_selected_source) {
   has_audio = true;
-  session_capture_config_t config = {
-      .type = MEDIA_SOURCE_FILE, .path = first_path, .enable_audio = true, .target_fps = 30};
+  session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .enable_audio = true, .target_fps = 30};
   current = session_capture_create(&config);
   cr_assert_not_null(current);
   cr_assert(session_capture_has_audio(current));

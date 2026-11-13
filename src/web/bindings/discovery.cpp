@@ -14,8 +14,7 @@ extern "C" {
 #include <string>
 #include <vector>
 
-EM_JS(void, discovery_send, (acds_protocol_t * p, int type, const void *data, size_t length),
-      { Module.discoverySend(p, type, HEAPU8.slice(data, data + length)); });
+EM_JS(void, discovery_send, (acds_protocol_t * p, int type, const void *data, size_t length), { Module.discoverySend(p, type, HEAPU8.slice(data, data + length)); });
 static asciichat_error_t browser_send(void *p, packet_type_t type, const void *payload, size_t length) {
   discovery_send(static_cast<acds_protocol_t *>(p), type, payload, length);
   return ASCIICHAT_OK;
@@ -59,8 +58,7 @@ public:
   int receive(unsigned type, ProtocolBytes packet) {
     auto data = protocol_input(packet);
     uint8_t empty = 0;
-    int result = acds_protocol_receive(session_, static_cast<packet_type_t>(type), data.empty() ? &empty : data.data(),
-                                       data.size());
+    int result = acds_protocol_receive(session_, static_cast<packet_type_t>(type), data.empty() ? &empty : data.data(), data.size());
     if (!data.empty())
       sodium_memzero(data.data(), data.size());
     return result;
@@ -73,8 +71,7 @@ public:
     emscripten::val member = emscripten::val::object();
     member.set("participantId", binding_copy_output(joined.participant_id, SESSION_ID_SIZE));
     member.set("sessionId", binding_copy_output(joined.session_id, SESSION_ID_SIZE));
-    member.set("hostId",
-               binding_copy_output(joined.host_established ? joined.host_id : joined.initiator_id, SESSION_ID_SIZE));
+    member.set("hostId", binding_copy_output(joined.host_established ? joined.host_id : joined.initiator_id, SESSION_ID_SIZE));
     member.set("turnUsername", std::string(joined.turn_username));
     member.set("turnPassword", std::string(joined.turn_password));
     member.set("serverAddress", std::string(joined.server_address));
@@ -95,9 +92,7 @@ private:
   acds_protocol_t *session_;
 };
 
-static OptionalHandoffBytes handoff_encode(int kind, ProtocolBytes session, ProtocolBytes participant,
-                                           unsigned generation, unsigned sequence, int capabilities, int nat_tier,
-                                           int port) {
+static OptionalHandoffBytes handoff_encode(int kind, ProtocolBytes session, ProtocolBytes participant, unsigned generation, unsigned sequence, int capabilities, int nat_tier, int port) {
   auto session_id = protocol_input(session);
   auto participant_id = protocol_input(participant);
   if (session_id.size() != 16 || participant_id.size() != 16) {
@@ -133,13 +128,10 @@ static HandoffActionValue handoff_decode(ProtocolBytes packet) {
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
-  emscripten::register_type<DiscoverySnapshotValue>(
-      "DiscoverySnapshotValue",
-      "{ state: number; terminal: boolean; error: string; name: string; joined: { participantId: Uint8Array; "
-      "sessionId: Uint8Array; hostId: Uint8Array; turnUsername: string; turnPassword: string; serverAddress: string; "
-      "serverPort: number; sessionType: number; quicPort: number; webtransportUrl: string } }");
-  emscripten::register_type<HandoffActionValue>(
-      "HandoffActionValue", "{ kind: number; participant: Uint8Array; generation: number; sequence: number } | null");
+  emscripten::register_type<DiscoverySnapshotValue>("DiscoverySnapshotValue", "{ state: number; terminal: boolean; error: string; name: string; joined: { participantId: Uint8Array; "
+                                                                              "sessionId: Uint8Array; hostId: Uint8Array; turnUsername: string; turnPassword: string; serverAddress: string; "
+                                                                              "serverPort: number; sessionType: number; quicPort: number; webtransportUrl: string } }");
+  emscripten::register_type<HandoffActionValue>("HandoffActionValue", "{ kind: number; participant: Uint8Array; generation: number; sequence: number } | null");
   emscripten::register_type<ProtocolBytes>("ProtocolBytes", "Uint8Array");
   emscripten::register_type<OptionalHandoffBytes>("OptionalHandoffBytes", "Uint8Array | null");
   emscripten::class_<DiscoveryBinding>("DiscoveryBinding")

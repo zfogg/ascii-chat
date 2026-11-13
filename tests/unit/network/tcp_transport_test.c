@@ -67,8 +67,7 @@ Test(tcp_transport, socket_ownership_survives_peer_eof) {
   for (int owned = 0; owned < 2; ++owned) {
     int sockets[2];
     cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-    acip_transport_t *transport = owned ? acip_tcp_transport_create_owned("owned-eof", sockets[0], NULL)
-                                        : acip_tcp_transport_create("borrowed-eof", sockets[0], NULL);
+    acip_transport_t *transport = owned ? acip_tcp_transport_create_owned("owned-eof", sockets[0], NULL) : acip_tcp_transport_create("borrowed-eof", sockets[0], NULL);
     cr_assert_not_null(transport);
     socket_close(sockets[1]);
     void *buffer = NULL, *allocated = NULL;
@@ -104,8 +103,7 @@ static void check_timeout(size_t header_bytes, bool payload_byte, bool retryable
   void *buffer = NULL;
   void *allocated = NULL;
   size_t length = 0;
-  cr_assert_eq(acip_transport_recv(transport, &buffer, &length, &allocated),
-               retryable ? ERROR_NETWORK_TIMEOUT : ERROR_NETWORK);
+  cr_assert_eq(acip_transport_recv(transport, &buffer, &length, &allocated), retryable ? ERROR_NETWORK_TIMEOUT : ERROR_NETWORK);
   cr_assert_eq(acip_transport_is_connected(transport), retryable);
   cr_assert(HAS_ERRNO_CODE(ERROR_NETWORK_TIMEOUT));
   acip_transport_destroy(transport);
@@ -180,17 +178,12 @@ Test(tcp_transport, discovery_joined_rejection_is_failure) {
 Test(tcp_transport, error_response_hides_internal_details) {
   int sockets[2];
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-  cr_assert_eq(packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details"),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details"), ASCIICHAT_OK);
   packet_envelope_t envelope = {0};
-  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL), ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_INTERNAL);
   cr_assert_str_eq(message, asciichat_error_string(ERROR_INTERNAL));
   buffer_release(envelope.allocated_buffer);
@@ -207,14 +200,10 @@ Test(tcp_transport, error_response_hides_errno_stack_locations) {
   cr_assert_eq(packet_send_error(sockets[0], NULL, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
 
   packet_envelope_t envelope = {0};
-  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL), ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
   cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
   cr_assert_null(strstr(message, "outer client failure"));
@@ -241,14 +230,10 @@ Test(tcp_transport, acip_error_response_hides_errno_stack_locations) {
   cr_assert_eq(acip_send_error(transport, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
 
   packet_envelope_t envelope = {0};
-  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL), ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
   cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
   cr_assert_null(strstr(message, "client connection failed"));

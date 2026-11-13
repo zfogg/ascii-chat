@@ -19,8 +19,7 @@ Test(terminal_detect, hyperlink_format_and_plain_fallback) {
   cr_assert_gt(length, 0);
   cr_assert_eq((size_t)length, strlen(output));
   cr_assert_str_eq(output, "\033]8;;https://ascii-chat.com\033\\\033[4mascii-chat.com\033[24m\033]8;;\033\\");
-  cr_assert_eq(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false),
-               14);
+  cr_assert_eq(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false), 14);
   cr_assert_str_eq(output, "ascii-chat.com");
 }
 
@@ -77,8 +76,7 @@ Test(terminal_detect, detect_terminal_capabilities_basic) {
   cr_assert_geq(caps.color_count, 0);
 
   // Render mode should be valid
-  cr_assert(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND ||
-            caps.render_mode == RENDER_MODE_HALF_BLOCK);
+  cr_assert(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND || caps.render_mode == RENDER_MODE_HALF_BLOCK);
 }
 
 // Parameterized test for COLORTERM variable detection
@@ -98,8 +96,7 @@ static colorterm_test_case_t colorterm_cases[] = {
 };
 
 ParameterizedTestParameters(terminal_detect, colorterm_variable_detection_parameterized) {
-  return cr_make_param_array(colorterm_test_case_t, colorterm_cases,
-                             sizeof(colorterm_cases) / sizeof(colorterm_cases[0]));
+  return cr_make_param_array(colorterm_test_case_t, colorterm_cases, sizeof(colorterm_cases) / sizeof(colorterm_cases[0]));
 }
 
 ParameterizedTest(colorterm_test_case_t *tc, terminal_detect, colorterm_variable_detection_parameterized) {
@@ -119,12 +116,10 @@ ParameterizedTest(colorterm_test_case_t *tc, terminal_detect, colorterm_variable
 
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
-               tc->expected_color_level, caps.color_level);
+  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
   if (tc->expected_color_count > 0) {
-    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
-                 tc->expected_color_count, caps.color_count);
+    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
   }
 
   if (tc->should_have_truecolor_cap) {
@@ -166,8 +161,7 @@ static term_color_test_case_t term_color_cases[] = {
 };
 
 ParameterizedTestParameters(terminal_detect, term_variable_color_detection_parameterized) {
-  return cr_make_param_array(term_color_test_case_t, term_color_cases,
-                             sizeof(term_color_cases) / sizeof(term_color_cases[0]));
+  return cr_make_param_array(term_color_test_case_t, term_color_cases, sizeof(term_color_cases) / sizeof(term_color_cases[0]));
 }
 
 ParameterizedTest(term_color_test_case_t *tc, terminal_detect, term_variable_color_detection_parameterized) {
@@ -183,17 +177,14 @@ ParameterizedTest(term_color_test_case_t *tc, terminal_detect, term_variable_col
 
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
-               tc->expected_color_level, caps.color_level);
+  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
   if (tc->expected_color_count > 0) {
-    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
-                 tc->expected_color_count, caps.color_count);
+    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
   }
 
   if (tc->expected_capability_flag != 0) {
-    cr_assert_neq(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x",
-                  tc->description, tc->expected_capability_flag);
+    cr_assert_neq(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x", tc->description, tc->expected_capability_flag);
   }
 
   // Restore original environment
@@ -220,12 +211,8 @@ typedef struct {
 } utf8_test_case_t;
 
 static utf8_test_case_t utf8_cases[] = {
-    {"en_US.UTF-8", "", "", true, "LANG=en_US.UTF-8"},
-    {"C.UTF-8", "", "", true, "LANG=C.UTF-8"},
-    {"C", "C.UTF-8", "", true, "LC_ALL=C.UTF-8 (takes precedence over LANG)"},
-    {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"},
-    {"C", "", "", false, "LANG=C (no UTF-8)"},
-    {"", "", "", false, "All locale vars unset"},
+    {"en_US.UTF-8", "", "", true, "LANG=en_US.UTF-8"},    {"C.UTF-8", "", "", true, "LANG=C.UTF-8"}, {"C", "C.UTF-8", "", true, "LC_ALL=C.UTF-8 (takes precedence over LANG)"},
+    {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"}, {"C", "", "", false, "LANG=C (no UTF-8)"}, {"", "", "", false, "All locale vars unset"},
 };
 
 ParameterizedTestParameters(terminal_detect, utf8_support_detection_parameterized) {
@@ -259,8 +246,7 @@ ParameterizedTest(utf8_test_case_t *tc, terminal_detect, utf8_support_detection_
 
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  cr_assert_eq(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description,
-               tc->expected_utf8_support, caps.utf8_support);
+  cr_assert_eq(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description, tc->expected_utf8_support, caps.utf8_support);
 
   if (tc->expected_utf8_support) {
     cr_assert_neq(caps.capabilities & TERM_CAP_UTF8, 0, "%s: expected TERM_CAP_UTF8 capability", tc->description);

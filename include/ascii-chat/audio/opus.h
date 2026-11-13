@@ -134,8 +134,7 @@ typedef struct {
  * @ingroup audio
  */
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate);
-opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate,
-                                                 int channels);
+opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate, int channels);
 
 /**
  * @brief Create an Opus decoder
@@ -168,8 +167,7 @@ opus_codec_t *opus_codec_create_decoder_channels(int sample_rate, int channels);
  *
  * @ingroup audio
  */
-size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data,
-                         size_t out_size);
+size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data, size_t out_size);
 
 /* ============================================================================
  * Decoder Functions
@@ -192,8 +190,7 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
  *
  * @ingroup audio
  */
-int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len, float *out_samples,
-                      int out_num_samples);
+int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len, float *out_samples, int out_num_samples);
 
 /* ============================================================================
  * Configuration Functions

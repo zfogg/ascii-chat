@@ -206,7 +206,6 @@ static inline uint8_t rgb_to_grayscale(uint8_t r, uint8_t g, uint8_t b) {
  *
  * @ingroup video
  */
-int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter,
-                       float time);
+int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter, float time);
 
 /** @} */

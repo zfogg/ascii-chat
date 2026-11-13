@@ -166,8 +166,7 @@ Test(ssh_agent_live, openssh_generated_plain_and_encrypted_keys_sign_the_matchin
     safe_snprintf(private_path, sizeof(private_path), "%s/id-%zu", directory, index);
     safe_snprintf(public_path, sizeof(public_path), "%s.pub", private_path);
     const char *password = index ? "fixture-passphrase" : "";
-    const char *args[] = {"ssh-keygen", "-q",           "-t", "ed25519",         "-a", "1",          "-N", password,
-                          "-Z",         ciphers[index], "-C", "fixture-comment", "-f", private_path, NULL};
+    const char *args[] = {"ssh-keygen", "-q", "-t", "ed25519", "-a", "1", "-N", password, "-Z", ciphers[index], "-C", "fixture-comment", "-f", private_path, NULL};
     cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0, NULL, NULL), 0);
     cr_assert_eq(platform_setenv("ASCII_CHAT_KEY_PASSWORD", password), 0);
     public_key_t public;
@@ -234,8 +233,7 @@ static size_t read_blob(const char *path, uint8_t *blob, size_t capacity) {
   char *footer = strstr(body, "-----END");
   cr_assert_not_null(footer);
   size_t length;
-  cr_assert_eq(
-      sodium_base642bin(blob, capacity, body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL), 0);
+  cr_assert_eq(sodium_base642bin(blob, capacity, body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL), 0);
   sodium_memzero(text, sizeof(text));
   return length;
 }
@@ -244,8 +242,7 @@ Test(ssh_agent_live, encrypted_openssh_truncations_are_rejected_before_decryptio
   char path[PLATFORM_MAX_PATH_LENGTH], malformed[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/encrypted-source", directory);
   safe_snprintf(malformed, sizeof(malformed), "%s/encrypted-malformed", directory);
-  const char *args[] = {"ssh-keygen", "-q",         "-t", "ed25519", "-a", "1",  "-N", "fixture-passphrase",
-                        "-Z",         "aes256-ctr", "-C", "fixture", "-f", path, NULL};
+  const char *args[] = {"ssh-keygen", "-q", "-t", "ed25519", "-a", "1", "-N", "fixture-passphrase", "-Z", "aes256-ctr", "-C", "fixture", "-f", path, NULL};
   cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0, NULL, NULL), 0);
   uint8_t blob[2048];
   size_t length = read_blob(path, blob, sizeof(blob));
@@ -256,8 +253,7 @@ Test(ssh_agent_live, encrypted_openssh_truncations_are_rejected_before_decryptio
   sodium_memzero(&secret, sizeof(secret));
   for (size_t cut = 0; cut < length; ++cut) {
     write_blob(malformed, blob, cut);
-    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK,
-                  "Accepted encrypted key truncated at %zu/%zu", cut, length);
+    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK, "Accepted encrypted key truncated at %zu/%zu", cut, length);
     CLEAR_ERRNO_ALL();
   }
   sodium_memzero(blob, sizeof(blob));
@@ -282,9 +278,7 @@ Test(ssh_agent_live, truncated_and_oversized_openssh_fields_are_rejected) {
   cr_assert_not_null(footer);
   uint8_t blob[2048];
   size_t length;
-  cr_assert_eq(
-      sodium_base642bin(blob, sizeof(blob), body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL),
-      0);
+  cr_assert_eq(sodium_base642bin(blob, sizeof(blob), body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL), 0);
   cr_assert_gt(length, 64);
   size_t offsets[12], fields = 0, position = 15;
   // Locate RFC 4251 strings in the generated OpenSSH container, then the private section.
@@ -313,8 +307,7 @@ Test(ssh_agent_live, truncated_and_oversized_openssh_fields_are_rejected) {
   sodium_memzero(&secret, sizeof(secret));
   for (size_t cut = 0; cut < position; ++cut) {
     write_blob(malformed, blob, cut);
-    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK, "Accepted key truncated at %zu/%zu", cut,
-                  length);
+    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK, "Accepted key truncated at %zu/%zu", cut, length);
     CLEAR_ERRNO_ALL();
   }
   const uint32_t invalid_lengths[] = {UINT32_MAX, UINT32_MAX - 3};

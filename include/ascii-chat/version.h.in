@@ -27,20 +27,17 @@
 #define ASCII_CHAT_DESCRIPTION_EMOJI_L "💻📸"
 #define ASCII_CHAT_DESCRIPTION_EMOJI_R "🔡💬"
 #define ASCII_CHAT_DESCRIPTION_TEXT "Video chat in your terminal"
-#define ASCII_CHAT_DESCRIPTION                                                                                         \
-  ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
+#define ASCII_CHAT_DESCRIPTION ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
 
 // Full build info string used everywhere: "ascii-chat v0.2.0-... built on OS (yyyy-mm-dd, BuildType)"
-#define ASCII_CHAT_BUILD_INFO_STRING                                                                                   \
-  "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE                          \
-  ", " ASCII_CHAT_BUILD_TYPE ")"
+#define ASCII_CHAT_BUILD_INFO_STRING "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE ", " ASCII_CHAT_BUILD_TYPE ")"
 
-#define ASCII_CHAT_DOT_COMMENT_STRING                                                                                  \
-  ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION "\n"                                                        \
+#define ASCII_CHAT_DOT_COMMENT_STRING                                                                                                                                                                  \
+  ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION "\n"                                                                                                                                        \
                                "https://github.com/zfogg/ascii-chat"
 
-#define ASCII_CHAT_DOT_ASCII_CHAT_STRING                                                                               \
-  ASCII_CHAT_DOT_COMMENT_STRING "\n"                                                                                   \
+#define ASCII_CHAT_DOT_ASCII_CHAT_STRING                                                                                                                                                               \
+  ASCII_CHAT_DOT_COMMENT_STRING "\n"                                                                                                                                                                   \
                                 "coded with 🖤 by Zachary Fogg <me@zfo.gg>"
 
 // Runtime version accessors

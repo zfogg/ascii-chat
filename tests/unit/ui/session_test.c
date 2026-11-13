@@ -95,8 +95,7 @@ Test(session_ui, native_view_resize_and_paused_recovery) {
   ui_session_t *session = ui_session_create();
   cr_assert_not_null(session);
   view_fixture_t fixture = {.text = "retained media"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   cr_assert_not_null(strstr(ui_session_render(session, &view, 1), fixture.text));
   cr_assert_null(ui_session_render(session, &view, 2));
   ui_session_resize(session, 10, 5);
@@ -117,8 +116,7 @@ Test(session_ui, native_view_resize_and_paused_recovery) {
 Test(session_ui, covered_splash_clock_pauses_even_without_host_ticks) {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "splash"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   ui_session_render(session, &view, 1000000000ULL);
   ui_session_render(session, &view, 2000000000ULL);
   cr_assert_float_eq(fixture.seconds, 1, 0.001);
@@ -135,11 +133,7 @@ Test(session_ui, covered_splash_clock_pauses_even_without_host_ticks) {
 Test(session_ui, progress_refresh_is_throttled_but_dirty_snapshots_are_immediate) {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "progress"};
-  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS,
-                            .minimum = {.cols = 1, .rows = 1},
-                            .refresh_ns = 125000000,
-                            .draw = draw,
-                            .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS, .minimum = {.cols = 1, .rows = 1}, .refresh_ns = 125000000, .draw = draw, .context = &fixture};
   cr_assert_not_null(ui_session_render(session, &view, 1));
   cr_assert_null(ui_session_render(session, &view, 100000001));
   cr_assert_not_null(ui_session_render(session, &view, 125000001));

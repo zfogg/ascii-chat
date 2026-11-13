@@ -22,8 +22,7 @@ static void reset_face() {
 
 static int detect_face(FacePixels pixels, int width, int height, double now) {
   const size_t length = pixels["length"].as<size_t>();
-  if (width <= 0 || height <= 0 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT ||
-      length != static_cast<size_t>(width) * height * 4)
+  if (width <= 0 || height <= 0 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT || length != static_cast<size_t>(width) * height * 4)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid face detector image: %dx%d, %zu bytes", width, height, length);
   emscripten::val(emscripten::typed_memory_view(length, rgba.data())).call<void>("set", pixels);
   for (int i = 0; i < width * height; ++i) {

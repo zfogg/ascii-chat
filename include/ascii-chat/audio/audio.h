@@ -701,8 +701,7 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
  *
  * @ingroup audio
  */
-void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
-                     double dst_rate);
+void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate, double dst_rate);
 
 /** @} */
 

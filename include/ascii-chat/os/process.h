@@ -110,8 +110,7 @@ ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
  * Also sets a compact main-thread/comm name: ascii:server, ascii:client,
  * ascii:mirror, ascii:discovery, or ascii:acds for discovery-service.
  */
-ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *prefix, const char *mode, int argc,
-                                                                char **argv, int mode_arg_index);
+ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *prefix, const char *mode, int argc, char **argv, int mode_arg_index);
 
 /**
  * @brief Restore Unix argument storage and release title allocations.
@@ -220,8 +219,7 @@ typedef struct platform_process platform_process_t;
  *
  * @ingroup platform
  */
-asciichat_error_t platform_process_spawn(platform_process_t **process_out, const char *path, const char *const *argv,
-                                         int stdin_fd, int stdout_fd, int stderr_fd);
+asciichat_error_t platform_process_spawn(platform_process_t **process_out, const char *path, const char *const *argv, int stdin_fd, int stdout_fd, int stderr_fd);
 
 /**
  * @brief Wait for process to terminate with timeout

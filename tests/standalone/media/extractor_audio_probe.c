@@ -73,10 +73,7 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[2], "--expect-capture-cancel") == 0) {
       int polls = 0;
-      session_capture_config_t config = {.type = MEDIA_SOURCE_FILE,
-                                         .path = argv[1],
-                                         .should_exit_callback = cancel_after_polling,
-                                         .callback_data = &polls};
+      session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = argv[1], .should_exit_callback = cancel_after_polling, .callback_data = &polls};
       session_capture_ctx_t *capture = session_capture_create(&config);
       if (capture)
         session_capture_destroy(capture);
@@ -88,13 +85,11 @@ int main(int argc, char **argv) {
       int polls = 0;
 #ifndef _WIN32
       pthread_t keyboard_thread = {0};
-      bool keyboard_started =
-          getenv("FAKE_YTDLP_EXPECT_TERMINAL") && pthread_create(&keyboard_thread, NULL, poll_keyboard, NULL) == 0;
+      bool keyboard_started = getenv("FAKE_YTDLP_EXPECT_TERMINAL") && pthread_create(&keyboard_thread, NULL, poll_keyboard, NULL) == 0;
       if (getenv("FAKE_YTDLP_EXPECT_TERMINAL") && !keyboard_started)
         return 11;
 #endif
-      asciichat_error_t result = yt_dlp_extract_stream_urls_interruptible(argv[1], NULL, video, sizeof(video), audio,
-                                                                          sizeof(audio), cancel_after_polling, &polls);
+      asciichat_error_t result = yt_dlp_extract_stream_urls_interruptible(argv[1], NULL, video, sizeof(video), audio, sizeof(audio), cancel_after_polling, &polls);
 #ifndef _WIN32
       if (keyboard_started) {
         atomic_store(&stop_keyboard_poll, true);
@@ -113,16 +108,12 @@ int main(int argc, char **argv) {
     memset(audio, 'X', sizeof(audio));
 #ifndef _WIN32
     pthread_t keyboard_thread = {0};
-    bool keyboard_started =
-        getenv("FAKE_YTDLP_EXPECT_TERMINAL") && pthread_create(&keyboard_thread, NULL, poll_keyboard, NULL) == 0;
+    bool keyboard_started = getenv("FAKE_YTDLP_EXPECT_TERMINAL") && pthread_create(&keyboard_thread, NULL, poll_keyboard, NULL) == 0;
     if (getenv("FAKE_YTDLP_EXPECT_TERMINAL") && !keyboard_started)
       return 11;
 #endif
-    asciichat_error_t result =
-        getenv("FAKE_YTDLP_EXPECT_TERMINAL")
-            ? yt_dlp_extract_stream_urls_interruptible(argv[1], NULL, video, sizeof(video), audio, sizeof(audio),
-                                                       never_cancel, NULL)
-            : yt_dlp_extract_stream_urls(argv[1], NULL, video, sizeof(video), audio, sizeof(audio));
+    asciichat_error_t result = getenv("FAKE_YTDLP_EXPECT_TERMINAL") ? yt_dlp_extract_stream_urls_interruptible(argv[1], NULL, video, sizeof(video), audio, sizeof(audio), never_cancel, NULL)
+                                                                    : yt_dlp_extract_stream_urls(argv[1], NULL, video, sizeof(video), audio, sizeof(audio));
 #ifndef _WIN32
     if (keyboard_started) {
       atomic_store(&stop_keyboard_poll, true);
@@ -137,9 +128,7 @@ int main(int argc, char **argv) {
       return 10;
 #endif
     if (strcmp(argv[2], "--expect-error") == 0)
-      return result != ASCIICHAT_OK && !video[0] && !video[sizeof(video) - 1] && !audio[0] && !audio[sizeof(audio) - 1]
-                 ? 0
-                 : 6;
+      return result != ASCIICHAT_OK && !video[0] && !video[sizeof(video) - 1] && !audio[0] && !audio[sizeof(audio) - 1] ? 0 : 6;
     return result == ASCIICHAT_OK && strcmp(video, argv[2]) == 0 && !audio[0] ? 0 : 6;
   }
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, argv[1]);

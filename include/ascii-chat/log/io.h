@@ -90,15 +90,15 @@ void log_io_stop(log_io_t capture, const char *prefix);
  * @brief Capture a block only when condition is true; execute the block once either way.
  * @note The condition is evaluated once, before executing the block.
  */
-#define LOG_IO_IF(condition, prefix, block)                                                                            \
-  do {                                                                                                                 \
-    bool _log_io_enabled = (condition);                                                                                \
-    log_io_t _log_io = {0};                                                                                            \
-    if (_log_io_enabled)                                                                                               \
-      _log_io = log_io_start();                                                                                        \
-    block;                                                                                                             \
-    if (_log_io_enabled)                                                                                               \
-      log_io_stop(_log_io, (prefix));                                                                                  \
+#define LOG_IO_IF(condition, prefix, block)                                                                                                                                                            \
+  do {                                                                                                                                                                                                 \
+    bool _log_io_enabled = (condition);                                                                                                                                                                \
+    log_io_t _log_io = {0};                                                                                                                                                                            \
+    if (_log_io_enabled)                                                                                                                                                                               \
+      _log_io = log_io_start();                                                                                                                                                                        \
+    block;                                                                                                                                                                                             \
+    if (_log_io_enabled)                                                                                                                                                                               \
+      log_io_stop(_log_io, (prefix));                                                                                                                                                                  \
   } while (0)
 
 #define LOG_IO(prefix, block) LOG_IO_IF(true, prefix, block)

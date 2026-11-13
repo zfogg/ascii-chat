@@ -29,13 +29,11 @@ public:
       SET_ERRNO(ERROR_INVALID_STATE, "Test pattern is not initialized");
       return false;
     }
-    if (width <= 0 || height <= 0 ||
-        static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != output["length"].as<size_t>()) {
+    if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != output["length"].as<size_t>()) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid test pattern image: %dx%d", width, height);
       return false;
     }
-    if (test_pattern_resize(pattern_, width, height) != ASCIICHAT_OK ||
-        test_pattern_render(pattern_, index, time, cadence) != ASCIICHAT_OK)
+    if (test_pattern_resize(pattern_, width, height) != ASCIICHAT_OK || test_pattern_render(pattern_, index, time, cadence) != ASCIICHAT_OK)
       return false;
     const uint8_t *pixels = test_pattern_rgba(pattern_);
     if (!pixels)
@@ -50,8 +48,5 @@ private:
 
 EMSCRIPTEN_BINDINGS(ascii_chat_test_pattern) {
   emscripten::register_type<PatternPixels>("PatternPixels", "Uint8ClampedArray");
-  emscripten::class_<TestPatternBinding>("TestPatternBinding")
-      .constructor<int, int>()
-      .function("valid", &TestPatternBinding::valid)
-      .function("render", &TestPatternBinding::render);
+  emscripten::class_<TestPatternBinding>("TestPatternBinding").constructor<int, int>().function("valid", &TestPatternBinding::valid).function("render", &TestPatternBinding::render);
 }

@@ -47,8 +47,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
  * @param callbacks Callback structure for handling received packets
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks);
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks);
 
 // =============================================================================
 // Client Send API (client → server)
@@ -66,8 +65,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
  * @param pixel_format Pixel format (e.g., RGB24)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format);
+asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format);
 
 /**
  * @brief Send H.265-encoded video frame to server (client → server)
@@ -92,8 +90,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
  * @note Encoder is responsible for RGB → YUV420 conversion internally
  * @note Encoder handles frame dimension changes transparently (reconfigures on size change)
  */
-asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
-                                             const void *pixel_data, uint32_t width, uint32_t height);
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder, const void *pixel_data, uint32_t width, uint32_t height);
 
 /**
  * @brief Request to start media streaming (client → server)

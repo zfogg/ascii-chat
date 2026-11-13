@@ -24,10 +24,8 @@ static asciichat_error_t count_packet(const void *data, size_t size, void *arg) 
 static void decoder_tests(void) {
   packet_decoder_t decoder = {0};
   uint8_t wire[sizeof(packet_header_t) + 3];
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16(PACKET_TYPE_TEXT_MESSAGE),
-                            .length = HOST_TO_NET_U32(3),
-                            .crc32 = HOST_TO_NET_U32(asciichat_crc32("abc", 3))};
+  packet_header_t header = {
+      .magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_TEXT_MESSAGE), .length = HOST_TO_NET_U32(3), .crc32 = HOST_TO_NET_U32(asciichat_crc32("abc", 3))};
   memcpy(wire, &header, sizeof(header));
   memcpy(wire + sizeof(header), "abc", 3);
   for (size_t split = 0; split <= sizeof(wire); ++split) {
@@ -115,9 +113,7 @@ static void read_data(platform_event_stream_t *stream, const void *data, size_t 
 }
 static void closed(void *arg, asciichat_error_t result) {
   fixture_t *fixture = arg;
-  cr_assert_worker((result) == ((fixture->cancel   ? ERROR_NETWORK
-                                 : fixture->expire ? ERROR_NETWORK_TIMEOUT
-                                                   : ASCIICHAT_OK)));
+  cr_assert_worker((result) == ((fixture->cancel ? ERROR_NETWORK : fixture->expire ? ERROR_NETWORK_TIMEOUT : ASCIICHAT_OK)));
   ++fixture->closed;
   cr_assert_worker((fixture->queued_bytes) == (0));
   if (fixture->completions)
@@ -186,22 +182,19 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   socklen_t size = sizeof(address);
   cr_assert_worker((socket_getsockname(listener, (struct sockaddr *)&address, &size)) == (0));
   platform_event_listener_t *event_listener;
-  cr_assert_worker((platform_event_listen(fixture.loop, &listener, accepted, &fixture, &event_listener)) ==
-                   (ASCIICHAT_OK));
+  cr_assert_worker((platform_event_listen(fixture.loop, &listener, accepted, &fixture, &event_listener)) == (ASCIICHAT_OK));
   cr_assert_worker((listener) == (INVALID_SOCKET_VALUE));
   platform_thread_t thread;
   cr_assert_worker((platform_thread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
   socket_t client = socket_create("event-test-client", AF_INET, SOCK_STREAM, 0);
   if (push && expire) {
     int receive_buffer = 4096;
-    cr_assert_worker((socket_setsockopt(client, SOL_SOCKET, SO_RCVBUF, &receive_buffer, sizeof(receive_buffer))) ==
-                     (0));
+    cr_assert_worker((socket_setsockopt(client, SOL_SOCKET, SO_RCVBUF, &receive_buffer, sizeof(receive_buffer))) == (0));
   }
   cr_assert_worker((socket_connect(client, (struct sockaddr *)&address, sizeof(address))) == (0));
   if (push && !expire) {
     char received[256 * 1024 + 12];
-    cr_assert_worker((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(received)));
+    cr_assert_worker((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(received)));
     cr_assert_worker((memcmp(received, "prefix", 6)) == (0));
     for (size_t i = 6; i < sizeof(received) - 6; ++i)
       cr_assert_worker((received[i]) == (0x5a));
@@ -214,10 +207,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   } else if (!expire && !cancel) {
     char expected[256 * 1024], received[sizeof(expected)];
     memset(expected, 0x5a, sizeof(expected));
-    cr_assert_worker((send_with_timeout(client, expected, sizeof(expected), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(expected)));
-    cr_assert_worker((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(received)));
+    cr_assert_worker((send_with_timeout(client, expected, sizeof(expected), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(expected)));
+    cr_assert_worker((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(received)));
     cr_assert_worker((memcmp(expected, received, sizeof(expected))) == (0));
     socket_shutdown(client, SHUT_WR);
   } else if (!push) {
@@ -230,9 +221,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   cr_assert_worker((fixture.completions) == ((push ? (expire ? 1 : 3) : cancel ? 256 : fixture.jobs)));
   if (push && !expire) {
     cr_assert_worker((fixture.stats.zerocopy_calls) == (fixture.stats.zerocopy_completions));
-    log_warn("Event output: zerocopy=%d submissions=%llu completions=%llu copied=%llu", zerocopy,
-             (unsigned long long)fixture.stats.zerocopy_calls, (unsigned long long)fixture.stats.zerocopy_completions,
-             (unsigned long long)fixture.stats.zerocopy_copied);
+    log_warn("Event output: zerocopy=%d submissions=%llu completions=%llu copied=%llu", zerocopy, (unsigned long long)fixture.stats.zerocopy_calls,
+             (unsigned long long)fixture.stats.zerocopy_completions, (unsigned long long)fixture.stats.zerocopy_copied);
   }
   cr_assert_worker((platform_event_loop_destroy(fixture.loop)) == (ASCIICHAT_OK));
   socket_close(client);

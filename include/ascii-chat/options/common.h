@@ -209,8 +209,7 @@ static inline asciichat_error_t option_error_invalid(void) {
  * }
  * @endcode
  */
-char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
-                                 asciichat_mode_t mode);
+char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Validate a positive integer value
@@ -402,8 +401,7 @@ char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_siz
  * SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value);
  * @endcode
  */
-char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                            asciichat_mode_t mode);
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Read password from stdin with prompt

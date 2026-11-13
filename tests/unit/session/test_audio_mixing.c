@@ -36,8 +36,7 @@ static void finish_startup_fade(void) {
   // Each source uses a network jitter buffer with a startup fade. Compare the
   // steady mix only after all fed sources have crossed that boundary.
   float startup[(AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)];
-  cr_assert_eq(session_audio_mix_excluding(host, 0, startup, (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)),
-               (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS));
+  cr_assert_eq(session_audio_mix_excluding(host, 0, startup, (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)), (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS));
 }
 
 Test(session_audio_mixing, mix_minus_excludes_the_recipient_and_averages_only_nonempty_sources) {

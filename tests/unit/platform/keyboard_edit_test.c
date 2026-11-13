@@ -13,8 +13,7 @@ static void start(editor_t *edit, const char *text, size_t cursor) {
   memcpy(edit->text, text, strlen(text) + 1);
   edit->length = strlen(text);
   edit->cursor = cursor;
-  edit->opts = (keyboard_line_edit_opts_t){
-      .buffer = edit->text, .max_len = sizeof(edit->text), .len = &edit->length, .cursor = &edit->cursor};
+  edit->opts = (keyboard_line_edit_opts_t){.buffer = edit->text, .max_len = sizeof(edit->text), .len = &edit->length, .cursor = &edit->cursor};
 }
 
 static keyboard_line_edit_result_t key(editor_t *edit, keyboard_key_t input) {

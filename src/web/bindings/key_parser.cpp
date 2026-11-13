@@ -48,12 +48,10 @@ static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
     code = client_parse_ssh_public_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   case 2:
-    code = binary ? client_parse_gpg_private_key_binary(bytes.data(), length, output)
-                  : client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = binary ? client_parse_gpg_private_key_binary(bytes.data(), length, output) : client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   case 3:
-    code = binary ? client_parse_gpg_public_key_binary(bytes.data(), length, output)
-                  : client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
+    code = binary ? client_parse_gpg_public_key_binary(bytes.data(), length, output) : client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
   default:
     code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid key parser kind: %d", kind);
@@ -76,8 +74,7 @@ static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
   emscripten::val frames = emscripten::val::array();
   if (code != 0) {
     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-    const asciichat_errno_snapshot_t snapshot =
-        errno_snapshot(checkpoint.thread_id, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+    const asciichat_errno_snapshot_t snapshot = errno_snapshot(checkpoint.thread_id, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
     unsigned index = 0;
     for (size_t i = 0; i < snapshot.copied; ++i) {
       if (contexts[i].generation == checkpoint.generation && contexts[i].error_id > checkpoint.after_id)
@@ -110,11 +107,8 @@ static ErrorFrameResult error_frame(size_t index) {
 EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
   emscripten::function("browser_error_dismiss", &browser_error_dismiss);
   emscripten::register_type<KeyInput>("KeyInput", "Uint8Array");
-  emscripten::register_type<KeyParseResult>("KeyParseResult",
-                                            "{ code: number; bytes: Uint8Array; frames: ErrorFrameResult[] }");
-  emscripten::register_type<ErrorFrameResult>(
-      "ErrorFrameResult",
-      "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
+  emscripten::register_type<KeyParseResult>("KeyParseResult", "{ code: number; bytes: Uint8Array; frames: ErrorFrameResult[] }");
+  emscripten::register_type<ErrorFrameResult>("ErrorFrameResult", "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
   emscripten::function("parseKey", &parse_key);
   emscripten::function("keyParserError", &parser_error);
   emscripten::function("errorSnapshot", &browser_error_snapshot);

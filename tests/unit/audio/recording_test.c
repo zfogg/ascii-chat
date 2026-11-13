@@ -17,8 +17,7 @@
 
 // Recording workers consume injected PCM; no physical device or callback clock is needed.
 static unsigned device_stream;
-static const PaDeviceInfo recording_device = {
-    .structVersion = 2, .name = "recording speaker", .maxOutputChannels = 1, .defaultSampleRate = AUDIO_SAMPLE_RATE};
+static const PaDeviceInfo recording_device = {.structVersion = 2, .name = "recording speaker", .maxOutputChannels = 1, .defaultSampleRate = AUDIO_SAMPLE_RATE};
 PaError Pa_Initialize(void) {
   return paNoError;
 }
@@ -40,8 +39,8 @@ const PaDeviceInfo *Pa_GetDeviceInfo(PaDeviceIndex device) {
 const char *Pa_GetErrorText(PaError error) {
   return error == paNoError ? "Success" : "Recording fixture has no such device";
 }
-PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate,
-                      unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback, void *data) {
+PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate, unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback,
+                      void *data) {
   (void)rate;
   (void)frames;
   (void)flags;
@@ -363,11 +362,9 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
     cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 480), ASCIICHAT_OK);
     platform_sleep_ns(10 * NS_PER_MS_INT);
   }
-  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
-                "An undrained microphone monitor queue must not enter the overflow/logging path");
+  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK, "An undrained microphone monitor queue must not enter the overflow/logging path");
   float energy = recorded_energy_since(started);
-  cr_assert_gt(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity),
-               audio_ring_buffer_available_read(ctx.capture_buffer));
+  cr_assert_gt(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity), audio_ring_buffer_available_read(ctx.capture_buffer));
   cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
   audio_stop_duplex(&ctx);
   audio_destroy(&ctx);
@@ -391,8 +388,7 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
   platform_sleep_ns(300 * NS_PER_MS_INT);
-  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
-                "An undrained local monitor queue must stay below the overflow/logging threshold");
+  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK, "An undrained local monitor queue must stay below the overflow/logging threshold");
   float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Recorded file audio must contain the tone, not only a silent track");
   cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
@@ -447,8 +443,7 @@ Test(recording, media_audio_recording_runs_without_input_or_output_devices, .tim
   uint64_t started = time_get_ns();
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
-  cr_assert_gt(recorded_energy_since(started), 1.0f,
-               "Media audio should be recorded when no PortAudio input or output stream is available");
+  cr_assert_gt(recorded_energy_since(started), 1.0f, "Media audio should be recorded when no PortAudio input or output stream is available");
 
   cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
   audio_destroy(&ctx);
@@ -663,8 +658,7 @@ Test(recording, file_pause_gap_keeps_audio_and_video_timelines_aligned, .timeout
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 12000)) > 0) {
     for (size_t i = 0; i < count; i++, total++) {
       for (size_t window_index = 0; window_index < 3; window_index++) {
-        if (total / AUDIO_CHANNELS >= window_starts[window_index] &&
-            total / AUDIO_CHANNELS < window_starts[window_index] + 24000)
+        if (total / AUDIO_CHANNELS >= window_starts[window_index] && total / AUDIO_CHANNELS < window_starts[window_index] + 24000)
           window[window_index] += samples[i] * samples[i];
       }
     }

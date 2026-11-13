@@ -46,8 +46,7 @@ static ui_presentation_state_t fake_state(void) {
 static int fake_screen(void) {
   return test_screen;
 }
-static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor, bool secret,
-                                      ui_prompt_kind_t kind) {
+static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor, bool secret, ui_prompt_kind_t kind) {
   (void)prompt;
   (void)text;
   (void)cursor;

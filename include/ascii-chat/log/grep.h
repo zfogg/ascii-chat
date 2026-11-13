@@ -93,8 +93,7 @@ const char *grep_highlight(const char *log_line, size_t match_start, size_t matc
  * @param match_len Match length in plain text
  * @return Highlighted text with yellow background added to matches (pointer to static thread-local buffer)
  */
-const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
-                                   size_t match_len);
+const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start, size_t match_len);
 
 /**
  * @brief Highlight matches in colored text, returning a new allocated copy
@@ -108,8 +107,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
  * @param match_len Match length in plain text
  * @return Newly allocated highlighted text (caller must free), or NULL on error
  */
-char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
-                                  size_t match_len);
+char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start, size_t match_len);
 
 /**
  * @brief Clean up filter resources

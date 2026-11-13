@@ -23,9 +23,7 @@ static int configure_crypto(PeerBytes password, PeerBytes identity, PeerBytes ex
   int result;
   if ((secret.empty() || secret.size() == 64) && (key.empty() || key.size() == 32)) {
     pass.push_back(0);
-    result =
-        client_configure_crypto_options(pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-                                        secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
+    result = client_configure_crypto_options(pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr, secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
   } else {
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client identity or verification key length");
   }
@@ -48,9 +46,8 @@ public:
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer identity or verification key length");
     } else {
       pass.push_back(0);
-      peer_.reset(peer_crypto_create(server, encryption,
-                                     pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-                                     secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
+      peer_.reset(
+          peer_crypto_create(server, encryption, pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr, secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
     }
     if (!pass.empty())
       sodium_memzero(pass.data(), pass.size());
@@ -116,8 +113,7 @@ public:
 private:
   int input(PeerBytes packet, bool receive) {
     auto bytes = binding_copy_input(packet);
-    int result = receive ? peer_crypto_receive(peer_.get(), bytes.data(), bytes.size())
-                         : peer_crypto_send(peer_.get(), bytes.data(), bytes.size());
+    int result = receive ? peer_crypto_receive(peer_.get(), bytes.data(), bytes.size()) : peer_crypto_send(peer_.get(), bytes.data(), bytes.size());
     if (!bytes.empty())
       sodium_memzero(bytes.data(), bytes.size());
     return result;

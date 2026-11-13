@@ -28,16 +28,14 @@ int main() {
   char decoded[128] = {};
   const char input[] = "CMake dependency round trip";
   auto size = ZSTD_compress(compressed, sizeof(compressed), input, sizeof(input), 1);
-  if (ZSTD_isError(size) || ZSTD_decompress(decoded, sizeof(decoded), compressed, size) != sizeof(input) ||
-      std::strcmp(decoded, input) != 0)
+  if (ZSTD_isError(size) || ZSTD_decompress(decoded, sizeof(decoded), compressed, size) != sizeof(input) || std::strcmp(decoded, input) != 0)
     return 2;
   unsigned char zipped[128];
   uLongf bytes = sizeof(zipped);
   if (compress(zipped, &bytes, reinterpret_cast<const Bytef *>(input), sizeof(input)) != Z_OK)
     return 3;
   uLongf output = sizeof(decoded);
-  if (uncompress(reinterpret_cast<Bytef *>(decoded), &output, zipped, bytes) != Z_OK ||
-      std::strcmp(decoded, input) != 0)
+  if (uncompress(reinterpret_cast<Bytef *>(decoded), &output, zipped, bytes) != Z_OK || std::strcmp(decoded, input) != 0)
     return 3;
   int error = 0;
   OpusEncoder *encoder = opus_encoder_create(48000, 1, OPUS_APPLICATION_VOIP, &error);
@@ -45,8 +43,7 @@ int main() {
     return 4;
   opus_encoder_destroy(encoder);
   PCRE2_SIZE offset = 0;
-  auto *pattern =
-      pcre2_compile(reinterpret_cast<PCRE2_SPTR>("CMake"), PCRE2_ZERO_TERMINATED, 0, &error, &offset, nullptr);
+  auto *pattern = pcre2_compile(reinterpret_cast<PCRE2_SPTR>("CMake"), PCRE2_ZERO_TERMINATED, 0, &error, &offset, nullptr);
   if (!pattern)
     return 5;
   pcre2_code_free(pattern);

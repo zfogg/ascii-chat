@@ -37,8 +37,7 @@ static ClientPacketResult serialize_packet(unsigned type, ClientBytes payload, u
   auto input = binding_copy_input(payload);
   std::vector<uint8_t> output(input.size() + 256);
   size_t length = 0;
-  const int code = packet_encode(static_cast<packet_type_t>(type), input.empty() ? nullptr : input.data(), input.size(),
-                                 client_id, output.data(), output.size(), &length);
+  const int code = packet_encode(static_cast<packet_type_t>(type), input.empty() ? nullptr : input.data(), input.size(), client_id, output.data(), output.size(), &length);
   if (code)
     SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot serialize client packet");
   return packet_result(code, output.data(), code == 0 ? length : 0);
@@ -78,8 +77,7 @@ static int receive_handshake(bool discovery, unsigned type, ClientBytes payload)
   auto bytes = binding_copy_input(payload);
   uint8_t empty = 0;
   const void *data = bytes.empty() ? &empty : bytes.data();
-  const int result = discovery ? client_acds_handshake_receive(type, data, bytes.size())
-                               : client_handshake_receive(type, data, bytes.size());
+  const int result = discovery ? client_acds_handshake_receive(type, data, bytes.size()) : client_handshake_receive(type, data, bytes.size());
   if (!bytes.empty())
     sodium_memzero(bytes.data(), bytes.size());
   return result;
@@ -88,8 +86,8 @@ static ClientPacketResult crypt_packet(bool encrypt, ClientBytes packet) {
   auto input = binding_copy_input(packet);
   std::vector<uint8_t> output(input.size() + (encrypt ? 72 : 0));
   size_t length = 0;
-  const int code = encrypt ? client_encrypt_packet(input.data(), input.size(), output.data(), output.size(), &length)
-                           : client_decrypt_packet(input.data(), input.size(), output.data(), output.size(), &length);
+  const int code =
+      encrypt ? client_encrypt_packet(input.data(), input.size(), output.data(), output.size(), &length) : client_decrypt_packet(input.data(), input.size(), output.data(), output.size(), &length);
   ClientPacketResult result = packet_result(code, output.data(), code == 0 ? length : 0);
   if (!input.empty())
     sodium_memzero(input.data(), input.size());

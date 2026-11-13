@@ -219,8 +219,7 @@ Test(main_integration, server_main_starts_and_stops) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
   safe_snprintf(websocket_port_str, sizeof(websocket_port_str), "%d", websocket_port);
 
-  char *argv[] = {"ascii-chat",       "--log-file",       "/tmp/test_server_main.log", "server", "--port", port_str,
-                  "--websocket-port", websocket_port_str, "--status-screen=false",     NULL};
+  char *argv[] = {"ascii-chat", "--log-file", "/tmp/test_server_main.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--status-screen=false", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn successfully");
@@ -317,17 +316,8 @@ Test(main_integration, server_client_basic_connection) {
   safe_snprintf(client_address, sizeof(client_address), "127.0.0.1:%s", port_str);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat",
-                         "--log-file",
-                         "/tmp/test_server_client.log",
-                         "server",
-                         "--port",
-                         port_str,
-                         "--websocket-port",
-                         websocket_port_str,
-                         "--no-encrypt",
-                         "--status-screen=false",
-                         NULL};
+  char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_client.log", "server", "--port", port_str, "--websocket-port",
+                         websocket_port_str, "--no-encrypt", "--status-screen=false",       NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -375,9 +365,7 @@ Test(main_integration, server_multiple_clients_sequential) {
   safe_snprintf(client_address, sizeof(client_address), "127.0.0.1:%s", port_str);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {
-      "ascii-chat",       "--log-file",   "/tmp/test_multi_seq.log", "server", "--port", port_str, "--websocket-port",
-      websocket_port_str, "--no-encrypt", "--status-screen=false",   NULL};
+  char *server_argv[] = {"ascii-chat", "--log-file", "/tmp/test_multi_seq.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--no-encrypt", "--status-screen=false", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -392,9 +380,7 @@ Test(main_integration, server_multiple_clients_sequential) {
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
     safe_snprintf(client_log_path, sizeof(client_log_path), "/tmp/test_client_seq_%d.log", i);
 
-    char *client_argv[] = {
-        "ascii-chat",   "--log-file",     client_log_path, "--no-check-update", "client", client_address,
-        "--no-encrypt", "--test-pattern", "--snapshot",    "--snapshot-delay",  "0",      NULL};
+    char *client_argv[] = {"ascii-chat", "--log-file", client_log_path, "--no-check-update", "client", client_address, "--no-encrypt", "--test-pattern", "--snapshot", "--snapshot-delay", "0", NULL};
 
     pid_t client_pid = spawn_process(get_binary_path(), client_argv, client_name);
     cr_assert_gt(client_pid, 0, "Client %d should spawn", i);
@@ -421,17 +407,8 @@ Test(main_integration, server_multiple_clients_concurrent) {
   safe_snprintf(client_address, sizeof(client_address), "127.0.0.1:%s", port_str);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat",
-                         "--log-file",
-                         "/tmp/test_multi_concurrent.log",
-                         "server",
-                         "--port",
-                         port_str,
-                         "--websocket-port",
-                         websocket_port_str,
-                         "--no-encrypt",
-                         "--status-screen=false",
-                         NULL};
+  char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_multi_concurrent.log", "server", "--port", port_str, "--websocket-port",
+                         websocket_port_str, "--no-encrypt", "--status-screen=false",          NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -481,17 +458,8 @@ Test(main_integration, server_client_with_options) {
   safe_snprintf(client_address, sizeof(client_address), "127.0.0.1:%s", port_str);
 
   // Start server with standard options (no encryption for speed)
-  char *server_argv[] = {"ascii-chat",
-                         "--log-file",
-                         "/tmp/test_server_options.log",
-                         "server",
-                         "--port",
-                         port_str,
-                         "--websocket-port",
-                         websocket_port_str,
-                         "--no-encrypt",
-                         "--status-screen=false",
-                         NULL};
+  char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_options.log", "server", "--port", port_str, "--websocket-port",
+                         websocket_port_str, "--no-encrypt", "--status-screen=false",        NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn with options");
@@ -540,17 +508,8 @@ Test(main_integration, server_survives_client_crash) {
   safe_snprintf(client_address, sizeof(client_address), "127.0.0.1:%s", port_str);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat",
-                         "--log-file",
-                         "/tmp/test_server_survives.log",
-                         "server",
-                         "--port",
-                         port_str,
-                         "--websocket-port",
-                         websocket_port_str,
-                         "--no-encrypt",
-                         "--status-screen=false",
-                         NULL};
+  char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_survives.log", "server", "--port", port_str, "--websocket-port",
+                         websocket_port_str, "--no-encrypt", "--status-screen=false",         NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");

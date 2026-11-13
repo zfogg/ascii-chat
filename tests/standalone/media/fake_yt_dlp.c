@@ -83,8 +83,7 @@ int main(int argc, char **argv) {
   }
 #endif
 #ifndef _WIN32
-  if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0 ||
-               strcmp(mode, "interactive-stop") == 0)) {
+  if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0 || strcmp(mode, "interactive-stop") == 0)) {
     char answer[64];
     const char *extractor_pid_path = getenv("FAKE_YTDLP_EXTRACTOR_PID");
     if (extractor_pid_path) {

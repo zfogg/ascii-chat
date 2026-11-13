@@ -28,10 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK(expression)                                                                                              \
-  do {                                                                                                                 \
-    if (!(expression))                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                             \
+#define CHECK(expression)                                                                                                                                                                              \
+  do {                                                                                                                                                                                                 \
+    if (!(expression))                                                                                                                                                                                 \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
   } while (0)
 
 static EVP_PKEY *make_key(void) {
@@ -48,13 +48,11 @@ static X509 *make_certificate(EVP_PKEY *key) {
   CHECK(X509_gmtime_adj(X509_getm_notAfter(cert), 3600));
   CHECK(X509_set_pubkey(cert, key) == 1);
   X509_NAME *subject = X509_get_subject_name(cert);
-  CHECK(subject &&
-        X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC, (const unsigned char *)"localhost", -1, -1, 0) == 1);
+  CHECK(subject && X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC, (const unsigned char *)"localhost", -1, -1, 0) == 1);
   CHECK(X509_set_issuer_name(cert, subject) == 1);
   X509V3_CTX extension_context;
   X509V3_set_ctx(&extension_context, cert, cert, NULL, NULL, 0);
-  X509_EXTENSION *extension =
-      X509V3_EXT_conf_nid(NULL, &extension_context, NID_subject_alt_name, "DNS:localhost,IP:127.0.0.1");
+  X509_EXTENSION *extension = X509V3_EXT_conf_nid(NULL, &extension_context, NID_subject_alt_name, "DNS:localhost,IP:127.0.0.1");
   CHECK(extension && X509_add_ext(cert, extension, -1) == 1);
   X509_EXTENSION_free(extension);
   extension = X509V3_EXT_conf_nid(NULL, &extension_context, NID_basic_constraints, "critical,CA:TRUE");
@@ -68,8 +66,7 @@ static void write_bio(const char *path, BIO *bio) {
   char *data = NULL;
   long size = BIO_get_mem_data(bio, &data);
   CHECK(size > 0 && data);
-  int fd = platform_open("quic_test_pem", path,
-                         PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
+  int fd = platform_open("quic_test_pem", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
   CHECK(fd >= 0);
   size_t offset = 0;
   while (offset < (size_t)size) {
@@ -95,8 +92,7 @@ static void write_key(const char *path, EVP_PKEY *key) {
 
 /* This uses TLS over an in-memory BIO to test certificate identity and ALPN.
  * The ngtcp2 callback configuration is checked separately below. */
-static bool handshake(quic_tls_t *server, quic_tls_t *client, const char *server_name, bool omit_alpn,
-                      bool omit_identity, bool change_identity_after_handshake) {
+static bool handshake(quic_tls_t *server, quic_tls_t *client, const char *server_name, bool omit_alpn, bool omit_identity, bool change_identity_after_handshake) {
   SSL *client_ssl = SSL_new(client->ssl_ctx);
   SSL *server_ssl = SSL_new(server->ssl_ctx);
   CHECK(client_ssl && server_ssl);
@@ -139,8 +135,7 @@ static bool handshake(quic_tls_t *server, quic_tls_t *client, const char *server
   bool success = !failed && client_done && server_done;
   if (success && change_identity_after_handshake)
     CHECK(SSL_set1_host(client_ssl, "other.example") == 1);
-  if (success && (quic_tls_verify_ready(server, server_ssl) != ASCIICHAT_OK ||
-                  quic_tls_verify_ready(client, client_ssl) != ASCIICHAT_OK))
+  if (success && (quic_tls_verify_ready(server, server_ssl) != ASCIICHAT_OK || quic_tls_verify_ready(client, client_ssl) != ASCIICHAT_OK))
     success = false;
   if (success) {
     const unsigned char *selected = NULL;
@@ -166,8 +161,7 @@ typedef struct {
   acip_traffic_class_t order[6];
 } media_capture_t;
 
-static asciichat_error_t capture_quic_packet(acip_traffic_class_t traffic_class, const void *packet, size_t length,
-                                             void *arg) {
+static asciichat_error_t capture_quic_packet(acip_traffic_class_t traffic_class, const void *packet, size_t length, void *arg) {
   media_capture_t *capture = arg;
   if ((unsigned)traffic_class >= 3 || capture->count >= 6)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC stream packet");
@@ -187,8 +181,7 @@ static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *l
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                             .type = HOST_TO_NET_U16(type),
                             .length = HOST_TO_NET_U32((uint32_t)payload_length),
-                            .crc32 =
-                                HOST_TO_NET_U32(asciichat_crc32(packet + sizeof(packet_header_t), payload_length))};
+                            .crc32 = HOST_TO_NET_U32(asciichat_crc32(packet + sizeof(packet_header_t), payload_length))};
   memcpy(packet, &header, sizeof(header));
   return packet;
 }
@@ -202,8 +195,7 @@ static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *n
   return false;
 }
 
-static void drive_barrier_step(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path,
-                               const ngtcp2_path *server_path, uint64_t now, bool *drop_client_control) {
+static void drive_barrier_step(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t now, bool *drop_client_control) {
   quic_connection_t *senders[] = {client, server};
   quic_connection_t *receivers[] = {server, client};
   const ngtcp2_path *paths[] = {server_path, client_path};
@@ -214,9 +206,7 @@ static void drive_barrier_step(quic_connection_t *client, quic_connection_t *ser
     CHECK(quic_connection_write(senders[i], &path, packet, sizeof(packet), &length, now) == ASCIICHAT_OK);
     if (length) {
       acip_traffic_class_t traffic_class;
-      bool drop = i == 0 && drop_client_control && *drop_client_control &&
-                  quic_connection_pending_packet_class(senders[i], &traffic_class) &&
-                  traffic_class == ACIP_TRAFFIC_CONTROL;
+      bool drop = i == 0 && drop_client_control && *drop_client_control && quic_connection_pending_packet_class(senders[i], &traffic_class) && traffic_class == ACIP_TRAFFIC_CONTROL;
       CHECK(quic_connection_packet_sent(senders[i], now) == ASCIICHAT_OK);
       if (drop)
         *drop_client_control = false;
@@ -232,8 +222,7 @@ typedef struct {
   unsigned received, requests;
 } visual_recovery_capture_t;
 
-static asciichat_error_t capture_recovery_packet(acip_traffic_class_t flow, const void *packet, size_t length,
-                                                 void *context) {
+static asciichat_error_t capture_recovery_packet(acip_traffic_class_t flow, const void *packet, size_t length, void *context) {
   visual_recovery_capture_t *capture = context;
   if (flow != ACIP_TRAFFIC_VISUAL || length < sizeof(packet_header_t))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected recovery packet");
@@ -256,8 +245,7 @@ static void set_recovery_keyframe(uint8_t *packet, size_t length, bool keyframe)
   memcpy(packet, &header, sizeof(header));
 }
 
-static void quic_media_exchange(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path,
-                                const ngtcp2_path *server_path, uint64_t *clock_ns, bool drop_control,
+static void quic_media_exchange(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns, bool drop_control,
                                 crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
   uint8_t *packets[6];
   size_t lengths[6];
@@ -283,9 +271,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
   for (unsigned step = 0; step < 100; ++step, *clock_ns += NS_PER_MS_INT)
     drive_barrier_step(client, server, client_path, server_path, *clock_ns, &drop_barrier_packet);
   CHECK(quic_connection_enable_security(server, server_crypto) == ASCIICHAT_OK);
-  for (unsigned step = 0;
-       step < 10000 && (!quic_connection_security_ready(client) || !quic_connection_security_ready(server));
-       ++step, *clock_ns += NS_PER_MS_INT)
+  for (unsigned step = 0; step < 10000 && (!quic_connection_security_ready(client) || !quic_connection_security_ready(server)); ++step, *clock_ns += NS_PER_MS_INT)
     drive_barrier_step(client, server, client_path, server_path, *clock_ns, &drop_barrier_packet);
   CHECK(quic_connection_security_ready(client) && quic_connection_security_ready(server));
   CHECK(!drop_barrier_packet);
@@ -338,8 +324,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
         CHECK(quic_connection_receive(client, client_path, packet, length, *clock_ns) == ASCIICHAT_OK);
       }
     }
-    if (at_client.count == 6 && at_server.count == 6 && !quic_connection_pending_bytes(client) &&
-        !quic_connection_pending_bytes(server))
+    if (at_client.count == 6 && at_server.count == 6 && !quic_connection_pending_bytes(client) && !quic_connection_pending_bytes(server))
       break;
     if (quic_connection_expiry(client) <= *clock_ns)
       CHECK(quic_connection_handle_expiry(client, *clock_ns) == ASCIICHAT_OK);
@@ -354,23 +339,19 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
   CHECK(quic_connection_finish_stream(server, ACIP_TRAFFIC_AUDIO) == ERROR_INVALID_STATE);
   CHECK(quic_connection_submit(server, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ERROR_INVALID_STATE);
   bool fin_dropped = false;
-  for (unsigned step = 0; step < 10000 && !quic_connection_received_fin(client, ACIP_TRAFFIC_AUDIO);
-       ++step, *clock_ns += NS_PER_MS_INT) {
+  for (unsigned step = 0; step < 10000 && !quic_connection_received_fin(client, ACIP_TRAFFIC_AUDIO); ++step, *clock_ns += NS_PER_MS_INT) {
     uint8_t datagram[1452];
     size_t datagram_length;
     ngtcp2_path_storage path;
-    CHECK(quic_connection_write(client, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) ==
-          ASCIICHAT_OK);
+    CHECK(quic_connection_write(client, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) == ASCIICHAT_OK);
     if (datagram_length) {
       CHECK(quic_connection_packet_sent(client, *clock_ns) == ASCIICHAT_OK);
       CHECK(quic_connection_receive(server, server_path, datagram, datagram_length, *clock_ns) == ASCIICHAT_OK);
     }
-    CHECK(quic_connection_write(server, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) ==
-          ASCIICHAT_OK);
+    CHECK(quic_connection_write(server, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) == ASCIICHAT_OK);
     if (datagram_length) {
       acip_traffic_class_t packet_class;
-      bool drop = !fin_dropped && quic_connection_pending_packet_class(server, &packet_class) &&
-                  packet_class == ACIP_TRAFFIC_AUDIO;
+      bool drop = !fin_dropped && quic_connection_pending_packet_class(server, &packet_class) && packet_class == ACIP_TRAFFIC_AUDIO;
       CHECK(quic_connection_packet_sent(server, *clock_ns) == ASCIICHAT_OK);
       if (drop)
         fin_dropped = true;
@@ -391,8 +372,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
       CHECK(at_server.order[i] == expected);
   }
   if (drop_control && at_server.order[0] != ACIP_TRAFFIC_AUDIO)
-    FATAL(ERROR_ASSERTION_FAILED, "Unexpected receive order %d, %d, %d after dropping control", at_server.order[0],
-          at_server.order[1], at_server.order[2]);
+    FATAL(ERROR_ASSERTION_FAILED, "Unexpected receive order %d, %d, %d after dropping control", at_server.order[0], at_server.order[1], at_server.order[2]);
   CHECK(quic_connection_clear_receiver(client, &at_client) == ASCIICHAT_OK);
   CHECK(quic_connection_clear_receiver(server, &at_server) == ASCIICHAT_OK);
   media_capture_t datagram_client = {0}, datagram_server = {0};
@@ -404,13 +384,11 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
   CHECK(quic_connection_set_receiver(server, capture_quic_packet, &datagram_server) == ASCIICHAT_OK);
   CHECK(quic_connection_datagram_payload(client) > 0 && quic_connection_datagram_payload(server) > 0);
   for (size_t peer = 0; peer < 2; ++peer) {
-    CHECK(quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 1) ==
-          ERROR_NETWORK_TIMEOUT);
+    CHECK(quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 1) == ERROR_NETWORK_TIMEOUT);
     CHECK(quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 0) == ASCIICHAT_OK);
     CHECK(quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_VISUAL, packets[2], lengths[2], 0) == ASCIICHAT_OK);
   }
-  for (unsigned step = 0; step < 10000 && (datagram_client.count < 2 || datagram_server.count < 2);
-       ++step, *clock_ns += NS_PER_MS_INT)
+  for (unsigned step = 0; step < 10000 && (datagram_client.count < 2 || datagram_server.count < 2); ++step, *clock_ns += NS_PER_MS_INT)
     drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
   CHECK(datagram_client.count == 2 && datagram_server.count == 2);
   datagram_server.count = datagram_server.visual_count = 0;
@@ -421,8 +399,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
     uint8_t output[1452];
     size_t output_length = 0;
     ngtcp2_path_storage output_path;
-    CHECK(quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
-          ASCIICHAT_OK);
+    CHECK(quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) == ASCIICHAT_OK);
     if (output_length) {
       acip_traffic_class_t flow;
       bool drop = !visual_dropped && quic_connection_pending_packet_class(client, &flow) && flow == ACIP_TRAFFIC_VISUAL;
@@ -432,8 +409,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
       else
         CHECK(quic_connection_receive(server, server_path, output, output_length, *clock_ns) == ASCIICHAT_OK);
     }
-    CHECK(quic_connection_write(server, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
-          ASCIICHAT_OK);
+    CHECK(quic_connection_write(server, &output_path, output, sizeof(output), &output_length, *clock_ns) == ASCIICHAT_OK);
     if (output_length) {
       CHECK(quic_connection_packet_sent(server, *clock_ns) == ASCIICHAT_OK);
       CHECK(quic_connection_receive(client, client_path, output, output_length, *clock_ns) == ASCIICHAT_OK);
@@ -468,8 +444,7 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
     uint8_t output[1452];
     size_t output_length = 0;
     ngtcp2_path_storage output_path;
-    CHECK(quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
-          ASCIICHAT_OK);
+    CHECK(quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) == ASCIICHAT_OK);
     if (output_length) {
       acip_traffic_class_t flow;
       bool drop = quic_connection_pending_packet_class(client, &flow) && flow == ACIP_TRAFFIC_VISUAL;
@@ -520,13 +495,9 @@ static void quic_media_exchange(quic_connection_t *client, quic_connection_t *se
     buffer_release(packets[i]);
 }
 
-static bool quic_handshake(quic_tls_t *server_tls, quic_tls_t *client_tls, const char *server_name,
-                           bool drop_first_server_packet, bool drop_control, bool *dropped,
-                           asciichat_error_t *failure) {
-  struct sockaddr_in client_address = {
-      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(23456), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  struct sockaddr_in server_address = {
-      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(27224), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+static bool quic_handshake(quic_tls_t *server_tls, quic_tls_t *client_tls, const char *server_name, bool drop_first_server_packet, bool drop_control, bool *dropped, asciichat_error_t *failure) {
+  struct sockaddr_in client_address = {.sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(23456), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  struct sockaddr_in server_address = {.sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(27224), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   ngtcp2_path client_path = {.local = {.addr = (struct sockaddr *)&client_address, .addrlen = sizeof(client_address)},
                              .remote = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)}};
   ngtcp2_path server_path = {.local = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)},
@@ -538,12 +509,9 @@ static bool quic_handshake(quic_tls_t *server_tls, quic_tls_t *client_tls, const
   uint64_t now = NS_PER_SEC_INT;
   ngtcp2_path invalid_path = client_path;
   invalid_path.local.addrlen = 1;
-  CHECK(quic_connection_client_create(client_tls, server_name, &invalid_path, now, &client) == ERROR_INVALID_PARAM &&
-        !client);
+  CHECK(quic_connection_client_create(client_tls, server_name, &invalid_path, now, &client) == ERROR_INVALID_PARAM && !client);
   const uint8_t invalid_initial[16] = {0};
-  CHECK(quic_connection_server_create(server_tls, &server_path, invalid_initial, sizeof(invalid_initial), now,
-                                      &server) == ERROR_NETWORK_PROTOCOL &&
-        !server);
+  CHECK(quic_connection_server_create(server_tls, &server_path, invalid_initial, sizeof(invalid_initial), now, &server) == ERROR_NETWORK_PROTOCOL && !server);
   CHECK(quic_connection_client_create(client_tls, server_name, &client_path, now, &client) == ASCIICHAT_OK);
   CHECK(!quic_connection_tls_ready(client));
   bool failed = false;
@@ -561,9 +529,7 @@ static bool quic_handshake(quic_tls_t *server_tls, quic_tls_t *client_tls, const
       size_t second_length = 1;
       uint8_t second_packet[1452];
       ngtcp2_path_storage second_path;
-      CHECK(quic_connection_write(client, &second_path, second_packet, sizeof(second_packet), &second_length, now) ==
-                ERROR_INVALID_STATE &&
-            second_length == 0);
+      CHECK(quic_connection_write(client, &second_path, second_packet, sizeof(second_packet), &second_length, now) == ERROR_INVALID_STATE && second_length == 0);
       CHECK(quic_connection_packet_sent(client, now - 1) == ERROR_INVALID_PARAM);
       CHECK(quic_connection_packet_sent(client, now) == ASCIICHAT_OK);
       CHECK(quic_connection_packet_sent(client, now) == ERROR_INVALID_STATE);
@@ -631,8 +597,7 @@ typedef struct {
   size_t length;
 } udp_test_state_t;
 
-static asciichat_error_t udp_capture(acip_traffic_class_t traffic_class, const void *packet, size_t length,
-                                     void *context) {
+static asciichat_error_t udp_capture(acip_traffic_class_t traffic_class, const void *packet, size_t length, void *context) {
   udp_test_state_t *state = context;
   if (traffic_class != ACIP_TRAFFIC_CONTROL || length != state->length || memcmp(packet, state->packet, length))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected UDP test packet");
@@ -684,16 +649,13 @@ static void quic_worker_accept_test(quic_tls_t *server_tls, quic_tls_t *client_t
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_worker_accept_test_t accepted = {.lane = &server_lane, .reject_once = true};
   quic_udp_endpoint_t *server = NULL, *client = NULL;
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, quic_worker_accept,
-                                 &accepted, &server) == ASCIICHAT_OK);
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, quic_worker_accept, &accepted, &server) == ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) == ASCIICHAT_OK);
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
   quic_connection_t *connection = NULL;
-  CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, time_get_ns(),
-                         &connection) == ASCIICHAT_OK);
+  CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, time_get_ns(), &connection) == ASCIICHAT_OK);
   acip_transport_t *client_transport = NULL;
   CHECK(quic_transport_attach_serialized(connection, NULL, &client_lane, &client_transport) == ASCIICHAT_OK);
   quic_worker_t *client_worker = NULL, *server_worker = NULL;
@@ -722,8 +684,7 @@ static void quic_worker_accept_test(quic_tls_t *server_tls, quic_tls_t *client_t
     FATAL(ERROR_ASSERTION_FAILED,
           "QUIC retry failed: client_ready=%d server_ready=%d accepted=%d rejected=%u "
           "client_worker=%d server_worker=%d",
-          client_ready, server_ready, server_transport != NULL, accepted.rejected, client_worker_result,
-          server_worker_result);
+          client_ready, server_ready, server_transport != NULL, accepted.rejected, client_worker_result, server_worker_result);
   }
   mutex_lock(&server_lane);
   CHECK(accepted.rejected == 1);
@@ -747,8 +708,7 @@ static void quic_worker_accept_test(quic_tls_t *server_tls, quic_tls_t *client_t
   CHECK(quic_transport_begin_security(client_transport, &client_crypto) == ASCIICHAT_OK);
   CHECK(quic_transport_begin_security(server_transport, &server_crypto) == ASCIICHAT_OK);
   start = time_get_ns();
-  while ((!quic_transport_security_ready(client_transport) || !quic_transport_security_ready(server_transport)) &&
-         time_get_ns() - start < 5 * NS_PER_SEC_INT)
+  while ((!quic_transport_security_ready(client_transport) || !quic_transport_security_ready(server_transport)) && time_get_ns() - start < 5 * NS_PER_SEC_INT)
     time_sleep_ns(NS_PER_MS_INT);
   CHECK(quic_transport_security_ready(client_transport) && quic_transport_security_ready(server_transport));
   CHECK(quic_transport_allow_media(client_transport) == ASCIICHAT_OK);
@@ -784,8 +744,7 @@ typedef struct {
 
 static bool quic_worker_failure(quic_connection_t *connection, asciichat_error_t reason, void *context) {
   quic_worker_failure_test_t *state = context;
-  if (connection != state->expected || reason != ERROR_INVALID_STATE ||
-      quic_transport_fail(state->transport, reason) != ASCIICHAT_OK)
+  if (connection != state->expected || reason != ERROR_INVALID_STATE || quic_transport_fail(state->transport, reason) != ASCIICHAT_OK)
     return false;
   mutex_lock(state->lane);
   asciichat_error_t result = quic_udp_remove(state->endpoint, connection);
@@ -804,8 +763,7 @@ static asciichat_error_t udp_secure_accept(quic_connection_t *connection, void *
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, crypto_handshake_context_t *ctx,
-                                                 bool server) {
+static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, crypto_handshake_context_t *ctx, bool server) {
   while (acip_transport_has_pending_data(transport)) {
     void *packet = NULL, *allocation = NULL;
     size_t length = 0;
@@ -824,8 +782,7 @@ static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, cr
       result = crypto_handshake_set_parameters(ctx, &params);
     } else if (!server && type == PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT) {
       result = crypto_handshake_client_key_exchange(ctx, transport, type, payload, payload_length);
-    } else if (!server &&
-               (type == PACKET_TYPE_CRYPTO_AUTH_CHALLENGE || type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)) {
+    } else if (!server && (type == PACKET_TYPE_CRYPTO_AUTH_CHALLENGE || type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)) {
       result = crypto_handshake_client_auth_response(ctx, transport, type, payload, payload_length);
     } else if (!server && (type == PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP || type == PACKET_TYPE_CRYPTO_AUTH_FAILED)) {
       result = crypto_handshake_client_complete(ctx, transport, type, payload, payload_length);
@@ -855,13 +812,11 @@ typedef struct {
 
 static void *quic_client_negotiate_thread(void *context) {
   quic_client_negotiation_t *state = context;
-  state->result =
-      network_client_negotiate(state->transport, state->handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA);
+  state->result = network_client_negotiate(state->transport, state->handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA);
   return NULL;
 }
 
-static asciichat_error_t quic_network_packet(network_connection_t *connection, packet_type_t type, const void *payload,
-                                             size_t length, void *context) {
+static asciichat_error_t quic_network_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *context) {
   quic_network_capture_t *capture = context;
   if (type != PACKET_TYPE_AUDIO_BATCH || length != capture->length || memcmp(payload, capture->payload, length))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected adopted QUIC packet");
@@ -876,14 +831,11 @@ typedef struct {
 } quic_server_fixture_t;
 
 static void check_audio_samples(const audio_batch_packet_t *header, const float *samples, size_t count) {
-  CHECK(header && header->batch_count == 1 && header->total_samples == 4 && header->sample_rate == AUDIO_SAMPLE_RATE &&
-        header->channels == 1 && count == 4);
-  CHECK(samples[0] == 0.0f && samples[1] > 0.999f && samples[2] < -0.999f && samples[3] > 0.499f &&
-        samples[3] < 0.501f);
+  CHECK(header && header->batch_count == 1 && header->total_samples == 4 && header->sample_rate == AUDIO_SAMPLE_RATE && header->channels == 1 && count == 4);
+  CHECK(samples[0] == 0.0f && samples[1] > 0.999f && samples[2] < -0.999f && samples[3] > 0.499f && samples[3] < 0.501f);
 }
 
-static void quic_server_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *client,
-                              void *context) {
+static void quic_server_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *client, void *context) {
   (void)client;
   check_audio_samples(header, samples, count);
   atomic_store_bool(&((quic_server_fixture_t *)context)->received, true);
@@ -910,25 +862,18 @@ static asciichat_error_t quic_server_open(network_connection_t *connection, void
   if (strcmp(network_connection_peer(connection), "127.0.0.1") != 0)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "QUIC server received an incorrect peer address");
   crypto_handshake_context_t *handshake = network_connection_handshake(connection);
-  asciichat_error_t result =
-      crypto_handshake_init_with_password("quic-network-server", handshake, true, "test-password");
+  asciichat_error_t result = crypto_handshake_init_with_password("quic-network-server", handshake, true, "test-password");
   if (result != ASCIICHAT_OK)
     return result;
-  fixture->negotiation = (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA,
-                                                 .handshake = handshake,
-                                                 .initialized = true,
-                                                 .password = "test-password",
-                                                 .require_auth = true,
-                                                 .require_encryption = true};
+  fixture->negotiation =
+      (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA, .handshake = handshake, .initialized = true, .password = "test-password", .require_auth = true, .require_encryption = true};
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t quic_server_packet(network_connection_t *connection, packet_type_t type, const void *payload,
-                                            size_t length, void *context) {
+static asciichat_error_t quic_server_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *context) {
   quic_server_fixture_t *fixture = context;
   if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
-    asciichat_error_t result = network_negotiation_receive(
-        &fixture->negotiation, network_connection_transport(connection), type, payload, length);
+    asciichat_error_t result = network_negotiation_receive(&fixture->negotiation, network_connection_transport(connection), type, payload, length);
     if (result == ASCIICHAT_OK && fixture->negotiation.ready)
       network_connection_ready(connection);
     return result;
@@ -936,8 +881,7 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
   if (type != PACKET_TYPE_AUDIO_BATCH)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC server audio");
   acip_server_callbacks_t callbacks = {.on_audio_batch = quic_server_audio, .app_ctx = fixture};
-  asciichat_error_t result =
-      acip_handle_server_packet(network_connection_transport(connection), type, payload, length, NULL, &callbacks);
+  asciichat_error_t result = acip_handle_server_packet(network_connection_transport(connection), type, payload, length, NULL, &callbacks);
   if (result != ASCIICHAT_OK)
     return result;
   return packet_send_via_transport(network_connection_transport(connection), type, payload, length, 0);
@@ -946,16 +890,11 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
 static void quic_network_server_test(const char *certificate, const char *private_key, bool datagrams) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  quic_config_t server_config = {.certificate_file = certificate,
-                                 .private_key_file = private_key,
-                                 .enable_datagrams = datagrams,
-                                 .prefer_audio_datagrams = true};
+  quic_config_t server_config = {.certificate_file = certificate, .private_key_file = private_key, .enable_datagrams = datagrams, .prefer_audio_datagrams = true};
   quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
   quic_endpoint_t *server = NULL, *client = NULL;
-  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
-        ASCIICHAT_OK);
-  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) == ASCIICHAT_OK);
+  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) == ASCIICHAT_OK);
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
@@ -974,12 +913,8 @@ static void quic_network_server_test(const char *certificate, const char *privat
   CHECK(ready && capabilities.datagrams == datagrams);
   float samples[] = {0.0f, 1.0f, -1.0f, 0.5f};
   quic_server_fixture_t fixture = {0};
-  network_server_config_t config = {.port = 0,
-                                    .ipv4_address = "127.0.0.1",
-                                    .bind_ipv4 = true,
-                                    .callbacks = {.open = quic_server_open, .packet = quic_server_packet},
-                                    .user_data = &fixture,
-                                    .quic_endpoint = server};
+  network_server_config_t config = {
+      .port = 0, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .callbacks = {.open = quic_server_open, .packet = quic_server_packet}, .user_data = &fixture, .quic_endpoint = server};
   network_server_t *network_server = NULL;
   CHECK(network_server_create(&config, &network_server) == ASCIICHAT_OK);
   CHECK(network_server_start(network_server) == ASCIICHAT_OK);
@@ -987,24 +922,20 @@ static void quic_network_server_test(const char *certificate, const char *privat
   platform_thread_t server_thread;
   CHECK(platform_thread_create(&server_thread, "quic_server_loop", quic_server_run, &runner) == ASCIICHAT_OK);
   crypto_handshake_context_t client_handshake;
-  CHECK(crypto_handshake_init_with_password("quic-network-client", &client_handshake, false, "test-password") ==
-        ASCIICHAT_OK);
+  CHECK(crypto_handshake_init_with_password("quic-network-client", &client_handshake, false, "test-password") == ASCIICHAT_OK);
   SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
   client_handshake.server_port = 27224;
-  CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA) ==
-        ASCIICHAT_OK);
+  CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA) == ASCIICHAT_OK);
   CHECK(outbound->prefer_audio_datagrams);
   CHECK(acip_send_audio_batch(outbound, samples, 4, 1) == ASCIICHAT_OK);
   outbound->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   void *echo = NULL, *allocation = NULL;
   size_t echo_length = 0;
   CHECK(acip_transport_recv(outbound, &echo, &echo_length, &allocation) == ASCIICHAT_OK);
-  CHECK(atomic_load_bool(&fixture.received) &&
-        echo_length == sizeof(packet_header_t) + sizeof(audio_batch_packet_t) + sizeof(samples));
+  CHECK(atomic_load_bool(&fixture.received) && echo_length == sizeof(packet_header_t) + sizeof(audio_batch_packet_t) + sizeof(samples));
   bool client_received = false;
   acip_client_callbacks_t callbacks = {.on_audio_batch = quic_client_audio, .app_ctx = &client_received};
-  CHECK(acip_handle_client_packet(outbound, PACKET_TYPE_AUDIO_BATCH, (uint8_t *)echo + sizeof(packet_header_t),
-                                  echo_length - sizeof(packet_header_t), &callbacks) == ASCIICHAT_OK);
+  CHECK(acip_handle_client_packet(outbound, PACKET_TYPE_AUDIO_BATCH, (uint8_t *)echo + sizeof(packet_header_t), echo_length - sizeof(packet_header_t), &callbacks) == ASCIICHAT_OK);
   CHECK(client_received);
   buffer_release(allocation);
   network_server_request_stop(network_server);
@@ -1024,18 +955,12 @@ static void quic_network_server_test(const char *certificate, const char *privat
 static void quic_public_endpoint_test(const char *certificate, const char *private_key) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  quic_config_t server_config = {.certificate_file = certificate,
-                                 .private_key_file = private_key,
-                                 .enable_datagrams = true,
-                                 .webtransport_origin = "https://example.test",
-                                 .webtransport_path = "/acip",
-                                 .accept_native = true};
+  quic_config_t server_config = {
+      .certificate_file = certificate, .private_key_file = private_key, .enable_datagrams = true, .webtransport_origin = "https://example.test", .webtransport_path = "/acip", .accept_native = true};
   quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
   quic_endpoint_t *server = NULL, *client = NULL;
-  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
-        ASCIICHAT_OK);
-  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) == ASCIICHAT_OK);
+  CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), false, &client_config, &client) == ASCIICHAT_OK);
   CHECK(quic_endpoint_destroy(&server) == ERROR_INVALID_STATE && server);
   struct sockaddr_storage address;
   socklen_t address_length = 0;
@@ -1051,8 +976,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
       asciichat_error_t result = quic_accept(server, &inbound);
       CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
     }
-    if (inbound && acip_transport_get_capabilities(outbound, &client_caps) == ASCIICHAT_OK &&
-        acip_transport_get_capabilities(inbound, &server_caps) == ASCIICHAT_OK) {
+    if (inbound && acip_transport_get_capabilities(outbound, &client_caps) == ASCIICHAT_OK && acip_transport_get_capabilities(inbound, &server_caps) == ASCIICHAT_OK) {
       ready = true;
       break;
     }
@@ -1063,10 +987,8 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   socklen_t client_address_length = 0, peer_length = 0;
   CHECK(quic_endpoint_address(client, &client_address, &client_address_length) == ASCIICHAT_OK);
   CHECK(quic_transport_peer_address(inbound, &observed_peer, &peer_length) == ASCIICHAT_OK);
-  CHECK(peer_length == client_address_length && observed_peer.ss_family == AF_INET &&
-        ((struct sockaddr_in *)&observed_peer)->sin_port == ((struct sockaddr_in *)&client_address)->sin_port &&
-        ((struct sockaddr_in *)&observed_peer)->sin_addr.s_addr ==
-            ((struct sockaddr_in *)&client_address)->sin_addr.s_addr);
+  CHECK(peer_length == client_address_length && observed_peer.ss_family == AF_INET && ((struct sockaddr_in *)&observed_peer)->sin_port == ((struct sockaddr_in *)&client_address)->sin_port &&
+        ((struct sockaddr_in *)&observed_peer)->sin_addr.s_addr == ((struct sockaddr_in *)&client_address)->sin_addr.s_addr);
   CHECK(quic_transport_wait_security(outbound, 0) == ERROR_NETWORK_TIMEOUT);
   CHECK(quic_release(client, &inbound) == ERROR_INVALID_PARAM && inbound);
   network_connection_t *adopted = NULL;
@@ -1079,21 +1001,15 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   SAFE_STRNCPY(client_handshake->server_ip, "127.0.0.1", sizeof(client_handshake->server_ip));
   client_handshake->server_port = 27224;
   CHECK(network_client_negotiate(outbound, client_handshake, ACIP_CRYPTO_NONE, NETWORK_PROTOCOL_MEDIA) == ERROR_CRYPTO);
-  network_negotiation_t server_negotiation = {.protocol = NETWORK_PROTOCOL_MEDIA,
-                                              .handshake = &server_handshake,
-                                              .initialized = true,
-                                              .password = "test-password",
-                                              .require_auth = true,
-                                              .require_encryption = true};
+  network_negotiation_t server_negotiation = {
+      .protocol = NETWORK_PROTOCOL_MEDIA, .handshake = &server_handshake, .initialized = true, .password = "test-password", .require_auth = true, .require_encryption = true};
   protocol_version_packet_t insecure_version;
   protocol_version_packet_init(&insecure_version, ACIP_CRYPTO_NONE);
-  CHECK(network_negotiation_receive(&server_negotiation, inbound, PACKET_TYPE_PROTOCOL_VERSION, &insecure_version,
-                                    sizeof(insecure_version)) == ERROR_CRYPTO);
+  CHECK(network_negotiation_receive(&server_negotiation, inbound, PACKET_TYPE_PROTOCOL_VERSION, &insecure_version, sizeof(insecure_version)) == ERROR_CRYPTO);
   CHECK(!server_negotiation.ready && server_negotiation.step == 0);
   quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = client_handshake};
   platform_thread_t negotiation_thread;
-  CHECK(platform_thread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread,
-                               &client_negotiation) == ASCIICHAT_OK);
+  CHECK(platform_thread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) == ASCIICHAT_OK);
   start = time_get_ns();
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT && !server_negotiation.ready) {
     if (acip_transport_has_pending_data(inbound)) {
@@ -1103,9 +1019,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
       CHECK(packet_length >= sizeof(packet_header_t));
       packet_header_t header;
       memcpy(&header, packet, sizeof(header));
-      asciichat_error_t result =
-          network_negotiation_receive(&server_negotiation, inbound, NET_TO_HOST_U16(header.type),
-                                      (const uint8_t *)packet + sizeof(header), packet_length - sizeof(header));
+      asciichat_error_t result = network_negotiation_receive(&server_negotiation, inbound, NET_TO_HOST_U16(header.type), (const uint8_t *)packet + sizeof(header), packet_length - sizeof(header));
       buffer_release(packet_allocation);
       CHECK(result == ASCIICHAT_OK);
     }
@@ -1171,15 +1085,13 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   buffer_release(allocation);
   CHECK(acip_send_ping(outbound) == ASCIICHAT_OK);
   CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
-  CHECK(received_length == sizeof(packet_header_t) &&
-        NET_TO_HOST_U16(((packet_header_t *)received)->type) == PACKET_TYPE_PING);
+  CHECK(received_length == sizeof(packet_header_t) && NET_TO_HOST_U16(((packet_header_t *)received)->type) == PACKET_TYPE_PING);
   buffer_release(allocation);
   network_connection_ready(adopted);
   outbound = NULL;
   CHECK(acip_transport_get_type(network_connection_transport(adopted)) == ACIP_TRANSPORT_QUIC);
   CHECK(acip_transport_sendv_ex(inbound, &slice, 1, &options) == ASCIICHAT_OK);
-  quic_network_capture_t network_capture = {.payload = audio + sizeof(packet_header_t),
-                                            .length = audio_length - sizeof(packet_header_t)};
+  quic_network_capture_t network_capture = {.payload = audio + sizeof(packet_header_t), .length = audio_length - sizeof(packet_header_t)};
   network_connection_callbacks_t callbacks = {.packet = quic_network_packet};
   CHECK(network_connection_run(adopted, &callbacks, &network_capture) == ASCIICHAT_OK && network_capture.received);
   network_connection_destroy(&adopted);
@@ -1196,8 +1108,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   acip_transport_t *unclaimed = NULL;
   CHECK(quic_connect(client, (struct sockaddr *)&address, address_length, "localhost", &unclaimed) == ASCIICHAT_OK);
   start = time_get_ns();
-  while (time_get_ns() - start < 10 * NS_PER_SEC_INT &&
-         acip_transport_get_capabilities(unclaimed, &client_caps) != ASCIICHAT_OK)
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT && acip_transport_get_capabilities(unclaimed, &client_caps) != ASCIICHAT_OK)
     time_sleep_ns(NS_PER_MS_INT);
   CHECK(acip_transport_get_capabilities(unclaimed, &client_caps) == ASCIICHAT_OK);
   CHECK(quic_endpoint_stop(server) == ASCIICHAT_OK);
@@ -1230,8 +1141,7 @@ typedef struct {
 static void *quic_concurrent_receive(void *arg) {
   quic_concurrent_receiver_t *receiver = arg;
   atomic_store_u64(&receiver->started, 1);
-  receiver->result =
-      acip_transport_recv(receiver->transport, &receiver->packet, &receiver->length, &receiver->allocation);
+  receiver->result = acip_transport_recv(receiver->transport, &receiver->packet, &receiver->length, &receiver->allocation);
   atomic_store_u64(&receiver->done, 1);
   return NULL;
 }
@@ -1257,8 +1167,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
   CHECK(mutex_init(&server_lane, "quic_server_lane") == 0);
   udp_secure_test_state_t server_state = {0};
   media_capture_t client_capture = {0};
-  packet_type_t types[] = {PACKET_TYPE_PING,        PACKET_TYPE_AUDIO_BATCH,      PACKET_TYPE_IMAGE_FRAME,
-                           PACKET_TYPE_ASCII_FRAME, PACKET_TYPE_IMAGE_FRAME_H264, PACKET_TYPE_IMAGE_FRAME_H265};
+  packet_type_t types[] = {PACKET_TYPE_PING, PACKET_TYPE_AUDIO_BATCH, PACKET_TYPE_IMAGE_FRAME, PACKET_TYPE_ASCII_FRAME, PACKET_TYPE_IMAGE_FRAME_H264, PACKET_TYPE_IMAGE_FRAME_H265};
   uint8_t *packets[6];
   size_t lengths[6];
   for (size_t i = 0; i < 6; ++i) {
@@ -1267,23 +1176,19 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     client_capture.lengths[i] = server_state.capture.lengths[i] = lengths[i];
   }
   crypto_handshake_context_t client_handshake, server_handshake;
-  CHECK(crypto_handshake_init_with_password("quic-client", &client_handshake, false,
-                                            wrong_password ? "wrong-password" : "test-password") == ASCIICHAT_OK);
+  CHECK(crypto_handshake_init_with_password("quic-client", &client_handshake, false, wrong_password ? "wrong-password" : "test-password") == ASCIICHAT_OK);
   CHECK(crypto_handshake_init_with_password("quic-server", &server_handshake, true, "test-password") == ASCIICHAT_OK);
   SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
   client_handshake.server_port = 27224;
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_secure_accept,
-                                 &server_state, &server) == ASCIICHAT_OK);
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_secure_accept, &server_state, &server) == ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) == ASCIICHAT_OK);
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
   quic_connection_t *client_connection = NULL;
   acip_transport_t *client_transport = NULL, *server_transport = NULL;
   uint64_t start = time_get_ns();
-  CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
-                         &client_connection) == ASCIICHAT_OK);
+  CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start, &client_connection) == ASCIICHAT_OK);
   uint64_t wait_ns = 0;
   bool want_write = true;
   uint64_t expiry = quic_connection_expiry(client_connection);
@@ -1292,8 +1197,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
   if (expected_wait > 5 * NS_PER_SEC_INT)
     expected_wait = 5 * NS_PER_SEC_INT;
   CHECK(wait_ns == expected_wait && !want_write);
-  bool handshake_started = false, security_started = false, submitted = false, rejected = false,
-       client_rejected = false;
+  bool handshake_started = false, security_started = false, submitted = false, rejected = false, client_rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     quic_connection_t *failed = NULL;
@@ -1305,20 +1209,15 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     asciichat_error_t server_pump = quic_udp_pump(server, now, &failed);
     mutex_unlock(&server_lane);
     CHECK(server_pump == ASCIICHAT_OK && !failed);
-    if (!handshake_started && server_state.peer && quic_connection_tls_ready(client_connection) &&
-        quic_connection_tls_ready(server_state.peer)) {
-      CHECK(quic_transport_attach_serialized(client_connection, &client_handshake.crypto_ctx, &client_lane,
-                                             &client_transport) == ASCIICHAT_OK);
-      CHECK(quic_transport_attach_serialized(server_state.peer, &server_handshake.crypto_ctx, &server_lane,
-                                             &server_transport) == ASCIICHAT_OK);
+    if (!handshake_started && server_state.peer && quic_connection_tls_ready(client_connection) && quic_connection_tls_ready(server_state.peer)) {
+      CHECK(quic_transport_attach_serialized(client_connection, &client_handshake.crypto_ctx, &client_lane, &client_transport) == ASCIICHAT_OK);
+      CHECK(quic_transport_attach_serialized(server_state.peer, &server_handshake.crypto_ctx, &server_lane, &server_transport) == ASCIICHAT_OK);
       acip_transport_t *duplicate = NULL;
-      CHECK(quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &duplicate) == ERROR_INVALID_PARAM &&
-            !duplicate);
+      CHECK(quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &duplicate) == ERROR_INVALID_PARAM && !duplicate);
       CHECK(acip_transport_get_type(client_transport) == ACIP_TRANSPORT_QUIC);
       CHECK(acip_transport_get_socket(client_transport) == INVALID_SOCKET_VALUE);
       acip_transport_capabilities_t caps;
-      CHECK(acip_transport_get_capabilities(client_transport, &caps) == ASCIICHAT_OK && caps.independent_streams &&
-            caps.datagrams && caps.max_datagram_payload > 28);
+      CHECK(acip_transport_get_capabilities(client_transport, &caps) == ASCIICHAT_OK && caps.independent_streams && caps.datagrams && caps.max_datagram_payload > 28);
       client_transport->receive_timeout_ns = 5 * NS_PER_MS_INT;
       void *empty = NULL, *allocation = NULL;
       size_t empty_length = 0;
@@ -1332,8 +1231,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     }
     if (handshake_started && !security_started) {
       asciichat_error_t client_result = quic_handshake_dispatch(client_transport, &client_handshake, false);
-      asciichat_error_t server_result =
-          rejected ? ASCIICHAT_OK : quic_handshake_dispatch(server_transport, &server_handshake, true);
+      asciichat_error_t server_result = rejected ? ASCIICHAT_OK : quic_handshake_dispatch(server_transport, &server_handshake, true);
       if (server_result != ASCIICHAT_OK) {
         CHECK(wrong_password && server_result == ERROR_NETWORK && client_result == ASCIICHAT_OK);
         rejected = true;
@@ -1344,14 +1242,12 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
         break;
       }
     }
-    if (handshake_started && !security_started && crypto_handshake_is_ready(&client_handshake) &&
-        crypto_handshake_is_ready(&server_handshake)) {
+    if (handshake_started && !security_started && crypto_handshake_is_ready(&client_handshake) && crypto_handshake_is_ready(&server_handshake)) {
       CHECK(quic_connection_enable_security(client_connection, &client_handshake.crypto_ctx) == ASCIICHAT_OK);
       CHECK(quic_connection_enable_security(server_state.peer, &server_handshake.crypto_ctx) == ASCIICHAT_OK);
       security_started = true;
     }
-    if (security_started && !submitted && quic_connection_security_ready(client_connection) &&
-        quic_connection_security_ready(server_state.peer)) {
+    if (security_started && !submitted && quic_connection_security_ready(client_connection) && quic_connection_security_ready(server_state.peer)) {
       CHECK(quic_connection_allow_media(client_connection) == ASCIICHAT_OK);
       CHECK(quic_connection_allow_media(server_state.peer) == ASCIICHAT_OK);
       acip_transport_t *peers[] = {client_transport, server_transport};
@@ -1362,8 +1258,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
             acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
             CHECK(acip_transport_sendv_ex(peers[peer], &slice, 1, &options) == ASCIICHAT_OK);
           } else if (i == 2) {
-            socket_buffer_t slices[] = {{packets[i], sizeof(packet_header_t)},
-                                        {packets[i] + sizeof(packet_header_t), lengths[i] - sizeof(packet_header_t)}};
+            socket_buffer_t slices[] = {{packets[i], sizeof(packet_header_t)}, {packets[i] + sizeof(packet_header_t), lengths[i] - sizeof(packet_header_t)}};
             CHECK(acip_transport_sendv(peers[peer], slices, 2) == ASCIICHAT_OK);
           } else {
             CHECK(acip_transport_send(peers[peer], packets[i], lengths[i]) == ASCIICHAT_OK);
@@ -1394,15 +1289,13 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     time_sleep_ns(NS_PER_MS_INT);
   }
   if (wrong_password) {
-    CHECK(rejected && client_rejected && !crypto_handshake_is_ready(&client_handshake) &&
-          !crypto_handshake_is_ready(&server_handshake));
+    CHECK(rejected && client_rejected && !crypto_handshake_is_ready(&client_handshake) && !crypto_handshake_is_ready(&server_handshake));
     CHECK(quic_connection_allow_media(client_connection) == ERROR_INVALID_STATE);
     CHECK(quic_connection_allow_media(server_state.peer) == ERROR_INVALID_STATE);
   } else {
     CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
     quic_worker_t *client_worker = NULL, *server_worker = NULL;
-    quic_worker_failure_test_t failure_state = {
-        .endpoint = server, .transport = server_transport, .lane = &server_lane, .expected = server_state.peer};
+    quic_worker_failure_test_t failure_state = {.endpoint = server, .transport = server_transport, .lane = &server_lane, .expected = server_state.peer};
     client_handshake.crypto_ctx.rekey_packet_threshold = 1;
     server_handshake.crypto_ctx.rekey_packet_threshold = 1;
     CHECK(quic_worker_start(client, &client_lane, NULL, NULL, &client_worker) == ASCIICHAT_OK);
@@ -1441,9 +1334,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     CHECK(rotated);
     CHECK(acip_outbound_create(client_transport) == ASCIICHAT_OK);
     socket_buffer_t audio_slice = {packets[1], lengths[1]};
-    acip_send_options_t audio_options = {.traffic_class = ACIP_TRAFFIC_AUDIO,
-                                         .delivery = ACIP_DELIVERY_DATAGRAM,
-                                         .deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT};
+    acip_send_options_t audio_options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM, .deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT};
     CHECK(acip_transport_sendv_ex(client_transport, &audio_slice, 1, &audio_options) == ASCIICHAT_OK);
     void *audio_received = NULL, *audio_allocation = NULL;
     size_t audio_length = 0;
@@ -1479,8 +1370,7 @@ static void quic_udp_secure_exchange(quic_tls_t *server_tls, quic_tls_t *client_
     while (!atomic_load_u64(&receiver.done) && time_get_ns() - start < 2 * NS_PER_SEC_INT)
       time_sleep_ns(NS_PER_MS_INT);
     CHECK(thread_join(&thread, NULL) == 0);
-    CHECK(receiver.result == ASCIICHAT_OK && receiver.length == lengths[0] &&
-          memcmp(receiver.packet, packets[0], receiver.length) == 0);
+    CHECK(receiver.result == ASCIICHAT_OK && receiver.length == lengths[0] && memcmp(receiver.packet, packets[0], receiver.length) == 0);
     buffer_release(receiver.allocation);
     receiver = (quic_concurrent_receiver_t){.transport = server_transport};
     CHECK(platform_thread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
@@ -1538,18 +1428,15 @@ static void quic_udp_exchange(quic_tls_t *server_tls, quic_tls_t *client_tls) {
   uint8_t *packet = make_packet(PACKET_TYPE_CRYPTO_CAPABILITIES, 64, &length);
   server_state.packet = client_state.packet = packet;
   server_state.length = client_state.length = length;
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &server_state,
-                                 &server) == ASCIICHAT_OK);
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &server_state, &server) == ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) == ASCIICHAT_OK);
   struct sockaddr_storage server_address;
   socklen_t server_length = 0;
   CHECK(quic_udp_endpoint_address(server, &server_address, &server_length) == ASCIICHAT_OK);
   quic_connection_t *clients[2] = {NULL, NULL};
   uint64_t start = time_get_ns();
   for (size_t i = 0; i < 2; ++i) {
-    CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&server_address, server_length, start,
-                           &clients[i]) == ASCIICHAT_OK);
+    CHECK(quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&server_address, server_length, start, &clients[i]) == ASCIICHAT_OK);
     CHECK(quic_connection_set_receiver(clients[i], udp_capture, &client_state) == ASCIICHAT_OK);
   }
   bool submitted = false;
@@ -1558,26 +1445,21 @@ static void quic_udp_exchange(quic_tls_t *server_tls, quic_tls_t *client_tls) {
     quic_connection_t *failed = NULL;
     CHECK(quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
     CHECK(quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
-    if (!submitted && server_state.accepted == 2 && quic_connection_tls_ready(clients[0]) &&
-        quic_connection_tls_ready(clients[1]) && quic_connection_tls_ready(server_state.peers[0]) &&
+    if (!submitted && server_state.accepted == 2 && quic_connection_tls_ready(clients[0]) && quic_connection_tls_ready(clients[1]) && quic_connection_tls_ready(server_state.peers[0]) &&
         quic_connection_tls_ready(server_state.peers[1])) {
       size_t unauthenticated_length = 0;
       uint8_t *unauthenticated = make_packet(PACKET_TYPE_PING, 8, &unauthenticated_length);
-      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
-            ERROR_CRYPTO);
+      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) == ERROR_CRYPTO);
       buffer_release(unauthenticated);
       unauthenticated = make_packet(PACKET_TYPE_CRYPTO_NO_ENCRYPTION, 8, &unauthenticated_length);
-      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
-            ERROR_CRYPTO);
+      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) == ERROR_CRYPTO);
       buffer_release(unauthenticated);
       unauthenticated = make_packet(PACKET_TYPE_CRYPTO_REKEY_REQUEST, 8, &unauthenticated_length);
-      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
-            ERROR_CRYPTO);
+      CHECK(quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) == ERROR_CRYPTO);
       buffer_release(unauthenticated);
       for (size_t i = 0; i < 2; ++i) {
         CHECK(quic_connection_datagram_payload(clients[i]) == 0);
-        CHECK(quic_connection_submit_datagram(clients[i], ACIP_TRAFFIC_AUDIO, packet, length, 0) ==
-              ERROR_NOT_SUPPORTED);
+        CHECK(quic_connection_submit_datagram(clients[i], ACIP_TRAFFIC_AUDIO, packet, length, 0) == ERROR_NOT_SUPPORTED);
         CHECK(quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
         CHECK(quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
       }
@@ -1585,14 +1467,12 @@ static void quic_udp_exchange(quic_tls_t *server_tls, quic_tls_t *client_tls) {
       submitted = true;
     }
     if (submitted && client_state.received == 2 && server_state.received == 2 &&
-        (quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) ||
-         quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL)))
+        (quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) || quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL)))
       break;
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(submitted && client_state.received == 2 && server_state.received == 2);
-  CHECK(quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) !=
-        quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL));
+  CHECK(quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) != quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL));
   CHECK(quic_udp_remove(client, clients[0]) == ASCIICHAT_OK);
   CHECK(quic_connection_submit(clients[1], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
   for (size_t i = 0; i < 2; ++i)
@@ -1618,17 +1498,14 @@ static void quic_udp_bad_identity(quic_tls_t *server_tls, quic_tls_t *client_tls
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_udp_endpoint_t *server = NULL, *client = NULL;
   udp_test_state_t state = {0};
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &state,
-                                 &server) == ASCIICHAT_OK);
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
-        ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &state, &server) == ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) == ASCIICHAT_OK);
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
   quic_connection_t *connection = NULL;
   uint64_t start = time_get_ns();
-  CHECK(quic_udp_connect(client, client_tls, "other.example", (struct sockaddr *)&address, address_length, start,
-                         &connection) == ASCIICHAT_OK);
+  CHECK(quic_udp_connect(client, client_tls, "other.example", (struct sockaddr *)&address, address_length, start, &connection) == ASCIICHAT_OK);
   bool rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
@@ -1667,11 +1544,8 @@ static void quic_udp_wakeup_test(void) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_udp_endpoint_t *endpoint = NULL;
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback) + 1, NULL, NULL, NULL, &endpoint) ==
-            ERROR_INVALID_PARAM &&
-        !endpoint);
-  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &endpoint) ==
-        ASCIICHAT_OK);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback) + 1, NULL, NULL, NULL, &endpoint) == ERROR_INVALID_PARAM && !endpoint);
+  CHECK(quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &endpoint) == ASCIICHAT_OK);
   uint64_t wait_ns = 0;
   bool want_write = true, ready = true;
   CHECK(quic_udp_wait_parameters(endpoint, time_get_ns(), 10 * NS_PER_MS_INT, &wait_ns, &want_write) == ASCIICHAT_OK);
@@ -1699,34 +1573,26 @@ static void quic_retry_token_test(void) {
   ngtcp2_cid retry = {.datalen = 16}, original = {.datalen = 16}, recovered;
   memset(retry.data, 0x31, retry.datalen);
   memset(original.data, 0x42, original.datalen);
-  struct sockaddr_in address = {
-      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(12345), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(12345), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   uint8_t token[NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN2];
   uint64_t now = 100 * NS_PER_SEC_INT;
-  ngtcp2_ssize token_length =
-      ngtcp2_crypto_generate_retry_token2(token, secret, sizeof(secret), NGTCP2_PROTO_VER_V1,
-                                          (struct sockaddr *)&address, sizeof(address), &retry, &original, now);
+  ngtcp2_ssize token_length = ngtcp2_crypto_generate_retry_token2(token, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry, &original, now);
   CHECK(token_length > 0);
-  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
-                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
                                           10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) == 0);
   CHECK(recovered.datalen == original.datalen && memcmp(recovered.data, original.data, original.datalen) == 0);
   struct sockaddr_in wrong_address = address;
   wrong_address.sin_port = HOST_TO_NET_U16(12346);
-  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
-                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&wrong_address, sizeof(wrong_address),
-                                          &retry, 10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
-  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
-                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&wrong_address, sizeof(wrong_address), &retry,
+                                          10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
                                           10 * NS_PER_SEC_INT, now + 11 * NS_PER_SEC_INT) != 0);
   retry.data[0] ^= 1;
-  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
-                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
                                           10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
   retry.data[0] ^= 1;
   token[(size_t)token_length - 1] ^= 1;
-  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
-                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret), NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
                                           10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
 }
 
@@ -1745,8 +1611,7 @@ static void quic_cli_probe(const char *certificate, const char *port_text) {
   CHECK(quic_connect(endpoint, (struct sockaddr *)&remote, sizeof(remote), "localhost", &transport) == ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   acip_transport_capabilities_t caps;
-  while (time_get_ns() - start < 10 * NS_PER_SEC_INT &&
-         acip_transport_get_capabilities(transport, &caps) != ASCIICHAT_OK)
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT && acip_transport_get_capabilities(transport, &caps) != ASCIICHAT_OK)
     time_sleep_ns(NS_PER_MS_INT);
   CHECK(acip_transport_get_capabilities(transport, &caps) == ASCIICHAT_OK);
   crypto_handshake_context_t handshake;
@@ -1770,20 +1635,13 @@ static void quic_cli_probe(const char *certificate, const char *port_text) {
   socket_cleanup();
 }
 
-static void quic_http3_probe_server(const char *certificate, const char *key, const char *port_text,
-                                    const char *origin) {
+static void quic_http3_probe_server(const char *certificate, const char *key, const char *port_text, const char *origin) {
   char *end = NULL;
   unsigned long port = strtoul(port_text, &end, 10);
   CHECK(end && !*end && port > 0 && port <= 65535);
   CHECK(socket_init() == ASCIICHAT_OK);
-  struct sockaddr_in local = {.sin_family = AF_INET,
-                              .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
-                              .sin_port = HOST_TO_NET_U16((uint16_t)port)};
-  quic_config_t config = {.certificate_file = certificate,
-                          .private_key_file = key,
-                          .enable_datagrams = true,
-                          .webtransport_origin = origin,
-                          .webtransport_path = "/acip"};
+  struct sockaddr_in local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK), .sin_port = HOST_TO_NET_U16((uint16_t)port)};
+  quic_config_t config = {.certificate_file = certificate, .private_key_file = key, .enable_datagrams = true, .webtransport_origin = origin, .webtransport_path = "/acip"};
   quic_endpoint_t *endpoint = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &config, &endpoint) == ASCIICHAT_OK);
   log_info("HTTP/3 probe server ready");
@@ -1859,18 +1717,12 @@ int main(int argc, char **argv) {
   CHECK(!handshake(server, client, "localhost", false, false, true));
   asciichat_error_t quic_failure = ASCIICHAT_OK;
   bool dropped = false;
-  CHECK(quic_handshake(server, client, "localhost", false, false, &dropped, &quic_failure) &&
-        quic_failure == ASCIICHAT_OK);
-  CHECK(quic_handshake(server, client, "localhost", false, true, &dropped, &quic_failure) &&
-        quic_failure == ASCIICHAT_OK);
-  CHECK(quic_handshake(server, client, "localhost", true, false, &dropped, &quic_failure) && dropped &&
-        quic_failure == ASCIICHAT_OK);
-  CHECK(!quic_handshake(server, client, "other.example", false, false, &dropped, &quic_failure) &&
-        quic_failure == ERROR_CRYPTO);
-  CHECK(!quic_handshake(server, untrusted, "localhost", false, false, &dropped, &quic_failure) &&
-        quic_failure == ERROR_CRYPTO);
-  CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, false, &dropped, &quic_failure) &&
-        quic_failure == ERROR_CRYPTO);
+  CHECK(quic_handshake(server, client, "localhost", false, false, &dropped, &quic_failure) && quic_failure == ASCIICHAT_OK);
+  CHECK(quic_handshake(server, client, "localhost", false, true, &dropped, &quic_failure) && quic_failure == ASCIICHAT_OK);
+  CHECK(quic_handshake(server, client, "localhost", true, false, &dropped, &quic_failure) && dropped && quic_failure == ASCIICHAT_OK);
+  CHECK(!quic_handshake(server, client, "other.example", false, false, &dropped, &quic_failure) && quic_failure == ERROR_CRYPTO);
+  CHECK(!quic_handshake(server, untrusted, "localhost", false, false, &dropped, &quic_failure) && quic_failure == ERROR_CRYPTO);
+  CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, false, &dropped, &quic_failure) && quic_failure == ERROR_CRYPTO);
   quic_udp_exchange(server, client);
   quic_udp_bad_identity(server, client);
   quic_udp_wakeup_test();

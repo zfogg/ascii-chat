@@ -38,23 +38,18 @@ static bool parse_custom(const char *argument, void *destination, char **error) 
 static options_builder_t *builder(void) {
   options_builder_t *b = options_builder_create(sizeof(sample_t));
   cr_assert_not_null(b);
-  options_builder_add_bool(b, "enabled", 'e', offsetof(sample_t, enabled), false, "Enable", "Test", false,
-                           "ASCII_TEST_BUILDER_BOOL");
+  options_builder_add_bool(b, "enabled", 'e', offsetof(sample_t, enabled), false, "Enable", "Test", false, "ASCII_TEST_BUILDER_BOOL");
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   options_builder_add_bool(b, "companion", 0, offsetof(sample_t, companion), false, "Companion", "Test", false, NULL);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
-  options_builder_add_int(b, "count", 'c', offsetof(sample_t, count), 7, "Count", "Test", false,
-                          "ASCII_TEST_BUILDER_INT", NULL);
+  options_builder_add_int(b, "count", 'c', offsetof(sample_t, count), 7, "Count", "Test", false, "ASCII_TEST_BUILDER_INT", NULL);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
-  options_builder_add_double(b, "ratio", 'r', offsetof(sample_t, ratio), .5, "Ratio", "Test", false,
-                             "ASCII_TEST_BUILDER_DOUBLE", NULL, false);
+  options_builder_add_double(b, "ratio", 'r', offsetof(sample_t, ratio), .5, "Ratio", "Test", false, "ASCII_TEST_BUILDER_DOUBLE", NULL, false);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
-  options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), "default", "Label", "Test", false,
-                             "ASCII_TEST_BUILDER_STRING", NULL);
+  options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), "default", "Label", "Test", false, "ASCII_TEST_BUILDER_STRING", NULL);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   static const uintptr_t initial = 17;
-  options_builder_add_callback_optional(b, "custom", 'u', offsetof(sample_t, custom), &initial, sizeof(initial),
-                                        parse_custom, "Custom", "Test", false, NULL, true);
+  options_builder_add_callback_optional(b, "custom", 'u', offsetof(sample_t, custom), &initial, sizeof(initial), parse_custom, "Custom", "Test", false, NULL, true);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   options_builder_add_action(b, "act", 'a', action, "Act", "Test");
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
@@ -82,9 +77,7 @@ Test(builder_contract, typed_cli_values_short_flags_and_optional_callback) {
   int remaining = -1;
   char **remainder = args;
   actions = 0;
-  cr_assert_eq(options_config_parse(c, sizeof(args) / sizeof(args[0]), args, &sample, OPTION_MODE_CLIENT, &remaining,
-                                    &remainder),
-               ASCIICHAT_OK);
+  cr_assert_eq(options_config_parse(c, sizeof(args) / sizeof(args[0]), args, &sample, OPTION_MODE_CLIENT, &remaining, &remainder), ASCIICHAT_OK);
   cr_assert(sample.enabled);
   cr_assert_eq(sample.count, -12);
   cr_assert_float_eq(sample.ratio, 1.25, 1e-9);
@@ -102,14 +95,12 @@ Test(builder_contract, typed_cli_values_short_flags_and_optional_callback) {
 
 Test(builder_contract, malformed_cli_values_do_not_replace_their_fields) {
   options_config_t *c = config();
-  const char *bad[][3] = {{"--count", "no"},           {"--count", "2147483648"}, {"--count", "-2147483649"},
-                          {"--ratio", "no"},           {"--ratio", "1.5suffix"},  {"--custom", "bad"},
-                          {"--enabled=perhaps", NULL}, {"--count", NULL},         {"--unknown", NULL}};
+  const char *bad[][3] = {{"--count", "no"},   {"--count", "2147483648"},   {"--count", "-2147483649"}, {"--ratio", "no"},  {"--ratio", "1.5suffix"},
+                          {"--custom", "bad"}, {"--enabled=perhaps", NULL}, {"--count", NULL},          {"--unknown", NULL}};
   for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
     sample_t sample = defaults();
     char *args[] = {"program", (char *)bad[i][0], (char *)bad[i][1]};
-    cr_assert_neq(options_config_parse(c, bad[i][1] ? 3 : 2, args, &sample, OPTION_MODE_CLIENT, NULL, NULL),
-                  ASCIICHAT_OK, "%s %s", bad[i][0], bad[i][1] ? bad[i][1] : "");
+    cr_assert_neq(options_config_parse(c, bad[i][1] ? 3 : 2, args, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK, "%s %s", bad[i][0], bad[i][1] ? bad[i][1] : "");
     cr_assert_eq(sample.count, 7);
     cr_assert_float_eq(sample.ratio, .5, 1e-9);
     cr_assert_eq(sample.custom, 17);
@@ -259,8 +250,7 @@ Test(builder_contract, required_fields_report_the_cli_and_environment_routes) {
   for (unsigned with_environment = 0; with_environment < 2; ++with_environment) {
     options_builder_t *b = options_builder_create(sizeof(sample_t));
     cr_assert_not_null(b);
-    options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), NULL, "Label", "Test", true,
-                               with_environment ? "ASCII_TEST_REQUIRED_LABEL" : NULL, NULL);
+    options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), NULL, "Label", "Test", true, with_environment ? "ASCII_TEST_REQUIRED_LABEL" : NULL, NULL);
     options_config_t *c = options_builder_build(b);
     options_builder_destroy(b);
     cr_assert_not_null(c);
@@ -290,8 +280,7 @@ static int parse_literals(const char *argument, void *destination, char **remain
 }
 Test(builder_contract, boolean_spellings_and_end_of_options_preserve_positional_arguments) {
   options_builder_t *b = builder();
-  options_builder_add_positional(b, "literals", "Literal words", false, NULL, NULL, 0, OPTION_MODE_CLIENT,
-                                 parse_literals);
+  options_builder_add_positional(b, "literals", "Literal words", false, NULL, NULL, 0, OPTION_MODE_CLIENT, parse_literals);
   options_config_t *c = options_builder_build(b);
   options_builder_destroy(b);
   cr_assert_not_null(c);

@@ -287,8 +287,7 @@ const option_descriptor_t *options_registry_get_binary_options(size_t *num_optio
  * @note This is the AUTHORITATIVE filtering function for both help and completions.
  *       Always use this function to ensure consistency across the application.
  */
-const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help,
-                                                            size_t *num_options);
+const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help, size_t *num_options);
 
 // ============================================================================
 // Completion Metadata Access (Phase 3)

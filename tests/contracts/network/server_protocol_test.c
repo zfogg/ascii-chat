@@ -82,8 +82,7 @@ static void expect_disconnect(void) {
 }
 
 Test(server_protocol, join_capabilities_update_state_and_reject_invalid_flags) {
-  client_info_packet_t joined = {.capabilities =
-                                     HOST_TO_NET_U32(CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH)};
+  client_info_packet_t joined = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH)};
   SAFE_STRNCPY(joined.display_name, "Alice", sizeof(joined.display_name));
   handle_client_join_packet(client, &joined, sizeof(joined));
   cr_assert_str_eq(client->display_name, "Alice");
@@ -287,12 +286,8 @@ Test(server_protocol, raw_and_quantized_audio_are_stored_and_disabled_streams_re
   struct {
     audio_batch_packet_t header;
     uint32_t samples[4];
-  } batch = {.header = {.batch_count = HOST_TO_NET_U32(1),
-                        .total_samples = HOST_TO_NET_U32(4),
-                        .sample_rate = HOST_TO_NET_U32(48000),
-                        .channels = HOST_TO_NET_U32(1)},
-             .samples = {HOST_TO_NET_U32(0), HOST_TO_NET_U32(0x40000000), HOST_TO_NET_U32(0x80000001),
-                         HOST_TO_NET_U32(0x7fffffff)}};
+  } batch = {.header = {.batch_count = HOST_TO_NET_U32(1), .total_samples = HOST_TO_NET_U32(4), .sample_rate = HOST_TO_NET_U32(48000), .channels = HOST_TO_NET_U32(1)},
+             .samples = {HOST_TO_NET_U32(0), HOST_TO_NET_U32(0x40000000), HOST_TO_NET_U32(0x80000001), HOST_TO_NET_U32(0x7fffffff)}};
   handle_audio_batch_packet(client, &batch, sizeof(batch));
   cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 4 * AUDIO_CHANNELS), 4 * AUDIO_CHANNELS);
   for (size_t i = 0; i < 4; ++i) {
@@ -546,10 +541,7 @@ Test(server_protocol, oversized_pcm_and_unsupported_formats_never_publish_audio)
   const uint32_t count = AUDIO_BATCH_SAMPLES * 2 + 1;
   size_t length = sizeof(audio_batch_packet_t) + count * sizeof(uint32_t);
   uint8_t *packet = SAFE_CALLOC(length, 1, uint8_t *);
-  audio_batch_packet_t header = {.batch_count = HOST_TO_NET_U32(1),
-                                 .total_samples = HOST_TO_NET_U32(count),
-                                 .sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE),
-                                 .channels = HOST_TO_NET_U32(1)};
+  audio_batch_packet_t header = {.batch_count = HOST_TO_NET_U32(1), .total_samples = HOST_TO_NET_U32(count), .sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE), .channels = HOST_TO_NET_U32(1)};
   memcpy(packet, &header, sizeof(header));
   handle_audio_batch_packet(client, packet, length);
   expect_disconnect();

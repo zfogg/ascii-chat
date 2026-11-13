@@ -68,8 +68,7 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
   for (size_t i = 0; i < count; ++i) {
     const config_option_metadata_t *meta = &metadata[i];
     option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1U << mode);
-    if (!meta->toml_key ||
-        (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_bit)))
+    if (!meta->toml_key || (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_bit)))
       continue;
 
     // These values have application-level range/dependency validation in the
@@ -78,8 +77,7 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
     // libflags' integer storage is int64_t-sized; options_t contains many
     // ordinary int/enum fields, so let the application parser own all integer
     // writes rather than risking an over-wide direct storage assignment.
-    if (meta->type == OPTION_TYPE_INT || meta->field_offset == offsetof(options_t, fps) ||
-        meta->field_offset == offsetof(options_t, snapshot_delay))
+    if (meta->type == OPTION_TYPE_INT || meta->field_offset == offsetof(options_t, fps) || meta->field_offset == offsetof(options_t, snapshot_delay))
       continue;
 
     flags_value_type_t type;
@@ -543,8 +541,7 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
   bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL || strstr(meta->toml_key, "keyfile") != NULL);
   if (is_path_option) {
     // Check if it's a path that needs normalization
-    bool log_file_relative = strstr(meta->toml_key, "log_file") != NULL && final_value[0] != '/' &&
-                             final_value[0] != '~' && !(final_value[0] && final_value[1] == ':');
+    bool log_file_relative = strstr(meta->toml_key, "log_file") != NULL && final_value[0] != '/' && final_value[0] != '~' && !(final_value[0] && final_value[1] == ':');
     if (path_looks_like_path(final_value) && !log_file_relative) {
       char *normalized = NULL;
       path_role_t role = PATH_ROLE_CONFIG_FILE; // Default

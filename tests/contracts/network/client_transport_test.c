@@ -181,8 +181,7 @@ Test(client_transport, inactive_connection_rejects_all_audio_sends_without_touch
   cr_assert_eq(threaded_send_audio_opus_batch(&connection, &encoded, 1, &size, 1), ERROR_NETWORK);
   cr_assert_eq(atomic_load_u64(&send_count), 0);
 }
-static void receive_pcm(const audio_batch_packet_t *header, const float *samples, size_t count, void *client,
-                        void *context) {
+static void receive_pcm(const audio_batch_packet_t *header, const float *samples, size_t count, void *client, void *context) {
   (void)client;
   cr_assert_eq(count, 4);
   cr_assert_eq(header->sample_rate, AUDIO_SAMPLE_RATE);
@@ -205,9 +204,7 @@ Test(client_transport, pcm_batches_preserve_signed_samples_and_audio_send_errors
   for (unsigned i = 0; i < 4; ++i)
     cr_assert_float_eq((double)(int32_t)NET_TO_HOST_U32(values[i]) / 2147483647.0, samples[i], 1e-6);
   acip_server_callbacks_t callbacks = {.on_audio_batch = receive_pcm, .app_ctx = samples};
-  cr_assert_eq(
-      acip_handle_server_packet(&transport, records[0].type, records[0].data, records[0].length, NULL, &callbacks),
-      ASCIICHAT_OK);
+  cr_assert_eq(acip_handle_server_packet(&transport, records[0].type, records[0].data, records[0].length, NULL, &callbacks), ASCIICHAT_OK);
   send_result = ERROR_NETWORK;
   cr_assert_eq(threaded_send_audio_batch_packet(&connection, samples, 4, 1), ERROR_NETWORK);
   cr_assert(server_connection_is_lost(&connection));
@@ -247,19 +244,16 @@ Test(client_transport, encoded_uploads_reuse_workspace_and_report_encoding_failu
   uint8_t rgb[64 * 32 * 3];
   memset(rgb, 128, sizeof(rgb));
   bool failed = true;
-  cr_assert_eq(threaded_send_image_frame_encoded(&connection, rgb, UINT16_MAX + 1u, 32, VIDEO_CODEC_H265, &failed),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(threaded_send_image_frame_encoded(&connection, rgb, UINT16_MAX + 1u, 32, VIDEO_CODEC_H265, &failed), ERROR_INVALID_PARAM);
   cr_assert_not(failed);
   cr_assert_null(connection.video_encoder);
-  cr_assert_eq(threaded_send_image_frame_encoded(&connection, rgb, 64, 32, VIDEO_CODEC_H265, NULL),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(threaded_send_image_frame_encoded(&connection, rgb, 64, 32, VIDEO_CODEC_H265, NULL), ERROR_INVALID_PARAM);
   const video_codec_t codecs[] = {VIDEO_CODEC_H264, VIDEO_CODEC_H265};
   for (unsigned c = 0; c < 2; ++c) {
     for (unsigned i = 0; i < 2; ++i) {
       cr_assert_eq(threaded_send_image_frame_encoded(&connection, rgb, 64, 32, codecs[c], &failed), ASCIICHAT_OK);
       cr_assert_not(failed);
-      cr_assert_eq(records[c * 2 + i].type,
-                   codecs[c] == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265);
+      cr_assert_eq(records[c * 2 + i].type, codecs[c] == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265);
       cr_assert_gt(records[c * 2 + i].length, 5);
       uint16_t width, height;
       memcpy(&width, records[c * 2 + i].data + 1, sizeof(width));
@@ -277,8 +271,7 @@ Test(client_transport, encoded_uploads_reuse_workspace_and_report_encoding_failu
   cr_assert(server_connection_is_lost(&connection));
 }
 Test(client_transport, display_cleanup_retains_the_framework_owned_context_and_resets_first_frame_state) {
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *display = session_display_create(&config);
   cr_assert_not_null(display);
   connection.display_context = display;

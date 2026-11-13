@@ -21,11 +21,9 @@ int UPNP_GetValidIGD(struct UPNPDev *, struct UPNPUrls *, struct IGDdatas *, cha
 int UPNP_GetValidIGD(struct UPNPDev *, struct UPNPUrls *, struct IGDdatas *, char *, int);
 #endif
 int UPNP_GetExternalIPAddress(const char *, const char *, char *);
-int UPNP_AddPortMapping(const char *, const char *, const char *, const char *, const char *, const char *,
-                        const char *, const char *, const char *);
+int UPNP_AddPortMapping(const char *, const char *, const char *, const char *, const char *, const char *, const char *, const char *, const char *);
 int UPNP_DeletePortMapping(const char *, const char *, const char *, const char *, const char *);
-int UPNP_GetSpecificPortMappingEntry(const char *, const char *, const char *, const char *, const char *, char *,
-                                     char *, char *, char *, char *);
+int UPNP_GetSpecificPortMappingEntry(const char *, const char *, const char *, const char *, const char *, char *, char *, char *, char *, char *);
 void freeUPNPDevlist(struct UPNPDev *);
 void FreeUPNPUrls(struct UPNPUrls *);
 const char *strupnperror(int);

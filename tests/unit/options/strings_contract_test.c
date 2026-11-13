@@ -8,10 +8,7 @@ Test(option_strings, explicit_modes_round_trip_and_aliases_remain_unambiguous) {
   const struct {
     asciichat_mode_t mode;
     const char *name;
-  } modes[] = {{MODE_SERVER, "server"},
-               {MODE_CLIENT, "client"},
-               {MODE_MIRROR, "mirror"},
-               {MODE_DISCOVERY_SERVICE, "discovery-service"}};
+  } modes[] = {{MODE_SERVER, "server"}, {MODE_CLIENT, "client"}, {MODE_MIRROR, "mirror"}, {MODE_DISCOVERY_SERVICE, "discovery-service"}};
   for (size_t i = 0; i < sizeof(modes) / sizeof(*modes); ++i) {
     cr_assert_str_eq(asciichat_mode_to_string(modes[i].mode), modes[i].name);
     cr_assert_eq(asciichat_string_to_mode(modes[i].name), modes[i].mode);
@@ -39,18 +36,13 @@ Test(option_strings, display_enum_names_and_unknown_values_are_stable) {
   const struct {
     terminal_color_mode_t value;
     const char *name;
-  } colors[] = {{TERM_COLOR_AUTO, "auto"},
-                {TERM_COLOR_NONE, "none"},
-                {TERM_COLOR_16, "16"},
-                {TERM_COLOR_256, "256"},
-                {TERM_COLOR_TRUECOLOR, "truecolor"}};
+  } colors[] = {{TERM_COLOR_AUTO, "auto"}, {TERM_COLOR_NONE, "none"}, {TERM_COLOR_16, "16"}, {TERM_COLOR_256, "256"}, {TERM_COLOR_TRUECOLOR, "truecolor"}};
   for (size_t i = 0; i < sizeof(colors) / sizeof(*colors); ++i)
     cr_assert_str_eq(color_mode_to_string(colors[i].value), colors[i].name);
   const struct {
     palette_type_t value;
     const char *name;
-  } palettes[] = {{PALETTE_STANDARD, "standard"}, {PALETTE_BLOCKS, "blocks"}, {PALETTE_DIGITAL, "digital"},
-                  {PALETTE_MINIMAL, "minimal"},   {PALETTE_COOL, "cool"},     {PALETTE_CUSTOM, "custom"}};
+  } palettes[] = {{PALETTE_STANDARD, "standard"}, {PALETTE_BLOCKS, "blocks"}, {PALETTE_DIGITAL, "digital"}, {PALETTE_MINIMAL, "minimal"}, {PALETTE_COOL, "cool"}, {PALETTE_CUSTOM, "custom"}};
   for (size_t i = 0; i < sizeof(palettes) / sizeof(*palettes); ++i)
     cr_assert_str_eq(palette_type_to_string(palettes[i].value), palettes[i].name);
   cr_assert_str_eq(color_mode_to_string((terminal_color_mode_t)99), "unknown");

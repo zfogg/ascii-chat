@@ -47,11 +47,9 @@
  * @return ASCIICHAT_OK on success, error code on failure
  */
 /** Send payload slices without assembling an intermediate media packet. */
-asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
-                                             const socket_buffer_t *payload, size_t count, uint32_t client_id);
+asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type, const socket_buffer_t *payload, size_t count, uint32_t client_id);
 
-asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, uint32_t client_id);
+asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, uint32_t client_id);
 
 /**
  * @brief Receive a packet via transport with header parsing and validation
@@ -67,8 +65,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
  * @param[out] alloc_buffer Buffer to free when done (caller must free with SAFE_FREE)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
-                                               size_t *payload_len, void **alloc_buffer);
+asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *payload_len, void **alloc_buffer);
 
 // Video/ASCII frame functions moved to:
 // - acip_send_ascii_frame → lib/network/acip/server.h
@@ -87,8 +84,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
  * @param batch_count Number of batches aggregated
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float *samples, uint32_t num_samples,
-                                        uint32_t batch_count);
+asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float *samples, uint32_t num_samples, uint32_t batch_count);
 
 /**
  * @brief Send Opus-encoded audio packet
@@ -112,8 +108,7 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
  * @param frame_duration Duration per frame in milliseconds
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,
-                                             const uint16_t *frame_sizes, uint32_t frame_count, uint32_t sample_rate,
+asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len, const uint16_t *frame_sizes, uint32_t frame_count, uint32_t sample_rate,
                                              uint32_t frame_duration);
 
 // =============================================================================
@@ -166,8 +161,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
  * @param message Log message
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_level, uint8_t direction,
-                                       const char *message);
+asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_level, uint8_t direction, const char *message);
 
 // =============================================================================
 // ACDS (Discovery Server) Response Sending

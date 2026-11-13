@@ -36,8 +36,7 @@ static void *dispatch_foreign(void *context) {
   cr_assert_worker((webrtc_peer_manager_dispatch_ready(context)) == (ERROR_INVALID_STATE));
   return NULL;
 }
-static asciichat_error_t send_sdp(const uint8_t session[16], const uint8_t recipient[16], const char *type,
-                                  const char *sdp, void *context) {
+static asciichat_error_t send_sdp(const uint8_t session[16], const uint8_t recipient[16], const char *type, const char *sdp, void *context) {
   (void)session;
   (void)recipient;
   (void)type;
@@ -45,8 +44,7 @@ static asciichat_error_t send_sdp(const uint8_t session[16], const uint8_t recip
   (void)context;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t send_ice(const uint8_t session[16], const uint8_t recipient[16], const char *candidate,
-                                  const char *mid, void *context) {
+static asciichat_error_t send_ice(const uint8_t session[16], const uint8_t recipient[16], const char *candidate, const char *mid, void *context) {
   (void)session;
   (void)recipient;
   (void)candidate;

@@ -105,8 +105,7 @@ static log_special_char_test_case_t log_special_char_cases[] = {
 };
 
 ParameterizedTestParameters(logging, log_special_characters) {
-  return cr_make_param_array(log_special_char_test_case_t, log_special_char_cases,
-                             sizeof(log_special_char_cases) / sizeof(log_special_char_cases[0]));
+  return cr_make_param_array(log_special_char_test_case_t, log_special_char_cases, sizeof(log_special_char_cases) / sizeof(log_special_char_cases[0]));
 }
 
 ParameterizedTest(log_special_char_test_case_t *tc, logging, log_special_characters) {
@@ -580,8 +579,7 @@ Test(logging, log_message_formatting_long_strings) {
   log_info("Long string: %s", long_string);
 
   // Test with very long format string
-  log_info("Very long format string with many parameters: %s %d %s %d %s %d %s %d %s %d", "param1", 1, "param2", 2,
-           "param3", 3, "param4", 4, "param5", 5);
+  log_info("Very long format string with many parameters: %s %d %s %d %s %d %s %d %s %d", "param1", 1, "param2", 2, "param3", 3, "param4", 4, "param5", 5);
 
   cr_assert(true, "Long string log message formatting should work");
 }
@@ -659,9 +657,8 @@ typedef struct {
 } log_init_test_case_t;
 
 static log_init_test_case_t log_init_cases[] = {
-    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},
-    {LOG_WARN, "WARN", "Initialization with WARN level"},    {LOG_ERROR, "ERROR", "Initialization with ERROR level"},
-    {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
+    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},    {LOG_WARN, "WARN", "Initialization with WARN level"},
+    {LOG_ERROR, "ERROR", "Initialization with ERROR level"}, {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
 };
 
 ParameterizedTestParameters(logging, log_initialization_variations) {

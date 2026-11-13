@@ -104,8 +104,7 @@
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
-                                        options_t *opts);
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts);
 
 /**
  * @brief Load system config first, then user config (user config overrides system)

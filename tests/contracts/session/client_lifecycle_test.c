@@ -6,8 +6,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/audio/audio.h>
-static bool stdout_tty, stdin_tty, fail_enumeration, fail_display, fail_capture, fail_reader, fail_audio_init,
-    fail_audio_start, fail_audio_stop, file_audio;
+static bool stdout_tty, stdin_tty, fail_enumeration, fail_display, fail_capture, fail_reader, fail_audio_init, fail_audio_start, fail_audio_stop, file_audio;
 static unsigned devices_available, enumerations, freed_lists, audio_starts, audio_stops, attempts, slept;
 static bool exit_requested;
 static bool keepawake_failure;
@@ -336,11 +335,7 @@ Test(client_lifecycle, mirror_audio_init_failure_has_no_context_and_file_audio_s
   cr_assert(audio->playback_only);
 }
 Test(client_lifecycle, default_retry_policy_obeys_limits_and_success_and_uses_bounded_rejection_backoff) {
-  session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
-                                    .run_fn = lifecycle_attempt,
-                                    .run_user_data = &attempts,
-                                    .max_reconnect_attempts = 2,
-                                    .reconnect_delay_ms = 125};
+  session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT, .run_fn = lifecycle_attempt, .run_user_data = &attempts, .max_reconnect_attempts = 2, .reconnect_delay_ms = 125};
   attempt_result = ERROR_NETWORK;
   cr_assert_eq(client_like_run_session_attempts(&c, &state), ERROR_NETWORK);
   cr_assert_eq(attempts, 2);

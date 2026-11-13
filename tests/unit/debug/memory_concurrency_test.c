@@ -23,8 +23,7 @@ static void memory_report_cleanup(void) {
     platform_rmdir_recursive(report_directory);
   debug_memory_set_quiet_mode(true);
 }
-Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_live_reports,
-     .fini = memory_report_cleanup, .timeout = 10) {
+Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_live_reports, .fini = memory_report_cleanup, .timeout = 10) {
   cr_assert_eq(platform_mkdtemp(report_directory, sizeof(report_directory), "memory-report"), ASCIICHAT_OK);
   char path[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/report.txt", report_directory);

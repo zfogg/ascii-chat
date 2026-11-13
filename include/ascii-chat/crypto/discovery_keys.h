@@ -111,8 +111,7 @@ extern "C" {
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
-                                                      uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Download key from HTTPS URL
@@ -124,8 +123,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, c
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_download_https(const char *url,
-                                                              uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Load key from local file
@@ -139,8 +137,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_download_https(const char *url,
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_load_file(const char *file_path,
-                                                         uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Get cached key path for ACDS server
@@ -153,8 +150,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_load_file(const char *file_path,
  * @param path_size Size of output buffer
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out,
-                                                              size_t path_size);
+ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size);
 
 /**
  * @brief Check if cached key exists and load it
@@ -165,8 +161,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_s
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK if cached key exists and loaded successfully, error otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_load_cached(const char *acds_server,
-                                                           uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Save key to cache
@@ -177,8 +172,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_load_cached(const char *acds_serv
  * @param pubkey Public key to cache (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_save_cached(const char *acds_server,
-                                                           const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Verify key change with user
@@ -197,9 +191,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_save_cached(const char *acds_serv
  * @param new_pubkey New downloaded key (32 bytes)
  * @return ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if declined
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_verify_change(const char *acds_server,
-                                                             const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE],
-                                                             const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]);
+ASCIICHAT_API asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE], const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Clear cached key for ACDS server

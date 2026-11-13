@@ -32,11 +32,9 @@ static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigne
 
 class AudioProcessorBinding {
 public:
-  AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples)
-      : AudioProcessorBinding(sample_rate, bypass, frame_samples, 2) {}
+  AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples) : AudioProcessorBinding(sample_rate, bypass, frame_samples, 2) {}
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples, int channels)
-      : processor_(create_processor(sample_rate, bypass, frame_samples, channels)),
-        scratch_(processor_ ? frame_samples : 0) {}
+      : processor_(create_processor(sample_rate, bypass, frame_samples, channels)), scratch_(processor_ ? frame_samples : 0) {}
   ~AudioProcessorBinding() {
     if (processor_)
       audio_processor_destroy(processor_);
@@ -126,8 +124,7 @@ public:
     }
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, pcm_.data()));
     view.call<void>("set", samples);
-    const int size = client_opus_encode(pcm_.data(), static_cast<int>(count / channels_), encoded_.data(),
-                                        static_cast<int>(encoded_.size()));
+    const int size = client_opus_encode(pcm_.data(), static_cast<int>(count / channels_), encoded_.data(), static_cast<int>(encoded_.size()));
     if (size < 0) {
       SET_ERRNO(ERROR_AUDIO, "Browser Opus encoding failed");
       return NullableOpusBytes(emscripten::val::null());

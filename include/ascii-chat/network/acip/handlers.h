@@ -128,8 +128,7 @@ typedef struct {
  * @param callbacks Application callbacks
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, const acip_client_callbacks_t *callbacks);
+asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
 
 // =============================================================================
 // Server-Side Handler Callbacks
@@ -146,22 +145,18 @@ typedef struct {
   void (*on_protocol_version)(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends image frame */
-  void (*on_image_frame)(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx,
-                         void *app_ctx);
+  void (*on_image_frame)(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends H.264-encoded image frame */
-  void (*on_image_frame_h264)(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len,
-                              void *client_ctx, void *app_ctx);
+  void (*on_image_frame_h264)(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len, void *client_ctx, void *app_ctx);
   /** @brief Called when client sends H.265-encoded image frame */
-  void (*on_image_frame_h265)(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data, size_t data_len,
-                              void *client_ctx, void *app_ctx);
+  void (*on_image_frame_h265)(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data, size_t data_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends raw audio */
   void (*on_audio)(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends audio batch */
-  void (*on_audio_batch)(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *client_ctx,
-                         void *app_ctx);
+  void (*on_audio_batch)(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends Opus audio */
   void (*on_audio_opus)(const void *opus_data, size_t opus_len, void *client_ctx, void *app_ctx);
@@ -197,16 +192,13 @@ typedef struct {
   void (*on_remote_log)(const remote_log_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends KEY_EXCHANGE_RESP (crypto handshake) */
-  void (*on_crypto_key_exchange_resp)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
-                                      void *app_ctx);
+  void (*on_crypto_key_exchange_resp)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends AUTH_RESPONSE (crypto handshake) */
-  void (*on_crypto_auth_response)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
-                                  void *app_ctx);
+  void (*on_crypto_auth_response)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends NO_ENCRYPTION (crypto handshake rejection) */
-  void (*on_crypto_no_encryption)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
-                                  void *app_ctx);
+  void (*on_crypto_no_encryption)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;
@@ -226,6 +218,4 @@ typedef struct {
  * @param callbacks Application callbacks
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks);
+asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);

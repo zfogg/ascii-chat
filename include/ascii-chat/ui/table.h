@@ -15,8 +15,7 @@ typedef struct {
  * instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
  * allocation, lock, thread, or callback context recorded in those fields. terminal columns, never by bytes. The caller
  * owns data and sorting. */
-size_t ui_table_row(char *out, size_t capacity, const ui_table_column_t *columns, const char *const *cells,
-                    size_t count, int width, bool selectable, bool selected);
+size_t ui_table_row(char *out, size_t capacity, const ui_table_column_t *columns, const char *const *cells, size_t count, int width, bool selectable, bool selected);
 typedef void (*ui_table_cells_fn)(size_t row, const char **cells, size_t columns, void *data);
 /**
  * @brief The useful part of ui table column is in `heading`, `width`, `alignment`, `ellipsis`: together they describe

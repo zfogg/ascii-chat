@@ -12,10 +12,10 @@
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <libavcodec/avcodec.h>
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    if (!(value))                                                                                                                                                                                      \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                                                                                                     \
   } while (0)
 static void emit_severity(int level, const char *format, ...) {
   va_list args;

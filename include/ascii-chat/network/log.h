@@ -17,11 +17,7 @@
  * @note This typedef MUST be defined before includes to avoid circular
  *       dependency issues with packet.h
  */
-typedef enum remote_log_direction {
-  REMOTE_LOG_DIRECTION_UNKNOWN = 0,
-  REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT = 1,
-  REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER = 2
-} remote_log_direction_t;
+typedef enum remote_log_direction { REMOTE_LOG_DIRECTION_UNKNOWN = 0, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT = 1, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER = 2 } remote_log_direction_t;
 
 #include "../log/log.h"
 
@@ -43,20 +39,18 @@ typedef enum remote_log_direction {
 
 /* Server-side: log TO client (takes client_info_t*) */
 #ifdef NDEBUG
-#define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                       \
-  do {                                                                                                                 \
-    if ((client)->security_ready && (client)->transport) {                                                             \
-      log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, NULL, 0, NULL,                \
-                      fmt, ##__VA_ARGS__);                                                                             \
-    }                                                                                                                  \
+#define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                                                                                                       \
+  do {                                                                                                                                                                                                 \
+    if ((client)->security_ready && (client)->transport) {                                                                                                                                             \
+      log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                                           \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                       \
-  do {                                                                                                                 \
-    if ((client)->security_ready && (client)->transport) {                                                             \
-      log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, __FILE__, __LINE__, __func__, \
-                      fmt, ##__VA_ARGS__);                                                                             \
-    }                                                                                                                  \
+#define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                                                                                                       \
+  do {                                                                                                                                                                                                 \
+    if ((client)->security_ready && (client)->transport) {                                                                                                                                             \
+      log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                                            \
+    }                                                                                                                                                                                                  \
   } while (0)
 #endif
 
@@ -77,12 +71,9 @@ typedef enum remote_log_direction {
 
 /* Client-side: log TO server (takes transport) */
 #ifdef NDEBUG
-#define LOG_SERVER_IMPL(transport, level, fmt, ...)                                                                    \
-  log_net_message(transport, level, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#define LOG_SERVER_IMPL(transport, level, fmt, ...) log_net_message(transport, level, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, NULL, 0, NULL, fmt, ##__VA_ARGS__)
 #else
-#define LOG_SERVER_IMPL(transport, level, fmt, ...)                                                                    \
-  log_net_message(transport, level, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__, __func__,               \
-                  fmt, ##__VA_ARGS__)
+#define LOG_SERVER_IMPL(transport, level, fmt, ...) log_net_message(transport, level, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
 #endif
 
 /** @brief Client sends DEBUG log message to server */

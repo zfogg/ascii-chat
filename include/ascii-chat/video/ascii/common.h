@@ -280,8 +280,7 @@ ImageRGB alloc_image(int w, int h);
  *
  * @ingroup video
  */
-void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count,
-                           const char luminance_palette[ASCII_LUMINANCE_LEVELS]);
+void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count, const char luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Convert image to ASCII with newlines (scalar fallback)
@@ -346,8 +345,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
  *
  * @ingroup video
  */
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
-                                                       const image_t *source_image, bool use_256color);
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode, const image_t *source_image, bool use_256color);
 
 /**
  * @brief Benchmark SIMD color conversion with source image
@@ -361,9 +359,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
  *
  * @ingroup video
  */
-simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
-                                                             bool background_mode, const image_t *source_image,
-                                                             bool use_256color);
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations, bool background_mode, const image_t *source_image, bool use_256color);
 
 /**
  * @brief Print detected SIMD capabilities
@@ -474,10 +470,8 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
  *
  * @ingroup video
  */
-size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
-                                          const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
-                                          const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
-                                          int width, char *dst, size_t cap, bool is_truecolor);
+size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b, const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b, const uint8_t *fg_idx,
+                                          const uint8_t *bg_idx, const char *ascii_chars, int width, char *dst, size_t cap, bool is_truecolor);
 
 /**
  * @brief UTF-8 character palette cache
@@ -527,8 +521,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
  *
  * @ingroup video
  */
-void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64],
-                             uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]);
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Get UTF-8 palette cache for a character set

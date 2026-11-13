@@ -450,8 +450,7 @@ Theory((int pad_height), ascii, height_padding_property) {
     cr_assert_eq(strlen(result), strlen(frame), "Zero padding should preserve length");
     cr_assert_str_eq(result, frame, "Zero padding should preserve content");
   } else {
-    cr_assert_gt(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_height=%d",
-                 pad_height);
+    cr_assert_gt(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_height=%d", pad_height);
   }
 
   SAFE_FREE(result);
@@ -833,9 +832,7 @@ typedef struct {
 } ascii_size_test_case_t;
 
 static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD buffer overflow
-                                                    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},
-                                                    {8, 8, "8x8 image"},     {16, 16, "16x16 image"},
-                                                    {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
+                                                    {2, 2, "2x2 image"}, {4, 4, "4x4 image"}, {8, 8, "8x8 image"}, {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
 ParameterizedTestParameters(ascii, size_tests) {
   size_t nb_cases = sizeof(ascii_size_cases) / sizeof(ascii_size_cases[0]);
@@ -896,11 +893,9 @@ typedef struct {
   const char *description;
 } ascii_option_test_case_t;
 
-static ascii_option_test_case_t ascii_option_cases[] = {
-    {false, false, false, "No options"},    {true, false, false, "Color only"},
-    {false, true, false, "Bold only"},      {false, false, true, "Italic only"},
-    {true, true, false, "Color and bold"},  {true, false, true, "Color and italic"},
-    {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
+static ascii_option_test_case_t ascii_option_cases[] = {{false, false, false, "No options"},    {true, false, false, "Color only"},    {false, true, false, "Bold only"},
+                                                        {false, false, true, "Italic only"},    {true, true, false, "Color and bold"}, {true, false, true, "Color and italic"},
+                                                        {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
 
 ParameterizedTestParameters(ascii, option_tests) {
   size_t nb_cases = sizeof(ascii_option_cases) / sizeof(ascii_option_cases[0]);
@@ -937,8 +932,7 @@ typedef struct {
   const char *description;
 } ascii_stress_test_case_t;
 
-static ascii_stress_test_case_t ascii_stress_cases[] = {
-    {10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
+static ascii_stress_test_case_t ascii_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
 ParameterizedTestParameters(ascii, stress_tests) {
   size_t nb_cases = sizeof(ascii_stress_cases) / sizeof(ascii_stress_cases[0]);
@@ -976,9 +970,7 @@ Test(ascii, halfblock_cover_uses_cell_geometry) {
   cr_assert_not_null(img);
   for (int y = 0; y < 4; ++y) {
     for (int x = 0; x < 8; ++x) {
-      img->pixels[y * 8 + x] = x < 2    ? (rgb_pixel_t){255, 0, 0}
-                               : x >= 6 ? (rgb_pixel_t){0, 255, 0}
-                                        : (rgb_pixel_t){0, 0, 255};
+      img->pixels[y * 8 + x] = x < 2 ? (rgb_pixel_t){255, 0, 0} : x >= 6 ? (rgb_pixel_t){0, 255, 0} : (rgb_pixel_t){0, 0, 255};
     }
   }
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_HALF_BLOCK};
@@ -1130,8 +1122,7 @@ Test(ascii, grid_layout_sizes_source_tiles_to_viewport) {
           size_t row_offset = (size_t)((i / columns) * (cell_height + 1) + y) * (width + 2);
           size_t start = row_offset + (i % columns) * (cell_width + 1);
           for (int x = 0; x < cell_width; ++x)
-            cr_assert_eq(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i,
-                         x, y);
+            cr_assert_eq(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i, x, y);
         }
       }
       SAFE_FREE(grid);

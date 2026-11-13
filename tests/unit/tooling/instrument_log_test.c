@@ -349,19 +349,11 @@ Test(instrument_log, thread_filter_allows_matching_thread) {
 }
 
 static void reset_extended_filters(void) {
-  static const char *keys[] = {"ASCII_INSTR_SOURCE_PRINT_ONLY",
-                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE",
-                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE",
-                               "ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX",
-                               "ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX",
-                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX",
-                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX",
-                               "ASCII_INSTR_SOURCE_PRINT_ENABLE",
-                               "ASCII_INSTR_SOURCE_PRINT_RATE",
-                               "ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE",
-                               "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE",
-                               "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR",
-                               "ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR"};
+  static const char *keys[] = {
+      "ASCII_INSTR_SOURCE_PRINT_ONLY",          "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE",       "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE",       "ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX",
+      "ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX", "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX", "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX", "ASCII_INSTR_SOURCE_PRINT_ENABLE",
+      "ASCII_INSTR_SOURCE_PRINT_RATE",          "ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE",        "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE",      "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR",
+      "ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR"};
   asciichat_instr_runtime_global_destroy();
   clear_filter_environment();
   for (size_t i = 0; i < sizeof(keys) / sizeof(*keys); ++i)
@@ -398,8 +390,7 @@ Test(instrument_log, selector_and_regex_filters_write_only_the_selected_records)
       {"INCLUDE_REGEX", "[", 15},
 #endif
   };
-  const char *paths[] = {"lib/network/tcp/send.c", "lib/network/udp/recv.c", "lib/audio/mixer.c",
-                         "src/common/networker.c"};
+  const char *paths[] = {"lib/network/tcp/send.c", "lib/network/udp/recv.c", "lib/audio/mixer.c", "src/common/networker.c"};
   const char *functions[] = {"send_packet", "receive_packet", "mix_audio", "send_status"};
   const char *markers[] = {"marker-zero", "marker-one", "marker-two", "marker-three"};
   for (size_t c = 0; c < sizeof(cases) / sizeof(*cases); ++c) {
@@ -423,8 +414,7 @@ Test(instrument_log, selector_and_regex_filters_write_only_the_selected_records)
       contents[length] = 0;
     }
     for (size_t i = 0; i < 4; ++i)
-      cr_assert_eq(strstr(contents, markers[i]) != NULL, (cases[c].mask & (1u << i)) != 0, "%s=%s record %zu",
-                   cases[c].key, cases[c].value, i);
+      cr_assert_eq(strstr(contents, markers[i]) != NULL, (cases[c].mask & (1u << i)) != 0, "%s=%s record %zu", cases[c].key, cases[c].value, i);
     remove_directory_recursively(directory);
   }
   reset_extended_filters();

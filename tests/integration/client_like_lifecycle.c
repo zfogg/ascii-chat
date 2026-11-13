@@ -13,13 +13,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK(condition)                                                                                               \
-  do {                                                                                                                 \
-    if (!(condition)) {                                                                                                \
-      log_set_terminal_output(true);                                                                                   \
-      log_error("Lifecycle check failed: %s (%s:%d)", #condition, __FILE__, __LINE__);                                 \
-      abort();                                                                                                         \
-    }                                                                                                                  \
+#define CHECK(condition)                                                                                                                                                                               \
+  do {                                                                                                                                                                                                 \
+    if (!(condition)) {                                                                                                                                                                                \
+      log_set_terminal_output(true);                                                                                                                                                                   \
+      log_error("Lifecycle check failed: %s (%s:%d)", #condition, __FILE__, __LINE__);                                                                                                                 \
+      abort();                                                                                                                                                                                         \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 static int calls, prepares, stops, retries;
@@ -78,8 +78,8 @@ static asciichat_error_t client_like_run(session_capture_ctx_t *capture, session
     session_display_set_global_context_public(NULL);
     return ASCIICHAT_OK;
   }
-  if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") ||
-      (!strcmp(scenario, "retry-success") && calls == 3) || (!strcmp(scenario, "backoff") && calls == 2))
+  if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") || (!strcmp(scenario, "retry-success") && calls == 3) ||
+      (!strcmp(scenario, "backoff") && calls == 2))
     return ASCIICHAT_OK;
   return !strcmp(scenario, "backoff") ? ERROR_RATE_LIMITED : ERROR_NETWORK;
 }
@@ -108,9 +108,7 @@ int main(int argc, char **argv) {
   opts.width = 40;
   opts.height = 12;
   CHECK(options_state_set(&opts) == ASCIICHAT_OK);
-  app_callbacks_t cb = {.should_exit = client_like_should_exit,
-                        .platform_sleep_ms = client_like_sleep_ms,
-                        .audio_stop_thread = client_like_stop_audio};
+  app_callbacks_t cb = {.should_exit = client_like_should_exit, .platform_sleep_ms = client_like_sleep_ms, .audio_stop_thread = client_like_stop_audio};
   app_callbacks_register(&cb);
   session_client_like_config_t config = {.run_fn = client_like_run,
                                          .custom_should_exit = client_like_custom_exit,
@@ -143,8 +141,7 @@ int main(int argc, char **argv) {
     CHECK(result == ERROR_INVALID_STATE && calls == 0);
   else if (!strcmp(scenario, "shutdown"))
     CHECK(result == ASCIICHAT_OK && calls == 0);
-  else if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") ||
-           !strcmp(scenario, "discovery-destroy"))
+  else if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") || !strcmp(scenario, "discovery-destroy"))
     CHECK(result == ASCIICHAT_OK && calls == 1);
   else if (!strcmp(scenario, "retry-success"))
     CHECK(result == ASCIICHAT_OK && calls == 3 && retries == 2 && slept == 500);

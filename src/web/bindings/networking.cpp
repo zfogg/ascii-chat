@@ -70,14 +70,12 @@ QuicControlResult network_quic_output(crypto_context_t *context) {
   return QuicControlResult(result);
 }
 
-QuicPacketResult network_quic_packet(crypto_context_t *context, bool seal, unsigned flow, unsigned delivery,
-                                     PeerBytes packet) {
+QuicPacketResult network_quic_packet(crypto_context_t *context, bool seal, unsigned flow, unsigned delivery, PeerBytes packet) {
   auto input_data = binding_copy_input(packet);
   std::vector<uint8_t> output(input_data.size() + (seal ? 94 : 0));
   size_t length = 0;
   uint64_t sequence = 0;
-  int code = browser_security_packet(context, seal, flow, delivery, input_data.data(), input_data.size(), output.data(),
-                                     output.size(), &length, &sequence);
+  int code = browser_security_packet(context, seal, flow, delivery, input_data.data(), input_data.size(), output.data(), output.size(), &length, &sequence);
   emscripten::val result = emscripten::val::object();
   result.set("code", code);
   result.set("packet", binding_copy_output(output.data(), length));
@@ -126,28 +124,20 @@ static std::optional<std::string> client_public_key() {
 
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {
   emscripten::function("initClient", &init_client);
-  emscripten::class_<ClientSessionBinding>("ClientSessionBinding")
-      .constructor<OptionsPatch>()
-      .function("valid", &ClientSessionBinding::valid)
-      .function("error", &ClientSessionBinding::error);
+  emscripten::class_<ClientSessionBinding>("ClientSessionBinding").constructor<OptionsPatch>().function("valid", &ClientSessionBinding::valid).function("error", &ClientSessionBinding::error);
 
   emscripten::function("client_cleanup", &client_cleanup);
   emscripten::function("client_generate_keypair", &client_generate_keypair);
   emscripten::function("client_get_connection_state", &client_get_connection_state);
   emscripten::function("client_resolve_crypto_policy", &client_resolve_crypto_policy);
   emscripten::function("client_handshake_begin", +[]() { return static_cast<int>(client_handshake_begin()); });
-  emscripten::function(
-      "client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
-  emscripten::function(
-      "network_error_action",
-      +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
+  emscripten::function("client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
+  emscripten::function("network_error_action", +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
   emscripten::function("setServerAddress", &set_server_address);
   emscripten::function("clientPublicKey", &client_public_key);
 
-  emscripten::register_type<QuicControlResult>("QuicControlResult",
-                                               "{ code: number; flow: number; packet: Uint8Array | null }");
-  emscripten::register_type<QuicPacketResult>("QuicPacketResult",
-                                              "{ code: number; sequence: bigint; packet: Uint8Array }");
+  emscripten::register_type<QuicControlResult>("QuicControlResult", "{ code: number; flow: number; packet: Uint8Array | null }");
+  emscripten::register_type<QuicPacketResult>("QuicPacketResult", "{ code: number; sequence: bigint; packet: Uint8Array }");
   emscripten::function("clientQuicInit", &client_quic_init);
   emscripten::function("clientQuicTick", &client_quic_tick);
   emscripten::function("clientQuicEpoch", &client_quic_epoch);

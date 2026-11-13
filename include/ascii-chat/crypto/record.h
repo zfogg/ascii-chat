@@ -32,13 +32,9 @@ typedef struct crypto_record {
 typedef asciichat_error_t (*crypto_record_validate_fn)(void *, unsigned, unsigned, const void *, size_t);
 asciichat_error_t crypto_record_init(crypto_record_t *, crypto_context_t *, bool server);
 /** Output buffers belong to the buffer library. No packet headers or CRCs are added here. */
-asciichat_error_t crypto_record_seal_into(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t,
-                                          uint8_t *, size_t, size_t *);
-asciichat_error_t crypto_record_seal_into_domain(crypto_record_t *, unsigned channel, unsigned delivery, const void *,
-                                                 size_t, uint8_t *, size_t, size_t *, buffer_domain_t *);
-asciichat_error_t crypto_record_open_sequence(crypto_record_t *, unsigned channel, unsigned delivery, const void *,
-                                              size_t, uint8_t **, size_t *, uint64_t *, crypto_record_validate_fn,
-                                              void *);
+asciichat_error_t crypto_record_seal_into(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t *, size_t, size_t *);
+asciichat_error_t crypto_record_seal_into_domain(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t *, size_t, size_t *, buffer_domain_t *);
+asciichat_error_t crypto_record_open_sequence(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t **, size_t *, uint64_t *, crypto_record_validate_fn, void *);
 asciichat_error_t crypto_record_prepare_epoch(crypto_record_t *);
 asciichat_error_t crypto_record_commit_epoch(crypto_record_t *);
 asciichat_error_t crypto_record_retire_epoch_flow(crypto_record_t *, unsigned channel, uint64_t epoch);

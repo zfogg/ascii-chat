@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr)) {                                                                                                     \
-      fprintf(stderr, "failed: %s\n", #expr);                                                                          \
-      return 1;                                                                                                        \
-    }                                                                                                                  \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr)) {                                                                                                                                                                                     \
+      fprintf(stderr, "failed: %s\n", #expr);                                                                                                                                                          \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 int main(void) {
