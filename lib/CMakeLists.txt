@@ -410,11 +410,11 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 add_library(ascii-chat-platform INTERFACE)
 if(UNIX AND NOT APPLE)
     add_library(ascii-chat-platform-posix-system OBJECT
-        ${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c)
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib/posix/system.c)
     target_include_directories(ascii-chat-platform-posix-system PRIVATE
         ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/deps/libplatform/include
-        ${CMAKE_SOURCE_DIR}/deps/libplatform/lib)
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib)
     target_compile_definitions(ascii-chat-platform-posix-system PRIVATE _GNU_SOURCE)
     target_compile_options(ascii-chat-platform-posix-system PRIVATE
         "-include${CMAKE_SOURCE_DIR}/include/ascii-chat/common.h"

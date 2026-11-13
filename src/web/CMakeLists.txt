@@ -91,8 +91,8 @@ asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
     ${CMAKE_BINARY_DIR}/generated
-    ${DEPS_ROOT}/libplatform/include
-    ${DEPS_ROOT}/libplatform/lib
+    ${DEPS_ROOT}/ascii-chat-deps/libplatform/include
+    ${DEPS_ROOT}/ascii-chat-deps/libplatform/lib
     ${INCLUDE_ROOT}
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}

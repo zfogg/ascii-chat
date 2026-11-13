@@ -656,24 +656,28 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   asciichat_error_t result = acip_security_decrypt(crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, CRYPTO_RECORD_RELIABLE, envelope->data, envelope->len, &plaintext, &plaintext_length, NULL, &consumed);
   if (result != ASCIICHAT_OK)
     return result;
+  if (!plaintext || plaintext_length < sizeof(packet_header_t)) {
+    buffer_release(plaintext);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Decrypted packet is smaller than its header");
+  }
+
   packet_header_t header;
   memcpy(&header, plaintext, sizeof(header));
-  if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) && envelope->allocated_size >= plaintext_length) {
-    memcpy(envelope->allocated_buffer, plaintext, plaintext_length);
-    sodium_memzero(plaintext, buffer_capacity(plaintext));
-    buffer_release(plaintext);
-    plaintext = envelope->allocated_buffer;
-    envelope->allocated_size = plaintext_length;
-  } else {
-    if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer))
-      sodium_memzero(envelope->allocated_buffer, envelope->allocated_size);
-    buffer_release(envelope->allocated_buffer);
-    envelope->allocated_size = plaintext_length;
+  // Keep the decrypted buffer separate from the received ciphertext buffer.
+  // Transport implementations may share or recycle their receive allocation;
+  // overwriting it here makes the lifetime and capacity metadata ambiguous.
+  // The envelope owns one plaintext allocation after this point.
+  void *received_buffer = envelope->allocated_buffer;
+  if (received_buffer && received_buffer != plaintext) {
+    if (buffer_is_unique(received_buffer))
+      sodium_memzero(received_buffer, buffer_capacity(received_buffer));
+    buffer_release(received_buffer);
   }
   envelope->type = NET_TO_HOST_U16(header.type);
   envelope->data = plaintext + sizeof(header);
   envelope->len = plaintext_length - sizeof(header);
   envelope->allocated_buffer = plaintext;
+  envelope->allocated_size = buffer_capacity(plaintext);
   envelope->was_encrypted = true;
   envelope->consumed = consumed;
   return ASCIICHAT_OK;
@@ -709,7 +713,7 @@ void packet_envelope_release(packet_envelope_t *envelope) {
     return;
   if (envelope->allocated_buffer) {
     if (buffer_is_unique(envelope->allocated_buffer))
-      sodium_memzero(envelope->allocated_buffer, envelope->allocated_size);
+      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
     buffer_release(envelope->allocated_buffer);
   }
   *envelope = (packet_envelope_t){0};
