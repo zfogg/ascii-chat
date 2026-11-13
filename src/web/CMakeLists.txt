@@ -257,7 +257,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/render.c
     ${LIB_ROOT}/video/ascii/simd/cells.c
     ${LIB_ROOT}/video/ascii/simd/dispatch.c
-    ${LIB_ROOT}/platform/cpu.c
+    ${LIBPLATFORM_ROOT}/lib/cpu.c
     ${LIB_ROOT}/video/ascii/common.c
     ${LIB_ROOT}/video/ascii/scalar/background.c
     ${LIB_ROOT}/video/ascii/scalar/foreground.c
@@ -307,7 +307,7 @@ set(LIB_SRC_COMMON
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
     ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/atomic.c
+    ${LIBPLATFORM_ROOT}/lib/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
@@ -327,7 +327,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/session.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
-    ${LIB_ROOT}/platform/keyboard.c
+    ${LIBPLATFORM_ROOT}/lib/keyboard.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
@@ -351,7 +351,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c
     ${LIB_ROOT}/stats/descriptors.c
-    ${LIB_ROOT}/platform/wasm/stubs/stats.c
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
