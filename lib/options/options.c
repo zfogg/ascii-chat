@@ -2448,7 +2448,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   result = handle_immediate_actions(&opts, &actions, &handled);
   if (result != ASCIICHAT_OK || handled) {
     if (result != ASCIICHAT_OK)
-    return result;
+      return result;
   }
   result = parse_binary_options(&opts, argc, argv);
   if (result != ASCIICHAT_OK) {
@@ -2571,9 +2571,9 @@ asciichat_error_t options_init(int argc, char **argv) {
 
 cleanup:
   if (result != ASCIICHAT_OK)
-  if (config) {
-    options_config_destroy(config);
-  }
+    if (config) {
+      options_config_destroy(config);
+    }
   SAFE_FREE(mode_args.allocated);
   return result;
 }
