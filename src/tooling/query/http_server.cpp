@@ -157,7 +157,7 @@ bool HttpServer::start(uint16_t port) {
 #endif
 
   // Bind
-  struct sockaddr_in addr {};
+  struct sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // localhost only for security
   addr.sin_port = htons(port);
@@ -212,7 +212,7 @@ void HttpServer::stop() {
 
 void HttpServer::serverLoop() {
   while (running_) {
-    struct sockaddr_in client_addr {};
+    struct sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
 
     socket_t client_socket = accept(server_socket_, reinterpret_cast<struct sockaddr *>(&client_addr), &client_len);
@@ -234,7 +234,7 @@ bool HttpServer::processOneRequest() {
     return false;
   }
 
-  struct sockaddr_in client_addr {};
+  struct sockaddr_in client_addr{};
   socklen_t client_len = sizeof(client_addr);
 
   socket_t client_socket = accept(server_socket_, reinterpret_cast<struct sockaddr *>(&client_addr), &client_len);
