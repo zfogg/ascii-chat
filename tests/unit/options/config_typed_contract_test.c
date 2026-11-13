@@ -3,7 +3,7 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/os/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 

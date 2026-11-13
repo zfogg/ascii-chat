@@ -3,7 +3,7 @@
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/parser.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/os/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
