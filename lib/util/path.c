@@ -401,7 +401,6 @@ char *get_discovery_database_dir(void) {
   return NULL;
 }
 
-#if 0
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
@@ -437,7 +436,6 @@ bool path_is_absolute(const char *path) {
   return false;
 #else
   return path[0] == PATH_DELIM;
-#endif
 }
 
 bool path_is_within_base(const char *path, const char *base) {
@@ -496,7 +494,6 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 }
 #endif
 
-#if 0 /* libplatform provides this generic predicate. */
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
     return false;
@@ -514,7 +511,6 @@ bool path_looks_like_path(const char *value) {
   if (isalpha((unsigned char)value[0]) && value[1] == ':' && value[2] == PATH_DELIM) {
     return true;
   }
-#endif
 
   return false;
 }
