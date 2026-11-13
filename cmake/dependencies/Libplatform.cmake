@@ -26,8 +26,6 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
-    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG daaf6af
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
