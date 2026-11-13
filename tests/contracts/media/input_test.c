@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/input.h>
@@ -31,7 +31,7 @@ static keyboard_key_t fake_keyboard(void) {
 #include <ascii-chat/log/search.h>
 #include "session/capture.h"
 #include "session/keyboard_handler.h"
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/audio/audio.h>
 #include <signal.h>
@@ -46,8 +46,7 @@ static ui_presentation_state_t fake_state(void) {
 static int fake_screen(void) {
   return test_screen;
 }
-static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor, bool secret,
-                                      ui_prompt_kind_t kind) {
+static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor, bool secret, ui_prompt_kind_t kind) {
   (void)prompt;
   (void)text;
   (void)cursor;

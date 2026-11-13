@@ -4,7 +4,7 @@
 #include "../../../src/client/display.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 
@@ -66,8 +66,7 @@ static image_t *video_read(session_capture_ctx_t *capture) {
     return NULL;
   return session_capture_read_frame(capture);
 }
-static asciichat_error_t video_encoded(client_connection_t *connection, const void *pixels, uint32_t width,
-                                       uint32_t height, video_codec_t codec, bool *encoding_failed) {
+static asciichat_error_t video_encoded(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height, video_codec_t codec, bool *encoding_failed) {
   (void)connection;
   (void)pixels;
   cr_assert(codec == VIDEO_CODEC_H264 || codec == VIDEO_CODEC_H265);
@@ -81,8 +80,7 @@ static asciichat_error_t video_encoded(client_connection_t *connection, const vo
   *encoding_failed = false;
   return wire_result;
 }
-static asciichat_error_t video_raw(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height,
-                                   uint32_t format) {
+static asciichat_error_t video_raw(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height, uint32_t format) {
   (void)connection;
   cr_assert_not_null(pixels);
   cr_assert_gt(width, 0);
@@ -195,8 +193,7 @@ Test(client_video_contract, capture_selection_prioritizes_url_then_stdin_file_te
       v->test_pattern = false;
     video_publish(v);
     cr_assert_eq(capture_init(), 0);
-    const media_source_type_t expected[] = {MEDIA_SOURCE_FILE, MEDIA_SOURCE_STDIN, MEDIA_SOURCE_FILE, MEDIA_SOURCE_TEST,
-                                            MEDIA_SOURCE_WEBCAM};
+    const media_source_type_t expected[] = {MEDIA_SOURCE_FILE, MEDIA_SOURCE_STDIN, MEDIA_SOURCE_FILE, MEDIA_SOURCE_TEST, MEDIA_SOURCE_WEBCAM};
     cr_assert_eq(chosen_config.type, expected[scenario]);
     cr_assert_eq(chosen_config.target_fps, scenario ? 60 : 144);
     cr_assert(chosen_config.resize_for_network);

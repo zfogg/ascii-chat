@@ -203,14 +203,11 @@ Test(mdns, unadvertise_service_null_context_fails) {
 
 #ifdef __APPLE__
 #include <dns_sd.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
-static DNSServiceErrorType mock_browse(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *,
-                                       DNSServiceBrowseReply, void *);
-static DNSServiceErrorType mock_resolve(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *,
-                                        const char *, DNSServiceResolveReply, void *);
-static DNSServiceErrorType mock_address(DNSServiceRef *, DNSServiceFlags, uint32_t, DNSServiceProtocol, const char *,
-                                        DNSServiceGetAddrInfoReply, void *);
+static DNSServiceErrorType mock_browse(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *, DNSServiceBrowseReply, void *);
+static DNSServiceErrorType mock_resolve(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *, const char *, DNSServiceResolveReply, void *);
+static DNSServiceErrorType mock_address(DNSServiceRef *, DNSServiceFlags, uint32_t, DNSServiceProtocol, const char *, DNSServiceGetAddrInfoReply, void *);
 static DNSServiceErrorType mock_process(DNSServiceRef);
 static int mock_descriptor(DNSServiceRef);
 static void mock_deallocate(DNSServiceRef);
@@ -243,9 +240,7 @@ static DNSServiceGetAddrInfoReply address_reply;
 static unsigned fault, callbacks, closed_refs;
 static asciichat_mdns_discovery_t received;
 
-static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index,
-                                       const char *type, const char *domain, DNSServiceBrowseReply reply,
-                                       void *context) {
+static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index, const char *type, const char *domain, DNSServiceBrowseReply reply, void *context) {
   cr_assert_str_eq(type, "_ascii-chat._tcp");
   cr_assert_str_eq(domain, "local.");
   if (fault == 1)
@@ -258,9 +253,8 @@ static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags
   (void)domain;
   return kDNSServiceErr_NoError;
 }
-static DNSServiceErrorType mock_resolve(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index,
-                                        const char *name, const char *type, const char *domain,
-                                        DNSServiceResolveReply reply, void *context) {
+static DNSServiceErrorType mock_resolve(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index, const char *name, const char *type, const char *domain, DNSServiceResolveReply reply,
+                                        void *context) {
   cr_assert_str_eq(name, "fixture-27224");
   if (fault == 2 || fault == 13)
     return fault == 13 ? kDNSServiceErr_NoSuchName : kDNSServiceErr_BadParam;
@@ -273,8 +267,7 @@ static DNSServiceErrorType mock_resolve(DNSServiceRef *out, DNSServiceFlags flag
   (void)domain;
   return kDNSServiceErr_NoError;
 }
-static DNSServiceErrorType mock_address(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index,
-                                        DNSServiceProtocol protocol, const char *host, DNSServiceGetAddrInfoReply reply,
+static DNSServiceErrorType mock_address(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index, DNSServiceProtocol protocol, const char *host, DNSServiceGetAddrInfoReply reply,
                                         void *context) {
   cr_assert_eq(protocol, kDNSServiceProtocol_IPv4);
   cr_assert_str_eq(host, "fixture.local.");
@@ -313,8 +306,7 @@ static DNSServiceErrorType mock_process(DNSServiceRef ref) {
   if (fault == 4)
     return kDNSServiceErr_BadReference;
   if (state == &dns_refs[0]) {
-    browse_reply(ref, kDNSServiceFlagsAdd, 1, fault == 5 ? kDNSServiceErr_PolicyDenied : kDNSServiceErr_NoError,
-                 "fixture-27224", "_ascii-chat._tcp.", "local.", state->context);
+    browse_reply(ref, kDNSServiceFlagsAdd, 1, fault == 5 ? kDNSServiceErr_PolicyDenied : kDNSServiceErr_NoError, "fixture-27224", "_ascii-chat._tcp.", "local.", state->context);
   } else if (state == &dns_refs[1]) {
     TXTRecordRef txt;
     TXTRecordCreate(&txt, 0, NULL);
@@ -323,8 +315,7 @@ static DNSServiceErrorType mock_process(DNSServiceRef ref) {
                   fault == 6    ? kDNSServiceErr_ServiceNotRunning
                   : fault == 11 ? kDNSServiceErr_NoSuchName
                                 : kDNSServiceErr_NoError,
-                  "fixture-27224._ascii-chat._tcp.local.", "fixture.local.", htons(27224), TXTRecordGetLength(&txt),
-                  TXTRecordGetBytesPtr(&txt), state->context);
+                  "fixture-27224._ascii-chat._tcp.local.", "fixture.local.", htons(27224), TXTRecordGetLength(&txt), TXTRecordGetBytesPtr(&txt), state->context);
     TXTRecordDeallocate(&txt);
   } else {
     struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = htonl(0x7f000001)};

@@ -74,6 +74,11 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
+if(FONTCONFIG_LINK_LIBRARIES)
+    target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
+endif()
+
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)

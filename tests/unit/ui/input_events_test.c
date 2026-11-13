@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/tui/input.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <string.h>
 
 static const keyboard_key_t *keys;

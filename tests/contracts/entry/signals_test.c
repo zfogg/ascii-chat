@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <setjmp.h>
 static bool help_active;

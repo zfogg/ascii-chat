@@ -148,8 +148,7 @@ Test(mcp_requests, malformed_arguments_and_incompatible_sources_are_rejected_and
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
     http_renderer_process_request_t request;
-    cr_assert_neq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
-                  "case %u: %s", i, cases[i].json);
+    cr_assert_neq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK, "case %u: %s", i, cases[i].json);
     mcp_request_destroy(&request);
     cr_assert_eq(request.argc, 0);
     cr_assert_null(request.argv);
@@ -174,21 +173,16 @@ Test(mcp_requests, accepted_sources_produce_bounded_cli_arguments_and_staged_upl
       {MCP_URL, "{\"url\":\"rtsp://localhost/frame\"}", "--url=rtsp://localhost/frame"},
       {MCP_URL, "{\"url\":\"rtmp://localhost/frame\"}", "--url=rtmp://localhost/frame"},
       {MCP_WEBCAM, "{\"video_device\":2,\"audio_device\":0,\"volume\":0.25}", "--webcam-index=2"},
-      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio\":{\"type\":\"file\",\"data_base64\":\"AA==\"}}",
-       "--audio-capture-source=media"},
-      {MCP_VISUALIZATION,
-       "{\"visualization\":\"waveform\",\"audio\":{\"type\":\"url\",\"url\":\"http://localhost/audio\"}}",
-       "--url=http://localhost/audio"},
-      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio_device\":-1,\"volume\":0.5}",
-       "--audio-capture-source=mic"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio\":{\"type\":\"file\",\"data_base64\":\"AA==\"}}", "--audio-capture-source=media"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"waveform\",\"audio\":{\"type\":\"url\",\"url\":\"http://localhost/audio\"}}", "--url=http://localhost/audio"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio_device\":-1,\"volume\":0.5}", "--audio-capture-source=mic"},
       {MCP_VISUALIZATION, "{\"visualization\":\"fft\"}", "--test-audio=true"},
   };
   mcp_policy_t policy = {0};
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
     http_renderer_process_request_t request;
-    cr_assert_eq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
-                 "case %u: %s", i, cases[i].json);
+    cr_assert_eq(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK, "case %u: %s", i, cases[i].json);
     cr_assert(has_arg(&request, cases[i].expected), "case %u missing %s", i, cases[i].expected);
     cr_assert_null(request.argv[request.argc]);
     char upload[PLATFORM_MAX_PATH_LENGTH];
@@ -281,26 +275,23 @@ Test(mcp_requests, protocol_envelopes_reject_invalid_types_and_worker_start_fail
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":null}", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"params\":[],\"id\":1}", -32602);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\",\"id\":1}", -32601);
-  expect_rpc_error(
-      &server, "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown\"},\"id\":1}", -32602);
+  expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown\"},\"id\":1}", -32602);
   expect_rpc_error(&server,
                    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
                    "call\",\"params\":{\"name\":\"device_list\",\"arguments\":{\"unknown\":1}},\"id\":1}",
                    -32602);
-  expect_rpc_error(
-      &server,
-      "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
-      "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
-      -32603);
-  cr_assert_not(server.jobs[0].started);
+  expect_rpc_error(&server,
+                   "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
+                   "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
+                   -32603);
+  cr_assert_not(server.jobs[0].renderer_job.started);
   cr_assert_null(server.jobs[0].message);
   cr_assert_null(server.jobs[0].request.argv);
 }
 
 Test(mcp_requests, device_results_include_defaults_and_report_partial_enumeration_failure) {
   yyjson_mut_doc *response = device_list_result(NULL, NULL);
-  yyjson_mut_val *root = yyjson_mut_doc_get_root(response), *result = yyjson_mut_obj_get(root, "result"),
-                 *data = yyjson_mut_obj_get(result, "structuredContent");
+  yyjson_mut_val *root = yyjson_mut_doc_get_root(response), *result = yyjson_mut_obj_get(root, "result"), *data = yyjson_mut_obj_get(result, "structuredContent");
   cr_assert_not_null(data);
   cr_assert_eq(yyjson_mut_arr_size(yyjson_mut_obj_get(data, "video_devices")), 2);
   cr_assert_eq(yyjson_mut_arr_size(yyjson_mut_obj_get(data, "audio_devices")), 2);
@@ -340,8 +331,7 @@ Test(mcp_requests, hosted_download_names_are_strict_and_expiration_is_anchored_a
   mcp_policy_t policy = {.downloads_url_prefix = "https://example.test/"};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-  yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc),
-                 *files = yyjson_mut_arr(doc), *content = yyjson_mut_arr(doc), *item = yyjson_mut_obj(doc);
+  yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc), *files = yyjson_mut_arr(doc), *content = yyjson_mut_arr(doc), *item = yyjson_mut_obj(doc);
   yyjson_mut_doc_set_root(doc, root);
   yyjson_mut_obj_add_val(doc, root, "result", result);
   yyjson_mut_obj_add_val(doc, result, "structuredContent", data);
@@ -352,8 +342,7 @@ Test(mcp_requests, hosted_download_names_are_strict_and_expiration_is_anchored_a
   yyjson_mut_arr_add_strcpy(doc, files, path);
   cr_assert_eq(mcp_download_finalize(&policy, doc, 1700000100), ASCIICHAT_OK);
   cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "expires_at")), "2023-11-14T22:45:00Z");
-  cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")),
-                   "https://example.test/downloads/1700001900-0123456789abcdef0123456789abcdef.png");
+  cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")), "https://example.test/downloads/1700001900-0123456789abcdef0123456789abcdef.png");
   cr_assert_neq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
   SAFE_SNPRINTF(path, sizeof(path), "%s/1700001900-0123456789abcdef0123456789abcdef.png", directory);
   cr_assert_eq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
@@ -379,9 +368,8 @@ Test(mcp_requests, hosted_profile_accepts_url_and_stages_requested_media_format)
   cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-hosted-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  yyjson_doc *doc =
-      read_json("{\"url\":\"https://example.test/"
-                "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
+  yyjson_doc *doc = read_json("{\"url\":\"https://example.test/"
+                              "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
   http_renderer_process_request_t request;
   cr_assert_eq(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
   cr_assert(has_arg(&request, "--url=https://example.test/upload.mp4"));
@@ -398,9 +386,7 @@ Test(mcp_requests, hosted_default_format_tracks_snapshot_mode) {
   cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-format-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  const char *inputs[] = {"{\"options\":{\"test-pattern\":true}}",
-                          "{\"options\":{\"test-pattern\":true,\"snapshot\":false}}",
-                          "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":2}}"};
+  const char *inputs[] = {"{\"options\":{\"test-pattern\":true}}", "{\"options\":{\"test-pattern\":true,\"snapshot\":false}}", "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":2}}"};
   const char *extensions[] = {".png", ".mp4", ".mp4"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
@@ -418,10 +404,9 @@ Test(mcp_requests, gif_media_defaults_to_animation_and_respects_snapshot_options
   cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-gif-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  const char *inputs[] = {
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\"}",
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot\":true}}",
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
+  const char *inputs[] = {"{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\"}",
+                          "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot\":true}}",
+                          "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
     http_renderer_process_request_t request;

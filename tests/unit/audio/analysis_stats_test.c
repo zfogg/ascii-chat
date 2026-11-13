@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

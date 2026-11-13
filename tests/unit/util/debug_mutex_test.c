@@ -6,7 +6,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <libplatform/atomic.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/rwlock.h>
+#include <libplatform/debug/sync.h>
 #include <string.h>
 
 #ifndef NDEBUG
