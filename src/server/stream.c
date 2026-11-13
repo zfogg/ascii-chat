@@ -315,7 +315,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         // PARSE AND VALIDATE DIMENSIONS BEFORE COPYING
         // Don't trust frame->size - calculate correct size from dimensions
         uint32_t peek_width = NET_TO_HOST_U32(read_u32_unaligned(frame->data));
-        uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned(frame->data + sizeof(uint32_t)));
+        uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned((const uint8_t *)frame->data + sizeof(uint32_t)));
 
         // Reject obviously corrupted dimensions
         if (peek_width == 0 || peek_height == 0 || peek_width > 4096 || peek_height > 2160) {
