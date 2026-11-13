@@ -1735,7 +1735,7 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
     if (!desc->long_name || strncmp(desc->long_name, "otel-", 5) || !desc->env_var_name)
       continue;
     const char *value = SAFE_GETENV(desc->env_var_name);
-    if (value && desc->type >= 0 && desc->type < NUM_OPTION_TYPES) {
+    if (value && value[0] != '\0' && desc->type >= 0 && desc->type < NUM_OPTION_TYPES) {
       asciichat_error_t env_result = g_builder_handlers[desc->type].apply_cli((char *)opts + desc->offset, value, desc);
       if (env_result != ASCIICHAT_OK)
         return env_result;
@@ -1806,7 +1806,10 @@ static void record_explicit_stabilize(options_t *opts, int mode_argc, char **mod
 static asciichat_error_t publish_options_for_validation(options_t *opts) {
   // Publish options to RCU as soon as they're parsed
   // This ensures GET_OPTION() works during cleanup even if validation fails
-  if (opts->test_audio)
+  // Audio visualizers inherently need an audio capture pipeline. Make that
+  // implication explicit so --waveform and --fft work without requiring a
+  // redundant --audio flag (and override a stale false config value).
+  if (opts->test_audio || opts->waveform || opts->fft)
     opts->audio_enabled = true;
   log_debug("Publishing parsed options to RCU before validation");
   asciichat_error_t early_publish = options_state_set(opts);
@@ -2450,7 +2453,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool handled = false;
   result = handle_immediate_actions(&opts, &actions, &handled);
   if (result != ASCIICHAT_OK || handled) {
-    return result;
+    if (result != ASCIICHAT_OK)
+      return result;
   }
   result = parse_binary_options(&opts, argc, argv);
   if (result != ASCIICHAT_OK) {
@@ -2482,8 +2486,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Apply defaults, config, environment, then CLI values in increasing precedence.
   bool fps_set_by_config = false;
   result = load_options_config(&opts, detected_mode, &fps_set_by_config);
-  if (result != ASCIICHAT_OK)
+  if (result != ASCIICHAT_OK) {
     goto cleanup;
+  }
   config = options_preset_unified(NULL, NULL);
   if (!config) {
     result = SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
@@ -2571,9 +2576,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   actions_execute_deferred();
 
 cleanup:
-  if (config) {
-    options_config_destroy(config);
-  }
+  if (result != ASCIICHAT_OK)
+    if (config) {
+      options_config_destroy(config);
+    }
   SAFE_FREE(mode_args.allocated);
   return result;
 }
