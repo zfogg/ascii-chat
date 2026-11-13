@@ -115,7 +115,7 @@ char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out) {
 
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   // For FG+BG, still build on-demand since we'd need 256*256 cache
-  static __thread char buf[VIDEO_ASCII_SGR_BUF_BUFFER_SIZE];
+  static _Thread_local char buf[VIDEO_ASCII_SGR_BUF_BUFFER_SIZE];
   return build_sgr256_fgbg(buf, fg, bg, len_out);
 }
 
