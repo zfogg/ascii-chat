@@ -25,6 +25,7 @@
 #include <time.h>
 #include <pcre2.h>
 #include <libplatform/util/string.h>
+#include <libplatform/terminal.h>
 
 /* ============================================================================
  * Utility Functions
