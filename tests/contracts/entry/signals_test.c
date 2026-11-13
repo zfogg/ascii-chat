@@ -57,6 +57,9 @@ int discovery_main(void) {
 int mcp_server_main(void) {
   return ASCIICHAT_OK;
 }
+int api_server_main(void) {
+  return ASCIICHAT_OK;
+}
 asciichat_error_t mcp_stdio_reserve(void) {
   return ASCIICHAT_OK;
 }
@@ -65,6 +68,12 @@ static void interrupted(void) {
   ++interrupts;
 }
 static void setup(void) {
+  atomic_store_bool(&g_should_exit, false);
+  help_active = false;
+  help_toggles = 0;
+  interrupts = 0;
+  forced_exit = 0;
+  signal_console[0] = '\0';
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
@@ -88,7 +97,7 @@ Test(entry_signals, signal_exit_sets_the_global_flag_before_notifying_the_mode_o
   cr_assert(should_exit());
   cr_assert_eq(interrupts, 1);
 }
-Test(entry_signals, console_close_and_break_follow_help_dismissal_then_shutdown_then_forced_exit) {
+Test(entry_signals, console_interrupts_shutdown_before_help_dismissal_then_force_exit_on_third_event) {
   cr_assert_not(console_ctrl_handler((console_ctrl_event_t)999));
   cr_assert_not(should_exit());
   cr_assert_eq(interrupts, 0);
@@ -96,16 +105,16 @@ Test(entry_signals, console_close_and_break_follow_help_dismissal_then_shutdown_
   cr_assert(console_ctrl_handler(CONSOLE_CTRL_C));
   cr_assert_not(help_active);
   cr_assert_eq(help_toggles, 1);
-  cr_assert_not(should_exit());
-  cr_assert(console_ctrl_handler(CONSOLE_CTRL_BREAK));
   cr_assert(should_exit());
   cr_assert_eq(interrupts, 1);
+  cr_assert(console_ctrl_handler(CONSOLE_CTRL_BREAK));
+  cr_assert_eq(interrupts, 2);
   if (setjmp(forced_jump) == 0) {
     console_ctrl_handler(CONSOLE_CLOSE);
     cr_assert_fail("Repeated console interrupt did not force exit");
   }
   cr_assert_eq(forced_exit, 1);
-  cr_assert_eq(interrupts, 1);
+  cr_assert_eq(interrupts, 3);
 }
 #ifndef _WIN32
 Test(entry_signals, posix_interrupt_dismisses_help_and_termination_interrupts_the_owner) {
@@ -126,7 +135,7 @@ Test(entry_signals, posix_interrupt_dismisses_help_and_termination_interrupts_th
 }
 #endif
 Test(entry_signals, mode_lookup_rejects_out_of_range_values_and_log_paths_keep_mode_names) {
-  const char *names[] = {"server.log", "client.log", "mirror.log", "acds.log", "discovery.log", "mcp-server.log"};
+  const char *names[] = {"server.log", "client.log", "mirror.log", "acds.log", "discovery.log", "mcp-server.log", "api-server.log"};
   for (int mode = MODE_SERVER; mode < MODE_INVALID; ++mode) {
     cr_assert_not_null(find_mode((asciichat_mode_t)mode));
     cr_assert_str_eq(get_mode_log_filename((asciichat_mode_t)mode), names[mode]);
