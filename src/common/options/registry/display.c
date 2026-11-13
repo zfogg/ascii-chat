@@ -55,10 +55,12 @@ static bool parse_explicit_palette(const char *arg, void *dest, char **error_msg
 static bool parse_ascii_renderer(const char *arg, void *dest, char **error_msg) {
   if (arg && dest && strcmp(arg, "luminance") == 0) {
     *(ascii_renderer_t *)dest = ASCII_RENDERER_LUMINANCE;
+    ((options_t *)((char *)dest - offsetof(options_t, renderer)))->renderer_explicit = true;
     return true;
   }
   if (arg && dest && strcmp(arg, "glyph") == 0) {
     *(ascii_renderer_t *)dest = ASCII_RENDERER_GLYPH;
+    ((options_t *)((char *)dest - offsetof(options_t, renderer)))->renderer_explicit = true;
     return true;
   }
   if (error_msg)
