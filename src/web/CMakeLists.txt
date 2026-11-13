@@ -138,8 +138,6 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/log.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/audio.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/network.c
-    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/misc.c
-    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/comprehensive.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/ffmpeg_decoder.c
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
 )
