@@ -95,29 +95,29 @@ typedef struct {
   char description[128];
 } invalid_dimensions_test_case_t;
 
-static invalid_dimensions_test_case_t invalid_dimensions_cases[] = { // aspect_ratio invalid image dimensions
-    {0, 1080, 80, 24, 1, 1, "aspect_ratio: zero image width"},
-    {1920, 0, 80, 24, 1, 1, "aspect_ratio: zero image height"},
-    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio: negative image width"},
-    {1920, -1080, 80, 24, 1, 1, "aspect_ratio: negative image height"},
+// aspect_ratio invalid image dimensions
+static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {{0, 1080, 80, 24, 1, 1, "aspect_ratio: zero image width"},
+                                                                    {1920, 0, 80, 24, 1, 1, "aspect_ratio: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio: negative image width"},
+                                                                    {1920, -1080, 80, 24, 1, 1, "aspect_ratio: negative image height"},
 
-    // aspect_ratio2 invalid image dimensions
-    {0, 1080, 80, 24, 1, 1, "aspect_ratio2: zero image width"},
-    {1920, 0, 80, 24, 1, 1, "aspect_ratio2: zero image height"},
-    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio2: negative image width"},
-    {1920, -1080, 80, 24, 1, 1, "aspect_ratio2: negative image height"},
+                                                                    // aspect_ratio2 invalid image dimensions
+                                                                    {0, 1080, 80, 24, 1, 1, "aspect_ratio2: zero image width"},
+                                                                    {1920, 0, 80, 24, 1, 1, "aspect_ratio2: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio2: negative image width"},
+                                                                    {1920, -1080, 80, 24, 1, 1, "aspect_ratio2: negative image height"},
 
-    // aspect_ratio2 invalid target dimensions
-    {1920, 1080, 0, 24, 1, 1, "aspect_ratio2: zero target width"},
-    {1920, 1080, 80, 0, 1, 1, "aspect_ratio2: zero target height"},
-    {1920, 1080, -80, 24, 1, 1, "aspect_ratio2: negative target width"},
-    {1920, 1080, 80, -24, 1, 1, "aspect_ratio2: negative target height"},
+                                                                    // aspect_ratio2 invalid target dimensions
+                                                                    {1920, 1080, 0, 24, 1, 1, "aspect_ratio2: zero target width"},
+                                                                    {1920, 1080, 80, 0, 1, 1, "aspect_ratio2: zero target height"},
+                                                                    {1920, 1080, -80, 24, 1, 1, "aspect_ratio2: negative target width"},
+                                                                    {1920, 1080, 80, -24, 1, 1, "aspect_ratio2: negative target height"},
 
-    // calculate_fit_dimensions_pixel invalid image dimensions
-    {0, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image width"},
-    {1920, 0, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image height"},
-    {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
-    {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
+                                                                    // calculate_fit_dimensions_pixel invalid image dimensions
+                                                                    {0, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image width"},
+                                                                    {1920, 0, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
+                                                                    {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
 
 ParameterizedTestParameters(aspect_ratio, invalid_dimensions_parameterized) {
   return cr_make_param_array(invalid_dimensions_test_case_t, invalid_dimensions_cases, sizeof(invalid_dimensions_cases) / sizeof(invalid_dimensions_cases[0]));
