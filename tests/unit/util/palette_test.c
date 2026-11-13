@@ -143,9 +143,9 @@ typedef struct {
 } utf8_palette_test_case_t;
 
 static utf8_palette_test_case_t utf8_palette_test_cases[] = {{" .:-=+*#%@", "ASCII palette", 10, 10, true},
-                                                             {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true},  // 5 emojis × 4 bytes each
-                                                             {"A→B", "Mixed ASCII/UTF-8", 3, 5, true}, // A(1) + →(3) + B(1)
-                                                             {"", "NULL/empty string", 0, 0, false},   // Use empty string to test NULL handling
+                                                             {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
+                                                             {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
+                                                             {"", "NULL/empty string", 0, 0, false},       // Use empty string to test NULL handling
                                                              {"", "Empty string", 0, 0, false}};
 
 ParameterizedTestParameters(palette_tests, utf8_palette_creation_tests) {
@@ -182,7 +182,7 @@ typedef struct {
 
 static utf8_char_test_case_t utf8_char_test_cases[] = {{"ABC", 0, "First ASCII char", true, 1}, {"ABC", 2, "Last ASCII char", true, 1}, {"ABC", 3, "Out of bounds", false, 0},
                                                        {"A→B", 0, "First mixed char", true, 1}, {"A→B", 1, "UTF-8 char", true, 3},      {"A→B", 2, "Last mixed char", true, 1},
-                                                       {"🌑🌒", 0, "First emoji", true, 4},       {"🌑🌒", 1, "Second emoji", true, 4}};
+                                                       {"🌑🌒", 0, "First emoji", true, 4},     {"🌑🌒", 1, "Second emoji", true, 4}};
 
 ParameterizedTestParameters(palette_tests, utf8_char_access_tests) {
   size_t nb_cases = sizeof(utf8_char_test_cases) / sizeof(utf8_char_test_cases[0]);
@@ -217,7 +217,7 @@ typedef struct {
 
 static utf8_search_test_case_t utf8_search_test_cases[] = {
     {"ABC", "A", 1, "Find first ASCII", true, 0}, {"ABC", "B", 1, "Find middle ASCII", true, 1}, {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
-    {"A→B", "→", 3, "Find UTF-8 char", true, 1},  {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},        {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
+    {"A→B", "→", 3, "Find UTF-8 char", true, 1},  {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},    {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
 
 ParameterizedTestParameters(palette_tests, utf8_search_tests) {
   size_t nb_cases = sizeof(utf8_search_test_cases) / sizeof(utf8_search_test_cases[0]);
@@ -484,11 +484,11 @@ ParameterizedTest(null_handling_test_case_t *tc, palette_tests, null_handling_te
 TheoryDataPoints(palette, utf8_boundary_property) = {
     DataPoints(const char *, "ABC",       // Pure ASCII
                "→→→",                     // 3-byte UTF-8
-               "🌑🌑",                      // 4-byte UTF-8
-               "A→B🌑C",                   // Mixed
+               "🌑🌑",                    // 4-byte UTF-8
+               "A→B🌑C",                  // Mixed
                " .:-=+*#%@",              // Standard palette
                "   ...',;:clodxkO0KXNWM", // Palette with duplicates
-               "😀😃😄😁"),                   // Emoji sequence
+               "😀😃😄😁"),               // Emoji sequence
 };
 
 Theory((const char *palette_string), palette, utf8_boundary_property) {

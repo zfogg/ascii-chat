@@ -308,11 +308,9 @@ ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation)
 // Port Validation Tests
 // =============================================================================
 
-GENERATE_OPTIONS_TEST(
-    valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_eq(opts->port, 80); }, { cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_eq(opts->port, 80); }, { cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit"); })
 
-GENERATE_OPTIONS_TEST(
-    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { cr_assert_eq(opts->port, 65535); }, { cr_assert_eq(exit_code, 0, "Valid port 65535 should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { cr_assert_eq(opts->port, 65535); }, { cr_assert_eq(exit_code, 0, "Valid port 65535 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_too_low, ARGV_LIST("client", "-p", "0"), true,

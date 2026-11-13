@@ -123,8 +123,7 @@ static void pump_client_delayed_settings(nghttp3_conn *client, http_server_http3
   CHECK(http_server_http3_read(server, 2, delayed, delayed_length, false, 0, &consumed) == ASCIICHAT_OK);
   CHECK(consumed == delayed_length);
 }
-#define NV(name, value)                                                                                                                                                                                \
-  { (const uint8_t *)(name), (const uint8_t *)(value), sizeof(name) - 1, sizeof(value) - 1, 0 }
+#define NV(name, value) {(const uint8_t *)(name), (const uint8_t *)(value), sizeof(name) - 1, sizeof(value) - 1, 0}
 static void exchange(unsigned scenario) {
   bool allowed = scenario == 0 || scenario == 5;
   http_server_http3_t *server = NULL;

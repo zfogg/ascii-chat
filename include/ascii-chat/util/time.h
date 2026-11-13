@@ -56,14 +56,12 @@ using std::atomic_load_explicit;
 using std::memory_order_relaxed;
 // C11 _Atomic(T) syntax doesn't work in C++ - use std::atomic<T> instead
 #define TIME_ATOMIC_UINT64 std::atomic<uint64_t>
-#define TIME_ATOMIC_UINT64_INIT(val)                                                                                                                                                                   \
-  { val }
+#define TIME_ATOMIC_UINT64_INIT(val) {val}
 #else
 #include <libplatform/atomic.h>
 // Use atomic_t for rate-limiting counters
 #define TIME_ATOMIC_UINT64 atomic_t
-#define TIME_ATOMIC_UINT64_INIT(val)                                                                                                                                                                   \
-  { 0 }
+#define TIME_ATOMIC_UINT64_INIT(val) {0}
 #endif
 
 // ============================================================================

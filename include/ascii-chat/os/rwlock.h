@@ -61,8 +61,8 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-  pthread_rwlock_t impl;                 ///< Underlying POSIX rwlock
-  const char *name;                      ///< Human-readable name for named registry (all builds)
+  pthread_rwlock_t impl; ///< Underlying POSIX rwlock
+  const char *name;      ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
   _Atomic(uint64_t) last_rdlock_time_ns; ///< Timestamp of last read lock acquisition (nanoseconds)
   _Atomic(uint64_t) last_wrlock_time_ns; ///< Timestamp of last write lock acquisition (nanoseconds)

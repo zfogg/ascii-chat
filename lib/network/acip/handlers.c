@@ -855,7 +855,8 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pixel format: %u (expected: 1-4)", header.pixel_format);
   }
 
-  log_dev("📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p", header.width, header.height, header.pixel_format, pixel_data_len, client_ctx);
+  log_dev("📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p", header.width, header.height, header.pixel_format, pixel_data_len,
+          client_ctx);
 
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
 

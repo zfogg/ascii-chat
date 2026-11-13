@@ -344,7 +344,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 /* Linux/other platforms use aligned_alloc() (C11) */
 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                                                                                     \
   ({                                                                                                                                                                                                   \
-    size_t aligned_size = (((size) + (alignment)-1) / (alignment)) * (alignment);                                                                                                                      \
+    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                                                                                                    \
     cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                                                                                                        \
     if (!_ptr) {                                                                                                                                                                                       \
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size, (size_t)(alignment));                                                                            \

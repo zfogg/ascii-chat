@@ -68,8 +68,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   else if (status->detail)
     snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat %s | ⏱️ %s" : "ascii-chat %s | uptime %s", status->mode_name, uptime_str);
   else
-    snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat %s | 👥 %zu | ⏱️ %s" : "ascii-chat %s | clients %zu | uptime %s", status->mode_name, status->connected_count,
-             uptime_str);
+    snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat %s | 👥 %zu | ⏱️ %s" : "ascii-chat %s | clients %zu | uptime %s", status->mode_name, status->connected_count, uptime_str);
 
   // Truncate if needed (ANSI-aware)
   truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);

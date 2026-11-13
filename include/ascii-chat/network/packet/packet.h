@@ -1160,14 +1160,14 @@ PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
  * @param mode Crypto mode bitmask (ACIP_CRYPTO_*)
  * @return true if payload encryption is enabled, false otherwise
  */
-#define ACIP_CRYPTO_HAS_ENCRYPT(mode) (((mode)&ACIP_CRYPTO_ENCRYPT) != 0)
+#define ACIP_CRYPTO_HAS_ENCRYPT(mode) (((mode) & ACIP_CRYPTO_ENCRYPT) != 0)
 
 /**
  * @brief Check if crypto mode includes authentication
  * @param mode Crypto mode bitmask (ACIP_CRYPTO_*)
  * @return true if authentication is enabled, false otherwise
  */
-#define ACIP_CRYPTO_HAS_AUTH(mode) (((mode)&ACIP_CRYPTO_AUTH) != 0)
+#define ACIP_CRYPTO_HAS_AUTH(mode) (((mode) & ACIP_CRYPTO_AUTH) != 0)
 
 /** @} */
 

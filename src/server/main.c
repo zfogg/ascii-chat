@@ -1408,8 +1408,8 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
   return true;
 }
 
-static void __attribute__((unused))
-server_prepare_discovery_request(acds_session_create_params_t *params, const server_discovery_policy_t *policy, int port, nat_upnp_context_t *upnp_ctx, bool upnp_succeeded) {
+static void __attribute__((unused)) server_prepare_discovery_request(acds_session_create_params_t *params, const server_discovery_policy_t *policy, int port, nat_upnp_context_t *upnp_ctx,
+                                                                     bool upnp_succeeded) {
   // Use server's Ed25519 identity public key if available
   if (g_server_encryption_enabled && policy->has_identity) {
     memcpy(params->identity_pubkey, g_server_private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
@@ -1487,8 +1487,8 @@ server_prepare_discovery_request(acds_session_create_params_t *params, const ser
   log_debug("Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u", params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 
-static void __attribute__((unused))
-server_join_discovery_session(const acds_session_create_params_t *params, acds_session_create_result_t *result, const char *session_string, const server_discovery_policy_t *policy) {
+static void __attribute__((unused)) server_join_discovery_session(const acds_session_create_params_t *params, acds_session_create_result_t *result, const char *session_string,
+                                                                  const server_discovery_policy_t *policy) {
   // Server must join its own session so ACDS can route signaling messages
   log_debug("Server joining session as first participant for WebRTC signaling...");
   acds_session_join_params_t join_params = {0};
