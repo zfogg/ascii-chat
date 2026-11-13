@@ -28,7 +28,7 @@ FetchContent_Declare(libplatform
     # Keep the cache clone on the mapped libplatform revision used by the
     # repository submodule. The copied compatibility files below are layered
     # onto this exact source, so headers and implementation stay in sync.
-    GIT_TAG e130974
+    GIT_TAG 6d8ce83
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
