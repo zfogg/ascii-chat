@@ -356,7 +356,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
     ${LIB_ROOT}/tui/status.c
-    ${LIB_ROOT}/tui/update_banner.c
     ${LIB_ROOT}/tui/invitation.c
     ${LIB_ROOT}/tui/too_small.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/session_log_buffer.c
