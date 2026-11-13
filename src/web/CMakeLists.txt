@@ -134,7 +134,7 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/manpage.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/video.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/mode_defaults.c
-    ${LIBPLATFORM_ROOT}/lib/wasm/stubs/backtrace.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/backtrace.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/log.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/audio.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/network.c
