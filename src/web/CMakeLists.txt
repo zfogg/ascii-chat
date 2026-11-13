@@ -109,6 +109,7 @@ include_directories(
     ${PCRE2_INCLUDE_DIRS}  # pcre2
     ${OPUS_INCLUDE_DIRS}  # opus
     ${ZSTD_INCLUDE_DIRS}  # zstd
+    ${FFTW_INCLUDE_DIRS}  # fftw
 )
 
 # Source files for WASM mirror entry point
