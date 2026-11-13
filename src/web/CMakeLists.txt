@@ -91,6 +91,20 @@ set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 set(LIBPLATFORM_ROOT ${DEPS_ROOT}/ascii-chat-deps/libplatform)
 set(LIBFLAGS_ROOT ${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src)
+set(LIBFLAGS_SRC
+    ${LIBFLAGS_ROOT}/lib/validation.c
+    ${LIBFLAGS_ROOT}/lib/json.c
+    ${LIBFLAGS_ROOT}/lib/commands.c
+    ${LIBFLAGS_ROOT}/lib/options.c
+    ${LIBFLAGS_ROOT}/lib/util/url.c
+    ${LIBFLAGS_ROOT}/lib/util/ip.c
+    ${LIBFLAGS_ROOT}/lib/log.c
+    ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
+    ${LIBFLAGS_ROOT}/lib/builder/builder.c
+    ${LIBFLAGS_ROOT}/lib/config/config.c
+    ${LIBFLAGS_ROOT}/lib/completions/completions.c
+    ${LIBFLAGS_ROOT}/lib/manpage/manpage.c
+    ${LIBFLAGS_ROOT}/lib/manpage/formatter.c)
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -136,7 +150,7 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/thread.c
     ${LIBPLATFORM_ROOT}/lib/wasm/filesystem.c
     ${LIBPLATFORM_ROOT}/lib/wasm/system.c        # Provides real platform_write() override for xterm.js
-    ${LIBPLATFORM_ROOT}/lib/wasm/time.c
+    ${LIBPLATFORM_ROOT}/lib/time.c
     ${LIBPLATFORM_ROOT}/lib/wasm/lifecycle.c
     ${LIBPLATFORM_ROOT}/lib/wasm/string.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/util.c
@@ -151,6 +165,7 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/ffmpeg_decoder.c
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
     ${LIB_ROOT}/util/time.c
+    ${LIBFLAGS_SRC}
 )
 
 # WASM rendering components (libvterm + FreeType)
