@@ -1017,7 +1017,7 @@ add_library(ascii-chat-shared SHARED
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
-        WINDOWS_EXPORT_ALL_SYMBOLS $<BOOL:${CMAKE_C_COMPILER_ID STREQUAL "MSVC"}>
+        WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file except for native MSVC
         # Windows: VERSION/SOVERSION embed version info in PE header (no symlinks)
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
@@ -1026,6 +1026,9 @@ add_library(ascii-chat-shared SHARED
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        set_property(TARGET ascii-chat-shared PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
         # generated import-library path to the .lib path passed to lld-link.
