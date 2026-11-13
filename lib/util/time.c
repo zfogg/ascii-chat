@@ -311,6 +311,19 @@ double timer_stop(const char *name) {
   return elapsed_ns; // Return nanoseconds
 }
 
+double timer_stop_formatted(const char *name_fmt, ...) {
+  if (!timer_is_initialized())
+    return -1.0;
+  char name[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];
+  char with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];
+  va_list args;
+  va_start(args, name_fmt);
+  vsnprintf(name, sizeof(name), name_fmt, args);
+  va_end(args);
+  snprintf(with_tid, sizeof(with_tid), "%s_tid%llu", name, (unsigned long long)thread_current_id());
+  return timer_stop(with_tid);
+}
+
 bool timer_is_initialized(void) {
   return lifecycle_is_initialized(&g_timer_manager.lifecycle);
 }
