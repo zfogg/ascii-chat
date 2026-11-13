@@ -289,7 +289,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/debug/stats.c
     ${LIB_ROOT}/debug/errno.c
     ${LIB_ROOT}/debug/debug_helpers.c
-    ${LIB_ROOT}/debug/atomic.c
+    ${LIBPLATFORM_ROOT}/lib/debug/atomic.c
     ${LIB_ROOT}/debug/mutex.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
