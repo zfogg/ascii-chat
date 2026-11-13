@@ -1,23 +1,83 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-  let HEAPU8: any;
-  namespace FS {
-    export let root: any;
-    export let mounts: any[];
-    export let devices: {};
-    export let streams: any[];
-    export let nextInode: number;
-    export let nameTable: any;
-    export let currentPath: string;
-    export let initialized: boolean;
-    export let ignorePermissions: boolean;
-    export let filesystems: any;
-    export let syncFSRequests: number;
-    export let readFiles: {};
-    export { ErrnoError };
-    export { FSStream };
-    export { FSNode };
-    export function lookupPath(
+declare var RuntimeExports: {
+  /** @type {!Uint8Array} */
+  HEAPU8: Uint8Array;
+  FS: {
+    root: null;
+    mounts: never[];
+    devices: {};
+    streams: never[];
+    nextInode: number;
+    nameTable: never[];
+    currentPath: string;
+    initialized: boolean;
+    ignorePermissions: boolean;
+    syncFSRequests: number;
+    ErrnoError: {
+      new (errno: any): {
+        cause?: unknown;
+        name: string;
+        errno: any;
+        code: string | undefined;
+        message: string;
+        stack?: string;
+      };
+    };
+    FSStream: {
+      new (): {
+        shared: {};
+        get object(): any;
+        set object(val: any);
+        node: any;
+        get isRead(): boolean;
+        get isWrite(): boolean;
+        get isAppend(): number;
+        flags: any;
+        position: any;
+      };
+    };
+    FSNode: {
+      new (
+        parent: any,
+        name: any,
+        mode: any,
+        rdev: any,
+      ): {
+        node_ops: {};
+        stream_ops: {};
+        readMode: number;
+        writeMode: number;
+        mounted: null;
+        parent: any;
+        mount: any;
+        id: number;
+        name: any;
+        mode: any;
+        rdev: any;
+        atime: number;
+        mtime: number;
+        ctime: number;
+        get read(): boolean;
+        set read(val: boolean);
+        get write(): boolean;
+        set write(val: boolean);
+        readonly isFolder: any;
+        readonly isDevice: any;
+        addListener(
+          cb: any,
+          exclusive?: boolean,
+        ): {
+          listeners: any;
+          entry: {
+            cb: any;
+            exclusive: boolean;
+          };
+        };
+        notifyListeners(flags: any): void;
+        exclTurn: any;
+      };
+    };
+    lookupPath(
       path: any,
       opts?: {},
     ):
@@ -29,60 +89,55 @@ declare namespace RuntimeExports {
           path: string;
           node: any;
         };
-    export function getPath(node: any): any;
-    export function hashName(parentid: any, name: any): number;
-    export function hashAddNode(node: any): void;
-    export function hashRemoveNode(node: any): void;
-    export function lookupNode(parent: any, name: any): any;
-    export function createNode(
-      parent: any,
-      name: any,
-      mode: any,
-      rdev: any,
-    ): any;
-    export function destroyNode(node: any): void;
-    export function isRoot(node: any): boolean;
-    export function isMountpoint(node: any): boolean;
-    export function isFile(mode: any): boolean;
-    export function isDir(mode: any): boolean;
-    export function isLink(mode: any): boolean;
-    export function isChrdev(mode: any): boolean;
-    export function isBlkdev(mode: any): boolean;
-    export function isFIFO(mode: any): boolean;
-    export function isSocket(mode: any): boolean;
-    export function flagsToPermissionString(flag: any): string;
-    export function nodePermissions(node: any, perms: any): 0 | 2;
-    export function mayLookup(dir: any): any;
-    export function mayCreate(dir: any, name: any): any;
-    export function mayDelete(dir: any, name: any, isdir: any): any;
-    export function mayOpen(node: any, flags: any): any;
-    export function checkOpExists(op: any, err: any): any;
-    export let MAX_OPEN_FDS: number;
-    export function nextfd(): number;
-    export function getStreamChecked(fd: any): any;
-    export function getStream(fd: any): any;
-    export function createStream(stream: any, fd?: number): any;
-    export function closeStream(fd: any): void;
-    export function dupStream(origStream: any, fd?: number): any;
-    export function doSetAttr(stream: any, node: any, attr: any): void;
-    export namespace chrdev_stream_ops {
-      function open(stream: any): void;
-      function llseek(): never;
-    }
-    export function major(dev: any): number;
-    export function minor(dev: any): number;
-    export function makedev(ma: any, mi: any): number;
-    export function registerDevice(dev: any, ops: any): void;
-    export function getDevice(dev: any): any;
-    export function getMounts(mount: any): any[];
-    export function syncfs(populate: any, callback: any): void;
-    export function mount(type: any, opts: any, mountpoint: any): any;
-    export function unmount(mountpoint: any): void;
-    export function lookup(parent: any, name: any): any;
-    export function mknod(path: any, mode: any, dev: any): any;
-    export function statfs(path: any): any;
-    export function statfsStream(stream: any): any;
-    export function statfsNode(node: any): {
+    getPath(node: any): any;
+    hashName(parentid: any, name: any): number;
+    hashAddNode(node: any): void;
+    hashRemoveNode(node: any): void;
+    lookupNode(parent: any, name: any): any;
+    createNode(parent: any, name: any, mode: any, rdev?: undefined): any;
+    destroyNode(node: any): void;
+    isRoot(node: any): boolean;
+    isMountpoint(node: any): boolean;
+    isFile(mode: any): boolean;
+    isDir(mode: any): boolean;
+    isLink(mode: any): boolean;
+    isChrdev(mode: any): boolean;
+    isBlkdev(mode: any): boolean;
+    isFIFO(mode: any): boolean;
+    isSocket(mode: any): boolean;
+    flagsToPermissionString(flag: any): string;
+    nodePermissions(node: any, perms: any): 0 | 2;
+    mayLookup(dir: any): any;
+    mayCreate(dir: any, name: any): any;
+    mayDelete(dir: any, name: any, isdir: any): any;
+    mayOpen(node: any, flags: any): any;
+    checkOpExists(op: any, err: any): any;
+    MAX_OPEN_FDS: number;
+    nextfd(): number;
+    getStreamChecked(fd: any): any;
+    getStream: (fd: any) => any;
+    createStream(stream: any, fd?: number): any;
+    closeStream(fd: any): void;
+    dupStream(origStream: any, fd?: number): any;
+    doSetAttr(stream: any, node: any, attr: any): void;
+    chrdev_stream_ops: {
+      open(stream: any): void;
+      llseek(): never;
+    };
+    major: (dev: any) => number;
+    minor: (dev: any) => number;
+    makedev: (ma: any, mi: any) => number;
+    registerDevice(dev: any, ops: any): void;
+    getDevice: (dev: any) => any;
+    getMounts(mount: any): any[];
+    syncfs(populate: any, callback: any): void;
+    mount(type: any, opts: any, mountpoint: any): any;
+    unmount(mountpoint: any): void;
+    lookup(parent: any, name: any): any;
+    mknod(path: any, mode: any, dev: any): any;
+    statfs(path: any): any;
+    statfsStream(stream: any): any;
+    statfsNode(node: any): {
       bsize: number;
       frsize: number;
       blocks: number;
@@ -94,184 +149,122 @@ declare namespace RuntimeExports {
       flags: number;
       namelen: number;
     };
-    export function create(path: any, mode?: number): any;
-    export function mkdir(path: any, mode?: number): any;
-    export function mkdirTree(path: any, mode: any): void;
-    export function mkdev(path: any, mode: any, dev: any): any;
-    export function symlink(oldpath: any, newpath: any): any;
-    export function rename(old_path: any, new_path: any): void;
-    export function rmdir(path: any): void;
-    export function readdir(path: any): any;
-    export function unlink(path: any): void;
-    export function readlink(path: any): any;
-    export function stat(path: any, dontFollow: any): any;
-    export function fstat(fd: any): any;
-    export function lstat(path: any): any;
-    export function doChmod(
-      stream: any,
-      node: any,
-      mode: any,
-      dontFollow: any,
-    ): void;
-    export function chmod(path: any, mode: any, dontFollow: any): void;
-    export function lchmod(path: any, mode: any): void;
-    export function fchmod(fd: any, mode: any): void;
-    export function doChown(stream: any, node: any, dontFollow: any): void;
-    export function chown(path: any, uid: any, gid: any, dontFollow: any): void;
-    export function lchown(path: any, uid: any, gid: any): void;
-    export function fchown(fd: any, uid: any, gid: any): void;
-    export function doTruncate(stream: any, node: any, len: any): void;
-    export function truncate(path: any, len: any): void;
-    export function ftruncate(fd: any, len: any): void;
-    export function utime(path: any, atime: any, mtime: any): void;
-    export function open(path: any, flags: any, mode?: number): any;
-    export function close(stream: any): void;
-    export function isClosed(stream: any): boolean;
-    export function llseek(stream: any, offset: any, whence: any): any;
-    export function read(
+    create(path: any, mode?: number): any;
+    mkdir(path: any, mode?: number): any;
+    mkdirTree(path: any, mode?: number): void;
+    mkdev(path: any, mode: any, dev?: undefined): any;
+    symlink(oldpath: any, newpath: any): any;
+    link(oldpath: any, newpath: any, flags: any): any;
+    rename(old_path: any, new_path: any): void;
+    rmdir(path: any): void;
+    readdir(path: any): any;
+    unlink(path: any): void;
+    readlink(path: any): any;
+    stat(path: any, dontFollow?: boolean): any;
+    fstat(fd: any): any;
+    lstat(path: any): any;
+    doChmod(stream: any, node: any, mode: any, dontFollow?: boolean): void;
+    chmod(path: any, mode: any, dontFollow?: boolean): void;
+    lchmod(path: any, mode: any): void;
+    fchmod(fd: any, mode: any): void;
+    doChown(stream: any, node: any, dontFollow?: boolean): void;
+    chown(path: any, uid: any, gid: any, dontFollow?: boolean): void;
+    lchown(path: any, uid: any, gid: any): void;
+    fchown(fd: any, uid: any, gid: any): void;
+    doTruncate(stream: any, node: any, len: any): void;
+    truncate(path: any, len: any): void;
+    ftruncate(fd: any, len: any): void;
+    utime(path: any, atime: any, mtime: any, dontFollow?: boolean): void;
+    open(path: any, flags: any, mode?: number): any;
+    close(stream: any): void;
+    isClosed(stream: any): boolean;
+    llseek(stream: any, offset: any, whence: any): any;
+    read(
       stream: any,
       buffer: any,
       offset: any,
       length: any,
-      position: any,
+      position?: undefined,
     ): any;
-    export function write(
+    write(
       stream: any,
       buffer: any,
       offset: any,
       length: any,
-      position: any,
-      canOwn: any,
+      position?: undefined,
+      canOwn?: undefined,
     ): any;
-    export function mmap(
-      stream: any,
-      length: any,
-      position: any,
-      prot: any,
-      flags: any,
-    ): any;
-    export function msync(
+    mmap(stream: any, length: any, position: any, prot: any, flags: any): any;
+    msync(
       stream: any,
       buffer: any,
       offset: any,
       length: any,
       mmapFlags: any,
     ): any;
-    export function ioctl(stream: any, cmd: any, arg: any): any;
-    export function readFile(path: any, opts?: {}): Uint8Array<any>;
-    export function writeFile(path: any, data: any, opts?: {}): void;
-    export function cwd(): any;
-    export function chdir(path: any): void;
-    export function createDefaultDirectories(): void;
-    export function createDefaultDevices(): void;
-    export function createSpecialDirectories(): void;
-    export function createStandardStreams(
-      input: any,
-      output: any,
-      error: any,
-    ): void;
-    export function staticInit(): void;
-    export function init(input: any, output: any, error: any): void;
-    export function quit(): void;
-    export function findObject(path: any, dontResolveLastLink: any): any;
-    export function analyzePath(
+    ioctl(stream: any, cmd: any, arg: any): any;
+    readFile(path: any, opts?: {}): Uint8Array<any>;
+    writeFile(path: any, data: any, opts?: {}): void;
+    cwd: () => any;
+    chdir(path: any): void;
+    createDefaultDirectories(): void;
+    createDefaultDevices(): void;
+    createSpecialDirectories(): void;
+    createStandardStreams(input: any, output: any, error: any): void;
+    staticInit(): void;
+    init(input?: undefined, output?: undefined, error?: undefined): void;
+    quit(): void;
+    analyzePath(
       path: any,
-      dontResolveLastLink: any,
+      dontResolveLastLink?: boolean,
     ): {
       isRoot: boolean;
       exists: boolean;
       error: number;
-      name: any;
-      path: any;
-      object: any;
+      name: null;
+      path: null;
+      object: null;
       parentExists: boolean;
-      parentPath: any;
-      parentObject: any;
+      parentPath: null;
+      parentObject: null;
     };
-    export function createPath(
+    createPath(
       parent: any,
       path: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: undefined,
+      canWrite?: undefined,
     ): any;
-    export function createFile(
+    createFile(
       parent: any,
       name: any,
       properties: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: undefined,
+      canWrite?: undefined,
     ): any;
-    export function createDataFile(
+    createDataFile(
       parent: any,
       name: any,
-      data: any,
-      canRead: any,
-      canWrite: any,
-      canOwn: any,
+      data?: undefined,
+      canRead?: undefined,
+      canWrite?: undefined,
+      canOwn?: undefined,
     ): void;
-    export function createDevice(
+    createDevice(
       parent: any,
       name: any,
-      input: any,
-      output: any,
+      input?: undefined,
+      output?: undefined,
     ): any;
-    export function forceLoadFile(obj: any): boolean;
-    export function createLazyFile(
+    forceLoadFile(obj: any): true | undefined;
+    createLazyFile(
       parent: any,
       name: any,
       url: any,
-      canRead: any,
-      canWrite: any,
+      canRead?: undefined,
+      canWrite?: undefined,
     ): any;
-    export function absolutePath(): void;
-    export function createFolder(): void;
-    export function createLink(): void;
-    export function joinPath(): void;
-    export function mmapAlloc(): void;
-    export function standardizePath(): void;
-  }
-}
-declare class ErrnoError extends Error {
-  constructor(errno: any);
-  errno: any;
-  code: string;
-}
-declare class FSStream {
-  shared: {};
-  set object(val: any);
-  get object(): any;
-  node: any;
-  get isRead(): boolean;
-  get isWrite(): boolean;
-  get isAppend(): number;
-  set flags(val: any);
-  get flags(): any;
-  set position(val: any);
-  get position(): any;
-}
-declare class FSNode {
-  constructor(parent: any, name: any, mode: any, rdev: any);
-  node_ops: {};
-  stream_ops: {};
-  readMode: number;
-  writeMode: number;
-  mounted: any;
-  parent: any;
-  mount: any;
-  id: number;
-  name: any;
-  mode: any;
-  rdev: any;
-  atime: number;
-  mtime: number;
-  ctime: number;
-  set read(val: boolean);
-  get read(): boolean;
-  set write(val: boolean);
-  get write(): boolean;
-  get isFolder(): any;
-  get isDevice(): any;
-}
+  };
+};
 interface WasmModule {}
 
 type EmbindString =
@@ -301,7 +294,7 @@ export interface SessionUiBinding extends ClassHandle {
   tick(_0: number): string | undefined;
 }
 
-type RasterPixels = Uint8ClampedArray;
+export type RasterPixels = Uint8ClampedArray;
 
 export interface TerminalRendererBinding extends ClassHandle {
   valid(): boolean;
@@ -315,11 +308,11 @@ export interface TerminalRendererBinding extends ClassHandle {
   copyPixels(_0: RasterPixels): boolean;
 }
 
-type FacePixels = Uint8ClampedArray;
+export type FacePixels = Uint8ClampedArray;
 
-type FaceValues = Float32Array;
+export type FaceValues = Float32Array;
 
-type PatternPixels = Uint8ClampedArray;
+export type PatternPixels = Uint8ClampedArray;
 
 export interface TestPatternBinding extends ClassHandle {
   valid(): boolean;
@@ -333,15 +326,15 @@ export interface TestPatternBinding extends ClassHandle {
   ): boolean;
 }
 
-type AudioSamples = Float32Array;
+export type AudioSamples = Float32Array;
 
-type PcmSamples = Int16Array;
+export type PcmSamples = Int16Array;
 
-type OpusBytes = Uint8Array;
+export type OpusBytes = Uint8Array;
 
-type NullableOpusBytes = Uint8Array | null;
+export type NullableOpusBytes = Uint8Array | null;
 
-type NullablePcmSamples = Int16Array | null;
+export type NullablePcmSamples = Int16Array | null;
 
 export interface AudioProcessorBinding extends ClassHandle {
   valid(): boolean;
@@ -354,11 +347,11 @@ export interface OpusCodecBinding extends ClassHandle {
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }
 
-type ClientSettingsResult = { code: number; json: string | null };
+export type ClientSettingsResult = { code: number; json: string | null };
 
-type PeerBytes = Uint8Array;
+export type PeerBytes = Uint8Array;
 
-type NullablePeerBytes = Uint8Array | null;
+export type NullablePeerBytes = Uint8Array | null;
 
 export interface PeerCryptoBinding extends ClassHandle {
   valid(): boolean;
@@ -387,23 +380,27 @@ export interface ClientSessionBinding extends ClassHandle {
   error(): number;
 }
 
-type QuicControlResult = {
+export type QuicControlResult = {
   code: number;
   flow: number;
   packet: Uint8Array | null;
 };
 
-type QuicPacketResult = { code: number; sequence: bigint; packet: Uint8Array };
+export type QuicPacketResult = {
+  code: number;
+  sequence: bigint;
+  packet: Uint8Array;
+};
 
-type KeyInput = Uint8Array;
+export type KeyInput = Uint8Array;
 
-type KeyParseResult = {
+export type KeyParseResult = {
   code: number;
   bytes: Uint8Array;
   frames: ErrorFrameResult[];
 };
 
-type ErrorFrameResult = {
+export type ErrorFrameResult = {
   code: number;
   message: string;
   file: string;
@@ -423,17 +420,17 @@ export interface AVStateBinding extends ClassHandle {
   finishStop(): void;
 }
 
-type ClientBytes = Uint8Array;
+export type ClientBytes = Uint8Array;
 
-type ClientPacketResult = { code: number; bytes: Uint8Array };
+export type ClientPacketResult = { code: number; bytes: Uint8Array };
 
-type ClientFrameResult = {
+export type ClientFrameResult = {
   code: number;
   decodeFailed: boolean;
   bytes: Uint8Array;
 };
 
-type DiscoverySnapshotValue = {
+export type DiscoverySnapshotValue = {
   state: number;
   terminal: boolean;
   error: string;
@@ -452,16 +449,16 @@ type DiscoverySnapshotValue = {
   };
 };
 
-type HandoffActionValue = {
+export type HandoffActionValue = {
   kind: number;
   participant: Uint8Array;
   generation: number;
   sequence: number;
 } | null;
 
-type ProtocolBytes = Uint8Array;
+export type ProtocolBytes = Uint8Array;
 
-type OptionalHandoffBytes = Uint8Array | null;
+export type OptionalHandoffBytes = Uint8Array | null;
 
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
@@ -476,16 +473,16 @@ export interface HostPacketBinding extends ClassHandle {
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
 
-type OptionsPatch = Record<string, number | string | boolean>;
+export type OptionsPatch = Record<string, number | string | boolean>;
 
-type OptionsSnapshot = {
+export type OptionsSnapshot = {
   revision: number;
   values: Record<string, number | string | boolean>;
 } | null;
 
-type RgbaBytes = Uint8Array | Uint8ClampedArray;
+export type RgbaBytes = Uint8Array | Uint8ClampedArray;
 
-type VisualizationSamples = Float32Array;
+export type VisualizationSamples = Float32Array;
 
 export interface MirrorFrameBinding extends ClassHandle {
   convert(
