@@ -237,7 +237,9 @@ static void *sync_collect_main(void *unused) {
         asciichat_error_t result = named_registry_try_snapshot(sample->capacity, &required, &complete, sync_copy_row, sample);
         if (result == ASCIICHAT_OK && !complete && required > sample->capacity && required <= SIZE_MAX / sizeof(sync_row_t)) {
           // Diagnostic storage must not enter memory tracking or the registry.
-          sync_row_t *rows = UNTRACKED_MALLOC(required * sizeof(*rows), sync_row_t *);
+          sync_row_t *rows = malloc(required * sizeof(*rows));
+          if (!rows)
+            FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", required * sizeof(*rows));
           if (rows) {
             UNTRACKED_FREE(sample->rows);
             sample->rows = rows;
