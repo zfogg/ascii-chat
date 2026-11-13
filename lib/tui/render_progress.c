@@ -88,7 +88,7 @@ static void progress_render(terminal_size_t size, const void *data) {
     snprintf(total, sizeof(total), "?");
   const char *phase = snapshot->failed ? "Recording failed" : snapshot->finalizing ? "Finalizing file" : "Rendering file";
   snprintf(label, sizeof(label), " %c %s (%llu:%02llu) (frame %llu/%s) ", "|/-\\"[(elapsed / (125 * NS_PER_MS_INT)) % 4], phase, (unsigned long long)(seconds / 60), (unsigned long long)(seconds % 60),
-           (unsigned long long)snapshot -> completed, total);
+           (unsigned long long)snapshot->completed, total);
   int width = (int)strlen(label);
   if (width > size.cols - 2) {
     width = size.cols - 2;

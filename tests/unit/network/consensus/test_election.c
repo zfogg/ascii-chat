@@ -65,7 +65,8 @@ Test(election, choose_best_two) {
 
 Test(election, verify_correct) {
   participant_metrics_t metrics[2] = {
-      make_metrics(0, 50000, 30, 95), make_metrics(1, 75000, 25, 96), // Better score
+      make_metrics(0, 50000, 30, 95),
+      make_metrics(1, 75000, 25, 96), // Better score
   };
 
   set_id(&metrics[0], 0x01);
@@ -86,7 +87,8 @@ Test(election, verify_correct) {
 
 Test(election, verify_incorrect) {
   participant_metrics_t metrics[2] = {
-      make_metrics(0, 50000, 30, 95), make_metrics(1, 75000, 25, 96), // Better score
+      make_metrics(0, 50000, 30, 95),
+      make_metrics(1, 75000, 25, 96), // Better score
   };
 
   set_id(&metrics[0], 0x01);
