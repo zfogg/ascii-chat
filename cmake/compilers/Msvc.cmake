@@ -15,6 +15,9 @@ function(configure_msvc_pre_project)
     set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
     set(DEFER_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "defer Python interpreter" FORCE)
     set(DEFER_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
+    # Native cl.exe rejects the generated PCH path form used by the project's
+    # cross-compiler PCH helper. MSVC builds remain fully supported without it.
+    set(ASCIICHAT_USE_PCH OFF CACHE BOOL "Use precompiled headers" FORCE)
     find_program(_vswhere vswhere PATHS "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer" "C:/Program Files (x86)/Microsoft Visual Studio/Installer")
     if(_vswhere)
         execute_process(COMMAND "${_vswhere}" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath OUTPUT_VARIABLE _vs_root OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
