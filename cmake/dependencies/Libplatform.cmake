@@ -41,6 +41,12 @@ target_include_directories(asciichat-project-includes INTERFACE
 string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+target_include_directories(libplatform-objects PRIVATE
+    "${CMAKE_SOURCE_DIR}/include"
+    "${CMAKE_SOURCE_DIR}/lib")
+if(TARGET gotel::gotel)
+    target_link_libraries(libplatform PRIVATE gotel::gotel)
+endif()
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
