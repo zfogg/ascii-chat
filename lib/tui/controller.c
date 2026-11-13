@@ -816,7 +816,8 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     char count[32] = "";
     if (errors > 1)
       snprintf(count, sizeof(count), "(%zu) ", errors);
-    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*", count, (int)latest.code, asciichat_error_string(latest.code));
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "•" : "*", count, (int)latest.code,
+             asciichat_error_string(latest.code));
   } else if (terminal_should_use_utf8(GET_OPTION(force_utf8))) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);

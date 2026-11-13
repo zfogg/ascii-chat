@@ -411,7 +411,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
 asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config, acip_session_created_t *resp) {
   if (!req)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing create request");
-  return database_session_create_keys(db, req, (const uint8_t (*)[32]) & req->identity_pubkey, 1, config, resp);
+  return database_session_create_keys(db, req, (const uint8_t(*)[32]) & req->identity_pubkey, 1, config, resp);
 }
 
 /** Persist a validated set as one savepoint, rolling back session and policy

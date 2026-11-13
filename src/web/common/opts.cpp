@@ -63,7 +63,8 @@ static std::optional<std::string> option_help(int mode, const std::string &name)
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_options) {
-  emscripten::function("browser_options_revision", +[]() { return static_cast<double>(options_revision()); });
+  emscripten::function(
+      "browser_options_revision", +[]() { return static_cast<double>(options_revision()); });
   emscripten::register_optional<std::string>();
   emscripten::register_type<OptionsPatch>("OptionsPatch", "Record<string, number | string | boolean>");
   emscripten::register_type<OptionsSnapshot>("OptionsSnapshot", "{ revision: number; values: Record<string, number | string | boolean> } | null");

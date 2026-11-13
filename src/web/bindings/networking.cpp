@@ -130,9 +130,12 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
   emscripten::function("client_generate_keypair", &client_generate_keypair);
   emscripten::function("client_get_connection_state", &client_get_connection_state);
   emscripten::function("client_resolve_crypto_policy", &client_resolve_crypto_policy);
-  emscripten::function("client_handshake_begin", +[]() { return static_cast<int>(client_handshake_begin()); });
-  emscripten::function("client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
-  emscripten::function("network_error_action", +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
+  emscripten::function(
+      "client_handshake_begin", +[]() { return static_cast<int>(client_handshake_begin()); });
+  emscripten::function(
+      "client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
+  emscripten::function(
+      "network_error_action", +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
   emscripten::function("setServerAddress", &set_server_address);
   emscripten::function("clientPublicKey", &client_public_key);
 

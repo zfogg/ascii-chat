@@ -38,7 +38,8 @@ void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t
       fg[i] = bg[i] = UINT32_MAX;
   }
 }
-#define CELLS(isa, mono, dot) {simd_luminance_##isa, simd_pack_##isa, simd_lookup_##isa, simd_quantize_##isa, simd_halfblock_##isa, simd_run_##isa, mono, dot}
+#define CELLS(isa, mono, dot)                                                                                                                                                                          \
+  { simd_luminance_##isa, simd_pack_##isa, simd_lookup_##isa, simd_quantize_##isa, simd_halfblock_##isa, simd_run_##isa, mono, dot }
 #if SIMD_SUPPORT_SSE2
 #define GLYPH_CORRELATION_X86 glyph_shape_correlation_sse2
 const simd_cells_t simd_cells_sse2 = CELLS(sse2, NULL, GLYPH_CORRELATION_X86);

@@ -533,7 +533,8 @@ public:
     }
 
     if (!visitor_) {
-      llvm::errs() << "Instrumentation visitor not initialized; skipping file output" << "\n";
+      llvm::errs() << "Instrumentation visitor not initialized; skipping file output"
+                   << "\n";
       hadWriteError_ = true;
       return;
     }

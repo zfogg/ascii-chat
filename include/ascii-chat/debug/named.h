@@ -711,7 +711,7 @@ uintptr_t thread_to_key(platform_thread_t thread);
 #define NAMED_OPEN(pathname, name, flags, ...)                                                                                                                                                         \
   ({                                                                                                                                                                                                   \
     int _fd;                                                                                                                                                                                           \
-    if ((flags) & O_CREAT) {                                                                                                                                                                           \
+    if ((flags)&O_CREAT) {                                                                                                                                                                             \
       _fd = platform_open((pathname), (flags), __VA_ARGS__);                                                                                                                                           \
     } else {                                                                                                                                                                                           \
       _fd = platform_open((pathname), (flags));                                                                                                                                                        \
@@ -1062,7 +1062,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     if (_name) {                                                                                                                                                                                       \
       size_t _len = strlen(_name);                                                                                                                                                                     \
       if (_len >= (size))                                                                                                                                                                              \
-        _len = (size) - 1;                                                                                                                                                                             \
+        _len = (size)-1;                                                                                                                                                                               \
       memcpy((buffer), (_name), _len);                                                                                                                                                                 \
       (buffer)[_len] = '\0';                                                                                                                                                                           \
     } else {                                                                                                                                                                                           \
@@ -1089,7 +1089,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     if (_name) {                                                                                                                                                                                       \
       size_t _len = strlen(_name);                                                                                                                                                                     \
       if (_len >= (size))                                                                                                                                                                              \
-        _len = (size) - 1;                                                                                                                                                                             \
+        _len = (size)-1;                                                                                                                                                                               \
       memcpy((buffer), (_name), _len);                                                                                                                                                                 \
       (buffer)[_len] = '\0';                                                                                                                                                                           \
     } else {                                                                                                                                                                                           \
@@ -1112,8 +1112,8 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
 #define NAMED_GET_BY_STR(str, buffer, size)                                                                                                                                                            \
   do {                                                                                                                                                                                                 \
     if ((str)) {                                                                                                                                                                                       \
-      strncpy((buffer), (str), (size) - 1);                                                                                                                                                            \
-      (buffer)[(size) - 1] = '\0';                                                                                                                                                                     \
+      strncpy((buffer), (str), (size)-1);                                                                                                                                                              \
+      (buffer)[(size)-1] = '\0';                                                                                                                                                                       \
     } else {                                                                                                                                                                                           \
       (buffer)[0] = '\0';                                                                                                                                                                              \
     }                                                                                                                                                                                                  \

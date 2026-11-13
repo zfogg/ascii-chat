@@ -558,7 +558,8 @@ typedef struct {
    * the record.
    */
 } runtime_field_t;
-#define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
+#define FIELD(name, type, cli)                                                                                                                                                                         \
+  { #name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli }
 static const runtime_field_t runtime_fields[] = {
     FIELD(width, OPTIONS_VALUE_INT, "width"),
     FIELD(height, OPTIONS_VALUE_INT, "height"),

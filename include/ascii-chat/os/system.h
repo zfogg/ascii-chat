@@ -235,7 +235,7 @@ void platform_disable_keepawake(void);
 #endif
 // sleep() in seconds mapped to platform_sleep_us() in microseconds
 #ifndef sleep
-#define sleep(sec) platform_sleep_us((sec) * 1000000U)
+#define sleep(sec) platform_sleep_us((sec)*1000000U)
 #endif
 #endif
 #endif
