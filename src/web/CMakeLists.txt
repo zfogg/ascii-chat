@@ -350,6 +350,8 @@ set(LIB_SRC_COMMON
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${LIB_ROOT}/tui/session_status.c
+    ${LIB_ROOT}/tui/session.c
+    ${LIB_ROOT}/tui/splash.c
     ${LIB_ROOT}/tui/terminal_screen.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
@@ -420,6 +422,7 @@ set(LIB_SRC_CLIENT_NETWORK
 set(COMMON_WEB_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/common/font.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/capture.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/update_banner_stub.c
 )
 
 # Compile shared lib sources once for both WASM targets (OBJECT library)
