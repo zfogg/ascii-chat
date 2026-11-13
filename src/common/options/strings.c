@@ -96,7 +96,7 @@ size_t asciichat_get_all_mode_strings(const char ***out_names) {
   for (size_t i = 0; mode_registry[i].name != NULL && count < MODE_NAME_CAPACITY; i++) {
     // The HTTP API entry point is selected by its dedicated launcher and is
     // not a user-facing mode for generic mode completion/help lists.
-    if (mode_registry[i].mode == MODE_API_SERVER)
+    if (mode_registry[i].mode == MODE_API_SERVER || strcmp(mode_registry[i].name, "acds") == 0)
       continue;
     // Skip duplicates (like "acds" alias)
     bool duplicate = false;

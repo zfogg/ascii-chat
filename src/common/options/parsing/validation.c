@@ -33,7 +33,7 @@ asciichat_error_t validate_glyph_palette(const options_t *opts) {
   // display glyphs may not all have a glyph-match atlas entry, but selecting
   // one must remain valid at option/configuration time; the renderer applies
   // its own fallback when it cannot score a glyph.
-  if (opts->palette_type == PALETTE_CUSTOM && !ascii_glyph_palette_supported(palette))
+  if (opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set && !ascii_glyph_palette_supported(palette))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
   return ASCIICHAT_OK;
 }
