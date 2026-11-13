@@ -271,7 +271,7 @@ typedef struct {
  *
  * @ingroup palette
  */
-extern const char DEFAULT_ASCII_PALETTE[];
+extern ASCIICHAT_API const char DEFAULT_ASCII_PALETTE[];
 
 /**
  * @brief Length of default ASCII palette
@@ -280,7 +280,7 @@ extern const char DEFAULT_ASCII_PALETTE[];
  *
  * @ingroup palette
  */
-extern const size_t DEFAULT_ASCII_PALETTE_LEN;
+extern ASCIICHAT_API const size_t DEFAULT_ASCII_PALETTE_LEN;
 
 /** @} */
 

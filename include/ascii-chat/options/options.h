@@ -1431,7 +1431,7 @@ const char *options_get_help_text(asciichat_mode_t mode, const char *option_name
  *
  * @ingroup options
  */
-extern const float weight_red;
+extern ASCIICHAT_API const float weight_red;
 
 /** @brief Green weight for luminance calculation
  *
@@ -1441,7 +1441,7 @@ extern const float weight_red;
  *
  * @ingroup options
  */
-extern const float weight_green;
+extern ASCIICHAT_API const float weight_green;
 
 /** @brief Blue weight for luminance calculation
  *
@@ -1451,7 +1451,7 @@ extern const float weight_green;
  *
  * @ingroup options
  */
-extern const float weight_blue;
+extern ASCIICHAT_API const float weight_blue;
 
 /** @brief Red channel lookup table
  *
@@ -1891,8 +1891,8 @@ void update_dimensions_for_full_height(options_t *opts);
  * @brief Snapshot mode global timing variables
  * Used to track actual duration when snapshot mode is active
  */
-extern bool g_snapshot_first_frame_rendered;
-extern uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
+extern ASCIICHAT_API bool g_snapshot_first_frame_rendered;
+extern ASCIICHAT_API uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
 extern uint64_t g_snapshot_first_capture_ns;        // Timestamp when first frame was captured (nanoseconds)
 extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duration in ms when snapshot timeout reached
 
