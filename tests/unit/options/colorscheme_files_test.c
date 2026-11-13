@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/os/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
