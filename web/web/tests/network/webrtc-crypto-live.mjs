@@ -1,11 +1,12 @@
 // Real browser DataChannels against an isolated native host and discovery service.
 import { chromium } from "@playwright/test";
-import { spawn, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createServer } from "node:net";
+import { createConnection, createServer } from "node:net";
 import assert from "node:assert/strict";
+import { launchNative } from "./native-process.mjs";
 const binary = resolve(process.argv[2]);
 const url = process.argv[3] || "http://127.0.0.1:30831";
 const directory = mkdtempSync(join(tmpdir(), "ascii-webrtc-security-"));
@@ -28,10 +29,22 @@ async function port() {
   await new Promise((r) => s.close(r));
   return p;
 }
+async function portReady(value) {
+  return new Promise((done) => {
+    const socket = createConnection({ host: "127.0.0.1", port: value });
+    const finish = (ready) => {
+      socket.destroy();
+      done(ready);
+    };
+    socket.once("connect", () => finish(true));
+    socket.once("error", () => finish(false));
+    socket.setTimeout(100, () => finish(false));
+  });
+}
 async function wait(check, ms = 30000) {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
-    const v = check();
+    const v = await check();
     if (v) return v;
     await new Promise((r) => setTimeout(r, 50));
   }
@@ -39,14 +52,13 @@ async function wait(check, ms = 30000) {
 }
 function launch(name, args) {
   const log = join(directory, name + ".log");
-  const child = spawn(
+  const child = launchNative(
     binary,
-    ["--log-file", log, "--log-level", "debug", ...args],
+    ["--no-check-update", "--log-file", log, "--log-level", "debug", ...args],
     {
       cwd: directory,
       env,
-      windowsHide: true,
-      stdio: "ignore",
+      log,
     },
   );
   return {
@@ -66,8 +78,10 @@ for (const key of ["host", "wrong"])
   ]);
 const pin = readFileSync(join(directory, "host.pub"), "utf8"),
   wrong = readFileSync(join(directory, "wrong.pub"), "utf8");
-const acdsPort = await port(),
-  acdsWs = await port();
+const acdsPort = await port();
+let acdsWs;
+do acdsWs = await port();
+while (acdsWs === acdsPort);
 const acds = launch("acds", [
   "discovery-service",
   "127.0.0.1",
@@ -85,7 +99,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   await wait(() => {
     if (acds.child.exitCode !== null) throw Error(acds.text());
-    return acds.text().includes("Server accepting connections");
+    return portReady(acdsPort);
   });
   const cases = [
     ["default", [], {}, undefined, 0, true],
@@ -139,13 +153,17 @@ try {
     mode,
     ok,
   ] of cases) {
+    const hostPort = await port();
+    let hostWs;
+    do hostWs = await port();
+    while (hostWs === hostPort);
     const host = launch(name, [
       "server",
       "0.0.0.0",
       "--port",
-      String(await port()),
+      String(hostPort),
       "--websocket-port",
-      String(await port()),
+      String(hostWs),
       "--status-screen=false",
       "--discovery",
       "--webrtc",
@@ -159,6 +177,10 @@ try {
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
+      await wait(() => {
+        if (host.child.exitCode !== null) throw Error(host.text());
+        return portReady(hostPort);
+      });
       const sessionName = await wait(
         () => host.text().match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/)?.[1],
       );

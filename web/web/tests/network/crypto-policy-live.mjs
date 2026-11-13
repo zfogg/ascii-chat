@@ -1,12 +1,13 @@
 // Run against a rebuilt native binary and the Vite server for this checkout:
 // vp exec node tests/network/crypto-policy-live.mjs <binary> <vite-url> [openssl]
 import { chromium } from "@playwright/test";
-import { spawn, execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createServer } from "node:net";
+import { createConnection, createServer } from "node:net";
 import assert from "node:assert/strict";
+import { launchNative } from "./native-process.mjs";
 
 const binary = resolve(process.argv[2]);
 const vite = process.argv[3];
@@ -19,6 +20,18 @@ async function port() {
   const value = server.address().port;
   await new Promise((done) => server.close(done));
   return value;
+}
+async function portReady(value) {
+  return new Promise((done) => {
+    const socket = createConnection({ host: "127.0.0.1", port: value });
+    const finish = (ready) => {
+      socket.destroy();
+      done(ready);
+    };
+    socket.once("connect", () => finish(true));
+    socket.once("error", () => finish(false));
+    socket.setTimeout(100, () => finish(false));
+  });
 }
 for (const name of ["server", "client", "wrong"])
   execFileSync("ssh-keygen", [
@@ -193,10 +206,13 @@ const browser = await chromium.launch({
 });
 try {
   for (const item of cases) {
-    const tcp = await port(),
-      ws = await port();
+    const tcp = await port();
+    let ws;
+    do ws = await port();
+    while (ws === tcp);
     const log = join(directory, `${item.name}.log`);
     const args = [
+      "--no-check-update",
       "--log-file",
       log,
       "--log-level",
@@ -233,10 +249,8 @@ try {
         ([key]) => !key.startsWith("ASCII_CHAT_"),
       ),
     );
-    const server = spawn(binary, args, {
+    const server = launchNative(binary, args, {
       cwd: directory,
-      windowsHide: true,
-      stdio: "ignore",
       env: {
         ...env,
         CLAUDECODE: "1",
@@ -245,15 +259,13 @@ try {
         APPDATA: directory,
         XDG_CONFIG_HOME: directory,
       },
+      log,
     });
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
     try {
       let ready = false;
       for (let i = 0; i < 400; i++) {
-        if (
-          existsSync(log) &&
-          readFileSync(log, "utf8").includes("Server accepting connections")
-        ) {
+        if (await portReady(tcp)) {
           ready = true;
           break;
         }

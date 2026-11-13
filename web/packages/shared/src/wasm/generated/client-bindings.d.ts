@@ -1,83 +1,21 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare var RuntimeExports: {
-  /** @type {!Uint8Array} */
-  HEAPU8: Uint8Array;
-  FS: {
-    root: null;
-    mounts: never[];
-    devices: {};
-    streams: never[];
-    nextInode: number;
-    nameTable: never[];
-    currentPath: string;
-    initialized: boolean;
-    ignorePermissions: boolean;
-    syncFSRequests: number;
-    ErrnoError: {
-      new (errno: unknown): {
-        cause?: unknown;
-        name: string;
-        errno: unknown;
-        code: string | undefined;
-        message: string;
-        stack?: string;
-      };
-    };
-    FSStream: {
-      new (): {
-        shared: {};
-        get object(): unknown;
-        set object(val: unknown);
-        node: unknown;
-        get isRead(): boolean;
-        get isWrite(): boolean;
-        get isAppend(): number;
-        flags: unknown;
-        position: unknown;
-      };
-    };
-    FSNode: {
-      new (
-        parent: unknown,
-        name: unknown,
-        mode: unknown,
-        rdev: unknown,
-      ): {
-        node_ops: {};
-        stream_ops: {};
-        readMode: number;
-        writeMode: number;
-        mounted: null;
-        parent: unknown;
-        mount: unknown;
-        id: number;
-        name: unknown;
-        mode: unknown;
-        rdev: unknown;
-        atime: number;
-        mtime: number;
-        ctime: number;
-        get read(): boolean;
-        set read(val: boolean);
-        get write(): boolean;
-        set write(val: boolean);
-        readonly isFolder: unknown;
-        readonly isDevice: unknown;
-        addListener(
-          cb: unknown,
-          exclusive?: boolean,
-        ): {
-          listeners: unknown;
-          entry: {
-            cb: unknown;
-            exclusive: boolean;
-          };
-        };
-        notifyListeners(flags: unknown): void;
-        exclTurn: unknown;
-      };
-    };
-    lookupPath(
+declare namespace RuntimeExports {
+  let HEAPU8: Uint8Array;
+  namespace FS {
+    export let root: unknown;
+    export let mounts: unknown[];
+    export let devices: {};
+    export let streams: unknown[];
+    export let nextInode: number;
+    export let nameTable: unknown[];
+    export let currentPath: string;
+    export let initialized: boolean;
+    export let ignorePermissions: boolean;
+    export let syncFSRequests: number;
+    export { ErrnoError };
+    export { FSStream };
+    export { FSNode };
+    export function lookupPath(
       path: unknown,
       opts?: {},
     ):
@@ -89,59 +27,71 @@ declare var RuntimeExports: {
           path: string;
           node: unknown;
         };
-    getPath(node: unknown): unknown;
-    hashName(parentid: unknown, name: unknown): number;
-    hashAddNode(node: unknown): void;
-    hashRemoveNode(node: unknown): void;
-    lookupNode(parent: unknown, name: unknown): unknown;
-    createNode(
+    export function getPath(node: unknown): unknown;
+    export function hashName(parentid: unknown, name: unknown): number;
+    export function hashAddNode(node: unknown): void;
+    export function hashRemoveNode(node: unknown): void;
+    export function lookupNode(parent: unknown, name: unknown): unknown;
+    export function createNode(
       parent: unknown,
       name: unknown,
       mode: unknown,
-      rdev?: undefined,
+      rdev?: unknown,
     ): unknown;
-    destroyNode(node: unknown): void;
-    isRoot(node: unknown): boolean;
-    isMountpoint(node: unknown): boolean;
-    isFile(mode: unknown): boolean;
-    isDir(mode: unknown): boolean;
-    isLink(mode: unknown): boolean;
-    isChrdev(mode: unknown): boolean;
-    isBlkdev(mode: unknown): boolean;
-    isFIFO(mode: unknown): boolean;
-    isSocket(mode: unknown): boolean;
-    flagsToPermissionString(flag: unknown): string;
-    nodePermissions(node: unknown, perms: unknown): 0 | 2;
-    mayLookup(dir: unknown): unknown;
-    mayCreate(dir: unknown, name: unknown): unknown;
-    mayDelete(dir: unknown, name: unknown, isdir: unknown): unknown;
-    mayOpen(node: unknown, flags: unknown): unknown;
-    checkOpExists(op: unknown, err: unknown): unknown;
-    nextfd(): number;
-    getStreamChecked(fd: unknown): unknown;
-    getStream: (fd: unknown) => unknown;
-    createStream(stream: unknown, fd?: number): unknown;
-    closeStream(fd: unknown): void;
-    dupStream(origStream: unknown, fd?: number): unknown;
-    doSetAttr(stream: unknown, node: unknown, attr: unknown): void;
-    chrdev_stream_ops: {
-      open(stream: unknown): void;
-      llseek(): never;
-    };
-    major: (dev: unknown) => number;
-    minor: (dev: unknown) => number;
-    makedev: (ma: unknown, mi: unknown) => number;
-    registerDevice(dev: unknown, ops: unknown): void;
-    getDevice: (dev: unknown) => unknown;
-    getMounts(mount: unknown): unknown[];
-    syncfs(populate: unknown, callback: unknown): void;
-    mount(type: unknown, opts: unknown, mountpoint: unknown): unknown;
-    unmount(mountpoint: unknown): void;
-    lookup(parent: unknown, name: unknown): unknown;
-    mknod(path: unknown, mode: unknown, dev: unknown): unknown;
-    statfs(path: unknown): unknown;
-    statfsStream(stream: unknown): unknown;
-    statfsNode(node: unknown): {
+    export function destroyNode(node: unknown): void;
+    export function isRoot(node: unknown): boolean;
+    export function isMountpoint(node: unknown): boolean;
+    export function isFile(mode: unknown): boolean;
+    export function isDir(mode: unknown): boolean;
+    export function isLink(mode: unknown): boolean;
+    export function isChrdev(mode: unknown): boolean;
+    export function isBlkdev(mode: unknown): boolean;
+    export function isFIFO(mode: unknown): boolean;
+    export function isSocket(mode: unknown): boolean;
+    export function flagsToPermissionString(flag: unknown): string;
+    export function nodePermissions(node: unknown, perms: unknown): 0 | 2;
+    export function mayLookup(dir: unknown): unknown;
+    export function mayCreate(dir: unknown, name: unknown): unknown;
+    export function mayDelete(
+      dir: unknown,
+      name: unknown,
+      isdir: unknown,
+    ): unknown;
+    export function mayOpen(node: unknown, flags: unknown): unknown;
+    export function checkOpExists(op: unknown, err: unknown): unknown;
+    export function nextfd(): number;
+    export function getStreamChecked(fd: unknown): unknown;
+    export function getStream(fd: unknown): unknown;
+    export function createStream(stream: unknown, fd?: number): unknown;
+    export function closeStream(fd: unknown): void;
+    export function dupStream(origStream: unknown, fd?: number): unknown;
+    export function doSetAttr(
+      stream: unknown,
+      node: unknown,
+      attr: unknown,
+    ): void;
+    export namespace chrdev_stream_ops {
+      function open(stream: unknown): void;
+      function llseek(): never;
+    }
+    export function major(dev: unknown): number;
+    export function minor(dev: unknown): number;
+    export function makedev(ma: unknown, mi: unknown): number;
+    export function registerDevice(dev: unknown, ops: unknown): void;
+    export function getDevice(dev: unknown): unknown;
+    export function getMounts(mount: unknown): unknown[];
+    export function syncfs(populate: unknown, callback: unknown): void;
+    export function mount(
+      type: unknown,
+      opts: unknown,
+      mountpoint: unknown,
+    ): unknown;
+    export function unmount(mountpoint: unknown): void;
+    export function lookup(parent: unknown, name: unknown): unknown;
+    export function mknod(path: unknown, mode: unknown, dev: unknown): unknown;
+    export function statfs(path: unknown): unknown;
+    export function statfsStream(stream: unknown): unknown;
+    export function statfsNode(node: unknown): {
       bsize: number;
       frsize: number;
       blocks: number;
@@ -153,147 +103,224 @@ declare var RuntimeExports: {
       flags: number;
       namelen: number;
     };
-    create(path: unknown, mode?: number): unknown;
-    mkdir(path: unknown, mode?: number): unknown;
-    mkdirTree(path: unknown, mode?: number): void;
-    mkdev(path: unknown, mode: unknown, dev?: undefined): unknown;
-    symlink(oldpath: unknown, newpath: unknown): unknown;
-    link(oldpath: unknown, newpath: unknown, flags: unknown): unknown;
-    rename(old_path: unknown, new_path: unknown): void;
-    rmdir(path: unknown): void;
-    readdir(path: unknown): unknown;
-    unlink(path: unknown): void;
-    readlink(path: unknown): unknown;
-    stat(path: unknown, dontFollow?: boolean): unknown;
-    fstat(fd: unknown): unknown;
-    lstat(path: unknown): unknown;
-    doChmod(
+    export function create(path: unknown, mode?: number): unknown;
+    export function mkdir(path: unknown, mode?: number): unknown;
+    export function mkdirTree(path: unknown, mode?: number): void;
+    export function mkdev(path: unknown, mode: unknown, dev?: unknown): unknown;
+    export function symlink(oldpath: unknown, newpath: unknown): unknown;
+    export function link(
+      oldpath: unknown,
+      newpath: unknown,
+      flags: unknown,
+    ): unknown;
+    export function rename(old_path: unknown, new_path: unknown): void;
+    export function rmdir(path: unknown): void;
+    export function readdir(path: unknown): unknown;
+    export function unlink(path: unknown): void;
+    export function readlink(path: unknown): unknown;
+    export function stat(path: unknown, dontFollow?: boolean): unknown;
+    export function fstat(fd: unknown): unknown;
+    export function lstat(path: unknown): unknown;
+    export function doChmod(
       stream: unknown,
       node: unknown,
       mode: unknown,
       dontFollow?: boolean,
     ): void;
-    chmod(path: unknown, mode: unknown, dontFollow?: boolean): void;
-    lchmod(path: unknown, mode: unknown): void;
-    fchmod(fd: unknown, mode: unknown): void;
-    doChown(stream: unknown, node: unknown, dontFollow?: boolean): void;
-    chown(
+    export function chmod(
+      path: unknown,
+      mode: unknown,
+      dontFollow?: boolean,
+    ): void;
+    export function lchmod(path: unknown, mode: unknown): void;
+    export function fchmod(fd: unknown, mode: unknown): void;
+    export function doChown(
+      stream: unknown,
+      node: unknown,
+      dontFollow?: boolean,
+    ): void;
+    export function chown(
       path: unknown,
       uid: unknown,
       gid: unknown,
       dontFollow?: boolean,
     ): void;
-    lchown(path: unknown, uid: unknown, gid: unknown): void;
-    fchown(fd: unknown, uid: unknown, gid: unknown): void;
-    doTruncate(stream: unknown, node: unknown, len: unknown): void;
-    truncate(path: unknown, len: unknown): void;
-    ftruncate(fd: unknown, len: unknown): void;
-    utime(
+    export function lchown(path: unknown, uid: unknown, gid: unknown): void;
+    export function fchown(fd: unknown, uid: unknown, gid: unknown): void;
+    export function doTruncate(
+      stream: unknown,
+      node: unknown,
+      len: unknown,
+    ): void;
+    export function truncate(path: unknown, len: unknown): void;
+    export function ftruncate(fd: unknown, len: unknown): void;
+    export function utime(
       path: unknown,
       atime: unknown,
       mtime: unknown,
       dontFollow?: boolean,
     ): void;
-    open(path: unknown, flags: unknown, mode?: number): unknown;
-    close(stream: unknown): void;
-    isClosed(stream: unknown): boolean;
-    llseek(stream: unknown, offset: unknown, whence: unknown): unknown;
-    read(
+    export function open(path: unknown, flags: unknown, mode?: number): unknown;
+    export function close(stream: unknown): void;
+    export function isClosed(stream: unknown): boolean;
+    export function llseek(
+      stream: unknown,
+      offset: unknown,
+      whence: unknown,
+    ): unknown;
+    export function read(
       stream: unknown,
       buffer: unknown,
       offset: unknown,
       length: unknown,
-      position?: undefined,
+      position?: unknown,
     ): unknown;
-    write(
+    export function write(
       stream: unknown,
       buffer: unknown,
       offset: unknown,
       length: unknown,
-      position?: undefined,
-      canOwn?: undefined,
+      position?: unknown,
+      canOwn?: unknown,
     ): unknown;
-    mmap(
+    export function mmap(
       stream: unknown,
       length: unknown,
       position: unknown,
       prot: unknown,
       flags: unknown,
     ): unknown;
-    msync(
+    export function msync(
       stream: unknown,
       buffer: unknown,
       offset: unknown,
       length: unknown,
       mmapFlags: unknown,
     ): unknown;
-    ioctl(stream: unknown, cmd: unknown, arg: unknown): unknown;
-    readFile(path: unknown, opts?: {}): Uint8Array;
-    writeFile(path: unknown, data: unknown, opts?: {}): void;
-    cwd: () => unknown;
-    chdir(path: unknown): void;
-    createDefaultDirectories(): void;
-    createDefaultDevices(): void;
-    createSpecialDirectories(): void;
-    createStandardStreams(
+    export function ioctl(stream: unknown, cmd: unknown, arg: unknown): unknown;
+    export function readFile(path: unknown, opts?: {}): Uint8Array;
+    export function writeFile(path: unknown, data: unknown, opts?: {}): void;
+    export function cwd(): unknown;
+    export function chdir(path: unknown): void;
+    export function createDefaultDirectories(): void;
+    export function createDefaultDevices(): void;
+    export function createSpecialDirectories(): void;
+    export function createStandardStreams(
       input: unknown,
       output: unknown,
       error: unknown,
     ): void;
-    staticInit(): void;
-    init(input?: undefined, output?: undefined, error?: undefined): void;
-    quit(): void;
-    analyzePath(
+    export function staticInit(): void;
+    export function init(
+      input?: unknown,
+      output?: unknown,
+      error?: unknown,
+    ): void;
+    export function quit(): void;
+    export function analyzePath(
       path: unknown,
       dontResolveLastLink?: boolean,
     ): {
       isRoot: boolean;
       exists: boolean;
       error: number;
-      name: null;
-      path: null;
-      object: null;
+      name: unknown;
+      path: unknown;
+      object: unknown;
       parentExists: boolean;
-      parentPath: null;
-      parentObject: null;
+      parentPath: unknown;
+      parentObject: unknown;
     };
-    createPath(
+    export function createPath(
       parent: unknown,
       path: unknown,
-      canRead?: undefined,
-      canWrite?: undefined,
+      canRead?: unknown,
+      canWrite?: unknown,
     ): unknown;
-    createFile(
+    export function createFile(
       parent: unknown,
       name: unknown,
       properties: unknown,
-      canRead?: undefined,
-      canWrite?: undefined,
+      canRead?: unknown,
+      canWrite?: unknown,
     ): unknown;
-    createDataFile(
+    export function createDataFile(
       parent: unknown,
       name: unknown,
-      data?: undefined,
-      canRead?: undefined,
-      canWrite?: undefined,
-      canOwn?: undefined,
+      data?: unknown,
+      canRead?: unknown,
+      canWrite?: unknown,
+      canOwn?: unknown,
     ): void;
-    createDevice(
+    export function createDevice(
       parent: unknown,
       name: unknown,
-      input?: undefined,
-      output?: undefined,
+      input?: unknown,
+      output?: unknown,
     ): unknown;
-    forceLoadFile(obj: unknown): true | undefined;
-    createLazyFile(
+    export function forceLoadFile(obj: unknown): boolean;
+    export function createLazyFile(
       parent: unknown,
       name: unknown,
       url: unknown,
-      canRead?: undefined,
-      canWrite?: undefined,
+      canRead?: unknown,
+      canWrite?: unknown,
     ): unknown;
+  }
+}
+declare class ErrnoError extends Error {
+  constructor(errno: unknown);
+  errno: unknown;
+  code: string;
+}
+declare class FSStream {
+  shared: {};
+  set object(val: unknown);
+  get object(): unknown;
+  node: unknown;
+  get isRead(): boolean;
+  get isWrite(): boolean;
+  get isAppend(): number;
+  set flags(val: unknown);
+  get flags(): unknown;
+  set position(val: unknown);
+  get position(): unknown;
+}
+declare class FSNode {
+  constructor(parent: unknown, name: unknown, mode: unknown, rdev: unknown);
+  node_ops: {};
+  stream_ops: {};
+  readMode: number;
+  writeMode: number;
+  mounted: unknown;
+  parent: unknown;
+  mount: unknown;
+  id: number;
+  name: unknown;
+  mode: unknown;
+  rdev: unknown;
+  atime: number;
+  mtime: number;
+  ctime: number;
+  set read(val: boolean);
+  get read(): boolean;
+  set write(val: boolean);
+  get write(): boolean;
+  get isFolder(): unknown;
+  get isDevice(): unknown;
+  addListener(
+    cb: unknown,
+    exclusive?: boolean,
+  ): {
+    listeners: unknown;
+    entry: {
+      cb: unknown;
+      exclusive: boolean;
+    };
   };
-};
+  notifyListeners(flags: unknown): void;
+  exclTurn: unknown;
+}
 interface WasmModule {}
 
 type EmbindString =
