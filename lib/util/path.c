@@ -28,7 +28,6 @@
 #include <sys/stat.h>
 
 /* Generic path primitives are provided by libplatform. */
-#if 0
 /** Retained for callers that used to release thread-local path resources. */
 void path_cleanup_thread_locals(void) {}
 
