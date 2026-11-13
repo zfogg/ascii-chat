@@ -43,7 +43,8 @@ target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
 target_include_directories(libplatform-objects PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/lib")
+    "${CMAKE_SOURCE_DIR}/lib"
+    "${CMAKE_SOURCE_DIR}/deps")
 if(TARGET gotel::gotel)
     target_link_libraries(libplatform PRIVATE gotel::gotel)
 endif()
