@@ -140,8 +140,8 @@ typedef struct {
   /* Raw SDP string (generated from above) */
   char sdp_string[NETWORK_WEBRTC_SDP_SDP_STRING_BUFFER_SIZE]; ///< Complete SDP as null-terminated string
   size_t sdp_length;                                          ///< Length of SDP string (excluding null)
-/**
- */
+  /**
+   */
 } sdp_session_t;
 
 /* ============================================================================

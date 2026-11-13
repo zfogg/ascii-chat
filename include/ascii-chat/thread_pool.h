@@ -84,7 +84,9 @@
 /**
  * @brief One queued function call waiting for a thread-pool worker
  * @brief Thread handle and shutdown metadata for one pool-owned thread
- * @brief This is the handoff point for thread pool. Callers fill `threads`, `threads_mutex`, `thread_count`, `is_work_queue_mode` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for thread pool. Callers fill `threads`, `threads_mutex`, `thread_count`,
+ * `is_work_queue_mode` before passing it on; consumers read the values during the operation and return ownership only
+ * where the member contract explicitly says they do.
  */
 typedef struct thread_pool thread_pool_t;
 typedef struct thread_pool_entry thread_pool_entry_t;
@@ -110,7 +112,7 @@ typedef struct thread_pool_work_entry {
  * Nodes are linked from the pool and are freed with the pool's thread list.
  */
 struct thread_pool_entry {
-  platform_thread_t thread;               ///< Thread handle
+  platform_thread_t thread;                ///< Thread handle
   int stop_id;                             ///< Cleanup order (lower = stop first, -1 = unordered)
   void *(*thread_func)(void *);            ///< Thread function
   void *thread_arg;                        ///< Thread argument

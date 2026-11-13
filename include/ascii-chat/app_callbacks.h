@@ -31,8 +31,8 @@ typedef struct {
   app_debug_write_fn write_memory_report;
   app_debug_write_fn write_backtrace;
   void *debug_context;
-/**
- */
+  /**
+   */
 } app_callbacks_t;
 
 /**

@@ -94,11 +94,15 @@ asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const
                                                        network_connection_t **);
 
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
- * @brief For network connect config, this is the live record that ties `timeout_ms`, `callback_data`, `tls_ca_file`, `quic_visual_datagrams` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- * WebSocket establishes its library-managed transport. Returns one owned object.
+ * @brief For network connect config, this is the live record that ties `timeout_ms`, `callback_data`, `tls_ca_file`,
+ * `quic_visual_datagrams` together. The owning code creates it, updates it while work is active, and releases its
+ * handles and pointed-to storage before freeing the record. WebSocket establishes its library-managed transport.
+ * Returns one owned object.
  */
 /**
- * @brief For network server config, this is the live record that ties `port`, `ipv4_address`, `ipv6_address`, `bind_ipv4` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For network server config, this is the live record that ties `port`, `ipv4_address`, `ipv6_address`,
+ * `bind_ipv4` together. The owning code creates it, updates it while work is active, and releases its handles and
+ * pointed-to storage before freeing the record.
  */
 typedef struct {
   uint32_t timeout_ms;

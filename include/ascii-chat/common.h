@@ -31,7 +31,7 @@
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include "os/api.h" // IWYU pragma: keep
+#include "os/api.h"        // IWYU pragma: keep
 #include "os/filesystem.h" // platform file and descriptor helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
@@ -135,7 +135,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * Usage in src/ code:
  *   FATAL(ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
  */
-
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
@@ -420,12 +419,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   } while (0)
 
 /* Safe string copy */
-#define SAFE_STRNCPY(dst, src, size)                                                                                  \
-  do {                                                                                                               \
-    size_t _safe_strncpy_size = (size);                                                                              \
-    if (_safe_strncpy_size > 0) {                                                                                    \
-      (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1);                              \
-    }                                                                                                                \
+#define SAFE_STRNCPY(dst, src, size)                                                                                   \
+  do {                                                                                                                 \
+    size_t _safe_strncpy_size = (size);                                                                                \
+    if (_safe_strncpy_size > 0) {                                                                                      \
+      (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1);                                \
+    }                                                                                                                  \
   } while (0)
 
 #include "asciichat_errno.h"
@@ -536,7 +535,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
   do {                                                                                                                 \
-    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                              \
+    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                       \
       log_error("Failed to create thread: %s", #func);                                                                 \
       return -1;                                                                                                       \
     }                                                                                                                  \

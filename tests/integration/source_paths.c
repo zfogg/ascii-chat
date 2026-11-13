@@ -45,26 +45,36 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
         *p = '\\';
     }
     if (ASCIICHAT_SOURCE_ROOT[0]) {
-      cr_assert_eq(extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS), absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+      cr_assert_eq(extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS),
+                   absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
     }
 #ifdef _WIN32
     for (size_t j = 0; j < strlen(ASCIICHAT_SOURCE_ROOT); j++)
       absolute[j] = (char)toupper((unsigned char)absolute[j]);
     if (ASCIICHAT_SOURCE_ROOT[0]) {
-      cr_assert_eq(extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS), absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+      cr_assert_eq(extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS),
+                   absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
     }
 #endif
   }
 
 #ifdef _WIN32
-  cr_assert_eq(strcmp(extract_project_relative_path("C:\\src\\client\\main.c", ASCIICHAT_OWNED_SOURCE_DIRS), "src\\client\\main.c"), 0);
-  cr_assert_eq(strcmp(extract_project_relative_path("C:\\lib\\debug\\backtrace.c", ASCIICHAT_OWNED_SOURCE_DIRS), "lib\\debug\\backtrace.c"), 0);
-  cr_assert_eq(strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c", ASCIICHAT_OWNED_SOURCE_DIRS),
-                      "tests\\integration\\source_paths.c"),
+  cr_assert_eq(strcmp(extract_project_relative_path("C:\\src\\client\\main.c", ASCIICHAT_OWNED_SOURCE_DIRS),
+                      "src\\client\\main.c"),
+               0);
+  cr_assert_eq(strcmp(extract_project_relative_path("C:\\lib\\debug\\backtrace.c", ASCIICHAT_OWNED_SOURCE_DIRS),
+                      "lib\\debug\\backtrace.c"),
                0);
   cr_assert_eq(
-      strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h", ASCIICHAT_OWNED_SOURCE_DIRS), "include/ascii-chat/util/path.h"), 0);
-  cr_assert_eq(strcmp(extract_project_relative_path("C:\\library\\external.c", ASCIICHAT_OWNED_SOURCE_DIRS), "C:\\library\\external.c"), 0);
+      strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c", ASCIICHAT_OWNED_SOURCE_DIRS),
+             "tests\\integration\\source_paths.c"),
+      0);
+  cr_assert_eq(strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h", ASCIICHAT_OWNED_SOURCE_DIRS),
+                      "include/ascii-chat/util/path.h"),
+               0);
+  cr_assert_eq(strcmp(extract_project_relative_path("C:\\library\\external.c", ASCIICHAT_OWNED_SOURCE_DIRS),
+                      "C:\\library\\external.c"),
+               0);
 #endif
 
   char sibling[4096];
@@ -72,8 +82,12 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   cr_assert_eq(extract_project_relative_path(sibling, ASCIICHAT_OWNED_SOURCE_DIRS), sibling);
   cr_assert_eq(strcmp(extract_project_relative_path(NULL, ASCIICHAT_OWNED_SOURCE_DIRS), "unknown"), 0);
   cr_assert_eq(strcmp(extract_project_relative_path("", ASCIICHAT_OWNED_SOURCE_DIRS), ""), 0);
-  cr_assert_eq(strcmp(extract_project_relative_path(ASCIICHAT_SOURCE_ROOT, ASCIICHAT_OWNED_SOURCE_DIRS), ASCIICHAT_SOURCE_ROOT), 0);
-  cr_assert_eq(strcmp(extract_project_relative_path("Z:\\external\\file.c", ASCIICHAT_OWNED_SOURCE_DIRS), "Z:\\external\\file.c"), 0);
+  cr_assert_eq(
+      strcmp(extract_project_relative_path(ASCIICHAT_SOURCE_ROOT, ASCIICHAT_OWNED_SOURCE_DIRS), ASCIICHAT_SOURCE_ROOT),
+      0);
+  cr_assert_eq(strcmp(extract_project_relative_path("Z:\\external\\file.c", ASCIICHAT_OWNED_SOURCE_DIRS),
+                      "Z:\\external\\file.c"),
+               0);
   cr_assert_eq(
       strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5),
              "crt\\vcstartup\\src\\startup\\exe_common.inl"),
@@ -113,7 +127,8 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   if (ASCIICHAT_SOURCE_ROOT[0]) {
     cr_assert_eq(symbol_format_source_path("test-error-popup-fixture.exe",
                                            ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c",
-                                           display_path, sizeof(display_path), &external_source, ASCIICHAT_OWNED_SOURCE_DIRS),
+                                           display_path, sizeof(display_path), &external_source,
+                                           ASCIICHAT_OWNED_SOURCE_DIRS),
                  ASCIICHAT_OK);
     cr_assert(!external_source);
     cr_assert_str_eq(display_path, "tests\\standalone\\errno\\error_popup_fixture.c");

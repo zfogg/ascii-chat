@@ -69,19 +69,19 @@ typedef enum {
   KEY_F12 = 0x11000c,          ///< Open the version update checker TUI
   KEY_PAGEUP = 0x11000d,
   KEY_PAGEDOWN = 0x11000e,
-  KEY_SHIFT_ENTER = 0x11000f, ///< Shift+Enter (insert a newline in multiline prompts)
+  KEY_SHIFT_ENTER = 0x11000f,  ///< Shift+Enter (insert a newline in multiline prompts)
   KEY_SHIFT_ESCAPE = 0x110010, ///< Shift+Escape (immediate exit)
-  KEY_MINUS = '-',            ///< '-' key - toggle FPS counter
-  KEY_0 = '0',                ///< '0' key - toggle sync debug screen
-  KEY_1 = '1',                ///< '1' key - toggle matrix rain effect
-  KEY_2 = '2',                ///< '2' key - toggle audio waveform
-  KEY_3 = '3',                ///< '3' key - toggle audio frequency display
-  KEY_C = 'c',                ///< 'c' key - cycle color modes
-  KEY_R = 'r',                ///< 'r' key - cycle render modes
-  KEY_M = 'm',                ///< 'm' key - toggle mute
-  KEY_F = 'f',                ///< 'f' key - flip webcam
-  KEY_QUESTION = '?',         ///< '?' key - show help screen
-  KEY_BACKTICK = '`',         ///< '`' key - print lock state (debug builds)
+  KEY_MINUS = '-',             ///< '-' key - toggle FPS counter
+  KEY_0 = '0',                 ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',                 ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',                 ///< '2' key - toggle audio waveform
+  KEY_3 = '3',                 ///< '3' key - toggle audio frequency display
+  KEY_C = 'c',                 ///< 'c' key - cycle color modes
+  KEY_R = 'r',                 ///< 'r' key - cycle render modes
+  KEY_M = 'm',                 ///< 'm' key - toggle mute
+  KEY_F = 'f',                 ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',          ///< '?' key - show help screen
+  KEY_BACKTICK = '`',          ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================

@@ -132,8 +132,9 @@ Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncati
   cr_assert_not(symbol_module_is_project(NULL));
   char output[256];
   bool external;
-  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(
+      symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL),
+      ASCIICHAT_OK);
   cr_assert_not(external);
   cr_assert_str_eq(output, "lib/audio/audio.c");
   cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL),
@@ -141,6 +142,7 @@ Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncati
   cr_assert(external);
   cr_assert_not_null(strstr(output, "c/d/e/f/source.c"));
   strcpy(output, "unchanged");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
+  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL),
+               ERROR_BUFFER_OVERFLOW);
   cr_assert_str_eq(output, "unchanged");
 }

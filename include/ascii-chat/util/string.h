@@ -67,7 +67,6 @@ int platform_strncpy(char *dst, size_t dst_size, const char *src, size_t count);
 ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream);
 asciichat_error_t platform_escape_shell_path(const char *path, char *output, size_t output_size);
 
-
 /* ============================================================================
  * String Escaping Functions
  * @{

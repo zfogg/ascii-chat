@@ -89,7 +89,9 @@
 
 /**
  * @brief Transport method table (virtual function table)
- * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx`
+ * before passing it on; consumers read the values during the operation and return ownership only where the member
+ * contract explicitly says they do.
  * @brief Transport type enumeration
  *
  * Identifies which transport implementation is being used.
@@ -112,9 +114,10 @@ typedef enum {
 typedef struct acip_transport acip_transport_t;
 
 /** Snapshot of negotiated transport features. Datagram payload is the maximum
- * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`, `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- * application data in one QUIC DATAGRAM frame on the current path, including
- * any transport-specific envelope. Query again after path changes. */
+ * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`,
+ * `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the
+ * object with its parent operation and use the parent cleanup path. application data in one QUIC DATAGRAM frame on the
+ * current path, including any transport-specific envelope. Query again after path changes. */
 typedef struct {
   bool independent_streams;
   bool datagrams;

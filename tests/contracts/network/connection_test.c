@@ -536,7 +536,8 @@ Test(network_connections, websocket_concurrent_close) {
   ws->service_running = false;
   // Keep a replacement thread blocked: concurrent close calls must return
   // without trying to join this owner-managed service thread.
-  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
+  cr_assert_eq(platform_thread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture),
+               ASCIICHAT_OK);
   ws->service_running = true;
   platform_thread_t threads[8];
   concurrent_close_worker_t workers[8];

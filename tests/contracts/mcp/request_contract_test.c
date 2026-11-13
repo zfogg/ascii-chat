@@ -40,7 +40,8 @@ static int fixture_worker(platform_thread_t *thread, const char *name, void *(*f
   (void)data;
   return -1;
 }
-void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled, http_renderer_process_result_t *result) {
+void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled,
+                           http_renderer_process_result_t *result) {
   (void)request;
   (void)cancelled;
   SAFE_STRNCPY(result->error, "No renderer requested by this contract", sizeof(result->error));

@@ -34,7 +34,9 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
                                               void *data);
 
 /**
- * @brief For yt dlp request options, this is the live record that ties `proxy_specified` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For yt dlp request options, this is the live record that ties `proxy_specified` together. The owning code
+ * creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+ * record.
  * @brief Extract stream URL using yt-dlp with optional parameters
  *
  * Prefers a combined stream, falling back to separate video and audio streams.

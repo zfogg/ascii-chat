@@ -26,8 +26,9 @@ extern "C" {
 #endif
 
 /**
- * @brief mutex stack entry is intentionally a small, concrete record. Fields such as `mutex_key`, `mutex_name`, `state`, `timestamp_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- * Lock state in the stack
+ * @brief mutex stack entry is intentionally a small, concrete record. Fields such as `mutex_key`, `mutex_name`,
+ * `state`, `timestamp_ns` give callers the identity and current value they need. It is normally borrowed from, or owned
+ * by, the surrounding subsystem—not independently managed. Lock state in the stack
  */
 typedef enum {
   MUTEX_STACK_STATE_PENDING, // Attempting to acquire lock
@@ -106,7 +107,9 @@ void mutex_stack_detect_deadlocks(void);
 
 /** Nonblocking diagnostic summary; no logging or application locks. */
 /**
- * @brief For mutex wait snapshot, this is the live record that ties `mutex_key`, `thread_key`, `since_ns`, `cycle` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For mutex wait snapshot, this is the live record that ties `mutex_key`, `thread_key`, `since_ns`, `cycle`
+ * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+ * storage before freeing the record.
  */
 typedef struct {
   uintptr_t mutex_key;

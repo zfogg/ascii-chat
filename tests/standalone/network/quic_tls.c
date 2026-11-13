@@ -202,9 +202,8 @@ static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *n
   return false;
 }
 
-static void drive_barrier_step(quic_connection_t *client, quic_connection_t *server,
-                               const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t now,
-                               bool *drop_client_control) {
+static void drive_barrier_step(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path,
+                               const ngtcp2_path *server_path, uint64_t now, bool *drop_client_control) {
   quic_connection_t *senders[] = {client, server};
   quic_connection_t *receivers[] = {server, client};
   const ngtcp2_path *paths[] = {server_path, client_path};
@@ -257,9 +256,9 @@ static void set_recovery_keyframe(uint8_t *packet, size_t length, bool keyframe)
   memcpy(packet, &header, sizeof(header));
 }
 
-static void quic_media_exchange(quic_connection_t *client, quic_connection_t *server,
-                                const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
-                                bool drop_control, crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
+static void quic_media_exchange(quic_connection_t *client, quic_connection_t *server, const ngtcp2_path *client_path,
+                                const ngtcp2_path *server_path, uint64_t *clock_ns, bool drop_control,
+                                crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
   uint8_t *packets[6];
   size_t lengths[6];
   packets[0] = make_packet(PACKET_TYPE_PING, 8, &lengths[0]);
@@ -948,9 +947,9 @@ static void quic_network_server_test(const char *certificate, const char *privat
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_config_t server_config = {.certificate_file = certificate,
-                                      .private_key_file = private_key,
-                                      .enable_datagrams = datagrams,
-                                      .prefer_audio_datagrams = true};
+                                 .private_key_file = private_key,
+                                 .enable_datagrams = datagrams,
+                                 .prefer_audio_datagrams = true};
   quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
   quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
@@ -1026,11 +1025,11 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   quic_config_t server_config = {.certificate_file = certificate,
-                                      .private_key_file = private_key,
-                                      .enable_datagrams = true,
-                                      .webtransport_origin = "https://example.test",
-                                      .webtransport_path = "/acip",
-                                      .accept_native = true};
+                                 .private_key_file = private_key,
+                                 .enable_datagrams = true,
+                                 .webtransport_origin = "https://example.test",
+                                 .webtransport_path = "/acip",
+                                 .accept_native = true};
   quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
   quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
@@ -1093,8 +1092,8 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(!server_negotiation.ready && server_negotiation.step == 0);
   quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = client_handshake};
   platform_thread_t negotiation_thread;
-  CHECK(platform_thread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) ==
-        ASCIICHAT_OK);
+  CHECK(platform_thread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread,
+                               &client_negotiation) == ASCIICHAT_OK);
   start = time_get_ns();
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT && !server_negotiation.ready) {
     if (acip_transport_has_pending_data(inbound)) {
@@ -1781,10 +1780,10 @@ static void quic_http3_probe_server(const char *certificate, const char *key, co
                               .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
                               .sin_port = HOST_TO_NET_U16((uint16_t)port)};
   quic_config_t config = {.certificate_file = certificate,
-                               .private_key_file = key,
-                               .enable_datagrams = true,
-                               .webtransport_origin = origin,
-                               .webtransport_path = "/acip"};
+                          .private_key_file = key,
+                          .enable_datagrams = true,
+                          .webtransport_origin = origin,
+                          .webtransport_path = "/acip"};
   quic_endpoint_t *endpoint = NULL;
   CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &config, &endpoint) == ASCIICHAT_OK);
   log_info("HTTP/3 probe server ready");

@@ -96,7 +96,7 @@
  */
 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
   do {                                                                                                                 \
-    if (platform_thread_create(&(thread_var), (func), (arg)) != 0) {                                                          \
+    if (platform_thread_create(&(thread_var), (func), (arg)) != 0) {                                                   \
       log_error("%s", (error_msg));                                                                                    \
       return;                                                                                                          \
     }                                                                                                                  \

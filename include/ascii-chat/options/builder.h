@@ -224,8 +224,8 @@ typedef struct {
 
   // Validation pattern (optional)
   const char *validation_pattern; ///< Optional regex pattern for validation hints
-/**
- */
+  /**
+   */
 } option_metadata_t;
 
 /**
@@ -292,8 +292,8 @@ typedef struct {
   // Mode-aware default getter (for options with mode-specific defaults)
   const void *(*mode_default_getter)(
       asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
-/**
- */
+  /**
+   */
 } option_descriptor_t;
 
 /**
@@ -443,13 +443,14 @@ typedef struct {
   char **owned_strings;          ///< Strdup'd strings to free on cleanup
   size_t num_owned_strings;      ///< Number of owned strings
   size_t owned_strings_capacity; ///< Allocated capacity
-/**
- */
+  /**
+   */
 } options_config_t;
 
 /**
  * @brief Immutable parsing tables produced from an options builder
- * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config.
+ * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a
+ * config.
  *
  * For incrementally constructing option configurations.
  * Use builder functions to add options and dependencies, then build
@@ -492,8 +493,8 @@ typedef struct {
   char **owned_strings_builder;
   size_t num_owned_strings_builder;
   size_t owned_strings_builder_capacity;
-/**
- */
+  /**
+   */
 } options_builder_t;
 
 // ============================================================================
@@ -501,7 +502,8 @@ typedef struct {
 // ============================================================================
 
 /**
- * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config
+ * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a
+ * config
  * @brief Create empty options builder
  *
  * @param struct_size sizeof(your_options_t) for the target options struct
