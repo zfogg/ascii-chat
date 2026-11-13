@@ -778,6 +778,9 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
 static asciichat_error_t client_like_cleanup_session(const session_client_like_config_t *config, client_like_state_t *state, asciichat_error_t result) {
   ASCII_OTEL_SCOPE(SESSION_CLEANUP);
+  // The statistics worker owns the UI/input path. Stop it before tearing down
+  // the display and capture objects it may still be polling.
+  stats_runtime_stop();
   // Preparation can fail before the normal update check wait above.
   update_banner_cancel_check();
   update_banner_wait_for_check();

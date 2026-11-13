@@ -60,6 +60,10 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     ui_errno_stacks_hide();
   if (action == UI_ACTION_SETTINGS || action == UI_ACTION_VOLUME) {
     session_capture_redraw_media(capture);
+    // Option-only display changes still need to wake the renderer. This is
+    // essential for synthetic video and audio visualizations, which may not
+    // publish a new capture frame solely because the overlay changed.
+    ui_controller_redraw();
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
       ui_controller_show_volume();
     return;

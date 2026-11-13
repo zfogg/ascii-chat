@@ -100,3 +100,23 @@ def test_prompt_takes_over_cleanly_during_slow_media_output(binary, test_environ
         assert all("11;" not in row and "2026" not in row for row in prompt_rows), prompt_rows
     finally:
         term.close()
+
+
+def test_background_probe_does_not_interleave_media_frame(binary, test_environment, request):
+    if not request.config.getoption("--debug-updates"):
+        pytest.skip("The controlled terminal-write delay requires a Debug build")
+    env = test_environment.copy()
+    env["ASCII_CHAT_TEST_SLOW_MEDIA_OUTPUT"] = "1"
+    args = [
+        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "1",
+        "--width", "200", "--height", "100", "--renderer", "glyph", "--splash-screen=false", "--audio=false",
+    ]
+    term = Terminal(args, rows=100, cols=200, environment=env)
+    try:
+        term.pump(25)
+        raw = "".join(term.raw)
+        for frame in raw.split("\x1b[?2026h")[1:]:
+            payload = frame.split("\x1b[?2026l", 1)[0]
+            assert "\x1b]11;?\x1b\\" not in payload, "Background probe interleaved with media output"
+    finally:
+        term.close()

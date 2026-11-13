@@ -22,11 +22,8 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
-set(_ascii_chat_posix_system_source "${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c")
-set_source_files_properties("${_ascii_chat_posix_system_source}" PROPERTIES COMPILE_OPTIONS "-include${CMAKE_SOURCE_DIR}/include/ascii-chat/common.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/log/log.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/os/socket.h;-include${CMAKE_SOURCE_DIR}/include/ascii-chat/util/time.h")
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
 set(CORE_SRCS
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/lib/posix/system.c
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
     ${LIB_DIR}/media/input.c
@@ -426,8 +423,8 @@ if(UNIX AND NOT APPLE)
 endif()
 target_link_libraries(ascii-chat-platform INTERFACE libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/include
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/lib
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
 )
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-platform INTERFACE ${ASCIICHAT_LIBUV_TARGET})

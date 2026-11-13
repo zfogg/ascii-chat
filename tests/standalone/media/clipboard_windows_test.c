@@ -5,10 +5,10 @@
 #include <shellapi.h>
 #include <wchar.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
   } while (0)
 static bool opened, files;
 static UINT file_count;
@@ -54,7 +54,7 @@ static UINT fake_query(HDROP drop, UINT index, LPWSTR output, UINT capacity) {
 #define GlobalLock fake_lock
 #define GlobalUnlock fake_unlock
 #define DragQueryFileW fake_query
-#include "../../../../deps/libplatform/lib/windows/clipboard.c"
+#include "../../../../deps/ascii-chat-deps/libplatform/lib/windows/clipboard.c"
 
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
