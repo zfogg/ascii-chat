@@ -285,7 +285,7 @@ set(LIB_SRC_COMMON
 
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
-    ${LIB_ROOT}/debug/sync.c
+    ${LIBPLATFORM_ROOT}/lib/debug/sync.c
     ${LIB_ROOT}/debug/stats.c
     ${LIB_ROOT}/debug/errno.c
     ${LIB_ROOT}/debug/debug_helpers.c
