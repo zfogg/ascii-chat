@@ -137,6 +137,7 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/filesystem.c
     ${LIBPLATFORM_ROOT}/lib/wasm/system.c        # Provides real platform_write() override for xterm.js
     ${LIBPLATFORM_ROOT}/lib/wasm/time.c
+    ${LIBPLATFORM_ROOT}/lib/wasm/lifecycle.c
     ${LIBPLATFORM_ROOT}/lib/wasm/string.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/util.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/actions.c
@@ -149,6 +150,7 @@ set(PLATFORM_SRC
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/network.c
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs/ffmpeg_decoder.c
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
+    ${LIB_ROOT}/util/time.c
 )
 
 # WASM rendering components (libvterm + FreeType)
