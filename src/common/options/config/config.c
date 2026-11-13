@@ -72,6 +72,12 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
         (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_bit)))
       continue;
 
+    // These values have application-level range/dependency validation in the
+    // legacy schema. Leaving them there prevents the generic scalar bridge
+    // from temporarily accepting a value that the application must reject.
+    if (meta->field_offset == offsetof(options_t, fps) || meta->field_offset == offsetof(options_t, snapshot_delay))
+      continue;
+
     flags_value_type_t type;
     size_t minimum_size;
     switch (meta->type) {
