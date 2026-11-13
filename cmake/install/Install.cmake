@@ -248,6 +248,14 @@ endif()
 install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat/version.h"
     DESTINATION include/ascii-chat COMPONENT Development)
 
+# ascii-chat public headers include <libplatform/...>. libplatform is embedded
+# through FetchContent, so its own PROJECT_IS_TOP_LEVEL install block is not
+# active; install its public headers explicitly with the SDK.
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include/libplatform/"
+    DESTINATION include/libplatform
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h")
+
 # Install all ascii-chat-deps headers to include/ascii-chat-deps/
 # This allows includes like: #include <ascii-chat-deps/uthash/src/uthash.h>
 
