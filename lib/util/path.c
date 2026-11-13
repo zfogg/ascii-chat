@@ -157,17 +157,25 @@ const char *extract_project_relative_path(const char *file, const char *const *o
         unsigned char source_char = (unsigned char)candidate[i];
         unsigned char file_char = (unsigned char)file[i];
         if (source_char == '/' || source_char == '\\') {
-          if (file_char != '/' && file_char != '\\') { matches = false; break; }
+          if (file_char != '/' && file_char != '\\') {
+            matches = false;
+            break;
+          }
         } else {
 #ifdef _WIN32
-          if (tolower(source_char) != tolower(file_char)) { matches = false; break; }
+          if (tolower(source_char) != tolower(file_char)) {
+            matches = false;
+            break;
+          }
 #else
-          if (source_char != file_char) { matches = false; break; }
+          if (source_char != file_char) {
+            matches = false;
+            break;
+          }
 #endif
         }
       }
-      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') &&
-          candidate_length > root_length) {
+      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') && candidate_length > root_length) {
         root = candidate;
         root_length = candidate_length;
       }
@@ -217,8 +225,7 @@ const char *extract_project_relative_path(const char *file, const char *const *o
     for (size_t root_index = 0; root_index < sizeof(project_roots) / sizeof(project_roots[0]); root_index++) {
       const char *project_root = project_roots[root_index];
       size_t root_length = strlen(project_root);
-      if (_strnicmp(relative, project_root, root_length) == 0 &&
-          (relative[root_length] == '/' || relative[root_length] == '\\')) {
+      if (_strnicmp(relative, project_root, root_length) == 0 && (relative[root_length] == '/' || relative[root_length] == '\\')) {
         return relative;
       }
     }
