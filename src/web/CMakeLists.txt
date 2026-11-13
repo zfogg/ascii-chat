@@ -306,7 +306,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/wasm.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
-    ${LIB_ROOT}/debug/memory.c
+    ${LIBPLATFORM_ROOT}/lib/debug/memory.c
     ${LIBPLATFORM_ROOT}/lib/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
