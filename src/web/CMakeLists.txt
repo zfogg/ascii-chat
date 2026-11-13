@@ -82,6 +82,7 @@ set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 set(LIBPLATFORM_ROOT ${DEPS_ROOT}/ascii-chat-deps/libplatform)
+set(LIBFLAGS_ROOT ${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src)
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -93,6 +94,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}/generated
     ${LIBPLATFORM_ROOT}/include
     ${LIBPLATFORM_ROOT}/lib/wasm/stubs  # WASM stub headers (override native)
+    ${LIBFLAGS_ROOT}/include
     ${INCLUDE_ROOT}
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
