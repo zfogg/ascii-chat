@@ -230,7 +230,7 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
   sb->size = 0;
 
   // Read stdin in 64KB chunks
-  const size_t chunk_size = 65536;
+  enum { chunk_size = 65536 };
   uint8_t chunk_buffer[chunk_size];
   size_t total_capacity = 0;
   int chunk_count = 0;
