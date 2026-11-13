@@ -1243,12 +1243,19 @@ add_library(ascii-chat-shared SHARED
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
 
+    # gotel already supplies its bundled nghttp2 on Windows; adding the
+    # separately discovered vcpkg import library creates duplicate symbols.
+    set(_asciichat_nghttp2_shared_link ${ASCIICHAT_NGHTTP2_TARGET})
+    if(TARGET gotel::gotel)
+        set(_asciichat_nghttp2_shared_link)
+    endif()
+
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
-        ${ASCIICHAT_NGHTTP2_TARGET}
+        ${_asciichat_nghttp2_shared_link}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1256,6 +1263,7 @@ add_library(ascii-chat-shared SHARED
         ${PCRE2_LIBRARIES}
         ${YYJSON_LIBRARIES}
     )
+    unset(_asciichat_nghttp2_shared_link)
 
     # Coverage builds: link Clang profile runtime into shared library
     if(ASCIICHAT_ENABLE_COVERAGE)
