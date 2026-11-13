@@ -400,10 +400,7 @@ static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, con
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
-  if (atomic_load_explicit(&stopping, memory_order_acquire))
-    gotel_cancel(&s->scope);
-  else
-    gotel_end(&s->scope);
+  gotel_end(&s->scope);
   if (current_scope == s)
     current_scope = s->previous;
   s->retained = false;
@@ -462,7 +459,7 @@ void ascii_otel_shutdown(void) {
     // Interrupt any exporter request before waiting for the worker. Waiting
     // first makes cancellation unreachable when the worker is blocked in
     // DNS/TLS/HTTP, which turns a bounded shutdown into a process hang.
-    (void)otel_status(gotel_shutdown(h), "Cancel telemetry exporter");
+    (void)otel_status(gotel_drain(h), "Drain telemetry exporter");
     while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
       platform_sleep_ms(1);
     bool done = atomic_load_explicit(&worker_done, memory_order_acquire);
