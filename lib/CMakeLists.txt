@@ -1017,7 +1017,7 @@ add_library(ascii-chat-shared SHARED
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
-        WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file instead
+        WINDOWS_EXPORT_ALL_SYMBOLS $<BOOL:${CMAKE_C_COMPILER_ID STREQUAL "MSVC"}>
         # Windows: VERSION/SOVERSION embed version info in PE header (no symlinks)
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
@@ -1104,7 +1104,7 @@ add_library(ascii-chat-shared SHARED
         # Both clang-cl and clang --target=...-windows-msvc produce MSVC
         # compatible import libraries. The GNU-style clang driver used by the
         # LLVM toolchain still needs the .lib name consumed by the executable.
-        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER MATCHES "clang-cl")
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
         else()
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
@@ -1129,7 +1129,7 @@ add_library(ascii-chat-shared SHARED
 
     # Generate the .def file using a custom command
     # Windows: Auto-generate .def file for symbol export
-    if(WIN32)
+    if(WIN32 AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         if(CMAKE_NM)
             set(_export_nm "${CMAKE_NM}")
         elseif(ASCIICHAT_LLVM_NM_EXECUTABLE)
