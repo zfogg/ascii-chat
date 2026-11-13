@@ -831,6 +831,11 @@ endif()
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
+if(WIN32)
+    # The bundled nghttp2 archive is static.  Avoid __declspec(dllimport)
+    # declarations from system/vcpkg headers when compiling the HTTP/2 object.
+    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
+endif()
 if(USE_MUSL)
     # gotel builds this target for the active toolchain; a host installation
     # can otherwise introduce glibc headers and libraries into a musl build.
