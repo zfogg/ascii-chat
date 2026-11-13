@@ -54,7 +54,7 @@ static UINT fake_query(HDROP drop, UINT index, LPWSTR output, UINT capacity) {
 #define GlobalLock fake_lock
 #define GlobalUnlock fake_unlock
 #define DragQueryFileW fake_query
-#include "../../../../deps/libplatform/lib/windows/clipboard.c"
+#include "../../../../deps/ascii-chat-deps/libplatform/lib/windows/clipboard.c"
 
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);

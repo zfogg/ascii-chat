@@ -35,8 +35,7 @@ static inline ssize_t calc_height_from_width(ssize_t width, ssize_t img_w, ssize
   return (result > 0) ? result : MIN_DIMENSION;
 }
 
-static void calculate_fit_dimensions(ssize_t img_w, ssize_t img_h, ssize_t max_w, ssize_t max_h, ssize_t *out_width,
-                                     ssize_t *out_height) {
+static void calculate_fit_dimensions(ssize_t img_w, ssize_t img_h, ssize_t max_w, ssize_t max_h, ssize_t *out_width, ssize_t *out_height) {
   if (!out_width || !out_height) {
     log_error("out_width or out_height is NULL");
     return;
@@ -66,8 +65,7 @@ static void calculate_fit_dimensions(ssize_t img_w, ssize_t img_h, ssize_t max_w
   }
 }
 
-void aspect_ratio(const ssize_t img_w, const ssize_t img_h, const ssize_t width, const ssize_t height,
-                  const bool stretch, ssize_t *out_width, ssize_t *out_height) {
+void aspect_ratio(const ssize_t img_w, const ssize_t img_h, const ssize_t width, const ssize_t height, const bool stretch, ssize_t *out_width, ssize_t *out_height) {
   // Input validation
   if (!out_width || !out_height) {
     return; // or log error
@@ -92,8 +90,7 @@ void aspect_ratio(const ssize_t img_w, const ssize_t img_h, const ssize_t width,
 
 // Simple aspect ratio calculation without terminal character correction
 // Used for image resizing where we want pixel-perfect aspect ratio
-void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t target_w, const ssize_t target_h,
-                   ssize_t *out_width, ssize_t *out_height) {
+void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t target_w, const ssize_t target_h, ssize_t *out_width, ssize_t *out_height) {
   // Input validation
   if (!out_width || !out_height) {
     return;
@@ -143,8 +140,7 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
 
 // Calculate the best dimensions to fit an image in a terminal area while preserving aspect ratio
 // Returns the dimensions in characters/pixels (1:1 for our use case with stretch=false)
-void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width,
-                                    int *out_height) {
+void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width, int *out_height) {
   if (!out_width || !out_height || img_width <= 0 || img_height <= 0) {
     if (out_width)
       *out_width = max_width;

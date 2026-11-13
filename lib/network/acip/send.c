@@ -49,8 +49,7 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                            const acip_send_options_t *options) {
+static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
   size_t total = 0;
@@ -89,10 +88,8 @@ static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const s
   return result;
 }
 
-static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                              const acip_send_options_t *options) {
-  if (transport && transport->crypto_ctx && transport->crypto_ctx->handshake_complete &&
-      transport->crypto_ctx->encrypt_data && !atomic_load_bool(&transport->packet_security_active)) {
+static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options) {
+  if (transport && transport->crypto_ctx && transport->crypto_ctx->handshake_complete && transport->crypto_ctx->encrypt_data && !atomic_load_bool(&transport->packet_security_active)) {
     asciichat_error_t result = acip_security_activate(transport);
     if (result != ASCIICHAT_OK)
       return result;
@@ -110,10 +107,8 @@ asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, a
   return transport->methods->get_capabilities ? transport->methods->get_capabilities(transport, out) : ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                          const acip_send_options_t *options) {
-  if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX || !options ||
-      (unsigned)options->traffic_class > ACIP_TRAFFIC_VISUAL ||
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options) {
+  if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX || !options || (unsigned)options->traffic_class > ACIP_TRAFFIC_VISUAL ||
       (options->delivery != ACIP_DELIVERY_RELIABLE && options->delivery != ACIP_DELIVERY_DATAGRAM))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport send options");
   if (options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns) {
@@ -152,8 +147,7 @@ asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *d
   return acip_transport_sendv(transport, &buffer, 1);
 }
 
-asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
-                                             const socket_buffer_t *payload, size_t count, uint32_t client_id) {
+asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type, const socket_buffer_t *payload, size_t count, uint32_t client_id) {
   ASCII_OTEL_SCOPE(PACKET_SEND_VIA_TRANSPORTV);
   if (!transport || !payload || !count || count >= SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet vectors");
@@ -167,8 +161,7 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   acip_send_options_t options = {.traffic_class = acip_packet_traffic_class(type), .delivery = ACIP_DELIVERY_RELIABLE};
   bool encoded = type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265;
   bool prefer_datagram = (transport->prefer_audio_datagrams && options.traffic_class == ACIP_TRAFFIC_AUDIO) ||
-                         (transport->prefer_visual_datagrams && options.traffic_class == ACIP_TRAFFIC_VISUAL &&
-                          (!encoded || client_id == 0));
+                         (transport->prefer_visual_datagrams && options.traffic_class == ACIP_TRAFFIC_VISUAL && (!encoded || client_id == 0));
   if (prefer_datagram) {
     acip_transport_capabilities_t caps;
     asciichat_error_t result = acip_transport_get_capabilities(transport, &caps);
@@ -187,8 +180,7 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   return result;
 }
 
-asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, uint32_t client_id) {
+asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, uint32_t client_id) {
   socket_buffer_t slice = {payload, payload_len};
   return packet_send_via_transportv(transport, type, &slice, 1, client_id);
 }
@@ -197,8 +189,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 // Packet Receive Helper (receives via transport, parses header)
 // =============================================================================
 
-asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
-                                               size_t *payload_len, void **alloc_buffer) {
+asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *payload_len, void **alloc_buffer) {
   ASCII_OTEL_SCOPE(PACKET_RECEIVE_VIA_TRANSPORT);
   if (!transport || !type || !payload || !payload_len || !alloc_buffer) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -292,8 +283,7 @@ receive_again:;
 // Audio Sending
 // =============================================================================
 
-asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float *samples, uint32_t num_samples,
-                                        uint32_t batch_count) {
+asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float *samples, uint32_t num_samples, uint32_t batch_count) {
   ASCII_OTEL_SCOPE(ACIP_SEND_AUDIO_BATCH);
   if (!transport || !samples || num_samples == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -309,8 +299,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   header.sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE);
   header.channels = HOST_TO_NET_U32(1);
   uint32_t inline_samples[OPUS_FRAME_SAMPLES];
-  uint32_t *wire =
-      num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
+  uint32_t *wire = num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
   if (!wire)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate PCM batch samples");
   defer({
@@ -343,12 +332,10 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
   // Convert single opus frame to batch format (frame_count=1) with standard parameters
   // Standard: 48kHz sample rate, 20ms frame duration
   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE,
-                                    CLIENT_AUDIO_PIPELINE_FRAME_MS);
+  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
 }
 
-asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,
-                                             const uint16_t *frame_sizes, uint32_t frame_count, uint32_t sample_rate,
+asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len, const uint16_t *frame_sizes, uint32_t frame_count, uint32_t sample_rate,
                                              uint32_t frame_duration) {
   ASCII_OTEL_SCOPE(ACIP_SEND_AUDIO_OPUS_BATCH);
   if (!transport || !opus_data || !frame_sizes || frame_count == 0) {
@@ -456,8 +443,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
   return result;
 }
 
-asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_level, uint8_t direction,
-                                       const char *message) {
+asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_level, uint8_t direction, const char *message) {
   if (!transport || !message) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or message");
   }

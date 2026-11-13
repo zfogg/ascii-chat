@@ -24,8 +24,7 @@ void face_follow_image_destroy(face_follow_image_t *context) {
   SAFE_FREE(context);
 }
 
-image_t *face_follow_image_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug,
-                                   int max_width, int max_height) {
+image_t *face_follow_image_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug, int max_width, int max_height) {
   if (!source || source->w <= 0 || source->h <= 0)
     return source;
   if (!*context && !enabled && !debug)
@@ -86,8 +85,7 @@ image_t *face_follow_image_process(face_follow_image_t **context, image_t *sourc
       rgb_pixel_t p = source->pixels[(size_t)sy * source->w + sx];
       if (debug && ctx->state.detected && now - ctx->state.last_seen < 0.3) {
         float dx = fabsf(sx - fx), dy = fabsf(sy - fy);
-        if ((fabsf(dx - side * 0.5f) < thickness && dy <= side * 0.5f + thickness) ||
-            (fabsf(dy - side * 0.5f) < thickness && dx <= side * 0.5f + thickness))
+        if ((fabsf(dx - side * 0.5f) < thickness && dy <= side * 0.5f + thickness) || (fabsf(dy - side * 0.5f) < thickness && dx <= side * 0.5f + thickness))
           p = (rgb_pixel_t){255, 0, 0};
       }
       ctx->output->pixels[(size_t)y * output_width + x] = p;

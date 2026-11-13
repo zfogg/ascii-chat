@@ -74,8 +74,7 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   uint64_t counter = ctx->nonce_counter++;
   uint64_t counter_be = HOST_TO_NET_U64(counter); // Convert to big-endian
   size_t counter_size = ctx->nonce_size - 16;
-  SAFE_MEMCPY(nonce_out + 16, counter_size, &counter_be,
-              (counter_size < sizeof(counter_be)) ? counter_size : sizeof(counter_be));
+  SAFE_MEMCPY(nonce_out + 16, counter_size, &counter_be, (counter_size < sizeof(counter_be)) ? counter_size : sizeof(counter_be));
 }
 
 // Securely clear memory
@@ -151,15 +150,13 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
-    log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
-            (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)", (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
     char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
-    log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
-            (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)", (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
   return crypto_session_create(ctx) == ASCIICHAT_OK ? CRYPTO_OK : CRYPTO_ERROR_MEMORY;
 }
@@ -240,8 +237,7 @@ crypto_result_t crypto_generate_keypair(crypto_context_t *ctx) {
 
 crypto_result_t crypto_get_public_key(const crypto_context_t *ctx, uint8_t *public_key_out) {
   if (!ctx || !ctx->initialized || !public_key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, public_key_out=%p)", ctx,
-              ctx ? ctx->initialized : 0, public_key_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, public_key_out=%p)", ctx, ctx ? ctx->initialized : 0, public_key_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -253,8 +249,7 @@ crypto_result_t crypto_get_public_key(const crypto_context_t *ctx, uint8_t *publ
 
 crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t *peer_public_key) {
   if (!ctx || !ctx->initialized || !peer_public_key) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, peer_public_key=%p)", ctx,
-              ctx ? ctx->initialized : 0, peer_public_key);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, peer_public_key=%p)", ctx, ctx ? ctx->initialized : 0, peer_public_key);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -299,14 +294,12 @@ crypto_result_t crypto_validate_password(const char *password) {
   size_t password_len = strlen(password);
 
   if (password_len < MIN_PASSWORD_LENGTH) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Password too short (minimum %d characters, got %zu)", MIN_PASSWORD_LENGTH,
-              password_len);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Password too short (minimum %d characters, got %zu)", MIN_PASSWORD_LENGTH, password_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   if (password_len > MAX_PASSWORD_LENGTH) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Password too long (maximum %d characters, got %zu)", MAX_PASSWORD_LENGTH,
-              password_len);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Password too long (maximum %d characters, got %zu)", MAX_PASSWORD_LENGTH, password_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -315,8 +308,7 @@ crypto_result_t crypto_validate_password(const char *password) {
 
 crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *password) {
   if (!ctx || !ctx->initialized || !password) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, password=%p)", ctx,
-              ctx ? ctx->initialized : 0, password);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, password=%p)", ctx, ctx ? ctx->initialized : 0, password);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -371,9 +363,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
   memcpy(salt, deterministic_salt, (salt_str_len < ctx->salt_size) ? salt_str_len : ctx->salt_size);
 
   // Derive key with same salt
-  if (crypto_pwhash(test_key, ctx->encryption_key_size, password, strlen(password), salt,
-                    crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
-                    crypto_pwhash_ALG_DEFAULT) != 0) {
+  if (crypto_pwhash(test_key, ctx->encryption_key_size, password, strlen(password), salt, crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0) {
     secure_memzero(test_key, sizeof(test_key));
     return false;
   }
@@ -386,8 +376,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
 }
 
 // Derive a deterministic encryption key from password for handshake
-crypto_result_t crypto_derive_password_encryption_key(const char *password,
-                                                      uint8_t encryption_key[SECRETBOX_KEY_SIZE]) {
+crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[SECRETBOX_KEY_SIZE]) {
   if (!password || !encryption_key) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (password=%p, encryption_key=%p)", password, encryption_key);
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -428,17 +417,15 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
 // Encryption/Decryption operations
 // =============================================================================
 
-crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, size_t plaintext_len,
-                               uint8_t *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out) {
+crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out) {
   ASCII_OTEL_SCOPE(CRYPTO_ENCRYPT);
   ASCII_OTEL_ATTR_STRING("crypto.operation", "encrypt");
   ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
   ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)plaintext_len);
   ASCII_OTEL_ATTR_INT("crypto.output.capacity", (int64_t)ciphertext_out_size);
   if (!ctx || !ctx->initialized || !plaintext || !ciphertext_out || !ciphertext_len_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid parameters: ctx=%p, initialized=%d, plaintext=%p, ciphertext_out=%p, ciphertext_len_out=%p", ctx,
-              ctx ? ctx->initialized : 0, plaintext, ciphertext_out, ciphertext_len_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, initialized=%d, plaintext=%p, ciphertext_out=%p, ciphertext_len_out=%p", ctx, ctx ? ctx->initialized : 0, plaintext, ciphertext_out,
+              ciphertext_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -488,8 +475,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   generate_nonce(ctx, nonce);
   SAFE_MEMCPY(ciphertext_out, ctx->nonce_size, nonce, ctx->nonce_size);
 
-  log_debug_every(US_PER_SEC_INT, "Encrypting packet: counter=%llu plaintext_len=%zu",
-                  (unsigned long long)(ctx->nonce_counter - 1), plaintext_len);
+  log_debug_every(US_PER_SEC_INT, "Encrypting packet: counter=%llu plaintext_len=%zu", (unsigned long long)(ctx->nonce_counter - 1), plaintext_len);
 
   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
   if (crypto_secretbox_easy(ciphertext_out + ctx->nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
@@ -508,17 +494,15 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext, size_t ciphertext_len,
-                               uint8_t *plaintext_out, size_t plaintext_out_size, size_t *plaintext_len_out) {
+crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext_out, size_t plaintext_out_size, size_t *plaintext_len_out) {
   ASCII_OTEL_SCOPE(CRYPTO_DECRYPT);
   ASCII_OTEL_ATTR_STRING("crypto.operation", "decrypt");
   ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
   ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)ciphertext_len);
   ASCII_OTEL_ATTR_INT("crypto.output.capacity", (int64_t)plaintext_out_size);
   if (!ctx || !ctx->initialized || !ciphertext || !plaintext_out || !plaintext_len_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid parameters: ctx=%p, initialized=%d, ciphertext=%p, plaintext_out=%p, plaintext_len_out=%p", ctx,
-              ctx ? ctx->initialized : 0, ciphertext, plaintext_out, plaintext_len_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, initialized=%d, ciphertext=%p, plaintext_out=%p, plaintext_len_out=%p", ctx, ctx ? ctx->initialized : 0, ciphertext, plaintext_out,
+              plaintext_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -560,11 +544,9 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   }
 
   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
-  if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx->nonce_size, nonce,
-                                 decryption_key) != 0) {
-    log_error_every(US_PER_SEC_INT,
-                    "Decryption failed: cipherlen=%zu key_exchange_complete=%d has_password=%d (invalid MAC)",
-                    ciphertext_len - ctx->nonce_size, ctx->key_exchange_complete, ctx->has_password);
+  if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx->nonce_size, nonce, decryption_key) != 0) {
+    log_error_every(US_PER_SEC_INT, "Decryption failed: cipherlen=%zu key_exchange_complete=%d has_password=%d (invalid MAC)", ciphertext_len - ctx->nonce_size, ctx->key_exchange_complete,
+                    ctx->has_password);
     SET_ERRNO(ERROR_CRYPTO, "Decryption failed - invalid MAC or corrupted data");
     return CRYPTO_ERROR_INVALID_MAC;
   }
@@ -624,9 +606,8 @@ void crypto_get_status(const crypto_context_t *ctx, char *status_buffer, size_t 
   SAFE_SNPRINTF(status_buffer, buffer_size,
                 "Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, "
                 "Encrypted: %" PRIu64 " bytes, Decrypted: %" PRIu64 " bytes, Nonce: %" PRIu64,
-                ctx->initialized ? "yes" : "no", ctx->has_password ? "yes" : "no",
-                ctx->key_exchange_complete ? "complete" : "incomplete", crypto_is_ready(ctx) ? "yes" : "no",
-                ctx->bytes_encrypted, ctx->bytes_decrypted, ctx->nonce_counter);
+                ctx->initialized ? "yes" : "no", ctx->has_password ? "yes" : "no", ctx->key_exchange_complete ? "complete" : "incomplete", crypto_is_ready(ctx) ? "yes" : "no", ctx->bytes_encrypted,
+                ctx->bytes_decrypted, ctx->nonce_counter);
 }
 
 bool crypto_secure_compare(const uint8_t *lhs, const uint8_t *rhs, size_t len) {
@@ -655,8 +636,7 @@ crypto_result_t crypto_random_bytes(uint8_t *buffer, size_t len) {
 // Network integration helpers
 // =============================================================================
 
-crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
-                                                size_t *packet_len_out) {
+crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, "
@@ -684,8 +664,7 @@ crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uin
 
 crypto_result_t crypto_process_public_key_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet=%p)", ctx,
-              ctx ? ctx->initialized : 0, packet);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet=%p)", ctx, ctx ? ctx->initialized : 0, packet);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -708,11 +687,9 @@ crypto_result_t crypto_process_public_key_packet(crypto_context_t *ctx, const ui
   return crypto_set_peer_public_key(ctx, peer_public_key);
 }
 
-crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint8_t *data, size_t data_len,
-                                               uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
+crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint8_t *data, size_t data_len, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
   if (!ctx || !data || !packet_out || !packet_len_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, data=%p, packet_out=%p, packet_len_out=%p)", ctx, data,
-              packet_out, packet_len_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, data=%p, packet_out=%p, packet_len_out=%p)", ctx, data, packet_out, packet_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -750,8 +727,7 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
   // Encrypt the data
   size_t ciphertext_len;
   uint8_t *encrypted_data = packet_out + sizeof(uint32_t) + sizeof(uint32_t);
-  crypto_result_t result = crypto_encrypt(ctx, data, data_len, encrypted_data,
-                                          packet_size - sizeof(uint32_t) - sizeof(uint32_t), &ciphertext_len);
+  crypto_result_t result = crypto_encrypt(ctx, data, data_len, encrypted_data, packet_size - sizeof(uint32_t) - sizeof(uint32_t), &ciphertext_len);
   if (result != CRYPTO_OK) {
     return result;
   }
@@ -767,11 +743,9 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len,
-                                                uint8_t *data_out, size_t data_size, size_t *data_len_out) {
+crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len, uint8_t *data_out, size_t data_size, size_t *data_len_out) {
   if (!ctx || !packet || !data_out || !data_len_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, packet=%p, data_out=%p, data_len_out=%p)", ctx, packet,
-              data_out, data_len_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, packet=%p, data_out=%p, data_len_out=%p)", ctx, packet, data_out, data_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -792,14 +766,12 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
   SAFE_MEMCPY(&data_length, sizeof(data_length), packet + sizeof(packet_type), sizeof(data_length));
 
   if (packet_type != CRYPTO_PACKET_ENCRYPTED_DATA) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=%u, got=%u)", CRYPTO_PACKET_ENCRYPTED_DATA,
-              packet_type);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=%u, got=%u)", CRYPTO_PACKET_ENCRYPTED_DATA, packet_type);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   if (packet_len != sizeof(uint32_t) + sizeof(uint32_t) + data_length) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Packet length mismatch (expected=%zu, got=%zu)",
-              sizeof(uint32_t) + sizeof(uint32_t) + data_length, packet_len);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Packet length mismatch (expected=%zu, got=%zu)", sizeof(uint32_t) + sizeof(uint32_t) + data_length, packet_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -826,11 +798,9 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[AUTH_CHALLENGE_SIZE]) {
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
-                                    const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]) {
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac) {
-    return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)", ctx,
-                                      key, data, hmac);
+    return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)", ctx, key, data, hmac);
   }
 
   crypto_result_t result = init_libsodium();
@@ -842,12 +812,9 @@ crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMA
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
-                                       const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]) {
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac || data_len == 0) {
-    return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
-                                      "Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx, key,
-                                      data, data_len, hmac);
+    return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx, key, data, data_len, hmac);
   }
 
   crypto_result_t result = init_libsodium();
@@ -859,8 +826,7 @@ crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_
   return CRYPTO_OK;
 }
 
-bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE],
-                        const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
+bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE], const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, expected_hmac=%p)", key, data, expected_hmac);
     return false;
@@ -874,11 +840,9 @@ bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t d
   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
 }
 
-bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len,
-                           const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
+bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len, const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac || data_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)", key, data,
-              data_len, expected_hmac);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)", key, data, data_len, expected_hmac);
     return false;
   }
 
@@ -894,8 +858,7 @@ bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_
 // High-level authentication helpers (shared between client and server)
 // =============================================================================
 
-crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
-                                             uint8_t hmac_out[HMAC_SHA256_SIZE]) {
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE], uint8_t hmac_out[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !hmac_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, hmac_out=%p)", ctx, nonce, hmac_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -925,11 +888,9 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   return result;
 }
 
-bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
-                                 const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE], const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !expected_hmac) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)", ctx, nonce,
-              expected_hmac);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)", ctx, nonce, expected_hmac);
     return false;
   }
 
@@ -949,8 +910,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
 
-  log_debug("Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d",
-            ctx->has_password, ctx->key_exchange_complete, (auth_key == ctx->password_key));
+  log_debug("Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d", ctx->has_password, ctx->key_exchange_complete, (auth_key == ctx->password_key));
 
   bool result = crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
 
@@ -960,11 +920,9 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   return result;
 }
 
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
-                                             size_t *packet_len_out) {
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, packet_len_out=%p)", ctx,
-              ctx ? ctx->initialized : 0, packet_out, packet_len_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, packet_len_out=%p)", ctx, ctx ? ctx->initialized : 0, packet_out, packet_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -991,8 +949,7 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
 
 crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet=%p)", ctx,
-              ctx ? ctx->initialized : 0, packet);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet=%p)", ctx, ctx ? ctx->initialized : 0, packet);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -1007,8 +964,7 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
   SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
 
   if (packet_type != CRYPTO_PACKET_AUTH_CHALLENGE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=%u, got=%u)", CRYPTO_PACKET_AUTH_CHALLENGE,
-              packet_type);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=%u, got=%u)", CRYPTO_PACKET_AUTH_CHALLENGE, packet_type);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -1021,8 +977,7 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
 
 crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid context or packet (ctx=%p, initialized=%d, packet=%p)", ctx,
-              ctx ? ctx->initialized : 0, packet);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid context or packet (ctx=%p, initialized=%d, packet=%p)", ctx, ctx ? ctx->initialized : 0, packet);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -1037,8 +992,7 @@ crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_
   SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
 
   if (packet_type != CRYPTO_PACKET_AUTH_RESPONSE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=0x%x, got=0x%x)", CRYPTO_PACKET_AUTH_RESPONSE,
-              packet_type);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet type (expected=0x%x, got=0x%x)", CRYPTO_PACKET_AUTH_RESPONSE, packet_type);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -1059,12 +1013,9 @@ crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_
 // Shared Cryptographic Operations
 // =============================================================================
 
-asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce,
-                                               const uint8_t *shared_secret, uint8_t *hmac_out) {
+asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce, const uint8_t *shared_secret, uint8_t *hmac_out) {
   if (!ctx || !password_key || !nonce || !shared_secret || !hmac_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Invalid parameters: ctx=%p, password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p", ctx,
-                     password_key, nonce, shared_secret, hmac_out);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p", ctx, password_key, nonce, shared_secret, hmac_out);
   }
 
   // Combine nonce and shared_secret for HMAC computation
@@ -1086,11 +1037,9 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key,
-                                               size_t ephemeral_key_size, const uint8_t *signature) {
+asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key, size_t ephemeral_key_size, const uint8_t *signature) {
   if (!peer_public_key || !ephemeral_key || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p",
-                     peer_public_key, ephemeral_key, signature);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p", peer_public_key, ephemeral_key, signature);
   }
 
   if (ephemeral_key_size == 0) {
@@ -1105,11 +1054,9 @@ asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, c
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key,
-                                            size_t ephemeral_key_size, uint8_t *signature_out) {
+asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key, size_t ephemeral_key_size, uint8_t *signature_out) {
   if (!private_key || !ephemeral_key || !signature_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p",
-                     private_key, ephemeral_key, signature_out);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p", private_key, ephemeral_key, signature_out);
   }
 
   if (ephemeral_key_size == 0) {
@@ -1131,8 +1078,7 @@ asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, co
 
 void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonce, uint8_t *combined_out) {
   if (!hmac || !challenge_nonce || !combined_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: hmac=%p, challenge_nonce=%p, combined_out=%p", hmac,
-              challenge_nonce, combined_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: hmac=%p, challenge_nonce=%p, combined_out=%p", hmac, challenge_nonce, combined_out);
     return;
   }
 
@@ -1143,8 +1089,7 @@ void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonc
 
 void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out) {
   if (!combined_data || !hmac_out || !challenge_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: combined_data=%p, hmac_out=%p, challenge_out=%p", combined_data,
-              hmac_out, challenge_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: combined_data=%p, hmac_out=%p, challenge_out=%p", combined_data, hmac_out, challenge_out);
     return;
   }
 
@@ -1174,8 +1119,7 @@ bool crypto_should_rekey(const crypto_context_t *ctx) {
 
   // Check packet count threshold
   if (ctx->rekey_packet_count >= ctx->rekey_packet_threshold) {
-    log_debug("Rekey triggered: packet count (%llu) >= threshold (%llu)", (unsigned long long)ctx->rekey_packet_count,
-              (unsigned long long)ctx->rekey_packet_threshold);
+    log_debug("Rekey triggered: packet count (%llu) >= threshold (%llu)", (unsigned long long)ctx->rekey_packet_count, (unsigned long long)ctx->rekey_packet_threshold);
     return true;
   }
 
@@ -1183,8 +1127,7 @@ bool crypto_should_rekey(const crypto_context_t *ctx) {
   time_t now = time(NULL);
   time_t elapsed = now - ctx->rekey_last_time;
   if (elapsed >= ctx->rekey_time_threshold) {
-    log_debug("Rekey triggered: time elapsed (%ld sec) >= threshold (%ld sec)", (long)elapsed,
-              (long)ctx->rekey_time_threshold);
+    log_debug("Rekey triggered: time elapsed (%ld sec) >= threshold (%ld sec)", (long)elapsed, (long)ctx->rekey_time_threshold);
     return true;
   }
 
@@ -1229,8 +1172,7 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   ctx->rekey_in_progress = true;
   ctx->has_temp_key = true;
 
-  log_debug("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
-            (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
+  log_debug("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)", (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
 
   return CRYPTO_OK;
 }
@@ -1325,8 +1267,7 @@ crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
   // Reset failure counter on successful rekey
   ctx->rekey_failure_count = 0;
 
-  log_debug("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
-            (unsigned long long)ctx->rekey_count);
+  log_debug("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)", (unsigned long long)ctx->rekey_count);
 
   return CRYPTO_OK;
 }
@@ -1361,17 +1302,13 @@ void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, s
   time_t now = time(NULL);
   time_t elapsed = now - ctx->rekey_last_time;
   time_t remaining_time = (ctx->rekey_time_threshold > elapsed) ? (ctx->rekey_time_threshold - elapsed) : 0;
-  uint64_t remaining_packets = (ctx->rekey_packet_threshold > ctx->rekey_packet_count)
-                                   ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
-                                   : 0;
+  uint64_t remaining_packets = (ctx->rekey_packet_threshold > ctx->rekey_packet_count) ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count) : 0;
 
   safe_snprintf(status_buffer, buffer_size,
                 "Rekey status: %s | "
                 "Packets: %llu/%llu (%llu remaining) | "
                 "Time: %ld/%ld sec (%ld sec remaining) | "
                 "Rekeys: %llu | Failures: %d",
-                ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
-                (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
-                (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
-                ctx->rekey_failure_count);
+                ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count, (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets,
+                (long)elapsed, (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count, ctx->rekey_failure_count);
 }

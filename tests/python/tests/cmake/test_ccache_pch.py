@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[3]
+ROOT = pathlib.Path(__file__).resolve().parents[4]
 TOOLS = ("cmake", "ninja", "ccache", "clang", "clang++")
 
 

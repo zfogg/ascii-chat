@@ -29,6 +29,8 @@ typedef struct ascii_otel_scope {
 } ascii_otel_scope_t;
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv);
 void ascii_otel_shutdown(void);
+/** Request exporter cancellation without draining or freeing telemetry state. */
+void ascii_otel_request_shutdown(void);
 bool ascii_otel_enabled(void);
 const char *ascii_otel_current_operation(void);
 void ascii_otel_metric(ascii_otel_metric_t metric, double value);

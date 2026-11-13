@@ -336,8 +336,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
 
   // Check result
   if (winner_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d (both IPv4 and IPv6 failed)", config->hostname,
-                     config->port);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d (both IPv4 and IPv6 failed)", config->hostname, config->port);
   }
 
   *out_socket = (socket_t)winner_socket;

@@ -57,8 +57,7 @@ asciichat_error_t validate_glyph_palette(const options_t *opts) {
  * @param error_msg_size Size of error message buffer
  * @return Parsed integer value on success, INT_MIN on error
  */
-static int validate_int_range(const char *value_str, int min, int max, const char *param_name, char *error_msg,
-                              size_t error_msg_size) {
+static int validate_int_range(const char *value_str, int min, int max, const char *param_name, char *error_msg, size_t error_msg_size) {
   if (!value_str || strlen(value_str) == 0) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "%s value is required", param_name);
@@ -74,11 +73,9 @@ static int validate_int_range(const char *value_str, int min, int max, const cha
       } else if (min == 1 && max == INT_MAX) {
         SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a positive integer.", param_name, value_str);
       } else if (min == 0 && max == INT_MAX) {
-        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a non-negative integer.", param_name,
-                      value_str);
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a non-negative integer.", param_name, value_str);
       } else {
-        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be between %d and %d.", param_name, value_str,
-                      min, max);
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be between %d and %d.", param_name, value_str, min, max);
       }
     }
     return INT_MIN;
@@ -102,8 +99,7 @@ int validate_opt_port(const char *value_str, char *error_msg, size_t error_msg_s
   uint16_t port_num;
   if (parse_port(value_str, &port_num) != ASCIICHAT_OK) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid port value '%s'. Port must be a number between 1 and 65535.",
-                    value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
     }
     return -1;
   }
@@ -177,8 +173,7 @@ int validate_opt_color_mode(const char *value_str, char *error_msg, size_t error
     return COLOR_MODE_TRUECOLOR;
   }
   if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size,
-                  "Invalid color mode '%s'. Valid modes: auto, none, mono, 16, 256, truecolor", value_str);
+    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, none, mono, 16, 256, truecolor", value_str);
   }
   return -1;
 }
@@ -205,8 +200,7 @@ int validate_opt_render_mode(const char *value_str, char *error_msg, size_t erro
     return RENDER_MODE_HALF_BLOCK;
   }
   if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size,
-                  "Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
+    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
   }
   return -1;
 }
@@ -237,9 +231,7 @@ int validate_opt_palette(const char *value_str, char *error_msg, size_t error_ms
     return PALETTE_CUSTOM;
   } else {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom",
-                    value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
     }
     return -1;
   }
@@ -271,8 +263,7 @@ int validate_opt_log_level(const char *value_str, char *error_msg, size_t error_
     return LOG_FATAL;
   } else {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal", value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal", value_str);
     }
     return -1;
   }
@@ -283,8 +274,7 @@ int validate_opt_log_level(const char *value_str, char *error_msg, size_t error_
  * Returns 0 on success, -1 on error
  * Sets parsed_address on success (resolved if hostname)
  */
-int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client,
-                            char *error_msg, size_t error_msg_size) {
+int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client, char *error_msg, size_t error_msg_size) {
   (void)is_client; // Parameter not used but kept for API consistency
   if (!value_str || strlen(value_str) == 0) {
     if (error_msg) {
@@ -331,8 +321,7 @@ int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t 
   // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
   if (strchr(value_str, '.') != NULL) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.", value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.", value_str);
     }
     return -1;
   }
@@ -463,8 +452,7 @@ int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_
   int val = strtoint_safe(value_str);
   if (val == INT_MIN) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.",
-                    value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.", value_str);
     }
     return INT_MIN;
   }
@@ -478,8 +466,7 @@ int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_
   }
   if (val < 1 || val > 999) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect count '%s'. Must be 'off', 'auto', or 1-999.",
-                    value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect count '%s'. Must be 'off', 'auto', or 1-999.", value_str);
     }
     return INT_MIN;
   }
@@ -501,8 +488,7 @@ int validate_opt_device_index(const char *value_str, char *error_msg, size_t err
   int index = strtoint_safe(value_str);
   if (index == INT_MIN) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid device index '%s'. Must be -1 (default) or a non-negative integer.", value_str);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid device index '%s'. Must be -1 (default) or a non-negative integer.", value_str);
     }
     return INT_MIN;
   }
@@ -510,8 +496,7 @@ int validate_opt_device_index(const char *value_str, char *error_msg, size_t err
   // -1 is valid (system default), otherwise must be >= 0
   if (index < -1) {
     if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid device index '%d'. Must be -1 (default) or a non-negative integer.", index);
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid device index '%d'. Must be -1 (default) or a non-negative integer.", index);
     }
     return INT_MIN;
   }
@@ -637,7 +622,6 @@ bool is_remote_key_path(const char *key_path) {
   if (!key_path || key_path[0] == '\0') {
     return false;
   }
-  return (strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0 ||
-          strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "http://", 7) == 0 ||
+  return (strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0 || strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "http://", 7) == 0 ||
           strncmp(key_path, "https://", 8) == 0);
 }

@@ -98,8 +98,7 @@ static bool is_metadata_start(const char *p) {
   return strncmp(buf, "(default:", 9) == 0 || strncmp(buf, "(env:", 5) == 0;
 }
 
-void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width,
-                                      int continuation_indent_extra) {
+void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width, int continuation_indent_extra) {
   if (!text || !stream)
     return;
 
@@ -220,8 +219,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
  * Two-Column Row Printing
  * ============================================================================ */
 
-void layout_print_two_column_row(FILE *stream, const char *first_column, const char *second_column, int first_col_len,
-                                 int term_width, int continuation_indent_extra) {
+void layout_print_two_column_row(FILE *stream, const char *first_column, const char *second_column, int first_col_len, int term_width, int continuation_indent_extra) {
   if (!stream || !first_column || !second_column)
     return;
 
@@ -285,8 +283,7 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
       for (int i = 0; i < description_indent; i++)
         fprintf(stream, " ");
 
-      layout_print_wrapped_description(stream, second_column, description_indent, term_width,
-                                       continuation_indent_extra);
+      layout_print_wrapped_description(stream, second_column, description_indent, term_width, continuation_indent_extra);
       fprintf(stream, "\n");
     }
   } else {

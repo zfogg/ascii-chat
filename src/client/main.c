@@ -295,9 +295,8 @@ static int initialize_client_systems(void) {
  * @return true to attempt reconnection, false to exit
  */
 static bool client_should_reconnect(asciichat_error_t last_error, int attempt_number, void *user_data) {
-  if (last_error == ERROR_CRYPTO_AUTH || last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION ||
-      last_error == ERROR_CONFIG || last_error == ERROR_INVALID_PASSWORD || last_error == ERROR_INVALID_SIGNATURE ||
-      last_error == ERROR_NETWORK_PROTOCOL || last_error == ERROR_INTERNAL)
+  if (last_error == ERROR_CRYPTO_AUTH || last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION || last_error == ERROR_CONFIG || last_error == ERROR_INVALID_PASSWORD ||
+      last_error == ERROR_INVALID_SIGNATURE || last_error == ERROR_NETWORK_PROTOCOL || last_error == ERROR_INTERNAL)
     return false;
   (void)attempt_number;
   (void)user_data;
@@ -329,12 +328,10 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  * @return ASCIICHAT_OK if successful, error code if connection failed
  */
 static asciichat_error_t client_send_settings(const options_t *values, uint32_t request, void *context) {
-  return acip_settings_send(server_connection_get_transport((client_connection_t *)context), values, request,
-                            UINT32_MAX);
+  return acip_settings_send(server_connection_get_transport((client_connection_t *)context), values, request, UINT32_MAX);
 }
 
-static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                            void *user_data) {
+static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)capture; // Provided by session_client_like, used by protocol threads
   client_connection_t *connection = user_data;
 
@@ -350,10 +347,9 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
-  asciichat_error_t connection_result = client_connection_start(
-      connection, g_client_session.discovered_address ? g_client_session.discovered_address : "",
-      (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
-      g_client_session.password, sizeof(g_client_session.password));
+  asciichat_error_t connection_result =
+      client_connection_start(connection, g_client_session.discovered_address ? g_client_session.discovered_address : "",
+                              (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224), g_client_session.password, sizeof(g_client_session.password));
   if (connection_result != ASCIICHAT_OK) {
     // Password prompt failures request shutdown but must retain their error.
     if (should_exit() && connection_result != ERROR_CRYPTO_AUTH)
@@ -381,12 +377,10 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   while (!should_exit() && server_connection_is_active(connection)) {
     display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
-    settings_error = session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision,
-                                                      client_send_settings, connection);
+    settings_error = session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings, connection);
     if (settings_error != ASCIICHAT_OK)
       break;
-    if (previous.cols != connection->advertised_dimensions.cols ||
-        previous.rows != connection->advertised_dimensions.rows) {
+    if (previous.cols != connection->advertised_dimensions.cols || previous.rows != connection->advertised_dimensions.rows) {
       display_full_reset();
       log_set_terminal_output(false);
     }
@@ -401,31 +395,27 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     bool snapshot_mode_enabled = GET_OPTION(snapshot_mode);
 
     if (!snapshot_check_logged_once) {
-      log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f", snapshot_mode_enabled,
-               (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
+      log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f", snapshot_mode_enabled, (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
                GET_OPTION(snapshot_delay));
       snapshot_check_logged_once = true;
     }
 
     if (snapshot_mode_enabled && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed =
-          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
+      double elapsed = time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       // Log progress every 500ms
       if (current_time_ns - last_progress_log_ns > 500 * 1000 * 1000) {
-        log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                  snapshot_delay, (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
-                  (unsigned long long)current_time_ns);
+        log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed, snapshot_delay,
+                  (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns), (unsigned long long)current_time_ns);
         last_progress_log_ns = current_time_ns;
       }
 
       if (elapsed >= snapshot_delay) {
         char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)", duration_str,
-                 snapshot_delay);
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)", duration_str, snapshot_delay);
         signal_exit();
         break; // Exit loop, proper shutdown will follow
       }
@@ -442,18 +432,15 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
 
     if (GET_OPTION(snapshot_mode) && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed =
-          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
+      double elapsed = time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
-      log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed,
-               snapshot_delay);
+      log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed, snapshot_delay);
 
       if (elapsed >= snapshot_delay) {
         char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)",
-                 duration_str, snapshot_delay);
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)", duration_str, snapshot_delay);
         signal_exit();
         // Don't return yet, allow normal cleanup to proceed below
       }
@@ -475,8 +462,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     // The receive worker already queued the peer notification. Keep the owner
     // thread's failure context without presenting the same rejection twice.
     bool previous = errno_notifications_suppress(true);
-    asciichat_error_t result =
-        SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
+    asciichat_error_t result = SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
     errno_notifications_suppress(previous);
     return result;
   }
@@ -526,8 +512,7 @@ static asciichat_error_t client_select_destination(void *user_data) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Client options are unavailable during LAN discovery");
   if (!opts->lan_discovery)
     return ASCIICHAT_OK;
-  bool default_destination =
-      !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
+  bool default_destination = !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
   if (opts->address_explicit || !default_destination)
     return ASCIICHAT_OK;
 
@@ -551,8 +536,7 @@ static asciichat_error_t client_select_destination(void *user_data) {
   }
   g_client_session.discovered_address = selected_address;
   g_client_session.discovered_port = selected.port;
-  log_debug("LAN discovery: Selected server '%s' at %s:%d", selected.name, selected_address,
-            g_client_session.discovered_port);
+  log_debug("LAN discovery: Selected server '%s' at %s:%d", selected.name, selected_address, g_client_session.discovered_port);
   return ASCIICHAT_OK;
 }
 
@@ -656,8 +640,7 @@ int client_main(void) {
   }
 
   if (discovered_port > 0) {
-    log_debug("Client: discovered_address=%s, discovered_port=%d", discovered_address ? discovered_address : "NULL",
-              discovered_port);
+    log_debug("Client: discovered_address=%s, discovered_port=%d", discovered_address ? discovered_address : "NULL", discovered_port);
   } else {
     log_debug("Client: discovered_address=%s", discovered_address ? discovered_address : "NULL");
   }

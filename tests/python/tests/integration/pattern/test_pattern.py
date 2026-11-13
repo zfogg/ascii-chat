@@ -7,6 +7,7 @@ import sys
 import time
 
 import pytest
+from ascii_chat_tests.cli import cli_command
 from ascii_chat_tests.terminal import Terminal
 
 pytestmark = [pytest.mark.integration, pytest.mark.native]
@@ -18,6 +19,19 @@ def test_native_pattern(binary, shared_library, tmp_path):
                              "--output", str(tmp_path / "evidence")], env=os.environ.copy(),
                             capture_output=True, timeout=120)
     assert result.returncode == 0, (result.stdout + result.stderr).decode("utf-8", errors="replace")[-10000:]
+
+
+def test_test_pattern_is_not_mirrored_by_default(binary, test_environment):
+    """The asymmetric pattern must retain its left-to-right orientation."""
+    command = [
+        str(binary), "--quiet", "--no-check-update", "--log-level", "dev", "mirror", "--test-pattern", "1", "--audio=false",
+        "--snapshot", "--snapshot-delay=0", "--width", "80", "--height", "24",
+        "--color-mode", "none", "--strip-ansi",
+    ]
+    result = subprocess.run(command, env=test_environment,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")[-4000:]
+    assert b"TIMING_FLIP:" not in result.stderr, "test-pattern was mirrored by default"
 
 
 def test_test_pattern_stdout_is_valid_utf8_for_five_seconds(binary, test_environment):
@@ -64,16 +78,15 @@ def test_test_pattern_stdout_is_valid_utf8_for_five_seconds(binary, test_environ
         term.close()
 
 
-def test_test_pattern_200x100_has_stable_vertical_bounds(binary, test_environment):
-    """A large live frame must not bounce when diagnostics interleave output."""
-    term = Terminal([
-        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "--audio=false",
-        "--width", "200", "--height", "100", "--splash-screen=false",
-    ], rows=100, cols=200, environment=test_environment)
+def test_webcam_200x100_has_stable_vertical_bounds(binary, test_environment):
+    """A live webcam-sized frame must not move vertically during a long run."""
+    term = Terminal(cli_command(
+        binary, "mirror", "--test-pattern", "--audio=false", "--width", "200", "--height", "100",
+    ), rows=100, cols=200, environment=test_environment)
     started = False
     samples = 0
     try:
-        deadline = time.monotonic() + 5.0
+        deadline = time.monotonic() + 25.0
         while time.monotonic() < deadline:
             try:
                 chunk = term.output.get(timeout=0.1)

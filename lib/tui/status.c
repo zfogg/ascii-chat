@@ -36,10 +36,8 @@ const char *ui_status_log_controls(void) {
   snprintf(controls, sizeof(controls),
            "%s / %s: close | %s: search logs | %s: keyboard controls | %s / %s: one log | "
            "%s / %s: page | %s / %s: oldest/newest",
-           colored_string(LOG_COLOR_WARN, "q"), colored_string(LOG_COLOR_WARN, "Esc"), "/",
-           colored_string(LOG_COLOR_WARN, "?"), colored_string(LOG_COLOR_WARN, "Up"),
-           colored_string(LOG_COLOR_WARN, "Down"), colored_string(LOG_COLOR_WARN, "PageUp"),
-           colored_string(LOG_COLOR_WARN, "PageDown"), colored_string(LOG_COLOR_WARN, "Home"),
+           colored_string(LOG_COLOR_WARN, "q"), colored_string(LOG_COLOR_WARN, "Esc"), "/", colored_string(LOG_COLOR_WARN, "?"), colored_string(LOG_COLOR_WARN, "Up"),
+           colored_string(LOG_COLOR_WARN, "Down"), colored_string(LOG_COLOR_WARN, "PageUp"), colored_string(LOG_COLOR_WARN, "PageDown"), colored_string(LOG_COLOR_WARN, "Home"),
            colored_string(LOG_COLOR_WARN, "End"));
   return controls;
 }
@@ -68,8 +66,7 @@ void ui_status_log_clear(void) {
 // Status Display
 // ============================================================================
 
-asciichat_error_t ui_status_gather(network_server_t *server, const char *session_string, const char *ipv4_address,
-                                   const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+asciichat_error_t ui_status_gather(network_server_t *server, const char *session_string, const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                                    bool session_is_mdns_only, ui_status_t *out_status) {
   if (!server || !out_status || !mode_name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -223,8 +220,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   return !should_exit_status; // Return false if user wants to exit
 }
 
-void ui_status_update(network_server_t *server, const char *session_string, const char *ipv4_address,
-                      const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+void ui_status_update(network_server_t *server, const char *session_string, const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                       bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {
     return;
@@ -248,8 +244,7 @@ void ui_status_update(network_server_t *server, const char *session_string, cons
   }
 
   ui_status_t status;
-  if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
-                       session_is_mdns_only, &status) == ASCIICHAT_OK) {
+  if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name, session_is_mdns_only, &status) == ASCIICHAT_OK) {
     ui_status_display(&status);
     *last_update_ns = now_us;
   }

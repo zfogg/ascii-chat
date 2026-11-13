@@ -48,6 +48,6 @@
 [submodule "deps/defer"]
 	path = deps/defer
 	url = https://github.com/zfogg/defer.git
-[submodule "deps/libplatform"]
-	path = deps/libplatform
+[submodule "deps/ascii-chat-deps/libplatform"]
+	path = deps/ascii-chat-deps/libplatform
 	url = https://github.com/zfogg/libplatform.git

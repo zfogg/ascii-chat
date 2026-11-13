@@ -40,8 +40,7 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
 
 static const char *renderer_values[] = {"luminance", "glyph", NULL};
 static const int renderer_integers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
-static const char *renderer_descriptions[] = {"Map brightness to the selected palette",
-                                              "Experimental glyph shape matching", NULL};
+static const char *renderer_descriptions[] = {"Map brightness to the selected palette", "Experimental glyph shape matching", NULL};
 static const ascii_renderer_t default_renderer = ASCII_RENDERER_DEFAULT;
 
 static bool parse_explicit_palette(const char *arg, void *dest, char **error_msg) {
@@ -85,8 +84,7 @@ static bool parse_fft_scale(const char *arg, void *dest, char **error_msg) {
       goto invalid;
     char *max_end = NULL;
     parsed.max_db = strtof(end + 1, &max_end);
-    if (max_end == end + 1 || *max_end != '\0' || !isfinite(parsed.min_db) || !isfinite(parsed.max_db) ||
-        parsed.min_db < -120.0f || parsed.max_db > 0.0f || parsed.max_db - parsed.min_db < 12.0f ||
+    if (max_end == end + 1 || *max_end != '\0' || !isfinite(parsed.min_db) || !isfinite(parsed.max_db) || parsed.min_db < -120.0f || parsed.max_db > 0.0f || parsed.max_db - parsed.min_db < 12.0f ||
         parsed.max_db <= parsed.min_db)
       goto invalid;
     parsed.mode = FFT_SCALE_DB;
@@ -94,8 +92,7 @@ static bool parse_fft_scale(const char *arg, void *dest, char **error_msg) {
   SAFE_STRNCPY((char *)dest, arg, 32);
   return true;
 invalid:
-  *error_msg =
-      platform_strdup("--fft-scale dB range must be MIN:MAX with -120 <= MIN < MAX <= 0 and at least 12 dB span");
+  *error_msg = platform_strdup("--fft-scale dB range must be MIN:MAX with -120 <= MIN < MAX <= 0 and at least 12 dB span");
   return false;
 }
 
@@ -112,8 +109,7 @@ const registry_entry_t g_display_entries[] = {
      .type = OPTION_TYPE_CALLBACK,
      .offset = offsetof(options_t, zalgo),
      .default_value_size = sizeof(int),
-     .help_text =
-         "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
+     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
      .group = "DISPLAY",
      .arg_placeholder = "LEVEL",
      .env_var_name = "ASCII_CHAT_ZALGO",
@@ -193,10 +189,7 @@ const registry_entry_t g_display_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.enum_values = g_color_filter_values,
-      .enum_descriptions = g_color_filter_descs,
-      .enum_integer_values = g_color_filter_integers,
-      .input_type = OPTION_INPUT_ENUM},
+     {.enum_values = g_color_filter_values, .enum_descriptions = g_color_filter_descs, .enum_integer_values = g_color_filter_integers, .input_type = OPTION_INPUT_ENUM},
      NULL},
     {"render-mode",
      'M',
@@ -215,10 +208,7 @@ const registry_entry_t g_display_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.enum_values = g_render_values,
-      .enum_descriptions = g_render_descs,
-      .enum_integer_values = g_render_integers,
-      .input_type = OPTION_INPUT_ENUM},
+     {.enum_values = g_render_values, .enum_descriptions = g_render_descs, .enum_integer_values = g_render_integers, .input_type = OPTION_INPUT_ENUM},
      NULL},
     {"palette",
      'P',
@@ -237,10 +227,7 @@ const registry_entry_t g_display_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.enum_values = g_palette_values,
-      .enum_descriptions = g_palette_descs,
-      .enum_integer_values = g_palette_integers,
-      .input_type = OPTION_INPUT_ENUM},
+     {.enum_values = g_palette_values, .enum_descriptions = g_palette_descs, .enum_integer_values = g_palette_integers, .input_type = OPTION_INPUT_ENUM},
      NULL},
     {"palette-chars",
      'C',
@@ -274,10 +261,7 @@ const registry_entry_t g_display_entries[] = {
      .env_var_name = "ASCII_CHAT_RENDERER",
      .parse_fn = parse_ascii_renderer,
      .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     .metadata = {.enum_values = renderer_values,
-                  .enum_descriptions = renderer_descriptions,
-                  .enum_integer_values = renderer_integers,
-                  .input_type = OPTION_INPUT_ENUM}},
+     .metadata = {.enum_values = renderer_values, .enum_descriptions = renderer_descriptions, .enum_integer_values = renderer_integers, .input_type = OPTION_INPUT_ENUM}},
     {.long_name = "stabilize",
      .type = OPTION_TYPE_BOOL,
      .offset = offsetof(options_t, stabilize),

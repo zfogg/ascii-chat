@@ -157,9 +157,9 @@ static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mod
  * Uses log_warn so that config warnings respect the --quiet flag and
  * are routed through the logging system for proper filtering.
  */
-#define CONFIG_WARN(fmt, ...)                                                                                          \
-  do {                                                                                                                 \
-    log_warn("Config file: " fmt, ##__VA_ARGS__);                                                                      \
+#define CONFIG_WARN(fmt, ...)                                                                                                                                                                          \
+  do {                                                                                                                                                                                                 \
+    log_warn("Config file: " fmt, ##__VA_ARGS__);                                                                                                                                                      \
   } while (0)
 
 /**
@@ -168,11 +168,11 @@ static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mod
  * Debug messages use the logging system if it's initialized, otherwise
  * they are silently dropped.
  */
-#define CONFIG_DEBUG(fmt, ...)                                                                                         \
-  do {                                                                                                                 \
-    /* Debug messages are only shown in debug builds after logging is initialized */                                   \
-    /* Use log_debug which safely checks initialization itself */                                                      \
-    log_debug(fmt, ##__VA_ARGS__);                                                                                     \
+#define CONFIG_DEBUG(fmt, ...)                                                                                                                                                                         \
+  do {                                                                                                                                                                                                 \
+    /* Debug messages are only shown in debug builds after logging is initialized */                                                                                                                   \
+    /* Use log_debug which safely checks initialization itself */                                                                                                                                      \
+    log_debug(fmt, ##__VA_ARGS__);                                                                                                                                                                     \
   } while (0)
 
 /** @} */
@@ -264,51 +264,32 @@ typedef union {
 typedef struct {
   void (*extract)(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
                   bool *has_value); ///< Extract value from TOML datum
-  asciichat_error_t (*parse_validate)(const char *value_str, const config_option_metadata_t *meta,
-                                      option_parsed_value_t *parsed, char *error_msg,
+  asciichat_error_t (*parse_validate)(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg,
                                       size_t error_size); ///< Parse and validate value
-  asciichat_error_t (*write_to_struct)(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                       options_t *opts, char *error_msg,
+  asciichat_error_t (*write_to_struct)(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg,
                                        size_t error_size); ///< Write to options struct
   void (*format_output)(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
                         size_t bufsize); ///< Format for TOML output
 } option_type_handler_t;
 
 // Forward declarations
-static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                           bool *has_value);
-static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                        bool *has_value);
-static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                         bool *has_value);
-static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                           bool *has_value);
-static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta,
-                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size);
-static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta,
-                                            option_parsed_value_t *parsed, char *error_msg, size_t error_size);
-static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta,
-                                             option_parsed_value_t *parsed, char *error_msg, size_t error_size);
-static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
-                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size);
-static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                      options_t *opts, char *error_msg, size_t error_size);
-static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                   options_t *opts, char *error_msg, size_t error_size);
-static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                    options_t *opts, char *error_msg, size_t error_size);
-static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                      options_t *opts, char *error_msg, size_t error_size);
-static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                          size_t bufsize);
-static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                       size_t bufsize);
-static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                        size_t bufsize);
-static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                          size_t bufsize);
-static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                            size_t bufsize);
+static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value);
+static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value);
+static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value);
+static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value);
+static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size);
+static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize);
+static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize);
+static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize);
+static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize);
+static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize);
 
 // Handler registry - indexed by option_type_t
 static const option_type_handler_t g_type_handlers[] = {
@@ -327,8 +308,7 @@ static const option_type_handler_t g_type_handlers[] = {
 /**
  * @brief Extract STRING value from TOML datum
  */
-static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                           bool *has_value) {
+static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value) {
   (void)int_val;
   (void)bool_val;
   (void)double_val;
@@ -349,8 +329,7 @@ static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bo
 /**
  * @brief Extract INT value from TOML datum
  */
-static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                        bool *has_value) {
+static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value) {
   (void)int_val;
   (void)bool_val;
   (void)double_val;
@@ -370,8 +349,7 @@ static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool 
 /**
  * @brief Extract BOOL value from TOML datum
  */
-static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                         bool *has_value) {
+static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value) {
   (void)int_val;
   (void)double_val;
 
@@ -386,8 +364,7 @@ static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool
 /**
  * @brief Extract DOUBLE value from TOML datum
  */
-static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                           bool *has_value) {
+static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val, bool *has_value) {
   (void)int_val;
   (void)bool_val;
 
@@ -407,8 +384,7 @@ static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bo
 /**
  * @brief Parse and validate STRING value
  */
-static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta,
-                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
   (void)meta;
   (void)error_msg;
   (void)error_size;
@@ -420,8 +396,7 @@ static asciichat_error_t parse_validate_string(const char *value_str, const conf
 /**
  * @brief Parse and validate INT value
  */
-static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta,
-                                            option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
   // Detect enum fields by checking field_offset
   int enum_val = -1;
   bool is_enum = false;
@@ -459,14 +434,11 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
       if (parsed_numeric && raw_enum >= INT_MIN && raw_enum <= INT_MAX) {
         int enum_int = (int)raw_enum;
         if (meta->field_offset == offsetof(options_t, color_mode)) {
-          numeric_valid =
-              (enum_int == COLOR_MODE_AUTO || enum_int == COLOR_MODE_NONE || enum_int == COLOR_MODE_16_COLOR ||
-               enum_int == COLOR_MODE_256_COLOR || enum_int == COLOR_MODE_TRUECOLOR);
+          numeric_valid = (enum_int == COLOR_MODE_AUTO || enum_int == COLOR_MODE_NONE || enum_int == COLOR_MODE_16_COLOR || enum_int == COLOR_MODE_256_COLOR || enum_int == COLOR_MODE_TRUECOLOR);
         } else if (meta->field_offset == offsetof(options_t, color_filter)) {
           numeric_valid = (enum_int >= COLOR_FILTER_NONE && enum_int < COLOR_FILTER_COUNT);
         } else if (meta->field_offset == offsetof(options_t, render_mode)) {
-          numeric_valid = (enum_int == RENDER_MODE_FOREGROUND || enum_int == RENDER_MODE_BACKGROUND ||
-                           enum_int == RENDER_MODE_HALF_BLOCK);
+          numeric_valid = (enum_int == RENDER_MODE_FOREGROUND || enum_int == RENDER_MODE_BACKGROUND || enum_int == RENDER_MODE_HALF_BLOCK);
         } else if (meta->field_offset == offsetof(options_t, palette_type)) {
           numeric_valid = (enum_int >= PALETTE_STANDARD && enum_int < PALETTE_COUNT);
         }
@@ -502,16 +474,13 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
     // Constraints are present if max != 0 (max will always be non-zero for bounded integer ranges)
     if (meta && meta->constraints.int_range.max != 0) {
       // Allow 0 as special "use default" value for certain fields
-      bool is_auto_detect_field =
-          (meta->field_offset == offsetof(options_t, width) || meta->field_offset == offsetof(options_t, height) ||
-           meta->field_offset == offsetof(options_t, fps) ||
-           meta->field_offset == offsetof(options_t, compression_level));
+      bool is_auto_detect_field = (meta->field_offset == offsetof(options_t, width) || meta->field_offset == offsetof(options_t, height) || meta->field_offset == offsetof(options_t, fps) ||
+                                   meta->field_offset == offsetof(options_t, compression_level));
 
       if (int_val == 0 && is_auto_detect_field) {
         // 0 is allowed for these fields (means auto-detect or use default)
       } else if (int_val < meta->constraints.int_range.min || int_val > meta->constraints.int_range.max) {
-        SAFE_SNPRINTF(error_msg, error_size, "Integer %d out of range [%d-%d]: %s", int_val,
-                      meta->constraints.int_range.min, meta->constraints.int_range.max, value_str);
+        SAFE_SNPRINTF(error_msg, error_size, "Integer %d out of range [%d-%d]: %s", int_val, meta->constraints.int_range.min, meta->constraints.int_range.max, value_str);
         return ERROR_CONFIG;
       }
     }
@@ -524,23 +493,20 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
 /**
  * @brief Parse and validate BOOL value
  */
-static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta,
-                                             option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
   (void)meta;
   (void)error_msg;
   (void)error_size;
 
   // Parse boolean from string representation (OPT_VALUE_TRUE or OPT_VALUE_FALSE)
-  parsed->bool_value = value_str && (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0 ||
-                                     strcmp(value_str, "yes") == 0);
+  parsed->bool_value = value_str && (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
   return ASCIICHAT_OK;
 }
 
 /**
  * @brief Parse and validate DOUBLE value
  */
-static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
-                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta, option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
   char *endptr = NULL;
   double parsed_val = strtod(value_str, &endptr);
   if (*endptr != '\0') {
@@ -566,8 +532,7 @@ static asciichat_error_t parse_validate_double(const char *value_str, const conf
 /**
  * @brief Write STRING value to struct field
  */
-static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                      options_t *opts, char *error_msg, size_t error_size) {
+static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size) {
   (void)error_msg;
   (void)error_size;
 
@@ -575,8 +540,7 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
   const char *final_value = parsed->str_value;
 
   // Special handling for path-based options (keys, log files)
-  bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL ||
-                         strstr(meta->toml_key, "keyfile") != NULL);
+  bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL || strstr(meta->toml_key, "keyfile") != NULL);
   if (is_path_option) {
     // Check if it's a path that needs normalization
     bool log_file_relative = strstr(meta->toml_key, "log_file") != NULL && final_value[0] != '/' &&
@@ -585,9 +549,7 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
       char *normalized = NULL;
       path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
       if (strstr(meta->toml_key, "key") != NULL) {
-        role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL)
-                   ? PATH_ROLE_KEY_PUBLIC
-                   : PATH_ROLE_KEY_PRIVATE;
+        role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL) ? PATH_ROLE_KEY_PUBLIC : PATH_ROLE_KEY_PRIVATE;
       } else if (strstr(meta->toml_key, "log_file") != NULL) {
         role = PATH_ROLE_LOG_FILE;
       }
@@ -614,8 +576,7 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
 /**
  * @brief Write INT value to struct field
  */
-static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                   options_t *opts, char *error_msg, size_t error_size) {
+static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size) {
   (void)error_msg;
   (void)error_size;
 
@@ -634,8 +595,7 @@ static asciichat_error_t write_int(const option_parsed_value_t *parsed, const co
 /**
  * @brief Write BOOL value to struct field
  */
-static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                    options_t *opts, char *error_msg, size_t error_size) {
+static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size) {
   (void)error_msg;
   (void)error_size;
 
@@ -669,8 +629,7 @@ static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const c
 /**
  * @brief Write DOUBLE value to struct field
  */
-static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                      options_t *opts, char *error_msg, size_t error_size) {
+static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta, options_t *opts, char *error_msg, size_t error_size) {
   (void)error_msg;
   (void)error_size;
 
@@ -692,8 +651,7 @@ static asciichat_error_t write_double(const option_parsed_value_t *parsed, const
 /**
  * @brief Format STRING value for TOML output
  */
-static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                          size_t bufsize) {
+static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize) {
   (void)field_size;
   (void)meta;
 
@@ -720,8 +678,7 @@ static void format_string(const char *field_ptr, size_t field_size, const config
 /**
  * @brief Format INT value for TOML output
  */
-static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                       size_t bufsize) {
+static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize) {
   int int_value = 0;
   if (field_size == sizeof(unsigned short int)) {
     int_value = *(unsigned short int *)field_ptr;
@@ -779,8 +736,7 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
 /**
  * @brief Format BOOL value for TOML output
  */
-static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                        size_t bufsize) {
+static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize) {
   bool bool_value = false;
   if (field_size == sizeof(unsigned short int)) {
     bool_value = *(unsigned short int *)field_ptr != 0;
@@ -804,8 +760,7 @@ static void format_bool(const char *field_ptr, size_t field_size, const config_o
 /**
  * @brief Format DOUBLE value for TOML output
  */
-static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                          size_t bufsize) {
+static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize) {
   (void)meta;
 
   if (field_size == sizeof(float)) {
@@ -825,8 +780,7 @@ static void format_double(const char *field_ptr, size_t field_size, const config
  * Callback-backed options are stored in regular fields in options_t.
  * For config generation, format them by field width and key semantics.
  */
-static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                            size_t bufsize) {
+static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf, size_t bufsize) {
   if (!field_ptr || !buf || !meta) {
     return;
   }
@@ -856,15 +810,12 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
       SAFE_SNPRINTF(buf, bufsize, "false");
     return;
   }
-  if (meta->field_offset == offsetof(options_t, log_file) ||
-      meta->field_offset == offsetof(options_t, palette_custom) ||
-      meta->field_offset == offsetof(options_t, yt_dlp_options)) {
+  if (meta->field_offset == offsetof(options_t, log_file) || meta->field_offset == offsetof(options_t, palette_custom) || meta->field_offset == offsetof(options_t, yt_dlp_options)) {
     format_string(field_ptr, field_size, meta, buf, bufsize);
     return;
   }
 
-  if (meta->field_offset == offsetof(options_t, media_seek_timestamp) ||
-      meta->field_offset == offsetof(options_t, microphone_sensitivity) ||
+  if (meta->field_offset == offsetof(options_t, media_seek_timestamp) || meta->field_offset == offsetof(options_t, microphone_sensitivity) ||
       meta->field_offset == offsetof(options_t, speakers_volume)) {
     format_double(field_ptr, field_size, meta, buf, bufsize);
     return;
@@ -904,8 +855,7 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
  * - Type coercion (int/string, float/string)
  * - crypto.no_encrypt special logic
  */
-static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode_t detected_mode, options_t *opts,
-                                             bool strict) {
+static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode_t detected_mode, options_t *opts, bool strict) {
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
   asciichat_error_t first_error = ASCIICHAT_OK;
@@ -993,8 +943,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           opts->palette_type = PALETTE_CUSTOM;
           option_set_flags[i] = true;
         } else {
-          CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(chars_str),
-                      sizeof(opts->palette_custom) - 1);
+          CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(chars_str), sizeof(opts->palette_custom) - 1);
           if (strict) {
             SAFE_FREE(option_set_flags);
             return SET_ERRNO(ERROR_CONFIG, "palette.chars too long");
@@ -1028,8 +977,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     }
 
     // Preserve boolean test_pattern config files; integers select an animation.
-    if (meta->field_offset == offsetof(options_t, test_pattern) &&
-        (strcmp(value_str, "true") == 0 || strcmp(value_str, "false") == 0)) {
+    if (meta->field_offset == offsetof(options_t, test_pattern) && (strcmp(value_str, "true") == 0 || strcmp(value_str, "false") == 0)) {
       opts->test_pattern = strcmp(value_str, "true") == 0;
       option_set_flags[i] = true;
       continue;
@@ -1042,9 +990,8 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
 
     // MCP bind strings have a CLI parser that also validates address families.
     // Keep their string schema, but apply that parser to TOML values as well.
-    bool mcp_bind =
-        detected_mode == MODE_MCP_SERVER && meta->type == OPTION_TYPE_STRING && meta->parse_fn &&
-        (meta->field_offset == offsetof(options_t, address) || meta->field_offset == offsetof(options_t, address6));
+    bool mcp_bind = detected_mode == MODE_MCP_SERVER && meta->type == OPTION_TYPE_STRING && meta->parse_fn &&
+                    (meta->field_offset == offsetof(options_t, address) || meta->field_offset == offsetof(options_t, address6));
     if (meta->type == OPTION_TYPE_CALLBACK || mcp_bind) {
       // Unified generated configs use "localhost"; the bind parser accepts
       // numeric addresses, so preserve that loopback default for MCP.
@@ -1064,8 +1011,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           // Don't continue - fall through to validation check below
         } else {
           // Parsing failed
-          CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str,
-                      callback_error ? callback_error : "parsing failed");
+          CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, callback_error ? callback_error : "parsing failed");
           if (callback_error) {
             SAFE_FREE(callback_error);
           }
@@ -1100,8 +1046,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       // Write value to options_t using handler
       if (g_type_handlers[meta->type].write_to_struct) {
         char error_msg_write[BUFFER_SIZE_SMALL] = {0};
-        asciichat_error_t write_result =
-            g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
+        asciichat_error_t write_result = g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
         if (write_result != ASCIICHAT_OK) {
           CONFIG_WARN("Failed to write %s: %s (skipping)", meta->toml_key, error_msg_write);
           if (strict) {
@@ -1127,11 +1072,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       if (!meta->validate_fn(opts)) {
         asciichat_error_context_t error;
         bool has_error = errno_peek_since(validation_scope, &error);
-        CONFIG_WARN("Validation failed for %s: %s (skipping)", meta->toml_key,
-                    has_error ? error.context_message : "validation failed");
+        CONFIG_WARN("Validation failed for %s: %s (skipping)", meta->toml_key, has_error ? error.context_message : "validation failed");
         if (strict && first_error == ASCIICHAT_OK) {
-          first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s: %s", meta->toml_key,
-                                  has_error ? error.context_message : "validation failed");
+          first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s: %s", meta->toml_key, has_error ? error.context_message : "validation failed");
         } else {
           errno_scope_end(validation_scope, ASCIICHAT_ERRNO_DISMISSED);
         }
@@ -1199,8 +1142,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
-                                        options_t *opts) {
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts) {
   // detected_mode is used in config_apply_schema for bitmask validation
   char *config_path_expanded = NULL;
   defer(SAFE_FREE(config_path_expanded));
@@ -1246,12 +1188,23 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
-  asciichat_error_t validate_result =
-      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  if (validate_result != ASCIICHAT_OK) {
-    SAFE_FREE(validated_config_path);
-    SAFE_FREE(config_path_expanded);
-    return validate_result;
+  // An explicit --config path is already user-authorized and may point to any
+  // readable configuration file.  Do not route Windows absolute paths through
+  // the sandbox validator, which is intended for untrusted path-valued
+  // options and can reject valid drive-qualified paths.
+  if (config_path) {
+    validated_config_path = platform_strdup(config_path_expanded);
+    if (!validated_config_path) {
+      SAFE_FREE(config_path_expanded);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to copy config file path");
+    }
+  } else {
+    asciichat_error_t validate_result = path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    if (validate_result != ASCIICHAT_OK) {
+      SAFE_FREE(validated_config_path);
+      SAFE_FREE(config_path_expanded);
+      return validate_result;
+    }
   }
   // Free the old path before reassigning (defer will free the new one)
   if (config_path_expanded != validated_config_path) {
@@ -1401,10 +1354,8 @@ static bool config_key_should_be_commented(const char *toml_key) {
     return false;
   }
 
-  return strcmp(toml_key, "display.zalgo") == 0 || strcmp(toml_key, "logging.log_file") == 0 ||
-         strcmp(toml_key, "security.password") == 0 || strcmp(toml_key, "security.key") == 0 ||
-         strcmp(toml_key, "security.server_key") == 0 || strcmp(toml_key, "security.client_keys") == 0 ||
-         strcmp(toml_key, "media.file") == 0 || strcmp(toml_key, "media.url") == 0 ||
+  return strcmp(toml_key, "display.zalgo") == 0 || strcmp(toml_key, "logging.log_file") == 0 || strcmp(toml_key, "security.password") == 0 || strcmp(toml_key, "security.key") == 0 ||
+         strcmp(toml_key, "security.server_key") == 0 || strcmp(toml_key, "security.client_keys") == 0 || strcmp(toml_key, "media.file") == 0 || strcmp(toml_key, "media.url") == 0 ||
          strcmp(toml_key, "media.yt_dlp_options") == 0 || strcmp(toml_key, "network.turn_secret") == 0;
 }
 
@@ -1455,8 +1406,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   if (!config_builder_append(&builder, "# ascii-chat configuration file\n")) {
     return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
   }
-  if (!config_builder_append(&builder, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR,
-                             ASCII_CHAT_VERSION_MINOR, ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION)) {
+  if (!config_builder_append(&builder, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR, ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION)) {
     return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
   }
   if (!config_builder_append(&builder, "#\n")) {
@@ -1474,8 +1424,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   if (!config_builder_append(&builder, "#\n")) {
     return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
   }
-  if (!config_builder_append(&builder,
-                             "# If you upgrade ascii-chat and this version comment changes, you may need to\n")) {
+  if (!config_builder_append(&builder, "# If you upgrade ascii-chat and this version comment changes, you may need to\n")) {
     return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
   }
   if (!config_builder_append(&builder, "# delete and regenerate this file with: ascii-chat --config-create\n")) {
@@ -1561,8 +1510,7 @@ asciichat_error_t config_create_default(const char *config_path) {
       // Note: Multiple options can map to the same field (e.g., server_log_file, client_log_file)
       bool is_duplicate = false;
       for (size_t j = 0; j < opt_idx; j++) {
-        if (cat_options[j] && cat_options[j]->toml_key && meta->toml_key &&
-            strcmp(cat_options[j]->toml_key, meta->toml_key) == 0) {
+        if (cat_options[j] && cat_options[j]->toml_key && meta->toml_key && strcmp(cat_options[j]->toml_key, meta->toml_key) == 0) {
           is_duplicate = true;
           break;
         }
@@ -1607,8 +1555,7 @@ asciichat_error_t config_create_default(const char *config_path) {
       // Format and add the option value using handler (commented out to avoid conflicts)
       if (g_type_handlers[meta->type].format_output) {
         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
-        g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
-                                                  sizeof(formatted_value));
+        g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value, sizeof(formatted_value));
         const char *output_key = meta->toml_key;
         size_t category_len = strlen(category);
         if (strncmp(meta->toml_key, category, category_len) == 0 && meta->toml_key[category_len] == '.') {
@@ -1657,8 +1604,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     }
 
     char *validated_config_path = NULL;
-    asciichat_error_t validate_result =
-        path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    asciichat_error_t validate_result = path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
     if (validate_result != ASCIICHAT_OK) {
       SAFE_FREE(validated_config_path);
       SAFE_FREE(config_path_expanded);
@@ -1678,8 +1624,7 @@ asciichat_error_t config_create_default(const char *config_path) {
 
       char question[OPTIONS_CONFIG_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", config_path_expanded);
-      bool overwrite =
-          ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Config file creation cancelled.");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
@@ -1744,6 +1689,33 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
   asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
   defer(config_file_list_destroy(&config_files));
 
+  // Keep the application config authoritative even when an older platform
+  // runtime is present.  The explicit config path and generated config both
+  // use this directory, so discovery must not silently fall back to the
+  // generic "application" directory.
+  if (search_result == ASCIICHAT_OK && config_files.count == 0) {
+    char *config_dir = get_config_dir();
+    if (config_dir) {
+      size_t dir_len = strlen(config_dir);
+      bool has_separator = dir_len > 0 && (config_dir[dir_len - 1] == '/' || config_dir[dir_len - 1] == '\\');
+      size_t path_len = dir_len + (has_separator ? 0 : 1) + strlen("config.toml") + 1;
+      char *path = SAFE_MALLOC(path_len, char *);
+      if (path) {
+        safe_snprintf(path, path_len, "%s%sconfig.toml", config_dir, has_separator ? "" : "\\");
+        if (config_files.capacity > config_files.count) {
+          config_file_result_t *file = &config_files.files[config_files.count++];
+          file->path = path;
+          file->priority = 0;
+          file->exists = true;
+          file->is_system_config = false;
+          path = NULL;
+        }
+        SAFE_FREE(path);
+      }
+      SAFE_FREE(config_dir);
+    }
+  }
+
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
     return search_result;
@@ -1763,8 +1735,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     bool is_user_config = !file->is_system_config;
     bool file_strict = is_user_config ? strict : false;
 
-    CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no",
-                 file_strict ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
+    CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no", file_strict ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
 
     asciichat_errno_scope_t load_scope = errno_scope_begin();
     asciichat_error_t load_result = config_load_and_apply(detected_mode, file->path, file_strict, opts);

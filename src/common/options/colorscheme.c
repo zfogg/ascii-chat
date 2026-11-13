@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <stdatomic.h>
 #include <ascii-chat/os/keyboard.h>
+#include <ascii-chat/tui/controller.h>
 
 /* ============================================================================
  * Global State
@@ -43,9 +44,7 @@ static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
  * EXCEPTION: Emscripten/WASM with pthreads doesn't support static mutex initialization properly,
  * so we initialize it explicitly in colorscheme_init() like Windows. */
 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
-mutex_t g_colorscheme_mutex = {
-    .impl = {0},
-    .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
+mutex_t g_colorscheme_mutex = {.impl = {0}, .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
 #else
 mutex_t g_colorscheme_mutex = {.impl = PTHREAD_MUTEX_INITIALIZER, .name = NULL}; /* POSIX pthread_mutex_t */
 #endif
@@ -252,9 +251,7 @@ static const color_scheme_t BASE16_DEFAULT_SCHEME = {.name = "base16-default",
 /**
  * @brief Array of all built-in color schemes
  */
-static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME,        &NORD_SCHEME,    &SOLARIZED_SCHEME,
-                                                  &DRACULA_SCHEME,       &GRUVBOX_SCHEME, &MONOKAI_SCHEME,
-                                                  &BASE16_DEFAULT_SCHEME};
+static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME, &NORD_SCHEME, &SOLARIZED_SCHEME, &DRACULA_SCHEME, &GRUVBOX_SCHEME, &MONOKAI_SCHEME, &BASE16_DEFAULT_SCHEME};
 
 #define NUM_BUILTIN_SCHEMES (sizeof(BUILTIN_SCHEMES) / sizeof(BUILTIN_SCHEMES[0]))
 
@@ -494,8 +491,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
       for (int i = 0; i < 8; i++) {
         toml_datum_t color_value = toml_get(dark_section, color_names[i]);
         if (color_value.type == TOML_STRING) {
-          parse_hex_color(color_value.u.s, &scheme->log_colors_dark[i].r, &scheme->log_colors_dark[i].g,
-                          &scheme->log_colors_dark[i].b);
+          parse_hex_color(color_value.u.s, &scheme->log_colors_dark[i].r, &scheme->log_colors_dark[i].g, &scheme->log_colors_dark[i].b);
         }
       }
     }
@@ -508,8 +504,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
       for (int i = 0; i < 8; i++) {
         toml_datum_t color_value = toml_get(light_section, color_names[i]);
         if (color_value.type == TOML_STRING) {
-          parse_hex_color(color_value.u.s, &scheme->log_colors_light[i].r, &scheme->log_colors_light[i].g,
-                          &scheme->log_colors_light[i].b);
+          parse_hex_color(color_value.u.s, &scheme->log_colors_light[i].r, &scheme->log_colors_light[i].g, &scheme->log_colors_light[i].b);
         }
       }
     }
@@ -574,8 +569,7 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
  * Public API: Scheme Compilation
  * ============================================================================ */
 
-asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
-                                             terminal_background_t background, compiled_color_scheme_t *compiled) {
+asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode, terminal_background_t background, compiled_color_scheme_t *compiled) {
   if (!scheme || !compiled) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL scheme or compiled pointer");
   }
@@ -592,19 +586,14 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
   }
 
   /* Select color array based on background */
-  const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
-                                  ? scheme->log_colors_light
-                                  : scheme->log_colors_dark;
+  const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant) ? scheme->log_colors_light : scheme->log_colors_dark;
   // Slot 7 stores the scheme's neutral RGB value, although log entries compile
   // that slot as an ANSI reset. Notices need its actual foreground color.
   rgb_pixel_t foreground = colors[7];
   uint8_t foreground_index = rgb_to_16color(foreground.r, foreground.g, foreground.b);
-  safe_snprintf(compiled->foreground_16, sizeof(compiled->foreground_16), "\033[%dm",
-                foreground_index < 8 ? 30 + foreground_index : 90 + foreground_index - 8);
-  safe_snprintf(compiled->foreground_256, sizeof(compiled->foreground_256), "\033[38;5;%dm",
-                rgb_to_256color(foreground.r, foreground.g, foreground.b));
-  rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor,
-                        sizeof(compiled->foreground_truecolor));
+  safe_snprintf(compiled->foreground_16, sizeof(compiled->foreground_16), "\033[%dm", foreground_index < 8 ? 30 + foreground_index : 90 + foreground_index - 8);
+  safe_snprintf(compiled->foreground_256, sizeof(compiled->foreground_256), "\033[38;5;%dm", rgb_to_256color(foreground.r, foreground.g, foreground.b));
+  rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor, sizeof(compiled->foreground_truecolor));
   /* Helper: allocate and format a color code string */
   char temp_buf[OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE];
 
@@ -700,17 +689,15 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
   offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "[colors.dark]\n");
 
   for (int i = 0; i < 8; i++) {
-    offset +=
-        safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i],
-                      scheme.log_colors_dark[i].r, scheme.log_colors_dark[i].g, scheme.log_colors_dark[i].b);
+    offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i], scheme.log_colors_dark[i].r, scheme.log_colors_dark[i].g,
+                            scheme.log_colors_dark[i].b);
   }
 
   /* Light mode colors if available */
   if (scheme.has_light_variant) {
     offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "\n[colors.light]\n");
     for (int i = 0; i < 8; i++) {
-      offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n",
-                              color_names[i], scheme.log_colors_light[i].r, scheme.log_colors_light[i].g,
+      offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i], scheme.log_colors_light[i].r, scheme.log_colors_light[i].g,
                               scheme.log_colors_light[i].b);
     }
   }
@@ -894,8 +881,7 @@ static terminal_background_t current_background(void) {
   bool keyboard = keyboard_is_initialized();
   uint8_t r, g, b;
   if (keyboard && keyboard_stream_background(&r, &g, &b))
-    atomic_store(&g_live_background,
-                 (0.2126 * r + 0.7152 * g + 0.0722 * b) < 127.5 ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT);
+    atomic_store(&g_live_background, (0.2126 * r + 0.7152 * g + 0.0722 * b) < 127.5 ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT);
 #endif
   if (!platform_isatty(STDERR_FILENO))
     return (terminal_background_t)atomic_load(&g_live_background);
@@ -903,7 +889,7 @@ static terminal_background_t current_background(void) {
   uint64_t checked = atomic_load(&g_background_checked_us);
   if ((!checked || now - checked >= 250000) && !atomic_flag_test_and_set(&g_background_query)) {
 #if !defined(__EMSCRIPTEN__)
-    if (keyboard) {
+    if (keyboard && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
       // Rendering and logging must never wait for an unsupported terminal.
       // Its normal input pump decodes the reply and publishes the new RGB.
       (void)keyboard_request_background();
@@ -940,10 +926,7 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
   }
   const color_scheme_t *active = colorscheme_get_active_scheme();
   rgb_pixel_t colors[COLORSCHEME_LOG_COLOR_COUNT];
-  memcpy(colors,
-         palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light
-                                                                                   : active->log_colors_dark,
-         sizeof(colors));
+  memcpy(colors, palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light : active->log_colors_dark, sizeof(colors));
   for (int i = 0; i < 9; ++i) {
     char *code = i == 8 ? palette->foreground : palette->codes[i];
     rgb_pixel_t rgb = colors[i == 8 ? 7 : i];

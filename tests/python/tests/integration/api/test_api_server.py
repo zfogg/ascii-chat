@@ -1,5 +1,6 @@
 """HTTP API mode smoke tests."""
 
+import base64
 import json
 import subprocess
 import socket
@@ -59,10 +60,12 @@ def test_api_server_health(binary: Path):
             assert error.code == 422
         else:
             raise AssertionError("undecodable image should return 422")
-        image = Path(__file__).parents[4] / "docs" / "images" / "audio-visualizations" / "frequencies.png"
+        image_bytes = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
         request = urllib.request.Request(
-            f"http://127.0.0.1:{port}/convert?width=40&height=20&format=text&palette-chars=.-+%23",
-            data=image.read_bytes(),
+            f"http://127.0.0.1:{port}/convert?width=40&height=20&format=text&output=text&palette-chars=.-+%23",
+            data=image_bytes,
             method="POST",
             headers={"Content-Type": "image/png"},
         )
@@ -73,7 +76,7 @@ def test_api_server_health(binary: Path):
             assert rendered
         files_request = urllib.request.Request(
             f"http://127.0.0.1:{port}/convert?width=40&height=20",
-            data=image.read_bytes(),
+            data=image_bytes,
             method="POST",
             headers={"Content-Type": "image/png"},
         )
@@ -88,13 +91,13 @@ def test_api_server_health(binary: Path):
             b"--" + boundary + b"\r\n"
             b'Content-Disposition: form-data; name="image"; filename="image.png"\r\n'
             b"Content-Type: image/png\r\n\r\n"
-            + image.read_bytes()
+            + image_bytes
             + b"\r\n--"
             + boundary
             + b"--\r\n"
         )
         multipart_request = urllib.request.Request(
-            f"http://127.0.0.1:{port}/convert?width=40&height=20&format=json&palette-chars=.-%2B%23",
+                f"http://127.0.0.1:{port}/convert?width=40&height=20&format=json&output=text&palette-chars=.-%2B%23",
             data=multipart,
             method="POST",
             headers={"Content-Type": f"multipart/form-data; boundary={boundary.decode()}"},

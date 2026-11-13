@@ -11,7 +11,7 @@ pytestmark = pytest.mark.unit
 def test_websocket_dependency_probes(tmp_path, c_compiler):
     if sys.platform == "win32":
         pytest.skip("POSIX WebSocket dependency probe")
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[4]
     fixture = tmp_path
     vendor = fixture / "vendor"
     (vendor / "lib/tls").mkdir(parents=True)

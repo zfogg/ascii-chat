@@ -71,10 +71,8 @@ void stats_runtime_media(unsigned width, unsigned height, double position, doubl
     return;
   atomic_store_u64_impl(&g_media_width, width);
   atomic_store_u64_impl(&g_media_height, height);
-  atomic_store_u64_impl(&g_media_position,
-                        isfinite(position) && position >= 0 && position < 1e12 ? (uint64_t)(position * 1000) + 1 : 0);
-  atomic_store_u64_impl(&g_media_duration,
-                        isfinite(duration) && duration > 0 && duration < 1e12 ? (uint64_t)(duration * 1000) + 1 : 0);
+  atomic_store_u64_impl(&g_media_position, isfinite(position) && position >= 0 && position < 1e12 ? (uint64_t)(position * 1000) + 1 : 0);
+  atomic_store_u64_impl(&g_media_duration, isfinite(duration) && duration > 0 && duration < 1e12 ? (uint64_t)(duration * 1000) + 1 : 0);
 }
 
 stats_scope_t *stats_runtime_scope(void) {
@@ -84,9 +82,8 @@ stats_scope_t *stats_runtime_peer_scope(stats_peer_t *peer) {
   return peer ? peer->scope : NULL;
 }
 bool stats_runtime_active(void) {
-  return atomic_load_bool_impl(&g_active) && (ui_controller_interactive_screen() == UI_SCREEN_STATS ||
-                                              (ui_controller_interactive_screen() == UI_SCREEN_HELP &&
-                                               keyboard_help_previous_interactive() == UI_SCREEN_STATS));
+  return atomic_load_bool_impl(&g_active) &&
+         (ui_controller_interactive_screen() == UI_SCREEN_STATS || (ui_controller_interactive_screen() == UI_SCREEN_HELP && keyboard_help_previous_interactive() == UI_SCREEN_STATS));
 }
 
 void stats_runtime_toggle(void) {
@@ -157,8 +154,7 @@ stats_peer_t *stats_runtime_peer_open(const char *transport) {
     return NULL;
   stats_capabilities_t caps = network_capabilities();
   stats_sampler_config_t config = {NS_PER_SEC_INT, 250 * NS_PER_MS_INT};
-  if (stats_scope_create(&caps, &peer->scope) != ASCIICHAT_OK ||
-      stats_sampler_create(&config, &peer->sampler) != ASCIICHAT_OK) {
+  if (stats_scope_create(&caps, &peer->scope) != ASCIICHAT_OK || stats_sampler_create(&config, &peer->sampler) != ASCIICHAT_OK) {
     stats_scope_destroy(peer->scope);
     SAFE_FREE(peer);
     return NULL;
@@ -206,10 +202,8 @@ void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_byte
       continue;
     }
     stats_counter_add(scopes[i], sent ? STATS_COUNTER_PACKETS_SENT : STATS_COUNTER_PACKETS_RECEIVED, 1);
-    stats_counter_add(scopes[i], sent ? STATS_COUNTER_BYTES_SENT : STATS_COUNTER_BYTES_RECEIVED,
-                      sizeof(packet_header_t) + payload_bytes);
-    if (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_IMAGE_FRAME_H265 ||
-        type == PACKET_TYPE_IMAGE_FRAME_H264)
+    stats_counter_add(scopes[i], sent ? STATS_COUNTER_BYTES_SENT : STATS_COUNTER_BYTES_RECEIVED, sizeof(packet_header_t) + payload_bytes);
+    if (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_IMAGE_FRAME_H265 || type == PACKET_TYPE_IMAGE_FRAME_H264)
       stats_counter_add(scopes[i], sent ? STATS_COUNTER_FRAMES_SENT : STATS_COUNTER_FRAMES_RECEIVED, 1);
   }
 }
@@ -219,19 +213,15 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
     stats_view_add(view, "Uptime %.1fs", (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
-    stats_view_add_header(view, "%-28s %14s %14s",
-                          strcmp(g_mode, "mcp-server") == 0 ? "MCP REQUESTS / RENDERS" : "PIPELINE / NETWORK", "TOTAL",
-                          "PER SECOND");
+    stats_view_add_header(view, "%-28s %14s %14s", strcmp(g_mode, "mcp-server") == 0 ? "MCP REQUESTS / RENDERS" : "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
       if (!snapshot->capabilities.counters[i])
         continue;
       const stats_descriptor_t *descriptor = stats_counter_descriptor(i);
       if (rates->ready)
-        stats_view_add(view, "%-28s %14llu %14.1f", descriptor->name, (unsigned long long)snapshot->counters[i],
-                       rates->counters_per_second[i]);
+        stats_view_add(view, "%-28s %14llu %14.1f", descriptor->name, (unsigned long long)snapshot->counters[i], rates->counters_per_second[i]);
       else
-        stats_view_add(view, "%-28s %14llu %14s", descriptor->name, (unsigned long long)snapshot->counters[i],
-                       "warming up");
+        stats_view_add(view, "%-28s %14llu %14s", descriptor->name, (unsigned long long)snapshot->counters[i], "warming up");
     }
     stats_view_add(view, "");
     stats_view_add_header(view, "%-28s %14s %14s", "TIMINGS", "MEAN/LAST ms", "LIFETIME MAX");
@@ -241,14 +231,11 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
       if (i == STATS_DURATION_ASCII_CONVERT && strcmp(g_mode, "client") == 0 && !snapshot->durations[i].observations)
         stats_view_add(view, "%-28s %14s %14s", "ascii_convert", "n/a (server)", "n/a");
       else if (i == STATS_DURATION_CONNECTION_SETUP && snapshot->durations[i].observations)
-        stats_view_add(view, "%-28s %14.3f %14.3f", "connection_setup (last)",
-                       (double)snapshot->durations[i].last_ns / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
+        stats_view_add(view, "%-28s %14.3f %14.3f", "connection_setup (last)", (double)snapshot->durations[i].last_ns / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
       else if (rates->duration_valid[i])
-        stats_view_add(view, "%-28s %14.3f %14.3f", stats_duration_descriptor(i)->name,
-                       rates->duration_mean_ns[i] / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
+        stats_view_add(view, "%-28s %14.3f %14.3f", stats_duration_descriptor(i)->name, rates->duration_mean_ns[i] / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
       else if (snapshot->durations[i].observations)
-        stats_view_add(view, "%-28s %14s %14.3f", stats_duration_descriptor(i)->name, "idle",
-                       (double)snapshot->durations[i].max_ns / 1e6);
+        stats_view_add(view, "%-28s %14s %14.3f", stats_duration_descriptor(i)->name, "idle", (double)snapshot->durations[i].max_ns / 1e6);
       else
         stats_view_add(view, "%-28s %14s %14s", stats_duration_descriptor(i)->name, "not sampled", "not sampled");
     }
@@ -258,19 +245,16 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
         stats_view_add(view, "%s: %llu", stats_gauge_descriptor(i)->name, (unsigned long long)snapshot->gauges[i]);
     uint64_t source_width = atomic_load_u64_impl(&g_media_width);
     if (source_width) {
-      stats_view_add(view, "Source: %llux%llu   Output: %ux%u   Target: %d fps", (unsigned long long)source_width,
-                     (unsigned long long)atomic_load_u64_impl(&g_media_height), GET_OPTION(width), GET_OPTION(height),
-                     GET_OPTION(fps));
+      stats_view_add(view, "Source: %llux%llu   Output: %ux%u   Target: %d fps", (unsigned long long)source_width, (unsigned long long)atomic_load_u64_impl(&g_media_height), GET_OPTION(width),
+                     GET_OPTION(height), GET_OPTION(fps));
       uint64_t position = atomic_load_u64_impl(&g_media_position), duration = atomic_load_u64_impl(&g_media_duration);
       if (position && duration)
-        stats_view_add(view, "Media position: %.1fs / %.1fs", (double)(position - 1) / 1000,
-                       (double)(duration - 1) / 1000);
+        stats_view_add(view, "Media position: %.1fs / %.1fs", (double)(position - 1) / 1000, (double)(duration - 1) / 1000);
       else
         stats_view_add(view, "Media position: unavailable (live source)");
     }
     if (strcmp(g_mode, "discovery-service") != 0 && strcmp(g_mode, "mcp-server") != 0)
-      stats_view_add(view, "Audio: %s   Recording: %s", GET_OPTION(audio_enabled) ? "enabled" : "disabled",
-                     GET_OPTION(render_file)[0] ? "enabled" : "disabled");
+      stats_view_add(view, "Audio: %s   Recording: %s", GET_OPTION(audio_enabled) ? "enabled" : "disabled", GET_OPTION(render_file)[0] ? "enabled" : "disabled");
     if (strcmp(g_mode, "mirror") != 0 && strcmp(g_mode, "mcp-server") != 0) {
       stats_view_add(view, "Bytes: ACIP header + payload, excluding transport/encryption overhead.");
       stats_view_add(view, "RTT includes uniquely matched probes only; unanswered probes are excluded.");
@@ -279,8 +263,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   mutex_lock(&g_peers_mutex);
   unsigned peers = 0;
   if (view->page && strcmp(g_mode, "mcp-server") != 0)
-    stats_view_add_header(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s",
-                          "TX fps", "RX fps");
+    stats_view_add_header(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s", "TX fps", "RX fps");
   for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i) {
     stats_peer_t *peer = g_peers[i];
     if (!peer)
@@ -291,10 +274,8 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
     stats_scope_snapshot(peer->scope, &ps);
     stats_sampler_update(peer->sampler, &ps, &pr);
     if (view->page)
-      stats_view_add(
-          view, "%-5llu %-12s %12.0f %12.0f %10.1f %10.1f", (unsigned long long)peer->id, peer->transport,
-          pr.counters_per_second[STATS_COUNTER_BYTES_SENT], pr.counters_per_second[STATS_COUNTER_BYTES_RECEIVED],
-          pr.counters_per_second[STATS_COUNTER_FRAMES_SENT], pr.counters_per_second[STATS_COUNTER_FRAMES_RECEIVED]);
+      stats_view_add(view, "%-5llu %-12s %12.0f %12.0f %10.1f %10.1f", (unsigned long long)peer->id, peer->transport, pr.counters_per_second[STATS_COUNTER_BYTES_SENT],
+                     pr.counters_per_second[STATS_COUNTER_BYTES_RECEIVED], pr.counters_per_second[STATS_COUNTER_FRAMES_SENT], pr.counters_per_second[STATS_COUNTER_FRAMES_RECEIVED]);
   }
   stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
   mutex_unlock(&g_peers_mutex);
@@ -344,28 +325,20 @@ static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t 
   size_t used = 0;
   // Reserve the final byte for the newline, even if a field is truncated.
   size_t capacity = sizeof(output) - 1;
-  if (!summary_append(output, capacity, &used, "stats mode=%s uptime_s=%.3f", g_mode,
-                      (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9))
+  if (!summary_append(output, capacity, &used, "stats mode=%s uptime_s=%.3f", g_mode, (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9))
     goto done;
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i)
-    if (snapshot->capabilities.counters[i] &&
-        !summary_append(output, capacity, &used, " %s=%llu %s_per_s=%.3f", stats_counter_descriptor(i)->name,
-                        (unsigned long long)snapshot->counters[i], stats_counter_descriptor(i)->name,
-                        rates->counters_per_second[i]))
+    if (snapshot->capabilities.counters[i] && !summary_append(output, capacity, &used, " %s=%llu %s_per_s=%.3f", stats_counter_descriptor(i)->name, (unsigned long long)snapshot->counters[i],
+                                                              stats_counter_descriptor(i)->name, rates->counters_per_second[i]))
       goto done;
   for (int i = 0; i < STATS_GAUGE_COUNT; ++i)
-    if (snapshot->capabilities.gauges[i] &&
-        !summary_append(output, capacity, &used, " %s=%llu", stats_gauge_descriptor(i)->name,
-                        (unsigned long long)snapshot->gauges[i]))
+    if (snapshot->capabilities.gauges[i] && !summary_append(output, capacity, &used, " %s=%llu", stats_gauge_descriptor(i)->name, (unsigned long long)snapshot->gauges[i]))
       goto done;
   for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
     if (!snapshot->capabilities.durations[i])
       continue;
-    bool appended =
-        rates->duration_valid[i]
-            ? summary_append(output, capacity, &used, " %s_mean_ms=%.3f", stats_duration_descriptor(i)->name,
-                             rates->duration_mean_ns[i] / 1e6)
-            : summary_append(output, capacity, &used, " %s_mean_ms=unavailable", stats_duration_descriptor(i)->name);
+    bool appended = rates->duration_valid[i] ? summary_append(output, capacity, &used, " %s_mean_ms=%.3f", stats_duration_descriptor(i)->name, rates->duration_mean_ns[i] / 1e6)
+                                             : summary_append(output, capacity, &used, " %s_mean_ms=unavailable", stats_duration_descriptor(i)->name);
     if (!appended)
       goto done;
   }
@@ -418,8 +391,7 @@ static bool show_first_use_instructions(void) {
   int length = snprintf(marker_path, sizeof(marker_path), "%s/first-use-%s", dir, g_mode);
   char message[STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE];
   snprintf(message, sizeof(message), "%s", text);
-  bool shown = length > 0 && (size_t)length < sizeof(marker_path) && !platform_is_regular_file(marker_path) &&
-               platform_mkdir_recursive(dir, 0700) == ASCIICHAT_OK &&
+  bool shown = length > 0 && (size_t)length < sizeof(marker_path) && !platform_is_regular_file(marker_path) && platform_mkdir_recursive(dir, 0700) == ASCIICHAT_OK &&
                ui_notice_present_first_use(title, message, marker_path) == ASCIICHAT_OK;
   SAFE_FREE(dir);
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
@@ -436,17 +408,17 @@ static void *stats_worker(void *unused) {
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     platform_systemd_notify_watchdog();
+    if (strcmp(g_mode, "mirror") == 0) {
+      platform_sleep_ns(10 * NS_PER_MS_INT);
+      continue;
+    }
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
-    bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 ||
-                       (strcmp(g_mode, "mcp-server") == 0 && !strcmp(GET_OPTION(mcp_transport), "http"));
-    bool first_use_input =
-        atomic_load_bool_impl(&g_onboarding_wait) &&
-        (screen == UI_SCREEN_NOTICE || (screen == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_NOTICE));
+    bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 || (strcmp(g_mode, "mcp-server") == 0 && !strcmp(GET_OPTION(mcp_transport), "http"));
+    bool first_use_input = atomic_load_bool_impl(&g_onboarding_wait) && (screen == UI_SCREEN_NOTICE || (screen == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_NOTICE));
     if (g_keyboard && (first_use_input || active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
-      keyboard_key_t key =
-          ui_input_read_key(first_use_input && screen == UI_SCREEN_HELP ? UI_SCREEN_HELP : UI_SCREEN_STATS);
+      keyboard_key_t key = ui_input_read_key(first_use_input && screen == UI_SCREEN_HELP ? UI_SCREEN_HELP : UI_SCREEN_STATS);
       if (first_use_input && (key == 'q' || key == 3)) {
         shutdown_request();
         continue;
@@ -531,8 +503,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     for (int i = 0; i <= STATS_COUNTER_FRAMES_DROPPED; ++i)
       caps.counters[i] = true;
     caps.counters[STATS_COUNTER_FRAMES_ENQUEUED] = caps.counters[STATS_COUNTER_QUEUE_DROPS] = true;
-    caps.counters[STATS_COUNTER_AUDIO_UNDERRUNS] = caps.counters[STATS_COUNTER_AUDIO_OVERRUNS] =
-        GET_OPTION(audio_enabled);
+    caps.counters[STATS_COUNTER_AUDIO_UNDERRUNS] = caps.counters[STATS_COUNTER_AUDIO_OVERRUNS] = GET_OPTION(audio_enabled);
     for (int i = 0; i <= STATS_DURATION_TERMINAL_WRITE; ++i)
       caps.durations[i] = true;
     caps.gauges[STATS_GAUGE_AUDIO_BUFFERED_SAMPLES] = GET_OPTION(audio_enabled);
@@ -598,14 +569,15 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   snprintf(g_mode, sizeof(g_mode), "%s", mode);
   g_interval = interval_seconds;
   g_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  g_keyboard = (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) &&
-               platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
+  // Mirror mode has no statistics-screen interaction.  Avoid installing the
+  // console reader there so shutdown cannot leave the worker inside a UI
+  // input path while the mirror tears down its display.
+  g_keyboard = !mirror && (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) && platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   atomic_store_bool_impl(&g_onboarding_wait, false);
   g_started = true;
-  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 ||
-                     (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
+  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 || (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
   if (platform_thread_create(&g_worker, "stats", stats_worker, NULL) == 0) {

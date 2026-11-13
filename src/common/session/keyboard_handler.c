@@ -60,6 +60,10 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     ui_errno_stacks_hide();
   if (action == UI_ACTION_SETTINGS || action == UI_ACTION_VOLUME) {
     session_capture_redraw_media(capture);
+    // Option-only display changes still need to wake the renderer. This is
+    // essential for synthetic video and audio visualizations, which may not
+    // publish a new capture frame solely because the overlay changed.
+    ui_controller_redraw();
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
       ui_controller_show_volume();
     return;
@@ -225,14 +229,12 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
   if (!text_entry && key == KEY_ESCAPE && session_capture_cancel_open(capture))
     return;
-  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || tui_shortcut_action(key) == TUI_SHORTCUT_MEDIA ||
-                      key == 'v' || key == 'V')) {
+  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || tui_shortcut_action(key) == TUI_SHORTCUT_MEDIA || key == 'v' || key == 'V')) {
     if ((tui_shortcut_action(key) == TUI_SHORTCUT_MEDIA) && ui_controller_interactive_screen() == UI_SCREEN_PROMPT) {
       ui_prompt_remove();
       return;
     }
-    char input[SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE] = {0},
-         normalized[SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE];
+    char input[SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE] = {0}, normalized[SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE];
     asciichat_error_t result = ASCIICHAT_OK;
     if (key == KEY_MEDIA_SUBMIT)
       result = ui_input_media_take(input, sizeof(input));

@@ -57,8 +57,7 @@ typedef struct {
  * @param error_msg Error message destination (can be NULL)
  * @return true if valid setting, false otherwise
  */
-static bool parse_setting_generic(const char *arg, void *dest, const setting_map_entry_t *lookup_table,
-                                  char **error_msg) {
+static bool parse_setting_generic(const char *arg, void *dest, const setting_map_entry_t *lookup_table, char **error_msg) {
   if (!dest || !lookup_table) {
     if (error_msg) {
       *error_msg = platform_strdup("Internal error: NULL destination or lookup table");
@@ -97,14 +96,10 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
 
 // Lookup table for color setting strings
 static const setting_map_entry_t g_color_setting_map[] = {
-    {"auto", COLOR_SETTING_AUTO},     {"a", COLOR_SETTING_AUTO},
-    {"0", COLOR_SETTING_AUTO},        {"true", COLOR_SETTING_TRUE},
-    {"yes", COLOR_SETTING_TRUE},      {"1", COLOR_SETTING_TRUE},
-    {"on", COLOR_SETTING_TRUE},       {"enabled", COLOR_SETTING_TRUE},
-    {"enable", COLOR_SETTING_TRUE},   {"false", COLOR_SETTING_FALSE},
-    {"no", COLOR_SETTING_FALSE},      {"-1", COLOR_SETTING_FALSE},
-    {"off", COLOR_SETTING_FALSE},     {"disabled", COLOR_SETTING_FALSE},
-    {"disable", COLOR_SETTING_FALSE}, {NULL, 0} // Sentinel
+    {"auto", COLOR_SETTING_AUTO},   {"a", COLOR_SETTING_AUTO},         {"0", COLOR_SETTING_AUTO},        {"true", COLOR_SETTING_TRUE},
+    {"yes", COLOR_SETTING_TRUE},    {"1", COLOR_SETTING_TRUE},         {"on", COLOR_SETTING_TRUE},       {"enabled", COLOR_SETTING_TRUE},
+    {"enable", COLOR_SETTING_TRUE}, {"false", COLOR_SETTING_FALSE},    {"no", COLOR_SETTING_FALSE},      {"-1", COLOR_SETTING_FALSE},
+    {"off", COLOR_SETTING_FALSE},   {"disabled", COLOR_SETTING_FALSE}, {"disable", COLOR_SETTING_FALSE}, {NULL, 0} // Sentinel
 };
 
 bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
@@ -128,14 +123,10 @@ bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
 
 // Lookup table for UTF-8 setting strings (identical to color setting for boolean patterns)
 static const setting_map_entry_t g_utf8_setting_map[] = {
-    {"auto", UTF8_SETTING_AUTO},     {"a", UTF8_SETTING_AUTO},
-    {"0", UTF8_SETTING_AUTO},        {"true", UTF8_SETTING_TRUE},
-    {"yes", UTF8_SETTING_TRUE},      {"1", UTF8_SETTING_TRUE},
-    {"on", UTF8_SETTING_TRUE},       {"enabled", UTF8_SETTING_TRUE},
-    {"enable", UTF8_SETTING_TRUE},   {"false", UTF8_SETTING_FALSE},
-    {"no", UTF8_SETTING_FALSE},      {"-1", UTF8_SETTING_FALSE},
-    {"off", UTF8_SETTING_FALSE},     {"disabled", UTF8_SETTING_FALSE},
-    {"disable", UTF8_SETTING_FALSE}, {NULL, 0} // Sentinel
+    {"auto", UTF8_SETTING_AUTO},   {"a", UTF8_SETTING_AUTO},         {"0", UTF8_SETTING_AUTO},        {"true", UTF8_SETTING_TRUE},
+    {"yes", UTF8_SETTING_TRUE},    {"1", UTF8_SETTING_TRUE},         {"on", UTF8_SETTING_TRUE},       {"enabled", UTF8_SETTING_TRUE},
+    {"enable", UTF8_SETTING_TRUE}, {"false", UTF8_SETTING_FALSE},    {"no", UTF8_SETTING_FALSE},      {"-1", UTF8_SETTING_FALSE},
+    {"off", UTF8_SETTING_FALSE},   {"disabled", UTF8_SETTING_FALSE}, {"disable", UTF8_SETTING_FALSE}, {NULL, 0} // Sentinel
 };
 
 bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
@@ -176,15 +167,13 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   // Monochrome/None
-  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, OPT_COLOR_MODE_MONO) == 0 ||
-      strcmp(lower, "monochrome") == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, OPT_COLOR_MODE_MONO) == 0 || strcmp(lower, "monochrome") == 0 || strcmp(lower, "0") == 0) {
     *color_mode = TERM_COLOR_NONE;
     return true;
   }
 
   // 16-color
-  if (strcmp(lower, OPT_COLOR_MODE_16) == 0 || strcmp(lower, "16color") == 0 || strcmp(lower, "ansi") == 0 ||
-      strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_16) == 0 || strcmp(lower, "16color") == 0 || strcmp(lower, "ansi") == 0 || strcmp(lower, "1") == 0) {
     *color_mode = TERM_COLOR_16;
     return true;
   }
@@ -196,8 +185,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   // Truecolor
-  if (strcmp(lower, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(lower, "true") == 0 || strcmp(lower, "tc") == 0 ||
-      strcmp(lower, "rgb") == 0 || strcmp(lower, "24bit") == 0 || strcmp(lower, "3") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(lower, "true") == 0 || strcmp(lower, "tc") == 0 || strcmp(lower, "rgb") == 0 || strcmp(lower, "24bit") == 0 || strcmp(lower, "3") == 0) {
     *color_mode = TERM_COLOR_TRUECOLOR;
     return true;
   }
@@ -260,15 +248,13 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Foreground mode
-  if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 ||
-      strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 || strcmp(lower, "0") == 0) {
     *render_mode = RENDER_MODE_FOREGROUND;
     return true;
   }
 
   // Background mode
-  if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 ||
-      strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 || strcmp(lower, "1") == 0) {
     *render_mode = RENDER_MODE_BACKGROUND;
     return true;
   }
@@ -286,8 +272,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
     if (suggestion) {
       safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Did you mean '%s'?", arg, suggestion);
     } else {
-      safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block",
-                    arg);
+      safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block", arg);
     }
     *error_msg = platform_strdup(msg);
   }
@@ -388,8 +373,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
     if (suggestion) {
       safe_snprintf(msg, sizeof(msg), "Invalid palette type '%s'. Did you mean '%s'?", arg, suggestion);
     } else {
-      safe_snprintf(msg, sizeof(msg),
-                    "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
+      safe_snprintf(msg, sizeof(msg), "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
     }
     *error_msg = platform_strdup(msg);
   }
@@ -476,8 +460,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   if (err != ASCIICHAT_OK) {
     if (error_msg) {
       char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
-      safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 0 and 65535 (0 = auto-assign).",
-                    arg);
+      safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 0 and 65535 (0 = auto-assign).", arg);
       *error_msg = platform_strdup(msg);
     }
     return false;
@@ -537,8 +520,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
   if (is_valid_ipv4(addr_to_check)) {
     // Check if we already have a non-default IPv4 address
     // Allow overwriting defaults (localhost, 0.0.0.0)
-    if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 &&
-        strcmp(address, "0.0.0.0") != 0) {
+    if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 && strcmp(address, "0.0.0.0") != 0) {
       if (error_msg) {
         char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
         safe_snprintf(msg, sizeof(msg),
@@ -596,8 +578,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
 
     if (is_valid_ipv4(addr_to_check)) {
       // Second is IPv4
-      if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 &&
-          strcmp(address, "0.0.0.0") != 0) {
+      if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 && strcmp(address, "0.0.0.0") != 0) {
         // Already have an IPv4, can't add another
         return consumed;
       }
@@ -1123,8 +1104,7 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
-  if (strcmp(lower, OPT_AUDIO_SOURCE_ALL) == 0 || strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0 ||
-      strcmp(lower, "both") == 0) {
+  if (strcmp(lower, OPT_AUDIO_SOURCE_ALL) == 0 || strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0 || strcmp(lower, "both") == 0) {
     *audio_source = AUDIO_SOURCE_ALL;
     return true;
   }

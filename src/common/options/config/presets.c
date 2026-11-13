@@ -181,40 +181,26 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                           "wss://secure.example.com:443"};
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
-  static const char *discovery_examples[] = {
-      "(empty/unset) start new session. generates a session string to give someone to connect to you.",
-      (const char *)example_buf7, (const char *)example_buf8, (const char *)example_buf9, (const char *)example_buf10};
-  options_builder_add_positional(
-      b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.",
-      false, "POSITIONAL ARGUMENTS", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
-      parse_client_address);
+  static const char *discovery_examples[] = {"(empty/unset) start new session. generates a session string to give someone to connect to you.", (const char *)example_buf7, (const char *)example_buf8,
+                                             (const char *)example_buf9, (const char *)example_buf10};
+  options_builder_add_positional(b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.", false, "POSITIONAL ARGUMENTS", discovery_examples,
+                                 ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY, parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  static const char *server_examples[] = {"localhost",
-                                          "ascii-chat.com",
-                                          "0.0.0.0",
-                                          "::",
-                                          "234.50.188.236",
-                                          "9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512",
-                                          "105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
-                                          "::1 192.168.1.100"};
-  options_builder_add_positional(
-      b, "bind-address", "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.", false,
-      "POSITIONAL ARGUMENTS", server_examples, ARRAY_SIZE(server_examples),
-      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER, parse_server_bind_address);
+  static const char *server_examples[] = {
+      "localhost", "ascii-chat.com", "0.0.0.0", "::", "234.50.188.236", "9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512", "105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598", "::1 192.168.1.100"};
+  options_builder_add_positional(b, "bind-address", "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.", false, "POSITIONAL ARGUMENTS", server_examples,
+                                 ARRAY_SIZE(server_examples), OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER, parse_server_bind_address);
 
-  options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false,
-                                 "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples),
-                                 OPTION_MODE_CLIENT, parse_client_address);
+  options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false, "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples), OPTION_MODE_CLIENT,
+                                 parse_client_address);
 
   // Mirror mode: [file|url] - file path or URL to stream
-  static const char *mirror_media_examples[] = {"/path/to/video.mp4", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                                                "https://example.com/stream.m3u8"};
+  static const char *mirror_media_examples[] = {"/path/to/video.mp4", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://example.com/stream.m3u8"};
   options_builder_add_positional(b, "file|url",
                                  "(optional) Media file path or URL to stream. If omitted, uses webcam. "
                                  "Cannot be combined with --file or --url.",
-                                 false, "POSITIONAL ARGUMENTS", mirror_media_examples,
-                                 ARRAY_SIZE(mirror_media_examples), OPTION_MODE_MIRROR, parse_mirror_media);
+                                 false, "POSITIONAL ARGUMENTS", mirror_media_examples, ARRAY_SIZE(mirror_media_examples), OPTION_MODE_MIRROR, parse_mirror_media);
 
   // Add usage lines for all modes
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
@@ -223,14 +209,11 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, "mcp-server", "[--transport http|stdio] [--server] [bind-address] [bind-address]", true,
                             "MCP rendering tools (stdio locally, HTTP with --transport http, default port 27228)");
   options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "", "Local MCP tools over stdio", false);
-  options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "--transport http --address 127.0.0.1 --port 27228",
-                              "Local MCP tools over Streamable HTTP", false);
-  options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
-                            "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
+  options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "--transport http --address 127.0.0.1 --port 27228", "Local MCP tools over Streamable HTTP", false);
+  options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true, "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");
   options_builder_add_usage(b, "mirror", "[file|url]", true, "View local webcam or media file or URL as ASCII art");
-  options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
-                            "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
+  options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true, "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, NULL, "[mode] --help", false, "Show help for a specific mode");
 
   // Add examples for binary-level help and discovery mode
@@ -244,89 +227,62 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   static char combined_buf4[OPTIONS_CONFIG_PRESETS_COMBINED_BUF4_BUFFER_SIZE];
   static char combined_buf5[OPTIONS_CONFIG_PRESETS_COMBINED_BUF5_BUFFER_SIZE];
   safe_snprintf(combined_buf1, sizeof(combined_buf1), "%s --file video.mp4", example_buf3);
-  safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'",
-                example_buf4);
+  safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'", example_buf4);
   safe_snprintf(combined_buf3, sizeof(combined_buf3), "%s -f -", example_buf5);
   safe_snprintf(combined_buf4, sizeof(combined_buf4), "%s --palette-chars '@%%#*+=-:. '", example_buf6);
-  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225",
-                example_buf2);
+  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225", example_buf2);
 
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1, "Join session and stream from local video file",
-                              false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2, "Join session and stream from YouTube video",
-                              false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1, "Join session and stream from local video file", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2, "Join session and stream from YouTube video", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3, "Join session and stream media from stdin", false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4, "Join session with custom ASCII palette characters",
-                              false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4, "Join session with custom ASCII palette characters", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5, "Join session via custom discovery server", false);
 
   // Add examples for server-like modes (server + discovery-service)
   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, "0.0.0.0", "Start on all IPv4 interfaces", false);
-  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE,
-                              "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)", false);
   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, "--port 8080", "Start on custom port", false);
 
   // Server-specific examples
-  options_builder_add_example(b, OPTION_MODE_SERVER, "--key ~/.ssh/id_ed25519 --discovery",
-                              "Start with identity key and discovery registration", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, "--key ~/.ssh/id_ed25519 --discovery", "Start with identity key and discovery registration", false);
 
   // Add examples for client-like modes (client + mirror)
-  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://youtu.be/7ynHVGCehoM'",
-                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://www.twitch.tv/ludwig'",
-                              "Stream Ludwig from videogames on Twitch", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://youtu.be/7ynHVGCehoM'", "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://www.twitch.tv/ludwig'", "Stream Ludwig from videogames on Twitch", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "-f video.mp4", "Stream from local video file", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--palette-chars '@%#*+=-:. '",
-                              "Custom palette characters to use. UTF-8 is allowed.", false);
-  options_builder_add_example(
-      b, OPTION_MODE_CLIENT_LIKE, "--snapshot",
-      "Print ascii art for --snapshot-delay's value of seconds then print the last frame and exit. "
-      "In snapshot mode, --width, --height, and --color are NOT autodetected when piping stdin in or redirecting "
-      "output.",
-      false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--color-filter cyan --palette cool",
-                              "Apply cyan color filter and cool palette", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--palette-chars '@%#*+=-:. '", "Custom palette characters to use. UTF-8 is allowed.", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--snapshot",
+                              "Print ascii art for --snapshot-delay's value of seconds then print the last frame and exit. "
+                              "In snapshot mode, --width, --height, and --color are NOT autodetected when piping stdin in or redirecting "
+                              "output.",
+                              false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--color-filter cyan --palette cool", "Apply cyan color filter and cool palette", false);
 
   // Client-specific examples
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
-                              false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-mode mono --render-mode half-block --width 120",
-                              "Connect with custom display options", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-mode mono --render-mode half-block --width 120", "Connect with custom display options", false);
 
   // Mirror-specific examples (unique to mirror mode)
-  options_builder_add_example(
-      b, OPTION_MODE_MIRROR, NULL,
-      "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
-      false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, NULL, "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-mode mono", "View webcam in black and white", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-filter green",
-                              "View webcam with green monochromatic color filter", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--matrix --color-filter rainbow",
-                              "Matrix rain effect with rainbow colors cycling over 3.5s", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file '-'",
-                              "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
-  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30",
-                                      "Stream .avi from stdin, looped, seeking to 00:30", true);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file video.mov --seek 22:10",
-                              "Start playback at exactly 22:10 (also works with --url)", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
-                              "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "-S -D 0 | tee frame.txt | pbcopy",
-                              "Capture single ASCII frame to clipboard (macOS) and file", false);
-  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "pbpaste | cat -",
-                                      "View ASCII frame from clipboard (macOS)", true);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-filter green", "View webcam with green monochromatic color filter", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--matrix --color-filter rainbow", "Matrix rain effect with rainbow colors cycling over 3.5s", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file '-'", "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
+  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30", "Stream .avi from stdin, looped, seeking to 00:30", true);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file video.mov --seek 22:10", "Start playback at exactly 22:10 (also works with --url)", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12", "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "-S -D 0 | tee frame.txt | pbcopy", "Capture single ASCII frame to clipboard (macOS) and file", false);
+  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "pbpaste | cat -", "View ASCII frame from clipboard (macOS)", true);
 
   // Discovery-service specific examples
-  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity",
-                              "Enforce identity verification for all parties", false);
+  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity", "Enforce identity verification for all parties", false);
 
   // Add mode descriptions
-  options_builder_add_mode(
-      b, "default",
-      "When the ascii-chat binary is used without a mode, it operates as either client or server automatically and "
-      "uses the discovery-service to make peer connections with session strings");
+  options_builder_add_mode(b, "default",
+                           "When the ascii-chat binary is used without a mode, it operates as either client or server automatically and "
+                           "uses the discovery-service to make peer connections with session strings");
   options_builder_add_mode(b, "server", "Run as multi-client video chat server");
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
   options_builder_add_mode(b, "mirror", "View local media as ASCII art (no server)");
@@ -344,19 +300,18 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                      OPTION_MODE_CLIENT_LIKE);
 
   // Add environment variables section (all modes)
-  options_builder_add_custom_section(
-      b, "ENVIRONMENT",
-      "All command-line flags that accept values have corresponding environment variables.\n"
-      "  Format: ASCII_CHAT_<FLAG_NAME> where FLAG_NAME is uppercase with hyphens replaced by underscores\n"
-      "  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n"
-      "\n"
-      "  Configuration precedence (lowest to highest):\n"
-      "    1. Config file values (~/.ascii-chat/config.toml)\n"
-      "    2. Environment variables (ASCII_CHAT_*)\n"
-      "    3. Command-line flags (--flag-name)\n"
-      "\n"
-      "  Additional environment variables are documented in the ascii-chat(1) man page.",
-      OPTION_MODE_ALL);
+  options_builder_add_custom_section(b, "ENVIRONMENT",
+                                     "All command-line flags that accept values have corresponding environment variables.\n"
+                                     "  Format: ASCII_CHAT_<FLAG_NAME> where FLAG_NAME is uppercase with hyphens replaced by underscores\n"
+                                     "  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n"
+                                     "\n"
+                                     "  Configuration precedence (lowest to highest):\n"
+                                     "    1. Config file values (~/.ascii-chat/config.toml)\n"
+                                     "    2. Environment variables (ASCII_CHAT_*)\n"
+                                     "    3. Command-line flags (--flag-name)\n"
+                                     "\n"
+                                     "  Additional environment variables are documented in the ascii-chat(1) man page.",
+                                     OPTION_MODE_ALL);
 
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation
@@ -365,10 +320,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Media Source Conflicts
   // ============================================================================
   // URL conflicts: --url cannot be used with --file or --loop
-  options_builder_add_dependency_conflicts(b, "url", "file",
-                                           "Option --url cannot be used with --file (--url takes priority)");
-  options_builder_add_dependency_conflicts(
-      b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
+  options_builder_add_dependency_conflicts(b, "url", "file", "Option --url cannot be used with --file (--url takes priority)");
+  options_builder_add_dependency_conflicts(b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
 
   // ============================================================================
   // Encryption & Authentication Conflicts
@@ -377,14 +330,10 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
 
   // Authentication material conflicts with explicitly disabling authentication.
-  options_builder_add_dependency_conflicts(b, "no-auth", "key",
-                                           "Cannot use --no-auth with --key (key requires authentication)");
-  options_builder_add_dependency_conflicts(b, "no-auth", "password",
-                                           "Cannot use --no-auth with --password (password requires authentication)");
-  options_builder_add_dependency_conflicts(
-      b, "no-auth", "client-keys", "Cannot use --no-auth with --client-keys (key list requires authentication)");
-  options_builder_add_dependency_conflicts(
-      b, "no-auth", "server-key", "Cannot use --no-auth with --server-key (verification requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "key", "Cannot use --no-auth with --key (key requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "password", "Cannot use --no-auth with --password (password requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys", "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "server-key", "Cannot use --no-auth with --server-key (verification requires authentication)");
 
   // Identity and verification keys can be combined, including with --no-encrypt.
 
@@ -392,25 +341,21 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Compression Conflicts
   // ============================================================================
   // Cannot use --no-compress with --compression-level
-  options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
-                                           "Cannot use --no-compress with --compression-level");
+  options_builder_add_dependency_conflicts(b, "no-compress", "compression-level", "Cannot use --no-compress with --compression-level");
 
   // ============================================================================
   // Audio Encoding Conflicts
   // ============================================================================
   // Cannot use both --encode-audio and --no-encode-audio
-  options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
-                                           "Cannot use both --encode-audio and --no-encode-audio");
+  options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio", "Cannot use both --encode-audio and --no-encode-audio");
 
   // ============================================================================
   // Display & Screen Conflicts
   // ============================================================================
   options_builder_add_dependency_conflicts(b, "waveform", "matrix", "Option --waveform cannot be used with --matrix");
   options_builder_add_dependency_conflicts(b, "fft", "matrix", "Option --fft cannot be used with --matrix");
-  options_builder_add_dependency_conflicts(b, "waveform", "fft",
-                                           "Options --waveform and --fft cannot be used together");
-  options_builder_add_dependency_conflicts(b, "waveform", "audio",
-                                           "Option --waveform requires audio; remove --audio=false");
+  options_builder_add_dependency_conflicts(b, "waveform", "fft", "Options --waveform and --fft cannot be used together");
+  options_builder_add_dependency_conflicts(b, "waveform", "audio", "Option --waveform requires audio; remove --audio=false");
   options_builder_add_dependency_conflicts(b, "fft", "audio", "Option --fft requires audio; remove --audio=false");
   options_builder_add_dependency_conflicts(b, "waveform", "stretch", "Option --waveform cannot be used with --stretch");
   options_builder_add_dependency_conflicts(b, "fft", "stretch", "Option --fft cannot be used with --stretch");
@@ -419,8 +364,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Requirements (dependencies that must be satisfied)
   // ============================================================================
   // --snapshot-delay requires --snapshot
-  options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
-                                          "Option --snapshot-delay requires --snapshot");
+  options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot", "Option --snapshot-delay requires --snapshot");
 
   // --loop requires --file (can't loop network streams)
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");

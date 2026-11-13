@@ -48,7 +48,7 @@ def test_audio_ctypes_layouts(c_compiler, request):
     with tempfile.TemporaryDirectory(prefix="ascii-audio-abi-") as directory:
         source = Path(directory) / "layout.c"
         source.write_text("\n".join(checks) + "\n", encoding="utf-8")
-        repo = Path(__file__).resolve().parents[3]
+        repo = Path(__file__).resolve().parents[4]
         include_flags = [
             flag
             for path in [repo / "include", repo / "deps", *args.include]

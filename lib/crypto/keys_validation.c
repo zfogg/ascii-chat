@@ -102,8 +102,7 @@ asciichat_error_t validate_private_key(const private_key_t *key) {
 
   // Check comment length
   if (strlen(key->key_comment) >= MAX_COMMENT_LEN) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment too long: %zu (maximum %d)", strlen(key->key_comment),
-              MAX_COMMENT_LEN - 1);
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment too long: %zu (maximum %d)", strlen(key->key_comment), MAX_COMMENT_LEN - 1);
     return ERROR_CRYPTO_KEY;
   }
 
@@ -327,8 +326,7 @@ asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_pat
 
   // Check for repeated byte patterns (e.g., all 0xAA, all 0x55)
   // Common weak patterns to check
-  const uint8_t weak_bytes[] = {0x00, 0xFF, 0xAA, 0x55, 0x11, 0x22, 0x33, 0x44,
-                                0x66, 0x77, 0x88, 0x99, 0xBB, 0xCC, 0xDD, 0xEE};
+  const uint8_t weak_bytes[] = {0x00, 0xFF, 0xAA, 0x55, 0x11, 0x22, 0x33, 0x44, 0x66, 0x77, 0x88, 0x99, 0xBB, 0xCC, 0xDD, 0xEE};
   for (size_t pattern_idx = 0; pattern_idx < sizeof(weak_bytes); pattern_idx++) {
     uint8_t pattern_byte = weak_bytes[pattern_idx];
     bool is_repeated = true;
@@ -418,8 +416,7 @@ asciichat_error_t compare_public_keys(const public_key_t *key1, const public_key
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len,
-                                        bool *matches) {
+asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len, bool *matches) {
   if (!key || !fingerprint || !matches) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, fingerprint=%p, matches=%p", key, fingerprint, matches);
     return ERROR_INVALID_PARAM;

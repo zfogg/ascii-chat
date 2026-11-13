@@ -350,8 +350,7 @@ asciichat_error_t manpage_parser_parse_file(FILE *f, parsed_section_t **out_sect
   return parse_sections_internal(f, out_sections, out_count);
 }
 
-asciichat_error_t manpage_parser_parse_memory(const char *content, size_t content_len, parsed_section_t **out_sections,
-                                              size_t *out_count) {
+asciichat_error_t manpage_parser_parse_memory(const char *content, size_t content_len, parsed_section_t **out_sections, size_t *out_count) {
   if (!content || content_len == 0 || !out_sections || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -402,8 +401,7 @@ void manpage_parser_free_sections(parsed_section_t *sections, size_t count) {
   SAFE_FREE(sections);
 }
 
-const parsed_section_t *manpage_parser_find_section(const parsed_section_t *sections, size_t count,
-                                                    const char *section_name) {
+const parsed_section_t *manpage_parser_find_section(const parsed_section_t *sections, size_t count, const char *section_name) {
   if (!sections || !section_name) {
     return NULL;
   }

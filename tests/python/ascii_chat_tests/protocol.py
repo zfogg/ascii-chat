@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def version_packet(encryption=0, feature_flags=0):
-    constants = (Path(__file__).resolve().parents[2] / "include/ascii-chat/common/protocol_constants.h").read_text()
+    constants = (Path(__file__).resolve().parents[3] / "include/ascii-chat/common/protocol_constants.h").read_text()
     versions = []
     for part in ("MAJOR", "MINOR", "PATCH"):
         match = re.search(rf"^#define PROTOCOL_VERSION_{part} (\d+)$", constants, re.MULTILINE)

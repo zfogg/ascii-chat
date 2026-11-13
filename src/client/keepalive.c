@@ -214,8 +214,7 @@ int keepalive_start_thread(client_connection_t *connection) {
 
   // Start ping thread for keepalive
   atomic_store_bool(&connection->ping_thread_exited, false);
-  if (thread_pool_spawn(connection->client_worker_pool, ping_thread_func, connection, 3, "keepalive_ping") !=
-      ASCIICHAT_OK) {
+  if (thread_pool_spawn(connection->client_worker_pool, ping_thread_func, connection, 3, "keepalive_ping") != ASCIICHAT_OK) {
     log_error("Failed to spawn ping thread in worker pool");
     LOG_ERRNO_IF_SET("Ping thread creation failed");
     return -1;

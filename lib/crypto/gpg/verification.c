@@ -34,8 +34,7 @@
 #include <gcrypt.h>
 #endif
 
-int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                                const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
+int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   // Note: We don't use the raw signature parameter directly.
   // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
   (void)signature;
@@ -130,8 +129,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   }
 }
 
-int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
-                         const uint8_t *signature) {
+int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len, const uint8_t *signature) {
 #ifdef HAVE_LIBGCRYPT
   gcry_error_t err;
   gcry_sexp_t s_pubkey = NULL;
@@ -222,8 +220,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
 #endif
 }
 
-int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message,
-                                     size_t message_len, const char *expected_key_id) {
+int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message, size_t message_len, const char *expected_key_id) {
   // Validate inputs
   if (!signature || signature_len == 0 || signature_len > 512) {
     log_error("Invalid signature (expected 1-512 bytes, got %zu)", signature_len);
