@@ -354,7 +354,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/terminal_screen.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
-    ${LIB_ROOT}/tui/session_splash.c
     ${LIB_ROOT}/tui/status.c
     ${LIB_ROOT}/tui/invitation.c
     ${LIB_ROOT}/tui/too_small.c
@@ -381,6 +380,7 @@ set(LIB_SRC_COMMON
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
     ${LIB_ROOT}/video/anim/controller.c
+    ${LIB_ROOT}/audio/spectral.c
 )
 
 # Mirror-specific sources (not needed by client mode)
