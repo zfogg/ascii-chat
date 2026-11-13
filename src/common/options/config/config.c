@@ -120,10 +120,14 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
 
 /** Applies generic scalar TOML values before ascii-chat's richer validation. */
 static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mode, options_t *opts) {
+  // The application schema below remains the transactional authority for
+  // options_t. Import into a scratch copy here so generic libflags TOML type
+  // probing cannot replace a value that ascii-chat later rejects.
+  options_t imported = *opts;
   flags_schema_builder_t *builder = config_build_libflags_schema(mode);
   if (!builder)
     return;
-  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), &imported, sizeof(imported));
   bool loaded = context && flags_config_load_toml(context, path);
   if (!loaded)
     log_warn("Generic libflags config import skipped some values from '%s'", path);
@@ -569,7 +573,9 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
                          strstr(meta->toml_key, "keyfile") != NULL);
   if (is_path_option) {
     // Check if it's a path that needs normalization
-    if (path_looks_like_path(final_value)) {
+    bool log_file_relative = strstr(meta->toml_key, "log_file") != NULL && final_value[0] != '/' &&
+                             final_value[0] != '~' && !(final_value[0] && final_value[1] == ':');
+    if (path_looks_like_path(final_value) && !log_file_relative) {
       char *normalized = NULL;
       path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
       if (strstr(meta->toml_key, "key") != NULL) {
