@@ -21,7 +21,9 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-set(_ascii_chat_libplatform_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libplatform-src")
+# Use the checked-out submodule directly.  Reusing a cached source tree can
+# mix headers and implementations from different libplatform revisions.
+set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
