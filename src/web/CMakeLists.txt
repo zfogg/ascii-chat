@@ -351,7 +351,7 @@ set(LIB_SRC_COMMON
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/session.c
-    ${LIB_ROOT}/tui/splash.c
+    ${LIB_ROOT}/tui/session_splash.c
     ${LIB_ROOT}/tui/terminal_screen.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
