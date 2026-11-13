@@ -88,7 +88,7 @@ static pid_t g_init_pid = -1;
  * @see options_state_init() - Initializes g_options, this becomes fallback
  * @see options_state_destroy() - Clears g_options, this becomes fallback again
  */
-static const options_t g_default_options = (options_t){
+static const options_t g_default_options = {
     // ========================================================================
     // Mode Detection (auto-detected, default here is uninitialized)
     // ========================================================================
