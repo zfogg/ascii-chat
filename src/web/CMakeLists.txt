@@ -349,7 +349,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/anim/test_pattern.c
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
-    ${LIB_ROOT}/tui/session.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
     ${LIB_ROOT}/tui/session_input.c
@@ -468,6 +467,7 @@ target_link_libraries(wasm-common PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
+    ${FFTW_LIBRARIES}
 )
 
 target_include_directories(wasm-common PRIVATE
@@ -520,6 +520,7 @@ target_link_libraries(mirror-web PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
+    ${FFTW_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
 
@@ -538,7 +539,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/processor.c
     ${LIB_ROOT}/audio/format.c
     ${LIB_ROOT}/audio/effects.c
-    ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
