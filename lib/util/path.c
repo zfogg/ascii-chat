@@ -253,7 +253,6 @@ const char *path_last_components(const char *path, size_t component_count) {
 
   return path;
 }
-#endif
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
