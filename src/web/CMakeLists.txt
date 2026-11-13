@@ -189,12 +189,12 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system
-    ${LIB_ROOT}/options/rcu.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/runtime.c
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
     ${CMAKE_SOURCE_DIR}/src/common/options/options.c
     ${CMAKE_SOURCE_DIR}/src/common/options/common.c
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
-    ${LIB_ROOT}/options/strings.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/strings.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/parsers.c
     ${CMAKE_SOURCE_DIR}/src/common/options/parsing/validation.c
     ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
