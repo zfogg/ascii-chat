@@ -2,6 +2,10 @@
 include(FetchContent)
 
 set(LIBFLAGS_BUILD_TESTS OFF CACHE BOOL "Disable standalone libflags tests in ascii-chat" FORCE)
+set(LIBFLAGS_DEPS_CACHE_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}" CACHE PATH
+    "Shared dependency cache supplied by ascii-chat" FORCE)
+set(LIBFLAGS_LIBPLATFORM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform" CACHE PATH
+    "libplatform source shared with ascii-chat" FORCE)
 set(LIBFLAGS_PCRE2_INCLUDE_DIRS "${PCRE2_INCLUDE_DIRS}" CACHE STRING
     "PCRE2 headers shared with ascii-chat" FORCE)
 set(LIBFLAGS_PCRE2_LIBRARIES "${PCRE2_LIBRARIES}" CACHE STRING
