@@ -120,14 +120,10 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
 
 /** Applies generic scalar TOML values before ascii-chat's richer validation. */
 static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mode, options_t *opts) {
-  // The application schema below remains the transactional authority for
-  // options_t. Import into a scratch copy here so generic libflags TOML type
-  // probing cannot replace a value that ascii-chat later rejects.
-  options_t imported = *opts;
   flags_schema_builder_t *builder = config_build_libflags_schema(mode);
   if (!builder)
     return;
-  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), &imported, sizeof(imported));
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));
   bool loaded = context && flags_config_load_toml(context, path);
   if (!loaded)
     log_warn("Generic libflags config import skipped some values from '%s'", path);
@@ -1302,6 +1298,11 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     return ASCIICHAT_OK; // Non-fatal error
   }
 
+  // Keep a transaction snapshot because the generic importer and the legacy
+  // application schema must either publish the complete config or leave the
+  // caller's existing values untouched.
+  options_t options_before_config = *opts;
+
   // Import the generic scalar/string subset first. The legacy schema below
   // remains responsible for callbacks, enums, mode diagnostics, and the
   // application-specific validation contract.
@@ -1311,8 +1312,10 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   asciichat_errno_scope_t schema_scope = errno_scope_begin();
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
 
-  if (schema_result != ASCIICHAT_OK && strict) {
-    return schema_result;
+  if (schema_result != ASCIICHAT_OK) {
+    *opts = options_before_config;
+    if (strict)
+      return schema_result;
   }
   if (strict && schema_result == ASCIICHAT_OK)
     ASSERT_NO_ERRNO_SINCE(schema_scope);
