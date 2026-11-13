@@ -707,10 +707,11 @@ void update_banner_wait_for_check(void) {
   // stall when a platform/network call is slow to unwind.
   int ret = thread_join_timeout(&g_update_thread, NULL, 1LL * NS_PER_SEC_INT);
   if (ret != 0) {
-    // Timeout — thread is still alive. Do a blocking join to avoid orphaning it.
-    // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
-    log_warn("Update check thread did not finish within 1s, waiting for completion");
-    thread_join(&g_update_thread, NULL);
+    // The thread has been cancelled, but teardown must not block behind a
+    // platform/network call that ignored cancellation. Detach it and let the
+    // process reclaim its remaining resources at exit.
+    log_warn("Update check thread did not finish within 1s; detaching it during shutdown");
+    thread_detach(&g_update_thread);
   }
   g_update_thread_started = false;
 }

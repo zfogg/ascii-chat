@@ -21,14 +21,13 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/libplatform")
+# Use the checked-out submodule directly.  Reusing a cached source tree can
+# mix headers and implementations from different libplatform revisions.
+set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    # Keep the cache clone on the mapped libplatform revision used by the
-    # repository submodule. The copied compatibility files below are layered
-    # onto this exact source, so headers and implementation stay in sync.
-    GIT_TAG bd146fe
+    GIT_TAG daaf6af
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
@@ -49,6 +48,7 @@ if(TARGET gotel::gotel)
     target_link_libraries(libplatform PRIVATE gotel::gotel)
 endif()
 
+
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
@@ -66,4 +66,5 @@ endif()
 
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
+unset(_ascii_chat_libplatform_build)
 unset(_ascii_chat_source_root)

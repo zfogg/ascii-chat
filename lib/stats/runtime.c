@@ -408,6 +408,10 @@ static void *stats_worker(void *unused) {
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     platform_systemd_notify_watchdog();
+    if (strcmp(g_mode, "mirror") == 0) {
+      platform_sleep_ns(10 * NS_PER_MS_INT);
+      continue;
+    }
     int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
@@ -565,7 +569,10 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   snprintf(g_mode, sizeof(g_mode), "%s", mode);
   g_interval = interval_seconds;
   g_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  g_keyboard = (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) && platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
+  // Mirror mode has no statistics-screen interaction.  Avoid installing the
+  // console reader there so shutdown cannot leave the worker inside a UI
+  // input path while the mirror tears down its display.
+  g_keyboard = !mirror && (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) && platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   atomic_store_bool_impl(&g_onboarding_wait, false);

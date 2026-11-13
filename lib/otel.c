@@ -153,6 +153,9 @@ const char *ascii_otel_current_operation(void) {
 bool ascii_otel_enabled(void) {
   return atomic_ptr_load(&host) != NULL;
 }
+void ascii_otel_request_shutdown(void) {
+  atomic_store_explicit(&stopping, true, memory_order_release);
+}
 void ascii_otel_metric(ascii_otel_metric_t metric, double value) {
   gotel_host_t *h = retain();
   if (h) {
@@ -351,7 +354,10 @@ static void *export_worker(void *arg) {
     }
     platform_sleep_ms(10);
   }
-  // Keep final connection setup (including synchronous DNS) off the exit thread.
+  // Drain on the exporter worker, never on the exit thread. The shutdown
+  // caller waits only for its hard budget below; if the collector is blocked
+  // in DNS/TLS/HTTP, the worker remains retained until process exit rather
+  // than delaying application shutdown.
   drain_result = otel_status(gotel_drain(h), "Drain telemetry exporter");
   errno_notifications_suppress(notifications);
   atomic_store_explicit(&worker_done, true, memory_order_release);
@@ -394,7 +400,10 @@ static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, con
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
-  gotel_end(&s->scope);
+  if (atomic_load_explicit(&stopping, memory_order_acquire))
+    gotel_cancel(&s->scope);
+  else
+    gotel_end(&s->scope);
   if (current_scope == s)
     current_scope = s->previous;
   s->retained = false;
@@ -435,18 +444,25 @@ void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_
   gotel_attr_string(&scope->scope, "acip.transport", carrier);
 }
 void ascii_otel_shutdown(void) {
+  atomic_store_explicit(&stopping, true, memory_order_release);
   gotel_host_t *h = atomic_ptr_exchange(&host, NULL);
   if (!h)
     return;
-  gotel_end(&command_scope);
+  // The command span may still reference exporter-owned state while a
+  // shutdown signal is being handled on another thread.  Do not close it on
+  // the exit thread; the exporter owns the remaining queued data and process
+  // teardown reclaims the span memory.
   uint64_t started = time_get_ns();
   // Leave time for the rest of process teardown, even if the collector stalls.
-  uint64_t budget_ns = shutdown_timeout_ns < 400 * NS_PER_MS_INT ? shutdown_timeout_ns : 400 * NS_PER_MS_INT;
-  while (atomic_load_explicit(&readers, memory_order_seq_cst) && time_get_ns() - started < budget_ns)
-    platform_sleep_ms(1);
+  // Keep the application-side budget below one second while allowing the
+  // exporter its bounded 500 ms interruptible network drain.
+  uint64_t budget_ns = shutdown_timeout_ns < 900 * NS_PER_MS_INT ? shutdown_timeout_ns : 900 * NS_PER_MS_INT;
   bool producers_active = atomic_load_explicit(&readers, memory_order_seq_cst) != 0;
-  atomic_store_explicit(&stopping, true, memory_order_release);
   if (worker_started) {
+    // Interrupt any exporter request before waiting for the worker. Waiting
+    // first makes cancellation unreachable when the worker is blocked in
+    // DNS/TLS/HTTP, which turns a bounded shutdown into a process hang.
+    (void)otel_status(gotel_shutdown(h), "Cancel telemetry exporter");
     while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
       platform_sleep_ms(1);
     bool done = atomic_load_explicit(&worker_done, memory_order_acquire);
@@ -620,6 +636,15 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     config.exporter.read_timeout_ms = (uint32_t)o->otel_timeout;
     config.exporter.flush_timeout_ms = (uint32_t)o->otel_timeout;
   }
+  // The final drain runs on the exporter worker. Keep its network waits
+  // interruptible by the shutdown deadline even when the collector is down.
+  const uint32_t shutdown_safe_timeout_ms = 500;
+  if (config.exporter.connect_timeout_ms > shutdown_safe_timeout_ms)
+    config.exporter.connect_timeout_ms = shutdown_safe_timeout_ms;
+  if (config.exporter.read_timeout_ms > shutdown_safe_timeout_ms)
+    config.exporter.read_timeout_ms = shutdown_safe_timeout_ms;
+  if (config.exporter.flush_timeout_ms > shutdown_safe_timeout_ms)
+    config.exporter.flush_timeout_ms = shutdown_safe_timeout_ms;
   if (*o->otel_ca_file)
     config.tls_ca_file = o->otel_ca_file;
   if (env_status != ASCIICHAT_OK || !config.signals || !config.exporter.endpoint) {

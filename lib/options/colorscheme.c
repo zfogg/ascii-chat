@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <stdatomic.h>
 #include <ascii-chat/os/keyboard.h>
+#include <ascii-chat/tui/controller.h>
 
 /* ============================================================================
  * Global State
@@ -888,7 +889,7 @@ static terminal_background_t current_background(void) {
   uint64_t checked = atomic_load(&g_background_checked_us);
   if ((!checked || now - checked >= 250000) && !atomic_flag_test_and_set(&g_background_query)) {
 #if !defined(__EMSCRIPTEN__)
-    if (keyboard) {
+    if (keyboard && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
       // Rendering and logging must never wait for an unsupported terminal.
       // Its normal input pump decodes the reply and publishes the new RGB.
       (void)keyboard_request_background();

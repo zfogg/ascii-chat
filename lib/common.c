@@ -232,6 +232,11 @@ void asciichat_shared_destroy(void) {
   ui_input_shutdown();
   keyboard_destroy();
   symbol_cache_destroy();
+  // A signal-driven exit has already stopped all application workers. Do not
+  // enter the late atexit cleanup graph, whose debug-registry locks can be
+  // held by the console runtime; the OS reclaims process-owned resources.
+  if (shutdown_is_requested())
+    return;
 
   // Cleanup in reverse order of initialization (LIFO)
   // This ensures dependencies are properly handled

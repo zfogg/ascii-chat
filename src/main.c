@@ -256,6 +256,10 @@ void signal_exit(void) {
   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
   // The shutdown will be logged by normal thread context later.
   atomic_store_bool(&g_should_exit, true);
+  log_info("Shutdown signal received");
+  // Interrupt telemetry network I/O immediately. Full drain/free remains in
+  // the normal teardown path, but cancellation must not wait for atexit.
+  ascii_otel_request_shutdown();
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
     cb();
@@ -299,12 +303,18 @@ static void handle_sigterm(int sig) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
-  debug_sync_trigger_print();
-  debug_errno_trigger_print();
-  debug_stats_trigger_print();
+  // Defer these diagnostics to the normal teardown path. Console callbacks
+  // must remain non-blocking while the application is trying to exit.
 #endif
 
   // Call signal_exit() to set flag AND interrupt blocking socket operations
+  signal_exit();
+}
+#endif
+
+#ifdef _WIN32
+static void windows_sigint_handler(int sig) {
+  (void)sig;
   signal_exit();
 }
 #endif
@@ -318,6 +328,11 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
     return false;
   }
+
+  // The console callback must initiate shutdown before touching UI state.
+  // UI locks/initialization can be unavailable at this point, while the
+  // telemetry cancellation path is deliberately lock-free and immediate.
+  signal_exit();
 
   // Check if keyboard help screen is active (defined in session/display.c)
   // Uses atomic load only - safe from signal context
@@ -348,7 +363,6 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     platform_force_exit(1);
   }
 
-  signal_exit();
   return true;
 }
 
@@ -385,7 +399,19 @@ static void common_handle_sigusr2(int sig) {
  * Called once at startup before mode dispatch
  */
 void setup_signal_handlers(void) {
-  platform_set_console_ctrl_handler(console_ctrl_handler);
+  if (!platform_set_console_ctrl_handler(console_ctrl_handler)) {
+    log_warn("Failed to register Windows console control handler: %d", platform_get_last_error());
+  }
+
+#ifdef _WIN32
+  /* Keep a CRT fallback for consoles that deliver Ctrl-C as SIGINT rather
+   * than invoking the process console handler (notably private test consoles). */
+  signal(SIGINT, windows_sigint_handler);
+#ifdef SIGBREAK
+  signal(SIGBREAK, windows_sigint_handler);
+#endif
+  log_debug("Signal handlers registered");
+#endif
 
 #ifndef _WIN32
   platform_signal_handler_t handlers[] = {
@@ -831,6 +857,11 @@ int main(int argc, char *argv[]) {
     return init_result;
   }
 
+  // Install the console handler before option/media initialization. Startup
+  // can create worker threads and begin telemetry before mode dispatch; a
+  // Ctrl-C during that window must still enter the coordinated shutdown path.
+  setup_signal_handlers();
+
   // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
   if (terminal_should_force_stderr()) {
@@ -1077,10 +1108,6 @@ int main(int argc, char *argv[]) {
     update_banner_start_check();
   }
 
-  // Set up global signal handlers BEFORE mode dispatch
-  // All modes use the same centralized exit mechanism
-  setup_signal_handlers();
-
   // Register application callbacks so lib code can check exit flags
   // This connects the render loop's should_exit check to signal_exit()
   static const app_callbacks_t app_callbacks = {
@@ -1148,9 +1175,11 @@ int main(int argc, char *argv[]) {
   if (opts->detected_mode != MODE_MCP_SERVER || !strcmp(GET_OPTION(mcp_transport), "http"))
     (void)ui_controller_title_start(mode->name, platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO);
   errno_scope_end(terminal_title_scope, ASCIICHAT_ERRNO_DISMISSED);
-  asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
-  if (stats_result != ASCIICHAT_OK)
-    return stats_result;
+  if (strcmp(mode->name, "mirror") != 0) {
+    asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
+    if (stats_result != ASCIICHAT_OK)
+      return stats_result;
+  }
   asciichat_error_t otel_result = ascii_otel_init(mode->name, argc, argv);
   if (otel_result != ASCIICHAT_OK) {
     asciichat_error_context_t context;
@@ -1164,7 +1193,9 @@ int main(int argc, char *argv[]) {
     exit_code = requested_exit;
   stats_runtime_stop();
   ascii_otel_exit(exit_code);
+  log_debug("Shutdown: entering telemetry shutdown");
   ascii_otel_shutdown();
+  log_debug("Shutdown: telemetry shutdown complete");
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report

@@ -13,10 +13,15 @@ endif()
 add_library(asciichat-project-options INTERFACE)
 include("${REPO_ROOT}/cmake/compiler/SIMD.cmake")
 link_libraries(asciichat-project-options)
+set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL "Disable standalone libplatform tests" FORCE)
+set(LIBPLATFORM_BUILD_SHARED OFF CACHE BOOL "Build libplatform statically for SIMD tests" FORCE)
+set(LIBPLATFORM_UTF8PROC_SOURCE_DIR "${REPO_ROOT}/deps/ascii-chat-deps/libplatform/deps/utf8proc" CACHE PATH "libplatform utf8proc source" FORCE)
+add_subdirectory("${REPO_ROOT}/deps/ascii-chat-deps/libplatform" "${CMAKE_BINARY_DIR}/libplatform" EXCLUDE_FROM_ALL)
 add_executable(simd-test test_dispatch.c
-    "${REPO_ROOT}/lib/platform/cpu.c"
     "${REPO_ROOT}/lib/video/ascii/simd/dispatch.c")
 target_include_directories(simd-test PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+target_compile_definitions(simd-test PRIVATE WIN32_LEAN_AND_MEAN)
+target_link_libraries(simd-test PRIVATE libplatform)
 if(ENABLE_SIMD_AVX2)
     target_sources(simd-test PRIVATE "${REPO_ROOT}/lib/video/ascii/avx2/common.c")
     set_source_files_properties("${REPO_ROOT}/lib/video/ascii/avx2/common.c" PROPERTIES COMPILE_OPTIONS "-mavx2;-fno-lto")
@@ -52,17 +57,16 @@ if(TEST_EMISSION)
     target_compile_options(emission-test PRIVATE -ffunction-sections -fdata-sections)
     target_link_options(emission-test PRIVATE -Wl,--gc-sections)
     target_include_directories(emission-test PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
-    target_link_libraries(emission-test PRIVATE m pthread)
+    target_compile_definitions(emission-test PRIVATE WIN32_LEAN_AND_MEAN)
+    target_link_libraries(emission-test PRIVATE libplatform m pthread)
     set(emission_sources
         lib/video/ascii/scalar/foreground.c lib/video/ascii/scalar/background.c
         lib/video/ascii/scalar/halfblock.c lib/video/ascii/output_buffer.c
         lib/video/ascii/simd/cells.c lib/video/ascii/render.c lib/video/ascii/sgr.c lib/video/ascii/common.c lib/video/ascii/palette.c
         lib/video/ascii/ascii.c
         lib/video/terminal/ansi.c
-        lib/video/ascii/simd/dispatch.c lib/platform/cpu.c
-        deps/libplatform/lib/atomic.c lib/platform/rwlock.c
-        lib/platform/posix/rwlock.c lib/platform/posix/mutex.c
-        lib/platform/posix/string.c lib/platform/posix/system.c lib/platform/system.c lib/util/time.c)
+        lib/video/ascii/simd/dispatch.c
+        lib/util/time.c)
     foreach(source IN LISTS emission_sources)
         target_sources(emission-test PRIVATE "${REPO_ROOT}/${source}")
     endforeach()
@@ -102,17 +106,19 @@ if(TEST_EMISSION)
     list(FILTER emission_target_sources EXCLUDE REGEX "ascii_emission_test.c|emission_runtime.c")
     add_executable(glyph-benchmark benchmark_glyph.c emission_runtime.c ${emission_target_sources})
     target_include_directories(glyph-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+    target_compile_definitions(glyph-benchmark PRIVATE WIN32_LEAN_AND_MEAN)
     target_compile_definitions(glyph-benchmark PRIVATE NDEBUG _GNU_SOURCE)
     target_compile_options(glyph-benchmark PRIVATE -ffunction-sections -fdata-sections)
     target_link_options(glyph-benchmark PRIVATE -Wl,--gc-sections)
-    target_link_libraries(glyph-benchmark PRIVATE m pthread)
+    target_link_libraries(glyph-benchmark PRIVATE libplatform m pthread)
     add_executable(halfblock-benchmark benchmark_halfblock.c emission_runtime.c ${emission_target_sources})
     target_include_directories(halfblock-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+    target_compile_definitions(halfblock-benchmark PRIVATE WIN32_LEAN_AND_MEAN)
     target_compile_definitions(halfblock-benchmark PRIVATE NDEBUG _GNU_SOURCE)
     target_compile_options(halfblock-benchmark PRIVATE -ffunction-sections -fdata-sections)
     target_link_options(halfblock-benchmark PRIVATE -Wl,--gc-sections
         -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-    target_link_libraries(halfblock-benchmark PRIVATE m pthread)
+    target_link_libraries(halfblock-benchmark PRIVATE libplatform m pthread)
     set(EMISSION_BENCHMARK_BASELINE "" CACHE PATH "Optional original renderer source tree for before/after measurement")
     if(EMISSION_BENCHMARK_BASELINE)
         target_include_directories(emission-benchmark BEFORE PRIVATE "${EMISSION_BENCHMARK_BASELINE}/include")
@@ -149,9 +155,10 @@ if(TEST_EMISSION)
     endif()
     target_sources(emission-benchmark PRIVATE ${emission_target_sources})
     target_include_directories(emission-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+    target_compile_definitions(emission-benchmark PRIVATE WIN32_LEAN_AND_MEAN)
     target_compile_definitions(emission-benchmark PRIVATE NDEBUG _GNU_SOURCE)
     target_compile_options(emission-benchmark PRIVATE -ffunction-sections -fdata-sections)
     target_link_options(emission-benchmark PRIVATE -Wl,--gc-sections
         -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
-    target_link_libraries(emission-benchmark PRIVATE m pthread)
+    target_link_libraries(emission-benchmark PRIVATE libplatform m pthread)
 endif()

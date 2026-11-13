@@ -31,6 +31,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /**
  * @brief Opaque FPS counter handle
@@ -95,6 +96,7 @@ void fps_counter_write_end(fps_counter_t *counter, bool complete);
 void fps_counter_frame_end(fps_counter_t *counter, uint64_t now);
 /** Draw the overlay if visible and changed, and periodically report output timing. */
 void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redrawn);
+size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity, int columns, bool redrawn);
 
 /** @} */
 
