@@ -285,7 +285,6 @@ set(LIB_SRC_COMMON
 
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
-    ${LIBPLATFORM_ROOT}/lib/debug/sync.c
     ${LIB_ROOT}/debug/stats.c
     ${LIB_ROOT}/debug/errno.c
     ${LIB_ROOT}/debug/debug_helpers.c
@@ -306,7 +305,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/wasm.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
-    ${LIBPLATFORM_ROOT}/lib/debug/memory.c
     ${LIBPLATFORM_ROOT}/lib/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
