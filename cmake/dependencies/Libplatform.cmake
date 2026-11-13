@@ -64,23 +64,6 @@ string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
 
-# POSIX platform strings are also released through the application's allocator
-# on musl builds.  Keep platform_strdup paired with SAFE_FREE when mimalloc is
-# enabled instead of mixing libc malloc with mi_free.
-if(USE_MIMALLOC)
-    target_compile_definitions(libplatform-objects PRIVATE ASCII_CHAT_USE_MIMALLOC=1)
-    if(MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${MIMALLOC_INCLUDE_DIRS})
-        list(GET MIMALLOC_INCLUDE_DIRS 0 _ascii_chat_mimalloc_include)
-        target_compile_options(libplatform-objects PRIVATE
-            "-include${_ascii_chat_mimalloc_include}/mimalloc.h")
-    endif()
-    # libplatform's POSIX helpers return buffers that the application releases
-    # through SAFE_FREE.  Use the same allocator for every internal helper
-    # allocation in this embedded build.
-    target_compile_definitions(libplatform-objects PRIVATE
-        malloc=mi_malloc free=mi_free calloc=mi_calloc realloc=mi_realloc)
-endif()
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
