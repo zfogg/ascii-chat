@@ -74,7 +74,7 @@
 
 #pragma once
 
-#include "../os/socket.h"
+#include <libplatform/socket.h>
 #include "../tests/test_env.h"
 #include <sys/types.h>
 
