@@ -75,7 +75,11 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
     // These values have application-level range/dependency validation in the
     // legacy schema. Leaving them there prevents the generic scalar bridge
     // from temporarily accepting a value that the application must reject.
-    if (meta->field_offset == offsetof(options_t, fps) || meta->field_offset == offsetof(options_t, snapshot_delay))
+    // libflags' integer storage is int64_t-sized; options_t contains many
+    // ordinary int/enum fields, so let the application parser own all integer
+    // writes rather than risking an over-wide direct storage assignment.
+    if (meta->type == OPTION_TYPE_INT || meta->field_offset == offsetof(options_t, fps) ||
+        meta->field_offset == offsetof(options_t, snapshot_delay))
       continue;
 
     flags_value_type_t type;
