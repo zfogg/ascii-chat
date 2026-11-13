@@ -43,7 +43,11 @@ endif()
 
 # libplatform owns the shared path/logging helpers, so give it the checkout
 # root that CMake already knows instead of letting it fall back to ".".
-string(REPLACE "\\" "/" _ascii_chat_source_root "${_ascii_chat_repo_root}")
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
+    set(_ascii_chat_source_root ".")
+else()
+    string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
+endif()
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
 target_include_directories(libplatform-objects PRIVATE
