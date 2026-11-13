@@ -613,6 +613,7 @@ options_t options_t_new(void) {
   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
   opts.stretch = OPT_STRETCH_DEFAULT;
   opts.fps = OPT_FPS_DEFAULT;
+  opts.fps_counter = OPT_FPS_COUNTER_DEFAULT;
   opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
   opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
@@ -1667,6 +1668,7 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
   bool saved_flip_x = opts->flip_x;
   bool saved_flip_y = opts->flip_y;
+  bool saved_fps_counter = opts->fps_counter;
   if (SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = OPT_FLIP_X_DEFAULT;
   // Apply defaults from unified config
@@ -1683,12 +1685,21 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
     opts->encrypt_enabled = false;
 
   bool cli_encrypt = false, cli_no_encrypt = false;
+  bool cli_fps_counter = false, cli_fps_counter_value = false, cli_fps_counter_has_value = false;
   bool cli_flip_x = false, cli_flip_y = false;
   for (int i = 1; i < mode_argc; ++i) {
     if (strcmp(mode_argv[i], "--") == 0)
       break;
     cli_encrypt |= strcmp(mode_argv[i], "--encrypt") == 0 || strcmp(mode_argv[i], "-E") == 0 || strncmp(mode_argv[i], "--encrypt=", 10) == 0;
     cli_no_encrypt |= strcmp(mode_argv[i], "--no-encrypt") == 0 || strncmp(mode_argv[i], "--no-encrypt=", 13) == 0;
+    if (strcmp(mode_argv[i], "--fps-counter") == 0 || strncmp(mode_argv[i], "--fps-counter=", 14) == 0) {
+      cli_fps_counter = true;
+      const char *value = strncmp(mode_argv[i], "--fps-counter=", 14) == 0 ? mode_argv[i] + 14 : NULL;
+      if (value) {
+        cli_fps_counter_has_value = true;
+        cli_fps_counter_value = strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0 || strcasecmp(value, "on") == 0;
+      }
+    }
     cli_flip_x |= strcmp(mode_argv[i], "--flip-x") == 0 || strncmp(mode_argv[i], "--flip-x=", 9) == 0;
     cli_flip_y |= strcmp(mode_argv[i], "--flip-y") == 0 || strncmp(mode_argv[i], "--flip-y=", 9) == 0;
   }
@@ -1737,6 +1748,8 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
     opts->no_encrypt = false;
   if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
     opts->encrypt_enabled = false;
+  if (cli_fps_counter)
+    opts->fps_counter = cli_fps_counter_has_value ? cli_fps_counter_value : !saved_fps_counter;
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   if (!cli_flip_x && !SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = saved_flip_x_for_parse;
@@ -2448,6 +2461,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Mode parsing owns the temporary argv and schema until the shared cleanup path.
   mode_arguments_t mode_args = {.argc = argc, .argv = argv};
   options_config_t *config = NULL;
+  // The registry exposes fps-counter as a flag, but users also rely on the
+  // conventional explicit boolean spelling.
+  for (int i = 1; i < argc; ++i) {
+    if (strcasecmp(argv[i], "--fps-counter=true") == 0)
+      argv[i] = "--fps-counter";
+  }
   result = build_mode_argv(argc, argv, mode_index, &mode_args);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
@@ -2469,6 +2488,17 @@ asciichat_error_t options_init(int argc, char **argv) {
   result = parse_mode_options(&opts, config, detected_mode, mode_args.argc, mode_args.argv, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
+  }
+  // Preserve an explicit FPS-counter value from the original argv. Some
+  // command-line forms pass through mode-specific filtering.
+  // mode-argv filtering paths otherwise reduce --fps-counter=true to the
+  // flag's default state before the final options publish.
+  for (int i = 1; i < argc; ++i) {
+    if (strncmp(argv[i], "--fps-counter=", 14) == 0) {
+      const char *value = argv[i] + 14;
+      opts.fps_counter = strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0 || strcasecmp(value, "on") == 0;
+      break;
+    }
   }
   record_explicit_fps(&opts, mode_args.argc, mode_args.argv, fps_set_by_config);
   result = validate_custom_palette(&opts);

@@ -104,6 +104,9 @@ static asciichat_error_t toggle_mute(double *saved_volume) {
 
 ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
   switch ((int)key) {
+  case 3: // Ctrl-C from the terminal input stream
+    log_info("Ctrl-C key received from terminal input");
+    return UI_ACTION_QUIT;
   case 'q':
     return UI_ACTION_QUIT;
   case 'Q':

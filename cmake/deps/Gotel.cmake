@@ -98,6 +98,8 @@ endif()
 # Otherwise the next tick appends records that clear_in_flight_batch frees unsent.
 get_target_property(_otel_source_root otlp_c SOURCE_DIR)
 file(READ "${_otel_source_root}/src/exporter.c" _otel_exporter)
+set(_otel_flush_shutdown "\tif (otlp_atomic_load_int(&e->shutdown_requested, OTLP_MEMORY_ORDER_ACQUIRE)) {\n\t\tif (e->in_flight) {\n\t\t\totlp_http_request_free(e->in_flight);\n\t\t\te->in_flight = NULL;\n\t\t\te->in_flight_count = 0;\n\t\t}\n\t\tfor (int s = 0; s < 3; ++s)\n\t\t\tdrain_signal(&e->sig[s], SIGNAL_SPECS[s].free_item);\n\t\treturn OTLP_OK;\n\t}\n")
+string(REPLACE "\tif (!e)\n\t\treturn OTLP_ERR_NULL;\n\tdeadline = otlp_platform_now_mono_ms() + e->flush_timeout_ms;" "\tif (!e)\n\t\treturn OTLP_ERR_NULL;\n${_otel_flush_shutdown}\tdeadline = otlp_platform_now_mono_ms() + e->flush_timeout_ms;" _otel_exporter "${_otel_exporter}")
 set(_otel_drain "\t\t\twhile (e->sig[s].pending_count < e->sig[s].pending_cap)")
 string(FIND "${_otel_exporter}" "${_otel_drain}" _otel_drain_offset)
 if(_otel_drain_offset EQUAL -1)
@@ -105,6 +107,17 @@ if(_otel_drain_offset EQUAL -1)
 endif()
 string(REPLACE "${_otel_drain}"
     "\t\t\tif (e->in_flight && e->in_flight_signal == s)\n\t\t\t\tcontinue;\n${_otel_drain}"
+    _otel_exporter "${_otel_exporter}")
+# A shutdown request must also cancel an already in-flight HTTP request. The
+# exporter tick loop is the single owner of that request, so freeing it here
+# is safe and lets gotel_drain() observe an empty queue on its next iteration.
+set(_otel_inflight_step "\t\t\totlp_status_t st = otlp_http_request_step(e->in_flight);")
+string(FIND "${_otel_exporter}" "${_otel_inflight_step}" _otel_inflight_offset)
+if(_otel_inflight_offset EQUAL -1)
+    message(FATAL_ERROR "Pinned otlp-c exporter in-flight request implementation changed")
+endif()
+string(REPLACE "${_otel_inflight_step}"
+    "\t\t\tif (otlp_atomic_load_int(&e->shutdown_requested, OTLP_MEMORY_ORDER_ACQUIRE)) {\n\t\t\t\totlp_http_request_free(e->in_flight);\n\t\t\t\te->in_flight = NULL;\n\t\t\t\te->in_flight_count = 0;\n\t\t\t\twork_done = true;\n\t\t\t\tcontinue;\n\t\t\t}\n${_otel_inflight_step}"
     _otel_exporter "${_otel_exporter}")
 file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c"
     CONTENT "${_otel_exporter}" @ONLY)

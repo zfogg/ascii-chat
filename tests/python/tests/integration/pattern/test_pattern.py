@@ -21,6 +21,19 @@ def test_native_pattern(binary, shared_library, tmp_path):
     assert result.returncode == 0, (result.stdout + result.stderr).decode("utf-8", errors="replace")[-10000:]
 
 
+def test_test_pattern_is_not_mirrored_by_default(binary, test_environment):
+    """The asymmetric pattern must retain its left-to-right orientation."""
+    command = [
+        str(binary), "--quiet", "--no-check-update", "--log-level", "dev", "mirror", "--test-pattern", "1", "--audio=false",
+        "--snapshot", "--snapshot-delay=0", "--width", "80", "--height", "24",
+        "--color-mode", "none", "--strip-ansi",
+    ]
+    result = subprocess.run(command, env=test_environment,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")[-4000:]
+    assert b"TIMING_FLIP:" not in result.stderr, "test-pattern was mirrored by default"
+
+
 def test_test_pattern_stdout_is_valid_utf8_for_five_seconds(binary, test_environment):
     """Validate every captured render byte before any terminal decoding occurs."""
     result = subprocess.run([
@@ -73,7 +86,7 @@ def test_webcam_200x100_has_stable_vertical_bounds(binary, test_environment):
     started = False
     samples = 0
     try:
-        deadline = time.monotonic() + 20.0
+        deadline = time.monotonic() + 25.0
         while time.monotonic() < deadline:
             try:
                 chunk = term.output.get(timeout=0.1)

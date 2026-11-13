@@ -357,12 +357,13 @@ void ui_controller_set_effective_fps(unsigned int fps) {
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local bool g_help_sync_open;
-static _Thread_local bool g_stats_media, g_stats_failed;
+static _Thread_local bool g_stats_media, g_stats_failed, g_media_overlay_written;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;
 static void stats_media_begin(bool media) {
   g_stats_media = media;
   g_stats_failed = false;
   g_stats_write_ns = g_stats_writes = g_stats_max_chunk_ns = g_stats_chunks = 0;
+  g_media_overlay_written = false;
   g_probe_frame = false;
   g_probe_requested_ns = 0;
 }
@@ -446,7 +447,9 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     return ASCIICHAT_OK;
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
-  fps_counter_write_begin(g_fps);
+  bool measure_media_write = g_stats_media;
+  if (measure_media_write)
+    fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
@@ -491,6 +494,16 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       sync_started_ns = time_get_ns();
     }
   }
+  if (started && g_stats_media && GET_OPTION(fps_counter)) {
+    char overlay[128];
+    size_t overlay_length = fps_counter_format(g_fps, overlay, sizeof(overlay), g_render_size.cols, true);
+    if (overlay_length) {
+      if (write_output_chunk(fd, overlay, overlay_length) == overlay_length)
+        g_media_overlay_written = true;
+      else
+        started = false;
+    }
+  }
   // End the update even when input superseded the frame halfway through.
   static const char end_with_query[] = "\033[?2026l\033]11;?\033\\";
   bool probe = synchronized && g_probe_frame && written == len && started;
@@ -514,7 +527,8 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     g_stats_writes++;
     g_stats_failed |= !complete;
   }
-  fps_counter_write_end(g_fps, complete);
+  if (measure_media_write)
+    fps_counter_write_end(g_fps, complete);
   return complete ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Incomplete terminal frame write (%zu/%zu bytes)", written, len);
 }
 
@@ -1156,7 +1170,7 @@ static void *presentation_main(void *unused) {
       }
       ui_session_view_t view = {.screen = active,
                                 .minimum = errors && active != UI_SCREEN_HELP ? (terminal_size_t){1, 1} : screen->minimum,
-                                .dirty = screen->dirty || errors_changed || volume_changed || help_changed,
+                                .dirty = redraw || screen->dirty || errors_changed || volume_changed || help_changed,
                                 .refresh_ns = active == UI_SCREEN_PROMPT            ? 50 * NS_PER_MS_INT
                                               : active == UI_SCREEN_LOGS            ? 100 * NS_PER_MS_INT
                                               : active == UI_SCREEN_UPDATE          ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
@@ -1174,6 +1188,7 @@ static void *presentation_main(void *unused) {
       uint64_t composed_ns = time_get_ns();
       bool covered = ui_session_is_covered(g_session);
       atomic_store_bool(&g_blocked, covered);
+      g_media_overlay_written = false;
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
@@ -1223,9 +1238,7 @@ static void *presentation_main(void *unused) {
         if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
-      // The FPS meter is the final overlay: draw it once after the complete
-      // ASCII/TUI composition has been written, without clearing anything.
-      if (!covered && show_fps)
+      if (!covered && show_fps && !g_media_overlay_written)
         fps_counter_render(g_fps, screen->fd, size.cols, active == UI_SCREEN_HELP);
       if (g_help_sync_open) {
         (void)write_output_chunk(screen->fd, "\033[?2026l", 8);
@@ -1843,14 +1856,8 @@ void ui_controller_shutdown(void) {
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
   terminal_screen_leave();
-  NAMED_UNREGISTER(&g_title_active);
-  NAMED_UNREGISTER(&g_title_render);
-  NAMED_UNREGISTER(&g_title_ready);
-  NAMED_UNREGISTER(&g_title_activity);
-  NAMED_UNREGISTER(&g_live);
-  NAMED_UNREGISTER(&g_presentation_stop_requested);
-  NAMED_UNREGISTER(&g_blocked);
-  NAMED_UNREGISTER(&g_lifecycle.state);
+  // Named entries are reclaimed by the shared debug-registry teardown. Do
+  // not acquire its writer lock from the cursor-restoration atexit path.
   lifecycle_destroy_commit(&g_lifecycle);
 }
 

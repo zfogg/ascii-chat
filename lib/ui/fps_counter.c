@@ -9,6 +9,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/ui/output.h>
 #include <string.h>
+#include <stdio.h>
 
 /* ============================================================================
  * FPS Counter Implementation
@@ -27,6 +28,7 @@
  */
 struct fps_counter_s {
   bool visible;
+  bool dark_background;
   unsigned int effective_fps;
   int last_fps;
   bool measuring;
@@ -55,6 +57,7 @@ fps_counter_t *fps_counter_create(void) {
 
   counter->last_fps = -1;
   counter->effective_fps = 60;
+  counter->dark_background = true;
   counter->report_start = time_get_ns();
 
   // Initialize circular buffer pointers
@@ -148,6 +151,8 @@ bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
   counter->visible = visible;
   if (changed)
     counter->last_fps = -1;
+  if (changed && visible)
+    counter->dark_background = terminal_has_dark_background();
   return changed;
 }
 
@@ -202,8 +207,16 @@ void fps_counter_frame_end(fps_counter_t *counter, uint64_t now) {
 }
 
 void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redrawn) {
+  char output[128];
+  size_t length = fps_counter_format(counter, output, sizeof(output), columns, redrawn);
+  if (length)
+    (void)ui_output_write(fd, output, length);
+}
+
+size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity, int columns, bool redrawn) {
   if (!counter)
-    return;
+    return 0;
+  size_t output_length = 0;
   uint64_t now = time_get_ns();
   float measured = fps_counter_get_at(counter, now);
   // A UI overlay can repaint for longer than the media counter's inactivity
@@ -212,13 +225,15 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
   if (redrawn && value == 0 && counter->last_fps > 0)
     value = counter->last_fps;
-  // `FPS:ddd/ddd` is ten columns wide. Start nine columns before the
+  // `FPS:ddd/ddd` is eleven columns wide. Start ten columns before the
   // terminal's rightmost column so the complete overlay stays on one line.
-  if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps)) {
-    // Restore the cursor so the right-margin overlay cannot wrap the next write.
-    const char *style = terminal_has_dark_background() ? "\033[97;40m" : "\033[30;47m";
-    if (ui_output_printf(fd, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 9, style, value, counter->effective_fps) == ASCIICHAT_OK)
+  if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps) && buffer && capacity > 0) {
+    const char *style = counter->dark_background ? "\033[97;40m" : "\033[30;47m";
+    int length = snprintf(buffer, capacity, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 10, style, value, counter->effective_fps);
+    if (length > 0 && (size_t)length < capacity) {
       counter->last_fps = value;
+      output_length = (size_t)length;
+    }
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {
     if (counter->report_frames)
@@ -227,4 +242,5 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
     counter->report_start = now;
     counter->report_writes = counter->report_frames = 0;
   }
+  return output_length;
 }

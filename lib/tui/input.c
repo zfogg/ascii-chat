@@ -551,7 +551,6 @@ void ui_input_shutdown(void) {
     return;
   mutex_destroy(&g_input_prompt_mutex);
   mutex_destroy(&g_input_mutex);
-  NAMED_UNREGISTER(&g_input_lifecycle.state);
   lifecycle_destroy_commit(&g_input_lifecycle);
 }
 
