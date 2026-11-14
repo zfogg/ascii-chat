@@ -10,7 +10,7 @@
  *
  * The registry is the **single source of truth** for option definitions. It works with:
  * - **Builder** (`builder.h`): Use builder to construct custom option configurations,
- *   populated from the registry via `options_registry_add_all_to_builder()`.
+ *   populated from the registry via `options_registry_add_all_to_flags_builder()`.
  * - **RCU Thread-Safety** (`rcu.h`): Registered options are parsed and published to
  *   RCU for lock-free thread-safe access via `GET_OPTION()` macro.
  * - **Options System** (`options.h`): The unified parsing system uses the registry
@@ -224,8 +224,6 @@ extern "C" {
  * @param builder Options builder to add options to
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder);
-
 /**
  * @brief Adds registry metadata directly to a libflags schema builder.
  * @param builder Destination builder.
