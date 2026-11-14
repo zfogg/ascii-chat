@@ -1,6 +1,9 @@
 # Shared compiler/toolchain conventions.
 include_guard(GLOBAL)
 
+# Shared warning, hardening, sanitizer, coverage, and linker flag functions.
+include(${CMAKE_CURRENT_LIST_DIR}/Flags.cmake)
+
 function(asciichat_compiler_is FAMILY RESULT)
     if(_ASCIICHAT_COMPILER_MODULE STREQUAL FAMILY)
         set(${RESULT} TRUE PARENT_SCOPE)

@@ -245,7 +245,6 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compilers/Flags.cmake)
 configure_base_compiler_flags()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     configure_clang_post_project()
