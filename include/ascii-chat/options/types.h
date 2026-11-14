@@ -49,5 +49,3 @@ typedef enum {
   DEPENDENCY_CONFLICTS,
   DEPENDENCY_IMPLIES,
 } dependency_type_t;
-
-

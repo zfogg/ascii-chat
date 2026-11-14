@@ -18,7 +18,6 @@ Test(completions, parse_shell_name_bash) {
   completion_format_t format = completions_parse_shell_name("bash");
   cr_assert_eq(format, COMPLETION_FORMAT_BASH, "Should parse 'bash' correctly");
 }
-
 Test(completions, parse_shell_name_fish) {
   completion_format_t format = completions_parse_shell_name("fish");
   cr_assert_eq(format, COMPLETION_FORMAT_FISH, "Should parse 'fish' correctly");
@@ -112,4 +111,3 @@ Test(completions, generate_invalid_format) {
   asciichat_error_t result = completions_generate_for_shell(COMPLETION_FORMAT_UNKNOWN, stdout);
   cr_assert_neq(result, ASCIICHAT_OK, "Should fail with invalid completion format");
 }
-
