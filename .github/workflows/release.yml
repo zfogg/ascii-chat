@@ -327,7 +327,7 @@ jobs:
           cmake --preset release -DPROJECT_VERSION_FROM_GIT="${RELEASE_TAG#v}" -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable
 
       - name: Save CMake dependency cache
-        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -395,11 +395,11 @@ jobs:
           find .deps-cache/Release/musl -path '*/ffbuild/config.log' -type f -print -exec tail -n 160 {} \; 2>/dev/null || echo "No FFmpeg configure log"
 
       - name: Print ccache stats
-        if: always()
+        if: success()
         run: ccache --show-stats || true
 
       - name: Save ccache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: .ccache
@@ -587,7 +587,7 @@ jobs:
           cmake $CMAKE_ARGS
 
       - name: Save CMake dependency cache
-        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -645,11 +645,11 @@ jobs:
           echo "Verified static libasciichat.a in $archive"
 
       - name: Print ccache stats
-        if: always()
+        if: success()
         run: ccache --show-stats || true
 
       - name: Save ccache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: .ccache
@@ -829,7 +829,7 @@ jobs:
           cmake @args
 
       - name: Save CMake dependency cache
-        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -899,12 +899,12 @@ jobs:
           Write-Host "Runtime archive contains no DLL dependencies; development archive contains libasciichat.a"
 
       - name: Print ccache stats
-        if: always()
+        if: success()
         shell: bash
         run: ccache --show-stats || true
 
       - name: Save ccache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: .ccache
