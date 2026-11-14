@@ -185,7 +185,7 @@ function(asciichat_configure_contract target)
         add_dependencies(${target} tests-timer-start)
     endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
-    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
+    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES} libflags::flags)
     target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF

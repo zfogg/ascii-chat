@@ -23,6 +23,8 @@
 #include <ascii-chat/stats/stats.h>
 #include <stdatomic.h>
 #include <string.h>
+
+extern void debug_sync_check_cond_deadlocks(void);
 #include <errno.h>
 
 static atomic_bool entered, proceed, removed;

@@ -31,6 +31,7 @@ set(CORE_SRCS
     ${LIB_DIR}/common.c
     ${LIB_DIR}/otel.c
     ${LIB_DIR}/asciichat_errno.c
+    ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c
     ${LIB_DIR}/app_callbacks.c
     ${LIB_DIR}/stats/stats.c
     ${LIB_DIR}/stats/descriptors.c
