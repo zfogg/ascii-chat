@@ -78,16 +78,27 @@ static void restore_options(const options_backup_t *backup) {
 }
 
 // Run parser cases in a child because some usage paths terminate the process.
-static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
+static int test_options_init_with_fork(char **argv, int argc, int is_client) {
   (void)is_client; // Unused parameter
 
 #ifdef _WIN32
-  // Windows has no fork(); options_init reports parser failures as return
-  // codes, so exercise the same contract in-process.
+  // Windows has no fork(); copy argv into writable storage before exercising
+  // options_init. The parser may rewrite argv entries, while the test cases
+  // intentionally use string literals for readability.
+  std::vector<std::string> argv_strings;
+  argv_strings.reserve(static_cast<size_t>(argc));
+  std::vector<char *> argv_copy;
+  argv_copy.reserve(static_cast<size_t>(argc) + 1);
+  for (int i = 0; i < argc; ++i) {
+    argv_strings.emplace_back(argv[i]);
+    argv_copy.push_back(argv_strings.back().data());
+  }
+  argv_copy.push_back(nullptr);
+
   optind = 1;
   opterr = 1;
   optopt = 0;
-  return options_init(argc, argv) == ASCIICHAT_OK ? 0 : 1;
+  return options_init(argc, argv_copy.data()) == ASCIICHAT_OK ? 0 : 1;
 #else
   pid_t pid = fork();
   if (pid < 0) {

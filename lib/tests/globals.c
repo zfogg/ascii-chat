@@ -16,14 +16,12 @@
  * Sets TESTING environment variable so libraries can detect test mode at runtime.
  * This provides a fallback for when tests are run directly (not via ctest).
  * CTest also sets TESTING=1 via set_tests_properties() in Tests.cmake.
- * Also initializes the options RCU system so tests can use options_get().
+ * Options RCU access is safe before initialization and is initialized by the
+ * normal application/test startup path when options parsing is exercised.
  */
 __attribute__((constructor)) static void init_test_environment(void) {
   platform_setenv("TESTING", "1");
 
-  // Initialize options RCU system with defaults for tests
-  // This must happen before any code calls options_get()
-  options_state_init();
 }
 
 /**
