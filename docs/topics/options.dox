@@ -9,14 +9,20 @@
  * ascii-chat. It handles server and client options, validates settings, and
  * manages application configuration.
  *
- * **Implementation**: include/ascii-chat/options/options.h, include/ascii-chat/options/config.h
+ * **Implementation**: libflags schemas and command trees, with ascii-chat
+ * application callbacks and mode-specific positional parsing in
+ * `src/common/options.c`.
  *
  * **Key Features**:
- * - Command-line argument parsing with getopt
+ * - Command-line argument parsing with libflags
+ * - Nested commands with a default command for discovery mode
+ * - Shared root flags and mode-specific command flags
  * - Server and client mode options
  * - Automatic help generation
  * - Configuration validation
  * - Default value management
+ * - Automatic `ASCII_CHAT_*` environment variables with configurable prefixes
+ * - TOML, JSON, shell completion, and manpage generation from one schema
  *
  * @section options_modes Operation Modes
  *
@@ -29,6 +35,11 @@
  * @code{.sh}
  * ./ascii-chat client [options]
  * @endcode
+ *
+ * With no command, ascii-chat resolves the libflags root default command,
+ * which is discovery mode. `--file` and `--url` select mirror mode
+ * implicitly. The command tree is used only for command resolution; the
+ * application retains mode-specific positional and policy callbacks.
  *
  * @section options_common_options Common Options
  *
@@ -69,6 +80,10 @@
  * **Configuration Options**:
  * - `--config PATH` - Load configuration from TOML file
  * - `--config-create [PATH]` - Create default config file and exit
+ *
+ * Every value-taking option also has a derived environment name using the
+ * configured prefix (normally `ASCII_CHAT_`), with hyphens converted to
+ * underscores. Explicit environment aliases are supported by libflags.
  *
  * @section options_examples Usage Examples
  *
@@ -139,7 +154,7 @@
  * **Parse Options**:
  * @code{.c}
  * options_t opts;
- * asciichat_error_t err = parse_options(argc, argv, &opts);
+ * asciichat_error_t err = options_init(argc, argv, &opts);
  * if (err != ASCIICHAT_OK) {
  *     return err;
  * }
@@ -175,4 +190,6 @@
  * @see @ref topic_config "Configuration" for configuration files and precedence
  * @see options.h
  * @see config.h
+ * @see https://github.com/zfogg/libflags for the reusable schema, context,
+ * command, environment, TOML, JSON, completion, and manpage APIs.
  */
