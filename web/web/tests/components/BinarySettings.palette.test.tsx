@@ -16,9 +16,47 @@ import {
   PALETTE_INPUT_DEBOUNCE_MS,
 } from "../../src/utils/defaultSettings";
 
+vi.mock("../../src/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/utils")>()),
+  getOptionHelp: () => "Setting help",
+}));
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+});
+
+test.each([
+  AsciiChatMode.MIRROR,
+  AsciiChatMode.CLIENT,
+  AsciiChatMode.DISCOVERY,
+])("provides visible help for settings with tooltips in %s mode", (mode) => {
+  render(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={mode}
+      onChange={vi.fn()}
+      contentFit="contain"
+      onContentFitChange={vi.fn()}
+    />,
+    { wrapper: HeadingProvider },
+  );
+  for (const name of [
+    "Content fit",
+    "Frame Rate",
+    "Color Mode",
+    "Render Mode",
+    "Color Filter",
+    "Text Art Render Algorithm",
+    "Palette",
+    "Animation",
+    "Camera Framing",
+    "Stabilization",
+    "Content Horizontal Flip",
+    "Content Vertical Flip",
+  ]) {
+    expect(screen.getByRole("button", { name: `${name} help` })).toBeTruthy();
+  }
 });
 
 test("applies custom palette characters after 750 ms", () => {
