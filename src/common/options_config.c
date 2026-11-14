@@ -971,6 +971,17 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       continue;
     }
 
+    // libflags owns ordinary scalar TOML parsing and storage. Keep this
+    // legacy path only for application callbacks and special normalization;
+    // generic bool/int/double/string values were already applied by the
+    // libflags schema bridge before this compatibility pass.
+    bool generic_scalar = meta->type == OPTION_TYPE_BOOL || meta->type == OPTION_TYPE_INT || meta->type == OPTION_TYPE_DOUBLE ||
+                          (meta->type == OPTION_TYPE_STRING && !meta->parse_fn);
+    if (generic_scalar) {
+      option_set_flags[i] = true;
+      continue;
+    }
+
     // Parse and validate value using handler
     char error_msg[BUFFER_SIZE_SMALL] = {0};
     option_parsed_value_t parsed = {0};
