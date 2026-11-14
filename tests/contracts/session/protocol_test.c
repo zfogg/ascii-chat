@@ -181,7 +181,7 @@ static void test_participant_settings(void) {
   session_settings_init(&requested);
   cr_assert_eq(requested.color_mode, TERM_COLOR_AUTO);
   cr_assert_eq(requested.fps, 0);
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
   int expected_color = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   memset(&test.host, 0, sizeof(test.host));
   cr_assert_eq(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
