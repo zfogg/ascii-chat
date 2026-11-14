@@ -913,7 +913,6 @@ int main(int argc, char *argv[]) {
 
     // Clean up options state before exiting
     options_state_destroy();
-    options_cleanup_schema();
 
     exit(options_result);
   }

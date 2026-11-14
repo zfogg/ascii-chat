@@ -14,7 +14,6 @@
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/validation.h>
-#include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/path.h>
@@ -49,8 +48,6 @@
  * callbacks while libflags owns storage binding and TOML conversion.
  */
 flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask) {
-  size_t count = 0;
-  const config_option_metadata_t *metadata = config_schema_get_all(&count);
   flags_schema_builder_t *builder = flags_schema_builder_create();
   if (!builder)
     return NULL;
@@ -59,22 +56,6 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
     return NULL;
   }
 
-  /* Configuration keys are application policy; attach them to the generic
-   * registry descriptors without duplicating their storage/type definitions. */
-  flags_schema_t *schema = (flags_schema_t *)flags_schema_builder_schema(builder);
-  for (size_t option_index = 0; option_index < schema->option_count; ++option_index) {
-    flags_option_spec_t *option = (flags_option_spec_t *)&schema->options[option_index];
-    char cli_flag[OPTIONS_CONFIG_QUESTION_BUFFER_SIZE];
-    if (!flags_config_make_cli_flag(option->name, cli_flag, sizeof(cli_flag)))
-      continue;
-    for (size_t metadata_index = 0; metadata_index < count; ++metadata_index) {
-      const config_option_metadata_t *meta = &metadata[metadata_index];
-      if (meta->cli_flag && strcmp(meta->cli_flag, cli_flag) == 0) {
-        option->config_key = meta->toml_key;
-        break;
-      }
-    }
-  }
   return builder;
 }
 

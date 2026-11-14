@@ -207,7 +207,6 @@ set(LIB_SRC_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_layout.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_help.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config_schema.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_colorscheme.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_parsers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_validation.c

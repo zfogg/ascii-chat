@@ -98,7 +98,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_help.c
     # options/config/
     ${CMAKE_SOURCE_DIR}/src/common/options_config.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_config_schema.c
     # options/registry/
     ${CMAKE_SOURCE_DIR}/src/common/options_registry_metadata.c
     ${CMAKE_SOURCE_DIR}/src/common/options_registry_general.c

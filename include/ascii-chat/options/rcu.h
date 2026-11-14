@@ -186,4 +186,3 @@ size_t options_retired_snapshot_count(void);
  * Should be called at program shutdown after options_state_destroy().
  * Safe to call multiple times or if schema was never built.
  */
-void options_cleanup_schema(void);

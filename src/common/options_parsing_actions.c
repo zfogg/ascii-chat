@@ -30,7 +30,6 @@
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/completions/completions.h>
-#include <ascii-chat/options/schema.h>
 #include <libplatform/terminal.h>
 #include <libplatform/question.h>
 #include <sys/stat.h>
@@ -501,8 +500,6 @@ void action_create_manpage(const char *output_path) {
 // ============================================================================
 
 void action_create_config(const char *output_path) {
-  (void)config_schema_build_from_registry();
-
   const char *config_path = NULL;
 
   // Determine output path: use provided path, or NULL for stdout

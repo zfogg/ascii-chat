@@ -70,7 +70,6 @@
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/strings.h> // Enum/mode string conversions
-#include <ascii-chat/options/schema.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/coverage.h>
@@ -1410,7 +1409,6 @@ static asciichat_error_t handle_immediate_actions(options_t *opts, const binary_
       *handled = true;
       return ASCIICHAT_OK;
     } else if (actions->create_config) {
-      (void)config_schema_build_from_registry();
 
       // Call action handler which handles all output and prompts properly
       action_create_config(actions->config_create_path);
@@ -1713,9 +1711,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   }
 }
 
-static void build_options_schema(void) {
-  (void)config_schema_build_from_registry();
-}
+static void build_options_schema(void) {}
 
 static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
 #ifdef EMSCRIPTEN_BUILD

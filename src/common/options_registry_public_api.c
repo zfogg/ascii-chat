@@ -15,6 +15,7 @@
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/actions.h>
+#include <libflags/config/keys.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -121,6 +122,12 @@ asciichat_error_t options_registry_add_all_to_flags_builder(flags_schema_builder
       while (entry->metadata.enum_values[option.enum_value_count])
         ++option.enum_value_count;
     }
+    char config_key[256];
+    const char *config_field = entry->long_name;
+    if (entry->group && strcmp(entry->group, "OTEL") == 0 && strncmp(config_field, "otel-", 5) == 0)
+      config_field += 5;
+    if (entry->group && flags_config_make_toml_key(entry->group, config_field, config_key, sizeof(config_key)))
+      option.config_key = config_key;
     if (!flags_schema_builder_add_option(builder, &option))
       return SET_ERRNO(ERROR_MEMORY, "Failed to add %s to libflags schema", entry->long_name);
   }

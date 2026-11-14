@@ -9,7 +9,6 @@
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
-#include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -492,18 +491,11 @@ void options_state_destroy(void) {
   // Free all deferred structs
   deferred_free_all();
 
-  // Cleanup schema (frees all dynamically allocated config strings)
-  config_schema_destroy();
-
   // Destroy dynamically created mutexes
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
   log_debug("Options state shutdown complete");
-}
-
-void options_cleanup_schema(void) {
-  config_schema_destroy();
 }
 
 const options_t *options_get(void) {
