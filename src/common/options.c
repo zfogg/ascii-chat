@@ -428,38 +428,19 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
  * @return true if this option exists in mirror mode config
  */
 static bool is_mirror_mode_option(const char *opt_name, char short_name) {
-  // Get unified config
-  options_config_t *config = options_preset_unified(NULL, NULL);
-  if (!config) {
+  const registry_entry_t *registry = options_registry_get_raw();
+  if (!registry)
     return false;
+  for (size_t i = 0; registry[i].long_name; ++i) {
+    const registry_entry_t *entry = &registry[i];
+    const bool matches_long = opt_name && strcmp(opt_name, entry->long_name) == 0;
+    const bool matches_short = short_name != '\0' && short_name == entry->short_name;
+    if ((matches_long || matches_short) && entry->mode_bitmask == (1U << MODE_MIRROR))
+      return true;
+    if (matches_long || matches_short)
+      return false;
   }
-
-  // Check if this option exists and applies to mirror mode
-  bool found = false;
-  for (size_t i = 0; i < config->num_descriptors; i++) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-
-    // Check by long name
-    if (opt_name && desc->long_name && strcmp(opt_name, desc->long_name) == 0) {
-      // Check if this option is EXCLUSIVE to mirror mode (not shared with other modes)
-      if ((desc->mode_bitmask & (1 << MODE_MIRROR)) && (desc->mode_bitmask == (1 << MODE_MIRROR))) {
-        found = true;
-      }
-      break;
-    }
-
-    // Check by short name
-    if (short_name != '\0' && desc->short_name == short_name) {
-      // Check if this option is EXCLUSIVE to mirror mode (not shared with other modes)
-      if ((desc->mode_bitmask & (1 << MODE_MIRROR)) && (desc->mode_bitmask == (1 << MODE_MIRROR))) {
-        found = true;
-      }
-      break;
-    }
-  }
-
-  options_config_destroy(config);
-  return found;
+  return false;
 }
 
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode, char *out_session_string, int *out_mode_index) {
