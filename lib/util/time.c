@@ -43,11 +43,6 @@ static struct {
     .lifecycle = LIFECYCLE_INIT,
 };
 
-/**
- * @brief Track if sokol_time has been initialized (separate from full timer system init)
- */
-static bool g_sokol_time_initialized = false;
-
 // ============================================================================
 // Human-Readable Time Formatting Helper
 // ============================================================================
