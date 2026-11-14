@@ -51,7 +51,6 @@
  *
  * **Option Parsing Helpers**:
  *
- * - `strtoint_safe()`: Safe integer parsing with range checking
  * - `find_similar_option()`: Typo detection using Levenshtein distance
  * - `validate_positive_int_opt()`: Validate positive integers
  * - `validate_port_opt()`: Validate port numbers (1-65535)
@@ -152,27 +151,6 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
 const char *format_available_modes(option_mode_bitmask_t mode_bitmask);
 
 /**
- * @brief Safely parse string to integer with validation
- *
- * Parses a string to integer using parse_int32() with full range checking.
- * Returns INT_MIN on error (NULL input, empty string, invalid format, out of range).
- *
- * @param str String to parse
- * @return Parsed integer value, or INT_MIN on error
- *
- * @warning INT_MIN is used as error sentinel, so cannot represent INT_MIN value
- *
- * Example:
- * @code
- * int val = strtoint_safe(optarg);
- * if (val == INT_MIN) {
- *     fprintf(stderr, "Invalid integer: %s\n", optarg);
- *     return ERROR_INVALID_PARAM;
- * }
- * @endcode
- */
-int strtoint_safe(const char *str);
-
 /**
  * @brief Standard option parsing error return
  *

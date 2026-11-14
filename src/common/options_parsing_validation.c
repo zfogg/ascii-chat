@@ -22,6 +22,7 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/options/options.h>
+#include <libflags/values.h>
 
 asciichat_error_t validate_glyph_palette(const options_t *opts) {
   if (!opts)
@@ -61,8 +62,8 @@ static int validate_int_range(const char *value_str, int min, int max, const cha
     return INT_MIN;
   }
 
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val < min || val > max) {
+  int32_t val = 0;
+  if (!flags_parse_int32(value_str, &val) || val < min || val > max) {
     if (error_msg) {
       if (min == max) {
         SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be exactly %d.", param_name, value_str, min);
@@ -431,8 +432,8 @@ int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_
   }
 
   // Parse as integer
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN) {
+  int32_t val = 0;
+  if (!flags_parse_int32(value_str, &val)) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.", value_str);
     }
@@ -467,8 +468,8 @@ int validate_opt_device_index(const char *value_str, char *error_msg, size_t err
     return INT_MIN;
   }
 
-  int index = strtoint_safe(value_str);
-  if (index == INT_MIN) {
+  int32_t index = 0;
+  if (!flags_parse_int32(value_str, &index)) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid device index '%s'. Must be -1 (default) or a non-negative integer.", value_str);
     }

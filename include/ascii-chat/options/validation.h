@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 #include "../common.h"
-#include "../options/options.h" // For strtoint_safe()
+#include "../options/options.h"
 
 #ifdef __cplusplus
 extern "C" {

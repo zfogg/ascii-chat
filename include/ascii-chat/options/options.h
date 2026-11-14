@@ -884,27 +884,6 @@ static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAUL
  * This function is used internally by the options parser to safely convert
  * command-line argument strings to integer values with proper error handling.
  *
- * @note Returns INT_MIN on error (which is distinguishable from valid negative
- *       values since INT_MIN is a valid integer, but unlikely to be used as an
- *       option value). The options parser checks for INT_MIN to detect parse errors.
- *
- * @note Thread-safe: Uses only local variables, no static state.
- *
- * @par Example:
- * @code{.c}
- * const char *arg = "80";
- * int width = strtoint_safe(arg);
- * if (width == INT_MIN) {
- *     // Parse error
- * } else {
- *     // Valid integer: width == 80
- * }
- * @endcode
- *
- * @ingroup options
- */
-int strtoint_safe(const char *str);
-
 /** @} */
 
 /**

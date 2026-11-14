@@ -120,12 +120,6 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
   return buffer;
 }
 
-// Safely parse string to integer with validation
-int strtoint_safe(const char *str) {
-  int32_t result = 0;
-  return flags_parse_int32(str, &result) ? (int)result : INT_MIN;
-}
-
 // Forward declaration for get_required_argument (defined later in file)
 char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
@@ -144,8 +138,8 @@ bool validate_positive_int_opt(const char *value_str, int *out_value, const char
     return false;
   }
 
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val <= 0) {
+  int32_t parsed = 0;
+  if (!flags_parse_int32(value_str, &parsed) || parsed <= 0) {
     log_error("Invalid %s value '%s'. %s must be a positive integer.", param_name, value_str, param_name);
     return false;
   }
@@ -175,8 +169,8 @@ bool validate_fps_opt(const char *value_str, int *out_fps) {
     return false;
   }
 
-  int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 0 || fps_val > 144) {
+  int32_t fps_val = 0;
+  if (!flags_parse_int32(value_str, &fps_val) || fps_val < 0 || fps_val > 144) {
     log_error("Invalid FPS value '%s'. FPS must be between 0 and 144.", value_str);
     return false;
   }
