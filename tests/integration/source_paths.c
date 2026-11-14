@@ -72,11 +72,12 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   cr_assert_eq(strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5), "crt\\vcstartup\\src\\startup\\exe_common.inl"), 0);
   cr_assert_eq(strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c"), 0);
 
+  const char *const libraries[] = {"libasciichat", NULL};
   cr_assert(symbol_module_is_project("ascii-chat.exe", "ascii-chat", NULL));
-  cr_assert(symbol_module_is_project("libasciichat.dylib", NULL, "libasciichat"));
-  cr_assert(symbol_module_is_project("asciichat.dll", NULL, "libasciichat"));
-  cr_assert(symbol_module_is_project("asciichat.lib", NULL, "libasciichat"));
-  cr_assert(!symbol_module_is_project("ucrtbase.dll", "ascii-chat", "libasciichat"));
+  cr_assert(symbol_module_is_project("libasciichat.dylib", NULL, libraries));
+  cr_assert(symbol_module_is_project("asciichat.dll", NULL, libraries));
+  cr_assert(symbol_module_is_project("asciichat.lib", NULL, libraries));
+  cr_assert(!symbol_module_is_project("ucrtbase.dll", "ascii-chat", libraries));
 }
 
 Test(source_paths, log_headers_and_memory_reports_preserve_locations) {

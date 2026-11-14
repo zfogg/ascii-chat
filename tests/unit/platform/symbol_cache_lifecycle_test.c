@@ -124,9 +124,10 @@ Test(symbol_cache_lifecycle, cached_names_are_copied_and_updates_do_not_invalida
 }
 
 Test(symbol_cache_lifecycle, project_module_detection_handles_paths_and_external_modules) {
+  const char *const libraries[] = {"libasciichat", NULL};
   cr_assert(symbol_module_is_project("ascii-chat", "ascii-chat", NULL));
   cr_assert(symbol_module_is_project("C:\\tools\\ASCII-CHAT.EXE", "ascii-chat", NULL));
-  cr_assert(symbol_module_is_project("libasciichat.so", NULL, "asciichat"));
-  cr_assert_not(symbol_module_is_project("libc.so.6", "ascii-chat", "libasciichat"));
-  cr_assert_not(symbol_module_is_project(NULL, "ascii-chat", "libasciichat"));
+  cr_assert(symbol_module_is_project("libasciichat.so", NULL, libraries));
+  cr_assert_not(symbol_module_is_project("libc.so.6", "ascii-chat", libraries));
+  cr_assert_not(symbol_module_is_project(NULL, "ascii-chat", libraries));
 }
