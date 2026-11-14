@@ -601,9 +601,14 @@ static void *pipeline_input_thread(void *data) {
     return NULL;
   while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-    if (key != KEY_NONE)
+    if (key != KEY_NONE) {
       pipeline->keyboard_handler(pipeline->capture, (int)key, pipeline->input_data);
-    else
+      // Ctrl-C must wake the render loop immediately.  The global exit flag
+      // is also set by the handler, but stopping the pipeline here prevents a
+      // frame wait or terminal read from extending shutdown.
+      if ((int)key == 3)
+        atomic_store_bool(&pipeline->stop, true);
+    } else
       platform_sleep_ms(10);
   }
   return NULL;

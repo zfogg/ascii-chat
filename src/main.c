@@ -255,7 +255,11 @@ void signal_exit(void) {
   // other threads may hold mutex locks. We avoid log_console() here to prevent
   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
   // The shutdown will be logged by normal thread context later.
-  atomic_store_bool(&g_should_exit, true);
+  // Ctrl-C can arrive through both the console-control handler and the
+  // terminal input path.  Only the first request may run the shutdown
+  // callback; running it twice races teardown and can leave the process stuck.
+  if (atomic_exchange_bool(&g_should_exit, true))
+    return;
   log_info("Shutdown signal received");
   // Interrupt telemetry network I/O immediately. Full drain/free remains in
   // the normal teardown path, but cancellation must not wait for atexit.
@@ -264,6 +268,15 @@ void signal_exit(void) {
   if (cb) {
     cb();
   }
+#ifdef _WIN32
+  // The console/input thread may be the only thread able to observe Ctrl-C
+  // while the render thread is inside terminal output or device teardown.
+  // Drain telemetry here with its hard deadline, then bypass the potentially
+  // blocked UI/atexit graph.  Process-owned resources are reclaimed by the
+  // OS, while telemetry gets the same bounded drain as normal shutdown.
+  ascii_otel_shutdown();
+  _Exit(130);
+#endif
 }
 
 void set_interrupt_callback(void (*cb)(void)) {

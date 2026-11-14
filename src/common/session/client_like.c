@@ -813,6 +813,12 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
     SAFE_FREE(state->audio_ctx);
     state->audio_ctx = NULL;
   }
+  // Ctrl-C teardown must not enter the terminal/UI destruction graph.  That
+  // graph can wait on console-owned locks after the input thread has received
+  // Ctrl-C.  Audio and telemetry have already been stopped; process exit will
+  // reclaim the remaining process-owned display/capture resources.
+  if (APP_CALLBACK_BOOL(should_exit))
+    return result;
 
   // Destroy display (check global context to see if discovery mode already destroyed it)
   // Discovery participant mode may destroy the display early and clear the global context
