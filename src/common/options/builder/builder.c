@@ -12,6 +12,7 @@
 #define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
 
 #include <defer.h>
+#include <libflags/flags.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
