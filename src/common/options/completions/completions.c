@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/registry.h>
+#include <ascii-chat/options/config.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <libflags/builder.h>
