@@ -88,7 +88,7 @@ Test(audio_visualization, waveform_and_fft_render_bounded_plain_and_colored_fram
     samples[i] = 0.75f * sinf((float)i * 6.28318530718f * 440.0f / 48000.0f);
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
   SAFE_FREE(samples);
-  const render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
+  const terminal_render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
   for (size_t i = 0; i < 3; ++i)
     for (int color = 0; color < 3; ++color) {
       options_t options = *options_get();
