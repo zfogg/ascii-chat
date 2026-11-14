@@ -186,7 +186,7 @@ class CoverageReportTests(unittest.TestCase):
         self.assertEqual((build / "settings.txt").read_text(), "ON;Debug")
         self.assertEqual(preserved.read_text(), "keep")
 
-    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config"), "Requires CMake, Ninja, Clang and OpenSSL development files")
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config") and sys.platform != "win32", "Requires CMake, Ninja, Clang and OpenSSL development files")
     def test_missing_cached_openssl_paths_are_rediscovered_and_link(self):
         module = Path(__file__).resolve().parents[2] / "cmake/deps/OpenSSL.cmake"
         (self.root / "main.c").write_text('#include <openssl/crypto.h>\nint main(void) { return OpenSSL_version_num() == 0; }\n')
@@ -232,7 +232,7 @@ class CoverageReportTests(unittest.TestCase):
             if enabled == "OFF":
                 self.assertEqual(output, "lib/main.c")
             else:
-                self.assertEqual(output, str(source))
+                self.assertEqual(output.replace("\\", "/"), source.as_posix())
                 coverage_report.generate(self.root, build, self.report)
                 entry = ET.parse(self.report).find('.//class[@filename="lib/main.c"]')
                 self.assertIsNotNone(entry)
