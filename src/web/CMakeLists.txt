@@ -177,50 +177,37 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/runtime.c
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/options.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/enums.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/strings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/parsing/parsers.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/parsing/validation.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/colorscheme.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/layout.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/help.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/completions/completions.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/embedded.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/formatter.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/merger.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/parser.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/resources.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/content/environment.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/content/examples.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/content/options.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/content/positional.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/content/usage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/config/config.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/config/presets.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/config/schema.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/parsing/actions.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/configuration.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/database.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/general.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/logging.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/media.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/metadata.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/network.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/public_api.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/mode_defaults.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/security.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/terminal.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/webcam.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/registry/debug.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_common.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_enums.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_strings.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_runtime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_layout.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_help.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config_schema.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_colorscheme.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_parsers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_validation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_actions.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_configuration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_database.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_debug.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_display.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_general.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_logging.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_media.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_metadata.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_mode_defaults.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_public_api.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_security.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_terminal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_webcam.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
