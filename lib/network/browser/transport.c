@@ -42,8 +42,7 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   browser_transport_t *browser = transport->impl_data;
   socket_buffer_t input = {.data = data, .len = length};
   acip_packet_plan_t plan;
-  crypto_context_t *send_crypto =
-      transport->crypto_ctx && transport->crypto_ctx->handshake_complete ? transport->crypto_ctx : NULL;
+  crypto_context_t *send_crypto = transport->crypto_ctx && transport->crypto_ctx->handshake_complete ? transport->crypto_ctx : NULL;
   asciichat_error_t result = acip_packet_plan(send_crypto, &input, 1, &plan);
   if (result != ASCIICHAT_OK)
     return result;
@@ -67,8 +66,7 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
   if (plan.encrypt) {
     packet_header_t header;
     size_t encrypted_length = 0;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header),
-                                 plan.ciphertext_capacity, &header, &encrypted_length);
+    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header), plan.ciphertext_capacity, &header, &encrypted_length);
     if (result != ASCIICHAT_OK) {
       buffer_release(output->data);
       SAFE_FREE(output);
@@ -93,14 +91,11 @@ static asciichat_error_t browser_capabilities(acip_transport_t *transport, acip_
   browser_transport_t *browser = transport ? transport->impl_data : NULL;
   if (!browser || !out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser transport capabilities query");
-  *out = (acip_transport_capabilities_t){.independent_streams = true,
-                                         .datagrams = browser->datagrams,
-                                         .max_datagram_payload = browser->max_datagram_payload};
+  *out = (acip_transport_capabilities_t){.independent_streams = true, .datagrams = browser->datagrams, .max_datagram_payload = browser->max_datagram_payload};
   return ASCIICHAT_OK;
 }
 
-static const acip_transport_methods_t browser_methods = {
-    .send = browser_send, .is_connected = browser_connected, .get_capabilities = browser_capabilities};
+static const acip_transport_methods_t browser_methods = {.send = browser_send, .is_connected = browser_connected, .get_capabilities = browser_capabilities};
 
 browser_transport_t *browser_transport_create(void) {
   browser_transport_t *browser = SAFE_CALLOC(1, sizeof(*browser), browser_transport_t *);
@@ -132,10 +127,7 @@ size_t browser_transport_queued_bytes(const browser_transport_t *browser) {
 }
 
 bool browser_transport_writable(const browser_transport_t *browser, size_t additional_bytes) {
-  return browser && additional_bytes <=
-                        BROWSER_TRANSPORT_MAX_QUEUED_BYTES - (browser->queued_bytes > BROWSER_TRANSPORT_MAX_QUEUED_BYTES
-                                                                  ? BROWSER_TRANSPORT_MAX_QUEUED_BYTES
-                                                                  : browser->queued_bytes);
+  return browser && additional_bytes <= BROWSER_TRANSPORT_MAX_QUEUED_BYTES - (browser->queued_bytes > BROWSER_TRANSPORT_MAX_QUEUED_BYTES ? BROWSER_TRANSPORT_MAX_QUEUED_BYTES : browser->queued_bytes);
 }
 
 browser_transport_state_t browser_transport_state(const browser_transport_t *browser) {
@@ -160,15 +152,12 @@ asciichat_error_t browser_transport_security_init(browser_transport_t *browser) 
   return result;
 }
 
-asciichat_error_t browser_transport_security_packet(browser_transport_t *browser, bool seal, uint32_t channel,
-                                                    uint32_t delivery, const uint8_t *packet, size_t length,
-                                                    uint8_t *output, size_t capacity, size_t *out_length,
-                                                    uint64_t *sequence) {
+asciichat_error_t browser_transport_security_packet(browser_transport_t *browser, bool seal, uint32_t channel, uint32_t delivery, const uint8_t *packet, size_t length, uint8_t *output,
+                                                    size_t capacity, size_t *out_length, uint64_t *sequence) {
   if (!browser || !browser->transport.crypto_ctx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Browser transport security is unavailable");
   const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  if (!packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
-      capacity < length + (seal ? overhead : 0))
+  if (!packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead || capacity < length + (seal ? overhead : 0))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser security packet buffer");
   *out_length = 0;
   *sequence = 0;
@@ -179,11 +168,8 @@ asciichat_error_t browser_transport_security_packet(browser_transport_t *browser
   asciichat_errno_scope_t scope;
   if (quiet)
     scope = errno_scope_begin();
-  const asciichat_error_t result =
-      seal ? acip_security_seal(browser->transport.crypto_ctx, channel, delivery, packet, length, &result_packet,
-                                &result_length)
-           : acip_security_open(browser->transport.crypto_ctx, channel, delivery, packet, length, &result_packet,
-                                &result_length, sequence, &consumed);
+  const asciichat_error_t result = seal ? acip_security_seal(browser->transport.crypto_ctx, channel, delivery, packet, length, &result_packet, &result_length)
+                                        : acip_security_open(browser->transport.crypto_ctx, channel, delivery, packet, length, &result_packet, &result_length, sequence, &consumed);
   if (quiet)
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   if (result == ASCIICHAT_OK && !consumed) {
@@ -206,8 +192,7 @@ asciichat_error_t browser_transport_security_tick(browser_transport_t *browser) 
   return result;
 }
 
-asciichat_error_t browser_transport_security_output(browser_transport_t *browser, uint8_t *output, size_t capacity,
-                                                    size_t *length, uint32_t *channel) {
+asciichat_error_t browser_transport_security_output(browser_transport_t *browser, uint8_t *output, size_t capacity, size_t *length, uint32_t *channel) {
   if (!browser || !browser->transport.crypto_ctx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Browser transport security is unavailable");
   if (!output || !length || !channel || capacity < 256)
@@ -258,8 +243,7 @@ void browser_transport_destroy(browser_transport_t *browser) {
 void acip_transport_destroy(acip_transport_t *transport) {
   if (!transport)
     return;
-  if (transport->methods && transport->methods->close && transport->methods->is_connected &&
-      transport->methods->is_connected(transport))
+  if (transport->methods && transport->methods->close && transport->methods->is_connected && transport->methods->is_connected(transport))
     transport->methods->close(transport);
   if (transport->crypto_ctx) {
     crypto_destroy(transport->crypto_ctx);

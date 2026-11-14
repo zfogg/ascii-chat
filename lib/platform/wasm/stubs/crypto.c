@@ -23,8 +23,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
 }
 
 // Known hosts stubs (no filesystem in WASM)
-asciichat_error_t check_known_host(const char *server_ip, uint16_t port,
-                                   const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   // Known hosts checking not supported in WASM
   return ASCIICHAT_OK;
 }
@@ -34,8 +33,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   return ASCIICHAT_OK;
 }
 
-bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE],
-                          const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]) {
+bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]) {
   // MITM warnings not displayed in WASM (browser console log instead)
   return false;
 }
@@ -50,8 +48,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   return true;
 }
 
-asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
-                                 const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   // Known hosts file updates not supported in WASM
   return ASCIICHAT_OK;
 }
@@ -69,9 +66,8 @@ asciichat_error_t prompt_password(const char *prompt_text, char *password_out, s
 
 // Preserve the browser's existing raw-key pinning path; there is no native
 // known_hosts file or terminal identity card in the browser.
-asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port,
-                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE],
-                                            uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE], bool *has_stored_key) {
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE], uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE],
+                                            bool *has_stored_key) {
   if (has_stored_key)
     *has_stored_key = false;
   if (stored_key)
