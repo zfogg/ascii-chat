@@ -130,7 +130,7 @@
  * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_CLIENT);
  *
  * // Or add custom options
- * option_descriptor_t my_opt = {
+ * flags_option_spec_t my_opt = {
  *     .long_name = "my-option",
  *     .short_name = 'm',
  *     .type = OPTION_TYPE_STRING,

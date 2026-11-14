@@ -109,7 +109,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name);
  * Useful for generators that need to show completions for options across multiple modes.
  *
  * @param[out] count Pointer to receive the count of unique options
- * @return Dynamically allocated array of option_descriptor_t, must be freed by caller.
+ * @return Completion output generated from the libflags schema.
  *         Returns NULL if no options found.
  *
  * @note The caller must free the returned pointer with SAFE_FREE()

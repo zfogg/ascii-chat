@@ -27,7 +27,7 @@
  *
  * ## Registry Structure
  *
- * The registry is defined in `registry.c` as a static array of `option_descriptor_t`
+ * The registry is defined in `registry.c` as a static array of native registry entries.
  * structures. Each descriptor includes complete metadata:
  *
  * **Identification**:
