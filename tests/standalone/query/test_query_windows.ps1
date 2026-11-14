@@ -14,7 +14,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = (Get-Item "$ScriptDir\..\..").FullName
+$ProjectRoot = (Get-Item "$ScriptDir\..\..\..").FullName
 $QueryTool = "$ProjectRoot\.deps-cache\query-tool\ascii-query-server.exe"
 $TestTargetSrc = "$ProjectRoot\tests\fixtures\query_test_target.c"
 $TestTarget = "$ProjectRoot\build\tests\query_test_target.exe"

@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 TEST_PROGRAM="${PROJECT_ROOT}/build/tests/query_autospawn_test"
 TEST_SOURCE="${PROJECT_ROOT}/tests/fixtures/query_autospawn_test.c"
 QUERY_TOOL="${PROJECT_ROOT}/.deps-cache/query-tool/ascii-query-server"

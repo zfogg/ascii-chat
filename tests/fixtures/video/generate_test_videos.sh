@@ -4,9 +4,9 @@
 
 set -e
 
-# Script is in tests/scripts, fixtures are in tests/fixtures
+# Script is in tests/fixtures/video, output is written beside the other fixtures.
 SCRIPT_DIR="$(dirname "$0")"
-FIXTURES_DIR="$SCRIPT_DIR/../fixtures"
+FIXTURES_DIR="$SCRIPT_DIR/.."
 mkdir -p "$FIXTURES_DIR"
 cd "$FIXTURES_DIR"
 

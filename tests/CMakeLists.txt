@@ -47,7 +47,7 @@ if(BUILD_TESTS)
             list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
         endif()
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_SOURCE_DIR}/tests/python/tools/run_python_test.py ${_coverage_args} --
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
 
@@ -68,7 +68,7 @@ if(BUILD_TESTS)
             list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
         endif()
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_SOURCE_DIR}/tests/python/tools/run_python_test.py ${_coverage_args} --
             ${CMAKE_COMMAND} -E env "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
             ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}
             --frozen --python ${Python3_EXECUTABLE} -m pytest
@@ -154,9 +154,10 @@ else()
     set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 endif()
 
-# XML output directory for Catch2 test results
-set(CATCH2_XML_DIR "${CMAKE_BINARY_DIR}/Testing/catch2-xml")
-file(MAKE_DIRECTORY ${CATCH2_XML_DIR})
+# XML output directory for all native test results. Framework adapters write
+# their reports here so CTest and CI remain independent of the chosen runner.
+set(TEST_XML_DIR "${CMAKE_BINARY_DIR}/Testing/xml")
+file(MAKE_DIRECTORY ${TEST_XML_DIR})
 
 # =============================================================================
 # Test Build Timing
@@ -205,7 +206,7 @@ endfunction()
 function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
     add_test(NAME ${name} COMMAND ${target}
-        --reporter junit::out=${CATCH2_XML_DIR}/${name}.xml)
+        --reporter junit::out=${TEST_XML_DIR}/${name}.xml)
     asciichat_fail_on_lsan_report(${name})
     set_tests_properties(${name} PROPERTIES LABELS "catch2;contract"
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
@@ -490,7 +491,7 @@ target_link_libraries(unit_tests PRIVATE
     catch_discover_tests(unit_tests
         TEST_PREFIX "unit."
         REPORTER junit
-        OUTPUT_DIR "${CATCH2_XML_DIR}"
+        OUTPUT_DIR "${TEST_XML_DIR}"
         OUTPUT_SUFFIX ".xml"
         DL_PATHS ${_catch2_test_dll_paths}
         # Keep the CTest label scalar. Catch2 tags remain available through
@@ -550,7 +551,7 @@ target_link_libraries(benchmarks PRIVATE
     endif()
     add_test(NAME benchmarks COMMAND benchmarks
         --reporter console
-        --reporter junit::out=${CATCH2_XML_DIR}/benchmarks.xml
+        --reporter junit::out=${TEST_XML_DIR}/benchmarks.xml
         --colour-mode ansi)
     set_tests_properties(benchmarks PROPERTIES
         LABELS "benchmark;performance;catch2;serial"
@@ -847,7 +848,7 @@ target_link_libraries(benchmarks PRIVATE
 
         set(_catch2_args
             --reporter console
-            --reporter junit::out=${CATCH2_XML_DIR}/${test_exe_name}.xml
+            --reporter junit::out=${TEST_XML_DIR}/${test_exe_name}.xml
             --colour-mode ansi
         )
 
@@ -1490,9 +1491,9 @@ if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         endif()
     endforeach()
     asciichat_add_python_test(discovery-session-process
-        ${CMAKE_SOURCE_DIR}/tests/scripts/run_discovery_catch2.py
+        ${CMAKE_SOURCE_DIR}/tests/python/tools/run_discovery_catch2.py
         $<TARGET_FILE:test-discovery-session-process> --jobs 1 --timeout 30
-        --reporter junit::out=${CATCH2_XML_DIR}/discovery-session-process.xml)
+        --reporter junit::out=${TEST_XML_DIR}/discovery-session-process.xml)
     set_tests_properties(discovery-session-process PROPERTIES LABELS "integration;catch2;contract" TIMEOUT 120)
 endif()
 
@@ -1571,7 +1572,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     set_target_properties(bench-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         add_test(NAME bench-acip-prepare
-            COMMAND bench-acip-prepare --reporter junit::out=${CATCH2_XML_DIR}/bench-acip-prepare.xml)
+            COMMAND bench-acip-prepare --reporter junit::out=${TEST_XML_DIR}/bench-acip-prepare.xml)
         set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmark;acip_prepare" RUN_SERIAL TRUE)
         if(TARGET tests)
             add_dependencies(tests bench-acip-prepare)
@@ -1820,7 +1821,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     apply_sanitizers_to_target(test-nat-refresh)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
-        --reporter junit::out=${CATCH2_XML_DIR}/discovery-nat-refresh.xml)
+        --reporter junit::out=${TEST_XML_DIR}/discovery-nat-refresh.xml)
     asciichat_fail_on_lsan_report(discovery-nat-refresh)
     set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;catch2;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")

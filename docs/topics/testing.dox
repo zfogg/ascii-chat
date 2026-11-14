@@ -55,7 +55,7 @@
  *
  * @section testing_output Output, coverage, and CI
  * Catch2 discovery requests JUnit XML from every native Catch2 executable in
- * `build/Testing/catch2-xml/`. CTest also writes its own JUnit result file.
+ * `build/Testing/xml/`. CTest also writes its own JUnit result file.
  * CI validates the Catch2 files, uploads them as artifacts, and passes the
  * same files to Codecov. Coverage builds instrument production targets and
  * Catch2 executables; the coverage workflow combines gcov/LLVM data before

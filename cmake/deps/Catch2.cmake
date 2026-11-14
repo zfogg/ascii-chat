@@ -2,15 +2,24 @@
 # Catch2 v3 test framework
 # =============================================================================
 
-option(ASCIICHAT_FORCE_CATCH2_TESTS
-    "Build Catch2 native tests in configurations that normally omit tests" OFF)
+option(ASCIICHAT_FORCE_TESTS
+    "Build native tests in configurations that normally omit tests" OFF)
+
+set(ASCIICHAT_TEST_FRAMEWORKS "catch2" CACHE STRING
+    "Semicolon-separated native test frameworks to enable")
 
 if(NOT BUILD_TESTS)
     set(BUILD_CATCH2_TESTS OFF)
     return()
 endif()
 
-if(ASCIICHAT_FORCE_CATCH2_TESTS)
+if(NOT "catch2" IN_LIST ASCIICHAT_TEST_FRAMEWORKS)
+    set(BUILD_CATCH2_TESTS OFF)
+    message(STATUS "Catch2 adapter disabled by ASCIICHAT_TEST_FRAMEWORKS=${ASCIICHAT_TEST_FRAMEWORKS}")
+    return()
+endif()
+
+if(ASCIICHAT_FORCE_TESTS)
     set(BUILD_CATCH2_TESTS ON)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set(BUILD_CATCH2_TESTS OFF)

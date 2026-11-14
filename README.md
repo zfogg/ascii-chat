@@ -593,7 +593,7 @@ The documentation is automatically generated from source code using Doxygen and 
 #### Testing Framework
 
 - **Framework**: [Catch2 v3](https://catch2.github.io/), with CTest discovery, tags, sections, generators, matchers, and benchmarks
-- **Coverage**: CI publishes Catch2 JUnit XML from `build/Testing/catch2-xml/`, CTest results, and the instrumented coverage data to Codecov. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
+- **Coverage**: CI publishes test JUnit XML from `build/Testing/xml/`, CTest results, and the instrumented coverage data to Codecov. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
 - **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
@@ -641,18 +641,18 @@ Catch2 v3 is supported by the native Windows Clang build. Use the same CTest lab
 
 ```powershell
 # Run all tests
-./tests/scripts/run-docker-tests.ps1
+./tests/tools/run-docker-tests.ps1
 
 # Run specific test category
-./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 integration
-./tests/scripts/run-docker-tests.ps1 performance
+./tests/tools/run-docker-tests.ps1 unit
+./tests/tools/run-docker-tests.ps1 integration
+./tests/tools/run-docker-tests.ps1 performance
 
 # Run tests matching a pattern
-./tests/scripts/run-docker-tests.ps1 -Filter "*buffer*"
+./tests/tools/run-docker-tests.ps1 -Filter "*buffer*"
 
 # INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
-./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+./tests/tools/run-docker-tests.ps1 unit options -VerboseOutput
 
 ```
 

@@ -38,12 +38,12 @@ def prepare(directory):
         cases = ET.parse(junit[0]).findall(".//testcase")
         if not cases:
             raise ValueError(f"No tests ran for {name}; refusing partial upload")
-        catch2_cases = sum(len(ET.parse(path).findall(".//testcase"))
-                           for path in (directory / name).rglob("catch2-xml/*.xml"))
-        if not catch2_cases:
-            raise ValueError(f"No Catch2 cases ran for {name}; refusing zero-test coverage upload")
+        test_cases = sum(len(ET.parse(path).findall(".//testcase"))
+                         for path in (directory / name).rglob("Testing/xml/*.xml"))
+        if not test_cases:
+            raise ValueError(f"No test cases ran for {name}; refusing zero-test coverage upload")
         shards[name] = {"covered": covered, "valid": valid, "test_binaries": len(cases),
-                        "catch2_cases": catch2_cases}
+                        "test_cases": test_cases}
         reports.append(report)
         for entry in ET.parse(report).findall(".//class"):
             filename = entry.get("filename")

@@ -81,7 +81,7 @@ query fingerprints, omitted-text reasons, one span per database operation,
 registered query names and redaction. The CLI must be installed to run this
 second check; its absence produces an explicit CTest skip.
 
-`tests/scripts/check_query_names.py` checks production SQLite calls with
+`tests/tools/check_query_names.py` checks production SQLite calls with
 Gotel's public `querynames.check_c` API. It reads CMake's compile database so
 Clang sees the same headers and definitions as the native build. Gotel owns
 source resolution and query identity checks; project code only supplies the
@@ -91,7 +91,7 @@ After configuring the native build, run the checker in its pinned Python
 environment:
 
 ```sh
-uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/tools/check_query_names.py --build-dir build
 ```
 
 ### Failure alerts and active-session scope

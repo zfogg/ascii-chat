@@ -4,16 +4,16 @@
 # BUILD DIRECTORY: This script always uses build_docker/ for Docker builds.
 #
 # Usage:
-#   ./tests/scripts/run-docker-tests.ps1                          # Run all tests
-#   ./tests/scripts/run-docker-tests.ps1 unit                     # Run all unit tests
-#   ./tests/scripts/run-docker-tests.ps1 integration              # Run all integration tests
-#   ./tests/scripts/run-docker-tests.ps1 performance              # Run all performance tests
-#   ./tests/scripts/run-docker-tests.ps1 -ClangTidy               # Run clang-tidy analysis on all files
-#   ./tests/scripts/run-docker-tests.ps1 clang-tidy               # Run clang-tidy analysis on all files
-#   ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c  # Run clang-tidy on specific file
-#   ./tests/scripts/run-docker-tests.ps1 unit options             # Run unit tests matching "options"
-#   ./tests/scripts/run-docker-tests.ps1 -Filter "buffer"         # Run tests matching "buffer"
-#   ./tests/scripts/run-docker-tests.ps1 test-buffer-ownership    # Run specific test
+#   ./tests/tools/run-docker-tests.ps1                            # Run all tests
+#   ./tests/tools/run-docker-tests.ps1 unit                       # Run all unit tests
+#   ./tests/tools/run-docker-tests.ps1 integration                # Run all integration tests
+#   ./tests/tools/run-docker-tests.ps1 performance                # Run all performance tests
+#   ./tests/tools/run-docker-tests.ps1 -ClangTidy                 # Run clang-tidy analysis on all files
+#   ./tests/tools/run-docker-tests.ps1 clang-tidy                 # Run clang-tidy analysis on all files
+#   ./tests/tools/run-docker-tests.ps1 clang-tidy lib/common.c    # Run clang-tidy on specific file
+#   ./tests/tools/run-docker-tests.ps1 unit options               # Run unit tests matching "options"
+#   ./tests/tools/run-docker-tests.ps1 -Filter "buffer"           # Run tests matching "buffer"
+#   ./tests/tools/run-docker-tests.ps1 test-buffer-ownership      # Run specific test
 
 [CmdletBinding(PositionalBinding=$false)]
 param(
@@ -38,7 +38,7 @@ $ErrorActionPreference = "Stop"
 Write-Host "ascii-chat Docker Test Runner" -ForegroundColor Green
 Write-Host ""
 
-# Get the repository root (script is in tests/scripts, so go up twice)
+# Get the repository root (script is in tests/tools, so go up twice)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $TestsDir = Split-Path -Parent $ScriptDir
 $RepoRoot = Split-Path -Parent $TestsDir

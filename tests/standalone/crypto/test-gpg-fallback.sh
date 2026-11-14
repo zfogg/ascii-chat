@@ -6,7 +6,8 @@ set -e
 echo "=== Testing GPG Fallback Mechanism ==="
 
 # Setup isolated test keyring
-eval "$(./tests/scripts/setup-test-gpg-keyring.sh)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+eval "$("$SCRIPT_DIR/setup-test-gpg-keyring.sh")"
 
 if [ -z "$TEST_GPG_KEY_ID" ]; then
     echo "ERROR: Failed to setup test GPG keyring"
@@ -42,6 +43,6 @@ else
 fi
 
 # Cleanup
-./tests/scripts/cleanup-test-gpg-keyring.sh
+"$SCRIPT_DIR/cleanup-test-gpg-keyring.sh"
 
 exit $EXIT_CODE

@@ -27,9 +27,9 @@ class CompleteCoverageTests(unittest.TestCase):
             '</lines></class></classes></package></packages></coverage>'
         )
         (report.parent / "ctest-results.xml").write_text('<testsuite><testcase name="example"/></testsuite>')
-        catch2 = report.parent / "catch2-xml"
-        catch2.mkdir()
-        (catch2 / "example.xml").write_text('<testsuites><testsuite><testcase name="example"/></testsuite></testsuites>')
+        xml = report.parent / "Testing/xml"
+        xml.mkdir(parents=True)
+        (xml / "example.xml").write_text('<testsuites><testsuite><testcase name="example"/></testsuite></testsuites>')
         return report
 
     def test_single_performance_report_cannot_publish_one_percent_snapshot(self):
@@ -88,12 +88,12 @@ class CompleteCoverageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing completed CTest"):
             upload.prepare(self.root)
 
-    def test_successful_binaries_with_zero_catch2_cases_are_rejected(self):
+    def test_successful_binaries_with_zero_test_cases_are_rejected(self):
         for name in upload.EXPECTED_ARTIFACTS:
             self.write_shard(name)
-        path = self.root / "test-results-Linux-release/build/catch2-xml/example.xml"
+        path = self.root / "test-results-Linux-release/build/Testing/xml/example.xml"
         path.write_text('<testsuites tests="0"/>')
-        with self.assertRaisesRegex(ValueError, "No Catch2 cases ran for test-results-Linux-release"):
+        with self.assertRaisesRegex(ValueError, "No test cases ran for test-results-Linux-release"):
             upload.prepare(self.root)
 
 

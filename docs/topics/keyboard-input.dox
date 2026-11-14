@@ -42,7 +42,7 @@
  * On a configured Linux/macOS Clang build with Catch2 and pkg-config, run:
  *
  * ```sh
- * uv run --frozen python tests/scripts/keyboard_text_coverage.py --build build
+ * uv run --frozen python tests/python/tools/keyboard_text_coverage.py --build build
  * ```
  *
  * This runs the same exhaustive Catch2 tests for every non-NUL Unicode scalar,

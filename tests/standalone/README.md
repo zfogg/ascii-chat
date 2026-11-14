@@ -55,6 +55,6 @@ ctest --test-dir build -L 'benchmark|serial' --no-tests=error --parallel 1
 ```
 
 The Catch2 XML reports are written below
-`build/Testing/catch2-xml/`; CTest's aggregate report remains
+`build/Testing/xml/`; CTest's aggregate report remains
 `build/Testing/ctest-results.xml`. Keep benchmark timing runs separate from
 coverage and sanitizer runs.

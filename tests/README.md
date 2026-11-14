@@ -12,28 +12,28 @@ PowerShell script to run tests via Docker using ctest. This is the recommended w
 
 ```powershell
 # Run all tests
-./tests/scripts/run-docker-tests.ps1
+./tests/tools/run-docker-tests.ps1
 
 # Run specific test category
-./tests/scripts/run-docker-tests.ps1 unit           # All unit tests
-./tests/scripts/run-docker-tests.ps1 integration    # All integration tests
-./tests/scripts/run-docker-tests.ps1 performance    # All performance tests
+./tests/tools/run-docker-tests.ps1 unit           # All unit tests
+./tests/tools/run-docker-tests.ps1 integration    # All integration tests
+./tests/tools/run-docker-tests.ps1 performance    # All performance tests
 
 # Run tests matching a pattern
-./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
+./tests/tools/run-docker-tests.ps1 -Filter "buffer"
 
 # Run a specific test
-./tests/scripts/run-docker-tests.ps1 test-buffer-ownership
+./tests/tools/run-docker-tests.ps1 test-buffer-ownership
 
 # Run clang-tidy analysis
-./tests/scripts/run-docker-tests.ps1 -ClangTidy
-./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+./tests/tools/run-docker-tests.ps1 -ClangTidy
+./tests/tools/run-docker-tests.ps1 clang-tidy lib/common.c
 
 # Interactive shell in container
-./tests/scripts/run-docker-tests.ps1 -Interactive
+./tests/tools/run-docker-tests.ps1 -Interactive
 
 # Clean rebuild
-./tests/scripts/run-docker-tests.ps1 -Clean
+./tests/tools/run-docker-tests.ps1 -Clean
 ```
 
 ## Running Tests Natively with ctest
@@ -96,7 +96,7 @@ Tests are run automatically via GitHub Actions using CTest with Catch2 JUnit XML
 - **Parallel Execution**: `--parallel 0` auto-detects CPU cores
 - **Label Filtering**: Use `--label-regex` to filter by test category
 - **Name Filtering**: Use `-R` to filter by test name pattern
-- **XML Output**: Catch2 generates XML in `build/Testing/catch2-xml/`; CTest writes `Testing/ctest-results.xml`
+- **XML Output**: Test adapters generate XML in `build/Testing/xml/`; CTest writes `Testing/ctest-results.xml`
 - **Catch2 Tags**: Run a focused suite directly with a Catch2 tag/spec, such as `unit_tests "[network]"`.
 - **Benchmarks**: Run benchmark labels separately and serially with `ctest --test-dir build -L benchmark --parallel 1`.
 - **Docker Support**: Consistent test environment via Docker
