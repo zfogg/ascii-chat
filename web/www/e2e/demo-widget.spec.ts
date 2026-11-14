@@ -4,7 +4,7 @@ import type { MirrorModule } from "../../packages/shared/src/wasm/mirror";
 import type {
   MirrorFrameBinding,
   SessionUiBinding,
-  TerminalRendererBinding,
+  AsciiRendererBinding,
 } from "../../packages/shared/src/wasm/generated/mirror-bindings";
 declare global {
   interface Window {
@@ -101,18 +101,18 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
       return loading.call(this, ...args);
     };
     const terminal = (
-      m.TerminalRendererBinding as unknown as {
-        prototype: TerminalRendererBinding;
+      m.AsciiRendererBinding as unknown as {
+        prototype: AsciiRendererBinding;
       }
     ).prototype;
-    const feed = terminal.feed;
-    terminal.feed = function (text) {
+    const render = terminal.render;
+    terminal.render = function (text, zalgo) {
       probe.paints++;
       probe.frames.push(
         typeof text === "string" ? text : new TextDecoder().decode(text),
       );
       if (probe.frames.length > 20) probe.frames.shift();
-      return feed.call(this, text);
+      return render.call(this, text, zalgo);
     };
   }, moduleUrl);
   await expect
@@ -157,7 +157,7 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
     const module = m.getMirrorModule();
     if (
       !module ||
-      module.patchOptions(
+      module.OptionsBinding.patch(
         {
           width: 80,
           height: 40,

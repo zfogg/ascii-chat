@@ -352,7 +352,7 @@ static void deferred_free_all(void) {
 static void options_rcu_atfork_child(void) {
   /* Reset the lifecycle state to allow reinitialization after fork */
   /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
-  atomic_store_explicit(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, memory_order_release);
+  __c11_atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, __ATOMIC_RELEASE);
 
   /* Reset the atomic options pointer to avoid dangling references */
   /* The parent's allocated memory is not accessible/valid in the child */
@@ -791,6 +791,16 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
   if (!current || !candidate || current == candidate || !patch || !patch->edits || !patch->count || patch->count > OPTIONS_PATCH_MAX_EDITS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid options patch");
   *candidate = *current;
+  bool palette_explicit_set = false;
+  bool palette_explicit_value = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const options_edit_t *edit = &patch->edits[i];
+    const runtime_field_t *field = find_field(edit->name);
+    if (field && !strcmp(field->name, "palette_explicit")) {
+      palette_explicit_set = true;
+      palette_explicit_value = edit->operation == OPTIONS_TOGGLE ? !current->palette_explicit : edit->value.boolean;
+    }
+  }
   for (size_t i = 0; i < patch->count; ++i) {
     if (remote_only && (!options_remote_render_field(patch->edits[i].name) || patch->edits[i].operation != OPTIONS_ASSIGN))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option is not a remote render preference");
@@ -798,6 +808,11 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  // An explicit palette flag is authoritative for the entire patch. Palette
+  // type/custom edits may imply explicit selection while they are applied, but
+  // must not overwrite an explicit false value supplied in the same patch.
+  if (palette_explicit_set)
+    candidate->palette_explicit = palette_explicit_value;
   bool animation_changed = false;
   bool stabilize_changed = false;
   for (size_t i = 0; i < patch->count; ++i) {

@@ -50,6 +50,23 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
                                                    const acip_client_callbacks_t *callbacks);
 
+/** Dispatch one already-decoded client packet through the shared ACIP client path. */
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
+                                              size_t length, const acip_client_callbacks_t *callbacks);
+
+/** Shared client-session coordinator. The transport and callback context are borrowed. */
+typedef struct {
+  acip_transport_t *transport;
+  acip_client_callbacks_t callbacks;
+} acip_client_session_t;
+
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport,
+                              const acip_client_callbacks_t *callbacks);
+asciichat_error_t acip_client_session_receive(acip_client_session_t *session);
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload,
+                                               size_t length);
+asciichat_error_t acip_client_session_process_wire(acip_client_session_t *session, const void *wire, size_t length);
+
 // =============================================================================
 // Client Send API (client → server)
 // =============================================================================

@@ -3,7 +3,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/runtime.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -49,8 +49,7 @@ static void setup(void) {
   cr_assert_not_null(image);
   for (unsigned i = 0; i < 32; ++i)
     image->pixels[i] = (rgb_pixel_t){.r = 120, .g = 80, .b = 40};
-  session_display_config_t config = {
-      .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   cr_assert_not_null(display);
   captures = sleeps = 0;
@@ -127,8 +126,7 @@ Test(render_loop_contract, event_callbacks_deliver_frames_and_temporary_gaps_do_
   cr_assert_eq(run(), ASCIICHAT_OK);
   cr_assert_eq(captures, 3);
   cr_assert_eq(sleeps, 3);
-  cr_assert_eq(count_pixels(), 2 * 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(),
-               output_size, output_preview);
+  cr_assert_eq(count_pixels(), 2 * 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size, output_preview);
   cr_assert_null(session_display_get_global_context());
 }
 Test(render_loop_contract, capture_failure_propagates_and_unregisters_display) {
@@ -162,8 +160,7 @@ Test(render_loop_contract, immediate_snapshot_renders_one_frame_and_starts_its_t
   cr_assert_eq(options_state_set(values), ASCIICHAT_OK);
   SAFE_FREE(values);
   session_display_destroy(display);
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   cr_assert_not_null(display);
   g_snapshot_first_frame_rendered = false;
@@ -174,8 +171,7 @@ Test(render_loop_contract, immediate_snapshot_renders_one_frame_and_starts_its_t
   cr_assert_eq(sleeps, 1);
   cr_assert(g_snapshot_first_frame_rendered);
   cr_assert_gt(g_snapshot_first_frame_rendered_ns, 0);
-  cr_assert_eq(count_pixels(), 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size,
-               output_preview);
+  cr_assert_eq(count_pixels(), 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size, output_preview);
   cr_assert_null(session_display_get_global_context());
 }
 

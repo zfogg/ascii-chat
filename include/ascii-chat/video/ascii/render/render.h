@@ -14,7 +14,7 @@
 typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
 
 /** Selects the character-matching algorithm. */
-typedef enum { ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH } ascii_renderer_t;
+typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
 
 /** Rendering parameters; the caller retains ownership of palette and backend. */
 typedef struct {

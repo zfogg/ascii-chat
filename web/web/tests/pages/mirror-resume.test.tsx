@@ -60,8 +60,8 @@ vi.mock("../../src/components/shared/BinarySettings", () => ({
     </>
   ),
 }));
-vi.mock("@ascii-chat/shared/components/AsciiRenderer", () => ({
-  AsciiCanvas: ({ uiLoading }: { uiLoading: boolean }) => (
+vi.mock("ascii-chat/react", () => ({
+  AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
     <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
   ),
 }));

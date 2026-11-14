@@ -33,12 +33,27 @@
 #include <ascii-chat/video/anim/fft.h>
 
 // Global digital rain effect context
-static digital_rain_t *g_digital_rain = NULL;
-static double g_last_rain_update_time = 0.0;
-
-// Frame counter for time-based effects (emscripten_get_now is unreliable in pthreads builds)
-static uint32_t g_frame_count = 0;
-static ascii_stabilizer_t g_stabilizer;
+mirror_render_context_t *mirror_render_context_create(void) {
+  return SAFE_CALLOC(1, sizeof(mirror_render_context_t), mirror_render_context_t *);
+}
+void mirror_render_context_reset(mirror_render_context_t *context) {
+  if (!context)
+    return;
+  ascii_stabilizer_reset(&context->stabilizer);
+  if (context->digital_rain) {
+    digital_rain_destroy(context->digital_rain);
+    context->digital_rain = NULL;
+  }
+  context->last_rain_update_time = 0.0;
+  context->frame_count = 0;
+  context->has_frame = false;
+}
+void mirror_render_context_destroy(mirror_render_context_t *context) {
+  if (!context)
+    return;
+  mirror_render_context_reset(context);
+  SAFE_FREE(context);
+}
 
 // ============================================================================
 // Initialization
@@ -49,8 +64,10 @@ static ascii_stabilizer_t g_stabilizer;
  * @return 0 on success, -1 on error
  */
 int mirror_init(void) {
-  // Initialize platform layer
-  asciichat_error_t err = platform_init();
+  // The options layer expects the shared runtime (logging, timers, buffers,
+  // and platform state) to be initialized first, just like the CLI startup
+  // path.  Browser modules do not enter the CLI dispatcher, so do it here.
+  asciichat_error_t err = asciichat_shared_init(NULL, false, true);
   if (err != ASCIICHAT_OK) {
     return -1;
   }
@@ -79,22 +96,7 @@ int mirror_init(void) {
   return 0;
 }
 
-void session_render_reset_stabilizer(void) {
-  ascii_stabilizer_reset(&g_stabilizer);
-}
-
-void session_render_cleanup(void) {
-  session_render_reset_stabilizer();
-  if (g_digital_rain) {
-    digital_rain_destroy(g_digital_rain);
-    g_digital_rain = NULL;
-  }
-  g_last_rain_update_time = 0.0;
-  g_frame_count = 0;
-}
-
 void mirror_cleanup(void) {
-  session_render_cleanup();
   errno_destroy();
   options_state_destroy();
   buffer_system_cleanup();
@@ -105,27 +107,31 @@ void mirror_cleanup(void) {
 // Frame Conversion API
 // ============================================================================
 
-char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, int contain) {
+char *mirror_convert_frame(mirror_render_context_t *context, uint8_t *rgba_data, int src_width, int src_height, int contain) {
+  if (!context) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Mirror render context is closed");
+    return NULL;
+  }
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser frame pixels or dimensions");
     return NULL;
   }
 
-  g_frame_count++;
+  context->frame_count++;
   // Derive a time value from frame count using actual target FPS from options
   int target_fps = (int)GET_OPTION(fps);
   if (target_fps <= 0) {
     target_fps = 60; // Default to 60 FPS if not set
   }
-  float time_seconds = (float)g_frame_count / (float)target_fps;
+  float time_seconds = (float)context->frame_count / (float)target_fps;
 
   // Get current settings from options or terminal detection
   int dst_width = (int)terminal_get_effective_width(GET_OPTION(width), 80);
   int dst_height = (int)terminal_get_effective_height(GET_OPTION(height), 24);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
-  if (g_frame_count <= 3 || g_frame_count % 120 == 0) {
-    log_debug("frame=%u color_filter=%d color_mode=%d", g_frame_count, (int)filter, (int)color_mode);
+  if (context->frame_count <= 3 || context->frame_count % 120 == 0) {
+    log_debug("frame=%u color_filter=%d color_mode=%d", context->frame_count, (int)filter, (int)color_mode);
   }
   if (color_mode == TERM_COLOR_AUTO) {
     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
@@ -150,6 +156,38 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
+  bool flip_x = GET_OPTION(flip_x);
+  bool flip_y = GET_OPTION(flip_y);
+
+  uint64_t palette_hash = UINT64_C(14695981039346656037);
+  if (palette_type == PALETTE_CUSTOM) {
+    const unsigned char *character = (const unsigned char *)GET_OPTION(palette_custom);
+    while (*character) {
+      palette_hash ^= *character++;
+      palette_hash *= UINT64_C(1099511628211);
+    }
+  }
+
+  if (context->has_frame &&
+      (context->source_width != src_width || context->source_height != src_height || context->output_width != dst_width || context->output_height != dst_height ||
+       context->renderer_mode != (int)caps.text_renderer || context->render_mode != (int)caps.render_mode || context->palette_type != (int)palette_type || context->palette_hash != palette_hash ||
+       context->palette_explicit != caps.palette_explicit || context->color_filter != (int)filter || context->flip_x != flip_x || context->flip_y != flip_y || context->contain != contain)) {
+    ascii_stabilizer_reset(&context->stabilizer);
+  }
+  context->source_width = src_width;
+  context->source_height = src_height;
+  context->output_width = dst_width;
+  context->output_height = dst_height;
+  context->renderer_mode = (int)caps.text_renderer;
+  context->render_mode = (int)caps.render_mode;
+  context->palette_type = (int)palette_type;
+  context->palette_hash = palette_hash;
+  context->palette_explicit = caps.palette_explicit;
+  context->color_filter = (int)filter;
+  context->flip_x = flip_x;
+  context->flip_y = flip_y;
+  context->contain = contain;
+  context->has_frame = true;
 
   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
@@ -158,8 +196,6 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
     return NULL;
   }
 
-  bool flip_x = GET_OPTION(flip_x);
-  bool flip_y = GET_OPTION(flip_y);
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++) {
       int src_x = flip_x ? (src_width - 1 - x) : x;
@@ -215,9 +251,9 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
 
   // Convert to ASCII using capability-aware function
   char *ascii_output =
-      ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio, stretch, palette_chars, contain != 0, NULL, NULL, caps.stabilize ? &g_stabilizer : NULL);
+      ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio, stretch, palette_chars, contain != 0, NULL, NULL, caps.stabilize ? &context->stabilizer : NULL);
   if (!caps.stabilize)
-    ascii_stabilizer_reset(&g_stabilizer);
+    ascii_stabilizer_reset(&context->stabilizer);
 
   // Clean up
   SAFE_FREE(rgb_pixels);
@@ -240,38 +276,38 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   bool matrix_rain = GET_OPTION(matrix_rain);
   if (matrix_rain) {
     // Initialize digital rain context if needed or dimensions changed
-    if (!g_digital_rain || g_digital_rain->num_columns != dst_width || g_digital_rain->num_rows != dst_height) {
-      if (g_digital_rain) {
-        digital_rain_destroy(g_digital_rain);
+    if (!context->digital_rain || context->digital_rain->num_columns != dst_width || context->digital_rain->num_rows != dst_height) {
+      if (context->digital_rain) {
+        digital_rain_destroy(context->digital_rain);
       }
-      g_digital_rain = digital_rain_init(dst_width, dst_height);
-      if (!g_digital_rain) {
+      context->digital_rain = digital_rain_init(dst_width, dst_height);
+      if (!context->digital_rain) {
         log_error("Failed to initialize digital rain effect");
         goto validate_output;
       }
-      g_last_rain_update_time = emscripten_get_now();
+      context->last_rain_update_time = emscripten_get_now();
     }
 
     // Update color from active filter (allows filter changes after initialization)
-    digital_rain_set_color_from_filter(g_digital_rain, filter);
+    digital_rain_set_color_from_filter(context->digital_rain, filter);
 
     // Always apply rain to the newest input. Caching an entire ANSI frame freezes
     // both the animation and webcam while the browser keeps counting presentations.
     double current_time = emscripten_get_now();
-    float delta_time = (float)((current_time - g_last_rain_update_time) / 1000.0);
-    g_last_rain_update_time = current_time;
-    char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+    float delta_time = (float)((current_time - context->last_rain_update_time) / 1000.0);
+    context->last_rain_update_time = current_time;
+    char *rain_output = digital_rain_apply(context->digital_rain, ascii_output, delta_time);
     if (rain_output) {
       SAFE_FREE(ascii_output);
       ascii_output = rain_output;
     }
   } else {
     // Clean up digital rain context if it exists but effect is disabled
-    if (g_digital_rain) {
-      digital_rain_destroy(g_digital_rain);
-      g_digital_rain = NULL;
+    if (context->digital_rain) {
+      digital_rain_destroy(context->digital_rain);
+      context->digital_rain = NULL;
     }
-    g_last_rain_update_time = 0.0;
+    context->last_rain_update_time = 0.0;
   }
 
 validate_output:
@@ -299,13 +335,19 @@ validate_output:
   return ascii_output;
 }
 
-void mirror_submit_audio_samples(const float *samples, int count, int source) {
+void mirror_submit_audio_samples(mirror_render_context_t *context, const float *samples, int count, int source) {
+  if (!context)
+    return;
   if (!samples || count <= 0 || count > 8192)
     return;
   audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA, samples, (size_t)count);
 }
 
-char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
+char *mirror_render_audio_visualization(mirror_render_context_t *context, unsigned int width, unsigned int height, int source) {
+  if (!context)
+    return NULL;
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK)
+    return NULL;
   audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   char *text = GET_OPTION(fft) ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y))
                                : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y));
@@ -314,8 +356,4 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
     return NULL;
   }
   return text;
-}
-
-void mirror_free_string(char *ptr) {
-  SAFE_FREE(ptr);
 }

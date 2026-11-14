@@ -10,6 +10,14 @@ interface State {
   error?: Error;
 }
 
+interface GoogleAnalyticsWindow extends Window {
+  gtag?: (
+    command: "event",
+    eventName: string,
+    parameters: { description: string; fatal: string },
+  ) => void;
+}
+
 export default class ErrorBoundary extends Component<Props, State> {
   static displayName = "ErrorBoundary";
 
@@ -24,10 +32,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Error caught by boundary:", error, errorInfo);
-    // Track in analytics if available
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    if (typeof window !== "undefined" && w.gtag) {
+    // Track in analytics if available.
+    const w = typeof window !== "undefined" ? (window as GoogleAnalyticsWindow) : undefined;
+    if (w?.gtag) {
       w.gtag("event", "exception", {
         description: `${error.name}: ${error.message}`,
         fatal: "true",

@@ -10,7 +10,6 @@ import {
 import {
   isWasmReady,
   convertFrameToAscii,
-  resetRenderStabilizer,
   cleanupRenderSession,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
@@ -345,6 +344,11 @@ export function useMirrorRenderLoop({
           frame!.width,
           frame!.height,
           contentFit,
+          fileActive
+            ? (mediaRevision ?? mediaVideo)
+            : testMode
+              ? "test-pattern"
+              : (cameraTrack ?? cameraVideo),
         );
         lastConversionTime = performance.now() - conversionStartTime;
       }
@@ -438,7 +442,6 @@ export function useMirrorRenderLoop({
     const captureCameraTrack = () => {
       const track = cameraStream?.getVideoTracks()[0];
       if (track === cameraTrack) return;
-      resetRenderStabilizer();
       cameraTrack = track;
       void trackReader?.cancel().catch(() => {});
       trackReader = null;

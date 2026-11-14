@@ -30,9 +30,9 @@ async function observe(page: Page) {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const patch = m.patchOptions;
+    const patch = m.OptionsBinding.patch;
     window.__sessionSettingsPatches = [];
-    m.patchOptions = (
+    m.OptionsBinding.patch = (
       values: Record<string, number | string | boolean>,
       revision: number,
     ) => {
@@ -43,16 +43,16 @@ async function observe(page: Page) {
         );
       return patch(values, revision);
     };
-    const renderer = m.TerminalRendererBinding.prototype;
-    const feed = renderer.feed;
+    const renderer = m.AsciiRendererBinding.prototype;
+    const render = renderer.render;
     window.__sessionUiFrames = [];
-    renderer.feed = function (this: unknown, value: string) {
+    renderer.render = function (this: unknown, value: string, zalgo: number) {
       // Inspect rendered text independently of terminal color decoration.
       const text = value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed.call(this, value);
+      return render.call(this, value, zalgo);
     };
   }, moduleUrl);
   await expect
@@ -328,20 +328,41 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const renderer = m.TerminalRendererBinding.prototype;
-    const feed = renderer.feed;
+    const renderer = m.AsciiRendererBinding.prototype;
+    const render = renderer.render;
+    const postMessage = Worker.prototype.postMessage;
     window.__sessionUiFrames = [];
-    renderer.feed = function (this: unknown, value: string) {
+    const capture = (value: string) => {
       window.__sessionUiFrames!.push(value);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed.call(this, value);
+    };
+    renderer.render = function (this: unknown, value: string, zalgo: number) {
+      capture(value);
+      return render.call(this, value, zalgo);
+    };
+    Worker.prototype.postMessage = function (
+      message: unknown,
+      ...args: unknown[]
+    ) {
+      if (
+        message &&
+        typeof message === "object" &&
+        "text" in message &&
+        typeof message.text === "string"
+      )
+        capture(message.text);
+      return (postMessage as (...args: unknown[]) => void).call(
+        this,
+        message,
+        ...args,
+      );
     };
   }, moduleUrl);
   await canvas.focus();
+  await page.keyboard.press("ArrowDown");
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
-  await page.keyboard.press("ArrowDown");
   await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
   await expect.poll(() => lastFrame(page)).toContain("Handshake complete");
   const canvasFps = async () =>
@@ -376,7 +397,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.evaluate(async (url) => {
       const { getMirrorModule } = await import(url);
       const m = getMirrorModule();
-      return m.readOptions().values;
+      return m.OptionsBinding.read().values;
     }, moduleUrl);
   const orientation = async (flip: boolean, explicit = false) => {
     await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
@@ -452,7 +473,7 @@ for (const mode of ["client", "discovery"]) {
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = m.readOptions().values;
+        const values = m.OptionsBinding.read().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
@@ -488,7 +509,7 @@ test("horizontal orientation startup commits saved choices before reading C", as
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = m.readOptions().values;
+        const values = m.OptionsBinding.read().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect.poll(state).toEqual([flip, true]);

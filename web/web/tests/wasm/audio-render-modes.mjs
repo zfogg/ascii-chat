@@ -12,8 +12,8 @@ const m = await createModule({
   printErr() {},
   getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
 });
-assert.equal(m.initMirror({}), 0);
-m.patchOptions({ waveform: true }, -1);
+const session = new m.MirrorSessionBinding({ waveform: true });
+assert.ok(session.valid());
 const renderer = new m.MirrorFrameBinding();
 for (let base = 0; base < 49152; base += 4096) {
   const pcm = new Float32Array(4096);
@@ -26,7 +26,7 @@ for (let base = 0; base < 49152; base += 4096) {
 for (const fft of [0, 1])
   for (const mode of [0, 1, 2])
     for (const flip of [0, 1]) {
-      m.patchOptions(
+      m.OptionsBinding.patch(
         {
           waveform: !fft,
           fft: !!fft,
@@ -50,4 +50,5 @@ for (const fft of [0, 1])
         `PASS ${fft ? "FFT" : "waveform"} mode=${mode} flipped=${flip}\n`;
     }
 renderer.delete();
-m.mirror_cleanup();
+session.close();
+session.delete();

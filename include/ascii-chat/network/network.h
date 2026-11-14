@@ -74,6 +74,8 @@
 
 #pragma once
 
+#include <ascii-chat/asciichat_errno.h>
+
 #include "../os/socket.h"
 #include "../tests/test_env.h"
 #include <sys/types.h>

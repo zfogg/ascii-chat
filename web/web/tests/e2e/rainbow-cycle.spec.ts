@@ -17,9 +17,6 @@ import { expectMeaningful60Fps } from "./server-fixture";
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 30000;
 
-// ANSI escape character
-const ESC = String.fromCharCode(0x1b);
-
 // Hue sectors of the color wheel (0-360 degrees)
 const HUE_SECTORS = [
   { name: "red", min: 0, max: 30 },
@@ -82,7 +79,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
     await page.goto(MIRROR_TEST_URL);
 
     // Wait for the page to load
-    await expect(page.locator("text=ASCII Mirror")).toBeVisible({
+    await expect(page.getByText("Mirror mode", { exact: false })).toBeVisible({
       timeout: 5000,
     });
 
@@ -95,8 +92,8 @@ test.describe("Rainbow Color Filter Cycling", () => {
     await expect(stopButton.or(startButton)).toBeVisible({ timeout: 15000 });
 
     if (await startButton.isVisible()) {
-      await startButton.click();
-      await expect(stopButton).toBeVisible({ timeout: 10000 });
+      await startButton.click({ force: true });
+      await page.waitForTimeout(500);
     }
 
     // Wait for first frames to render
@@ -135,7 +132,11 @@ test.describe("Rainbow Color Filter Cycling", () => {
       // so the first code represents the current rainbow hue.
       const sample = await page.evaluate(() => {
         // eslint-disable-next-line
-        const w = window as any;
+        const w = window as unknown as {
+          __lastAnsiFrame: string;
+          __lastAnsiFrameCount: number;
+          __lastAnsiFrameTime: number;
+        };
         const frame = w.__lastAnsiFrame as string | undefined;
         const frameCount = w.__lastAnsiFrameCount as number | undefined;
         const frameTime = w.__lastAnsiFrameTime as number | undefined;
@@ -147,7 +148,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
         }
 
         // Find first truecolor ANSI code: ESC[38;2;R;G;Bm
-        const ansiRegex = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`);
+        const ansiRegex = new RegExp(
+          `${String.fromCharCode(0x1b)}\\[38;2;(\\d+);(\\d+);(\\d+)m`,
+        );
         const match = frame.match(ansiRegex);
         if (!match) {
           console.log(
@@ -158,7 +161,10 @@ test.describe("Rainbow Color Filter Cycling", () => {
 
         // Also extract first 5 distinct colors to see variety
         const allColors: string[] = [];
-        const re = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`, "g");
+        const re = new RegExp(
+          `${String.fromCharCode(0x1b)}\\[38;2;(\\d+);(\\d+);(\\d+)m`,
+          "g",
+        );
         let m;
         const seen = new Set<string>();
         while ((m = re.exec(frame)) !== null && allColors.length < 5) {

@@ -7,7 +7,6 @@
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
-#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <math.h>
 #include <string.h>
@@ -88,16 +87,14 @@ Test(audio_visualization, waveform_and_fft_render_bounded_plain_and_colored_fram
     samples[i] = 0.75f * sinf((float)i * 6.28318530718f * 440.0f / 48000.0f);
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
   SAFE_FREE(samples);
-  const render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
+  const terminal_render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
   for (size_t i = 0; i < 3; ++i)
     for (int color = 0; color < 3; ++color) {
       options_t options = *options_get();
       options.render_mode = modes[i];
       cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-      char *wave =
-          audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
-      char *fft =
-          audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
+      char *wave = audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
+      char *fft = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
       cr_assert_not_null(wave);
       cr_assert_not_null(fft);
       cr_assert_gt(strlen(wave), 0);

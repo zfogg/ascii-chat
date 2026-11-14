@@ -189,6 +189,7 @@ static void receive_error(const error_packet_t *header, const char *message, voi
 
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media, acip_client_callbacks_t control) {
   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
+  acip_client_session_init(&protocol->client_session, transport, &control);
   protocol->effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 }
 
@@ -232,8 +233,11 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   asciichat_error_t result;
   if (type == PACKET_TYPE_PING && !protocol->control.on_ping)
     result = acip_send_pong(protocol->transport);
-  else
-    result = acip_handle_client_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
+  else {
+    acip_client_session_t dispatch = protocol->client_session;
+    dispatch.callbacks = common ? media : protocol->control;
+    result = acip_client_session_dispatch(&dispatch, type, payload, length);
+  }
   if (result == ASCIICHAT_OK)
     result = protocol->callback_result;
   if (result == ASCIICHAT_OK) {

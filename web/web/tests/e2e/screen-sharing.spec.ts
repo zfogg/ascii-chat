@@ -562,7 +562,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module.browser_capture_transform_required(),
+        required: module.MirrorFrameBinding.transformRequired(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -730,10 +730,25 @@ for (const mode of ["client", "discovery"]) {
     page,
   }, info) => {
     test.setTimeout(180000);
+    const configuredCommand = process.env["ASCII_CHAT_TEST_COMMAND"];
     const binary = process.env["ASCII_CHAT_TEST_BINARY"];
+    let command: string[] | undefined;
+    if (configuredCommand) {
+      try {
+        const parsed: unknown = JSON.parse(configuredCommand);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.every((value): value is string => typeof value === "string")
+        )
+          command = parsed;
+      } catch {
+        /* The skip below reports the required command format. */
+      }
+    } else if (binary) command = [binary];
     test.skip(
-      !binary,
-      "Set ASCII_CHAT_TEST_BINARY to a compatible native executable",
+      !command,
+      'Set ASCII_CHAT_TEST_BINARY or JSON ASCII_CHAT_TEST_COMMAND, e.g. ["wsl.exe","-d","Arch","--","/tmp/ascii-chat-native-tests/bin/ascii-chat"]',
     );
     const processes: ChildProcess[] = [];
     const clientInitLogs: string[] = [];
@@ -742,11 +757,6 @@ for (const mode of ["client", "discovery"]) {
     page.on("console", (message) => {
       if (message.text().includes("[Client] Upload encoding:"))
         uploadEncodingLogs.push(message.text());
-      if (
-        message.type() === "error" ||
-        message.text().includes("track reader stopped")
-      )
-        console.log(message.text());
       if (message.text().includes("[Client WASM] Session initialized"))
         clientInitLogs.push(message.text());
     });
@@ -760,7 +770,9 @@ for (const mode of ["client", "discovery"]) {
     });
     let output = "";
     const start = (args: string[]) => {
-      const child = spawn(binary!, args, { windowsHide: true });
+      const child = spawn(command![0]!, [...command!.slice(1), ...args], {
+        windowsHide: true,
+      });
       processes.push(child);
       child.on("exit", (code, signal) => {
         output += `\nEXIT ${args[0]} code=${code} signal=${signal}\n`;
@@ -782,14 +794,16 @@ for (const mode of ["client", "discovery"]) {
     });
     try {
       const server = [
-        "server",
-        "0.0.0.0",
+        ...(mode === "client" ? ["server", "0.0.0.0"] : []),
         "--port",
         String(port),
-        "--websocket-port",
-        String(port + 1),
-        "--status-screen=false",
       ];
+      if (mode === "client")
+        server.push(
+          "--websocket-port",
+          String(port + 1),
+          "--status-screen=false",
+        );
       if (mode === "discovery") {
         const acds = port + 1000;
         start([
@@ -808,7 +822,6 @@ for (const mode of ["client", "discovery"]) {
         ]);
         await waitForPort(acds + 1, "127.0.0.1", { timeoutMs: 20000 });
         server.push(
-          "--discovery",
           "--discovery-service",
           "127.0.0.1",
           "--discovery-service-port",
@@ -826,10 +839,9 @@ for (const mode of ["client", "discovery"]) {
         query.set("turnUrls", "");
       }
       start(server);
-      await waitForPort(port + 1, "127.0.0.1", { timeoutMs: 20000 });
       if (mode === "client")
-        query.set("serverUrl", `ws://127.0.0.1:${port + 1}`);
-      else {
+        await waitForPort(port + 1, "127.0.0.1", { timeoutMs: 20000 });
+      if (mode === "discovery") {
         await expect
           .poll(
             () =>
@@ -840,6 +852,10 @@ for (const mode of ["client", "discovery"]) {
             },
           )
           .not.toBe("");
+      }
+      if (mode === "client")
+        query.set("serverUrl", `ws://127.0.0.1:${port + 1}`);
+      else {
         query.set(
           "session",
           output.match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)![1]!,
@@ -862,6 +878,17 @@ for (const mode of ["client", "discovery"]) {
       ).toBeVisible({
         timeout: 45000,
       });
+      if (mode === "client")
+        await expect
+          .poll(() => output, { timeout: 20000 })
+          .toMatch(/rendering configured: \d+x\d+/);
+      else {
+        await expect
+          .poll(() => output, { timeout: 20000 })
+          .toContain("Host render thread started");
+        expect(output).toContain("Discovery state: ACTIVE");
+      }
+      expect(output).not.toContain("Invalid capabilities size");
       expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])
         expect(

@@ -26,12 +26,14 @@ const palettes = (page: Page) =>
 
 const effective = (page: Page) =>
   page.evaluate(async () => {
-    const url = "/src/wasm/client.ts";
-    const { getClientModule } = await import(url);
-    const module = getClientModule();
-    if (!module) return {};
-    const json = module.clientSettings();
-    return json ? JSON.parse(json) : {};
+    const { currentRemoteRenderSettings } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
+    try {
+      return currentRemoteRenderSettings();
+    } catch {
+      return {};
+    }
   });
 
 const receivedFps = (page: Page) =>
@@ -234,7 +236,7 @@ test("native host applies live browser settings and isolates two viewers", async
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 30000,
     });
-    await expect(colors(page)).toHaveValue("none");
+    await expect(colors(page)).toHaveValue("auto");
     await expect(page.getByLabel("Width", { exact: true })).toHaveValue("0");
     await expect(page.getByLabel("Height", { exact: true })).toHaveValue("0");
     await expect.poll(() => frame(page)).not.toBe("");
@@ -365,7 +367,9 @@ test("browser C host acknowledges atomic per-viewer updates and rejects invalid 
     palette_custom: " .+#",
     render_mode: 2,
     matrix_rain: true,
-    fps: 20,
+    // The first viewer advertises a 12 FPS capability, so the host clamps
+    // the requested 20 FPS to the negotiated maximum.
+    fps: 12,
   });
   expect(rejected.status).not.toBe(0);
   expect(rejected.values).toEqual(first.values);
@@ -375,6 +379,7 @@ test("browser C host acknowledges atomic per-viewer updates and rejects invalid 
     height: 24,
     color_mode: 3,
     color_filter: 3,
-    fps: 60,
+    // Browser hosting uses DEFAULT_MAX_FPS (12) as the per-viewer ceiling.
+    fps: 12,
   });
 });

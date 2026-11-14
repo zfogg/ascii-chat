@@ -38,7 +38,7 @@ static void test_datagrams(void) {
   size_t sizes[4];
   for (uint16_t i = 0; i < 4; ++i)
     CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 7, packet, sizeof(packet), 100, i, fragments[i],
-                                      sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
+                                 sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
   quic_datagram_reader_t reader = {0};
   acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
   uint8_t *output = NULL;
@@ -46,8 +46,7 @@ static void test_datagrams(void) {
   const unsigned order[] = {3, 1, 1, 0, 2};
   for (size_t i = 0; i < sizeof(order) / sizeof(order[0]); ++i) {
     unsigned n = order[i];
-    CHECK(quic_datagram_read(&reader, fragments[n], sizes[n], 10 + i, &flow, &output, &output_size) ==
-          ASCIICHAT_OK);
+    CHECK(quic_datagram_read(&reader, fragments[n], sizes[n], 10 + i, &flow, &output, &output_size) == ASCIICHAT_OK);
     if (i + 1 < sizeof(order) / sizeof(order[0]))
       CHECK(output == NULL);
   }
@@ -66,30 +65,29 @@ static void test_datagrams(void) {
         ERROR_NETWORK_PROTOCOL);
   fragments[1][26] = 0;
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_CONTROL, 1, packet, sizeof(packet), 100, 0, fragments[1],
-                                    sizeof(fragments[1]), &sizes[1]) == ERROR_INVALID_PARAM);
+                               sizeof(fragments[1]), &sizes[1]) == ERROR_INVALID_PARAM);
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 4, fragments[1],
-                                    sizeof(fragments[1]), &sizes[1]) == ERROR_NETWORK_SIZE);
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 0, fragments[1], 40,
-                                    &sizes[1]) == ERROR_BUFFER_FULL);
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 19, &flow, &output, &output_size) ==
-        ERROR_INVALID_PARAM);
+                               sizeof(fragments[1]), &sizes[1]) == ERROR_NETWORK_SIZE);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 0, fragments[1], 40, &sizes[1]) ==
+        ERROR_BUFFER_FULL);
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 19, &flow, &output, &output_size) == ERROR_INVALID_PARAM);
   CHECK(reader.bytes > 0);
   quic_datagram_expire(&reader, 20 + QUIC_DATAGRAM_EXPIRY_NS);
   CHECK(reader.bytes == 0);
   for (uint64_t id = 1; id <= 4; ++id) {
     CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, id, packet, sizeof(packet), 100, 0, fragments[0],
-                                      sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+                                 sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
     CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
-                                  &output_size) == ASCIICHAT_OK);
+                             &output_size) == ASCIICHAT_OK);
   }
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 5, packet, sizeof(packet), 100, 0, fragments[0],
-                                    sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+                               sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
-                                &output_size) == ERROR_BUFFER_FULL);
+                           &output_size) == ERROR_BUFFER_FULL);
   CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 5, packet, sizeof(packet), 100, 0, fragments[0],
-                                    sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+                               sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
-                                &output_size) == ASCIICHAT_OK);
+                           &output_size) == ASCIICHAT_OK);
   quic_datagram_reset(&reader);
   CHECK(reader.bytes == 0);
 }
@@ -155,8 +153,7 @@ int main(void) {
     CHECK(quic_stream_preamble(ACIP_TRAFFIC_CONTROL, control_preamble) == ASCIICHAT_OK);
     capture_t empty_state = {
         .expected = ACIP_TRAFFIC_CONTROL, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
-    CHECK(quic_stream_read(&reader, control_preamble, sizeof(control_preamble), capture, &empty_state) ==
-          ASCIICHAT_OK);
+    CHECK(quic_stream_read(&reader, control_preamble, sizeof(control_preamble), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, &empty, sizeof(empty), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(empty_state.count == 1 && quic_stream_finish(&reader) == ASCIICHAT_OK);
     quic_stream_reset(&reader);

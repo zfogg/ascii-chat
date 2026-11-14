@@ -11,8 +11,18 @@ static void setup(void) {
 }
 
 TestSuite(otel_adapter, .init = setup);
-Test(otel_adapter, bounded_sampling) { bounded_sampling(); }
-Test(otel_adapter, dropped_errors) { dropped_errors(); }
-Test(otel_adapter, retained_budget) { retained_budget(); }
-Test(otel_adapter, sqlite_prepare) { sqlite_prepare_contract(); }
-Test(otel_adapter, query_catalog) { catalog_contract(); }
+Test(otel_adapter, bounded_sampling) {
+  bounded_sampling();
+}
+Test(otel_adapter, dropped_errors) {
+  dropped_errors();
+}
+Test(otel_adapter, retained_budget) {
+  retained_budget();
+}
+Test(otel_adapter, sqlite_prepare) {
+  sqlite_prepare_contract();
+}
+Test(otel_adapter, query_catalog) {
+  catalog_contract();
+}

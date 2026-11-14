@@ -7,7 +7,7 @@ import type { BrowserErrorFrame } from "../errors/errorBus";
 const MAX_OPENPGP_KEY_FILE_BYTES = 1024 * 1024;
 const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
 
-type ParserModule = Pick<ClientWasmBindings, "parseKey"> & {
+type ParserModule = Pick<ClientWasmBindings, "KeyParserBinding"> & {
   FS: {
     writeFile(path: string, contents: string, options: { mode: number }): void;
     unlink(path: string): void;
@@ -63,7 +63,7 @@ self.onmessage = async (
       "gpg-private": 2,
       "gpg-public": 3,
     } as const;
-    const result = module.parseKey(kinds[kind], binary, input);
+    const result = module.KeyParserBinding.parse(kinds[kind], binary, input);
     frames = result.frames;
     if (result.code !== 0)
       throw new Error(frames[0]?.message ?? "Cannot parse browser key");

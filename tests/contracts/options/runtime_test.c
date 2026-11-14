@@ -168,6 +168,19 @@ static void test_remote(void) {
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
   cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(request(&clients[1],
+                       "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}",
+                       UINT32_MAX)
+                   .status,
+               0);
+  cr_assert_not(clients[1].caps.palette_explicit);
+  cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(
+      request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX)
+          .status,
+      0);
+  cr_assert_not(clients[1].caps.palette_explicit);
+  cr_assert_eq(clients[1].palette_length, 95);
   cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status, 0);
   cr_assert(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));

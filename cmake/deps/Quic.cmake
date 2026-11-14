@@ -112,6 +112,12 @@ function(asciichat_configure_quic)
         set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl/ngtcp2_crypto_ossl.lib")
         set(_nghttp3_import_library "${_nghttp3_build}/lib/nghttp3.lib")
     endif()
+    set(_ngtcp2_byproducts "${_ngtcp2_library}" "${_ngtcp2_crypto_library}")
+    set(_nghttp3_byproducts "${_nghttp3_library}")
+    if(WIN32 AND _quic_shared)
+        list(APPEND _ngtcp2_byproducts "${_ngtcp2_import_library}" "${_ngtcp2_crypto_import_library}")
+        list(APPEND _nghttp3_byproducts "${_nghttp3_import_library}")
+    endif()
     file(MAKE_DIRECTORY "${_ngtcp2_build}/lib/includes" "${_nghttp3_build}/lib/includes")
 
     # Configure the isolated dependency projects while the parent project is
@@ -165,7 +171,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
-        BUILD_BYPRODUCTS "${_ngtcp2_library}" "${_ngtcp2_crypto_library}"
+        BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
 
@@ -175,7 +181,7 @@ function(asciichat_configure_quic)
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} -- --quiet
-        BUILD_BYPRODUCTS "${_nghttp3_library}"
+        BUILD_BYPRODUCTS ${_nghttp3_byproducts}
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
 

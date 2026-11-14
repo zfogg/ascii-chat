@@ -102,7 +102,9 @@ extern "C" {
  * @brief List of config file search results
  * @brief File type information from stat()
  * @brief Ordered list of platform-specific application directories
- * @brief This is the handoff point for platform directory list. Callers fill `candidates`, `count` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for platform directory list. Callers fill `candidates`, `count` before passing it
+ * on; consumers read the values during the operation and return ownership only where the member contract explicitly
+ * says they do.
  * @brief Directory entry information for platform_dir_foreach()
  * @brief Platform-specific path separator character
  *

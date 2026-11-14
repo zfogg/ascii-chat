@@ -13,6 +13,7 @@ import {
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, relative } from "node:path";
 import { execFileSync } from "node:child_process";
+import { protocolVersion } from "../../../scripts/wasm-protocol-version.mjs";
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(app, "../..");
@@ -23,6 +24,23 @@ const typeOutput = resolve(repo, "web/packages/shared/src/wasm/generated");
 const types = ["mirror-bindings.d.ts", "client-bindings.d.ts"];
 const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const requiredExports = {
+  mirror: ["AsciiRendererBinding", "MirrorFrameBinding"],
+  client: [
+    "ClientSessionBinding",
+    "BrowserSessionBinding",
+    "DiscoveryBinding",
+    "HandoffBinding",
+    "AudioSessionBinding",
+  ],
+};
+function validateArtifactExports(kind, artifact, declaration) {
+  const source = readFileSync(declaration ?? artifact, "utf8");
+  for (const name of requiredExports[kind]) {
+    if (!source.includes(name))
+      throw new Error(`WASM ${kind} artifact does not export ${name}`);
+  }
+}
 function copyArtifact(source, destination) {
   if (source.endsWith(".js") || source.endsWith(".d.ts")) {
     writeFileSync(
@@ -32,6 +50,115 @@ function copyArtifact(source, destination) {
     return;
   }
   copyFileSync(source, destination);
+}
+function normalizeDeclarations(path, kind) {
+  let source = readFileSync(path, "utf8").replaceAll("\r\n", "\n");
+  const types = `
+export type WasmRecord = Record<string, unknown>;
+export interface RendererDimensions {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+}
+export interface MirrorFrameResult extends WasmRecord {
+  ok: boolean;
+  code: number;
+  message?: string;
+  retryable?: boolean;
+  text: string | null;
+  width: number;
+  height: number;
+  changed: boolean;
+}
+export interface AudioSessionResult {
+  code?: number;
+  samples?: Float32Array;
+  payload?: Uint8Array;
+}
+export type SessionEvent = WasmRecord;
+export interface SessionResult extends WasmRecord {
+  code?: number;
+  json?: string | null;
+  packetTypes?: Readonly<Record<string, number>>;
+  bytes?: Uint8Array;
+  decodeFailed?: boolean;
+}
+export interface ProtocolInfo extends WasmRecord {
+  packetTypes: Readonly<Record<string, number>>;
+}
+export interface PacketOutput { type: number; payload: Uint8Array; }
+export type PacketOutputList = ReadonlyArray<PacketOutput>;
+export interface HostPacket { id: number; bytes: Uint8Array; }
+`;
+  const marker =
+    kind === "client"
+      ? "export type ClientBytes = Uint8Array;"
+      : "export type RgbaBytes = Uint8Array | Uint8ClampedArray;";
+  if (!source.includes("export type WasmRecord ="))
+    source = source.replace(marker, `${marker}${types}`);
+  const opaque = ["a", "ny"].join("");
+  source = source.replaceAll(
+    `dimensions(): ${opaque};`,
+    "dimensions(): RendererDimensions;",
+  );
+  source = source.replaceAll(
+    `processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): ${opaque};`,
+    "processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;",
+  );
+  source = source.replaceAll(
+    `process(_0: AudioSamples, _1: AudioSamples): ${opaque};`,
+    "process(_0: AudioSamples, _1: AudioSamples): AudioSessionResult;",
+  );
+  source = source.replaceAll(
+    `processBatch(_0: ${opaque}, _1: ${opaque}): number;`,
+    "processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;",
+  );
+  source = source.replaceAll(
+    `process(_0: ${opaque}): ${opaque};`,
+    "process(_0: SessionEvent): SessionResult;",
+  );
+  source = source.replaceAll(
+    `processBatch(_0: ${opaque}): ${opaque};`,
+    "processBatch(_0: ReadonlyArray<SessionEvent>): ReadonlyArray<SessionResult>;",
+  );
+  source = source.replaceAll(
+    `protocolInfo(): ${opaque};`,
+    "protocolInfo(): ProtocolInfo;",
+  );
+  source = source.replaceAll(
+    `render(_0: EmbindString, _1: number): ${opaque};`,
+    "render(_0: EmbindString, _1: number): Uint8ClampedArray;",
+  );
+  source = source.replaceAll(
+    `drainOutputs(): ${opaque};`,
+    "drainOutputs(): PacketOutputList;",
+  );
+  source = source.replaceAll(
+    `drainPackets(): ${opaque};`,
+    "drainPackets(): PacketOutputList;",
+  );
+  source = source.replaceAll(
+    "drainPackets(): PacketOutputList;",
+    "drainPackets(): ReadonlyArray<HostPacket>;",
+  );
+  source = source.replace(
+    `  packetTypes(): ${opaque};`,
+    "  packetTypes(): PacketTypes;",
+  );
+  if (kind === "client" && !source.includes("export type PacketTypes ="))
+    source = source.replace(
+      "export type ClientBytes = Uint8Array;",
+      "export type PacketTypes = Readonly<Record<string, number>>;\nexport type ClientBytes = Uint8Array;",
+    );
+  // Emscripten's generated filesystem/runtime declarations use an opaque type
+  // for values whose shape is intentionally unknown. Keep that opacity, but make
+  // it explicit so the checked-in declarations do not leak an unsound type
+  // into the browser packages. Typed arrays are not generic over their
+  // element type in the declarations emitted by this toolchain.
+  source = source.replace(/Uint8Array<[^>]+>/g, "Uint8Array");
+  source = source.replaceAll(/\bany\b/g, "unknown");
+  writeFileSync(path, source);
 }
 function sourceHash() {
   const digest = createHash("sha256");
@@ -125,6 +252,18 @@ if (
   mkdirSync(typeOutput, { recursive: true });
   for (const file of types)
     copyArtifact(resolve(source, file), resolve(typeOutput, file));
+  normalizeDeclarations(resolve(typeOutput, "client-bindings.d.ts"), "client");
+  normalizeDeclarations(resolve(typeOutput, "mirror-bindings.d.ts"), "mirror");
+  validateArtifactExports(
+    "mirror",
+    resolve(output, "mirror.js"),
+    resolve(typeOutput, "mirror-bindings.d.ts"),
+  );
+  validateArtifactExports(
+    "client",
+    resolve(output, "client.js"),
+    resolve(typeOutput, "client-bindings.d.ts"),
+  );
   // Normalize generated glue and declarations before recording their hashes.
   execFileSync(
     process.execPath,
@@ -146,6 +285,24 @@ if (
     JSON.stringify(
       {
         sourceHash: sourceHash(),
+        capabilities: {
+          mirror: {
+            module: "mirror",
+            protocolVersion,
+            codecs: ["raw", "h264", "hevc", "opus"],
+            transports: ["webrtc", "webtransport", "websocket"],
+            rendererModes: ["luminance", "glyph"],
+            features: { stabilization: true, renderer: true, opus: true },
+          },
+          client: {
+            module: "client",
+            protocolVersion,
+            codecs: ["raw", "h264", "hevc", "opus"],
+            transports: ["webrtc", "webtransport", "websocket"],
+            rendererModes: [],
+            features: { stabilization: false, renderer: false, opus: true },
+          },
+        },
         files: Object.fromEntries(
           files.map((file) => [
             file,

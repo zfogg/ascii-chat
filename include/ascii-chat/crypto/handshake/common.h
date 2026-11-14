@@ -132,7 +132,9 @@ typedef struct crypto_handshake_context_t {
 } crypto_handshake_context_t;
 
 /**
- * @brief This is the handoff point for crypto handshake context. Callers fill `crypto_ctx`, `state`, `is_server`, `password_failure` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for crypto handshake context. Callers fill `crypto_ctx`, `state`, `is_server`,
+ * `password_failure` before passing it on; consumers read the values during the operation and return ownership only
+ * where the member contract explicitly says they do.
  * @name Common Handshake Functions
  * @{
  */

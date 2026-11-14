@@ -85,8 +85,8 @@ typedef struct {
   char *buf;  ///< Buffer pointer (allocated, owned by caller, must be freed)
   size_t len; ///< Current length in bytes (excluding null terminator)
   size_t cap; ///< Buffer capacity in bytes (maximum length before reallocation)
-/**
- */
+  /**
+   */
 } outbuf_t;
 
 /* ============================================================================

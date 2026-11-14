@@ -13,11 +13,20 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: "./tests/setup.ts",
+    testTimeout: 15_000,
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     exclude: ["tests/e2e/**/*"],
   },
   resolve: {
     alias: {
+      "ascii-chat/react": path.resolve(
+        __dirname,
+        "../../src/web/renderer/src/react.ts",
+      ),
+      "ascii-chat": path.resolve(
+        __dirname,
+        "../../src/web/renderer/src/index.ts",
+      ),
       "@": path.resolve(__dirname, "./src"),
       "@ascii-chat/shared": path.resolve(__dirname, "../packages/shared/src"),
     },

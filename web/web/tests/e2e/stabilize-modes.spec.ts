@@ -57,7 +57,9 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
                 renderer,
                 stabilize: enabled,
               });
-              m.sessionRenderResetStabilizer();
+              const frame = new m.MirrorFrameBinding();
+              frame.reset();
+              frame.delete();
               return [
                 convert(100, renderMode === 1),
                 convert(104, renderMode === 1),
@@ -71,9 +73,8 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
             });
           }
         }
-        m.sessionRenderCleanup();
-        m.sessionRenderCleanup();
-        // Cleanup is per session: the shared options and module remain usable.
+        // The binding owns frame state; deleting the temporary frames above is
+        // the complete cleanup path for this renderer session.
         options.applyPatch({ stabilize: false });
         if (convert(104, false) !== 104)
           throw new Error("Session cleanup broke the shared engine");

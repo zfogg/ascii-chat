@@ -21,6 +21,7 @@ vi.mock("../../src/network", () => ({
 }));
 vi.mock("../../src/network/BrowserHostSession", () => ({
   BrowserHostSession: class {
+    sendPacket() {}
     onStateChange(callback: typeof transport.state) {
       transport.state = callback;
     }
@@ -31,7 +32,6 @@ vi.mock("../../src/network/BrowserHostSession", () => ({
       transport.state(3);
     }
     disconnect = transport.disconnect;
-    sendUnencryptedAcipPacket() {}
     getPublicKey() {
       return null;
     }

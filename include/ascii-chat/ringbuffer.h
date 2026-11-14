@@ -112,7 +112,8 @@ typedef struct {
  */
 
 /**
- * @brief Owns the temporary storage used by ringbuffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ * @brief Owns the temporary storage used by ringbuffer. The data pointers and size or cursor fields describe the live
+ * portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * @name Audio Ring Buffer Constants
  * @ingroup ringbuffer
  * @{
@@ -401,7 +402,9 @@ typedef struct {
 
 /**
  * @brief One variable-length payload in the video ring buffer
- * @brief Queue record for a frame assembled from multiple media sources. `frame_sequence`, `timestamp`, `size`, and `data` identify the payload and its lifetime; the producer owns the data until the consumer finishes processing the record.
+ * @brief Queue record for a frame assembled from multiple media sources. `frame_sequence`, `timestamp`, `size`, and
+ * `data` identify the payload and its lifetime; the producer owns the data until the consumer finishes processing the
+ * record.
  * @brief Multi-source frame structure for multi-user support
  *
  * Tracks which client sent the frame along with metadata including
