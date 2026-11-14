@@ -1,5 +1,6 @@
 #include "../worker_assert.h"
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>

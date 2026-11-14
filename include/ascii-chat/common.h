@@ -663,6 +663,10 @@ void asciichat_shared_destroy(void);
  * @brief Global argc for early argument inspection (e.g., --color flag detection)
  * Set by main() for access from lib/platform/terminal.c during early execution
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern ASCIICHAT_API int g_argc;
 
 /**
@@ -682,5 +686,9 @@ extern ASCIICHAT_API bool g_color_flag_passed;
  * Set by options_init() before RCU is initialized, used by terminal_should_color_output()
  */
 extern ASCIICHAT_API bool g_color_flag_value;
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

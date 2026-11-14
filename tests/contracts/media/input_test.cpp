@@ -1,7 +1,8 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/input.h>
@@ -31,7 +32,7 @@ static keyboard_key_t fake_keyboard(void) {
 #include <ascii-chat/log/search.h>
 #include "session/capture.h"
 #include "session/keyboard_handler.h"
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/audio/audio.h>
 #include <signal.h>

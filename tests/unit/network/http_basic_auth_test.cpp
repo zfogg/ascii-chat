@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <sodium.h>
 
 #include <ascii-chat/network/http/server/basic_auth.h>

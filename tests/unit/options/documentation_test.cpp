@@ -1,9 +1,10 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/parser.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

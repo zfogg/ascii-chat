@@ -11,7 +11,8 @@
 #define ASCIICHAT_REQUIRE_FLOAT_EQ(a, b, epsilon) assert(fabsf((a) - (b)) <= (epsilon))
 #define ASCIICHAT_REQUIRE_STR_EQ(a, b) assert(strcmp((a), (b)) == 0)
 #else
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #endif
 
 static void glyphs(const char *input, char *out) {

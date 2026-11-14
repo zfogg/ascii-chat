@@ -1,5 +1,6 @@
 /* The external trace fixture also uses these cases to produce protobuf bytes. */
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #define CHECK(value) ASCIICHAT_REQUIRE(value)
 #define main otel_contract_fixture_main
 #include "../../standalone/media/otel_contract_test.c"

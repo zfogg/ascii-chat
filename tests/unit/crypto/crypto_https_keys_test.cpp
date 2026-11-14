@@ -3,8 +3,10 @@
  * @brief Unit tests for HTTPS key fetching, parsing, and multi-key support
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>

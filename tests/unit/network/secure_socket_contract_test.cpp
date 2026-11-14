@@ -1,9 +1,10 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/crypto/session.h>
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>

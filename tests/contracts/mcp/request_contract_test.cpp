@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/rcu.h>
 #include "../../../src/mcp-server/mcp.h"
 #include <ascii-chat/audio/audio.h>

@@ -1,5 +1,6 @@
 #include <ascii-chat/video/anim/test_pattern.h>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>

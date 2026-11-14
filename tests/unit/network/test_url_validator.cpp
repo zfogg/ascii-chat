@@ -20,7 +20,8 @@
  * - Integration tests (real-world URLs)
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
 #include <ascii-chat/util/url.h>

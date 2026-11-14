@@ -1,10 +1,11 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <ascii-chat/os/wakeup.h>
 
 #define g_snapshot_first_frame_rendered test_pipeline_snapshot_first_frame_rendered
 bool g_snapshot_first_frame_rendered = false;

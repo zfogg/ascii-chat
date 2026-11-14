@@ -52,6 +52,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/video/rgba/image.h>
 
@@ -403,3 +407,7 @@ void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch);
 asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text);
 /** Queue a relative playlist change on the capture owner. */
 void session_capture_skip_media(session_capture_ctx_t *ctx, int direction);
+
+#ifdef __cplusplus
+}
+#endif

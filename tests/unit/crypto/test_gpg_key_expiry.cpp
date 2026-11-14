@@ -3,7 +3,8 @@
  * @brief Unit tests for GPG key expiry checking
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>

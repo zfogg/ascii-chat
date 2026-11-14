@@ -1,6 +1,7 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <libplatform/atomic.h>
 #include <string.h>

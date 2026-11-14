@@ -3,9 +3,12 @@
  * @brief Unit tests for cryptographic key validation
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/keys_validation.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>

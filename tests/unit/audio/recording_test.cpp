@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/audio.h>
 #include <libplatform/atomic.h>
@@ -6,8 +7,8 @@
 #include <limits.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/memory.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/media/render/renderer.h>

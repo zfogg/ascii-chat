@@ -1,5 +1,6 @@
 #include "../worker_assert.h"
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 /* Exercise production readiness dispatch without external ICE services. */
 #include "../../../lib/network/webrtc/peer_manager.c"
 #include <stdlib.h>

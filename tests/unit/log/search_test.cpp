@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/session/session_log_buffer.h>

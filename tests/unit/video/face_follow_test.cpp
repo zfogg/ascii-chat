@@ -1,5 +1,6 @@
 #include <ascii-chat/video/face_follow.h>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <math.h>
 
 static const face_follow_detection_t subject = {{0.2f, 0.3f, 0.12f, 0.2f}, 0.95f};

@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/runtime.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
@@ -9,7 +10,7 @@
 #include "session/host_timing.h"
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/buffer.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 
 #include "session/protocol.h"

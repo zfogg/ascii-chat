@@ -3,9 +3,12 @@
  * @brief Unit tests for PEM utility functions (trust anchor parsing)
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>

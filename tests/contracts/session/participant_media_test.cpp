@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 /** Production participant lifecycle with deterministic device/startup failures and real workers. */
 #include "session/participant.h"
 #include "session/capture.h"

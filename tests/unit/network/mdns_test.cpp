@@ -10,7 +10,8 @@
  * - Error handling
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <string.h>
 
@@ -201,7 +202,7 @@ TEST_CASE("mdns/unadvertise_service_null_context_fails", "[mdns]") {
 
 #ifdef __APPLE__
 #include <dns_sd.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
 static DNSServiceErrorType mock_browse(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *,
                                        DNSServiceBrowseReply, void *);

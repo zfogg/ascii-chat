@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include "session/display.h"
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/rcu.h>

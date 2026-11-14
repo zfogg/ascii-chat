@@ -1,5 +1,6 @@
 #include "../worker_assert.h"
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 /** Regression checks for discovery processing against the production library. */
 #include "discovery/session.h"
 #include <ascii-chat/app_callbacks.h>

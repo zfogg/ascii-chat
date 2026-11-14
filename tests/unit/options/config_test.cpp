@@ -12,9 +12,12 @@
  * - Edge cases (empty files, missing sections, partial configs)
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,7 +35,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 
 #define unlink platform_unlink

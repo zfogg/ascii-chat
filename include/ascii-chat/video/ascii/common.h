@@ -403,6 +403,10 @@ bool get_256_color_fast_path(void);
  *
  * @ingroup video
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void prewarm_sgr256_fg_cache(void);
 
 /**
@@ -444,6 +448,10 @@ char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out);
  * @ingroup video
  */
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
+
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * @brief Enhanced REP compression writer

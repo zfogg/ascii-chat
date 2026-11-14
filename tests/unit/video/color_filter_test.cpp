@@ -4,7 +4,8 @@
  * @ingroup test
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <stdint.h>
 #include <string.h>
 #include <ascii-chat/common.h>

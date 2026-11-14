@@ -1,7 +1,8 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 
 TEST_CASE("test_binary_path/absolute_build_directory_resolves_from_ctest_working_directory", "[test_binary_path]") {
   const char *build_dir = SAFE_GETENV("BUILD_DIR");

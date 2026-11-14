@@ -126,7 +126,7 @@ component_management:
         - "include/ascii-chat/debug/"
     - component_id: platform
       name: Platform Abstraction
-      paths: ["lib/platform/", "include/ascii-chat/platform/"]
+      paths: ["lib/platform/", "include/ascii-chat/os/"]
     - component_id: utilities
       name: Utilities and Data Structures
       paths:

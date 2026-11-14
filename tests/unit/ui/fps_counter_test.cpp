@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <catch2/catch_all.hpp>
+#include <ascii-chat/tests/common.h>
 #include <ascii-chat/ui/fps_counter.h>
 
 TEST_CASE("fps_counter/startup_and_rates", "[fps_counter]") {

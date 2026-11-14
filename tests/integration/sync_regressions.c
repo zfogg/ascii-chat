@@ -1,7 +1,7 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/coverage.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
@@ -11,8 +11,8 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/wakeup.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <ascii-chat/os/wakeup.h>
+#include <libplatform/rwlock.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/colorscheme.h>

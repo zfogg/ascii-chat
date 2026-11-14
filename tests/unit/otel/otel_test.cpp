@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <gotel/testing.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/options/options.h>

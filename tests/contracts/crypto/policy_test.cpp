@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/common/protocol_constants.h>

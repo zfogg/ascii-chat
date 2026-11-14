@@ -17,8 +17,10 @@
  * - WebRTC media-channel establishment
  */
 
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/tests/common.h>

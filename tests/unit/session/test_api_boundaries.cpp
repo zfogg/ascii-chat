@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include "common/session/capture.h"
 #include "common/session/display.h"
 #include "common/session/host.h"

@@ -3,7 +3,8 @@
  * Compile the production helper with local instrumentation, leaving release code
  * and the timed crypto implementation untouched.
  */
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>

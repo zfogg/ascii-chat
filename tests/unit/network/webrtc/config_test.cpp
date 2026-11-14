@@ -1,7 +1,8 @@
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 
 static void setup(void) {
   ASCIICHAT_REQUIRE_EQ(webrtc_init(), ASCIICHAT_OK);

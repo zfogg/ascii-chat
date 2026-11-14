@@ -1,5 +1,6 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <ascii-chat/os/keyboard.h>
 #include <string.h>
 
 TEST_CASE("keyboard_text/every_unicode_scalar_round_trips", "[keyboard_text]") {

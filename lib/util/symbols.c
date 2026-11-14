@@ -1,4 +1,4 @@
-#include <ascii-chat/os/symbols.h>
+#include <libplatform/symbols.h>
 
 #include <ctype.h>
 #include <string.h>

@@ -1,10 +1,11 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include "../../../src/client/connection_internal.h"
 #include "../../../src/client/capture.h"
 #include "../../../src/client/display.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 

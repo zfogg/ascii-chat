@@ -1,6 +1,7 @@
 #include "../worker_assert.h"
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/platform/event.h>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
+#include <ascii-chat/os/event.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/decoder.h>
 #include <ascii-chat/network/network.h>

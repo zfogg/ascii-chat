@@ -54,7 +54,7 @@ void platform_process_title_destroy(void);
 """
 
 HARNESS = r"""
-#include <ascii-chat/platform/process.h>
+#include <ascii-chat/os/process.h>
 #ifdef __linux__
 #include <sys/prctl.h>
 #elif defined(__APPLE__)
@@ -140,7 +140,7 @@ def main():
             (work / "ascii-chat" / name).write_text('#include "support.h"\n')
         wasm = "--wasm" in sys.argv
         noop_harness = r'''
-#include <ascii-chat/platform/process.h>
+#include <ascii-chat/os/process.h>
 int allocations;
 int main(int argc, char **argv) {
   char **original = argv;

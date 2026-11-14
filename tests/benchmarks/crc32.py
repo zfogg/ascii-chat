@@ -35,7 +35,7 @@ baseline = ["-march=x86-64"] if arch in ("amd64", "x86_64") else (
 with standalone_output_directory("crc32") as out:
     masked_cpu = out / "masked_cpu.c"
     masked_cpu.write_text(
-        '#include <ascii-chat/platform/cpu.h>\n'
+        '#include <ascii-chat/os/cpu.h>\n'
         'unsigned crc32_test_probes;\n'
         'uint32_t platform_cpu_features(void) { ++crc32_test_probes; return 0; }\n'
     )

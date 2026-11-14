@@ -1,5 +1,6 @@
 /* Each Catch2 case starts with a fresh set of splash initialization state. */
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #define main splash_standalone_main
 #include "../../standalone/tui/splash_init.c"
 #undef main

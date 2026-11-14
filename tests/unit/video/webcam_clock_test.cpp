@@ -1,4 +1,5 @@
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/tests/common.h>
+#include <catch2/catch_all.hpp>
 #include <ascii-chat/video/webcam/frame_clock.h>
 
 TEST_CASE("webcam_clock/detects_buffered_frames_and_catchup_without_hiding_backlog", "[webcam_clock]") {
