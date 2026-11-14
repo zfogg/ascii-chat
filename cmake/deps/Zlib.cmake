@@ -126,12 +126,12 @@ if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
             "zlib target used by dependency subprojects" FORCE)
         set(ZLIB_LIBRARIES ZLIB::zlib CACHE STRING
             "zlib target used by dependency subprojects" FORCE)
-    elseif(ZLIB_LINK_LIBRARIES)
+    elseif(ZLIB_LINK_LIBRARIES AND NOT ZLIB_LINK_LIBRARIES MATCHES "-NOTFOUND$")
         set(ZLIB_LIBRARY "${ZLIB_LINK_LIBRARIES}" CACHE STRING
             "zlib libraries used by dependency subprojects" FORCE)
         set(ZLIB_LIBRARIES "${ZLIB_LINK_LIBRARIES}" CACHE STRING
             "zlib libraries used by dependency subprojects" FORCE)
-    elseif(ZLIB_LDFLAGS)
+    elseif(ZLIB_LDFLAGS AND NOT ZLIB_LDFLAGS MATCHES "-NOTFOUND$")
         set(ZLIB_LIBRARY "${ZLIB_LDFLAGS}" CACHE STRING
             "zlib linker flags used by dependency subprojects" FORCE)
         set(ZLIB_LIBRARIES "${ZLIB_LDFLAGS}" CACHE STRING
