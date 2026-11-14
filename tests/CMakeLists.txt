@@ -118,6 +118,13 @@ if(BUILD_TESTS)
             set_property(TEST quic-dependencies PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+            foreach(_quic_runtime_target asciichat-ngtcp2 asciichat-ngtcp2-crypto asciichat-nghttp3)
+                if(TARGET ${_quic_runtime_target})
+                    set_property(TEST quic-dependencies APPEND PROPERTY
+                        ENVIRONMENT_MODIFICATION
+                        "PATH=path_list_prepend:$<TARGET_FILE_DIR:${_quic_runtime_target}>")
+                endif()
+            endforeach()
         endif()
     endif()
     set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)

@@ -388,6 +388,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
     set(OPENSSL_NO_ASM OFF)
+    # Emscripten cannot load host shared objects and cannot use OpenSSL's
+    # architecture-specific Linux assembly.  Treat the browser build as a
+    # static, no-assembly generic target even when the surrounding build is a
+    # shared/development configuration.
+    if(EMSCRIPTEN)
+        set(OPENSSL_NO_ASM ON)
+    endif()
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
@@ -395,6 +402,9 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
+    endif()
+    if(EMSCRIPTEN)
+        set(OPENSSL_BUILD_SHARED OFF)
     endif()
 
     set(OPENSSL_CONFIGURE_PREFIX "${OPENSSL_PREFIX}")
