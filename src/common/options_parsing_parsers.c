@@ -26,26 +26,13 @@
 #include <ascii-chat/util/path.h>               // For path_validate_user_path()
 #include <ascii-chat/util/time.h>               // For SEC_PER_HOUR, SEC_PER_MIN
 #include <ascii-chat/video/rgba/color_filter.h> // For color_filter_from_cli_name()
+#include <libflags/values.h>
 
 // Helper function to convert string to lowercase in-place (non-destructive)
-static void to_lower(const char *src, char *dst, size_t max_len) {
-  size_t i = 0;
-  while (src[i] && i < max_len - 1) {
-    dst[i] = (char)tolower((unsigned char)src[i]);
-    i++;
-  }
-  dst[i] = '\0';
-}
-
 /**
  * @brief Lookup table for setting string-to-enum mapping
  * @brief Lookup table for setting string-to-enum mapping
  */
-typedef struct {
-  const char *match; ///< Setting string (lowercased)
-  int enum_value;    ///< Corresponding enum value
-} setting_map_entry_t;
-
 /**
  * @brief Generic setting parser using a lookup table
  *
@@ -57,7 +44,7 @@ typedef struct {
  * @param error_msg Error message destination (can be NULL)
  * @return true if valid setting, false otherwise
  */
-static bool parse_setting_generic(const char *arg, void *dest, const setting_map_entry_t *lookup_table, char **error_msg) {
+static bool parse_setting_generic(const char *arg, void *dest, const flags_lookup_entry_t *lookup_table, char **error_msg) {
   if (!dest || !lookup_table) {
     if (error_msg) {
       *error_msg = platform_strdup("Internal error: NULL destination or lookup table");
@@ -73,17 +60,8 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
     return true;
   }
 
-  // Convert to lowercase
-  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
-  to_lower(arg, lower, sizeof(lower));
-
-  // Linear search through lookup table to get enum value
-  for (int i = 0; lookup_table[i].match != NULL; i++) {
-    if (strcmp(lower, lookup_table[i].match) == 0) {
-      *result = lookup_table[i].enum_value;
-      return true;
-    }
-  }
+  if (flags_parse_lookup(arg, lookup_table, result))
+    return true;
 
   if (error_msg) {
     *error_msg = platform_strdup("Invalid setting value");
@@ -95,7 +73,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
 // See that module for the full implementation.
 
 // Lookup table for color setting strings
-static const setting_map_entry_t g_color_setting_map[] = {
+static const flags_lookup_entry_t g_color_setting_map[] = {
     {"auto", COLOR_SETTING_AUTO},   {"a", COLOR_SETTING_AUTO},         {"0", COLOR_SETTING_AUTO},        {"true", COLOR_SETTING_TRUE},
     {"yes", COLOR_SETTING_TRUE},    {"1", COLOR_SETTING_TRUE},         {"on", COLOR_SETTING_TRUE},       {"enabled", COLOR_SETTING_TRUE},
     {"enable", COLOR_SETTING_TRUE}, {"false", COLOR_SETTING_FALSE},    {"no", COLOR_SETTING_FALSE},      {"-1", COLOR_SETTING_FALSE},
@@ -122,7 +100,7 @@ bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
 }
 
 // Lookup table for UTF-8 setting strings (identical to color setting for boolean patterns)
-static const setting_map_entry_t g_utf8_setting_map[] = {
+static const flags_lookup_entry_t g_utf8_setting_map[] = {
     {"auto", UTF8_SETTING_AUTO},   {"a", UTF8_SETTING_AUTO},         {"0", UTF8_SETTING_AUTO},        {"true", UTF8_SETTING_TRUE},
     {"yes", UTF8_SETTING_TRUE},    {"1", UTF8_SETTING_TRUE},         {"on", UTF8_SETTING_TRUE},       {"enabled", UTF8_SETTING_TRUE},
     {"enable", UTF8_SETTING_TRUE}, {"false", UTF8_SETTING_FALSE},    {"no", UTF8_SETTING_FALSE},      {"-1", UTF8_SETTING_FALSE},
