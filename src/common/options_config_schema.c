@@ -25,6 +25,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <ascii-chat/common.h>
+#include <libflags/config/keys.h>
 
 #include <string.h>
 #include <limits.h>
@@ -50,94 +51,6 @@ static size_t g_dynamic_strings_capacity = 0;
 // ============================================================================
 // Helper Functions for Dynamic Schema Building
 // ============================================================================
-
-/**
- * @brief Convert string to lowercase
- */
-static void str_tolower(char *str) {
-  if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string");
-    return;
-  }
-  for (; *str; str++) {
-    *str = (char)tolower((unsigned char)*str);
-  }
-}
-
-/**
- * @brief Convert dashes to underscores in a string (in-place)
- */
-static void dashes_to_underscores(char *str) {
-  if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string");
-    return;
-  }
-  for (; *str; str++) {
-    if (*str == '-') {
-      *str = '_';
-    }
-  }
-}
-
-/**
- * @brief Generate TOML key from group and field name
- * Format: "group.field_name" (both lowercase, underscores)
- */
-static char *generate_toml_key(const char *group, const char *field_name, char *buffer, size_t buffer_size) {
-  if (!group || !field_name || !buffer || buffer_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
-    return NULL;
-  }
-
-  // Copy group and convert to lowercase
-  size_t group_len = strlen(group);
-  if (group_len >= buffer_size) {
-    SET_ERRNO(ERROR_CONFIG, "Group name is too long for buffer");
-    return NULL;
-  }
-  memcpy(buffer, group, group_len + 1);
-  str_tolower(buffer);
-
-  // Append dot
-  if (group_len + 1 >= buffer_size) {
-    SET_ERRNO(ERROR_CONFIG, "Group name is too long for buffer");
-    return NULL;
-  }
-  buffer[group_len] = '.';
-
-  // Copy field name, convert dashes to underscores, and lowercase
-  size_t field_len = strlen(field_name);
-  if (group_len + 1 + field_len >= buffer_size) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Field name is too long for buffer");
-    return NULL;
-  }
-  memcpy(buffer + group_len + 1, field_name, field_len + 1);
-  dashes_to_underscores(buffer + group_len + 1);
-  str_tolower(buffer + group_len + 1);
-
-  return buffer;
-}
-
-/**
- * @brief Generate CLI flag from long_name
- * Format: "--long-name"
- */
-static char *generate_cli_flag(const char *long_name, char *buffer, size_t buffer_size) {
-  if (!long_name || !buffer || buffer_size < 3) { // Need at least "--" + 1 char
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
-    return NULL;
-  }
-
-  buffer[0] = '-';
-  buffer[1] = '-';
-  size_t name_len = strlen(long_name);
-  if (name_len + 2 >= buffer_size) {
-    SET_ERRNO(ERROR_CONFIG, "Long name is too long for buffer");
-    return NULL;
-  }
-  memcpy(buffer + 2, long_name, name_len + 1);
-  return buffer;
-}
 
 /**
  * @brief Get field size from offset and type
@@ -346,7 +259,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     }
 
     // Generate CLI flag: "--long-name"
-    if (generate_cli_flag(desc->long_name, cli_flag_buffer, sizeof(cli_flag_buffer))) {
+    if (flags_config_make_cli_flag(desc->long_name, cli_flag_buffer, sizeof(cli_flag_buffer))) {
       meta->cli_flag = store_dynamic_string(cli_flag_buffer);
       if (!meta->cli_flag) {
         // Failed to allocate, but continue (cli_flag can be NULL)
