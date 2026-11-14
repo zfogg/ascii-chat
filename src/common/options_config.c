@@ -103,6 +103,7 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
     const flags_option_spec_t option = {.name = meta->toml_key,
                                         .metavar = "VALUE",
                                         .description = meta->description,
+                                        .config_key = meta->toml_key,
                                         .type = type,
                                         .behavior = FLAGS_BEHAVIOR_VALUE,
                                         .argument_requirement = FLAGS_ARGUMENT_REQUIRED,
