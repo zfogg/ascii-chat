@@ -29,7 +29,7 @@
  *    configurations. Supports mode-specific options, dependencies, and custom validators.
  *
  * 3. **Presets** (presets.h): Pre-built configurations for common modes (unified, server, client,
- *    mirror, discovery service). Use `options_preset_unified()` for the standard multi-mode setup.
+ *    mirror, discovery service). The ascii-chat registry supplies the mode-specific libflags schema.
  *
  * 4. **Unified Parsing** (options.c): Single entry point `options_init()` that:
  *    - Detects mode from command-line arguments
@@ -89,7 +89,7 @@
  * **Option Lifecycle**:
  *
  * 1. **Definition**: Options defined in registry.c with metadata and mode bitmasks
- * 2. **Builder Creation**: Use `options_preset_unified()` to create builder with presets
+ * 2. **Schema Creation**: Build a libflags schema from the ascii-chat registry
  * 3. **Initialization**: Call `options_init(argc, argv)` once at program startup
  *    - Mode detection from argv
  *    - Binary-level option parsing
