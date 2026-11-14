@@ -75,24 +75,36 @@ typedef unsigned long long uint64_t;
 #define PATH_MAX 260
 #endif
 // Windows extended-length path maximum (not the legacy 260 MAX_PATH)
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH 32767
+#endif
 #elif defined(__linux__)
 #include <limits.h>
 #ifndef PATH_MAX
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH 4096
+#endif
 #else
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH PATH_MAX
+#endif
 #endif
 #elif defined(__APPLE__)
 #include <sys/syslimits.h>
 #ifndef PATH_MAX
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH 1024
+#endif
 #else
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH PATH_MAX
+#endif
 #endif
 #else
 // Fallback for unknown platforms
+#ifndef PLATFORM_MAX_PATH_LENGTH
 #define PLATFORM_MAX_PATH_LENGTH 4096
+#endif
 #endif
 
 // INFO: flightaware/dump1090 dev made this after my pr: https://github.com/flightaware/dump1090/pull/282

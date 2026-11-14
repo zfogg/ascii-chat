@@ -3,6 +3,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
+#include <ascii-chat/video/ascii/render/types.h>
 
 /** Shared terminal-cell contract for every ISA and scalar fallback.
  * Palettes use complete UTF-8 glyphs from cache64. Runs never cross rows.
@@ -12,9 +13,6 @@
  * ISA entry points select their vector stages; callers must check CPU support.
  */
 typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
-
-/** Selects the character-matching algorithm. */
-typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
 
 /** Rendering parameters; the caller retains ownership of palette and backend. */
 typedef struct {
