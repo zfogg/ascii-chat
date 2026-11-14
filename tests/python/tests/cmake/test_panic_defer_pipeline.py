@@ -52,7 +52,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         f'include("{(ROOT / "cmake" / "tooling" / "Panic.cmake").as_posix()}")\n'
         f'include("{(ROOT / "deps" / "recast" / "Recast.cmake").as_posix()}")\n'
         'ascii_panic_prepare()\nadd_subdirectory(src)\nset(DEFER_SOURCE_HOOK ascii_panic_defer_source)\n'
-        'defer_targets(ascii-chat)\nascii_panic_finalize()\n',
+        'recast_targets(ascii-chat)\nascii_panic_finalize()\n',
         encoding="utf-8",
     )
     build = project / "build"

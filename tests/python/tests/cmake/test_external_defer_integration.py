@@ -37,7 +37,7 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
     (project / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.30)\nproject(probe C)\n"
         "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
-        f'include("{module}")\nadd_subdirectory(src)\ndefer_targets(ascii-chat-probe)\n',
+        f'include("{module}")\nadd_subdirectory(src)\nrecast_targets(ascii-chat-probe)\n',
         encoding="utf-8",
     )
     build = tmp_path / "build"
@@ -79,7 +79,7 @@ def test_external_defer_emscripten_compile_database(tmp_path: Path) -> None:
     (project / "CMakeLists.txt").write_text(
         'cmake_minimum_required(VERSION 3.30)\nproject(probe C)\nset(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{module}")\nadd_library(probe STATIC probe.c)\n'
-        'target_compile_options(probe PRIVATE -sASSERTIONS=1)\ndefer_target(probe)\n', encoding="utf-8"
+        'target_compile_options(probe PRIVATE -sASSERTIONS=1)\nrecast_targets(probe)\n', encoding="utf-8"
     )
     build = tmp_path / "build"
     for args in ([cmake, "-S", str(project), "-B", str(build), "-G", "Ninja",
