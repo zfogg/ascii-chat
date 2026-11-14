@@ -9,7 +9,6 @@
 
 #include <ascii-chat/options/enums.h>
 #include <string.h>
-#include <ctype.h>
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/config.h>
@@ -70,18 +69,7 @@ asciichat_error_t completions_generate_for_shell(completion_format_t format, FIL
 }
 
 const char *completions_get_shell_name(completion_format_t format) {
-  switch (format) {
-  case COMPLETION_FORMAT_BASH:
-    return OPT_COMPLETION_SHELL_BASH;
-  case COMPLETION_FORMAT_FISH:
-    return OPT_COMPLETION_SHELL_FISH;
-  case COMPLETION_FORMAT_ZSH:
-    return OPT_COMPLETION_SHELL_ZSH;
-  case COMPLETION_FORMAT_POWERSHELL:
-    return OPT_COMPLETION_SHELL_POWERSHELL;
-  default:
-    return "unknown";
-  }
+  return flags_completion_shell_name((flags_completion_shell_t)format);
 }
 
 completion_format_t completions_parse_shell_name(const char *shell_name) {
@@ -89,28 +77,8 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
     return COMPLETION_FORMAT_UNKNOWN;
   }
 
-  /* Convert to lowercase for case-insensitive matching */
-  char lower[OPTIONS_COMPLETIONS_LOWER_BUFFER_SIZE] = {0};
-  size_t len = strlen(shell_name);
-  if (len >= sizeof(lower)) {
-    return COMPLETION_FORMAT_UNKNOWN;
-  }
-
-  for (size_t i = 0; i < len; i++) {
-    lower[i] = tolower((unsigned char)shell_name[i]);
-  }
-
-  if (strcmp(lower, OPT_COMPLETION_SHELL_BASH) == 0) {
-    return COMPLETION_FORMAT_BASH;
-  } else if (strcmp(lower, OPT_COMPLETION_SHELL_FISH) == 0) {
-    return COMPLETION_FORMAT_FISH;
-  } else if (strcmp(lower, OPT_COMPLETION_SHELL_ZSH) == 0) {
-    return COMPLETION_FORMAT_ZSH;
-  } else if (strcmp(lower, OPT_COMPLETION_SHELL_POWERSHELL) == 0 || strcmp(lower, "ps") == 0) {
-    return COMPLETION_FORMAT_POWERSHELL;
-  }
-
-  return COMPLETION_FORMAT_UNKNOWN;
+  flags_completion_shell_t parsed = flags_completion_shell_parse(shell_name);
+  return parsed == FLAGS_COMPLETION_UNKNOWN ? COMPLETION_FORMAT_UNKNOWN : (completion_format_t)parsed;
 }
 
 /**
