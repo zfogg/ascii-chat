@@ -7,6 +7,24 @@ const version = createHash("sha256")
   .digest("hex")
   .slice(0, 32);
 
+test("native client logs reach the browser console", async ({ page }) => {
+  const messages: string[] = [];
+  page.on("console", (message) => messages.push(message.text()));
+  await page.goto("/client");
+  await page.evaluate(async () => {
+    const { initClientWasm, cleanupClientWasm } = await import(
+      /* @vite-ignore */ String("/src/wasm/client.ts")
+    );
+    await initClientWasm();
+    cleanupClientWasm();
+  });
+  expect(
+    messages.some((message) =>
+      message.includes("WASM client initialized via logging system"),
+    ),
+  ).toBe(true);
+});
+
 test("published WASM does not embed oversized zero-filled buffers", () => {
   const zeros = Buffer.alloc(64 * 1024);
   for (const module of ["client", "mirror"]) {

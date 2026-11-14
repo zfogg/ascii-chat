@@ -21,44 +21,33 @@
 // clang-format off
 EM_JS(void, js_console_log, (int level, const char *message), {
   const msg = UTF8ToString(message);
-  const levelNames = [ 'DEV', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL' ];
-  const levelName = (level >= 0 && level <= 5) ? levelNames[level] : '?????';
-
-  // Debug: show message length to verify content is being passed
-  const msgLen = msg.length;
-  const hasTimestamp =
-      msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']') + 1] === ' ';
-  const debugInfo = `[WASM_MSG_LEN = ${msgLen}, HAS_TS = ${hasTimestamp}]`;
-
   // Route to appropriate console method
   switch (level) {
   case 0: // LOG_DEV
   case 1: // LOG_DEBUG
   case 2: // LOG_INFO
-    console.log(debugInfo, msg);
+    console.log(msg);
     break;
   case 3: // LOG_WARN
-    console.warn(debugInfo, msg);
+    console.warn(msg);
     break;
   case 4: // LOG_ERROR
   case 5: // LOG_FATAL
-    console.error(debugInfo, msg);
+    console.error(msg);
     break;
   default:
-    console.log(debugInfo, msg);
+    console.log(msg);
   }
 });
 // clang-format on
 
 // Platform hook called by logging system
 // This is called after each log message is formatted, before printing to stderr/stdout
-// The message parameter contains the COMPLETE formatted log line with ANSI codes:
-// [HH:MM:SS.microseconds] [LEVEL] [thread/name] file:line@function(): message
-// We strip the ANSI codes before sending to browser console for clean output
+// Strip ANSI codes from the formatted message before sending it to the console.
 void platform_log_hook(log_level_t level, const char *message) {
   if (message) {
     // Strip ANSI codes for clean browser console output
-    static char clean_message[LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE];
+    char clean_message[LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE];
     strip_ansi_codes(message, clean_message, sizeof(clean_message));
     js_console_log((int)level, clean_message);
   }

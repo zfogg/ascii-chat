@@ -110,21 +110,11 @@ include_directories(
 )
 if(EMSCRIPTEN)
     include_directories(SYSTEM /home/zfogg/.cache/emscripten/sysroot/include)
-        if(EXISTS "/usr/include/portaudio.h")
-            configure_file("/usr/include/portaudio.h" "${CMAKE_BINARY_DIR}/portaudio.h" COPYONLY)
-            include_directories(SYSTEM ${CMAKE_BINARY_DIR})
-        endif()
     find_path(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE string.h
         HINTS "$ENV{EMSDK}/upstream/emscripten/cache/sysroot/include"
               "/home/zfogg/.cache/emscripten/sysroot/include")
     if(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE)
         include_directories(SYSTEM ${ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE})
-    endif()
-    if(ASCIICHAT_DEPS_CACHE_ROOT)
-        include_directories(SYSTEM
-            ${ASCIICHAT_DEPS_CACHE_ROOT}/web/libsodium-wasm-src/src/libsodium/include)
-        include_directories(SYSTEM
-            ${CMAKE_BINARY_DIR}/_deps/libsodium-build/src/libsodium/include)
     endif()
 endif()
 
@@ -746,4 +736,12 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     include("${DEFER_CONFIG_FILE}")
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
     defer_targets(${_ascii_wasm_defer_targets})
+    # Defer parses headers before compiling, so libsodium's generated headers
+    # must exist before any scan or transformation can run on a clean build.
+    get_property(_wasm_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_wasm_target IN LISTS _wasm_targets)
+        if(_wasm_target MATCHES "^defer-")
+            add_dependencies(${_wasm_target} libsodium-wasm)
+        endif()
+    endforeach()
 endif()

@@ -397,7 +397,7 @@ test("shared rendering constants match the native definitions", async ({
 }) => {
   const terminal = readFileSync(
     new URL(
-      "../../../../deps/libplatform/include/libplatform/terminal.h",
+      "../../../../deps/ascii-chat-deps/libplatform/include/libplatform/terminal.h",
       import.meta.url,
     ),
     "utf8",

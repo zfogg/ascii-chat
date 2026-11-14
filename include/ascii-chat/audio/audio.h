@@ -60,7 +60,11 @@
 #include <ascii-chat/audio/format.h>
 #include <stdbool.h>
 #include <libplatform/atomic.h>
+#ifdef __EMSCRIPTEN__
+typedef void PaStream;
+#else
 #include <portaudio.h>
+#endif
 #ifdef __linux__
 #include <sched.h>
 #include <sys/resource.h>
