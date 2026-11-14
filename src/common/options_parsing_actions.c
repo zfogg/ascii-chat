@@ -41,6 +41,8 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
+#include <libflags/manpage/manpage.h>
+#include <libflags/manpage/formatter.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -474,45 +476,25 @@ void action_help_discovery(void) {
 // ============================================================================
 
 void action_create_manpage(const char *output_path) {
-  // Get binary-level config
-  const options_config_t *config = options_preset_unified(NULL, NULL);
-
-  if (!config) {
-    log_error("Failed to get binary options config");
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  if (!builder)
+    action_exit(ERROR_FILE_OPERATION);
+  FILE *output = stdout;
+  if (output_path && *output_path && strcmp(output_path, "-") != 0)
+    output = fopen(output_path, "w");
+  if (!output) {
+    flags_schema_builder_destroy(builder);
     action_exit(ERROR_FILE_OPERATION);
   }
-
-  // Determine output path: use provided path, or NULL for stdout
-  const char *path_to_use = NULL;
-  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
-    // User provided explicit path - use it
-    path_to_use = output_path;
-  } else {
-    // No path or "-" means stdout
-    path_to_use = NULL;
-  }
-
-  // Generate merged man page from embedded or filesystem resources
-  // Resources are loaded automatically based on build type:
-  // - Production (Release): From embedded binary data
-  // - Development (Debug): From filesystem files
-  asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, path_to_use, "Video chat in your terminal");
-
-  if (err != ASCIICHAT_OK) {
-    asciichat_error_context_t err_ctx;
-    if (HAS_ERRNO(&err_ctx)) {
-      log_error("%s", err_ctx.context_message);
-    } else {
-      log_error("Failed to generate man page");
-    }
+  const flags_manpage_metadata_t metadata = {.program_name = "ascii-chat", .section = "1", .description = "Video chat in your terminal"};
+  const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) &&
+                       flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
+  if (output != stdout)
+    fclose(output);
+  flags_schema_builder_destroy(builder);
+  if (!written)
     action_exit(ERROR_FILE_OPERATION);
-  }
-
-  if (path_to_use) {
-    log_info("Man page written to: %s", path_to_use);
-  } else {
-    log_info("Man page written to stdout");
-  }
+  log_info("Man page written to %s", output_path && *output_path ? output_path : "stdout");
 
   action_exit(0);
 }
