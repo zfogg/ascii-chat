@@ -1,6 +1,5 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/common.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

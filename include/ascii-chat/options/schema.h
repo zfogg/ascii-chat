@@ -17,7 +17,7 @@
 #include <stddef.h>
 #include "../common.h"
 #include "../options/options.h"
-#include "../options/builder.h"
+#include "types.h"
 
 /**
  * @brief Context where an option can appear

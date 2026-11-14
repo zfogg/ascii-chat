@@ -19,7 +19,7 @@
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/types.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <libplatform/terminal.h>

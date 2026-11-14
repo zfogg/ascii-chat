@@ -12,7 +12,6 @@
 #include <sys/ioctl.h>
 
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
 #include <ascii-chat/options/actions.h> // For deferred action tests

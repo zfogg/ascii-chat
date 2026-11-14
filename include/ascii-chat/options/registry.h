@@ -208,7 +208,7 @@
 #pragma once
 
 #include "../options/options.h"
-#include "../options/builder.h"
+#include "types.h"
 #include <libflags/builder.h>
 
 #ifdef __cplusplus

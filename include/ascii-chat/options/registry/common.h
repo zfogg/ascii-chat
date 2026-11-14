@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/types.h>
 #include <ascii-chat/options/options.h>
 #include <stdbool.h>
 #include <stddef.h>
