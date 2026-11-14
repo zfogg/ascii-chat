@@ -1,5 +1,9 @@
 #pragma once
 
+#include <libplatform/keyboard.h>
+
+#if 0
+
 /**
  * @file platform/keyboard.h
  * @brief 🎮 Cross-platform keyboard input interface for ascii-chat
@@ -350,3 +354,5 @@ bool keyboard_stream_query_background(int (*read_byte)(void), bool (*send_query)
 
 /** Most recently decoded OSC 11 reply, without reading or waiting for input. */
 bool keyboard_stream_background(uint8_t *r, uint8_t *g, uint8_t *b);
+
+#endif

@@ -1,9 +1,15 @@
 #pragma once
+
+#include <libplatform/wakeup.h>
+
+#if 0
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
 #endif
 
 typedef struct platform_wakeup platform_wakeup_t;
