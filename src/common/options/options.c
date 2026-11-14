@@ -2371,9 +2371,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_mode_t detected_mode = MODE_DISCOVERY;
   char detected_session_string[SESSION_STRING_BUFFER_SIZE] = {0};
   int mode_index = -1;
-  result = options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
-  if (result != ASCIICHAT_OK) {
-    return result;
+  if (actions.show_version || actions.create_config || actions.create_manpage) {
+    // Binary actions do not have a session mode. Avoid treating an optional
+    // output path as a positional mode before the action is dispatched.
+    detected_mode = MODE_DISCOVERY;
+    mode_index = -1;
+  } else {
+    result = options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
   }
   result = validate_binary_option_position(argc, argv, mode_index);
   if (result != ASCIICHAT_OK) {
