@@ -342,6 +342,9 @@ Quit normally. Shift-Q or Shift-Esc requests a panic exit without cleanup.
 .B V
 Open media from the clipboard.
 .TP
+.B O / CTRL-O
+Open the media-input prompt for a path or URL.
+.TP
 .B PASTE
 Queue dropped or pasted media.
 .TP
