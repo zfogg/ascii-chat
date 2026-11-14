@@ -434,7 +434,7 @@
  * @subsection debug_tools_symbolizers Stack Trace Symbolizers
  *
  * Symbolizers convert raw memory addresses into human-readable function names and
- * source locations. ascii-chat's backtrace system (`lib/platform/symbols.c`)
+ * source locations. The shared libplatform backtrace system (`libplatform/symbols.c`)
  * **automatically detects and uses** these tools when available.
  *
  * | Tool | Platform | Priority |
@@ -446,7 +446,7 @@
  *       backtraces during debugging. Without a symbolizer, you'll only see raw
  *       memory addresses like `0x401234` instead of `main() at src/client.c:42`.
  *
- * **Automatic Detection** (`lib/platform/symbols.c`):
+ * **Automatic Detection** (`libplatform/symbols.c`):
  *
  * The symbol cache system automatically:
  * 1. Checks for `llvm-symbolizer` in PATH (preferred)
