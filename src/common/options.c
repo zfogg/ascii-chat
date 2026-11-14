@@ -1561,33 +1561,7 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
   }
 
   if (actions->create_manpage) {
-    // Handle --create-man-page-template: generate merged man page template
-    // The .1.in file is the existing template to read from (not the output)
-    const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
-    options_config_t *config = options_preset_unified(NULL, NULL);
-    if (!config) {
-      log_error("Failed to get binary options config");
-      return ERROR_MEMORY;
-    }
-
-    // Generate merged man page from embedded or filesystem resources
-    // (existing_template_path and manpage_content_file parameters are no longer supported)
-    asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, existing_template_path, "Video chat in your terminal");
-
-    options_config_destroy(config);
-
-    if (err != ASCIICHAT_OK) {
-      asciichat_error_context_t err_ctx;
-      if (HAS_ERRNO(&err_ctx)) {
-        log_error("%s", err_ctx.context_message);
-      } else {
-        log_error("Failed to generate man page");
-      }
-      return err;
-    }
-
-    log_plain("Generated man page: %s", existing_template_path);
-    return ASCIICHAT_OK; // Return successfully after generating man page
+    action_create_manpage(actions->manpage_create_path);
   }
   return ASCIICHAT_OK;
 }
