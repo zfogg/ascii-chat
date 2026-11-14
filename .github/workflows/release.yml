@@ -325,7 +325,13 @@ jobs:
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
           # This ensures paths.h has the correct prefix baked in for system config
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
-          cmake --preset release -DPROJECT_VERSION_FROM_GIT="${RELEASE_TAG#v}" -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable
+          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=${RELEASE_TAG#v} -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable"
+          if [[ "$(uname -m)" == "aarch64" ]]; then
+            # defer-tool v0.1.1 cannot parse LLVM's arm_neon.h when header
+            # overlays are enabled on the hosted ARM runner.
+            CMAKE_ARGS="$CMAKE_ARGS -DDEFER_HEADER_OVERLAYS=OFF"
+          fi
+          cmake $CMAKE_ARGS
 
       - name: Save CMake dependency cache
         if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
