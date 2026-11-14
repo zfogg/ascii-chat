@@ -27,7 +27,6 @@
 #include <libplatform/filesystem.h>
 #include <libflags/builder.h>
 #include <libflags/config.h>
-#include <libflags/config/keys.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>
