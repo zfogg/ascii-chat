@@ -63,7 +63,13 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     // Option-only display changes still need to wake the renderer. This is
     // essential for synthetic video and audio visualizations, which may not
     // publish a new capture frame solely because the overlay changed.
-    ui_controller_redraw();
+    // Audio visualization toggles are different: redrawing here would replay
+    // the cached FFT/waveform frame before the next webcam frame arrives.
+    bool visualization_toggle = key == KEY_2 || key == KEY_3;
+    if (visualization_toggle)
+      ui_controller_invalidate_media();
+    else
+      ui_controller_redraw();
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
       ui_controller_show_volume();
     return;

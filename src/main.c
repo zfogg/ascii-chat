@@ -414,7 +414,7 @@ void setup_signal_handlers(void) {
 #ifdef SIGBREAK
   signal(SIGBREAK, windows_sigint_handler);
 #endif
-  log_debug("Signal handlers registered");
+  log_dev("Signal handlers registered");
 #endif
 
 #ifndef _WIN32
@@ -424,7 +424,7 @@ void setup_signal_handlers(void) {
       {SIGPIPE, SIG_IGN},
   };
   platform_register_signal_handlers(handlers, 3);
-  log_debug("Signal handlers registered");
+  log_dev("Signal handlers registered");
 #endif
 }
 

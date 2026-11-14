@@ -149,7 +149,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "y / Y  Flip webcam vertically",
       "w / W  Toggle Face Follow",
       "r      Cycle render mode",
-      "Shift-R Cycle text renderer",
+      "R      Cycle text renderer",
       "-      FPS counter",
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",

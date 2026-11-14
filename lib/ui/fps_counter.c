@@ -109,6 +109,7 @@ void fps_counter_tick_at(fps_counter_t *counter, uint64_t now) {
   if (counter->count < FPS_WINDOW_SIZE) {
     counter->count++;
   }
+
 }
 
 float fps_counter_get(fps_counter_t *counter) {
@@ -222,11 +223,13 @@ size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity,
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
   if (redrawn && value == 0 && counter->last_fps > 0)
     value = counter->last_fps;
-  // `FPS:ddd/ddd` is eleven columns wide. Start ten columns before the
-  // terminal's rightmost column so the complete overlay stays on one line.
-  if (counter->visible && columns >= 10 && (redrawn || value != counter->last_fps) && buffer && capacity > 0) {
+  // Keep both FPS fields three columns wide. A fixed overlay width prevents
+  // the label from shifting or leaving stale cells as values change digits.
+  // `FPS:ddd/ddd` is eleven columns wide, so start ten columns before the
+  // terminal's rightmost column.
+  if (counter->visible && columns >= 11 && (redrawn || value != counter->last_fps) && buffer && capacity > 0) {
     const char *style = counter->dark_background ? "\033[97;40m" : "\033[30;47m";
-    int length = snprintf(buffer, capacity, "\0337\033[1;%dH%sFPS:%3d/%u\033[0m\0338", columns - 10, style, value, counter->effective_fps);
+    int length = snprintf(buffer, capacity, "\0337\033[1;%dH%sFPS:%3d/%3u\033[0m\0338", columns - 10, style, value, counter->effective_fps);
     if (length > 0 && (size_t)length < capacity) {
       counter->last_fps = value;
       output_length = (size_t)length;

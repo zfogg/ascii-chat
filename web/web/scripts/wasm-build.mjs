@@ -13,7 +13,6 @@ import {
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, relative } from "node:path";
 import { execFileSync } from "node:child_process";
-import { protocolVersion } from "../../../scripts/wasm-protocol-version.mjs";
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(app, "../..");
@@ -231,6 +230,7 @@ if (
       throw new Error(`WASM declaration mismatch: ${file}`);
   }
 } else {
+  const { protocolVersion } = await import("../../../scripts/wasm-protocol-version.mjs");
   const artifactDirectory = process.env.ASCII_CHAT_WASM_ARTIFACT_DIR;
   const build = resolve(repo, process.env.ASCII_CHAT_WASM_BUILD_DIR || "build");
   if (!artifactDirectory)

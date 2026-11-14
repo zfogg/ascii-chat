@@ -511,7 +511,7 @@
  * - **TTY Detection**: Check if output is a terminal
  * - **Capability Detection**: Detect color support (mono/16/256/truecolor)
  * - **Palette Selection**: Choose luminance mapping for ASCII conversion
- * - **Text Renderer**: Press `Shift-R` to cycle between luminance and glyph renderers; lowercase `r` continues to cycle render modes
+ * - **Text Renderer**: Press `R` to cycle between luminance and glyph renderers; lowercase `r` continues to cycle render modes
  * - **Frame Rendering**: Convert and output to terminal
  * - **Color Modes**: Support for ANSI, 256-color, and true color
  *

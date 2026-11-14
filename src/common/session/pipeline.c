@@ -342,6 +342,9 @@ static void *pipeline_capture_thread(void *arg) {
     ASCII_OTEL_SCOPE(PIPELINE_CAPTURE);
     asciichat_errno_scope_t frame_scope = errno_checkpoint();
     uint64_t acquisition_started_ns = time_get_ns();
+    // Classify the frame using the mode active when capture begins. KEY_3 can
+    // change the option while media_source_read_video() is still blocked.
+    bool visualization = GET_OPTION(waveform) || GET_OPTION(fft);
     image_t *img = session_capture_read_frame(pipeline->capture);
 
     if (!img) {
@@ -367,7 +370,7 @@ static void *pipeline_capture_thread(void *arg) {
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
     frame->fresh = frame->frame_serial != previous_serial;
-    frame->visualization = GET_OPTION(waveform) || GET_OPTION(fft);
+    frame->visualization = visualization;
     previous_serial = frame->frame_serial;
 
     // Record first frame timestamp for snapshot timer

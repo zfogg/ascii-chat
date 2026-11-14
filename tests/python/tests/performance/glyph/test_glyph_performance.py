@@ -26,3 +26,30 @@ def test_glyph_renderer_keeps_up_with_live_frames(binary, test_environment, patt
     # This deliberately loose floor catches the multi-hundred-millisecond Debug
     # regression without requiring a particular frame rate on shared CI hosts.
     assert len(lines) >= 2000, f"only {len(lines) // 100} frames in two seconds"
+
+
+def test_glyph_truecolor_200x100_soak(binary, test_environment, tmp_path):
+    """Keep the real glyph renderer alive for the long-running crash case."""
+    log_file = tmp_path / "glyph-truecolor-soak.log"
+    command = [
+        str(binary), "--quiet", "--no-check-update", "--log-file", str(log_file),
+        "mirror", "--test-pattern", "0", "--width", "200", "--height", "100",
+        "--renderer", "glyph", "--render-mode", "foreground", "--color-mode", "truecolor",
+        "--splash-screen=false", "--audio=false", "--snapshot", "--snapshot-delay", "45",
+    ]
+    result = subprocess.run(
+        command,
+        env=test_environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        timeout=65,
+        check=False,
+    )
+    diagnostics = result.stderr.decode(errors="replace")
+    assert result.returncode == 0, (
+        f"glyph renderer exited with {result.returncode}\n{diagnostics}\n"
+        f"log: {log_file}"
+    )
+    assert "AddressSanitizer" not in diagnostics
+    assert "UndefinedBehaviorSanitizer" not in diagnostics
+    assert "runtime error:" not in diagnostics

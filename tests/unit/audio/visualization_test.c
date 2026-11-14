@@ -109,6 +109,10 @@ Test(audio_visualization, waveform_and_fft_render_bounded_plain_and_colored_fram
       } else {
         cr_assert_not_null(strchr(wave, '\033'));
         cr_assert_not_null(strchr(fft, '\033'));
+        if (modes[i] == RENDER_MODE_FOREGROUND)
+          cr_assert_not_null(strstr(fft, "[38;"), "FFT foreground mode must emit foreground color sequences");
+        else if (modes[i] == RENDER_MODE_BACKGROUND)
+          cr_assert_not_null(strstr(fft, "[48;"), "FFT background mode must emit background color sequences");
       }
       SAFE_FREE(wave);
       SAFE_FREE(fft);
