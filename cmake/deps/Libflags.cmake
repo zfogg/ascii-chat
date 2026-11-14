@@ -31,7 +31,7 @@ endif()
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
-    GIT_TAG 5e191a6dbe805a67252807b12fc18a1f9d0a99a9
+    GIT_TAG e6a3a5b4e77fd62af8cebf049ed0c00bc8c1b1cb
     SOURCE_DIR "${_ascii_chat_libflags_source}")
 FetchContent_MakeAvailable(libflags)
 unset(_ascii_chat_libflags_source)
