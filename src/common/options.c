@@ -1347,24 +1347,6 @@ static asciichat_error_t scan_binary_actions(int argc, char **argv, binary_actio
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t validate_binary_option_position(int argc, char **argv, int mode_index) {
-  // VALIDATE: Binary-level options must appear BEFORE the mode
-  // Check if any binary-level options appear after the mode position
-  if (mode_index > 0) {
-    for (int i = mode_index + 1; i < argc; i++) {
-      if (argv[i][0] == '-') {
-        bool takes_arg = false;
-        bool takes_optional_arg = false;
-
-        if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-          return SET_ERRNO(ERROR_USAGE, "Binary-level option '%s' must appear before the mode '%s', not after it", argv[i], argv[mode_index]);
-        }
-      }
-    }
-  }
-  return ASCIICHAT_OK;
-}
-
 /**
  * Validate options that affect process-wide terminal setup before constructing
  * the full options object.  This keeps malformed values on the normal usage
@@ -2665,10 +2647,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (result != ASCIICHAT_OK) {
       return result;
     }
-  }
-  result = validate_binary_option_position(argc, argv, mode_index);
-  if (result != ASCIICHAT_OK) {
-    return result;
   }
   result = validate_early_color_mode(argc, argv);
   if (result != ASCIICHAT_OK) {
