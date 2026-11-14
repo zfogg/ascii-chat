@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Heading } from "@ascii-chat/shared/components/Heading";
+import { defaultGlyphPalette, defaultPalettes } from "@ascii-chat/shared/wasm";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
@@ -384,31 +385,6 @@ export function BinarySettings({
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
-                : audioVisualizationSelected
-                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
-                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
-            }
-          >
-            <label className="flex items-center gap-2 text-sm text-terminal-fg">
-              <input
-                type="checkbox"
-                checked={config.stabilize ?? true}
-                disabled={disabled}
-                onChange={(e) => {
-                  updateConfig({
-                    stabilize: e.target.checked,
-                    stabilizeExplicit: true,
-                  });
-                }}
-              />
-              Reduce flicker
-            </label>
-          </Tooltip>
-
-          <Tooltip
-            text={
-              disabled
-                ? LOCKED_SETTINGS_HELP
                 : getOptionHelp(mode, "color-mode")
             }
           >
@@ -598,16 +574,24 @@ export function BinarySettings({
                 text={
                   disabled
                     ? LOCKED_SETTINGS_HELP
-                    : "Enter characters from darkest to brightest."
+                    : "Select Custom in Palette to edit these characters. Enter custom characters from darkest to brightest."
                 }
               />
             </div>
             <input
               id={paletteInputId}
               type="text"
-              value={paletteDraft}
+              value={
+                config.palette === "custom"
+                  ? paletteDraft
+                  : config.renderer === "glyph" &&
+                      !config.paletteExplicit &&
+                      config.palette === "standard"
+                    ? defaultGlyphPalette
+                    : defaultPalettes[config.palette]
+              }
               onChange={(event) => updatePaletteDraft(event.target.value)}
-              disabled={disabled}
+              disabled={disabled || config.palette !== "custom"}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
             />
           </div>
@@ -715,6 +699,41 @@ export function BinarySettings({
               Face Follow{config.faceFollow ? " On" : " Off"}
             </button>
           </div>
+
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : audioVisualizationSelected
+                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
+                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
+            }
+          >
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Stabilization
+              </label>
+              <button
+                type="button"
+                aria-label="Reduce flicker"
+                aria-pressed={config.stabilize ?? true}
+                disabled={disabled}
+                onClick={() =>
+                  updateConfig({
+                    stabilize: !(config.stabilize ?? true),
+                    stabilizeExplicit: true,
+                  })
+                }
+                className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${
+                  (config.stabilize ?? true)
+                    ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                    : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"
+                }`}
+              >
+                Reduce flicker{(config.stabilize ?? true) ? " On" : " Off"}
+              </button>
+            </div>
+          </Tooltip>
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")
