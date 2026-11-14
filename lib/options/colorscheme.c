@@ -709,7 +709,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
     if (!fp) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
     }
-    defer(fclose(fp));
+    DEFER(fclose(fp));
     if (fputs(toml_content, fp) < 0) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to %s", file_path);
     }

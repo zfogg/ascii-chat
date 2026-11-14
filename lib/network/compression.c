@@ -56,7 +56,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   if (!compressed_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate compressed data buffer");
   }
-  defer_named(release_compressed, buffer_release(compressed_data));
+  DEFER_NAMED(release_compressed, buffer_release(compressed_data));
 
   // Compress using zstd with user-specified compression level
   size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, compression_level);
@@ -66,7 +66,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   }
 
   *output = compressed_data;
-  defer_cancel(release_compressed);
+  DEFER_CANCEL(release_compressed);
   *output_size = ret;
   ASCII_OTEL_ATTR_INT("compression.output.size", (int64_t)ret);
   ASCII_OTEL_ATTR_INT("compression.ratio.permille", (int64_t)(1000.0 * (double)ret / (double)input_size));

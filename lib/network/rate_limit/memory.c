@@ -258,7 +258,7 @@ void *memory_backend_create(void) {
     return NULL;
   }
 
-  defer_named(release_backend, SAFE_FREE(backend));
+  DEFER_NAMED(release_backend, SAFE_FREE(backend));
   memset(backend, 0, sizeof(*backend));
 
   if (mutex_init(&backend->lock, "rate_limiter") != 0) {
@@ -267,7 +267,7 @@ void *memory_backend_create(void) {
   }
 
   log_debug("Memory rate limiter backend initialized");
-  defer_cancel(release_backend);
+  DEFER_CANCEL(release_backend);
   return backend;
 }
 

@@ -361,7 +361,7 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary file for memory parsing");
   }
 
-  defer(fclose(tmp));
+  DEFER(fclose(tmp));
 
   // Write content to temporary file
   // Write content_len + 1 to include the null terminator.

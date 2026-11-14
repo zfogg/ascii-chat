@@ -47,8 +47,8 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
   vfb->frames[0].data = buffer_alloc(NULL, frame_size);
   vfb->frames[1].data = buffer_alloc(NULL, frame_size);
-  defer_named(first_frame, buffer_release(vfb->frames[0].data));
-  defer_named(second_frame, buffer_release(vfb->frames[1].data));
+  DEFER_NAMED(first_frame, buffer_release(vfb->frames[0].data));
+  DEFER_NAMED(second_frame, buffer_release(vfb->frames[1].data));
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
     SET_ERRNO(ERROR_MEMORY, "Video frame buffers exceed memory budget");
     return NULL;
@@ -86,8 +86,8 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   NAMED_REGISTER_ATOMIC(&vfb->total_frames_dropped, "total_frames_dropped_counter", (uintptr_t)(const void *)(vfb));
   NAMED_REGISTER_ATOMIC(&vfb->last_frame_sequence, "last_frame_sequence_number", (uintptr_t)(const void *)(vfb));
 
-  defer_cancel(second_frame);
-  defer_cancel(first_frame);
+  DEFER_CANCEL(second_frame);
+  DEFER_CANCEL(first_frame);
   video_frame_buffer_t *result = vfb;
   vfb = NULL;
   client_id_copy = NULL;

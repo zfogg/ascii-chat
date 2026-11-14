@@ -105,7 +105,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
   }
 
   char *expanded = NULL;
-  defer(SAFE_FREE(expanded));
+  DEFER(SAFE_FREE(expanded));
   if (has_rep) {
     expanded = ansi_expand_rle(input, length);
   } else {

@@ -354,7 +354,7 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
     return decode_result;
   }
 
-  defer(SAFE_FREE(binary_data));
+  DEFER(SAFE_FREE(binary_data));
   log_debug("Decoded %zu bytes of OpenPGP packet data", binary_len);
 
   asciichat_error_t result = openpgp_parse_binary_pubkey(binary_data, binary_len, ed25519_pk);
@@ -786,7 +786,7 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     return decode_result;
   }
 
-  defer(SAFE_FREE(binary_data));
+  DEFER(SAFE_FREE(binary_data));
 
   log_debug("Decoded %zu bytes of OpenPGP secret key packet data", binary_len);
 

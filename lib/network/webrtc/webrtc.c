@@ -572,10 +572,10 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
   // Build ICE server list for libdatachannel
   const char **ice_servers = NULL;
-  defer(SAFE_FREE(ice_servers));
+  DEFER(SAFE_FREE(ice_servers));
   size_t ice_count = 0;
   char *turn_urls = NULL;
-  defer(SAFE_FREE(turn_urls));
+  DEFER(SAFE_FREE(turn_urls));
 
   if (config->stun_count > 0 || config->turn_count > 0) {
     ice_count = config->stun_count + config->turn_count;

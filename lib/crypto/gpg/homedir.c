@@ -34,7 +34,7 @@ gpg_homedir_t *gpg_homedir_create(void) {
     return NULL;
   }
 
-  defer_named(temp_directory, platform_rmdir_recursive(homedir->path));
+  DEFER_NAMED(temp_directory, platform_rmdir_recursive(homedir->path));
 
   /* Restrict permissions to owner only (mode 0700) using platform abstraction */
   if (platform_chmod(homedir->path, 0700) != 0) {
@@ -43,7 +43,7 @@ gpg_homedir_t *gpg_homedir_create(void) {
   }
 
   log_debug("Created temporary GPG homedir: %s", homedir->path);
-  defer_cancel(temp_directory);
+  DEFER_CANCEL(temp_directory);
   gpg_homedir_t *result = homedir;
   homedir = NULL;
   return result;

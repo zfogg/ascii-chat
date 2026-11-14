@@ -53,7 +53,7 @@ static asciichat_error_t load_single_resource(const char **out_content, size_t *
   } else if (file) {
     // Development: filesystem resource
     // Need to read entire file into memory for easy access
-    defer(release_manpage_resources(file));
+    DEFER(release_manpage_resources(file));
 
     // Seek to end to determine file size
     if (fseek(file, 0, SEEK_END) != 0) {

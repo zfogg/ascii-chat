@@ -23,7 +23,7 @@ def test_project_header_is_accepted_by_defer_tool(tmp_path: Path, tool_variable:
     generated = tmp_path / "generated.c"
     source.write_text(
         '#include <recast/defer.h>\n'
-        'int main(void) { int value = 0; { defer(value = 1); } return value != 1; }\n',
+        'int main(void) { int value = 0; { DEFER(value = 1); } return value != 1; }\n',
         encoding="utf-8",
     )
     include = str(ROOT / "deps" / "recast" / "cpp" / "include")

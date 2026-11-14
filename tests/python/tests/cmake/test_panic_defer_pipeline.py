@@ -37,7 +37,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         'ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER\n'
         'void asciichat_instr_log_line(const char *p, uint32_t l, const char *f, '
         'const char *s, uint8_t m) { (void)p; (void)l; (void)f; (void)s; (void)m; ++log_count; }\n'
-        'static int work(void) { defer(++cleanup_count); return 7; }\n'
+        'static int work(void) { DEFER(++cleanup_count); return 7; }\n'
         'int main(void) { int result = work(); return result != 7 || cleanup_count != 1 || log_count == 0; }\n',
         encoding="utf-8",
     )
@@ -77,7 +77,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         assert "asciichat_instr_log_line" in instrumented_other.read_text(encoding="utf-8")
 
     # The transformer must not silently accept unsafe control flow.
-    unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); defer((void)0); }\n'
+    unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); DEFER((void)0); }\n'
     source.write_text(unsafe, encoding="utf-8")
     rejected = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True, check=False)
     assert rejected.returncode != 0

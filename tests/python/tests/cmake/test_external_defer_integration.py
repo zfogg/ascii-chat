@@ -53,7 +53,7 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
     source.write_text(
         '#include "recast_defer.h"\n#include <stdio.h>\n#include <config.h>\n'
         '#if !REQUIRE_DEFINE || __STDC_VERSION__ != 201710L\n#error incorrect compiler flags\n#endif\n'
-        'int main(void) { defer(puts(CLEANUP_TEXT)); return 0; }\n', encoding="utf-8"
+        'int main(void) { DEFER(puts(CLEANUP_TEXT)); return 0; }\n', encoding="utf-8"
     )
     run(cmake, "--build", str(build))
     executable = build / "src" / ("ascii-chat-probe.exe" if os.name == "nt" else "ascii-chat-probe")
@@ -73,7 +73,7 @@ def test_external_defer_emscripten_compile_database(tmp_path: Path) -> None:
     (project / "probe.c").write_text(
         '#include "recast_defer.h"\n#include <emscripten/emscripten.h>\n'
         '#ifndef __EMSCRIPTEN__\n#error wrong target\n#endif\n'
-        'int probe(void) { int result = 0; defer(result++); return result; }\n', encoding="utf-8"
+        'int probe(void) { int result = 0; DEFER(result++); return result; }\n', encoding="utf-8"
     )
     module = (ROOT / "deps" / "recast" / "Recast.cmake").as_posix()
     (project / "CMakeLists.txt").write_text(

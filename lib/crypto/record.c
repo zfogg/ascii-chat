@@ -118,7 +118,7 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
       sodium_memzero(&pending_crypto, sizeof(pending_crypto));
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate record decrypted packet");
   }
-  defer(if (plain) buffer_release(plain));
+  DEFER(if (plain) buffer_release(plain));
   size_t plain_length = 0;
   crypto_result_t crypto_result = crypto_decrypt(decrypt_crypto, cipher, cipher_length, plain, cipher_length, &plain_length);
   if (pending)

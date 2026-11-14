@@ -768,7 +768,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     asciichat_error_t err = SET_ERRNO(ERROR_MEMORY, "Failed to allocate config option flags");
     return err;
   }
-  defer(SAFE_FREE(option_set_flags));
+  DEFER(SAFE_FREE(option_set_flags));
 
   for (size_t i = 0; i < metadata_count; i++) {
     const config_option_metadata_t *meta = &metadata[i];
@@ -1046,7 +1046,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
 asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts) {
   // detected_mode is used in config_apply_schema for bitmask validation
   char *config_path_expanded = NULL;
-  defer(SAFE_FREE(config_path_expanded));
+  DEFER(SAFE_FREE(config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -1058,7 +1058,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
+    DEFER(SAFE_FREE(config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -1144,7 +1144,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // Parse TOML file
   toml_result_t result = toml_parse_file_ex(config_path_expanded);
   // Ensure TOML resources are freed at ALL function exit points (defer handles cleanup)
-  defer(toml_free(result));
+  DEFER(toml_free(result));
 
   if (!result.ok) {
     // result.errmsg is an array, so check its first character
@@ -1276,7 +1276,7 @@ static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bit
 asciichat_error_t config_create_default(const char *config_path) {
   char *config_path_expanded = NULL;
 
-  defer(SAFE_FREE(config_path_expanded));
+  DEFER(SAFE_FREE(config_path_expanded));
 
   // Create fresh options with all OPT_*_DEFAULT values
   options_t defaults = options_t_new();
@@ -1288,7 +1288,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   if (!builder.buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config buffer");
   }
-  defer(SAFE_FREE(builder.buffer));
+  DEFER(SAFE_FREE(builder.buffer));
   builder.capacity = BUFFER_CAPACITY;
 
   // Build version comment in buffer
@@ -1527,7 +1527,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     if (!dir_path) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
     }
-    defer(SAFE_FREE(dir_path));
+    DEFER(SAFE_FREE(dir_path));
 
     // Find the last path separator
     char *last_sep = strrchr(dir_path, PATH_DELIM);
@@ -1546,7 +1546,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     if (!output_file) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config file for writing: %s", config_path_expanded);
     }
-    defer(SAFE_FCLOSE(output_file));
+    DEFER(SAFE_FCLOSE(output_file));
 
     // Write buffer to file
     size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
@@ -1576,7 +1576,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
   // Use platform abstraction to find all config.toml files across standard locations
   config_file_list_t config_files = {0};
   asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
-  defer(config_file_list_destroy(&config_files));
+  DEFER(config_file_list_destroy(&config_files));
 
   // Keep the application config authoritative even when an older platform
   // runtime is present.  The explicit config path and generated config both

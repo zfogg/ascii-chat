@@ -74,7 +74,7 @@ static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const s
   uint8_t *packet = buffer_alloc(domain, total);
   if (!packet)
     return SET_ERRNO(ERROR_MEMORY, "Cannot assemble transport packet");
-  defer(buffer_release(packet));
+  DEFER(buffer_release(packet));
   size_t offset = 0;
   for (size_t i = 0; i < count; ++i) {
     if (buffers[i].len)
@@ -302,7 +302,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   uint32_t *wire = num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
   if (!wire)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate PCM batch samples");
-  defer({
+  DEFER({
     if (wire != inline_samples)
       buffer_release(wire);
   });

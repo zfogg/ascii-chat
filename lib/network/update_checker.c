@@ -103,7 +103,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   if (!cache_path) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
-  defer(SAFE_FREE(cache_path));
+  DEFER(SAFE_FREE(cache_path));
 
   /* A cache miss is expected on first launch.  Check existence through the
    * platform layer before opening so Windows does not turn the missing file
@@ -116,7 +116,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     const char *error_msg = file_read_error_message(cache_path);
     return SET_ERRNO(ERROR_FILE_OPERATION, "%s", error_msg);
   }
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
 
   // Read line 1: timestamp
   char line[NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE];
@@ -201,7 +201,7 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
   if (!cache_path) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
-  defer(SAFE_FREE(cache_path));
+  DEFER(SAFE_FREE(cache_path));
 
   FILE *f = platform_fopen("file_stream", cache_path, "w");
   if (!f) {
@@ -358,7 +358,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to fetch GitHub releases");
   }
 
-  defer(SAFE_FREE(response));
+  DEFER(SAFE_FREE(response));
 
   // Parse JSON response
   char latest_tag[NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE] = {0};
