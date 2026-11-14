@@ -425,10 +425,10 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
-_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
+_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf readelf)
 _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
-_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
-_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
+_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump objdump)
+_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings strings)
 
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
