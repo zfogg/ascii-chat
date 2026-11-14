@@ -48,7 +48,7 @@ function(asciichat_build_libdatachannel)
     set(WARNINGS_AS_ERRORS OFF)
     set(sctp_werror OFF)
     FetchContent_Declare(asciichat_libdatachannel
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_libdatachannel"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build"
         GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel.git
         GIT_TAG v0.22.5 GIT_SHALLOW TRUE
         GIT_SUBMODULES deps/plog deps/libjuice deps/usrsctp GIT_SUBMODULES_RECURSE TRUE)
