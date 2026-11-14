@@ -15,8 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
-size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const char *const *cells, size_t count,
-                    int width, bool selectable, bool selected) {
+size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const char *const *cells, size_t count, int width, bool selectable, bool selected) {
   if (!out || !cap) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Table row requires output storage");
     return 0;
@@ -63,8 +62,7 @@ size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const 
     const char *text = cells ? cells[i] : cols[i].heading;
     char clipped[UI_TABLE_CLIPPED_BUFFER_SIZE];
     if (text && cols[i].ellipsis && display_width(text) > cell_width) {
-      truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width,
-                                  terminal_should_use_utf8(GET_OPTION(force_utf8)));
+      truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width, terminal_should_use_utf8(GET_OPTION(force_utf8)));
       text = clipped;
     }
     used += ui_text_cell(out + used, cap - used, text, cell_width, cols[i].alignment);
@@ -74,16 +72,14 @@ size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const 
 }
 
 void ui_table_render(frame_buffer_t *out, ui_table_t *t, int row, int col, int width, int height) {
-  if (!out || !t || !t->columns || !t->column_count || t->column_count > 32 || !t->cells || width < 2 || height < 1 ||
-      row < 1 || col < 1) {
+  if (!out || !t || !t->columns || !t->column_count || t->column_count > 32 || !t->cells || width < 2 || height < 1 || row < 1 || col < 1) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid table output, data source or geometry");
     return;
   }
   char line[UI_TABLE_LINE_BUFFER_SIZE];
   if (t->header) {
     ui_table_row(line, sizeof(line), t->columns, NULL, t->column_count, width - 1, t->selectable, false);
-    frame_buffer_printf(out, "\033[%d;%dH%s%s%s", row++, col, ui_text_color_prefix(LOG_COLOR_DEBUG), line,
-                        ui_text_color_prefix(LOG_COLOR_RESET));
+    frame_buffer_printf(out, "\033[%d;%dH%s%s%s", row++, col, ui_text_color_prefix(LOG_COLOR_DEBUG), line, ui_text_color_prefix(LOG_COLOR_RESET));
     --height;
   }
   if (height < 1)
@@ -93,13 +89,11 @@ void ui_table_render(frame_buffer_t *out, ui_table_t *t, int row, int col, int w
     const char *cells[UI_TABLE_CELL_CAPACITY] = {0};
     if ((size_t)i < range.count) {
       t->cells(range.first + (size_t)i, cells, t->column_count, t->data);
-      ui_table_row(line, sizeof(line), t->columns, cells, t->column_count, width - 1, t->selectable,
-                   range.first + (size_t)i == t->viewport.selected);
+      ui_table_row(line, sizeof(line), t->columns, cells, t->column_count, width - 1, t->selectable, range.first + (size_t)i == t->viewport.selected);
     } else
       snprintf(line, sizeof(line), "%*s", width - 1, "");
     bool selected = t->selectable && (size_t)i < range.count && range.first + (size_t)i == t->viewport.selected;
-    frame_buffer_printf(out, "\033[%d;%dH%s%s%s", row + i, col, selected ? "\033[7m" : "", line,
-                        selected ? "\033[27m" : "");
+    frame_buffer_printf(out, "\033[%d;%dH%s%s%s", row + i, col, selected ? "\033[7m" : "", line, selected ? "\033[27m" : "");
   }
   ui_scrollbar_render(out, row, col + width - 1, height, range.page_count, (size_t)height, t->viewport.first_visible);
 }

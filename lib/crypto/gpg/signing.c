@@ -43,8 +43,7 @@
  * @param signature_len_out Actual signature length written
  * @return 0 on success, -1 on error
  */
-int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out,
-                      size_t *signature_len_out) {
+int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out, size_t *signature_len_out) {
   if (!key_id || !message || message_len == 0 || !signature_out || !signature_len_out) {
     log_error("Invalid parameters");
     return -1;
@@ -142,8 +141,7 @@ cleanup:
   return result;
 }
 
-int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                              uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
+int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len, uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   log_debug("Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
@@ -183,8 +181,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
       packet_len = (openpgp_signature[offset] << 8) | openpgp_signature[offset + 1];
       offset += 2;
     } else if (length_type == 2) {
-      packet_len = (openpgp_signature[offset] << 24) | (openpgp_signature[offset + 1] << 16) |
-                   (openpgp_signature[offset + 2] << 8) | openpgp_signature[offset + 3];
+      packet_len = (openpgp_signature[offset] << 24) | (openpgp_signature[offset + 1] << 16) | (openpgp_signature[offset + 2] << 8) | openpgp_signature[offset + 3];
       offset += 4;
     } else {
       log_error("Unsupported old-format packet length type: %d", length_type);
@@ -198,8 +195,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
     } else if (length_byte < 224) {
       packet_len = ((length_byte - 192) << 8) + openpgp_signature[offset++] + 192;
     } else if (length_byte == 255) {
-      packet_len = (openpgp_signature[offset] << 24) | (openpgp_signature[offset + 1] << 16) |
-                   (openpgp_signature[offset + 2] << 8) | openpgp_signature[offset + 3];
+      packet_len = (openpgp_signature[offset] << 24) | (openpgp_signature[offset + 1] << 16) | (openpgp_signature[offset + 2] << 8) | openpgp_signature[offset + 3];
       offset += 4;
     } else {
       log_error("Unsupported new-format packet length encoding: %d", length_byte);

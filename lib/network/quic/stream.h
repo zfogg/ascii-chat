@@ -12,8 +12,7 @@
  */
 #define ACIP_QUIC_STREAM_PREAMBLE_SIZE 8
 
-typedef asciichat_error_t (*quic_stream_emit_fn)(acip_traffic_class_t traffic_class, const void *packet, size_t size,
-                                                 void *context);
+typedef asciichat_error_t (*quic_stream_emit_fn)(acip_traffic_class_t traffic_class, const void *packet, size_t size, void *context);
 
 typedef struct {
   uint8_t preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
@@ -29,12 +28,10 @@ typedef struct {
    */
 } quic_stream_reader_t;
 
-asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
-                                       uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]);
+asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class, uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]);
 /** Feed on the connection's serialized receive lane. The callback borrows each
  * complete packet until it returns. Errors are terminal until reset. */
-asciichat_error_t quic_stream_read(quic_stream_reader_t *reader, const void *bytes, size_t length,
-                                   quic_stream_emit_fn emit, void *context);
+asciichat_error_t quic_stream_read(quic_stream_reader_t *reader, const void *bytes, size_t length, quic_stream_emit_fn emit, void *context);
 /** Accept a clean FIN only at a packet boundary after a complete preamble. */
 asciichat_error_t quic_stream_finish(quic_stream_reader_t *reader);
 void quic_stream_reset(quic_stream_reader_t *reader);

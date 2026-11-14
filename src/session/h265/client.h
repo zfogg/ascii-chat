@@ -67,8 +67,7 @@ void h265_client_context_destroy(h265_client_context_t *ctx);
  *   h265_client_init_media_source(ctx, H265_SOURCE_WEBCAM, "/dev/video0")
  *   h265_client_init_media_source(ctx, H265_SOURCE_TEST_PATTERN, NULL)
  */
-asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265_media_source_t source_type,
-                                                const char *source_location);
+asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265_media_source_t source_type, const char *source_location);
 
 /**
  * Capture and encode the next frame
@@ -101,5 +100,4 @@ void h265_client_request_keyframe(h265_client_context_t *ctx);
  * @param keyframes Output: total keyframes encoded
  * @param avg_bitrate Output: average bitrate in bits per second
  */
-void h265_client_get_stats(h265_client_context_t *ctx, uint64_t *total_frames, uint64_t *keyframes,
-                           uint32_t *avg_bitrate);
+void h265_client_get_stats(h265_client_context_t *ctx, uint64_t *total_frames, uint64_t *keyframes, uint32_t *avg_bitrate);

@@ -135,8 +135,7 @@ void rate_limiter_destroy(rate_limiter_t *limiter) {
   free(limiter);
 }
 
-asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type,
-                                     const rate_limit_config_t *config, bool *allowed) {
+asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type, const rate_limit_config_t *config, bool *allowed) {
   ASCII_OTEL_SCOPE(RATE_LIMITER_CHECK);
   if (!limiter || !limiter->ops || !limiter->ops->check) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rate limiter");

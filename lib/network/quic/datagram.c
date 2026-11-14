@@ -42,9 +42,7 @@ static uint64_t get64(const uint8_t *p) {
   return NET_TO_HOST_U64(value);
 }
 
-asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id, const void *packet, size_t length,
-                                         uint16_t unit, uint16_t index, void *out, size_t capacity,
-                                         size_t *out_length) {
+asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id, const void *packet, size_t length, uint16_t unit, uint16_t index, void *out, size_t capacity, size_t *out_length) {
   if (!out_length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output length");
   *out_length = 0;
@@ -101,8 +99,7 @@ void quic_datagram_reset(quic_datagram_reader_t *reader) {
   memset(reader, 0, sizeof(*reader));
 }
 
-asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length, uint64_t now_ns,
-                                     acip_traffic_class_t *flow_out, uint8_t **out, size_t *out_length) {
+asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void *data, size_t length, uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out, size_t *out_length) {
   if (!out || !out_length || !flow_out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output");
   *out = NULL;
@@ -114,9 +111,8 @@ asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void 
   uint64_t id = get64(wire + 8);
   uint32_t total = get32(wire + 16);
   uint16_t unit = get16(wire + 20), index = get16(wire + 22), count = get16(wire + 24);
-  if (memcmp(wire, "ACQD", sizeof("ACQD") - 1) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] ||
-      wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count || count > QUIC_DATAGRAM_MAX_FRAGMENTS ||
-      count != ((size_t)total + unit - 1) / unit || index >= count)
+  if (memcmp(wire, "ACQD", sizeof("ACQD") - 1) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] || wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count ||
+      count > QUIC_DATAGRAM_MAX_FRAGMENTS || count != ((size_t)total + unit - 1) / unit || index >= count)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram envelope");
   size_t offset = (size_t)index * unit;
   size_t part = total - offset < unit ? total - offset : unit;
@@ -154,15 +150,7 @@ asciichat_error_t quic_datagram_read(quic_datagram_reader_t *reader, const void 
       return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC datagram reassembly budget exhausted");
     }
     memset(bitmap, 0, bitmap_size);
-    *empty = (quic_datagram_slot_t){.data = packet,
-                                    .received = bitmap,
-                                    .cost = cost,
-                                    .id = id,
-                                    .started_ns = now_ns,
-                                    .total = total,
-                                    .unit = unit,
-                                    .count = count,
-                                    .traffic_class = flow};
+    *empty = (quic_datagram_slot_t){.data = packet, .received = bitmap, .cost = cost, .id = id, .started_ns = now_ns, .total = total, .unit = unit, .count = count, .traffic_class = flow};
     reader->bytes += cost;
     slot = empty;
   }

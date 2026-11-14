@@ -274,17 +274,14 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
     found = true;
   }
   // Check for relative path (., .., or alphanumeric followed by /)
-  else if ((str[pos] == '.' && (str[pos + 1] == '/' || str[pos + 1] == '\\')) ||
-           (str[pos] == '.' && str[pos + 1] == '.' && (str[pos + 2] == '/' || str[pos + 2] == '\\'))) {
+  else if ((str[pos] == '.' && (str[pos + 1] == '/' || str[pos + 1] == '\\')) || (str[pos] == '.' && str[pos + 1] == '.' && (str[pos + 2] == '/' || str[pos + 2] == '\\'))) {
     i = pos;
     found = true;
   } else if (isalnum(str[pos]) || str[pos] == '_' || str[pos] == '-') {
     // Could be start of relative path like "src/main.c"
     // Look ahead for slash to confirm it's a path
     size_t lookahead = pos;
-    while ((isalnum(str[lookahead]) || str[lookahead] == '_' || str[lookahead] == '-' || str[lookahead] == '.' ||
-            str[lookahead] == '/' || str[lookahead] == '\\') &&
-           str[lookahead] != '\0') {
+    while ((isalnum(str[lookahead]) || str[lookahead] == '_' || str[lookahead] == '-' || str[lookahead] == '.' || str[lookahead] == '/' || str[lookahead] == '\\') && str[lookahead] != '\0') {
       if (str[lookahead] == '/' || str[lookahead] == '\\') {
         // Found a slash, this is a path
         i = pos;
@@ -300,8 +297,7 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
   }
 
   // Collect the path characters
-  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ':' && str[i] != ',' &&
-         str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' && str[i] != '\'') {
+  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ':' && str[i] != ',' && str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' && str[i] != '\'') {
     if ((str[i] == '/' || str[i] == '\\') || isalnum(str[i]) || strchr("._-~", str[i])) {
       i++;
     } else {
@@ -349,8 +345,8 @@ static bool is_url(const char *str, size_t pos, size_t *end_pos) {
 
       // URL continues until whitespace, common punctuation, or special chars
       // Stop at: space, tab, newline, ), ], }, ", ', <, >
-      while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ')' && str[i] != ']' &&
-             str[i] != '}' && str[i] != '"' && str[i] != '\'' && str[i] != '<' && str[i] != '>' && str[i] != ',') {
+      while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' && str[i] != '\'' && str[i] != '<' &&
+             str[i] != '>' && str[i] != ',') {
         i++;
       }
 
@@ -431,9 +427,8 @@ static log_color_t get_value_color(const char *value) {
   }
 
   // Check for quoted strings or common value patterns
-  if ((value[0] == '"' || value[0] == '\'' || value[0] == '`') ||
-      strchr(value, ' ') != NULL) { // Space indicates likely string value
-    return LOG_COLOR_FATAL;         // Magenta for strings/unknown values
+  if ((value[0] == '"' || value[0] == '\'' || value[0] == '`') || strchr(value, ' ') != NULL) { // Space indicates likely string value
+    return LOG_COLOR_FATAL;                                                                     // Magenta for strings/unknown values
   }
 
   // Default: magenta for unrecognized values
@@ -490,8 +485,7 @@ static bool is_key_value_pair(const char *str, size_t pos, size_t *key_end, size
 
   // Value continues until we hit whitespace or special ending characters
   // Stop at: space, tab, newline, comma, semicolon, ), ], }, or null terminator
-  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ',' && str[i] != ';' &&
-         str[i] != ')' && str[i] != ']' && str[i] != '}') {
+  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ',' && str[i] != ';' && str[i] != ')' && str[i] != ']' && str[i] != '}') {
     i++;
   }
 
@@ -536,8 +530,7 @@ static void append_colored_token(char *output, size_t capacity, size_t *position
 const char *colorize_log_message(const char *message) {
   if (!message)
     return message;
-  return colorize_log_message_with_color(message,
-                                         terminal_should_color_output(STDOUT_FILENO, options_terminal_settings()));
+  return colorize_log_message_with_color(message, terminal_should_color_output(STDOUT_FILENO, options_terminal_settings()));
 }
 
 const char *colorize_log_message_with_color(const char *message, bool enabled) {

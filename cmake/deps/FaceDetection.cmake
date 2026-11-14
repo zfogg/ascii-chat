@@ -2,11 +2,14 @@
 function(ascii_chat_add_face_detector target)
     get_filename_component(root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../.." ABSOLUTE)
     set(sources
-        ${root}/deps/libfacedetection/facedetectcnn.cpp
-        ${root}/deps/libfacedetection/facedetectcnn-model.cpp
-        ${root}/deps/libfacedetection/facedetectcnn-data.cpp)
+        ${root}/deps/ascii-chat-deps/libfacedetection/src/facedetectcnn.cpp
+        ${root}/deps/ascii-chat-deps/libfacedetection/src/facedetectcnn-model.cpp
+        ${root}/deps/ascii-chat-deps/libfacedetection/src/facedetectcnn-data.cpp)
     target_sources(${target} PRIVATE ${sources} ${root}/lib/video/face_detect.cpp)
-    target_include_directories(${target} PRIVATE ${root}/deps/libfacedetection ${root}/include)
+    target_include_directories(${target} PRIVATE
+        ${root}/deps/ascii-chat-deps/libfacedetection/src
+        ${root}/deps/ascii-chat-deps
+        ${root}/include)
     # Retain ASan and its C++ runtime ABI, without integer instrumentation in upstream inference loops.
     set_source_files_properties(${sources} PROPERTIES
         SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON

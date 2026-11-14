@@ -33,19 +33,11 @@ const size_t DEFAULT_ASCII_PALETTE_LEN = 23; // strlen(PALETTE_CHARS_STANDARD)
 
 // Built-in palette definitions
 static const palette_def_t builtin_palettes[PALETTE_COUNT] = {
-    [PALETTE_STANDARD] = {.name = "standard",
-                          .chars = PALETTE_CHARS_STANDARD,
-                          .length = 23,
-                          .requires_utf8 = false,
-                          .is_validated = true},
-    [PALETTE_BLOCKS] =
-        {.name = "blocks", .chars = PALETTE_CHARS_BLOCKS, .length = 11, .requires_utf8 = true, .is_validated = true},
-    [PALETTE_DIGITAL] =
-        {.name = "digital", .chars = PALETTE_CHARS_DIGITAL, .length = 10, .requires_utf8 = true, .is_validated = true},
-    [PALETTE_MINIMAL] =
-        {.name = "minimal", .chars = PALETTE_CHARS_MINIMAL, .length = 8, .requires_utf8 = false, .is_validated = true},
-    [PALETTE_COOL] =
-        {.name = "cool", .chars = PALETTE_CHARS_COOL, .length = 11, .requires_utf8 = true, .is_validated = true},
+    [PALETTE_STANDARD] = {.name = "standard", .chars = PALETTE_CHARS_STANDARD, .length = 23, .requires_utf8 = false, .is_validated = true},
+    [PALETTE_BLOCKS] = {.name = "blocks", .chars = PALETTE_CHARS_BLOCKS, .length = 11, .requires_utf8 = true, .is_validated = true},
+    [PALETTE_DIGITAL] = {.name = "digital", .chars = PALETTE_CHARS_DIGITAL, .length = 10, .requires_utf8 = true, .is_validated = true},
+    [PALETTE_MINIMAL] = {.name = "minimal", .chars = PALETTE_CHARS_MINIMAL, .length = 8, .requires_utf8 = false, .is_validated = true},
+    [PALETTE_COOL] = {.name = "cool", .chars = PALETTE_CHARS_COOL, .length = 11, .requires_utf8 = true, .is_validated = true},
     // PALETTE_CUSTOM is handled specially - no predefined entry
 };
 
@@ -138,9 +130,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
       // Check character width - allow width 1 and 2 (for emoji and wide characters)
       int width = utf8_display_width((const char *)utf8_buf);
       if (width < 0 || width > 2) {
-        SET_ERRNO(ERROR_INVALID_PARAM,
-                  "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)", i,
-                  width);
+        SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)", i, width);
         return false;
       }
     }
@@ -202,9 +192,7 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
 
   // Check for known UTF-8 supporting terminals
   if (term) {
-    const char *utf8_terminals[] = {
-        "xterm-256color", "screen-256color", "tmux-256color", "alacritty",   "kitty", "iterm",
-        "iterm2",         "gnome-terminal",  "konsole",       "terminology", NULL};
+    const char *utf8_terminals[] = {"xterm-256color", "screen-256color", "tmux-256color", "alacritty", "kitty", "iterm", "iterm2", "gnome-terminal", "konsole", "terminology", NULL};
 
     for (int i = 0; utf8_terminals[i]; i++) {
       if (strstr(term, utf8_terminals[i])) {
@@ -214,8 +202,7 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
     }
   }
 
-  log_debug("UTF-8 support detection: %s (term=%s, encoding=%s)", caps->utf8_support ? "supported" : "not supported",
-            caps->terminal_type[0] ? caps->terminal_type : "unknown",
+  log_debug("UTF-8 support detection: %s (term=%s, encoding=%s)", caps->utf8_support ? "supported" : "not supported", caps->terminal_type[0] ? caps->terminal_type : "unknown",
             caps->locale_encoding[0] ? caps->locale_encoding : "unknown");
 
   return caps->utf8_support;
@@ -282,8 +269,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
 }
 
 // Build a per-client luminance palette without affecting global cache
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
-                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]) {
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[ASCII_LUMINANCE_LEVELS]) {
   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client luminance palette");
     return -1;
@@ -303,8 +289,7 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
 }
 
 // Initialize a client's palette cache from their capabilities
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
-                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
                               char client_luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   const palette_def_t *palette = NULL;
   const char *chars_to_use = NULL;
@@ -344,8 +329,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     len_to_use = strlen(palette->chars); // Use actual byte count for UTF-8, not character count
 
     // Skip validation for built-in palettes since they're already validated
-    log_dev("Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu", palette->name, chars_to_use,
-            palette->length, len_to_use);
+    log_dev("Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu", palette->name, chars_to_use, palette->length, len_to_use);
   }
 
   // Copy palette to client cache
@@ -359,8 +343,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     return -1;
   }
 
-  log_dev("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
-          chars_to_use[0], chars_to_use[len_to_use - 1]);
+  log_dev("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use, chars_to_use[0], chars_to_use[len_to_use - 1]);
 
   return 0;
 }
@@ -550,8 +533,7 @@ size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *u
 
 // Find all indices of a UTF-8 character in the palette (handles duplicates)
 // Returns the number of indices found, fills indices array up to max_indices
-size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes,
-                                          size_t *indices, size_t max_indices) {
+size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes, size_t *indices, size_t max_indices) {
   if (!palette || !utf8_char || char_bytes == 0 || char_bytes > 4 || !indices || max_indices == 0) {
     return 0;
   }

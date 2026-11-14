@@ -20,13 +20,7 @@
 // Log Level Metadata
 // ============================================================================
 
-const char *g_log_level_values[] = {OPT_LOG_LEVEL_DEV,
-                                    OPT_LOG_LEVEL_DEBUG,
-                                    OPT_LOG_LEVEL_INFO,
-                                    OPT_LOG_LEVEL_WARN,
-                                    OPT_LOG_LEVEL_ERROR,
-                                    OPT_LOG_LEVEL_FATAL,
-                                    NULL};
+const char *g_log_level_values[] = {OPT_LOG_LEVEL_DEV, OPT_LOG_LEVEL_DEBUG, OPT_LOG_LEVEL_INFO, OPT_LOG_LEVEL_WARN, OPT_LOG_LEVEL_ERROR, OPT_LOG_LEVEL_FATAL, NULL};
 const int g_log_level_integers[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};
 const char *g_log_level_descs[] = {"Development (most verbose, includes function traces)",
                                    "Debug (includes internal state tracking)",
@@ -42,9 +36,7 @@ const char *g_log_level_descs[] = {"Development (most verbose, includes function
 
 const char *g_color_setting_values[] = {OPT_VALUE_AUTO, OPT_VALUE_TRUE, OPT_VALUE_FALSE, NULL};
 const int g_color_setting_integers[] = {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE, COLOR_SETTING_FALSE};
-const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not piping/CLAUDECODE)",
-                                       "Force colors ON (override TTY/pipe/CLAUDECODE)",
-                                       "Force colors OFF (disable all colors)", NULL};
+const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not piping/CLAUDECODE)", "Force colors ON (override TTY/pipe/CLAUDECODE)", "Force colors OFF (disable all colors)", NULL};
 
 // ============================================================================
 // UTF-8 Setting Metadata (--utf8 flag values)
@@ -52,46 +44,26 @@ const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not p
 
 const char *g_utf8_setting_values[] = {OPT_VALUE_AUTO, OPT_VALUE_TRUE, OPT_VALUE_FALSE, NULL};
 const int g_utf8_setting_integers[] = {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE, UTF8_SETTING_FALSE};
-const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal capabilities",
-                                      "Force UTF-8 ON (always use UTF-8 regardless of terminal)",
-                                      "Force UTF-8 OFF (disable UTF-8 support)", NULL};
+const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal capabilities", "Force UTF-8 ON (always use UTF-8 regardless of terminal)", "Force UTF-8 OFF (disable UTF-8 support)",
+                                      NULL};
 
 // ============================================================================
 // Color Mode Metadata
 // ============================================================================
 
-const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO,
-                                     OPT_COLOR_MODE_NONE,
-                                     OPT_COLOR_MODE_MONO,
-                                     OPT_COLOR_MODE_16,
-                                     OPT_COLOR_MODE_256,
-                                     OPT_COLOR_MODE_TRUECOLOR,
-                                     NULL};
-const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_NONE,
-                                     TERM_COLOR_16,   TERM_COLOR_256,  TERM_COLOR_TRUECOLOR};
-const char *g_color_mode_descs[] = {"Auto-detect from terminal",
-                                    "Monochrome only",
-                                    "Monochrome only (alias)",
-                                    "16 colors (ANSI)",
-                                    "256 colors (xterm)",
-                                    "24-bit truecolor (modern terminals)",
-                                    NULL};
+const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_MONO, OPT_COLOR_MODE_16, OPT_COLOR_MODE_256, OPT_COLOR_MODE_TRUECOLOR, NULL};
+const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256, TERM_COLOR_TRUECOLOR};
+const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "Monochrome only (alias)", "16 colors (ANSI)", "256 colors (xterm)", "24-bit truecolor (modern terminals)", NULL};
 
 // ============================================================================
 // Color Filter Metadata
 // ============================================================================
 
-const char *g_color_filter_values[] = {OPT_COLOR_FILTER_NONE,    OPT_COLOR_FILTER_BLACK,
-                                       OPT_COLOR_FILTER_WHITE,   OPT_COLOR_FILTER_GREEN,
-                                       OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA,
-                                       OPT_COLOR_FILTER_ORANGE,  OPT_COLOR_FILTER_TEAL,
-                                       OPT_COLOR_FILTER_CYAN,    OPT_COLOR_FILTER_PINK,
-                                       OPT_COLOR_FILTER_RED,     OPT_COLOR_FILTER_YELLOW,
-                                       OPT_COLOR_FILTER_RAINBOW, NULL};
-const int g_color_filter_integers[] = {
-    COLOR_FILTER_NONE,    COLOR_FILTER_BLACK,  COLOR_FILTER_WHITE,  COLOR_FILTER_GREEN, COLOR_FILTER_MAGENTA,
-    COLOR_FILTER_FUCHSIA, COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,   COLOR_FILTER_CYAN,  COLOR_FILTER_PINK,
-    COLOR_FILTER_RED,     COLOR_FILTER_YELLOW, COLOR_FILTER_RAINBOW};
+const char *g_color_filter_values[] = {
+    OPT_COLOR_FILTER_NONE, OPT_COLOR_FILTER_BLACK, OPT_COLOR_FILTER_WHITE, OPT_COLOR_FILTER_GREEN, OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_ORANGE,
+    OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  OPT_COLOR_FILTER_RAINBOW, NULL};
+const int g_color_filter_integers[] = {COLOR_FILTER_NONE, COLOR_FILTER_BLACK, COLOR_FILTER_WHITE, COLOR_FILTER_GREEN, COLOR_FILTER_MAGENTA, COLOR_FILTER_FUCHSIA, COLOR_FILTER_ORANGE,
+                                       COLOR_FILTER_TEAL, COLOR_FILTER_CYAN,  COLOR_FILTER_PINK,  COLOR_FILTER_RED,   COLOR_FILTER_YELLOW,  COLOR_FILTER_RAINBOW};
 const char *g_color_filter_descs[] = {"No filtering (default)",
                                       "Dark content on white background",
                                       "White content on black background",
@@ -111,15 +83,8 @@ const char *g_color_filter_descs[] = {"No filtering (default)",
 // Palette Metadata
 // ============================================================================
 
-const char *g_palette_values[] = {OPT_PALETTE_STANDARD,
-                                  OPT_PALETTE_BLOCKS,
-                                  OPT_PALETTE_DIGITAL,
-                                  OPT_PALETTE_MINIMAL,
-                                  OPT_PALETTE_COOL,
-                                  OPT_PALETTE_CUSTOM,
-                                  NULL};
-const int g_palette_integers[] = {PALETTE_STANDARD, PALETTE_BLOCKS, PALETTE_DIGITAL,
-                                  PALETTE_MINIMAL,  PALETTE_COOL,   PALETTE_CUSTOM};
+const char *g_palette_values[] = {OPT_PALETTE_STANDARD, OPT_PALETTE_BLOCKS, OPT_PALETTE_DIGITAL, OPT_PALETTE_MINIMAL, OPT_PALETTE_COOL, OPT_PALETTE_CUSTOM, NULL};
+const int g_palette_integers[] = {PALETTE_STANDARD, PALETTE_BLOCKS, PALETTE_DIGITAL, PALETTE_MINIMAL, PALETTE_COOL, PALETTE_CUSTOM};
 const char *g_palette_descs[] = {"Standard ASCII palette",
                                  "Block characters (full/half/quarter blocks)",
                                  "Digital/computer style",
@@ -132,17 +97,12 @@ const char *g_palette_descs[] = {"Standard ASCII palette",
 // Render Mode Metadata
 // ============================================================================
 
-const char *g_render_values[] = {OPT_RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG,         OPT_RENDER_MODE_BACKGROUND,
-                                 OPT_RENDER_MODE_BG,         OPT_RENDER_MODE_HALF_BLOCK, NULL};
+const char *g_render_values[] = {OPT_RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG, OPT_RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, OPT_RENDER_MODE_HALF_BLOCK, NULL};
 const int g_render_integers[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_FOREGROUND, // fg is alias for foreground
                                  RENDER_MODE_BACKGROUND, RENDER_MODE_BACKGROUND, // bg is alias for background
                                  RENDER_MODE_HALF_BLOCK};
-const char *g_render_descs[] = {"Render using foreground characters only",
-                                "Render using foreground characters only (alias)",
-                                "Render using background colors only",
-                                "Render using background colors only (alias)",
-                                "Use half-block characters for 2x vertical resolution",
-                                NULL};
+const char *g_render_descs[] = {"Render using foreground characters only",     "Render using foreground characters only (alias)",      "Render using background colors only",
+                                "Render using background colors only (alias)", "Use half-block characters for 2x vertical resolution", NULL};
 
 // ============================================================================
 // Render-file theme metadata
@@ -150,26 +110,20 @@ const char *g_render_descs[] = {"Render using foreground characters only",
 
 const char *g_render_theme_values[] = {OPT_RENDER_THEME_DARK, OPT_RENDER_THEME_LIGHT, OPT_RENDER_THEME_AUTO, NULL};
 const int g_render_theme_integers[] = {0, 1, 2}; // 0=dark, 1=light, 2=auto
-const char *g_render_theme_descs[] = {"Dark background (black), light text", "Light background (white), dark text",
-                                      "Auto-detect based on system (macOS) or terminal setting (Linux)", NULL};
+const char *g_render_theme_descs[] = {"Dark background (black), light text", "Light background (white), dark text", "Auto-detect based on system (macOS) or terminal setting (Linux)", NULL};
 
 // ============================================================================
 // Audio Source Metadata
 // ============================================================================
 
-const char *g_audio_source_values[] = {OPT_AUDIO_SOURCE_ALL, OPT_AUDIO_SOURCE_CALL, OPT_AUDIO_SOURCE_MIC,
-                                       OPT_AUDIO_SOURCE_MEDIA, NULL};
+const char *g_audio_source_values[] = {OPT_AUDIO_SOURCE_ALL, OPT_AUDIO_SOURCE_CALL, OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA, NULL};
 const int g_audio_source_integers[] = {AUDIO_SOURCE_ALL, AUDIO_SOURCE_CALL, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA};
-const char *g_audio_source_descs[] = {"Local microphone, local media, and other call participants (default)",
-                                      "Audio received from other call participants", "Local microphone only",
+const char *g_audio_source_descs[] = {"Local microphone, local media, and other call participants (default)", "Audio received from other call participants", "Local microphone only",
                                       "Local media playback only", NULL};
 
-const char *g_audio_capture_source_values[] = {OPT_AUDIO_CAPTURE_SOURCE_AUTO,   OPT_AUDIO_CAPTURE_SOURCE_MIC,
-                                               OPT_AUDIO_CAPTURE_SOURCE_MEDIA,  OPT_AUDIO_CAPTURE_SOURCE_BOTH,
-                                               OPT_AUDIO_CAPTURE_SOURCE_REMOTE, NULL};
-const int g_audio_capture_source_integers[] = {AUDIO_CAPTURE_SOURCE_AUTO, AUDIO_CAPTURE_SOURCE_MIC,
-                                               AUDIO_CAPTURE_SOURCE_MEDIA, AUDIO_CAPTURE_SOURCE_BOTH,
-                                               AUDIO_CAPTURE_SOURCE_REMOTE};
+const char *g_audio_capture_source_values[] = {OPT_AUDIO_CAPTURE_SOURCE_AUTO, OPT_AUDIO_CAPTURE_SOURCE_MIC,    OPT_AUDIO_CAPTURE_SOURCE_MEDIA,
+                                               OPT_AUDIO_CAPTURE_SOURCE_BOTH, OPT_AUDIO_CAPTURE_SOURCE_REMOTE, NULL};
+const int g_audio_capture_source_integers[] = {AUDIO_CAPTURE_SOURCE_AUTO, AUDIO_CAPTURE_SOURCE_MIC, AUDIO_CAPTURE_SOURCE_MEDIA, AUDIO_CAPTURE_SOURCE_BOTH, AUDIO_CAPTURE_SOURCE_REMOTE};
 const char *g_audio_capture_source_descs[] = {"Microphone when no media is playing; media only otherwise (default)",
                                               "Capture microphone only",
                                               "Play media audio only",
@@ -196,5 +150,4 @@ const char *g_mic_examples[] = {"-1", "0", "1", NULL};
 const char *g_speakers_examples[] = {"-1", "0", "1", NULL};
 const char *g_seek_examples[] = {"0", "60", "3:45", NULL};
 
-const char *g_completion_shell_values[] = {OPT_COMPLETION_SHELL_BASH, OPT_COMPLETION_SHELL_FISH,
-                                           OPT_COMPLETION_SHELL_ZSH, OPT_COMPLETION_SHELL_POWERSHELL, NULL};
+const char *g_completion_shell_values[] = {OPT_COMPLETION_SHELL_BASH, OPT_COMPLETION_SHELL_FISH, OPT_COMPLETION_SHELL_ZSH, OPT_COMPLETION_SHELL_POWERSHELL, NULL};

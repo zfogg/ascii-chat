@@ -88,9 +88,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
 
   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t result;
-  if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
-      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) ==
-          0) {
+  if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") && memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) == 0) {
     char *armored_text = SAFE_MALLOC(key_size + 1, char *);
     memcpy(armored_text, gpg_key_binary, key_size);
     armored_text[key_size] = '\0';
@@ -159,8 +157,7 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
 
 asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[GPG_FINGERPRINT_SIZE]) {
   if (!gpg_key_text || !fingerprint_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p", gpg_key_text,
-              fingerprint_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p", gpg_key_text, fingerprint_out);
     return ERROR_INVALID_PARAM;
   }
 
@@ -199,8 +196,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
   // Check if it looks like a key ID (hex characters only)
   bool is_hex = true;
   for (size_t i = 0; i < key_len; i++) {
-    if (!((gpg_key_text[i] >= '0' && gpg_key_text[i] <= '9') || (gpg_key_text[i] >= 'A' && gpg_key_text[i] <= 'F') ||
-          (gpg_key_text[i] >= 'a' && gpg_key_text[i] <= 'f'))) {
+    if (!((gpg_key_text[i] >= '0' && gpg_key_text[i] <= '9') || (gpg_key_text[i] >= 'A' && gpg_key_text[i] <= 'F') || (gpg_key_text[i] >= 'a' && gpg_key_text[i] <= 'f'))) {
       is_hex = false;
       break;
     }

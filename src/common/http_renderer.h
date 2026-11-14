@@ -12,20 +12,8 @@
 
 #define HTTP_RENDERER_MAX_OUTPUT (8u * 1024u * 1024u)
 
-typedef enum {
-  HTTP_RENDER_SOURCE_UPLOAD,
-  HTTP_RENDER_SOURCE_FILE,
-  HTTP_RENDER_SOURCE_URL,
-  HTTP_RENDER_SOURCE_WEBCAM,
-  HTTP_RENDER_SOURCE_VISUALIZATION
-} http_render_source_type_t;
-typedef enum {
-  HTTP_RENDER_OUTPUT_TEXT,
-  HTTP_RENDER_OUTPUT_JSON,
-  HTTP_RENDER_OUTPUT_HTML,
-  HTTP_RENDER_OUTPUT_FILE,
-  HTTP_RENDER_OUTPUT_FILES
-} http_render_output_type_t;
+typedef enum { HTTP_RENDER_SOURCE_UPLOAD, HTTP_RENDER_SOURCE_FILE, HTTP_RENDER_SOURCE_URL, HTTP_RENDER_SOURCE_WEBCAM, HTTP_RENDER_SOURCE_VISUALIZATION } http_render_source_type_t;
+typedef enum { HTTP_RENDER_OUTPUT_TEXT, HTTP_RENDER_OUTPUT_JSON, HTTP_RENDER_OUTPUT_HTML, HTTP_RENDER_OUTPUT_FILE, HTTP_RENDER_OUTPUT_FILES } http_render_output_type_t;
 
 #define HTTP_RENDERER_MAX_FRAMES 120
 
@@ -135,27 +123,21 @@ struct http_renderer_job {
 
 void http_render_request_init(http_render_request_t *request);
 void http_render_result_destroy(http_render_result_t *result);
-asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text, size_t length,
-                                                    uint64_t timestamp_ms);
-asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path,
-                                                    uint64_t timestamp_ms);
-void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled,
-                           http_renderer_process_result_t *result);
+asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text, size_t length, uint64_t timestamp_ms);
+asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path, uint64_t timestamp_ms);
+void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled, http_renderer_process_result_t *result);
 void http_renderer_process_result_destroy(http_renderer_process_result_t *result);
 
-asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
-                                            http_render_result_t *result, atomic_t *cancelled);
+asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request, http_render_result_t *result, atomic_t *cancelled);
 
-asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute,
-                                          void *context);
+asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute, void *context);
 void http_renderer_job_cancel(http_renderer_job_t *job);
 bool http_renderer_job_is_done(const http_renderer_job_t *job);
 void http_renderer_job_join(http_renderer_job_t *job);
 void http_renderer_job_reset(http_renderer_job_t *job);
 
 asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_config_t *config);
-asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request, void *user_data,
-                                       http_renderer_job_t **out_job);
+asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request, void *user_data, http_renderer_job_t **out_job);
 asciichat_error_t http_renderer_cancel(http_renderer_job_t *job);
 void http_renderer_reap(http_renderer_t *renderer, bool all);
 void http_renderer_stop(http_renderer_t *renderer);

@@ -31,11 +31,9 @@
 // Handler Function Pointer Types
 // =============================================================================
 
-typedef asciichat_error_t (*acip_client_handler_func_t)(const void *payload, size_t payload_len,
-                                                        const acip_client_callbacks_t *callbacks);
+typedef asciichat_error_t (*acip_client_handler_func_t)(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
 
-typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
+typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
 
 // =============================================================================
 // Packet Type to Handler Index Mapping (O(1) hash table lookup)
@@ -66,8 +64,7 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
   log_dev_every(4500 * US_PER_MS_INT, "type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
-    log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
-                  table[slot].handler_idx);
+    log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key, table[slot].handler_idx);
     // Match found - return handler index immediately
     if (table[slot].key == type) {
       log_dev_every(4500 * US_PER_MS_INT, "  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
@@ -139,42 +136,24 @@ static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
 // =============================================================================
 
 // Forward declarations for client handlers
-static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t payload_len,
-                                                   const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_audio_batch(const void *payload, size_t payload_len,
-                                                   const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_audio_opus_batch(const void *payload, size_t payload_len,
-                                                        const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_server_state(const void *payload, size_t payload_len,
-                                                    const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_error_message(const void *payload, size_t payload_len,
-                                                     const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_remote_log(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_ping(const void *payload, size_t payload_len,
-                                            const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_pong(const void *payload, size_t payload_len,
-                                            const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_clear_console(const void *payload, size_t payload_len,
-                                                     const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
-                                                      const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len,
-                                                                const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len,
-                                                             const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len,
-                                                               const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len,
-                                                          const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
-                                                                 const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
-                                                         const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_audio_batch(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_audio_opus_batch(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_server_state(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_error_message(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_remote_log(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_ping(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_pong(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_clear_console(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks);
 
 // Client handler dispatch table (indexed by client_handler_index())
 static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
@@ -200,8 +179,7 @@ static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] 
     handle_client_crypto_parameters,         // 19
 };
 
-asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, const acip_client_callbacks_t *callbacks) {
+asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   stats_runtime_packet(transport ? transport->stats_peer : NULL, type, payload_len, false, true);
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
@@ -228,8 +206,7 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
 // Client Handler Implementations (extracted from switch cases)
 // =============================================================================
 
-static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t payload_len,
-                                                   const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_ascii_frame) {
     return ASCIICHAT_OK;
   }
@@ -256,8 +233,7 @@ static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t p
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header.width == 0 || header.height == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame dimensions: %ux%u (width and height must be > 0)",
-                     header.width, header.height);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame dimensions: %ux%u (width and height must be > 0)", header.width, header.height);
   }
 
   // Sanity check: prevent unreasonably large frames (e.g., > 16K resolution)
@@ -265,8 +241,7 @@ static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t p
   const uint32_t MAX_WIDTH = 16384;  // 16K
   const uint32_t MAX_HEIGHT = 16384; // 16K
   if (header.width > MAX_WIDTH || header.height > MAX_HEIGHT) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Frame dimensions too large: %ux%u (max: %ux%u)", header.width, header.height,
-                     MAX_WIDTH, MAX_HEIGHT);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Frame dimensions too large: %ux%u (max: %ux%u)", header.width, header.height, MAX_WIDTH, MAX_HEIGHT);
   }
 
   log_debug_once("Received first ASCII frame");
@@ -274,8 +249,7 @@ static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_audio_batch(const void *payload, size_t payload_len,
-                                                   const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_audio_batch(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_audio_batch) {
     return ASCIICHAT_OK;
   }
@@ -294,12 +268,8 @@ static asciichat_error_t handle_client_audio_batch(const void *payload, size_t p
   // Validate sample rate and channels
   // Supported sample rates: 8000, 16000, 24000, 32000, 44100, 48000, 96000, 192000 Hz
   if (sample_rate == 0 || (sample_rate < 8000 || sample_rate > 192000) ||
-      (sample_rate != 8000 && sample_rate != 16000 && sample_rate != 24000 && sample_rate != 32000 &&
-       sample_rate != 44100 && sample_rate != 48000 && sample_rate != 96000 && sample_rate != 192000)) {
-    return SET_ERRNO(
-        ERROR_INVALID_PARAM,
-        "Invalid audio sample rate: %u Hz (expected: 8000, 16000, 24000, 32000, 44100, 48000, 96000, or 192000)",
-        sample_rate);
+      (sample_rate != 8000 && sample_rate != 16000 && sample_rate != 24000 && sample_rate != 32000 && sample_rate != 44100 && sample_rate != 48000 && sample_rate != 96000 && sample_rate != 192000)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio sample rate: %u Hz (expected: 8000, 16000, 24000, 32000, 44100, 48000, 96000, or 192000)", sample_rate);
   }
 
   // Validate channel count (1-8 channels supported)
@@ -344,8 +314,7 @@ static asciichat_error_t handle_client_audio_batch(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_audio_opus_batch(const void *payload, size_t payload_len,
-                                                        const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_audio_opus_batch(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_audio_opus_batch) {
     return ASCIICHAT_OK;
   }
@@ -355,8 +324,7 @@ static asciichat_error_t handle_client_audio_opus_batch(const void *payload, siz
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_server_state(const void *payload, size_t payload_len,
-                                                    const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_server_state(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_server_state) {
     return ASCIICHAT_OK;
   }
@@ -369,8 +337,7 @@ static asciichat_error_t handle_client_server_state(const void *payload, size_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_error_message(const void *payload, size_t payload_len,
-                                                     const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_error_message(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_error) {
     return ASCIICHAT_OK;
   }
@@ -393,8 +360,7 @@ static asciichat_error_t handle_client_error_message(const void *payload, size_t
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_remote_log(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_remote_log(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_remote_log) {
     return ASCIICHAT_OK;
   }
@@ -417,8 +383,7 @@ static asciichat_error_t handle_client_remote_log(const void *payload, size_t pa
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_ping(const void *payload, size_t payload_len,
-                                            const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_ping(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -428,8 +393,7 @@ static asciichat_error_t handle_client_ping(const void *payload, size_t payload_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_pong(const void *payload, size_t payload_len,
-                                            const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_pong(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -439,8 +403,7 @@ static asciichat_error_t handle_client_pong(const void *payload, size_t payload_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_clear_console(const void *payload, size_t payload_len,
-                                                     const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_clear_console(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -450,8 +413,7 @@ static asciichat_error_t handle_client_clear_console(const void *payload, size_t
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_webrtc_sdp) {
     return ASCIICHAT_OK;
   }
@@ -465,8 +427,7 @@ static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t pa
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
-                                                  const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_webrtc_ice) {
     return ASCIICHAT_OK;
   }
@@ -480,15 +441,13 @@ static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t pa
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
-                                                      const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_session_joined) {
     return ASCIICHAT_OK;
   }
 
   if (payload_len < sizeof(acip_session_joined_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "SESSION_JOINED payload too small (got %zu, need %zu)", payload_len,
-                     sizeof(acip_session_joined_t));
+    return SET_ERRNO(ERROR_INVALID_PARAM, "SESSION_JOINED payload too small (got %zu, need %zu)", payload_len, sizeof(acip_session_joined_t));
   }
 
   // Parse the session_joined response
@@ -496,8 +455,7 @@ static asciichat_error_t handle_client_session_joined(const void *payload, size_
 
   // Log the result
   if (joined->success) {
-    log_debug("Session join succeeded: session_id=%.16s, participant_id=%.16s, server=%s:%u, type=%s",
-              (const char *)joined->session_id, (const char *)joined->participant_id, joined->server_address,
+    log_debug("Session join succeeded: session_id=%.16s, participant_id=%.16s, server=%s:%u, type=%s", (const char *)joined->session_id, (const char *)joined->participant_id, joined->server_address,
               joined->server_port, joined->session_type == 1 ? "WebRTC" : "DirectTCP");
   } else {
     log_warn("Session join failed: error %d: %s", joined->error_code, joined->error_message);
@@ -508,20 +466,17 @@ static asciichat_error_t handle_client_session_joined(const void *payload, size_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len,
-                                                                const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_key_exchange_init) {
     return ASCIICHAT_OK;
   }
 
   // Dispatch to application callback with packet type
-  callbacks->on_crypto_key_exchange_init(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, payload, payload_len,
-                                         callbacks->app_ctx);
+  callbacks->on_crypto_key_exchange_init(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, payload, payload_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len,
-                                                             const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_auth_challenge) {
     return ASCIICHAT_OK;
   }
@@ -531,8 +486,7 @@ static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len,
-                                                               const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_server_auth_resp) {
     return ASCIICHAT_OK;
   }
@@ -542,8 +496,7 @@ static asciichat_error_t handle_client_crypto_server_auth_resp(const void *paylo
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len,
-                                                          const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_auth_failed) {
     return ASCIICHAT_OK;
   }
@@ -553,20 +506,17 @@ static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, s
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
-                                                                 const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_handshake_complete) {
     return ASCIICHAT_OK;
   }
 
   // Dispatch to application callback with packet type
-  callbacks->on_crypto_handshake_complete(PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, payload, payload_len,
-                                          callbacks->app_ctx);
+  callbacks->on_crypto_handshake_complete(PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, payload, payload_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
-                                                         const acip_client_callbacks_t *callbacks) {
+static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_parameters) {
     return ASCIICHAT_OK;
   }
@@ -581,43 +531,24 @@ static asciichat_error_t handle_client_crypto_parameters(const void *payload, si
 // =============================================================================
 
 // Forward declarations for server handlers
-static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_audio_opus_batch(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_client_join(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_client_leave(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_stream_start(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_stream_stop(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_ping(const void *payload, size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_remote_log(const void *payload, size_t payload_len, void *client_ctx,
-                                                  const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_protocol_version(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_pong(const void *payload, size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_error_message(const void *payload, size_t payload_len, void *client_ctx,
-                                                     const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len,
-                                                                void *client_ctx,
-                                                                const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_audio_opus_batch(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_client_join(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_client_leave(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_stream_start(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_stream_stop(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_ping(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_remote_log(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_protocol_version(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_pong(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_error_message(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks);
 
 // Server handler dispatch table (indexed by server_handler_index())
 static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] = {
@@ -796,9 +727,7 @@ const char *acip_packet_type_name(uint16_t type) {
   }
 }
 
-asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks) {
+asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   stats_runtime_packet(transport ? transport->stats_peer : NULL, type, payload_len, false, true);
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
@@ -811,18 +740,15 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   // O(1) dispatch via hash table lookup
   int idx = handler_hash_lookup(g_server_handler_hash, type);
   if (idx < 0) {
-    log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)", type, type,
-              acip_packet_type_name(type));
+    log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)", type, type, acip_packet_type_name(type));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, acip_packet_type_name(type), idx,
-          payload_len);
+  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, acip_packet_type_name(type), idx, payload_len);
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
-    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s", type, acip_packet_type_name(type),
-              asciichat_error_format(NULL, result));
+    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s", type, acip_packet_type_name(type), asciichat_error_format(NULL, result));
   } else {
     log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, acip_packet_type_name(type), payload_len);
   }
@@ -834,8 +760,7 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
 // Server Handler Implementations (extracted from switch cases)
 // =============================================================================
 
-static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   log_dev("ACIP_IMAGE_FRAME_HANDLER: payload_len=%zu", payload_len);
 
   if (!callbacks->on_image_frame) {
@@ -872,23 +797,19 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   size_t legacy_pixels = 0;
   size_t legacy_rgb_size = 0;
   size_t legacy_payload_size = 0;
-  if (legacy_width > 0 && legacy_height > 0 && legacy_width <= 8192 && legacy_height <= 8192 &&
-      checked_size_mul(legacy_width, legacy_height, &legacy_pixels) == ASCIICHAT_OK &&
-      checked_size_mul(legacy_pixels, 3, &legacy_rgb_size) == ASCIICHAT_OK &&
-      checked_size_add(sizeof(uint32_t) * 2, legacy_rgb_size, &legacy_payload_size) == ASCIICHAT_OK &&
+  if (legacy_width > 0 && legacy_height > 0 && legacy_width <= 8192 && legacy_height <= 8192 && checked_size_mul(legacy_width, legacy_height, &legacy_pixels) == ASCIICHAT_OK &&
+      checked_size_mul(legacy_pixels, 3, &legacy_rgb_size) == ASCIICHAT_OK && checked_size_add(sizeof(uint32_t) * 2, legacy_rgb_size, &legacy_payload_size) == ASCIICHAT_OK &&
       payload_len == legacy_payload_size) {
     image_frame_packet_t legacy_header = {0};
     legacy_header.width = legacy_width;
     legacy_header.height = legacy_height;
     legacy_header.pixel_format = 1; // RGB24
-    callbacks->on_image_frame(&legacy_header, payload_bytes + sizeof(uint32_t) * 2, legacy_rgb_size, client_ctx,
-                              callbacks->app_ctx);
+    callbacks->on_image_frame(&legacy_header, payload_bytes + sizeof(uint32_t) * 2, legacy_rgb_size, client_ctx, callbacks->app_ctx);
     return ASCIICHAT_OK;
   }
 
   if (payload_len < sizeof(image_frame_packet_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len,
-                     sizeof(image_frame_packet_t));
+    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len, sizeof(image_frame_packet_t));
   }
 
   // Extract header
@@ -897,8 +818,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
 
   // Debug: Log raw header before byte order conversion
   log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME header (raw network order):");
-  log_dev_every(4500 * US_PER_MS_INT, "   width=0x%08x height=0x%08x pixel_format=0x%08x compressed_size=0x%08x",
-                header.width, header.height, header.pixel_format, header.compressed_size);
+  log_dev_every(4500 * US_PER_MS_INT, "   width=0x%08x height=0x%08x pixel_format=0x%08x compressed_size=0x%08x", header.width, header.height, header.pixel_format, header.compressed_size);
 
   // Convert from network byte order
   header.width = NET_TO_HOST_U32(header.width);
@@ -910,8 +830,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
 
   // Debug: Log header after byte order conversion
   log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME header (after host byte order):");
-  log_dev_every(4500 * US_PER_MS_INT, "   width=%u height=%u pixel_format=%u compressed_size=%u", header.width,
-                header.height, header.pixel_format, header.compressed_size);
+  log_dev_every(4500 * US_PER_MS_INT, "   width=%u height=%u pixel_format=%u compressed_size=%u", header.width, header.height, header.pixel_format, header.compressed_size);
 
   // Get pixel data (after header)
   const void *pixel_data = (const uint8_t *)payload + sizeof(image_frame_packet_t);
@@ -919,8 +838,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header.width == 0 || header.height == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions: %ux%u (width and height must be > 0)",
-                     header.width, header.height);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions: %ux%u (width and height must be > 0)", header.width, header.height);
   }
 
   // Sanity check: prevent unreasonably large frames (e.g., > 8K resolution for RGB)
@@ -928,8 +846,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   const uint32_t MAX_WIDTH = 8192;  // 8K for RGB data
   const uint32_t MAX_HEIGHT = 8192; // 8K for RGB data
   if (header.width > MAX_WIDTH || header.height > MAX_HEIGHT) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max: %ux%u)", header.width, header.height,
-                     MAX_WIDTH, MAX_HEIGHT);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max: %ux%u)", header.width, header.height, MAX_WIDTH, MAX_HEIGHT);
   }
 
   // Validate pixel format
@@ -938,9 +855,8 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pixel format: %u (expected: 1-4)", header.pixel_format);
   }
 
-  log_dev(
-      "📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p",
-      header.width, header.height, header.pixel_format, pixel_data_len, client_ctx);
+  log_dev("📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p", header.width, header.height, header.pixel_format, pixel_data_len,
+          client_ctx);
 
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
 
@@ -948,8 +864,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_encoded_frame(const void *payload, size_t payload_len, void *client_ctx,
-                                                     const acip_server_callbacks_t *callbacks, bool h264) {
+static asciichat_error_t handle_server_encoded_frame(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks, bool h264) {
   if (!payload || payload_len <= 5)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Encoded video payload must contain a five-byte header and access unit");
   const uint8_t *bytes = payload;
@@ -967,18 +882,15 @@ static asciichat_error_t handle_server_encoded_frame(const void *payload, size_t
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   return handle_server_encoded_frame(payload, payload_len, client_ctx, callbacks, true);
 }
 
-static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   return handle_server_encoded_frame(payload, payload_len, client_ctx, callbacks, false);
 }
 
-static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_audio_batch) {
     return ASCIICHAT_OK;
   }
@@ -1028,8 +940,7 @@ static asciichat_error_t handle_server_audio_batch(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_audio_opus_batch(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_audio_opus_batch(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_audio_opus_batch) {
     return ASCIICHAT_OK;
   }
@@ -1038,8 +949,7 @@ static asciichat_error_t handle_server_audio_opus_batch(const void *payload, siz
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_client_join(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_client_join(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_client_join) {
     return ASCIICHAT_OK;
   }
@@ -1048,8 +958,7 @@ static asciichat_error_t handle_server_client_join(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_client_leave(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_client_leave(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -1061,15 +970,13 @@ static asciichat_error_t handle_server_client_leave(const void *payload, size_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_stream_start(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_stream_start(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_stream_start) {
     return ASCIICHAT_OK;
   }
 
   if (payload_len < sizeof(uint32_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_START payload too small (got %zu, expected %zu)", payload_len,
-                     sizeof(uint32_t));
+    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_START payload too small (got %zu, expected %zu)", payload_len, sizeof(uint32_t));
   }
 
   // Read stream_types as uint32_t (network byte order)
@@ -1081,15 +988,13 @@ static asciichat_error_t handle_server_stream_start(const void *payload, size_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_stream_stop(const void *payload, size_t payload_len, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_stream_stop(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_stream_stop) {
     return ASCIICHAT_OK;
   }
 
   if (payload_len < sizeof(uint32_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_STOP payload too small (got %zu, expected %zu)", payload_len,
-                     sizeof(uint32_t));
+    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_STOP payload too small (got %zu, expected %zu)", payload_len, sizeof(uint32_t));
   }
 
   // Read stream_types as uint32_t (network byte order)
@@ -1101,8 +1006,7 @@ static asciichat_error_t handle_server_stream_stop(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx,
-                                                    const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   log_debug("payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx, (const void *)callbacks);
 
   if (!callbacks->on_capabilities) {
@@ -1116,8 +1020,7 @@ static asciichat_error_t handle_server_capabilities(const void *payload, size_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_ping(const void *payload, size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_ping(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -1127,8 +1030,7 @@ static asciichat_error_t handle_server_ping(const void *payload, size_t payload_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_remote_log(const void *payload, size_t payload_len, void *client_ctx,
-                                                  const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_remote_log(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_remote_log) {
     return ASCIICHAT_OK;
   }
@@ -1151,8 +1053,7 @@ static asciichat_error_t handle_server_remote_log(const void *payload, size_t pa
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_protocol_version(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_protocol_version(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_protocol_version) {
     return ASCIICHAT_OK;
   }
@@ -1165,8 +1066,7 @@ static asciichat_error_t handle_server_protocol_version(const void *payload, siz
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_pong(const void *payload, size_t payload_len, void *client_ctx,
-                                            const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_pong(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
 
@@ -1176,8 +1076,7 @@ static asciichat_error_t handle_server_pong(const void *payload, size_t payload_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_error_message(const void *payload, size_t payload_len, void *client_ctx,
-                                                     const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_error_message(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_error) {
     return ASCIICHAT_OK;
   }
@@ -1200,39 +1099,32 @@ static asciichat_error_t handle_server_error_message(const void *payload, size_t
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len,
-                                                                void *client_ctx,
-                                                                const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_key_exchange_resp) {
     return ASCIICHAT_OK;
   }
 
   // Dispatch to application callback with packet type
-  callbacks->on_crypto_key_exchange_resp(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload, payload_len, client_ctx,
-                                         callbacks->app_ctx);
+  callbacks->on_crypto_key_exchange_resp(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload, payload_len, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_auth_response) {
     return ASCIICHAT_OK;
   }
 
   // Dispatch to application callback with packet type
-  callbacks->on_crypto_auth_response(PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload, payload_len, client_ctx,
-                                     callbacks->app_ctx);
+  callbacks->on_crypto_auth_response(PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload, payload_len, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks) {
+static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx, const acip_server_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_no_encryption) {
     return ASCIICHAT_OK;
   }
 
   // Dispatch to application callback with packet type
-  callbacks->on_crypto_no_encryption(PACKET_TYPE_CRYPTO_NO_ENCRYPTION, payload, payload_len, client_ctx,
-                                     callbacks->app_ctx);
+  callbacks->on_crypto_no_encryption(PACKET_TYPE_CRYPTO_NO_ENCRYPTION, payload, payload_len, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

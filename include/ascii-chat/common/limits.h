@@ -63,7 +63,7 @@
 #define MAX_CLIENTS MAX_SESSION_PARTICIPANTS
 
 /** @brief Default maximum frame rate (frames per second) */
-#define DEFAULT_MAX_FPS 12
+#define DEFAULT_MAX_FPS 60
 
 /** @brief Frame interval in milliseconds based on default FPS (compile-time constant) */
 #define FRAME_INTERVAL_MS (1000 / DEFAULT_MAX_FPS)

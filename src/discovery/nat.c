@@ -121,8 +121,7 @@ int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, 
  * @param reflexive_port Output for reflexive port
  * @return ASCIICHAT_OK on success, error code if address not found
  */
-static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t response_len, char *reflexive_addr,
-                                                 uint16_t *reflexive_port) {
+static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t response_len, char *reflexive_addr, uint16_t *reflexive_port) {
   if (!response || response_len < 20 || !reflexive_addr || !reflexive_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid STUN response parameters");
   }
@@ -148,16 +147,14 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
       uint8_t family = current[5];
       if (family == 1) { // IPv4
         uint16_t port = ((uint16_t)current[6] << 8) | current[7];
-        uint32_t addr =
-            ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
+        uint32_t addr = ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
         if (attr_type == 0x0020) {
           port ^= 0x2112;
           addr ^= 0x2112a442;
         }
 
         // Convert to dotted quad notation
-        safe_snprintf(reflexive_addr, IP_ADDRESS_BUFFER_SIZE, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
-                      (addr >> 8) & 0xFF, addr & 0xFF);
+        safe_snprintf(reflexive_addr, IP_ADDRESS_BUFFER_SIZE, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF);
         *reflexive_port = port;
         return ASCIICHAT_OK;
       }
@@ -267,8 +264,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   struct sockaddr_in peer_addr;
   socklen_t peer_addr_len = sizeof(peer_addr);
 
-  ssize_t recv_len =
-      socket_recvfrom(sock, stun_response, sizeof(stun_response), 0, (struct sockaddr *)&peer_addr, &peer_addr_len);
+  ssize_t recv_len = socket_recvfrom(sock, stun_response, sizeof(stun_response), 0, (struct sockaddr *)&peer_addr, &peer_addr_len);
 
   uint64_t end_time = time_get_ns();
   uint32_t rtt_ms = (uint32_t)(time_ns_to_ms(end_time - start_time));
@@ -284,8 +280,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   // Parse STUN response to extract reflexive address
   char reflexive_addr[IP_ADDRESS_BUFFER_SIZE] = {0};
   uint16_t reflexive_port = 0;
-  asciichat_error_t parse_result =
-      nat_parse_stun_response(stun_response, (size_t)recv_len, reflexive_addr, &reflexive_port);
+  asciichat_error_t parse_result = nat_parse_stun_response(stun_response, (size_t)recv_len, reflexive_addr, &reflexive_port);
 
   if (parse_result != ASCIICHAT_OK) {
     log_warn("Failed to parse STUN response");
@@ -347,8 +342,8 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
   }
 
   quality->detection_complete = true;
-  log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s", nat_compute_tier(quality),
-           quality->upnp_available, quality->has_public_ip, nat_type_to_string(quality->nat_type));
+  log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s", nat_compute_tier(quality), quality->upnp_available, quality->has_public_ip,
+           nat_type_to_string(quality->nat_type));
 
   return ASCIICHAT_OK;
 }

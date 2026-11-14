@@ -33,59 +33,45 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
 
     switch (entry->type) {
     case OPTION_TYPE_STRING:
-      options_builder_add_string(builder, entry->long_name, entry->short_name, entry->offset,
-                                 entry->default_value ? (const char *)entry->default_value : "", entry->help_text,
-                                 entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+      options_builder_add_string(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? (const char *)entry->default_value : "", entry->help_text, entry->group,
+                                 entry->required, entry->env_var_name, entry->validate_fn);
       break;
     case OPTION_TYPE_INT:
       // Use metadata-aware function if metadata is present
-      if (entry->metadata.numeric_range.max != 0 ||
-          (entry->metadata.enum_values && entry->metadata.enum_values[0] != NULL)) {
-        options_builder_add_int_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
-                                              entry->default_value ? *(const int *)entry->default_value : 0,
-                                              entry->help_text, entry->group, entry->required, entry->env_var_name,
-                                              entry->validate_fn, &entry->metadata);
+      if (entry->metadata.numeric_range.max != 0 || (entry->metadata.enum_values && entry->metadata.enum_values[0] != NULL)) {
+        options_builder_add_int_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text,
+                                              entry->group, entry->required, entry->env_var_name, entry->validate_fn, &entry->metadata);
       } else {
-        options_builder_add_int(builder, entry->long_name, entry->short_name, entry->offset,
-                                entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text,
-                                entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+        options_builder_add_int(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text, entry->group,
+                                entry->required, entry->env_var_name, entry->validate_fn);
       }
       break;
     case OPTION_TYPE_BOOL:
-      options_builder_add_bool(builder, entry->long_name, entry->short_name, entry->offset,
-                               entry->default_value ? *(const bool *)entry->default_value : false, entry->help_text,
-                               entry->group, entry->required, entry->env_var_name);
+      options_builder_add_bool(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const bool *)entry->default_value : false, entry->help_text, entry->group,
+                               entry->required, entry->env_var_name);
       break;
     case OPTION_TYPE_DOUBLE:
       // Use metadata-aware function if metadata is present (has numeric range)
       if (entry->metadata.numeric_range.max != 0) {
-        options_builder_add_double_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
-                                                 entry->default_value ? *(const double *)entry->default_value : 0.0,
-                                                 entry->help_text, entry->group, entry->required, entry->env_var_name,
-                                                 entry->validate_fn, &entry->metadata, entry->optional_arg);
+        options_builder_add_double_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
+                                                 entry->group, entry->required, entry->env_var_name, entry->validate_fn, &entry->metadata, entry->optional_arg);
       } else {
-        options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset,
-                                   entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
-                                   entry->group, entry->required, entry->env_var_name, entry->validate_fn,
-                                   entry->optional_arg);
+        options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text, entry->group,
+                                   entry->required, entry->env_var_name, entry->validate_fn, entry->optional_arg);
       }
       break;
     case OPTION_TYPE_CALLBACK:
       // Always use metadata-aware function to preserve enum/metadata information
-      options_builder_add_callback_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
-                                                 entry->default_value, entry->default_value_size, entry->parse_fn,
-                                                 entry->help_text, entry->group, entry->required, entry->env_var_name,
-                                                 entry->optional_arg, &entry->metadata);
+      options_builder_add_callback_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value, entry->default_value_size, entry->parse_fn, entry->help_text,
+                                                 entry->group, entry->required, entry->env_var_name, entry->optional_arg, &entry->metadata);
       break;
     case OPTION_TYPE_ACTION:
-      options_builder_add_action(builder, entry->long_name, entry->short_name,
-                                 options_action_callback(entry->long_name, false), entry->help_text, entry->group);
+      options_builder_add_action(builder, entry->long_name, entry->short_name, options_action_callback(entry->long_name, false), entry->help_text, entry->group);
       break;
     }
 
     if (entry->metadata.enum_values)
-      options_builder_set_enum_values(builder, entry->long_name, entry->metadata.enum_values,
-                                      entry->metadata.enum_descriptions);
+      options_builder_set_enum_values(builder, entry->long_name, entry->metadata.enum_values, entry->metadata.enum_descriptions);
     options_builder_set_input_type(builder, entry->long_name, entry->metadata.input_type);
 
     if (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
@@ -276,8 +262,7 @@ const option_descriptor_t *options_registry_get_binary_options(size_t *num_optio
   return binary_opts;
 }
 
-const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help,
-                                                            size_t *num_options) {
+const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help, size_t *num_options) {
   if (!num_options) {
     SET_ERRNO(ERROR_INVALID_PARAM, "num_options is NULL");
     return NULL;

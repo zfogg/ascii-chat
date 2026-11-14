@@ -54,8 +54,7 @@ static asciichat_error_t finish_transport_security(acip_transport_t *transport, 
  * Version/policy admission (0) precedes algorithm selection (1), optional pinned
  * identity selection (2), key exchange (3), and authentication completion (4).
  * Only a completed handshake publishes the transport's encryption context. */
-static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_t *transport, packet_type_t type,
-                                       const void *payload, size_t length) {
+static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_t *transport, packet_type_t type, const void *payload, size_t length) {
   crypto_handshake_context_t *ctx = n->handshake;
   asciichat_error_t result = ASCIICHAT_OK;
   if (n->step == 0) {
@@ -69,8 +68,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     bool requires_auth = n->require_auth;
     if (requires_auth && !ACIP_CRYPTO_HAS_AUTH(mode))
       return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server requires authentication");
-    if ((n->require_encryption && !ACIP_CRYPTO_HAS_ENCRYPT(mode)) ||
-        (n->forbid_encryption && ACIP_CRYPTO_HAS_ENCRYPT(mode)))
+    if ((n->require_encryption && !ACIP_CRYPTO_HAS_ENCRYPT(mode)) || (n->forbid_encryption && ACIP_CRYPTO_HAS_ENCRYPT(mode)))
       return SET_ERRNO(ERROR_CRYPTO, "Requested encryption conflicts with server policy");
     if (!n->secure && !n->forbid_encryption && !ACIP_CRYPTO_HAS_ENCRYPT(mode))
       return SET_ERRNO(ERROR_CRYPTO, "Plain transports require encryption unless --no-encrypt is explicit");
@@ -81,9 +79,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
       return result;
     }
     const char *password = n->password ? n->password : "";
-    result = n->initialized ? ASCIICHAT_OK
-             : password[0]  ? crypto_handshake_init_with_password("server_async", ctx, true, password)
-                            : crypto_handshake_init("server_async", ctx, true);
+    result = n->initialized ? ASCIICHAT_OK : password[0] ? crypto_handshake_init_with_password("server_async", ctx, true, password) : crypto_handshake_init("server_async", ctx, true);
     if (result != ASCIICHAT_OK)
       return result;
     n->initialized = true;
@@ -113,8 +109,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     crypto_parameters_packet_t parameters = {0};
     parameters.selected_kex = KEX_ALGO_X25519;
     parameters.selected_cipher = n->encrypt_data ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
-    parameters.selected_auth =
-        n->identity_key_count && n->identity_keys[0].type == KEY_TYPE_ED25519 ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+    parameters.selected_auth = n->identity_key_count && n->identity_keys[0].type == KEY_TYPE_ED25519 ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
     parameters.verification_enabled = n->whitelist_count > 0;
     parameters.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE;
     parameters.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE;
@@ -162,8 +157,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
       for (size_t i = 0; i < n->identity_key_count; ++i) {
         bool requested = false;
         for (size_t offset = 0; offset < length; offset += ED25519_PUBLIC_KEY_SIZE)
-          requested |= sodium_memcmp((const uint8_t *)payload + offset, n->identity_keys[i].public_key,
-                                     ED25519_PUBLIC_KEY_SIZE) == 0;
+          requested |= sodium_memcmp((const uint8_t *)payload + offset, n->identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0;
         if (requested) {
           ctx->server_private_key = n->identity_keys[i];
           ctx->server_public_key.type = KEY_TYPE_ED25519;
@@ -197,12 +191,10 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
   return result;
 }
 
-asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_transport_t *transport, packet_type_t type,
-                                              const void *payload, size_t length) {
+asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_transport_t *transport, packet_type_t type, const void *payload, size_t length) {
   if (!n || !n->handshake || !transport || n->ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid connection negotiation state");
-  if (is_quic(transport) && n->step == 0 && type == PACKET_TYPE_PROTOCOL_VERSION &&
-      length == sizeof(protocol_version_packet_t)) {
+  if (is_quic(transport) && n->step == 0 && type == PACKET_TYPE_PROTOCOL_VERSION && length == sizeof(protocol_version_packet_t)) {
     protocol_version_packet_t version;
     memcpy(&version, payload, sizeof(version));
     if (!ACIP_CRYPTO_HAS_ENCRYPT(version.supports_encryption))
@@ -265,8 +257,7 @@ asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_tra
   return result;
 }
 
-static asciichat_error_t negotiation_read(acip_transport_t *transport, uint64_t deadline, packet_type_t *type,
-                                          void **payload, size_t *length, void **allocation) {
+static asciichat_error_t negotiation_read(acip_transport_t *transport, uint64_t deadline, packet_type_t *type, void **payload, size_t *length, void **allocation) {
   for (;;) {
     uint64_t now = time_get_ns();
     if (APP_CALLBACK_BOOL(should_exit)) {
@@ -293,8 +284,7 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
   protocol_version_packet_t version;
   protocol_version_packet_init(&version, mode);
   version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
-  asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
   packet_type_t type = 0;
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
@@ -316,14 +306,13 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
     ctx->state = CRYPTO_HANDSHAKE_DISABLED;
     return ASCIICHAT_OK;
   }
-  crypto_capabilities_packet_t caps = {
-      .supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519),
-      .supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE),
-      .supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE),
-      .requires_verification = ctx->verify_server_key && ctx->expected_server_key[0],
-      .preferred_kex = KEX_ALGO_X25519,
-      .preferred_auth = ACIP_CRYPTO_HAS_AUTH(mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE,
-      .preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE};
+  crypto_capabilities_packet_t caps = {.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519),
+                                       .supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE),
+                                       .supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE),
+                                       .requires_verification = ctx->verify_server_key && ctx->expected_server_key[0],
+                                       .preferred_kex = KEX_ALGO_X25519,
+                                       .preferred_auth = ACIP_CRYPTO_HAS_AUTH(mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE,
+                                       .preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE};
   result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
   allocation = NULL;
   if (result == ASCIICHAT_OK)
@@ -356,8 +345,7 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
     size_t requested_count = NET_TO_HOST_U16(version.feature_flags) & PROTOCOL_FEATURE_IDENTITY_SET ? count : 1;
     for (size_t i = 0; i < requested_count; ++i)
       memcpy(requested[i], keys[i].key, sizeof(requested[i]));
-    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, requested,
-                                       requested_count * ED25519_PUBLIC_KEY_SIZE, 0);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, requested, requested_count * ED25519_PUBLIC_KEY_SIZE, 0);
     if (result != ASCIICHAT_OK)
       return result;
   }
@@ -382,8 +370,7 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
   transport->crypto_ctx = &ctx->crypto_ctx;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t discovery_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx,
-                                                    uint8_t mode) {
+static asciichat_error_t discovery_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode) {
   ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
   asciichat_error_t result = acds_handshake_begin(transport, mode);
   if (result != ASCIICHAT_OK)
@@ -411,15 +398,13 @@ static asciichat_error_t discovery_client_negotiate(acip_transport_t *transport,
   transport->crypto_ctx = &ctx->crypto_ctx;
   return ASCIICHAT_OK;
 }
-asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode,
-                                           network_protocol_t protocol) {
+asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode, network_protocol_t protocol) {
   if (!transport || !ctx || mode > ACIP_CRYPTO_FULL || protocol > NETWORK_PROTOCOL_DISCOVERY)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client negotiation");
   if (is_quic(transport) && !ACIP_CRYPTO_HAS_ENCRYPT(mode))
     return SET_ERRNO(ERROR_CRYPTO, "QUIC requires ACIP encryption");
   uint64_t timeout = transport->receive_timeout_ns;
-  asciichat_error_t result = protocol == NETWORK_PROTOCOL_DISCOVERY ? discovery_client_negotiate(transport, ctx, mode)
-                                                                    : client_negotiate(transport, ctx, mode);
+  asciichat_error_t result = protocol == NETWORK_PROTOCOL_DISCOVERY ? discovery_client_negotiate(transport, ctx, mode) : client_negotiate(transport, ctx, mode);
   transport->receive_timeout_ns = timeout;
   if (result == ASCIICHAT_OK)
     result = finish_transport_security(transport, ctx);

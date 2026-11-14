@@ -278,8 +278,7 @@ void log_mmap_destroy(void) {
 #ifdef _WIN32
     /* Windows: Close mmap first, then truncate file, then reopen for truncation */
     platform_mmap_close(&g_mmap_log.mmap);
-    HANDLE hFile =
-        CreateFileA(g_mmap_log.file_path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFileA(g_mmap_log.file_path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile != INVALID_HANDLE_VALUE) {
       LARGE_INTEGER size;
       size.QuadPart = (LONGLONG)final_pos;
@@ -287,15 +286,13 @@ void log_mmap_destroy(void) {
         SetEndOfFile(hFile);
       }
       CloseHandle(hFile);
-      log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
-                g_mmap_log.text_capacity / 1024 / 1024);
+      log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos, g_mmap_log.text_capacity / 1024 / 1024);
     }
 #else
     /* POSIX: Use ftruncate() on the file descriptor */
     if (g_mmap_log.mmap.fd >= 0) {
       if (ftruncate(g_mmap_log.mmap.fd, (off_t)final_pos) == 0) {
-        log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
-                  g_mmap_log.text_capacity / 1024 / 1024);
+        log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos, g_mmap_log.text_capacity / 1024 / 1024);
       }
     }
     platform_mmap_close(&g_mmap_log.mmap);
@@ -327,8 +324,7 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
 
   int prefix_len;
   if (file && func) {
-    prefix_len =
-        safe_snprintf(line_buf, sizeof(line_buf), "[%s] [%s] %s:%d in %s(): ", time_buf, level_name, file, line, func);
+    prefix_len = safe_snprintf(line_buf, sizeof(line_buf), "[%s] [%s] %s:%d in %s(): ", time_buf, level_name, file, line, func);
   } else {
     prefix_len = safe_snprintf(line_buf, sizeof(line_buf), "[%s] [%s] ", time_buf, level_name);
   }

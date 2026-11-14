@@ -49,17 +49,13 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
   char internal_port[PORT_STRING_BUFFER_SIZE], external_port[6];
   safe_snprintf(internal_port, sizeof(internal_port), "%u", ctx->internal_port);
   safe_snprintf(external_port, sizeof(external_port), "%u", ctx->mapped_port);
-  int result = UPNP_AddPortMapping(ctx->control_url, ctx->service_type, external_port, internal_port, ctx->internal_ip,
-                                   ctx->description, mapping_protocol(ctx), NULL, "3600");
+  int result = UPNP_AddPortMapping(ctx->control_url, ctx->service_type, external_port, internal_port, ctx->internal_ip, ctx->description, mapping_protocol(ctx), NULL, "3600");
   if (result != UPNPCOMMAND_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: mapping request failed: %s", strupnperror(result));
   }
   // Some gateways silently shorten the requested lease. Read it back on every renewal.
-  char client[NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE] = {0}, port[6] = {0},
-       description[UPNP_MAPPING_DESCRIPTION_BUFFER_SIZE] = {0}, enabled[4] = {0},
-       lease[NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE] = {0};
-  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx),
-                                            NULL, client, port, description, enabled, lease);
+  char client[NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE] = {0}, port[6] = {0}, description[UPNP_MAPPING_DESCRIPTION_BUFFER_SIZE] = {0}, enabled[4] = {0}, lease[NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE] = {0};
+  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx), NULL, client, port, description, enabled, lease);
   uint32_t seconds = 60;
   if (result == UPNPCOMMAND_SUCCESS && lease[0] >= '0' && lease[0] <= '9') {
     char *end = NULL;
@@ -85,8 +81,7 @@ static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: no gateway discovered (unsupported or disabled)");
   }
 #ifdef MINIUPNPC_GETVALIDIGD_7ARG
-  int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address), external_address,
-                                sizeof(external_address));
+  int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address), external_address, sizeof(external_address));
 #else
   int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address));
 #endif
@@ -98,8 +93,7 @@ static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
   private_wan = result == UPNP_PRIVATEIP_IGD;
   connected = connected || private_wan;
 #endif
-  if (!connected || !urls.controlURL || !lan_address[0] || strncmp(lan_address, "127.", 4) == 0 ||
-      strcmp(lan_address, "0.0.0.0") == 0) {
+  if (!connected || !urls.controlURL || !lan_address[0] || strncmp(lan_address, "127.", 4) == 0 || strcmp(lan_address, "0.0.0.0") == 0) {
     SET_ERRNO(ERROR_NETWORK, "UPnP: no connected gateway with a usable LAN address (IGD result %d)", result);
     goto cleanup;
   }
@@ -177,16 +171,13 @@ static asciichat_error_t natpmp_map(nat_upnp_context_t *ctx, uint32_t lifetime, 
     safe_snprintf(ctx->external_ip, sizeof(ctx->external_ip), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
     ctx->gateway = pmp.gateway;
   }
-  if (sendnewportmappingrequest(&pmp, ctx->protocol == NAT_UPNP_UDP ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP,
-                                ctx->internal_port, ctx->mapped_port, lifetime) < 0) {
+  if (sendnewportmappingrequest(&pmp, ctx->protocol == NAT_UPNP_UDP ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP, ctx->internal_port, ctx->mapped_port, lifetime) < 0) {
     error = SET_ERRNO(ERROR_NETWORK, "NAT-PMP: mapping request failed");
     goto cleanup;
   }
-  error = natpmp_wait(&pmp, &response,
-                      ctx->protocol == NAT_UPNP_UDP ? NATPMP_RESPTYPE_UDPPORTMAPPING : NATPMP_RESPTYPE_TCPPORTMAPPING);
+  error = natpmp_wait(&pmp, &response, ctx->protocol == NAT_UPNP_UDP ? NATPMP_RESPTYPE_UDPPORTMAPPING : NATPMP_RESPTYPE_TCPPORTMAPPING);
   if (error == ASCIICHAT_OK && lifetime != 0) {
-    if (!response.pnu.newportmapping.lifetime || !response.pnu.newportmapping.mappedpublicport ||
-        response.pnu.newportmapping.privateport != ctx->internal_port) {
+    if (!response.pnu.newportmapping.lifetime || !response.pnu.newportmapping.mappedpublicport || response.pnu.newportmapping.privateport != ctx->internal_port) {
       error = SET_ERRNO(ERROR_NETWORK, "NAT-PMP: invalid granted mapping");
       goto cleanup;
     }
@@ -204,8 +195,7 @@ asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description,
   return nat_upnp_open_protocol(internal_port, description, NAT_UPNP_TCP, ctx);
 }
 
-asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
-                                         nat_upnp_context_t **ctx) {
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol, nat_upnp_context_t **ctx) {
   ASCII_OTEL_SCOPE(NAT_MAP);
   ASCII_OTEL_ATTR_STRING("network.transport", protocol == NAT_UPNP_UDP ? "udp" : "tcp");
   ASCII_OTEL_ATTR_INT("network.local.port", internal_port);
@@ -236,8 +226,7 @@ asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *des
   if (result == ASCIICHAT_OK) {
     ascii_otel_metric(ASCII_OTEL_METRIC_NAT_MAP_SUCCESS, 1);
     errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
-    log_info("NAT: mapping created for %s:%u (external reachability unverified)", (*ctx)->external_ip,
-             (*ctx)->mapped_port);
+    log_info("NAT: mapping created for %s:%u (external reachability unverified)", (*ctx)->external_ip, (*ctx)->mapped_port);
     return ASCIICHAT_OK;
   }
   ascii_otel_metric(ASCII_OTEL_METRIC_NAT_MAP_FAILURE, 1);
@@ -265,8 +254,7 @@ void nat_upnp_close(nat_upnp_context_t **ctx) {
 #ifdef HAVE_MINIUPNPC
       char port[PORT_STRING_BUFFER_SIZE];
       safe_snprintf(port, sizeof(port), "%u", (*ctx)->mapped_port);
-      int result =
-          UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), NULL);
+      int result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), NULL);
       // Fios gateways require an explicit wildcard when deleting an unrestricted mapping.
       if (result == 402) {
         result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), "*");
@@ -297,8 +285,7 @@ bool nat_upnp_matches_bind_address(const nat_upnp_context_t *ctx, const char *bi
   if (!ctx) {
     return false;
   }
-  return !bind_address || !bind_address[0] || strcmp(bind_address, "0.0.0.0") == 0 ||
-         (ctx->internal_ip[0] && strcmp(bind_address, ctx->internal_ip) == 0);
+  return !bind_address || !bind_address[0] || strcmp(bind_address, "0.0.0.0") == 0 || (ctx->internal_ip[0] && strcmp(bind_address, ctx->internal_ip) == 0);
 }
 
 asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip, size_t ip_len, uint16_t *port) {
@@ -332,8 +319,7 @@ asciichat_error_t nat_upnp_refresh(nat_upnp_context_t *ctx) {
   }
   if (result != ASCIICHAT_OK) {
     ctx->refresh_at_ns = time_get_ns() + MAPPING_RETRY_NS;
-    log_warn("NAT: mapping renewal failed; %s; retrying in 30 seconds",
-             nat_upnp_is_active(ctx) ? "previous lease has not expired" : "mapping lease expired");
+    log_warn("NAT: mapping renewal failed; %s; retrying in 30 seconds", nat_upnp_is_active(ctx) ? "previous lease has not expired" : "mapping lease expired");
     return result;
   }
   log_info("NAT: mapping renewed for %s:%u", ctx->external_ip, ctx->mapped_port);

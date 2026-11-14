@@ -129,8 +129,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
     }
     SAFE_FREE(contents);
     const char *extension = strrchr(name, '.');
-    if (http_response_set_header(response, "Content-Type", mcp_output_mime(extension ? extension + 1 : "")) !=
-            ASCIICHAT_OK ||
+    if (http_response_set_header(response, "Content-Type", mcp_output_mime(extension ? extension + 1 : "")) != ASCIICHAT_OK ||
         http_response_set_header(response, "Cache-Control", "no-store") != ASCIICHAT_OK) {
       shared_http_finish(response, 500);
       return;

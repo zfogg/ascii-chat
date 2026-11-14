@@ -190,9 +190,7 @@ static void *webcam_capture_thread_func(void *arg) {
   image_t *last_frame = NULL;         // Borrows transmission_frame for paused playback.
   const char *video_codec = GET_OPTION(video_codec);
   bool automatic_codec = strcmp(video_codec, "auto") == 0;
-  video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
-                                 : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264
-                                                                    : VIDEO_CODEC_H265;
+  video_codec_t selected_codec = strcmp(video_codec, "raw") == 0 ? VIDEO_CODEC_RGBA : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265;
   if (automatic_codec) {
     while (selected_codec != VIDEO_CODEC_RGBA && !video_encoder_is_available(selected_codec))
       selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
@@ -237,8 +235,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(connection->capture_context);
-      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE && media_source_is_paused(source) &&
-          last_frame) {
+      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE && media_source_is_paused(source) && last_frame) {
         // Use last frame when paused (keeps display thread rendering and keyboard polling active)
         image = last_frame;
         log_debug_every(LOG_RATE_SLOW, "Using cached frame while paused");
@@ -258,8 +255,7 @@ static void *webcam_capture_thread_func(void *arg) {
     fps_frame_ns(&fps_tracker, time_get_ns(), "webcam frame captured");
 
     // Copy/resize into capture-owned storage; the media source retains its input.
-    if (session_capture_process_for_transmission_into(connection->capture_context, image, &transmission_frame) !=
-        ASCIICHAT_OK)
+    if (session_capture_process_for_transmission_into(connection->capture_context, image, &transmission_frame) != ASCIICHAT_OK)
       continue;
     image_t *processed_image = transmission_frame;
 
@@ -283,21 +279,17 @@ static void *webcam_capture_thread_func(void *arg) {
     bool encoding_failed = false;
     for (;;) {
       if (selected_codec == VIDEO_CODEC_RGBA) {
-        send_result = threaded_send_image_frame(connection, processed_image->pixels, (uint32_t)processed_image->w,
-                                                (uint32_t)processed_image->h, 1);
+        send_result = threaded_send_image_frame(connection, processed_image->pixels, (uint32_t)processed_image->w, (uint32_t)processed_image->h, 1);
         break;
       }
       asciichat_errno_scope_t encode_scope = errno_scope_begin();
-      send_result = threaded_send_image_frame_encoded(connection, processed_image->pixels, (uint32_t)processed_image->w,
-                                                      (uint32_t)processed_image->h, selected_codec, &encoding_failed);
+      send_result = threaded_send_image_frame_encoded(connection, processed_image->pixels, (uint32_t)processed_image->w, (uint32_t)processed_image->h, selected_codec, &encoding_failed);
       if (!encoding_failed || !automatic_codec || send_result == ERROR_MEMORY) {
         if (send_result == ASCIICHAT_OK)
           errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
         break;
       }
-      log_warn("%s encoding failed; automatic video is switching to %s",
-               selected_codec == VIDEO_CODEC_H265 ? "HEVC" : "H.264",
-               selected_codec == VIDEO_CODEC_H265 ? "H.264" : "raw");
+      log_warn("%s encoding failed; automatic video is switching to %s", selected_codec == VIDEO_CODEC_H265 ? "HEVC" : "H.264", selected_codec == VIDEO_CODEC_H265 ? "H.264" : "raw");
       errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
       h265_encoder_destroy(connection->video_encoder);
       connection->video_encoder = NULL;
@@ -305,14 +297,10 @@ static void *webcam_capture_thread_func(void *arg) {
       encoding_failed = false;
     }
     if (send_result == ASCIICHAT_OK)
-      session_capture_complete_open(connection->capture_context,
-                                    session_capture_source_epoch(connection->capture_context));
-    const char *codec_name = selected_codec == VIDEO_CODEC_H265   ? "H265"
-                             : selected_codec == VIDEO_CODEC_H264 ? "H264"
-                                                                  : "RAW";
+      session_capture_complete_open(connection->capture_context, session_capture_source_epoch(connection->capture_context));
+    const char *codec_name = selected_codec == VIDEO_CODEC_H265 ? "H265" : selected_codec == VIDEO_CODEC_H264 ? "H264" : "RAW";
     if (encoding_failed) {
-      log_error("%s video encoding failed (%s). Use --video-codec auto for fallback or --video-codec raw.", codec_name,
-                asciichat_error_format(NULL, send_result));
+      log_error("%s video encoding failed (%s). Use --video-codec auto for fallback or --video-codec raw.", codec_name, asciichat_error_format(NULL, send_result));
       errno_request_exit(send_result);
       signal_exit();
       break;
@@ -331,8 +319,7 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
     if (send_result != ASCIICHAT_OK) {
-      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send failed %s after %.1fms, closing connection", codec_name,
-                asciichat_error_format(NULL, send_result), (double)send_duration_ns / 1e6);
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send failed %s after %.1fms, closing connection", codec_name, asciichat_error_format(NULL, send_result), (double)send_duration_ns / 1e6);
       server_connection_lost(connection);
       break;
     }
@@ -340,12 +327,10 @@ static void *webcam_capture_thread_func(void *arg) {
     ASSERT_NO_ERRNO_SINCE(send_scope);
     errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
-      log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",
-               (double)send_duration_ns / 1e6, processed_image->w, processed_image->h, codec_name);
+      log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)", (double)send_duration_ns / 1e6, processed_image->w, processed_image->h, codec_name);
     }
 
-    log_debug_every(LOG_RATE_NORMAL, "CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
-                    (double)send_duration_ns / 1e6);
+    log_debug_every(LOG_RATE_NORMAL, "CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name, (double)send_duration_ns / 1e6);
 
     // Keep the processed workspace itself for pause; no second image copy.
     last_frame = processed_image;
@@ -360,8 +345,7 @@ static void *webcam_capture_thread_func(void *arg) {
     last_capture_frame_time_ns = frame_capture_time_ns;
 
     // Expected frame interval in nanoseconds
-    uint64_t expected_interval_ns =
-        NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(connection->capture_context);
+    uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(connection->capture_context);
     uint64_t lag_threshold_ns = expected_interval_ns + (expected_interval_ns / 2); // 50% over expected
 
     // Log warning if frame took too long to capture (display in milliseconds for readability)
@@ -370,9 +354,7 @@ static void *webcam_capture_thread_func(void *arg) {
       double expected_ms = (double)expected_interval_ns / 1e6;
       double actual_ms = (double)frame_interval_ns / 1e6;
       double actual_fps = 1e9 / (double)frame_interval_ns;
-      log_warn_every(LOG_RATE_FAST,
-                     "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
-                     late_ms, expected_ms, actual_ms, actual_fps);
+      log_warn_every(LOG_RATE_FAST, "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)", late_ms, expected_ms, actual_ms, actual_fps);
     }
 
     // Yield to reduce CPU usage
@@ -492,8 +474,7 @@ int capture_start_thread(client_connection_t *connection) {
 
   // Start webcam capture thread
   atomic_store_bool(&connection->capture_thread_exited, false);
-  if (thread_pool_spawn(connection->client_worker_pool, webcam_capture_thread_func, connection, 2, "webcam_capture") !=
-      ASCIICHAT_OK) {
+  if (thread_pool_spawn(connection->client_worker_pool, webcam_capture_thread_func, connection, 2, "webcam_capture") != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;

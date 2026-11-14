@@ -152,8 +152,7 @@ asciichat_error_t test_pattern_render(test_pattern_t *p, int index, double time_
   asciichat_error_t err = animation_sample_at(config, time_ms / 1000.0, &sample);
   if (err != ASCIICHAT_OK)
     return err;
-  animation_target_t target = {.type = ANIMATION_TARGET_TEST_PATTERN,
-                               .test_pattern = {.context = p, .index = index, .cadence = cadence}};
+  animation_target_t target = {.type = ANIMATION_TARGET_TEST_PATTERN, .test_pattern = {.context = p, .index = index, .cadence = cadence}};
   return animation_apply(&sample, &target);
 }
 
@@ -223,9 +222,7 @@ asciichat_error_t test_pattern_render_at(test_pattern_t *p, int index, double ti
     rgb_pixel_t gradient[TEST_PATTERN_GRADIENT_INTERVALS + 1];
     for (int i = 0; i <= TEST_PATTERN_GRADIENT_INTERVALS; i++) {
       double t = i / (double)TEST_PATTERN_GRADIENT_INTERVALS;
-      gradient[i] = (rgb_pixel_t){(uint8_t)(first.r * (1 - t) + last.r * t + 0.5),
-                                  (uint8_t)(first.g * (1 - t) + last.g * t + 0.5),
-                                  (uint8_t)(first.b * (1 - t) + last.b * t + 0.5)};
+      gradient[i] = (rgb_pixel_t){(uint8_t)(first.r * (1 - t) + last.r * t + 0.5), (uint8_t)(first.g * (1 - t) + last.g * t + 0.5), (uint8_t)(first.b * (1 - t) + last.b * t + 0.5)};
     }
     double scale = (double)TEST_PATTERN_GRADIENT_INTERVALS * 65536 / ((double)w * w + (double)h * h);
     uint32_t step = (uint32_t)(w * scale + 0.5);

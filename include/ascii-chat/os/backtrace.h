@@ -63,7 +63,7 @@ int platform_backtrace(void **buffer, int size);
  * @note Array is guaranteed to have 'size' valid entries plus a NULL terminator
  * @note This is a low-level function; prefer backtrace_symbolize() from debug/backtrace.h
  */
-char **platform_backtrace_symbols(void *const *buffer, int size);
+char **platform_backtrace_symbols(void *const *buffer, int size, const char *const *owned_dirs);
 
 /**
  * @brief Free symbol array from platform_backtrace_symbols()

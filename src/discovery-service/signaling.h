@@ -29,8 +29,7 @@
  * @param total_packet_len Total packet length including variable data
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp,
-                                      size_t total_packet_len);
+asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp, size_t total_packet_len);
 
 /**
  * @brief Relay ICE candidate to recipient
@@ -44,8 +43,7 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_ser
  * @param total_packet_len Total packet length including variable data
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice,
-                                      size_t total_packet_len);
+asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice, size_t total_packet_len);
 
 /**
  * @brief Broadcast packet to all session participants
@@ -62,6 +60,5 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_ser
  * @param exclude_participant_id Participant to exclude (NULL = no exclusion, typically sender)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server,
-                                      const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type,
-                                      const void *packet, size_t packet_len, const uint8_t *exclude_participant_id);
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type, const void *packet, size_t packet_len,
+                                      const uint8_t *exclude_participant_id);

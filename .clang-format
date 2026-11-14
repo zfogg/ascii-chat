@@ -3,7 +3,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 2
 UseTab: Never
-ColumnLimit: 120
+ColumnLimit: 200
 
 SortIncludes: Never
 

@@ -34,7 +34,6 @@
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)

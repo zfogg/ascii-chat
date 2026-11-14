@@ -358,18 +358,15 @@ bool server_connection_is_lost(client_connection_t *connection) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data,
-                                       size_t len) {
+asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data, size_t len) {
   // Check connection status and get transport reference
   acip_transport_t *transport = server_connection_get_transport(connection);
   if (!atomic_load_bool(&connection->connection_active) || !transport) {
-    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
-              atomic_load_bool(&connection->connection_active) ? "true" : "false",
+    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p", atomic_load_bool(&connection->connection_active) ? "true" : "false",
               (void *)server_connection_get_transport(connection));
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
-  log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
-                  (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
+  log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s", (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
 
   // The ACIP outbound scheduler serializes transport admission and writes.
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
@@ -400,8 +397,7 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples,
-                                                   int num_samples, int batch_count) {
+asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples, int num_samples, int batch_count) {
   // Check connection status and get transport reference
   acip_transport_t *transport = server_connection_get_transport(connection);
   if (!atomic_load_bool(&connection->connection_active) || !transport) {
@@ -435,8 +431,7 @@ asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connecti
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
-                                           int sample_rate, int frame_duration) {
+asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size, int sample_rate, int frame_duration) {
   // Check connection status and get transport reference
   acip_transport_t *transport = server_connection_get_transport(connection);
   if (!atomic_load_bool(&connection->connection_active) || !transport) {
@@ -448,8 +443,7 @@ asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, cons
   if (opus_size > UINT16_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Opus frame exceeds its wire size field");
   uint16_t frame_size = (uint16_t)opus_size;
-  asciichat_error_t result =
-      acip_send_audio_opus_batch(transport, opus_data, opus_size, &frame_size, 1, sample_rate, frame_duration);
+  asciichat_error_t result = acip_send_audio_opus_batch(transport, opus_data, opus_size, &frame_size, 1, sample_rate, frame_duration);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -475,8 +469,7 @@ asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, cons
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data,
-                                                 size_t opus_size, const uint16_t *frame_sizes, int frame_count) {
+asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes, int frame_count) {
   // Check connection status and get transport reference
   acip_transport_t *transport = server_connection_get_transport(connection);
   if (!atomic_load_bool(&connection->connection_active) || !transport) {
@@ -485,8 +478,7 @@ asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
-  asciichat_error_t result =
-      acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
+  asciichat_error_t result = acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -512,8 +504,7 @@ asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width,
-                                            uint32_t height, uint32_t pixel_format) {
+asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format) {
   if (!pixel_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
   }
@@ -552,9 +543,7 @@ asciichat_error_t threaded_send_image_frame(client_connection_t *connection, con
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data,
-                                                    uint32_t width, uint32_t height, video_codec_t codec,
-                                                    bool *encoding_failed) {
+asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data, uint32_t width, uint32_t height, video_codec_t codec, bool *encoding_failed) {
   if (!encoding_failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing video encoding status output");
   *encoding_failed = false;
@@ -572,9 +561,7 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
   h265_encoder_t *encoder = connection->video_encoder;
 #ifndef __EMSCRIPTEN__
   acip_transport_t *encoder_transport = server_connection_get_transport(connection);
-  if (acip_outbound_needs_keyframe(
-          encoder_transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265,
-          0))
+  if (acip_outbound_needs_keyframe(encoder_transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265, 0))
     h265_encoder_request_keyframe(encoder);
 #endif
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
@@ -584,8 +571,7 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
 
   // h265_encode already writes the five-byte ACIP envelope for either codec.
   size_t total_size = output_buffer_size;
-  asciichat_error_t encode_result =
-      h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &total_size);
+  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &total_size);
   if (encode_result != ASCIICHAT_OK || total_size == 0) {
     *encoding_failed = encode_result != ASCIICHAT_OK;
     return encode_result;
@@ -604,9 +590,7 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
 
   // Submit through the connection-owned outbound scheduler.
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_6] Sending packet via transport (%zu bytes)", total_size);
-  asciichat_error_t result = packet_send_via_transport(
-      transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265, output_buffer,
-      total_size, 0);
+  asciichat_error_t result = packet_send_via_transport(transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes
@@ -685,8 +669,7 @@ asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connect
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
-                                                               unsigned short height) {
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width, unsigned short height) {
   terminal_capabilities_packet_t packet;
   session_protocol_build_capabilities(width, height, &packet);
   asciichat_error_t result = threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &packet, sizeof(packet));
@@ -706,8 +689,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name,
-                                                   uint32_t capabilities) {
+asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name, uint32_t capabilities) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally
@@ -723,8 +705,8 @@ asciichat_error_t threaded_send_client_join_packet(client_connection_t *connecti
     bool active = atomic_load_u64(&connection->connection_active);
     acip_transport_t *transport = server_connection_get_transport(connection);
     if (active && transport) {
-      log_net_message(transport, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__, __func__,
-                      "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
+      log_net_message(transport, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__, __func__, "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name,
+                      capabilities);
     }
   }
   return send_result;

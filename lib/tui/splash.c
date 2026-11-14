@@ -147,8 +147,7 @@ static struct {
   platform_thread_t monitor_thread; // monitor thread handle
   uint64_t start_time_ns;           // when splash was started (for minimum display time)
   atomic_t intro_done_time_ns;      // when splash_intro_done() was called
-} g_splash_state = {
-    .is_running = {0}, .should_stop = {0}, .thread_created = {0}, .start_time_ns = 0, .intro_done_time_ns = {0}};
+} g_splash_state = {.is_running = {0}, .should_stop = {0}, .thread_created = {0}, .start_time_ns = 0, .intro_done_time_ns = {0}};
 
 // ============================================================================
 // Header Rendering (callback for terminal_screen)
@@ -247,8 +246,7 @@ bool splash_should_display(bool is_intro) {
     bool splash_screen_opt = GET_OPTION(splash_screen);
     bool splash_explicitly_set = GET_OPTION(splash_screen_explicitly_set);
     bool is_snapshot = GET_OPTION(snapshot_mode);
-    bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) ||
-                     (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
+    bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) || (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
     // Show splash if enabled, but in snapshot mode only if:
     // 1. Has media file/URL, OR
@@ -300,8 +298,7 @@ static void *splash_monitor_thread(void *arg) {
         continue;
       } else if (key == KEY_BACKTICK) {
         ui_errno_stacks_toggle();
-      } else if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION &&
-                 ui_controller_current_screen() != UI_SCREEN_LOGS)
+      } else if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION && ui_controller_current_screen() != UI_SCREEN_LOGS)
         key = KEY_NONE;
       if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key)) {
         // Search consumed the key.
@@ -359,11 +356,8 @@ static void *splash_monitor_thread(void *arg) {
   // Its capture may still be resolving a remote source after this monitor stops.
   const char *media_url = GET_OPTION(media_url);
   const char *render_file = GET_OPTION(render_file);
-  bool binary_stdout =
-      GET_OPTION(render_kitty) || (render_file && (strcmp(render_file, "-") == 0 || strcmp(render_file, "pipe:") == 0 ||
-                                                   strcmp(render_file, "--kitty") == 0));
-  bool retain_for_media = GET_OPTION(detected_mode) == MODE_MIRROR && media_url && media_url[0] &&
-                          atomic_load_u64(&g_splash_state.intro_done_time_ns) != 0 && terminal_is_stdout_tty() &&
+  bool binary_stdout = GET_OPTION(render_kitty) || (render_file && (strcmp(render_file, "-") == 0 || strcmp(render_file, "pipe:") == 0 || strcmp(render_file, "--kitty") == 0));
+  bool retain_for_media = GET_OPTION(detected_mode) == MODE_MIRROR && media_url && media_url[0] && atomic_load_u64(&g_splash_state.intro_done_time_ns) != 0 && terminal_is_stdout_tty() &&
                           !binary_stdout && !GET_OPTION(snapshot_mode) && !shutdown_is_requested();
   if (!retain_for_media)
     ui_controller_remove(UI_SCREEN_SPLASH);

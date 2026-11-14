@@ -13,6 +13,7 @@
 #include <math.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
 
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/os/memory.h>
@@ -44,8 +45,7 @@ static bool validate_kitty_output(const void *data) {
 
 static bool validate_video_codec(const void *opts_struct) {
   const options_t *opts = (const options_t *)opts_struct;
-  if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 ||
-      strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
+  if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 || strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
     return true;
   SET_ERRNO(ERROR_USAGE, "--video-codec must be auto, hevc, h264, or raw");
   return false;
@@ -64,8 +64,7 @@ static bool validate_render_font_size(const void *opts_struct) {
 // CLI arguments append to one ordered list. Environment/config strings retain
 // their ordinary precedence and are used as a single-item fallback at capture.
 static bool parse_media_argument(const char *arg, void *field, bool url, char **error) {
-  options_t *opts =
-      (options_t *)((char *)field - (url ? offsetof(options_t, media_url) : offsetof(options_t, media_file)));
+  options_t *opts = (options_t *)((char *)field - (url ? offsetof(options_t, media_url) : offsetof(options_t, media_file)));
   asciichat_error_t result = media_playlist_append(&opts->media_playlist, arg, url);
   if (result != ASCIICHAT_OK) {
     if (error)

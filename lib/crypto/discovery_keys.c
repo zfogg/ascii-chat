@@ -75,8 +75,7 @@ static bool is_official_server(const char *acds_server) {
 
   // In debug builds, also trust localhost for testing (IPv4 and IPv6)
 #ifndef NDEBUG
-  if (strcmp(server_lower, "localhost") == 0 || strcmp(server_lower, "127.0.0.1") == 0 ||
-      strcmp(server_lower, "::1") == 0) {
+  if (strcmp(server_lower, "localhost") == 0 || strcmp(server_lower, "127.0.0.1") == 0 || strcmp(server_lower, "::1") == 0) {
     return true;
   }
 #endif
@@ -141,8 +140,7 @@ asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *p
   }
 
   // Path: ~/.config/ascii-chat/acds_keys/<hostname>/key.pub
-  safe_snprintf(path_out, path_size, "%s" ACDS_KEYS_CACHE_DIR PATH_SEPARATOR_STR "%s" PATH_SEPARATOR_STR "key.pub",
-                config_dir, acds_server);
+  safe_snprintf(path_out, path_size, "%s" ACDS_KEYS_CACHE_DIR PATH_SEPARATOR_STR "%s" PATH_SEPARATOR_STR "key.pub", config_dir, acds_server);
   SAFE_FREE(config_dir);
 
   return ASCIICHAT_OK;
@@ -206,8 +204,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   }
 
   // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
-  uint8_t wire_key[SSH_ED25519_WIRE_KEY_SIZE] = {0,   0,   0,   11,  's', 's', 'h', '-', 'e', 'd',
-                                                 '2', '5', '5', '1', '9', 0,   0,   0,   32};
+  uint8_t wire_key[SSH_ED25519_WIRE_KEY_SIZE] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
   memcpy(wire_key + 19, pubkey, ED25519_PUBLIC_KEY_SIZE);
   char base64_key[CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE];
   sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);
@@ -244,9 +241,7 @@ asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
 // User Verification for Key Changes
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify_change(const char *acds_server,
-                                               const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE],
-                                               const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE], const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !old_pubkey || !new_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -275,8 +270,7 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server,
 // Main Verification Function
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
-                                        uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }

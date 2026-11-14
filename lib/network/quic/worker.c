@@ -76,8 +76,7 @@ static void *quic_worker_main(void *arg) {
   return NULL;
 }
 
-static asciichat_error_t worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure,
-                                      void *context, bool failure_on_lane, quic_worker_t **out) {
+static asciichat_error_t worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure, void *context, bool failure_on_lane, quic_worker_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC worker output");
   *out = NULL;
@@ -99,13 +98,11 @@ static asciichat_error_t worker_start(quic_udp_endpoint_t *endpoint, mutex_t *la
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure,
-                                    void *context, quic_worker_t **out) {
+asciichat_error_t quic_worker_start(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure, void *context, quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, false, out);
 }
 
-asciichat_error_t quic_worker_start_locked_failure(quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                                   quic_worker_failure_fn failure, void *context, quic_worker_t **out) {
+asciichat_error_t quic_worker_start_locked_failure(quic_udp_endpoint_t *endpoint, mutex_t *lane, quic_worker_failure_fn failure, void *context, quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, true, out);
 }
 

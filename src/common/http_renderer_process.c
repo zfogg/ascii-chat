@@ -82,8 +82,7 @@ static void exited(uv_process_t *process, int64_t status, int signal) {
   if (!w->failed && (status || signal)) {
     w->failed = true;
     if (!w->result->error[0])
-      SAFE_SNPRINTF(w->result->error, sizeof(w->result->error), "Renderer failed (exit %lld, signal %d)",
-                    (long long)status, signal);
+      SAFE_SNPRINTF(w->result->error, sizeof(w->result->error), "Renderer failed (exit %lld, signal %d)", (long long)status, signal);
   }
   uv_close((uv_handle_t *)process, NULL);
 }
@@ -109,8 +108,7 @@ static void tick(uv_timer_t *timer) {
     }
   }
 }
-void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled,
-                           http_renderer_process_result_t *result) {
+void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancelled, http_renderer_process_result_t *result) {
   memset(result, 0, sizeof(*result));
   if (r->output_type != HTTP_RENDER_OUTPUT_TEXT && r->output_type != HTTP_RENDER_OUTPUT_FILE) {
     SAFE_STRNCPY(result->error, "Renderer output must select text or files", sizeof(result->error));
@@ -133,8 +131,7 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
   streams[2].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
   streams[2].data.stream = (uv_stream_t *)&w.errors;
   // Only runtime essentials are inherited; user config, ASCII_CHAT_* and credentials are excluded.
-  const char *keys[] = {
-      "PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "TESTING", NULL};
+  const char *keys[] = {"PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "TESTING", NULL};
   char *env[MCP_RENDER_ENV_CAPACITY] = {0};
   size_t ne = 0;
   for (size_t i = 0; keys[i]; ++i) {
@@ -157,8 +154,7 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
   env[ne++] = platform_strdup("ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none");
   if (r->capture_webcam)
     env[ne++] = platform_strdup("ASCII_CHAT_MCP_WEBCAM=1");
-  uv_process_options_t opts = {
-      .exit_cb = exited, .file = r->argv[0], .args = r->argv, .env = env, .stdio_count = 3, .stdio = streams};
+  uv_process_options_t opts = {.exit_cb = exited, .file = r->argv[0], .args = r->argv, .env = env, .stdio_count = 3, .stdio = streams};
   int rc = uv_spawn(&w.loop, &w.process, &opts);
   for (size_t i = 0; i < ne; ++i)
     SAFE_FREE(env[i]);
@@ -196,8 +192,7 @@ void http_renderer_process(http_renderer_process_request_t *r, atomic_t *cancell
     e = uv_fs_link(NULL, &fs, r->stage_file, r->output_path, NULL);
     uv_fs_req_cleanup(&fs);
     if (e) {
-      SAFE_SNPRINTF(result->error, sizeof(result->error), "Cannot save without replacing an existing file: %s",
-                    uv_strerror(e));
+      SAFE_SNPRINTF(result->error, sizeof(result->error), "Cannot save without replacing an existing file: %s", uv_strerror(e));
       return;
     }
     SAFE_STRNCPY(result->output_path, r->output_path, sizeof(result->output_path));

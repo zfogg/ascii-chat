@@ -105,6 +105,12 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   }
   defer(SAFE_FREE(cache_path));
 
+  /* A cache miss is expected on first launch.  Check existence through the
+   * platform layer before opening so Windows does not turn the missing file
+   * into a stale errno-stack notification. */
+  if (platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0)
+    return ASCIICHAT_OK;
+
   FILE *f = platform_fopen("file_stream", cache_path, "r");
   if (!f) {
     const char *error_msg = file_read_error_message(cache_path);
@@ -175,8 +181,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
       result->check_succeeded = true;
     } else {
       // Cache contains invalid version data - delete it
-      log_warn("Update cache contains invalid version data (current:%s, latest:%s) - deleting corrupted cache",
-               result->current_version, result->latest_version);
+      log_warn("Update cache contains invalid version data (current:%s, latest:%s) - deleting corrupted cache", result->current_version, result->latest_version);
       if (remove(cache_path) != 0) {
         log_warn("Failed to delete corrupted cache file: %s", cache_path);
       }
@@ -254,8 +259,7 @@ bool update_check_is_dismissed(const update_check_result_t *result) {
  * @param url_size Size of html_url buffer
  * @return true if parsing succeeded, false otherwise
  */
-static bool parse_github_release_json(const char *json, char *tag_name, size_t tag_size, char *html_url,
-                                      size_t url_size) {
+static bool parse_github_release_json(const char *json, char *tag_name, size_t tag_size, char *html_url, size_t url_size) {
   if (!json) {
     return false;
   }
@@ -331,8 +335,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
       while (platform_access(test_gate, PLATFORM_ACCESS_EXISTS) != 0 && time_get_ns() < deadline)
         platform_sleep_ms(10);
     }
-    SAFE_STRNCPY(result->release_url, "https://github.com/zfogg/ascii-chat/releases/latest",
-                 sizeof(result->release_url));
+    SAFE_STRNCPY(result->release_url, "https://github.com/zfogg/ascii-chat/releases/latest", sizeof(result->release_url));
     result->check_succeeded = true;
     semantic_version_t current_ver = version_parse(result->current_version);
     semantic_version_t latest_ver = version_parse(result->latest_version);
@@ -344,13 +347,6 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return ASCIICHAT_OK;
   }
 #endif
-
-  // Test DNS connectivity first
-  if (!dns_test_connectivity(GITHUB_API_HOSTNAME)) {
-    log_warn("No internet connectivity detected, skipping update check");
-    // Don't update cache - we'll retry when online
-    return SET_ERRNO(ERROR_NETWORK, "DNS connectivity test failed");
-  }
 
   // Fetch latest release from GitHub API
   log_info("Checking for updates from GitHub releases...");
@@ -389,8 +385,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   semantic_version_t latest_ver = version_parse(result->latest_version);
 
   if (!current_ver.valid || !latest_ver.valid) {
-    log_warn("Failed to parse version strings for comparison (current: %s, latest: %s)", result->current_version,
-             result->latest_version);
+    log_warn("Failed to parse version strings for comparison (current: %s, latest: %s)", result->current_version, result->latest_version);
     result->update_available = false;
   } else {
     int cmp = version_compare(latest_ver, current_ver);
@@ -420,8 +415,7 @@ static bool is_homebrew_install(void) {
     return false;
   }
 
-  return (strstr(exe_path, "/Cellar/ascii-chat") != NULL || strstr(exe_path, "/opt/homebrew/") != NULL ||
-          strstr(exe_path, "/usr/local/Cellar/") != NULL);
+  return (strstr(exe_path, "/Cellar/ascii-chat") != NULL || strstr(exe_path, "/opt/homebrew/") != NULL || strstr(exe_path, "/usr/local/Cellar/") != NULL);
 }
 
 /**
@@ -481,16 +475,13 @@ const char *update_check_get_aur_helper(void) {
   if (helper == -1) {
     const char *paru[] = {"paru", "--version", NULL};
     const char *yay[] = {"yay", "--version", NULL};
-    helper = platform_execute_subprocess("paru", paru, NULL, 0, NULL, NULL) == 0 ? 1
-             : platform_execute_subprocess("yay", yay, NULL, 0, NULL, NULL) == 0 ? 2
-                                                                                 : 0;
+    helper = platform_execute_subprocess("paru", paru, NULL, 0, NULL, NULL) == 0 ? 1 : platform_execute_subprocess("yay", yay, NULL, 0, NULL, NULL) == 0 ? 2 : 0;
     atomic_store(&cached_helper, helper);
   }
   return helper == 1 ? "paru" : helper == 2 ? "yay" : NULL;
 }
 
-void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
-                                         size_t buffer_size) {
+void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer, size_t buffer_size) {
   if (!buffer || buffer_size == 0) {
     return;
   }
@@ -525,8 +516,7 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
   case INSTALL_METHOD_GITHUB:
   case INSTALL_METHOD_UNKNOWN:
   default:
-    snprintf(buffer, buffer_size, "https://github.com/zfogg/ascii-chat/releases/tag/%s",
-             latest_version ? latest_version : "latest");
+    snprintf(buffer, buffer_size, "https://github.com/zfogg/ascii-chat/releases/tag/%s", latest_version ? latest_version : "latest");
     break;
   }
 }
@@ -544,10 +534,8 @@ void update_check_format_notification(const update_check_result_t *result, char 
   // Keep the notification useful even when it is displayed in a log line:
   // identify the versions, provide an actionable command or download URL, and
   // point to the exact GitHub release that was returned by the API.
-  snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s. Release notes: %s", result->current_version,
-           result->latest_version,
-           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion,
-           result->release_url);
+  snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s. Release notes: %s", result->current_version, result->latest_version,
+           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion, result->release_url);
 }
 
 asciichat_error_t update_check_startup(update_check_result_t *result) {
@@ -558,8 +546,7 @@ asciichat_error_t update_check_startup(update_check_result_t *result) {
   asciichat_error_t cache_err = load_optional_cache(target);
   if (cache_err == ASCIICHAT_OK && update_check_is_cache_fresh(target)) {
     // Cache is fresh, use it
-    log_debug("Using cached update check result (age: %.1f days)",
-              (time(NULL) - target->last_check_time) / (double)SEC_PER_DAY);
+    log_debug("Using cached update check result (age: %.1f days)", (time(NULL) - target->last_check_time) / (double)SEC_PER_DAY);
     return ASCIICHAT_OK;
   }
 

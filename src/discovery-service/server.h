@@ -154,6 +154,4 @@ void acds_server_shutdown(acds_server_t *server);
 void acds_on_host_announcement(const acip_host_announcement_t *, acip_transport_t *, const char *, void *);
 void acds_send_current_host(acds_server_t *, acip_transport_t *, const uint8_t[16]);
 
-void acds_on_host_announcement_ex(const acip_host_announcement_t *announcement, const void *metadata,
-                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
-                                  void *app_ctx);
+void acds_on_host_announcement_ex(const acip_host_announcement_t *announcement, const void *metadata, size_t metadata_length, acip_transport_t *transport, const char *client_ip, void *app_ctx);

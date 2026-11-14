@@ -191,8 +191,7 @@ int format_option_default_value_str(const option_descriptor_t *desc, char *buf, 
 
   // For callback options with string defaults (no enum, no numeric range)
   // Treat default_value as a const char* string pointer
-  if (desc->type == OPTION_TYPE_CALLBACK && desc->default_value && desc->metadata.enum_values == NULL &&
-      desc->metadata.numeric_range.max == 0 && desc->metadata.numeric_range.min == 0) {
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->default_value && desc->metadata.enum_values == NULL && desc->metadata.numeric_range.max == 0 && desc->metadata.numeric_range.min == 0) {
     const char *str_default = (const char *)desc->default_value;
     if (str_default && str_default[0] != '\0') {
       return safe_snprintf(buf, bufsize, "%s", str_default);
@@ -252,8 +251,7 @@ bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mode_t mo
 void ensure_descriptor_capacity(options_builder_t *builder) {
   if (builder->num_descriptors >= builder->descriptor_capacity) {
     size_t new_capacity = builder->descriptor_capacity * 2;
-    option_descriptor_t *new_descriptors =
-        SAFE_REALLOC(builder->descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
+    option_descriptor_t *new_descriptors = SAFE_REALLOC(builder->descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
     if (!new_descriptors) {
       log_fatal("Failed to reallocate descriptors array");
       return;
@@ -269,8 +267,7 @@ void ensure_descriptor_capacity(options_builder_t *builder) {
 void ensure_dependency_capacity(options_builder_t *builder) {
   if (builder->num_dependencies >= builder->dependency_capacity) {
     size_t new_capacity = builder->dependency_capacity * 2;
-    option_dependency_t *new_dependencies =
-        SAFE_REALLOC(builder->dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
+    option_dependency_t *new_dependencies = SAFE_REALLOC(builder->dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
     if (!new_dependencies) {
       log_fatal("Failed to reallocate dependencies array");
       return;
@@ -289,8 +286,7 @@ void ensure_positional_arg_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_POSITIONAL_ARG_CAPACITY;
 
-    positional_arg_descriptor_t *new_positional = SAFE_REALLOC(
-        builder->positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
+    positional_arg_descriptor_t *new_positional = SAFE_REALLOC(builder->positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
     if (!new_positional) {
       log_fatal("Failed to reallocate positional_args array");
       return;
@@ -309,8 +305,7 @@ static void ensure_usage_line_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    usage_descriptor_t *new_usage =
-        SAFE_REALLOC(builder->usage_lines, new_capacity * sizeof(usage_descriptor_t), usage_descriptor_t *);
+    usage_descriptor_t *new_usage = SAFE_REALLOC(builder->usage_lines, new_capacity * sizeof(usage_descriptor_t), usage_descriptor_t *);
     if (!new_usage) {
       log_fatal("Failed to reallocate usage_lines array");
       return;
@@ -329,8 +324,7 @@ static void ensure_example_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    example_descriptor_t *new_examples =
-        SAFE_REALLOC(builder->examples, new_capacity * sizeof(example_descriptor_t), example_descriptor_t *);
+    example_descriptor_t *new_examples = SAFE_REALLOC(builder->examples, new_capacity * sizeof(example_descriptor_t), example_descriptor_t *);
     if (!new_examples) {
       log_fatal("Failed to reallocate examples array");
       return;
@@ -349,8 +343,7 @@ static void ensure_mode_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    help_mode_descriptor_t *new_modes =
-        SAFE_REALLOC(builder->modes, new_capacity * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
+    help_mode_descriptor_t *new_modes = SAFE_REALLOC(builder->modes, new_capacity * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
     if (!new_modes) {
       log_fatal("Failed to reallocate modes array");
       return;
@@ -366,8 +359,7 @@ static void ensure_custom_section_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    custom_section_descriptor_t *new_sections = SAFE_REALLOC(
-        builder->custom_sections, new_capacity * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
+    custom_section_descriptor_t *new_sections = SAFE_REALLOC(builder->custom_sections, new_capacity * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
     if (!new_sections) {
       log_fatal("Failed to reallocate custom sections array");
       return;
@@ -495,9 +487,8 @@ options_builder_t *options_builder_from_preset(const options_config_t *preset) {
   // Copy all positional arguments
   for (size_t i = 0; i < preset->num_positional_args; i++) {
     const positional_arg_descriptor_t *pos_arg = &preset->positional_args[i];
-    options_builder_add_positional(builder, pos_arg->name, pos_arg->help_text, pos_arg->required,
-                                   pos_arg->section_heading, pos_arg->examples, pos_arg->num_examples,
-                                   pos_arg->mode_bitmask, pos_arg->parse_fn);
+    options_builder_add_positional(builder, pos_arg->name, pos_arg->help_text, pos_arg->required, pos_arg->section_heading, pos_arg->examples, pos_arg->num_examples, pos_arg->mode_bitmask,
+                                   pos_arg->parse_fn);
   }
 
   return builder;
@@ -555,8 +546,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
 
   // Allocate and copy positional args
   if (builder->num_positional_args > 0) {
-    config->positional_args =
-        SAFE_MALLOC(builder->num_positional_args * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
+    config->positional_args = SAFE_MALLOC(builder->num_positional_args * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
     if (!config->positional_args) {
       SAFE_FREE(config->descriptors);
       SAFE_FREE(config->dependencies);
@@ -564,8 +554,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate positional args");
       return NULL;
     }
-    memcpy(config->positional_args, builder->positional_args,
-           builder->num_positional_args * sizeof(positional_arg_descriptor_t));
+    memcpy(config->positional_args, builder->positional_args, builder->num_positional_args * sizeof(positional_arg_descriptor_t));
     config->num_positional_args = builder->num_positional_args;
   } else {
     config->positional_args = NULL;
@@ -631,8 +620,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
 
   // Allocate and copy custom sections
   if (builder->num_custom_sections > 0) {
-    config->custom_sections =
-        SAFE_MALLOC(builder->num_custom_sections * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
+    config->custom_sections = SAFE_MALLOC(builder->num_custom_sections * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
     if (!config->custom_sections) {
       SAFE_FREE(config->descriptors);
       SAFE_FREE(config->dependencies);
@@ -644,8 +632,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate custom sections");
       return NULL;
     }
-    memcpy(config->custom_sections, builder->custom_sections,
-           builder->num_custom_sections * sizeof(custom_section_descriptor_t));
+    memcpy(config->custom_sections, builder->custom_sections, builder->num_custom_sections * sizeof(custom_section_descriptor_t));
     config->num_custom_sections = builder->num_custom_sections;
   } else {
     config->custom_sections = NULL;
@@ -695,8 +682,7 @@ void options_config_destroy(options_config_t *config) {
 // Adding Options
 // ============================================================================
 
-void options_builder_add_bool(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
-                              bool default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_bool(options_builder_t *builder, const char *long_name, char short_name, size_t offset, bool default_value, const char *help_text, const char *group, bool required,
                               const char *env_var_name) {
   ensure_descriptor_capacity(builder);
 
@@ -719,8 +705,7 @@ void options_builder_add_bool(options_builder_t *builder, const char *long_name,
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
-                             int default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset, int default_value, const char *help_text, const char *group, bool required,
                              const char *env_var_name, bool (*validate)(const void *)) {
   ensure_descriptor_capacity(builder);
 
@@ -748,11 +733,8 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
-                                           size_t offset, int default_value, const char *help_text, const char *group,
-                                           bool required, const char *env_var_name,
-                                           bool (*validate)(const void *options_struct),
-                                           const option_metadata_t *metadata) {
+void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, int default_value, const char *help_text, const char *group,
+                                           bool required, const char *env_var_name, bool (*validate)(const void *options_struct), const option_metadata_t *metadata) {
   ensure_descriptor_capacity(builder);
 
   if (g_int_defaults_counter >= 256) {
@@ -780,8 +762,7 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
-                                const char *default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const char *default_value, const char *help_text, const char *group, bool required,
                                 const char *env_var_name, bool (*validate)(const void *)) {
   ensure_descriptor_capacity(builder);
 
@@ -818,8 +799,7 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
-                                double default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset, double default_value, const char *help_text, const char *group, bool required,
                                 const char *env_var_name, bool (*validate)(const void *), bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
@@ -852,11 +832,8 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
-                                              size_t offset, double default_value, const char *help_text,
-                                              const char *group, bool required, const char *env_var_name,
-                                              bool (*validate)(const void *), const option_metadata_t *metadata,
-                                              bool optional_arg) {
+void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, double default_value, const char *help_text, const char *group,
+                                              bool required, const char *env_var_name, bool (*validate)(const void *), const option_metadata_t *metadata, bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   static double defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
@@ -888,10 +865,8 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_callback(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
-                                  const void *default_value, size_t value_size,
-                                  bool (*parse_fn)(const char *, void *, char **), const char *help_text,
-                                  const char *group, bool required, const char *env_var_name) {
+void options_builder_add_callback(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
+                                  bool (*parse_fn)(const char *, void *, char **), const char *help_text, const char *group, bool required, const char *env_var_name) {
   (void)value_size; // Unused parameter
   ensure_descriptor_capacity(builder);
 
@@ -929,11 +904,8 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
  * @param env_var_name Environment variable fallback (or NULL)
  * @param optional_arg If true, argument is optional (parser receives NULL if not provided)
  */
-void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name,
-                                           size_t offset, const void *default_value, size_t value_size,
-                                           bool (*parse_fn)(const char *, void *, char **), const char *help_text,
-                                           const char *group, bool required, const char *env_var_name,
-                                           bool optional_arg) {
+void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
+                                           bool (*parse_fn)(const char *, void *, char **), const char *help_text, const char *group, bool required, const char *env_var_name, bool optional_arg) {
   (void)value_size; // Unused parameter
   ensure_descriptor_capacity(builder);
 
@@ -955,11 +927,9 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
-                                                size_t offset, const void *default_value, size_t value_size,
-                                                bool (*parse_fn)(const char *, void *, char **), const char *help_text,
-                                                const char *group, bool required, const char *env_var_name,
-                                                bool optional_arg, const option_metadata_t *metadata) {
+void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
+                                                bool (*parse_fn)(const char *, void *, char **), const char *help_text, const char *group, bool required, const char *env_var_name, bool optional_arg,
+                                                const option_metadata_t *metadata) {
   (void)value_size; // Unused parameter
   ensure_descriptor_capacity(builder);
 
@@ -982,8 +952,7 @@ void options_builder_add_callback_with_metadata(options_builder_t *builder, cons
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
-void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name,
-                                void (*action_fn)(void), const char *help_text, const char *group) {
+void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name, void (*action_fn)(void), const char *help_text, const char *group) {
   ensure_descriptor_capacity(builder);
 
   option_descriptor_t desc = {.long_name = long_name,
@@ -1024,8 +993,7 @@ void options_builder_add_descriptor(options_builder_t *builder, const option_des
 }
 
 void options_builder_set_string_parser(options_builder_t *builder, bool (*parser)(const char *, void *, char **)) {
-  if (builder && builder->num_descriptors &&
-      builder->descriptors[builder->num_descriptors - 1].type == OPTION_TYPE_STRING)
+  if (builder && builder->num_descriptors && builder->descriptors[builder->num_descriptors - 1].type == OPTION_TYPE_STRING)
     builder->descriptors[builder->num_descriptors - 1].parse_fn = parser;
 }
 
@@ -1067,8 +1035,7 @@ static int find_descriptor_in_builder(const options_builder_t *builder, const ch
   return -1;
 }
 
-void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
-                                     const char **descriptions) {
+void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values, const char **descriptions) {
   if (!builder || !option_name || !values) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
     return;
@@ -1085,8 +1052,7 @@ void options_builder_set_enum_values(options_builder_t *builder, const char *opt
   desc->metadata.enum_descriptions = descriptions;
 }
 
-void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max,
-                                       int step) {
+void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max, int step) {
   if (!builder || !option_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
     return;
@@ -1121,8 +1087,7 @@ void options_builder_set_examples(options_builder_t *builder, const char *option
   // Note: examples array must be null-terminated
 }
 
-void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
-                                    option_input_type_t input_type) {
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name, option_input_type_t input_type) {
   if (!builder || !option_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
     return;
@@ -1154,8 +1119,7 @@ void options_builder_mark_as_list(options_builder_t *builder, const char *option
   desc->metadata.is_list = true;
 }
 
-void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name,
-                                               const char *default_value) {
+void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name, const char *default_value) {
   if (!builder || !option_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
     return;
@@ -1175,36 +1139,26 @@ void options_builder_set_default_value_display(options_builder_t *builder, const
 // Managing Dependencies
 // ============================================================================
 
-void options_builder_add_dependency_requires(options_builder_t *builder, const char *option_name,
-                                             const char *depends_on, const char *error_message) {
+void options_builder_add_dependency_requires(options_builder_t *builder, const char *option_name, const char *depends_on, const char *error_message) {
   ensure_dependency_capacity(builder);
 
-  option_dependency_t dep = {.option_name = option_name,
-                             .type = DEPENDENCY_REQUIRES,
-                             .depends_on = depends_on,
-                             .error_message = error_message};
+  option_dependency_t dep = {.option_name = option_name, .type = DEPENDENCY_REQUIRES, .depends_on = depends_on, .error_message = error_message};
 
   builder->dependencies[builder->num_dependencies++] = dep;
 }
 
-void options_builder_add_dependency_conflicts(options_builder_t *builder, const char *option_name,
-                                              const char *conflicts_with, const char *error_message) {
+void options_builder_add_dependency_conflicts(options_builder_t *builder, const char *option_name, const char *conflicts_with, const char *error_message) {
   ensure_dependency_capacity(builder);
 
-  option_dependency_t dep = {.option_name = option_name,
-                             .type = DEPENDENCY_CONFLICTS,
-                             .depends_on = conflicts_with,
-                             .error_message = error_message};
+  option_dependency_t dep = {.option_name = option_name, .type = DEPENDENCY_CONFLICTS, .depends_on = conflicts_with, .error_message = error_message};
 
   builder->dependencies[builder->num_dependencies++] = dep;
 }
 
-void options_builder_add_dependency_implies(options_builder_t *builder, const char *option_name, const char *implies,
-                                            const char *error_message) {
+void options_builder_add_dependency_implies(options_builder_t *builder, const char *option_name, const char *implies, const char *error_message) {
   ensure_dependency_capacity(builder);
 
-  option_dependency_t dep = {
-      .option_name = option_name, .type = DEPENDENCY_IMPLIES, .depends_on = implies, .error_message = error_message};
+  option_dependency_t dep = {.option_name = option_name, .type = DEPENDENCY_IMPLIES, .depends_on = implies, .error_message = error_message};
 
   builder->dependencies[builder->num_dependencies++] = dep;
 }
@@ -1237,11 +1191,8 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
 // Positional Arguments
 // ============================================================================
 
-void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
-                                    const char *section_heading, const char **examples, size_t num_examples,
-                                    option_mode_bitmask_t mode_bitmask,
-                                    int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
-                                                    char **error_msg)) {
+void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required, const char *section_heading, const char **examples, size_t num_examples,
+                                    option_mode_bitmask_t mode_bitmask, int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg)) {
   if (!builder || !name || !parse_fn)
     return;
 
@@ -1287,34 +1238,32 @@ static void track_owned_string_builder(options_builder_t *builder, char *str) {
   builder->owned_strings_builder[builder->num_owned_strings_builder++] = str;
 }
 
-void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
-                               const char *description) {
+void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options, const char *description) {
   if (!builder || !description)
     return;
 
   ensure_usage_line_capacity(builder);
 
-  usage_descriptor_t usage = {
-      .mode = mode, .positional = positional, .show_options = show_options, .description = description};
+  usage_descriptor_t usage = {.mode = mode, .positional = positional, .show_options = show_options, .description = description};
 
   builder->usage_lines[builder->num_usage_lines++] = usage;
 }
 
-void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
-                                 const char *description, bool owns_args) {
+void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args, const char *description, bool owns_args) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {.mode_bitmask = mode_bitmask,
-                                  .description = description,
-                                  .owns_args_memory = owns_args,
-                                  .is_utility_command = false};
+  example_descriptor_t example = {.mode_bitmask = mode_bitmask, .description = description, .owns_args_memory = owns_args, .is_utility_command = false};
 
   if (owns_args) {
-    // If owning, duplicate the string and track it
-    char *owned_args = platform_strdup(args);
+    // Examples are application-owned strings and must be released through
+    // SAFE_FREE, including release builds that use mimalloc.
+    size_t args_len = args ? strlen(args) + 1 : 1;
+    char *owned_args = SAFE_MALLOC(args_len, char *);
+    if (owned_args && args)
+      memcpy(owned_args, args, args_len);
     if (!owned_args) {
       log_fatal("Failed to duplicate example args string");
       return;
@@ -1334,17 +1283,13 @@ void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitma
  * Allows marking utility commands (like pbpaste, grep, etc.) that shouldn't
  * be prepended with program name in help output.
  */
-void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
-                                         const char *description, bool is_utility_command) {
+void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args, const char *description, bool is_utility_command) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {.mode_bitmask = mode_bitmask,
-                                  .description = description,
-                                  .owns_args_memory = false,
-                                  .is_utility_command = is_utility_command};
+  example_descriptor_t example = {.mode_bitmask = mode_bitmask, .description = description, .owns_args_memory = false, .is_utility_command = is_utility_command};
 
   if (args) {
     example.args = args;
@@ -1364,8 +1309,7 @@ void options_builder_add_mode(options_builder_t *builder, const char *name, cons
   builder->modes[builder->num_modes++] = mode;
 }
 
-void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content,
-                                        option_mode_bitmask_t mode_bitmask) {
+void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content, option_mode_bitmask_t mode_bitmask) {
   if (!builder || !heading || !content)
     return;
 
@@ -1376,8 +1320,7 @@ void options_builder_add_custom_section(options_builder_t *builder, const char *
   builder->custom_sections[builder->num_custom_sections++] = section;
 }
 
-asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc,
-                                                  char **remaining_argv, void *options_struct) {
+asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc, char **remaining_argv, void *options_struct) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
@@ -1461,6 +1404,12 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     if (desc->env_var_name) {
       env_value = SAFE_GETENV(desc->env_var_name);
     }
+    // Windows can expose an environment variable with an empty value as a
+    // non-NULL string. Empty values are equivalent to unset for option
+    // precedence; never pass them to parsers as explicit input.
+    if (env_value && env_value[0] == '\0') {
+      env_value = NULL;
+    }
     // Check shorter alias names as fallback if primary not set
     if (!env_value) {
       if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_PORT") == 0) {
@@ -1469,13 +1418,17 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
         env_value = SAFE_GETENV("WS_PORT");
       }
     }
+    if (env_value && env_value[0] == '\0') {
+      env_value = NULL;
+    }
 
     // Use handler registry to apply environment variables and defaults
     if (desc->type >= 0 && desc->type < (int)(NUM_OPTION_TYPES)) {
       if (g_builder_handlers[desc->type].apply_env) {
         asciichat_error_t result = g_builder_handlers[desc->type].apply_env(field, env_value, desc);
-        if (result != ASCIICHAT_OK)
+        if (result != ASCIICHAT_OK) {
           return result;
+        }
       }
     } else if (desc->type == OPTION_TYPE_CALLBACK && desc->parse_fn && desc->default_value) {
       // Special handling for callbacks with parse_fn
@@ -1585,8 +1538,7 @@ const option_descriptor_t *find_option_descriptor(const options_config_t *config
  * @param consumed_count Output: number of argv elements consumed (1 or 2)
  * @return Error code
  */
-static asciichat_error_t parse_single_flag_with_mode(const options_config_t *config, char **argv, int argv_index,
-                                                     int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
+static asciichat_error_t parse_single_flag_with_mode(const options_config_t *config, char **argv, int argv_index, int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
                                                      int *consumed_count) {
   *consumed_count = 1;
   // Validate argv_index is within bounds to prevent SIGBUS
@@ -1645,14 +1597,12 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   // Check if option applies to current mode based on the passed mode_bitmask
   // Binary-level options (OPTION_MODE_BINARY) are always allowed regardless of detected mode
   // Only check mode restrictions for mode-specific options
-  if (desc->mode_bitmask != 0 && desc->mode_bitmask != OPTION_MODE_BINARY &&
-      !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
+  if (desc->mode_bitmask != 0 && desc->mode_bitmask != OPTION_MODE_BINARY && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
     // Option has specific mode restrictions - check if it applies to current mode
     if (!(desc->mode_bitmask & mode_bitmask)) {
       // Option not available in current mode - show where it IS available
       const char *available_modes = format_available_modes(desc->mode_bitmask);
-      return SET_ERRNO(ERROR_USAGE, "Option %s is not available in this mode. Available in modes: %s", arg,
-                       available_modes);
+      return SET_ERRNO(ERROR_USAGE, "Option %s is not available in this mode. Available in modes: %s", arg, available_modes);
     }
   }
 
@@ -1665,8 +1615,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // Value came from --name=value
       opt_value = long_opt_value;
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1]) &&
-               !((strcmp(desc->long_name, "test-pattern") == 0 || strcmp(desc->long_name, "zalgo") == 0) &&
-                 strspn(argv[argv_index + 1], "0123456789") != strlen(argv[argv_index + 1]))) {
+               !((strcmp(desc->long_name, "test-pattern") == 0 || strcmp(desc->long_name, "zalgo") == 0) && strspn(argv[argv_index + 1], "0123456789") != strlen(argv[argv_index + 1]))) {
       // An optional numeric selector must not consume a positional host/session.
       // Value from next argument
       opt_value = argv[argv_index + 1];
@@ -1690,10 +1639,8 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value
       const char *next_arg = argv[argv_index + 1];
-      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 ||
-          strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
-          strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
-          strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
+      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
+          strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 || strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
         // Next argument is a boolean value, consume it
         opt_value = next_arg;
         *consumed_count = 2;
@@ -1751,8 +1698,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
  * @param options_struct Options struct to populate
  * @param detected_mode Detected mode for filtering positional args by mode_bitmask
  */
-static asciichat_error_t options_config_parse_unified(const options_config_t *config, int argc, char **argv,
-                                                      void *options_struct, option_mode_bitmask_t detected_mode) {
+static asciichat_error_t options_config_parse_unified(const options_config_t *config, int argc, char **argv, void *options_struct, option_mode_bitmask_t detected_mode) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
@@ -1789,8 +1735,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 
     // Parse this flag with mode validation using the detected_mode bitmask
     int consumed = 0;
-    asciichat_error_t err =
-        parse_single_flag_with_mode(config, argv, i, argc, options_struct, detected_mode, &consumed);
+    asciichat_error_t err = parse_single_flag_with_mode(config, argv, i, argc, options_struct, detected_mode, &consumed);
     if (err != ASCIICHAT_OK) {
       return err;
     }
@@ -1853,9 +1798,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
-                                       option_mode_bitmask_t detected_mode, int *remaining_argc,
-                                       char ***remaining_argv) {
+asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct, option_mode_bitmask_t detected_mode, int *remaining_argc, char ***remaining_argv) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
@@ -1878,8 +1821,7 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t options_config_validate(const options_config_t *config, const void *options_struct,
-                                          char **error_message) {
+asciichat_error_t options_config_validate(const options_config_t *config, const void *options_struct, char **error_message) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
@@ -1905,9 +1847,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       if (error_message) {
         asciichat_error_t format_result;
         if (desc->env_var_name) {
-          format_result =
-              builder_format_error(error_message, "Required option --%s is not set (set %s env var or use --%s)",
-                                   desc->long_name, desc->env_var_name, desc->long_name);
+          format_result = builder_format_error(error_message, "Required option --%s is not set (set %s env var or use --%s)", desc->long_name, desc->env_var_name, desc->long_name);
         } else {
           format_result = builder_format_error(error_message, "Required option --%s is not set", desc->long_name);
         }
@@ -1934,11 +1874,9 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
           if (dep->error_message) {
             *error_message = platform_strdup(dep->error_message);
           } else {
-            asciichat_error_t format_result = builder_format_error(error_message, "Option --%s requires --%s to be set",
-                                                                   dep->option_name, dep->depends_on);
+            asciichat_error_t format_result = builder_format_error(error_message, "Option --%s requires --%s to be set", dep->option_name, dep->depends_on);
             if (format_result != ASCIICHAT_OK) {
-              log_error("Failed to format error message for option dependency: --%s requires --%s", dep->option_name,
-                        dep->depends_on);
+              log_error("Failed to format error message for option dependency: --%s requires --%s", dep->option_name, dep->depends_on);
               *error_message = NULL;
             }
           }
@@ -1953,11 +1891,9 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
           if (dep->error_message) {
             *error_message = platform_strdup(dep->error_message);
           } else {
-            asciichat_error_t format_result = builder_format_error(error_message, "Option --%s conflicts with --%s",
-                                                                   dep->option_name, dep->depends_on);
+            asciichat_error_t format_result = builder_format_error(error_message, "Option --%s conflicts with --%s", dep->option_name, dep->depends_on);
             if (format_result != ASCIICHAT_OK) {
-              log_error("Failed to format error message for option conflict: --%s conflicts with --%s",
-                        dep->option_name, dep->depends_on);
+              log_error("Failed to format error message for option conflict: --%s conflicts with --%s", dep->option_name, dep->depends_on);
               *error_message = NULL;
             }
           }
@@ -1992,8 +1928,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
   const options_t *opts = (const options_t *)options_struct;
   if (opts->color && opts->color_mode == TERM_COLOR_NONE) {
     if (error_message) {
-      asciichat_error_t format_result = builder_format_error(
-          error_message, "Option --color cannot be used with --color-mode=none (conflicting color settings)");
+      asciichat_error_t format_result = builder_format_error(error_message, "Option --color cannot be used with --color-mode=none (conflicting color settings)");
       if (format_result != ASCIICHAT_OK) {
         log_error("Failed to format error message for color option conflict");
         *error_message = NULL;

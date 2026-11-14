@@ -127,8 +127,7 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
     break;
   }
 
-  uint32_t priority =
-      (((uint32_t)type_preference) << 24) | (((uint32_t)local_preference) << 8) | (256 - (uint32_t)component_id);
+  uint32_t priority = (((uint32_t)type_preference) << 24) | (((uint32_t)local_preference) << 8) | (256 - (uint32_t)component_id);
 
   return priority;
 }
@@ -329,8 +328,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
 
-  int written = safe_snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation,
-                              candidate->component_id, ice_protocol_name(candidate->protocol), candidate->priority,
+  int written = safe_snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation, candidate->component_id, ice_protocol_name(candidate->protocol), candidate->priority,
                               candidate->ip_address, candidate->port, ice_candidate_type_name(candidate->type));
 
   if (written < 0 || (size_t)written >= line_size) {
@@ -341,8 +339,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   char *pos = line + written;
 
   // 2. If srflx/prflx/relay: append raddr and rport
-  if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
-      candidate->type == ICE_CANDIDATE_RELAY) {
+  if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX || candidate->type == ICE_CANDIDATE_RELAY) {
     if (candidate->raddr[0] != '\0') {
       int appended = safe_snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
       if (appended < 0 || (size_t)appended >= remaining) {
@@ -420,8 +417,7 @@ asciichat_error_t ice_gather_candidates(const ice_config_t *config) {
  * ICE Connectivity
  * ============================================================================ */
 
-asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const ice_candidate_t *candidate,
-                                           const char *mid) {
+asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const ice_candidate_t *candidate, const char *mid) {
   if (!pc || !candidate || !mid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid remote candidate parameters");
   }
@@ -431,8 +427,7 @@ asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const i
     return SET_ERRNO(ERROR_INVALID_PARAM, "Candidate missing IP address or port");
   }
 
-  log_debug("ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s", candidate->ip_address,
-            candidate->port, ice_candidate_type_name(candidate->type), candidate->foundation, mid);
+  log_debug("ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s", candidate->ip_address, candidate->port, ice_candidate_type_name(candidate->type), candidate->foundation, mid);
 
   // Format candidate to SDP attribute line for libdatachannel
   char candidate_line[NETWORK_WEBRTC_ICE_CANDIDATE_LINE_BUFFER_SIZE];
@@ -456,11 +451,9 @@ bool ice_is_connected(webrtc_peer_connection_t *pc) {
 }
 
 // Forward declaration of C++ implementation (in ice_selected_pair.cpp)
-asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
-                                             ice_candidate_t *remote_candidate);
+asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate);
 
-asciichat_error_t ice_get_selected_pair(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
-                                        ice_candidate_t *remote_candidate) {
+asciichat_error_t ice_get_selected_pair(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate) {
   // Delegate to C++ implementation which uses libdatachannel's C++ API
   return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
 }

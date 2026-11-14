@@ -54,8 +54,7 @@ static asciichat_error_t peer_send(acip_transport_t *transport, const void *data
   if (plan.encrypt) {
     packet_header_t header;
     size_t encrypted_length = 0;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header),
-                                 plan.ciphertext_capacity, &header, &encrypted_length);
+    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)output->data + sizeof(header), plan.ciphertext_capacity, &header, &encrypted_length);
     if (result != ASCIICHAT_OK) {
       buffer_release(output->data);
       SAFE_FREE(output);
@@ -102,8 +101,7 @@ void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   SAFE_FREE(peer);
 }
 
-browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
-                                          const uint8_t *expected_key) {
+browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity, const uint8_t *expected_key) {
   browser_peer_crypto_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_peer_crypto_t *);
   if (!peer) {
     SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security state");
@@ -120,8 +118,7 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
   peer->security.require_encryption = policy.encrypt;
   crypto_handshake_context_t *ctx = &peer->security.handshake;
   if (result == ASCIICHAT_OK)
-    result = policy.has_password ? crypto_handshake_init_with_password("browser_peer", ctx, server, password)
-                                 : crypto_handshake_init("browser_peer", ctx, server);
+    result = policy.has_password ? crypto_handshake_init_with_password("browser_peer", ctx, server, password) : crypto_handshake_init("browser_peer", ctx, server);
   if (result != ASCIICHAT_OK) {
     peer_crypto_destroy(peer);
     return NULL;
@@ -219,8 +216,7 @@ asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *d
     result = packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
     if (result != ASCIICHAT_OK || !caps.requires_verification)
       return result;
-    return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO,
-                                     peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
+    return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
   }
   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode);
   if (packet_is_initial_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
@@ -235,9 +231,8 @@ asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *d
   }
   bool consumed = false;
   uint64_t sequence;
-  asciichat_error_t result =
-      acip_security_open(&peer->security.handshake.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data,
-                         length, (uint8_t **)&peer->received, &peer->received_length, &sequence, &consumed);
+  asciichat_error_t result = acip_security_open(&peer->security.handshake.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data, length, (uint8_t **)&peer->received,
+                                                &peer->received_length, &sequence, &consumed);
   if (consumed) {
     buffer_release(peer->received);
     peer->received = NULL;

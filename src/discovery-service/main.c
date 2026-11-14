@@ -33,6 +33,7 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
@@ -72,15 +73,13 @@ static void acds_stats_provider(stats_view_t *view, void *data) {
     stats_view_add(view, "");
     stats_view_add(view, "SESSION                          PARTICIPANTS   HOST / MIGRATION");
     for (size_t i = 0; i < count; ++i)
-      stats_view_add(view, "%-32.32s %12u   %s / %s", rows[i].session_string, rows[i].participants,
-                     rows[i].host_ready ? "ready" : "negotiating", rows[i].migrating ? "active" : "none");
+      stats_view_add(view, "%-32.32s %12u   %s / %s", rows[i].session_string, rows[i].participants, rows[i].host_ready ? "ready" : "negotiating", rows[i].migrating ? "active" : "none");
     if (sessions > count)
       stats_view_add(view, "Showing first %zu of %llu sessions", count, (unsigned long long)sessions);
   }
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, sessions);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, participants);
-  stats_view_add(view, "Active sessions: %llu   Participants: %llu", (unsigned long long)sessions,
-                 (unsigned long long)participants);
+  stats_view_add(view, "Active sessions: %llu   Participants: %llu", (unsigned long long)sessions, (unsigned long long)participants);
 }
 
 static asciichat_error_t acds_init_fn(void *user_data) {
@@ -197,8 +196,7 @@ static asciichat_error_t acds_init_fn(void *user_data) {
 
       if (len > 0 && len < sizeof(config.stun_servers[0].host)) {
         config.stun_servers[config.stun_count].host_len = (uint8_t)len;
-        SAFE_STRNCPY(config.stun_servers[config.stun_count].host, token,
-                     sizeof(config.stun_servers[config.stun_count].host));
+        SAFE_STRNCPY(config.stun_servers[config.stun_count].host, token, sizeof(config.stun_servers[config.stun_count].host));
         log_info("Added STUN server: %s", token);
         config.stun_count++;
       } else if (len > 0) {
@@ -232,15 +230,13 @@ static asciichat_error_t acds_init_fn(void *user_data) {
 
       if (len > 0 && len < sizeof(config.turn_servers[0].url)) {
         config.turn_servers[config.turn_count].url_len = (uint8_t)len;
-        SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token,
-                     sizeof(config.turn_servers[config.turn_count].url));
+        SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token, sizeof(config.turn_servers[config.turn_count].url));
 
         if (turn_username_str && turn_username_str[0] != '\0') {
           size_t username_len = strlen(turn_username_str);
           if (username_len < sizeof(config.turn_servers[0].username)) {
             config.turn_servers[config.turn_count].username_len = (uint8_t)username_len;
-            SAFE_STRNCPY(config.turn_servers[config.turn_count].username, turn_username_str,
-                         sizeof(config.turn_servers[config.turn_count].username));
+            SAFE_STRNCPY(config.turn_servers[config.turn_count].username, turn_username_str, sizeof(config.turn_servers[config.turn_count].username));
           }
         }
 
@@ -248,13 +244,11 @@ static asciichat_error_t acds_init_fn(void *user_data) {
           size_t credential_len = strlen(turn_credential_str);
           if (credential_len < sizeof(config.turn_servers[0].credential)) {
             config.turn_servers[config.turn_count].credential_len = (uint8_t)credential_len;
-            SAFE_STRNCPY(config.turn_servers[config.turn_count].credential, turn_credential_str,
-                         sizeof(config.turn_servers[config.turn_count].credential));
+            SAFE_STRNCPY(config.turn_servers[config.turn_count].credential, turn_credential_str, sizeof(config.turn_servers[config.turn_count].credential));
           }
         }
 
-        log_info("Added TURN server: %s (username: %s)", token,
-                 turn_username_str && turn_username_str[0] ? turn_username_str : "<none>");
+        log_info("Added TURN server: %s (username: %s)", token, turn_username_str && turn_username_str[0] ? turn_username_str : "<none>");
         config.turn_count++;
       } else if (len > 0) {
         log_warn("TURN server URL too long (max 63 chars): %s", token);
@@ -318,8 +312,7 @@ static void acds_status_fn(void *user_data, ui_status_t *status) {
   (void)user_data;
   network_server_t *tcp = session_server_like_get_network_server();
   if (tcp)
-    ui_status_gather(tcp, NULL, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address,
-                     GET_OPTION(port), g_server.stats.start_time, "Discovery Service", false, status);
+    ui_status_gather(tcp, NULL, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, GET_OPTION(port), g_server.stats.start_time, "Discovery Service", false, status);
 }
 
 int acds_main(void) {

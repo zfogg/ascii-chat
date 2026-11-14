@@ -505,8 +505,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
 
   if (result <= 0) {
-    log_warn("TCP connection wait failed (result %d, socket error %d)", result,
-             result == 0 ? 0 : socket_get_last_error());
+    log_warn("TCP connection wait failed (result %d, socket error %d)", result, result == 0 ? 0 : socket_get_last_error());
     return false; // Timeout or error
   }
 

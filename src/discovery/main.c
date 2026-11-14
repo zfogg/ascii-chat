@@ -192,17 +192,14 @@ static void *discovery_audio_send_thread(void *user_data) {
       platform_sleep_ns(NS_PER_MS_INT);
       continue;
     }
-    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) !=
-        (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
+    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) != (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
       continue;
     ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
-    int size = client_audio_pipeline_capture(ctx->audio_pipeline, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS),
-                                             encoded, sizeof(encoded));
+    int size = client_audio_pipeline_capture(ctx->audio_pipeline, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), encoded, sizeof(encoded));
     if (size <= 0)
       continue;
     uint16_t frame_size = (uint16_t)size;
-    asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1,
-                                                          AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
+    asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1, AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
     if (result != ASCIICHAT_OK) {
       log_warn("Discovery audio send failed %s", asciichat_error_format(NULL, result));
       atomic_store_bool(&ctx->running, false);
@@ -234,9 +231,7 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
     for (size_t i = 0; i < count; ++i)
       energy += (double)samples[i] * samples[i];
   while (count) {
-    size_t chunk = count > (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS)
-                       ? (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS)
-                       : count;
+    size_t chunk = count > (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS) ? (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS) : count;
     asciichat_error_t result = audio_write_samples(receiver->audio, samples, (int)chunk);
     if (result != ASCIICHAT_OK)
       return result;
@@ -253,16 +248,13 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
     receiver->observed_audio_samples += observed_count;
     receiver->observed_audio_blocks++;
     if (receiver->observed_audio_blocks == 1 || receiver->observed_audio_blocks % 25 == 0)
-      log_info("Discovery decoded remote audio: blocks=%llu samples=%llu at_ns=%llu max_gap_ns=%llu",
-               (unsigned long long)receiver->observed_audio_blocks,
-               (unsigned long long)receiver->observed_audio_samples, (unsigned long long)now,
-               (unsigned long long)receiver->observed_audio_gap_ns);
+      log_info("Discovery decoded remote audio: blocks=%llu samples=%llu at_ns=%llu max_gap_ns=%llu", (unsigned long long)receiver->observed_audio_blocks,
+               (unsigned long long)receiver->observed_audio_samples, (unsigned long long)now, (unsigned long long)receiver->observed_audio_gap_ns);
   }
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t discovery_decode_opus(const void *data, size_t length, float *samples, size_t capacity,
-                                               size_t *decoded, void *context) {
+static asciichat_error_t discovery_decode_opus(const void *data, size_t length, float *samples, size_t capacity, size_t *decoded, void *context) {
   discovery_video_receiver_t *receiver = context;
   *decoded = 0;
   if (!receiver->audio)
@@ -278,8 +270,7 @@ static void discovery_host_pong(void *arg) {
   discovery_session_host_pong(arg);
 }
 
-static asciichat_error_t discovery_media_packet(network_connection_t *network, packet_type_t type, const void *payload,
-                                                size_t length, void *arg) {
+static asciichat_error_t discovery_media_packet(network_connection_t *network, packet_type_t type, const void *payload, size_t length, void *arg) {
   (void)network;
   discovery_video_receiver_t *receiver = arg;
   return session_protocol_dispatch(&receiver->protocol, type, payload, length);
@@ -288,9 +279,7 @@ static void *discovery_video_receive_thread(void *arg) {
   discovery_video_receiver_t *receiver = arg;
   network_connection_callbacks_t callbacks = {.packet = discovery_media_packet};
   receiver->result = network_connection_run(receiver->network, &callbacks, receiver);
-  if ((!atomic_load_bool(&receiver->running) || should_exit()) &&
-      (receiver->result == ASCIICHAT_OK || receiver->result == ERROR_NETWORK ||
-       receiver->result == ERROR_NETWORK_TIMEOUT))
+  if ((!atomic_load_bool(&receiver->running) || should_exit()) && (receiver->result == ASCIICHAT_OK || receiver->result == ERROR_NETWORK || receiver->result == ERROR_NETWORK_TIMEOUT))
     receiver->result = ASCIICHAT_OK;
   atomic_store_bool(&receiver->running, false);
   return NULL;
@@ -344,9 +333,8 @@ static void on_discovery_state_change(discovery_state_t new_state, void *user_da
     setup_started = 0;
   }
 
-  const char *state_names[] = {"INIT",         "CONNECTING_ACDS", "CREATING_SESSION", "JOINING_SESSION",
-                               "WAITING_PEER", "NEGOTIATING",     "STARTING_HOST",    "CONNECTING_HOST",
-                               "ACTIVE",       "MIGRATING",       "FAILED",           "ENDED"};
+  const char *state_names[] = {"INIT",          "CONNECTING_ACDS", "CREATING_SESSION", "JOINING_SESSION", "WAITING_PEER", "NEGOTIATING",
+                               "STARTING_HOST", "CONNECTING_HOST", "ACTIVE",           "MIGRATING",       "FAILED",       "ENDED"};
 
   if (new_state >= 0 && new_state < (int)(sizeof(state_names) / sizeof(state_names[0]))) {
     if (new_state == DISCOVERY_STATE_ACTIVE && g_discovery)
@@ -453,8 +441,7 @@ static asciichat_error_t discovery_send_settings(const options_t *values, uint32
  * Stops media workers before replacing borrowed transports, and preserves the
  * existing recovery deadline while awaiting ACDS rather than restarting failover.
  */
-static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                       void *user_data) {
+static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
   asciichat_error_t result = ASCIICHAT_OK;
@@ -551,8 +538,7 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
-                                      &host_capture);
+      result = platform_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture, &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
         return result;
@@ -585,12 +571,10 @@ role_dispatch:
         // In snapshot mode, if we haven't rendered any frames yet, don't exit yet
         // Wait until at least one frame has been displayed
         if (!snapshot_mode || g_snapshot_first_frame_rendered) {
-          log_debug("Exit condition met (snapshot_mode=%d, first_frame_rendered=%d)", snapshot_mode,
-                    g_snapshot_first_frame_rendered ? 1 : 0);
+          log_debug("Exit condition met (snapshot_mode=%d, first_frame_rendered=%d)", snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0);
           break;
         } else {
-          log_debug_every(5 * NS_PER_SEC_INT,
-                          "Waiting for first frame (snapshot_mode=true, first_frame_rendered=false)");
+          log_debug_every(5 * NS_PER_SEC_INT, "Waiting for first frame (snapshot_mode=true, first_frame_rendered=false)");
         }
       }
 
@@ -643,8 +627,8 @@ role_dispatch:
       session_capture_sleep_for_fps(capture);
     }
 
-    log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)",
-              snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0, discovery_session_is_active(g_discovery) ? 1 : 0);
+    log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)", snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0,
+              discovery_session_is_active(g_discovery) ? 1 : 0);
 
     discovery_host_audio_join(&host_capture);
     if (result == ASCIICHAT_OK && host_capture.result != ASCIICHAT_OK)
@@ -683,8 +667,7 @@ role_dispatch:
       bool enable_audio = GET_OPTION(audio_enabled);
       log_info("Discovery participant audio: %s", enable_audio ? "enabled" : "disabled");
       uint64_t advertised_revision = UINT64_MAX;
-      terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80,
-                                    .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
+      terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80, .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
       terminal_capabilities_packet_t packet;
       session_protocol_build_capabilities(advertised.cols, advertised.rows, &packet);
       result = acip_send_capabilities(transport, &packet, sizeof(packet));
@@ -693,23 +676,14 @@ role_dispatch:
       result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO | (enable_audio ? STREAM_TYPE_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
-      discovery_video_receiver_t receiver = {.network = session_participant_connection(g_discovery->participant_ctx),
-                                             .transport = transport,
-                                             .display = display,
-                                             .running = {0},
-                                             .result = ASCIICHAT_OK};
-      session_protocol_init(&receiver.protocol, transport,
-                            (session_protocol_media_t){.terminal_output = true,
-                                                       .on_frame = discovery_present_frame,
-                                                       .on_samples = discovery_play_samples,
-                                                       .decode_opus = discovery_decode_opus,
-                                                       .context = &receiver},
-                            (acip_client_callbacks_t){.on_pong = discovery_host_pong, .app_ctx = g_discovery});
+      discovery_video_receiver_t receiver = {
+          .network = session_participant_connection(g_discovery->participant_ctx), .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
+      session_protocol_init(
+          &receiver.protocol, transport,
+          (session_protocol_media_t){.terminal_output = true, .on_frame = discovery_present_frame, .on_samples = discovery_play_samples, .decode_opus = discovery_decode_opus, .context = &receiver},
+          (acip_client_callbacks_t){.on_pong = discovery_host_pong, .app_ctx = g_discovery});
       audio_context_t audio = {0};
-      session_connection_init(
-          &receiver.connection,
-          (session_connection_ops_t){discovery_media_interrupt, discovery_media_join, discovery_media_release},
-          &receiver);
+      session_connection_init(&receiver.connection, (session_connection_ops_t){discovery_media_interrupt, discovery_media_join, discovery_media_release}, &receiver);
       NAMED_REGISTER_ATOMIC(&receiver.running, "discovery.media_running", NULL);
       NAMED_REGISTER_ATOMIC(&receiver.connection.state, "discovery.media_state", NULL);
       if (enable_audio) {
@@ -722,8 +696,7 @@ role_dispatch:
         bool has_media_audio = media_source_has_audio(local_source);
         audio.capture_media_source = local_source;
         audio.playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio);
-        log_info("Discovery audio input: media=%d, microphone=%d", has_media_audio,
-                 audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio));
+        log_info("Discovery audio input: media=%d, microphone=%d", has_media_audio, audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio));
         client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(has_media_audio);
         config.flags.jitter_buffer = false;
         receiver.audio_pipeline = client_audio_pipeline_create(&config);
@@ -739,14 +712,12 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive",
-                                      discovery_video_receive_thread, &receiver);
+      result = platform_thread_create(&receiver.receiver_thread, "discovery_video_receive", discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result = platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
-                                        &receiver);
+        result = platform_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);
@@ -756,20 +727,16 @@ role_dispatch:
       result = session_connection_start(&receiver.connection);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
-      while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
-             atomic_load_bool(&receiver.running)) {
+      while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) && atomic_load_bool(&receiver.running)) {
         ASCII_OTEL_SCOPE(CLIENT_VIDEO_FRAME);
-        result =
-            session_protocol_update_settings(&advertised, &advertised_revision, discovery_send_settings, transport);
+        result = session_protocol_update_settings(&advertised, &advertised_revision, discovery_send_settings, transport);
         if (result != ASCIICHAT_OK)
           break;
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
         if (key != KEY_NONE)
           session_handle_keyboard_input(capture, display, key);
         uint64_t iteration_start = time_get_ns();
-        if (snapshot_mode && g_snapshot_first_frame_rendered_ns > 0 &&
-            time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_rendered_ns, iteration_start)) >=
-                GET_OPTION(snapshot_delay)) {
+        if (snapshot_mode && g_snapshot_first_frame_rendered_ns > 0 && time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_rendered_ns, iteration_start)) >= GET_OPTION(snapshot_delay)) {
           signal_exit();
           break;
         }
@@ -817,15 +784,13 @@ role_dispatch:
           log_warn_every(US_PER_SEC_INT,
                          "Discovery media loop took %.1fms (capture=%.1fms process=%.1fms send=%.1fms signaling=%.1fms "
                          "events=%.1fms)",
-                         (double)elapsed / 1e6, (double)(capture_end - capture_start) / 1e6,
-                         (double)(processing_end - processing_start) / 1e6, (double)(send_end - send_start) / 1e6,
+                         (double)elapsed / 1e6, (double)(capture_end - capture_start) / 1e6, (double)(processing_end - processing_start) / 1e6, (double)(send_end - send_start) / 1e6,
                          (double)(signaling_end - signaling_start) / 1e6, (double)(event_end - event_start) / 1e6);
         }
         session_capture_sleep_for_fps(capture);
       }
     media_cleanup:
-      quic_disconnected =
-          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC && !acip_transport_is_connected(transport);
+      quic_disconnected = acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC && !acip_transport_is_connected(transport);
       session_capture_set_audio_context(capture, NULL);
       /* These workers borrow stack audio/display state. Retain it and retry a
        * failed join before returning to the application/media cleanup. */
@@ -835,14 +800,10 @@ role_dispatch:
       }
       NAMED_UNREGISTER(&receiver.running);
       NAMED_UNREGISTER(&receiver.connection.state);
-      bool quic_recoverable =
-          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC &&
-          (quic_disconnected || g_discovery->handoff_pending || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
-          (g_discovery->state == DISCOVERY_STATE_ACTIVE || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
-          (receiver.result == ASCIICHAT_OK || receiver.result == ERROR_NETWORK ||
-           receiver.result == ERROR_NETWORK_TIMEOUT) &&
-          (result == ASCIICHAT_OK || result == ERROR_NETWORK || result == ERROR_NETWORK_TIMEOUT ||
-           (result == ERROR_INVALID_STATE && quic_disconnected));
+      bool quic_recoverable = acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC && (quic_disconnected || g_discovery->handoff_pending || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+                              (g_discovery->state == DISCOVERY_STATE_ACTIVE || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+                              (receiver.result == ASCIICHAT_OK || receiver.result == ERROR_NETWORK || receiver.result == ERROR_NETWORK_TIMEOUT) &&
+                              (result == ASCIICHAT_OK || result == ERROR_NETWORK || result == ERROR_NETWORK_TIMEOUT || (result == ERROR_INVALID_STATE && quic_disconnected));
       if (!should_exit() && (g_discovery->session_type == SESSION_TYPE_WEBRTC || quic_recoverable)) {
         if (!g_discovery->handoff_pending && g_discovery->state != DISCOVERY_STATE_MIGRATING) {
           if (g_discovery->state == DISCOVERY_STATE_FAILED)
@@ -1003,8 +964,7 @@ int discovery_main(void) {
 
   if (session_result != ASCIICHAT_OK || discovery_error[0]) {
     log_set_terminal_output(true);
-    NOTICE(WARNING, "DISCOVERY FAILED", "Discovery failed: %s",
-           discovery_error[0] ? discovery_error : asciichat_error_format(NULL, session_result));
+    NOTICE(WARNING, "DISCOVERY FAILED", "Discovery failed: %s", discovery_error[0] ? discovery_error : asciichat_error_format(NULL, session_result));
     if (session_result == ASCIICHAT_OK)
       session_result = discovery_error_code;
   }

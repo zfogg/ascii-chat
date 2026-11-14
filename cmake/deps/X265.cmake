@@ -44,9 +44,16 @@ if(USE_MUSL)
         FetchContent_Declare(asciichat_x265
             BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_x265"
             URL "https://bitbucket.org/multicoreware/x265_git/get/${X265_VERSION}.tar.gz"
-            URL_HASH "SHA256=${X265_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL
-            SOURCE_SUBDIR asciichat-patch-first)
-        FetchContent_MakeAvailable(asciichat_x265)
+            URL_HASH "SHA256=${X265_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
+        FetchContent_GetProperties(asciichat_x265)
+        if(NOT asciichat_x265_POPULATED)
+            cmake_policy(PUSH)
+            if(POLICY CMP0169)
+                cmake_policy(SET CMP0169 OLD)
+            endif()
+            FetchContent_Populate(asciichat_x265)
+            cmake_policy(POP)
+        endif()
         set(X265_SOURCE_DIR "${asciichat_x265_SOURCE_DIR}")
         include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-x265-cmake.cmake")
         add_subdirectory("${asciichat_x265_SOURCE_DIR}/source" "${asciichat_x265_BINARY_DIR}" EXCLUDE_FROM_ALL)

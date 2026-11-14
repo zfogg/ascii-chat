@@ -211,8 +211,7 @@ void audio_analysis_track_sent_sample(float sample) {
   // (This function is only called from the audio capture thread, but using file-scope
   // static is clearer and avoids shadowing the existing g_sent_last_sample variable)
   static float s_sent_prev_sample_for_zero_crossing = 0.0f;
-  if ((s_sent_prev_sample_for_zero_crossing > 0 && sample < 0) ||
-      (s_sent_prev_sample_for_zero_crossing < 0 && sample > 0)) {
+  if ((s_sent_prev_sample_for_zero_crossing > 0 && sample < 0) || (s_sent_prev_sample_for_zero_crossing < 0 && sample > 0)) {
     g_sent_zero_crossings++;
   }
   s_sent_prev_sample_for_zero_crossing = sample;
@@ -310,8 +309,7 @@ void audio_analysis_track_received_sample(float sample) {
   // (This function is called from the protocol reception thread, separate from the
   // audio capture thread, so using distinct static variables is safe)
   static float s_received_prev_sample_for_zero_crossing = 0.0f;
-  if ((s_received_prev_sample_for_zero_crossing > 0 && sample < 0) ||
-      (s_received_prev_sample_for_zero_crossing < 0 && sample > 0)) {
+  if ((s_received_prev_sample_for_zero_crossing > 0 && sample < 0) || (s_received_prev_sample_for_zero_crossing < 0 && sample > 0)) {
     g_received_zero_crossings++;
   }
   s_received_prev_sample_for_zero_crossing = sample;
@@ -507,10 +505,8 @@ const audio_analysis_stats_t *audio_analysis_get_sent_stats(void) {
 }
 
 const audio_analysis_stats_t *audio_analysis_get_received_stats(void) {
-  g_received_stats.dc_offset =
-      g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
-  g_received_stats.rms_level =
-      g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
+  g_received_stats.dc_offset = g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
+  g_received_stats.rms_level = g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
   return &g_received_stats;
 }
 
@@ -567,50 +563,37 @@ void audio_analysis_print_report(void) {
   log_plain("  RMS Level:               %.4f (audio energy/loudness)", recv_rms);
   log_plain("  DC Offset:               %.6f (signal mean)", received->dc_offset);
   log_plain("  Clipping Events:         %llu samples (%.2f%%)", (unsigned long long)g_received_stats.clipping_count,
-            g_received_stats.total_samples > 0
-                ? (100.0 * g_received_stats.clipping_count / g_received_stats.total_samples)
-                : 0);
+            g_received_stats.total_samples > 0 ? (100.0 * g_received_stats.clipping_count / g_received_stats.total_samples) : 0);
   log_plain("  Silent Samples:          %llu samples (%.2f%%)", (unsigned long long)g_received_stats.silent_samples,
-            g_received_stats.total_samples > 0
-                ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples)
-                : 0);
+            g_received_stats.total_samples > 0 ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples) : 0);
   if (g_received_max_silence_burst > 0) {
     log_plain("  Max Silence Burst:       %llu samples", (unsigned long long)g_received_max_silence_burst);
   }
-  double low_energy_pct =
-      g_received_stats.total_samples > 0 ? (100.0 * g_received_low_energy_samples / g_received_stats.total_samples) : 0;
-  log_plain("  Very Quiet Samples:      %llu samples (%.1f%%) [amplitude < 0.05]",
-            (unsigned long long)g_received_low_energy_samples, low_energy_pct);
+  double low_energy_pct = g_received_stats.total_samples > 0 ? (100.0 * g_received_low_energy_samples / g_received_stats.total_samples) : 0;
+  log_plain("  Very Quiet Samples:      %llu samples (%.1f%%) [amplitude < 0.05]", (unsigned long long)g_received_low_energy_samples, low_energy_pct);
   log_plain("  Packets Received:        %u", g_received_stats.packets_count);
   log_plain("  Status:                  %s", g_received_stats.total_samples == 0 ? "NO AUDIO RECEIVED!" : "Receiving");
 
   log_plain("QUALITY METRICS (Scratchy/Distorted Audio Detection):");
   log_plain("SENT:");
   log_plain("  Jitter Events:           %llu (rapid amplitude changes)", (unsigned long long)g_sent_stats.jitter_count);
-  log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)",
-            (unsigned long long)g_sent_stats.discontinuity_count);
+  log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)", (unsigned long long)g_sent_stats.discontinuity_count);
   log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_sent_stats.max_gap_ns);
 
   log_plain("RECEIVED:");
-  log_plain("  Jitter Events:           %llu (rapid amplitude changes)",
-            (unsigned long long)g_received_stats.jitter_count);
-  log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)",
-            (unsigned long long)g_received_stats.discontinuity_count);
+  log_plain("  Jitter Events:           %llu (rapid amplitude changes)", (unsigned long long)g_received_stats.jitter_count);
+  log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)", (unsigned long long)g_received_stats.discontinuity_count);
   log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_received_stats.max_gap_ns);
 
   // Beep/tone artifact detection
   if (g_received_beep_events > 0 || g_received_tonal_samples > 0) {
-    double tonal_pct =
-        g_received_stats.total_samples > 0 ? (100.0 * g_received_tonal_samples / g_received_stats.total_samples) : 0;
+    double tonal_pct = g_received_stats.total_samples > 0 ? (100.0 * g_received_tonal_samples / g_received_stats.total_samples) : 0;
     log_plain("BEEP/TONE ARTIFACTS:");
-    log_plain("  Beep Events:             %llu (short tonal bursts < 500ms)",
-              (unsigned long long)g_received_beep_events);
-    log_plain("  Tonal Samples:           %llu samples (%.1f%%) [consistent frequency content]",
-              (unsigned long long)g_received_tonal_samples, tonal_pct);
+    log_plain("  Beep Events:             %llu (short tonal bursts < 500ms)", (unsigned long long)g_received_beep_events);
+    log_plain("  Tonal Samples:           %llu samples (%.1f%%) [consistent frequency content]", (unsigned long long)g_received_tonal_samples, tonal_pct);
 
     if (g_received_beep_events > 10) {
-      log_plain("  🔴 BEEPING DETECTED: %llu short tonal bursts - likely codec artifacts or system sounds!",
-                (unsigned long long)g_received_beep_events);
+      log_plain("  🔴 BEEPING DETECTED: %llu short tonal bursts - likely codec artifacts or system sounds!", (unsigned long long)g_received_beep_events);
       log_plain("     Possible causes:");
       log_plain("       - Opus codec producing tonal artifacts during silence/transitions");
       log_plain("       - Buffer underruns creating synthetic tones");
@@ -662,8 +645,7 @@ void audio_analysis_print_report(void) {
       if (match_pct > echo_threshold_pct) {
         g_detected_echo_delay_ms = g_echo_delays_ms[best_delay_idx];
         log_plain("  🔴 ECHO CANCELLATION NOT WORKING: Strong echo at %u ms delay!", g_detected_echo_delay_ms);
-        log_plain("     Received audio contains %.1f%% samples matching sent audio from %u ms ago", match_pct,
-                  g_detected_echo_delay_ms);
+        log_plain("     Received audio contains %.1f%% samples matching sent audio from %u ms ago", match_pct, g_detected_echo_delay_ms);
       } else {
         log_plain("  ✓ Echo cancellation working: No significant echo detected");
       }
@@ -675,10 +657,8 @@ void audio_analysis_print_report(void) {
   // AEC3 metrics from WebRTC (if available)
   if (g_aec3_metrics_available) {
     log_plain("AEC3 METRICS (from WebRTC GetMetrics()):");
-    log_plain("  Echo Return Loss (ERL): %.2f dB (how much echo is attenuated; >10 dB is good)",
-              g_aec3_echo_return_loss);
-    log_plain("  Echo Return Loss Enhancement (ERLE): %.2f dB (residual echo suppression)",
-              g_aec3_echo_return_loss_enhancement);
+    log_plain("  Echo Return Loss (ERL): %.2f dB (how much echo is attenuated; >10 dB is good)", g_aec3_echo_return_loss);
+    log_plain("  Echo Return Loss Enhancement (ERLE): %.2f dB (residual echo suppression)", g_aec3_echo_return_loss_enhancement);
     log_plain("  Estimated Echo Delay: %d ms", g_aec3_delay_ns);
 
     if (g_aec3_echo_return_loss > 10.0) {
@@ -698,9 +678,7 @@ void audio_analysis_print_report(void) {
   }
 
   // Silence analysis
-  double received_silence_pct = g_received_stats.total_samples > 0
-                                    ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples)
-                                    : 0;
+  double received_silence_pct = g_received_stats.total_samples > 0 ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples) : 0;
 
   if (received_silence_pct > 30.0) {
     log_plain("  ⚠️  SCRATCHY AUDIO DETECTED: Too much silence in received audio!");
@@ -712,62 +690,49 @@ void audio_analysis_print_report(void) {
   }
 
   // Sharp transition analysis (clicks/pops)
-  double sent_sharp_pct =
-      g_sent_transition_samples > 0 ? (100.0 * g_sent_sharp_transitions / g_sent_transition_samples) : 0;
-  double recv_sharp_pct =
-      g_received_transition_samples > 0 ? (100.0 * g_received_sharp_transitions / g_received_transition_samples) : 0;
+  double sent_sharp_pct = g_sent_transition_samples > 0 ? (100.0 * g_sent_sharp_transitions / g_sent_transition_samples) : 0;
+  double recv_sharp_pct = g_received_transition_samples > 0 ? (100.0 * g_received_sharp_transitions / g_received_transition_samples) : 0;
 
   // Zero crossing rate analysis (spectral content)
   // Music: 1-5%, Speech: 5-15%, Static/Noise: 15-50%
-  double sent_zero_cross_pct =
-      g_sent_stats.total_samples > 0 ? (100.0 * g_sent_zero_crossings / g_sent_stats.total_samples) : 0;
-  double recv_zero_cross_pct =
-      g_received_stats.total_samples > 0 ? (100.0 * g_received_zero_crossings / g_received_stats.total_samples) : 0;
+  double sent_zero_cross_pct = g_sent_stats.total_samples > 0 ? (100.0 * g_sent_zero_crossings / g_sent_stats.total_samples) : 0;
+  double recv_zero_cross_pct = g_received_stats.total_samples > 0 ? (100.0 * g_received_zero_crossings / g_received_stats.total_samples) : 0;
 
   log_plain("WAVEFORM ANALYSIS (Is it clean music or corrupted/static?):");
   log_plain("SENT AUDIO:");
   log_plain("  Zero crossings: %.2f%% of samples (music: 1-5%%, noise: 15-50%%)", sent_zero_cross_pct);
   log_plain("  Sharp transitions (clicks/pops): %.2f%% of samples", sent_sharp_pct);
-  log_plain("  Clipping samples: %llu (%.3f%%)", (unsigned long long)g_sent_clipping_samples,
-            g_sent_stats.total_samples > 0 ? (100.0 * g_sent_clipping_samples / g_sent_stats.total_samples) : 0);
+  log_plain("  Clipping samples: %llu (%.3f%%)", (unsigned long long)g_sent_clipping_samples, g_sent_stats.total_samples > 0 ? (100.0 * g_sent_clipping_samples / g_sent_stats.total_samples) : 0);
 
   log_plain("RECEIVED AUDIO:");
   log_plain("  Zero crossings: %.2f%% of samples (music: 1-5%%, noise: 15-50%%)", recv_zero_cross_pct);
   log_plain("  Sharp transitions (clicks/pops): %.2f%% of samples", recv_sharp_pct);
   log_plain("  Clipping samples: %llu (%.3f%%)", (unsigned long long)g_received_clipping_samples,
-            g_received_stats.total_samples > 0 ? (100.0 * g_received_clipping_samples / g_received_stats.total_samples)
-                                               : 0);
-  log_plain("  Zero crossing increase: %.2f%% higher than sent (indicates corruption)",
-            recv_zero_cross_pct - sent_zero_cross_pct);
+            g_received_stats.total_samples > 0 ? (100.0 * g_received_clipping_samples / g_received_stats.total_samples) : 0);
+  log_plain("  Zero crossing increase: %.2f%% higher than sent (indicates corruption)", recv_zero_cross_pct - sent_zero_cross_pct);
 
   // Musicality verdict
   log_plain("SOUND QUALITY VERDICT:");
   if (recv_zero_cross_pct > 10.0) {
-    log_plain("  ⚠️  SOUNDS LIKE STATIC/DISTORTED: Excessive zero crossings (%.2f%%) = high frequency noise",
-              recv_zero_cross_pct);
-    log_plain("     Increase from sent: %.2f%% (waveform corruption detected)",
-              recv_zero_cross_pct - sent_zero_cross_pct);
+    log_plain("  ⚠️  SOUNDS LIKE STATIC/DISTORTED: Excessive zero crossings (%.2f%%) = high frequency noise", recv_zero_cross_pct);
+    log_plain("     Increase from sent: %.2f%% (waveform corruption detected)", recv_zero_cross_pct - sent_zero_cross_pct);
     log_plain("     Likely causes: Opus codec artifacts, jitter buffer issues, or packet delivery gaps");
   } else if (recv_zero_cross_pct - sent_zero_cross_pct > 3.0) {
-    log_plain("  ⚠️  SOUNDS CORRUPTED: Zero crossing rate increased by %.2f%% (should be ±0.5%%)",
-              recv_zero_cross_pct - sent_zero_cross_pct);
+    log_plain("  ⚠️  SOUNDS CORRUPTED: Zero crossing rate increased by %.2f%% (should be ±0.5%%)", recv_zero_cross_pct - sent_zero_cross_pct);
     log_plain("     Indicates waveform distortion from network/processing artifacts");
   } else if (recv_sharp_pct > 2.0) {
     log_plain("  ⚠️  SOUNDS LIKE STATIC: High click/pop rate (%.2f%%) indicates audio artifacts", recv_sharp_pct);
     log_plain("     Likely causes: Packet loss, jitter buffer issues, or frame discontinuities");
   } else if (g_received_clipping_samples > (g_received_stats.total_samples / 1000)) {
-    log_plain("  ⚠️  SOUNDS DISTORTED: Significant clipping detected (%.3f%%)",
-              100.0 * g_received_clipping_samples / g_received_stats.total_samples);
+    log_plain("  ⚠️  SOUNDS DISTORTED: Significant clipping detected (%.3f%%)", 100.0 * g_received_clipping_samples / g_received_stats.total_samples);
     log_plain("     Likely causes: AGC too aggressive, gain too high, or codec compression artifacts");
   } else if (low_energy_pct > 50.0 && recv_rms < 0.05f) {
     log_plain("  ⚠️  SOUNDS MUDDY/QUIET: Over 50%% very quiet samples + low RMS");
     log_plain("     Audio may sound unclear or like background noise rather than music");
   } else if (received_silence_pct > 10.0) {
     log_plain("  ⚠️  SOUNDS SCRATCHY: Excessive silence (%.1f%%) causes dropouts", received_silence_pct);
-  } else if (recv_rms > 0.08f && recv_zero_cross_pct < 6.0 && recv_sharp_pct < 1.0 &&
-             g_received_clipping_samples == 0) {
-    log_plain("  ✓ SOUNDS LIKE MUSIC: Good RMS (%.4f), clean waveform (%.2f%% zero crossings), minimal artifacts",
-              recv_rms, recv_zero_cross_pct);
+  } else if (recv_rms > 0.08f && recv_zero_cross_pct < 6.0 && recv_sharp_pct < 1.0 && g_received_clipping_samples == 0) {
+    log_plain("  ✓ SOUNDS LIKE MUSIC: Good RMS (%.4f), clean waveform (%.2f%% zero crossings), minimal artifacts", recv_rms, recv_zero_cross_pct);
     log_plain("     Audio quality acceptable for communication");
   } else {
     log_plain("  ? BORDERLINE: Check specific metrics above");
@@ -816,45 +781,35 @@ void audio_analysis_print_report(void) {
     // Calculate how much audio is in each packet
     // Total decoded samples / number of packets = average samples per packet
     // At 48kHz, 960 samples = 1 Opus frame = 20ms
-    double avg_samples_per_packet =
-        g_received_stats.total_samples > 0 ? (double)g_received_stats.total_samples / inter_arrival_count : 0;
+    double avg_samples_per_packet = g_received_stats.total_samples > 0 ? (double)g_received_stats.total_samples / inter_arrival_count : 0;
     double frames_per_packet = avg_samples_per_packet / 960.0; // 960 samples = 1 frame @ 48kHz
     double ms_audio_per_packet = frames_per_packet * 20.0;     // 20ms per frame
 
     // Detect if stuttering is periodic (consistent ~50ms intervals)
     if (intervals_around_50ms >= (inter_arrival_count * 2 / 3)) {
       // More than 66% of packets are ~50ms apart - clear periodic stuttering
-      log_plain("  🔴 PERIODIC STUTTERING DETECTED: Server sends packets every ~%u ms (should be ~20ms)!",
-                avg_interval_ms);
+      log_plain("  🔴 PERIODIC STUTTERING DETECTED: Server sends packets every ~%u ms (should be ~20ms)!", avg_interval_ms);
       log_plain("    - Packet inter-arrival: %u-%u ms (avg: %u ms)", min_interval_ms, max_interval_ms, avg_interval_ms);
-      log_plain("    - %u/%u packets (~%u%%) are ~50ms apart (CLEAR STUTTERING PATTERN)", intervals_around_50ms,
-                inter_arrival_count, interval_consistency);
+      log_plain("    - %u/%u packets (~%u%%) are ~50ms apart (CLEAR STUTTERING PATTERN)", intervals_around_50ms, inter_arrival_count, interval_consistency);
 
       log_plain("    - PACKET ANALYSIS:");
-      log_plain("      - Total audio samples: %llu over %u packets", (unsigned long long)g_received_stats.total_samples,
-                inter_arrival_count);
-      log_plain("      - Avg samples per packet: %.0f (= %.2f Opus frames = %.1f ms)", avg_samples_per_packet,
-                frames_per_packet, ms_audio_per_packet);
+      log_plain("      - Total audio samples: %llu over %u packets", (unsigned long long)g_received_stats.total_samples, inter_arrival_count);
+      log_plain("      - Avg samples per packet: %.0f (= %.2f Opus frames = %.1f ms)", avg_samples_per_packet, frames_per_packet, ms_audio_per_packet);
 
       if (frames_per_packet < 1.5) {
         log_plain("      - ❌ PROBLEM: Each packet contains < 1.5 frames (should be 2-3 frames!)");
-        log_plain("      - With only %.1f frames per packet arriving every %u ms, there are gaps between chunks",
-                  frames_per_packet, avg_interval_ms);
-        log_plain("      - Audio plays for ~%.0f ms, then %u ms gap, then plays again", ms_audio_per_packet,
-                  avg_interval_ms - (uint32_t)ms_audio_per_packet);
+        log_plain("      - With only %.1f frames per packet arriving every %u ms, there are gaps between chunks", frames_per_packet, avg_interval_ms);
+        log_plain("      - Audio plays for ~%.0f ms, then %u ms gap, then plays again", ms_audio_per_packet, avg_interval_ms - (uint32_t)ms_audio_per_packet);
       } else if (frames_per_packet > 2.5) {
-        log_plain("      - ✓ Packets contain %.1f frames (~%.0f ms audio each)", frames_per_packet,
-                  ms_audio_per_packet);
+        log_plain("      - ✓ Packets contain %.1f frames (~%.0f ms audio each)", frames_per_packet, ms_audio_per_packet);
         log_plain("      - Should play smoothly if jitter buffer is large enough");
         log_plain("      - If still stuttering, issue is jitter buffer depth or timing precision");
       } else {
         log_plain("      - Packets contain %.1f frames (~%.0f ms)", frames_per_packet, ms_audio_per_packet);
-        log_plain("      - Borderline: buffer needs to hold %.0f ms to bridge %.u ms gap", ms_audio_per_packet,
-                  avg_interval_ms - (uint32_t)ms_audio_per_packet);
+        log_plain("      - Borderline: buffer needs to hold %.0f ms to bridge %.u ms gap", ms_audio_per_packet, avg_interval_ms - (uint32_t)ms_audio_per_packet);
       }
     } else if (avg_interval_ms > 30) {
-      log_plain("  ⚠️  AUDIO DELIVERY INCONSISTENCY: Server packets arrive every ~%u ms (expected ~20ms)",
-                avg_interval_ms);
+      log_plain("  ⚠️  AUDIO DELIVERY INCONSISTENCY: Server packets arrive every ~%u ms (expected ~20ms)", avg_interval_ms);
       log_plain("    - Interval range: %u-%u ms", min_interval_ms, max_interval_ms);
       log_plain("    - This causes dropouts and buffering issues");
     }
@@ -871,8 +826,7 @@ void audio_analysis_print_report(void) {
     }
   }
   if (g_received_stats.discontinuity_count > 0) {
-    log_plain("  Packet delivery discontinuities: %llu gaps > 100ms detected",
-              (unsigned long long)g_received_stats.discontinuity_count);
+    log_plain("  Packet delivery discontinuities: %llu gaps > 100ms detected", (unsigned long long)g_received_stats.discontinuity_count);
   }
   if (g_received_stats.jitter_count > (g_received_stats.total_samples / 100)) {
     log_plain("  High jitter detected: > 1%% of samples have rapid amplitude changes");

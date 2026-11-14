@@ -67,9 +67,16 @@ if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_portaudio"
             EXCLUDE_FROM_ALL
             URL https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            SOURCE_SUBDIR asciichat-patch-first)
-        FetchContent_MakeAvailable(asciichat_portaudio)
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_GetProperties(asciichat_portaudio)
+        if(NOT asciichat_portaudio_POPULATED)
+            cmake_policy(PUSH)
+            if(POLICY CMP0169)
+                cmake_policy(SET CMP0169 OLD)
+            endif()
+            FetchContent_Populate(asciichat_portaudio)
+            cmake_policy(POP)
+        endif()
         set(PORTAUDIO_SOURCE_DIR "${asciichat_portaudio_SOURCE_DIR}")
         include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-portaudio-cmake.cmake")
         add_subdirectory("${asciichat_portaudio_SOURCE_DIR}" "${asciichat_portaudio_BINARY_DIR}" EXCLUDE_FROM_ALL)

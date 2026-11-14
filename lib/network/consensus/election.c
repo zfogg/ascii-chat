@@ -47,8 +47,7 @@ static bool ranks_before(const participant_metrics_t *metrics, const uint32_t *s
   return memcmp(metrics[a].participant_id, metrics[b].participant_id, SESSION_ID_SIZE) < 0;
 }
 
-static void find_best_two(const participant_metrics_t *metrics, const uint32_t *scores, int count, int *best,
-                          int *second) {
+static void find_best_two(const participant_metrics_t *metrics, const uint32_t *scores, int count, int *best, int *second) {
   *best = 0;
   *second = 1;
 
@@ -76,8 +75,7 @@ static void find_best_two(const participant_metrics_t *metrics, const uint32_t *
   }
 }
 
-asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *metrics, int num_metrics,
-                                                  int *out_best_index, int *out_backup_index) {
+asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *metrics, int num_metrics, int *out_best_index, int *out_backup_index) {
   if (!metrics || !out_best_index || !out_backup_index || num_metrics < 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid election parameters");
   }
@@ -104,9 +102,8 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics,
-                                            const uint8_t announced_host_id[SESSION_ID_SIZE],
-                                            const uint8_t announced_backup_id[SESSION_ID_SIZE], bool *out_valid) {
+asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics, const uint8_t announced_host_id[SESSION_ID_SIZE], const uint8_t announced_backup_id[SESSION_ID_SIZE],
+                                            bool *out_valid) {
   if (!metrics || !announced_host_id || !announced_backup_id || !out_valid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid verification parameters");
   }
@@ -139,8 +136,6 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
 
   // Check if computed result matches announced
   uint8_t no_backup[SESSION_ID_SIZE] = {0};
-  *out_valid =
-      host_idx == computed_host && (computed_backup < 0 ? memcmp(announced_backup_id, no_backup, sizeof(no_backup)) == 0
-                                                        : backup_idx == computed_backup);
+  *out_valid = host_idx == computed_host && (computed_backup < 0 ? memcmp(announced_backup_id, no_backup, sizeof(no_backup)) == 0 : backup_idx == computed_backup);
   return ASCIICHAT_OK;
 }

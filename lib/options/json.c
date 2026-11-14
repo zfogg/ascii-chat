@@ -9,22 +9,19 @@ static const char *json_type(const registry_entry_t *entry) {
     return "boolean";
   if (entry->type == OPTION_TYPE_INT || !strcmp(entry->long_name, "zalgo"))
     return "integer";
-  if (entry->type == OPTION_TYPE_DOUBLE || (entry->type == OPTION_TYPE_CALLBACK && !entry->metadata.enum_values &&
-                                            entry->metadata.numeric_range.max && strcmp(entry->long_name, "seek")))
+  if (entry->type == OPTION_TYPE_DOUBLE || (entry->type == OPTION_TYPE_CALLBACK && !entry->metadata.enum_values && entry->metadata.numeric_range.max && strcmp(entry->long_name, "seek")))
     return "number";
   return "string";
 }
 static asciichat_error_t validate_value(const registry_entry_t *e, yyjson_val *v) {
   if (!strcmp(e->long_name, "test-pattern")) {
-    if (yyjson_is_bool(v) || (yyjson_is_int(v) && yyjson_get_sint(v) >= 0 && yyjson_get_sint(v) <= 1) ||
-        (yyjson_is_str(v) && (!strcmp(yyjson_get_str(v), "0") || !strcmp(yyjson_get_str(v), "1"))))
+    if (yyjson_is_bool(v) || (yyjson_is_int(v) && yyjson_get_sint(v) >= 0 && yyjson_get_sint(v) <= 1) || (yyjson_is_str(v) && (!strcmp(yyjson_get_str(v), "0") || !strcmp(yyjson_get_str(v), "1"))))
       return ASCIICHAT_OK;
     return SET_ERRNO(ERROR_INVALID_PARAM, "test-pattern must be boolean, 0 or 1");
   }
   const char *type = json_type(e);
-  bool ok = (!strcmp(type, "boolean") && yyjson_is_bool(v)) || (!strcmp(type, "integer") && yyjson_is_int(v)) ||
-            (!strcmp(type, "number") && yyjson_is_num(v)) || (!strcmp(type, "string") && yyjson_is_str(v)) ||
-            (!strcmp(e->long_name, "seek") && yyjson_is_num(v));
+  bool ok = (!strcmp(type, "boolean") && yyjson_is_bool(v)) || (!strcmp(type, "integer") && yyjson_is_int(v)) || (!strcmp(type, "number") && yyjson_is_num(v)) ||
+            (!strcmp(type, "string") && yyjson_is_str(v)) || (!strcmp(e->long_name, "seek") && yyjson_is_num(v));
   if (!ok)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Wrong type for %s", e->long_name);
   if (yyjson_is_str(v) && (yyjson_get_len(v) > 4096 || strlen(yyjson_get_str(v)) != yyjson_get_len(v)))
@@ -75,8 +72,7 @@ yyjson_mut_val *options_json_schema_for_option(yyjson_mut_doc *d, const char *na
   return v;
 }
 
-asciichat_error_t options_json_parse_value(const char *name, yyjson_val *v, char *output, size_t output_size,
-                                           bool *omitted) {
+asciichat_error_t options_json_parse_value(const char *name, yyjson_val *v, char *output, size_t output_size, bool *omitted) {
   if (!name || !v || !output || !output_size || !omitted)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing JSON option argument");
   *omitted = false;

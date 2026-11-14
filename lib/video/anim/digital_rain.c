@@ -77,8 +77,7 @@ static float get_rain_brightness(digital_rain_t *rain, int col, int row, float s
 
 // Ordered by approximate ink coverage in a monospace terminal. Keeping mutations
 // within a group preserves the source image's shading and leaves spaces untouched.
-static const char *glyph_groups[] = {".,'`",           ":;-_",        "!|/\\()[]{}", "iltfrxnvczXYUJLC",
-                                     "oahkbdpqwmZO0Q", "*+?%&$#@MWB8"};
+static const char *glyph_groups[] = {".,'`", ":;-_", "!|/\\()[]{}", "iltfrxnvczXYUJLC", "oahkbdpqwmZO0Q", "*+?%&$#@MWB8"};
 
 int digital_rain_glyph_group(uint32_t codepoint) {
   if (codepoint > 126 || codepoint <= 32)
@@ -96,8 +95,7 @@ static uint32_t mutate_glyph(uint32_t codepoint, int col, int row, float time) {
   // Independent periods and phase offsets avoid synchronized full-grid flicker.
   float seed = random_float((float)col + 1.3f, (float)row + 2.7f);
   unsigned int cycle = (unsigned int)floorf(time * (1.2f + 2.0f * seed) + seed * 13.0f);
-  uint32_t hash = (uint32_t)((uint64_t)(col + 1) * UINT64_C(73856093) ^ (uint64_t)(row + 1) * UINT64_C(19349663) ^
-                             (uint64_t)cycle * UINT64_C(83492791));
+  uint32_t hash = (uint32_t)((uint64_t)(col + 1) * UINT64_C(73856093) ^ (uint64_t)(row + 1) * UINT64_C(19349663) ^ (uint64_t)cycle * UINT64_C(83492791));
   hash ^= hash >> 16;
   hash = (uint32_t)((uint64_t)hash * UINT64_C(0x7feb352d));
   hash ^= hash >> 15;
@@ -162,10 +160,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   rain->first_frame = true;
   rain->time = 0.0f;
 
-  animation_init(
-      &rain->animation, "digital_rain",
-      (animation_config_t){
-          .type = ANIMATION_DIGITAL_RAIN, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_CONTINUE});
+  animation_init(&rain->animation, "digital_rain", (animation_config_t){.type = ANIMATION_DIGITAL_RAIN, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_CONTINUE});
   animation_sample_t initial;
   animation_update(&rain->animation, 0, &initial);
   log_info("Digital rain initialized: %dx%d grid", num_columns, num_rows);
@@ -234,8 +229,7 @@ void digital_rain_set_color_from_filter(digital_rain_t *rain, color_filter_t fil
   // If no filter is set, use default Matrix green
   if (filter == COLOR_FILTER_NONE) {
     rain->rainbow_mode = false;
-    digital_rain_set_color(rain, DIGITAL_RAIN_DEFAULT_COLOR_R, DIGITAL_RAIN_DEFAULT_COLOR_G,
-                           DIGITAL_RAIN_DEFAULT_COLOR_B);
+    digital_rain_set_color(rain, DIGITAL_RAIN_DEFAULT_COLOR_R, DIGITAL_RAIN_DEFAULT_COLOR_G, DIGITAL_RAIN_DEFAULT_COLOR_B);
     return;
   }
 
@@ -350,8 +344,7 @@ static const char *skip_ansi_sequence(const char *str) {
   return str;
 }
 
-static int generate_rain_color(char *buf, size_t size, digital_rain_t *rain, float brightness, float head,
-                               float luminance, bool foreground) {
+static int generate_rain_color(char *buf, size_t size, digital_rain_t *rain, float brightness, float head, float luminance, bool foreground) {
   // Source luminance shapes both the saturated body and the pale leading glint.
   float light = foreground ? 0.80f + 0.20f * sqrtf(luminance) : luminance;
   // Limit whitening so even boosted heads retain the selected rain hue.
@@ -364,8 +357,7 @@ static int generate_rain_color(char *buf, size_t size, digital_rain_t *rain, flo
 }
 
 char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_time) {
-  if (!rain || !frame || !isfinite(delta_time) || delta_time < 0 ||
-      (double)delta_time * 1e9 >= (double)(UINT64_MAX - rain->animation_timestamp_ns))
+  if (!rain || !frame || !isfinite(delta_time) || delta_time < 0 || (double)delta_time * 1e9 >= (double)(UINT64_MAX - rain->animation_timestamp_ns))
     return NULL;
   if (animation_set_speed(&rain->animation, rain->animation_speed) != ASCIICHAT_OK)
     return NULL;

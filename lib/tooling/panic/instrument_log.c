@@ -25,6 +25,7 @@
 #include <ascii-chat/common/sync.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/path.h>
 #include <libplatform/lifecycle.h>
@@ -164,8 +165,7 @@ static void asciichat_instr_runtime_init_once(void);
 static void asciichat_instr_runtime_tls_destructor(void *ptr);
 static int asciichat_instr_open_log_file(asciichat_instr_runtime_t *runtime);
 static void asciichat_instr_runtime_configure(asciichat_instr_runtime_t *runtime);
-static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime, const char *file_path,
-                                       uint32_t line_number, const char *function_name);
+static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime, const char *file_path, uint32_t line_number, const char *function_name);
 static int asciichat_instr_write_full(int fd, const char *buffer, size_t len);
 static bool asciichat_instr_env_is_enabled(const char *value);
 static bool asciichat_instr_parse_positive_uint32(const char *value, uint32_t *out_value);
@@ -173,12 +173,10 @@ static bool asciichat_instr_parse_positive_uint32(const char *value, uint32_t *o
 static bool asciichat_instr_compile_regex(regex_t *regex, const char *pattern);
 #endif
 static void asciichat_instr_only_list_destroy(asciichat_instr_only_list_t *list);
-static bool asciichat_instr_only_list_append(asciichat_instr_only_list_t *list, asciichat_instr_selector_type_t type,
-                                             const char *module, const char *pattern);
+static bool asciichat_instr_only_list_append(asciichat_instr_only_list_t *list, asciichat_instr_selector_type_t type, const char *module, const char *pattern);
 static void asciichat_instr_trim(char *value);
 static bool asciichat_instr_parse_only_filters(asciichat_instr_runtime_t *runtime, const char *value);
-static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t *runtime, const char *file_path,
-                                                 const char *function_name);
+static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t *runtime, const char *file_path, const char *function_name);
 static bool asciichat_instr_match_glob(const char *pattern, const char *value);
 static const char *asciichat_instr_basename(const char *path);
 static bool asciichat_instr_path_contains_module(const char *file_path, const char *module_name);
@@ -292,8 +290,7 @@ void asciichat_instr_runtime_global_destroy(void) {
   g_disable_write = false;
 }
 
-void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
-                              const char *snippet, uint8_t is_macro_expansion) {
+void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet, uint8_t is_macro_expansion) {
   // Initialization calls project helpers that may themselves be instrumented.
   if (g_logging_reentry_guard) {
     return;
@@ -379,10 +376,8 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : "-";
 
   const char *safe_file_path = (file_path != NULL) ? file_path : "<unknown>";
-  pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
-                       "pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=",
-                       runtime->pid, (unsigned long long)runtime->thread_id, (unsigned long long)runtime->sequence,
-                       (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
+  pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos, "pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=", runtime->pid,
+                       (unsigned long long)runtime->thread_id, (unsigned long long)runtime->sequence, (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
                        function_name ? function_name : "<unknown>", (unsigned)is_macro_expansion);
 
   if (snippet != NULL) {
@@ -564,15 +559,13 @@ static bool asciichat_instr_build_log_path(asciichat_instr_runtime_t *runtime) {
     // Build log file name
     if (g_output_dir_set) {
       // When output directory is explicitly set, use unique naming with pid and tid
-      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM,
-                        ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
+      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM, ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
                         (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
         return false;
       }
     } else {
       // Use simple "trace.log" name in current directory
-      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", output_dir_buf, PATH_DELIM) >=
-          (int)sizeof(runtime->log_path)) {
+      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", output_dir_buf, PATH_DELIM) >= (int)sizeof(runtime->log_path)) {
         return false;
       }
     }
@@ -581,8 +574,7 @@ static bool asciichat_instr_build_log_path(asciichat_instr_runtime_t *runtime) {
   // Explicit output directories are validated during initialization and receive a generated filename.
   if (!is_custom_path && !g_output_dir_set) {
     char *validated_log_path = NULL;
-    asciichat_error_t validate_result =
-        path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
+    asciichat_error_t validate_result = path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
     if (validate_result != ASCIICHAT_OK || validated_log_path == NULL) {
       SAFE_FREE(validated_log_path);
       log_warn("Failed to validate instrumentation log path: %s", runtime->log_path);
@@ -674,14 +666,12 @@ static void asciichat_instr_runtime_configure(asciichat_instr_runtime_t *runtime
 
   const char *function_include_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX");
   if (function_include_regex != NULL && function_include_regex[0] != '\0') {
-    runtime->function_include_regex_valid =
-        asciichat_instr_compile_regex(&runtime->function_include_regex, function_include_regex);
+    runtime->function_include_regex_valid = asciichat_instr_compile_regex(&runtime->function_include_regex, function_include_regex);
   }
 
   const char *function_exclude_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX");
   if (function_exclude_regex != NULL && function_exclude_regex[0] != '\0') {
-    runtime->function_exclude_regex_valid =
-        asciichat_instr_compile_regex(&runtime->function_exclude_regex, function_exclude_regex);
+    runtime->function_exclude_regex_valid = asciichat_instr_compile_regex(&runtime->function_exclude_regex, function_exclude_regex);
   }
 #endif
 
@@ -692,12 +682,10 @@ static void asciichat_instr_runtime_configure(asciichat_instr_runtime_t *runtime
     runtime->rate_enabled = true;
   }
 
-  runtime->filters_enabled = (runtime->filter_include != NULL) || (runtime->filter_exclude != NULL) ||
-                             (runtime->filter_thread != NULL) || (runtime->filter_function_include != NULL) ||
+  runtime->filters_enabled = (runtime->filter_include != NULL) || (runtime->filter_exclude != NULL) || (runtime->filter_thread != NULL) || (runtime->filter_function_include != NULL) ||
                              (runtime->filter_function_exclude != NULL)
 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
-                             || runtime->include_regex_valid || runtime->exclude_regex_valid ||
-                             runtime->function_include_regex_valid || runtime->function_exclude_regex_valid
+                             || runtime->include_regex_valid || runtime->exclude_regex_valid || runtime->function_include_regex_valid || runtime->function_exclude_regex_valid
 #endif
                              || runtime->only_selectors.count > 0;
 }
@@ -780,14 +768,12 @@ static void asciichat_instr_only_list_destroy(asciichat_instr_only_list_t *list)
   list->capacity = 0;
 }
 
-static bool asciichat_instr_only_list_append(asciichat_instr_only_list_t *list, asciichat_instr_selector_type_t type,
-                                             const char *module, const char *pattern) {
+static bool asciichat_instr_only_list_append(asciichat_instr_only_list_t *list, asciichat_instr_selector_type_t type, const char *module, const char *pattern) {
   if (list == NULL) {
     return false;
   }
 
-  if (type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING || type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB ||
-      type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB) {
+  if (type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING || type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB || type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB) {
     if (pattern == NULL || pattern[0] == '\0') {
       return false;
     }
@@ -801,8 +787,7 @@ static bool asciichat_instr_only_list_append(asciichat_instr_only_list_t *list, 
 
   if (list->count == list->capacity) {
     size_t new_capacity = (list->capacity == 0) ? 4U : list->capacity * 2U;
-    asciichat_instr_only_selector_t *new_items =
-        SAFE_REALLOC(list->items, new_capacity * sizeof(*new_items), asciichat_instr_only_selector_t *);
+    asciichat_instr_only_selector_t *new_items = SAFE_REALLOC(list->items, new_capacity * sizeof(*new_items), asciichat_instr_only_selector_t *);
     if (new_items == NULL) {
       return false; // SAFE_REALLOC already called FATAL, but satisfy analyzer
     }
@@ -894,8 +879,7 @@ static bool asciichat_instr_parse_only_filters(asciichat_instr_runtime_t *runtim
       }
 
       if (strcmp(kind, "func") == 0 || strcmp(kind, "function") == 0) {
-        (void)asciichat_instr_only_list_append(&runtime->only_selectors,
-                                               ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB, NULL, spec);
+        (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB, NULL, spec);
       } else if (strcmp(kind, "module") == 0) {
         char *module_value = spec;
         char *module_pattern = strchr(module_value, ':');
@@ -909,12 +893,10 @@ static bool asciichat_instr_parse_only_filters(asciichat_instr_runtime_t *runtim
           continue;
         }
         const char *pattern_part = (module_pattern != NULL && *module_pattern != '\0') ? module_pattern : NULL;
-        (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE,
-                                               module_value, pattern_part);
+        (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_value, pattern_part);
       } else {
         // "file" kind or unknown kinds default to FILE_GLOB
-        (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB,
-                                               NULL, spec);
+        (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL, spec);
       }
       continue;
     }
@@ -930,13 +912,11 @@ static bool asciichat_instr_parse_only_filters(asciichat_instr_runtime_t *runtim
         continue;
       }
       const char *pattern_spec = (*pattern_part != '\0') ? pattern_part : NULL;
-      (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE,
-                                             module_name, pattern_spec);
+      (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_name, pattern_spec);
       continue;
     }
 
-    (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING,
-                                           NULL, token_start);
+    (void)asciichat_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING, NULL, token_start);
   }
 
   SAFE_FREE(mutable_value);
@@ -1016,8 +996,7 @@ static bool asciichat_instr_path_contains_module(const char *file_path, const ch
   return false;
 }
 
-static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t *runtime, const char *file_path,
-                                                 const char *function_name) {
+static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t *runtime, const char *file_path, const char *function_name) {
   const asciichat_instr_only_list_t *list = &runtime->only_selectors;
   if (list->count == 0) {
     return true;
@@ -1038,16 +1017,13 @@ static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t
       }
       break;
     case ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB:
-      if (function_name != NULL && selector->pattern != NULL &&
-          asciichat_instr_match_glob(selector->pattern, function_name)) {
+      if (function_name != NULL && selector->pattern != NULL && asciichat_instr_match_glob(selector->pattern, function_name)) {
         return true;
       }
       break;
     case ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE:
-      if (file_path != NULL && selector->module != NULL &&
-          asciichat_instr_path_contains_module(file_path, selector->module)) {
-        if (selector->pattern == NULL ||
-            (base_name != NULL && asciichat_instr_match_glob(selector->pattern, base_name))) {
+      if (file_path != NULL && selector->module != NULL && asciichat_instr_path_contains_module(file_path, selector->module)) {
+        if (selector->pattern == NULL || (base_name != NULL && asciichat_instr_match_glob(selector->pattern, base_name))) {
           return true;
         }
       }
@@ -1060,8 +1036,7 @@ static bool asciichat_instr_only_selectors_match(const asciichat_instr_runtime_t
   return false;
 }
 
-static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime, const char *file_path,
-                                       uint32_t line_number, const char *function_name) {
+static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime, const char *file_path, uint32_t line_number, const char *function_name) {
   if (!runtime->filters_enabled) {
     return true;
   }

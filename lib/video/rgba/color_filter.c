@@ -260,8 +260,7 @@ void color_filter_calculate_rainbow(float time, uint8_t *r, uint8_t *g, uint8_t 
  * @param out_g Output green channel (pointer, modified)
  * @param out_b Output blue channel (pointer, modified)
  */
-static inline void colorize_grayscale_pixel(uint8_t gray, const color_filter_def_t *filter, uint8_t *out_r,
-                                            uint8_t *out_g, uint8_t *out_b) {
+static inline void colorize_grayscale_pixel(uint8_t gray, const color_filter_def_t *filter, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b) {
   if (filter->foreground_on_bg) {
     // Black-on-white mode: dark pixels get full color, light pixels become white
     // Blend: color * (255 - gray) + white * gray, all / 255
@@ -277,8 +276,7 @@ static inline void colorize_grayscale_pixel(uint8_t gray, const color_filter_def
   }
 }
 
-int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter,
-                       float time) {
+int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter, float time) {
   if (!pixels || width == 0 || height == 0 || stride == 0) {
     return -1;
   }

@@ -53,14 +53,11 @@ typedef struct consensus_coordinator {
 /**
  * @brief Initialize coordinator with given parameters
  */
-asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SIZE],
-                                               const consensus_topology_t *topology,
-                                               consensus_election_func_t election_func, void *election_context,
+asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology, consensus_election_func_t election_func, void *election_context,
                                                consensus_coordinator_t **out_coordinator) {
   if (!my_id || !topology || !election_func || !out_coordinator) {
-    return SET_ERRNO(
-        ERROR_INVALID_PARAM, "Invalid parameter: my_id=%p, topology=%p, election_func=%p, out_coordinator=%p",
-        (const void *)my_id, (const void *)topology, (const void *)election_func, (const void *)out_coordinator);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter: my_id=%p, topology=%p, election_func=%p, out_coordinator=%p", (const void *)my_id, (const void *)topology, (const void *)election_func,
+                     (const void *)out_coordinator);
   }
 
   consensus_coordinator_t *coordinator = SAFE_MALLOC(sizeof(consensus_coordinator_t), consensus_coordinator_t *);
@@ -134,9 +131,8 @@ static bool should_start_new_round(consensus_coordinator_t *coordinator, uint64_
  */
 static asciichat_error_t measure_and_add_metrics(consensus_coordinator_t *coordinator) {
   participant_metrics_t metrics;
-  asciichat_error_t err = coordinator->metrics_provider ? coordinator->metrics_provider(coordinator->metrics_context,
-                                                                                        coordinator->my_id, &metrics)
-                                                        : consensus_metrics_measure(coordinator->my_id, &metrics);
+  asciichat_error_t err =
+      coordinator->metrics_provider ? coordinator->metrics_provider(coordinator->metrics_context, coordinator->my_id, &metrics) : consensus_metrics_measure(coordinator->my_id, &metrics);
   if (err != ASCIICHAT_OK) {
     return err;
   }
@@ -271,8 +267,7 @@ asciichat_error_t consensus_coordinator_process(consensus_coordinator_t *coordin
 /**
  * @brief Update ring topology when participants change
  */
-asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t *coordinator,
-                                                        const consensus_topology_t *new_topology) {
+asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t *coordinator, const consensus_topology_t *new_topology) {
   if (!coordinator || !new_topology) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
@@ -297,8 +292,7 @@ asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t 
 /**
  * @brief Handle STATS_COLLECTION_START packet
  */
-asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinator_t *coordinator, uint32_t round_id,
-                                                            uint64_t deadline_ns) {
+asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinator_t *coordinator, uint32_t round_id, uint64_t deadline_ns) {
   if (!coordinator) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Coordinator is NULL");
   }
@@ -324,8 +318,7 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
   }
 
   uint64_t now_ns = time_get_ns();
-  log_dev("Collection started: round_id=%u, deadline in %u seconds", round_id,
-          (unsigned int)((deadline_ns > now_ns ? deadline_ns - now_ns : 0) / NS_PER_SEC_INT));
+  log_dev("Collection started: round_id=%u, deadline in %u seconds", round_id, (unsigned int)((deadline_ns > now_ns ? deadline_ns - now_ns : 0) / NS_PER_SEC_INT));
 
   return ASCIICHAT_OK;
 }
@@ -333,9 +326,7 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
 /**
  * @brief Handle STATS_UPDATE packet
  */
-asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator,
-                                                        const uint8_t sender_id[SESSION_ID_SIZE],
-                                                        const participant_metrics_t *metrics, uint8_t num_metrics) {
+asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator, const uint8_t sender_id[SESSION_ID_SIZE], const participant_metrics_t *metrics, uint8_t num_metrics) {
   if (!coordinator || !sender_id || !metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
@@ -361,9 +352,7 @@ asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t 
 /**
  * @brief Handle ELECTION_RESULT packet
  */
-asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator,
-                                                           const uint8_t host_id[SESSION_ID_SIZE],
-                                                           const uint8_t backup_id[SESSION_ID_SIZE]) {
+asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator, const uint8_t host_id[SESSION_ID_SIZE], const uint8_t backup_id[SESSION_ID_SIZE]) {
   if (!coordinator || !host_id || !backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
@@ -390,9 +379,7 @@ asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator
 /**
  * @brief Get currently elected host
  */
-asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator,
-                                                         uint8_t out_host_id[SESSION_ID_SIZE],
-                                                         uint8_t out_backup_id[SESSION_ID_SIZE]) {
+asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator, uint8_t out_host_id[SESSION_ID_SIZE], uint8_t out_backup_id[SESSION_ID_SIZE]) {
   if (!coordinator || !out_host_id || !out_backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
@@ -457,8 +444,7 @@ int consensus_coordinator_get_metrics_count(const consensus_coordinator_t *coord
   return consensus_state_get_metrics_count(coordinator->state);
 }
 
-void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *coordinator,
-                                                consensus_metrics_provider_fn provider, void *context) {
+void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *coordinator, consensus_metrics_provider_fn provider, void *context) {
   if (!coordinator)
     return;
   coordinator->metrics_provider = provider;

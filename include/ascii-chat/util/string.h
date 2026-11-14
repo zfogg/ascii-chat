@@ -1,5 +1,7 @@
 #pragma once
 
+#include <libplatform/util/string.h>
+
 /**
  * @file util/string.h
  * @brief 🔤 String Manipulation and Shell Escaping Utilities
@@ -42,6 +44,29 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <ascii-chat/asciichat_errno.h>
+
+#ifdef _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else
+#include <sys/types.h>
+#endif
+
+int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+int platform_asprintf(char **strp, const char *format, ...);
+int platform_vasprintf(char **strp, const char *format, va_list ap);
+char *platform_strdup(const char *s);
+int platform_strcasecmp(const char *s1, const char *s2);
+int platform_strncasecmp(const char *s1, const char *s2, size_t n);
+char *platform_strtok_r(char *str, const char *delim, char **saveptr);
+size_t platform_strlcpy(char *dst, const char *src, size_t size);
+int platform_strncpy(char *dst, size_t dst_size, const char *src, size_t count);
+ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream);
+asciichat_error_t platform_escape_shell_path(const char *path, char *output, size_t output_size);
+
 
 /* ============================================================================
  * String Escaping Functions

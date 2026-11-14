@@ -89,9 +89,7 @@ static void ensure_mutex_initialized(void) {
  * - Header: acip_webrtc_sdp_t (variable size)
  * - Variable payload: SDP string
  */
-static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                            const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
-                                            const char *sdp, void *user_data) {
+static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type, const char *sdp, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
 
@@ -141,8 +139,7 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_
 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_sdp_t) + sdp_len;
-  asciichat_error_t result =
-      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp_msg_buf, msg_size, 0);
+  asciichat_error_t result = packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp_msg_buf, msg_size, 0);
 
   mutex_unlock(&g_webrtc_mutex);
 
@@ -160,9 +157,7 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_
  *
  * Constructs PACKET_TYPE_ACIP_WEBRTC_ICE and sends via direct TCP transport.
  */
-static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                            const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
-                                            const char *mid, void *user_data) {
+static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate, const char *mid, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
 
@@ -223,8 +218,7 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_
 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_ice_t) + payload_len;
-  asciichat_error_t result =
-      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size, 0);
+  asciichat_error_t result = packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size, 0);
 
   mutex_unlock(&g_webrtc_mutex);
 
@@ -241,10 +235,8 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_
 // Public API
 // =============================================================================
 
-webrtc_signaling_callbacks_t
-discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
-                                                const uint8_t session_id[SESSION_ID_SIZE],
-                                                const uint8_t participant_id[SESSION_ID_SIZE]) {
+webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport, const uint8_t session_id[SESSION_ID_SIZE],
+                                                                             const uint8_t participant_id[SESSION_ID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 
@@ -274,8 +266,7 @@ void discovery_webrtc_set_tcp_transport(acip_transport_t *transport) {
   mutex_unlock(&g_webrtc_mutex);
 }
 
-void discovery_webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
-                                          const uint8_t participant_id[SESSION_ID_SIZE]) {
+void discovery_webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 

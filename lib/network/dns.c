@@ -25,15 +25,19 @@ bool dns_test_connectivity(const char *hostname) {
 
   struct addrinfo hints, *result = NULL;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
+  /* Connectivity is not IPv4-specific.  Restricting this probe to AF_INET
+   * reports a false DNS failure on IPv6-only or IPv6-preferred networks even
+   * though the HTTP client can connect successfully. */
+  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
   log_debug("Testing DNS connectivity to %s...", hostname);
   log_debug("★ ABOUT TO CALL getaddrinfo for %s", hostname);
 
-  // Use NULL for port to avoid musl strtoul parsing bug with string port numbers
-  // The actual port doesn't matter for connectivity testing - we just need DNS resolution
-  int ret = getaddrinfo(hostname, NULL, &hints, &result);
+  /* Resolve the same service used by the update request.  Passing a NULL
+   * service is rejected by some Windows resolver configurations even though
+   * hostname resolution itself is healthy. */
+  int ret = getaddrinfo(hostname, "443", &hints, &result);
   log_debug("★ getaddrinfo returned %d", ret);
   if (ret != 0) {
     log_warn("DNS resolution failed for %s: %s", hostname, gai_strerror(ret));

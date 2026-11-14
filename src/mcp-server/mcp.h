@@ -9,7 +9,7 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/mutex.h>
 #include <libplatform/system.h>
-#include <ascii-chat/os/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/network/http/server/server.h>
 #include "../common/http_renderer.h"
@@ -90,11 +90,9 @@ int mcp_server_main(void);
 asciichat_error_t mcp_stdio_reserve(void);
 void mcp_stdio_release(void);
 yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *doc, const mcp_policy_t *policy);
-asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool, yyjson_val *arguments,
-                                    http_renderer_process_request_t *out);
+asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool, yyjson_val *arguments, http_renderer_process_request_t *out);
 void mcp_request_destroy(http_renderer_process_request_t *request);
-yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id,
-                             bool *pending);
+yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id, bool *pending);
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);
 void mcp_jobs_reap(mcp_server_t *server, bool all);
 void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response);

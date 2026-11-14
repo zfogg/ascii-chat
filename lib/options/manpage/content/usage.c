@@ -47,8 +47,7 @@ char *manpage_content_generate_usage(const options_config_t *config) {
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (usage->description) {
-      offset +=
-          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(usage->description));
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(usage->description));
     }
   }
 

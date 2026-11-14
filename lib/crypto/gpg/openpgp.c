@@ -37,8 +37,7 @@
 // Base64 Decoding for PGP Armor
 // =============================================================================
 
-asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, uint8_t **binary_out,
-                                        size_t *binary_len) {
+asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, uint8_t **binary_out, size_t *binary_len) {
   if (!base64 || !binary_out || !binary_len) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for base64 decode");
   }
@@ -58,8 +57,7 @@ asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, u
   *binary_out = SAFE_MALLOC(clean_len, uint8_t *);
 
   const char *end;
-  int result = sodium_base642bin(*binary_out, clean_len, clean_base64, clean_len, NULL, binary_len, &end,
-                                 sodium_base64_VARIANT_ORIGINAL);
+  int result = sodium_base642bin(*binary_out, clean_len, clean_base64, clean_len, NULL, binary_len, &end, sodium_base64_VARIANT_ORIGINAL);
 
   if (result != 0) {
     SAFE_FREE(*binary_out);
@@ -160,8 +158,7 @@ asciichat_error_t openpgp_parse_packet_header(const uint8_t *data, size_t data_l
     }
   }
 
-  log_debug("OpenPGP packet: tag=%u, length=%zu, header_len=%zu, new_format=%d", header->tag, header->length,
-            header->header_len, header->new_format);
+  log_debug("OpenPGP packet: tag=%u, length=%zu, header_len=%zu, new_format=%d", header->tag, header->length, header->header_len, header->new_format);
 
   return ASCIICHAT_OK;
 }
@@ -170,8 +167,7 @@ asciichat_error_t openpgp_parse_packet_header(const uint8_t *data, size_t data_l
 // MPI (Multi-Precision Integer) Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len,
-                                                   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!mpi || !ed25519_pk || mpi_len < 35) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for MPI extraction (need at least 35 bytes)");
   }
@@ -204,8 +200,7 @@ asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mp
 // Public Key Packet Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, size_t body_len,
-                                                  openpgp_public_key_t *pubkey) {
+asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, size_t body_len, openpgp_public_key_t *pubkey) {
   if (!packet_body || !pubkey || body_len < 6) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for public key packet parsing");
   }
@@ -217,25 +212,21 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
   // Version (1 byte, must be 4)
   pubkey->version = packet_body[offset++];
   if (pubkey->version != 4) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported OpenPGP public key version: %u (only version 4 supported)",
-                     pubkey->version);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported OpenPGP public key version: %u (only version 4 supported)", pubkey->version);
   }
 
   // Creation time (4 bytes, big-endian Unix timestamp)
-  pubkey->created = ((uint32_t)packet_body[offset] << 24) | ((uint32_t)packet_body[offset + 1] << 16) |
-                    ((uint32_t)packet_body[offset + 2] << 8) | packet_body[offset + 3];
+  pubkey->created = ((uint32_t)packet_body[offset] << 24) | ((uint32_t)packet_body[offset + 1] << 16) | ((uint32_t)packet_body[offset + 2] << 8) | packet_body[offset + 3];
   offset += 4;
 
   // Algorithm (1 byte)
   pubkey->algorithm = packet_body[offset++];
 
-  log_debug("Public key packet: version=%u, created=%u, algorithm=%u", pubkey->version, pubkey->created,
-            pubkey->algorithm);
+  log_debug("Public key packet: version=%u, created=%u, algorithm=%u", pubkey->version, pubkey->created, pubkey->algorithm);
 
   // Only support EdDSA (algorithm 22)
   if (pubkey->algorithm != OPENPGP_ALGO_EDDSA) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported public key algorithm: %u (only EdDSA/22 supported)",
-                     pubkey->algorithm);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported public key algorithm: %u (only EdDSA/22 supported)", pubkey->algorithm);
   }
 
   // EdDSA (Ed25519) keys have a special encoding:
@@ -286,8 +277,7 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
 // PGP Armored Format Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len,
-                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!data || data_len == 0 || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP public-key parsing");
   }
@@ -375,8 +365,7 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
 // Secret Key Packet Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len,
-                                                  openpgp_secret_key_t *seckey) {
+asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len, openpgp_secret_key_t *seckey) {
   if (!packet_body || !seckey || body_len < 6) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for secret key packet parsing");
   }
@@ -389,25 +378,21 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   // Version (1 byte, must be 4)
   seckey->version = packet_body[offset++];
   if (seckey->version != 4) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported OpenPGP secret key version: %u (only version 4 supported)",
-                     seckey->version);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported OpenPGP secret key version: %u (only version 4 supported)", seckey->version);
   }
 
   // Creation time (4 bytes, big-endian Unix timestamp)
-  seckey->created = ((uint32_t)packet_body[offset] << 24) | ((uint32_t)packet_body[offset + 1] << 16) |
-                    ((uint32_t)packet_body[offset + 2] << 8) | packet_body[offset + 3];
+  seckey->created = ((uint32_t)packet_body[offset] << 24) | ((uint32_t)packet_body[offset + 1] << 16) | ((uint32_t)packet_body[offset + 2] << 8) | packet_body[offset + 3];
   offset += 4;
 
   // Algorithm (1 byte)
   seckey->algorithm = packet_body[offset++];
 
-  log_debug("Secret key packet: version=%u, created=%u, algorithm=%u", seckey->version, seckey->created,
-            seckey->algorithm);
+  log_debug("Secret key packet: version=%u, created=%u, algorithm=%u", seckey->version, seckey->created, seckey->algorithm);
 
   // Only support EdDSA (algorithm 22)
   if (seckey->algorithm != OPENPGP_ALGO_EDDSA) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported secret key algorithm: %u (only EdDSA/22 supported)",
-                     seckey->algorithm);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported secret key algorithm: %u (only EdDSA/22 supported)", seckey->algorithm);
   }
 
   // EdDSA public key: OID + 0x40 prefix + 32 bytes of Ed25519 public key
@@ -464,8 +449,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   uint16_t secret_bits = (uint16_t)(((uint16_t)packet_body[offset] << 8) | packet_body[offset + 1]);
   size_t secret_bytes = (secret_bits + 7u) / 8u;
   offset += 2;
-  if (secret_bits == 0 || secret_bits > 256 || secret_bytes > sizeof(seckey->seckey) ||
-      offset + secret_bytes + 2 > body_len) {
+  if (secret_bits == 0 || secret_bits > 256 || secret_bytes > sizeof(seckey->seckey) || offset + secret_bytes + 2 > body_len) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 secret-key MPI length: %u bits", secret_bits);
   }
 
@@ -505,15 +489,13 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
       log_info("GPG key is encrypted - prompting for passphrase");
       prompt_opts_t prompt_opts = PROMPT_OPTS_PASSWORD;
       prompt_opts.kind = UI_PROMPT_GPG_PASSPHRASE;
-      if (platform_prompt_question("Enter passphrase for GPG key", passphrase_buffer, sizeof(passphrase_buffer),
-                                   prompt_opts) != 0) {
+      if (platform_prompt_question("Enter passphrase for GPG key", passphrase_buffer, sizeof(passphrase_buffer), prompt_opts) != 0) {
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted GPG key");
       }
       passphrase = passphrase_buffer;
     } else {
-      return SET_ERRNO(ERROR_CRYPTO_KEY,
-                       "Encrypted GPG key requires passphrase. Set ASCII_CHAT_KEY_PASSWORD environment variable or "
-                       "run interactively.");
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted GPG key requires passphrase. Set ASCII_CHAT_KEY_PASSWORD environment variable or "
+                                         "run interactively.");
     }
   }
 
@@ -592,8 +574,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Retrieving GPG key fingerprint");
   char fpr_output[CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
-  LOG_IO("gpg",
-         { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);
@@ -617,8 +598,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
           if (field_count == 10) {
             // Found field 10, copy until next colon or newline
             size_t fpr_len = 0;
-            while (field_start[fpr_len] && field_start[fpr_len] != ':' && field_start[fpr_len] != '\n' &&
-                   fpr_len < sizeof(key_fpr) - 1) {
+            while (field_start[fpr_len] && field_start[fpr_len] != ':' && field_start[fpr_len] != '\n' && fpr_len < sizeof(key_fpr) - 1) {
               fpr_len++;
             }
             if (fpr_len > 0 && fpr_len < sizeof(key_fpr)) {
@@ -719,9 +699,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 }
 #endif
 
-asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len,
-                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
-                                              uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE], uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
   if (!data || data_len == 0 || !ed25519_pk || !ed25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP secret-key parsing");
   }
@@ -740,8 +718,7 @@ asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_l
       result = openpgp_parse_secret_key_packet(data + offset + header.header_len, header.length, &seckey);
       if (result == ASCIICHAT_OK) {
         if (seckey.is_encrypted) {
-          return SET_ERRNO(ERROR_NOT_SUPPORTED,
-                           "Encrypted binary OpenPGP private keys are not supported; use an unencrypted key");
+          return SET_ERRNO(ERROR_NOT_SUPPORTED, "Encrypted binary OpenPGP private keys are not supported; use an unencrypted key");
         }
         memcpy(ed25519_pk, seckey.pubkey, ED25519_PUBLIC_KEY_SIZE);
         memcpy(ed25519_sk, seckey.seckey, ED25519_SEED_SIZE);
@@ -753,8 +730,7 @@ asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_l
   return SET_ERRNO(ERROR_CRYPTO_KEY, "No unencrypted Ed25519 secret key found in OpenPGP data");
 }
 
-asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
-                                               uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE], uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
   if (!armored_text || !ed25519_pk || !ed25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for armored seckey parsing");
   }
@@ -830,15 +806,13 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     // Check if this is a secret key packet (tag 5)
     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
       openpgp_secret_key_t seckey;
-      asciichat_error_t parse_result =
-          openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &seckey);
+      asciichat_error_t parse_result = openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &seckey);
 
       if (parse_result == ASCIICHAT_OK) {
         // Check if key is encrypted
         if (seckey.is_encrypted) {
 #ifdef EMSCRIPTEN_BUILD
-          return SET_ERRNO(ERROR_NOT_SUPPORTED,
-                           "Encrypted OpenPGP private keys are not supported in the browser; use an unencrypted key");
+          return SET_ERRNO(ERROR_NOT_SUPPORTED, "Encrypted OpenPGP private keys are not supported in the browser; use an unencrypted key");
 #else
           log_debug("Detected encrypted GPG key, attempting to decrypt with passphrase");
 

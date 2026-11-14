@@ -19,10 +19,8 @@
 
 #if defined(__APPLE__)
 // macOS Mach-O format: use __TEXT segment for read-only data
-__attribute__((used, section("__TEXT,__ascii_chat"))) const char ascii_chat_custom_section[] =
-    ASCII_CHAT_DOT_ASCII_CHAT_STRING;
-__attribute__((used, section("__TEXT,__comment"))) const char ascii_chat_comment_string[] =
-    ASCII_CHAT_DOT_COMMENT_STRING;
+__attribute__((used, section("__TEXT,__ascii_chat"))) const char ascii_chat_custom_section[] = ASCII_CHAT_DOT_ASCII_CHAT_STRING;
+__attribute__((used, section("__TEXT,__comment"))) const char ascii_chat_comment_string[] = ASCII_CHAT_DOT_COMMENT_STRING;
 __attribute__((used, section("__TEXT,__version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 #define ASCII_CHAT_VERSION_GETTERS
 

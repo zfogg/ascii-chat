@@ -20,8 +20,7 @@ THREAD_LOCAL _Alignas(32) uint8_t avx2_luminance_buffer[32];
 
 // Optimized AVX2 function to load 32 RGB pixels and separate channels
 // Uses simple loop that auto-vectorizes to VMOVDQU + VPSHUFB
-void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out,
-                               uint8_t *__restrict g_out, uint8_t *__restrict b_out) {
+void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out, uint8_t *__restrict g_out, uint8_t *__restrict b_out) {
   // Simple loop that compiler auto-vectorizes into efficient SIMD
   for (int i = 0; i < 32; i++) {
     r_out[i] = pixels[i].r;
@@ -31,8 +30,7 @@ void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__
 }
 
 // AVX2 function to compute luminance for 32 pixels
-void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, const uint8_t *b_vals,
-                               uint8_t *luminance_out) {
+void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, const uint8_t *b_vals, uint8_t *luminance_out) {
   // Load all 32 RGB values into AVX2 registers
   __m256i r_all = _mm256_loadu_si256((const __m256i_u *)r_vals);
   __m256i g_all = _mm256_loadu_si256((const __m256i_u *)g_vals);

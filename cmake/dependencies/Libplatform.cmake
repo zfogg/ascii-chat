@@ -4,7 +4,9 @@
 # builds use the static library unless the caller explicitly requests shared
 # dependencies. musl is always static because its release toolchain is static.
 
-if(USE_MUSL)
+include(FetchContent)
+
+if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_ascii_chat_libplatform_shared OFF)
 elseif(ASCIICHAT_SHARED_DEPS)
     set(_ascii_chat_libplatform_shared ON)
@@ -19,8 +21,28 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/libplatform
-                 ${CMAKE_BINARY_DIR}/deps/libplatform)
+# Use the checked-out submodule directly.  Reusing a cached source tree can
+# mix headers and implementations from different libplatform revisions.
+set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
+set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
+FetchContent_Declare(libplatform
+    SOURCE_DIR "${_ascii_chat_libplatform_source}"
+    BINARY_DIR "${_ascii_chat_libplatform_build}")
+FetchContent_MakeAvailable(libplatform)
+
+target_include_directories(asciichat-project-includes INTERFACE
+    "${_ascii_chat_libplatform_source}/lib")
+
+# libplatform owns the shared path/logging helpers, so give it the checkout
+# root that CMake already knows instead of letting it fall back to ".".
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
+    set(_ascii_chat_source_root ".")
+else()
+    string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
+endif()
+target_compile_definitions(libplatform-objects PRIVATE
+    LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
@@ -38,3 +60,6 @@ if(UNIX AND NOT APPLE)
 endif()
 
 unset(_ascii_chat_libplatform_shared)
+unset(_ascii_chat_libplatform_source)
+unset(_ascii_chat_libplatform_build)
+unset(_ascii_chat_source_root)

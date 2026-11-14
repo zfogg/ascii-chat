@@ -31,14 +31,11 @@ void ui_scrollbar_cell(char *out, size_t cap, size_t row, size_t height, size_t 
   }
   ui_scrollbar_geometry_t g = ui_scrollbar_measure(total, visible, offset, height);
   bool thumb = g.visible && row >= g.start && row - g.start < g.length;
-  const char *glyph = !g.visible                                         ? " "
-                      : terminal_should_use_utf8(GET_OPTION(force_utf8)) ? (thumb ? "█" : "│")
-                                                                         : (thumb ? "#" : "|");
+  const char *glyph = !g.visible ? " " : terminal_should_use_utf8(GET_OPTION(force_utf8)) ? (thumb ? "█" : "│") : (thumb ? "#" : "|");
   snprintf(out, cap, "%s", colored_string(thumb ? LOG_COLOR_DEBUG : LOG_COLOR_GREY, glyph));
 }
 
-void ui_scrollbar_render(frame_buffer_t *out, int row, int col, int height, size_t total, size_t visible,
-                         size_t offset) {
+void ui_scrollbar_render(frame_buffer_t *out, int row, int col, int height, size_t total, size_t visible, size_t offset) {
   if (!out || row < 1 || col < 1 || height < 1) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid scrollbar output or geometry");
     return;

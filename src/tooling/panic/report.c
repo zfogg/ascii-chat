@@ -455,10 +455,8 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
   }
 
   static const struct option kLongOptions[] = {
-      {"log-file", required_argument, NULL, 'f'}, {"log-dir", required_argument, NULL, 'd'},
-      {"thread", required_argument, NULL, 't'},   {"include", required_argument, NULL, 'i'},
-      {"exclude", required_argument, NULL, 'x'},  {"raw", no_argument, NULL, 'r'},
-      {"help", no_argument, NULL, 'h'},           {0, 0, 0, 0},
+      {"log-file", required_argument, NULL, 'f'}, {"log-dir", required_argument, NULL, 'd'}, {"thread", required_argument, NULL, 't'}, {"include", required_argument, NULL, 'i'},
+      {"exclude", required_argument, NULL, 'x'},  {"raw", no_argument, NULL, 'r'},           {"help", no_argument, NULL, 'h'},         {0, 0, 0, 0},
   };
 
   int option = 0;

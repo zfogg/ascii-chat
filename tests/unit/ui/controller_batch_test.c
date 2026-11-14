@@ -12,6 +12,14 @@
 
 TestSuite(controller_batch);
 
+Test(controller_batch, utf8_chunk_trim_does_not_read_past_chunk) {
+  char data[32769];
+  memset(data, 'A', sizeof(data));
+  // This byte belongs to the next chunk and must not affect the boundary.
+  data[32768] = (char)0x80;
+  cr_assert_eq(ui_controller_trim_utf8_chunk(data, 32768), 32768);
+}
+
 static void render_snapshot(terminal_size_t size, const void *snapshot) {
   cr_assert(ui_controller_is_owner());
   cr_assert_eq(size.cols, 32);

@@ -269,8 +269,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     }
 
     // Snapshot all needed client state (all atomic reads or stable pointers)
-    SAFE_STRNCPY(client_snapshots[snapshot_count].client_id, client->client_id,
-                 sizeof(client_snapshots[snapshot_count].client_id) - 1);
+    SAFE_STRNCPY(client_snapshots[snapshot_count].client_id, client->client_id, sizeof(client_snapshots[snapshot_count].client_id) - 1);
     client_snapshots[snapshot_count].is_active = atomic_load_bool(&client->active);
     client_snapshots[snapshot_count].is_sending_video = atomic_load_bool(&client->is_sending_video);
     client_snapshots[snapshot_count].video_buffer = client->incoming_video_buffer; // Stable pointer
@@ -305,8 +304,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       video_frame_buffer_t *video_buffer = snap->video_buffer;
       mutex_lock(&video_buffer->swap_mutex);
       const video_frame_t *frame = video_buffer->front_buffer;
-      if (!frame || !frame->data || frame->size < sizeof(uint32_t) * 2 ||
-          frame->size > video_buffer->allocated_buffer_size) {
+      if (!frame || !frame->data || frame->size < sizeof(uint32_t) * 2 || frame->size > video_buffer->allocated_buffer_size) {
         mutex_unlock(&video_buffer->swap_mutex);
         continue;
       }
@@ -344,8 +342,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           correct_frame_size += rgb_size;
         }
 
-        log_debug_every(NS_PER_MS_INT, "Per-client: frame dimensions=%ux%u, frame_size=%zu, correct_size=%zu",
-                        peek_width, peek_height, frame_size_val, correct_frame_size);
+        log_debug_every(NS_PER_MS_INT, "Per-client: frame dimensions=%ux%u, frame_size=%zu, correct_size=%zu", peek_width, peek_height, frame_size_val, correct_frame_size);
 
         // Verify frame is at least large enough for the correct size
         if (frame_size_val < correct_frame_size) {
@@ -383,15 +380,12 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       // Debug logging to understand the data
       if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Uninitialized frame dimensions from client %s: 0x%08x x 0x%08x",
-                  snap->client_id, img_width, img_height);
+        SET_ERRNO(ERROR_INVALID_STATE, "Uninitialized frame dimensions from client %s: 0x%08x x 0x%08x", snap->client_id, img_width, img_height);
       }
 
       // Validate dimensions using image utility function
       if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
-        SET_ERRNO(ERROR_INVALID_STATE,
-                  "Per-client: Invalid image dimensions from client %s: %ux%u (data may be corrupted)", snap->client_id,
-                  img_width, img_height);
+        SET_ERRNO(ERROR_INVALID_STATE, "Per-client: Invalid image dimensions from client %s: %ux%u (data may be corrupted)", snap->client_id, img_width, img_height);
         if (got_new_frame) {
           buffer_release(current_frame.data);
         }
@@ -404,8 +398,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       {
         size_t rgb_size = 0;
         if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
-          SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %s: %ux%u",
-                    snap->client_id, img_width, img_height);
+          SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %s: %ux%u", snap->client_id, img_width, img_height);
           if (got_new_frame) {
             buffer_release(current_frame.data);
           }
@@ -415,9 +408,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         expected_size += rgb_size;
       }
       if (frame_to_use->size != expected_size) {
-        SET_ERRNO(ERROR_INVALID_STATE,
-                  "Per-client: Frame size mismatch from client %s: got %zu, expected %zu for %ux%u image",
-                  snap->client_id, frame_to_use->size, expected_size, img_width, img_height);
+        SET_ERRNO(ERROR_INVALID_STATE, "Per-client: Frame size mismatch from client %s: got %zu, expected %zu for %ux%u image", snap->client_id, frame_to_use->size, expected_size, img_width,
+                  img_height);
         if (got_new_frame) {
           buffer_release(current_frame.data);
         }
@@ -472,9 +464,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
  * @return Composite image or NULL on error
  * @ingroup server_stream
  */
-static image_t *create_single_source_composite(image_source_t *sources, int source_count,
-                                               const char *target_client_id __attribute__((unused)),
-                                               unsigned short width __attribute__((unused)),
+static image_t *create_single_source_composite(image_source_t *sources, int source_count, const char *target_client_id __attribute__((unused)), unsigned short width __attribute__((unused)),
                                                unsigned short height __attribute__((unused))) {
   // Find the single source with video
   image_t *single_source = NULL;
@@ -519,8 +509,7 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
  *
  * @ingroup server_stream
  */
-static void calculate_optimal_grid_layout(image_source_t *sources, int source_count, int sources_with_video,
-                                          int terminal_width, int terminal_height, int *out_cols, int *out_rows) {
+static void calculate_optimal_grid_layout(image_source_t *sources, int source_count, int sources_with_video, int terminal_width, int terminal_height, int *out_cols, int *out_rows) {
   // Special cases
   if (sources_with_video == 0) {
     *out_cols = 0;
@@ -627,8 +616,7 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
     float utilization = total_area_used / total_available_area;
 
     float test_cell_visual_aspect = (float)cell_width / ((float)cell_height * CHAR_ASPECT);
-    log_dev_every(LOG_RATE_NORMAL, "  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows,
-                  cell_width, cell_height, test_cell_visual_aspect, utilization * 100.0f);
+    log_dev_every(LOG_RATE_NORMAL, "  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows, cell_width, cell_height, test_cell_visual_aspect, utilization * 100.0f);
 
     // Prefer configurations with better utilization
     if (utilization > best_utilization) {
@@ -645,8 +633,8 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
   log_dev_every(LOG_RATE_NORMAL,
                 "Grid layout: %d clients -> %dx%d grid (%.1f%% utilization) | terminal=%dx%d (char aspect %.2f, VISUAL "
                 "aspect %.2f), video aspect: %.2f",
-                sources_with_video, best_cols, best_rows, best_utilization * 100.0f, terminal_width, terminal_height,
-                (float)terminal_width / (float)terminal_height, terminal_visual_aspect, avg_aspect);
+                sources_with_video, best_cols, best_rows, best_utilization * 100.0f, terminal_width, terminal_height, (float)terminal_width / (float)terminal_height, terminal_visual_aspect,
+                avg_aspect);
 }
 
 /**
@@ -660,9 +648,7 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
  * @return Composite image or NULL on error
  * @ingroup server_stream
  */
-static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video,
-                                              const char *target_client_id, unsigned short width,
-                                              unsigned short height) {
+static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video, const char *target_client_id, unsigned short width, unsigned short height) {
   (void)target_client_id; // Unused - composite is same for all clients now
 
   // Calculate optimal grid layout using space-maximizing algorithm
@@ -714,8 +700,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
       target_width_px = (int)((cell_height_px * src_aspect) + 0.5f);
     }
 
-    log_dev_every(LOG_RATE_NORMAL, "Cell %d: %dx%d px, video %.1f, cell %.2f → target %dx%d px (fill %s)",
-                  video_source_index - 1, cell_width_px, cell_height_px, src_aspect, cell_visual_aspect,
+    log_dev_every(LOG_RATE_NORMAL, "Cell %d: %dx%d px, video %.1f, cell %.2f → target %dx%d px (fill %s)", video_source_index - 1, cell_width_px, cell_height_px, src_aspect, cell_visual_aspect,
                   target_width_px, target_height_px, (src_aspect > cell_visual_aspect) ? "WIDTH" : "HEIGHT");
 
     // Create resized image with standard allocation
@@ -786,10 +771,8 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
  * @return Allocated ASCII frame string (caller must free) or NULL on error
  * @ingroup server_stream
  */
-static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, image_source_t *sources, int source_count,
-                                                int sources_with_video, int width, int height) {
-  if (!history->cells || history->width != (size_t)width || sources_with_video <= 0 ||
-      (history->height != (size_t)height && history->height != (size_t)height * 2))
+static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, image_source_t *sources, int source_count, int sources_with_video, int width, int height) {
+  if (!history->cells || history->width != (size_t)width || sources_with_video <= 0 || (history->height != (size_t)height && history->height != (size_t)height * 2))
     return;
   size_t history_scale = history->height / (size_t)height;
   int cols = 1, rows = 1;
@@ -823,9 +806,8 @@ static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, ima
   }
 }
 
-static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width,
-                                        unsigned short height, acip_render_settings_t *out_rendering,
-                                        image_source_t *sources, int source_count, int sources_with_video) {
+static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width, unsigned short height, acip_render_settings_t *out_rendering, image_source_t *sources,
+                                        int source_count, int sources_with_video) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily
   // Instead, the render thread already has snapshot of client state, so we just need palette data
   // which is stable after initialization
@@ -862,12 +844,10 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   width = rendering.width;
   height = rendering.height;
   if (caps_snapshot.stabilize)
-    invalidate_changed_composite_owners(&render_client->render_stabilizer, sources, source_count, sources_with_video,
-                                        width, height);
+    invalidate_changed_composite_owners(&render_client->render_stabilizer, sources, source_count, sources_with_video, width, height);
   uint64_t convert_start_ns = time_get_ns();
-  char *ascii_frame = ascii_convert_with_buffers_stabilized(
-      composite, width, height, &caps_snapshot, true, false, rendering.palette, false, NULL, NULL,
-      caps_snapshot.stabilize ? &render_client->render_stabilizer : NULL);
+  char *ascii_frame = ascii_convert_with_buffers_stabilized(composite, width, height, &caps_snapshot, true, false, rendering.palette, false, NULL, NULL,
+                                                            caps_snapshot.stabilize ? &render_client->render_stabilizer : NULL);
   if (!caps_snapshot.stabilize)
     ascii_stabilizer_reset(&render_client->render_stabilizer);
   uint64_t convert_end_ns = time_get_ns();
@@ -876,14 +856,12 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   if (convert_duration_ns > 5 * NS_PER_MS_INT) { // Log if > 5ms
     char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)((double)convert_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %s took %s to convert %dx%d image to ASCII",
-                   target_client_id, duration_str, composite->w, composite->h);
+    log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %s took %s to convert %dx%d image to ASCII", target_client_id, duration_str, composite->w, composite->h);
   }
 
   const bool matrix_rain = (caps_snapshot.capabilities & TERM_CAP_MATRIX_RAIN) != 0;
   if (matrix_rain && ascii_frame) {
-    if (!render_client->digital_rain || render_client->digital_rain->num_columns != width ||
-        render_client->digital_rain->num_rows != height) {
+    if (!render_client->digital_rain || render_client->digital_rain->num_columns != width || render_client->digital_rain->num_rows != height) {
       if (render_client->digital_rain) {
         digital_rain_destroy(render_client->digital_rain);
       }
@@ -1021,8 +999,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
  */
 // Compute hash of all active video sources for cache invalidation
 // Uses hardware-accelerated CRC32 for ultra-fast hashing
-char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed,
+char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height, bool wants_stretch, size_t *out_size, bool *out_grid_changed,
                                           int *out_sources_count, acip_render_settings_t *out_rendering) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
@@ -1062,8 +1039,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     }
   }
 
-  log_dev_every(333 * NS_PER_MS_INT, "FRAME_GEN_START: target_client=%s sources=%d collect=%.1fms", target_client_id,
-                sources_with_video, (collect_end_ns - collect_start_ns) / NS_PER_MS);
+  log_dev_every(333 * NS_PER_MS_INT, "FRAME_GEN_START: target_client=%s sources=%d collect=%.1fms", target_client_id, sources_with_video, (collect_end_ns - collect_start_ns) / NS_PER_MS);
 
   // Return the source count for debugging/tracking
   if (out_sources_count) {
@@ -1079,10 +1055,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   if (sources_with_video != (int)previous_count) {
     // Use compare-and-swap to ensure only ONE thread detects the change
     if (atomic_cas_u64(&g_previous_active_video_count, &previous_count, (uint64_t)sources_with_video)) {
-      log_dev_every(
-          LOG_RATE_DEFAULT,
-          "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame",
-          previous_count, sources_with_video);
+      log_dev_every(LOG_RATE_DEFAULT, "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame", previous_count, sources_with_video);
       if (out_grid_changed) {
         *out_grid_changed = true; // Signal to caller
       }
@@ -1115,8 +1088,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     }
   } else {
     // Multiple sources - create grid layout
-    composite =
-        create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
+    composite = create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
   }
 
   char *out = NULL;
@@ -1129,8 +1101,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 
   // Convert composite to ASCII using client capabilities
   // Pass terminal dimensions so the frame can be padded to full width
-  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering, sources,
-                                                 source_count, sources_with_video);
+  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering, sources, source_count, sources_with_video);
 
   if (ascii_frame) {
     // The frame should have been null-terminated by the padding functions.
@@ -1197,8 +1168,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   if (frame_gen_duration_ns > 10 * NS_PER_MS_INT) { // Log if > 10ms
     char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)((double)frame_gen_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %s full frame gen took %s", target_client_id,
-                   duration_str);
+    log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %s full frame gen took %s", target_client_id, duration_str);
   }
 
   return out;

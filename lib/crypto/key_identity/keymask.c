@@ -8,8 +8,7 @@
 #include <sodium.h>
 #include <string.h>
 
-asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                         uint8_t digest[KEYMASK_DIGEST_SIZE]) {
+asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], uint8_t digest[KEYMASK_DIGEST_SIZE]) {
   if (!public_key || !digest)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing public key or fingerprint output");
   if (crypto_hash_sha256(digest, public_key, ED25519_PUBLIC_KEY_SIZE) != 0)
@@ -18,8 +17,7 @@ asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC
 }
 
 // Independent feature hashes keep each choice stable as other features evolve.
-static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *feature,
-                         uint8_t seed[KEYMASK_DIGEST_SIZE]) {
+static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *feature, uint8_t seed[KEYMASK_DIGEST_SIZE]) {
   static const char domain[] = "ascii-chat/keymask/v2";
   crypto_hash_sha256_state state;
   crypto_hash_sha256_init(&state);
@@ -29,8 +27,7 @@ static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *
   crypto_hash_sha256_final(&state, seed);
 }
 
-static void stamp(char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS], unsigned row, unsigned col,
-                  const char *text) {
+static void stamp(char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS], unsigned row, unsigned col, const char *text) {
   for (; *text && col < KEYMASK_INTERIOR_COLUMNS; ++col, ++text)
     cells[row][col] = *text;
 }
@@ -48,8 +45,7 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
 
   char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS];
   memset(cells, ' ', sizeof(cells));
-  uint8_t outline[KEYMASK_DIGEST_SIZE], crown[KEYMASK_DIGEST_SIZE], eyes[KEYMASK_DIGEST_SIZE],
-      center[KEYMASK_DIGEST_SIZE], mouth[KEYMASK_DIGEST_SIZE], marks[KEYMASK_DIGEST_SIZE];
+  uint8_t outline[KEYMASK_DIGEST_SIZE], crown[KEYMASK_DIGEST_SIZE], eyes[KEYMASK_DIGEST_SIZE], center[KEYMASK_DIGEST_SIZE], mouth[KEYMASK_DIGEST_SIZE], marks[KEYMASK_DIGEST_SIZE];
   feature_seed(digest, "outline", outline);
   feature_seed(digest, "crown", crown);
   feature_seed(digest, "eyes", eyes);
@@ -59,10 +55,8 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
 
   // Half-widths from forehead to chin. Each family has a distinct silhouette.
   static const unsigned widths[8][12] = {
-      {8, 10, 12, 12, 12, 11, 10, 9, 8, 6, 4, 2},     {6, 7, 8, 8, 8, 8, 8, 8, 7, 6, 5, 4},
-      {11, 13, 14, 14, 13, 12, 11, 10, 9, 7, 5, 3},   {9, 10, 11, 12, 13, 14, 13, 11, 9, 6, 3, 1},
-      {12, 12, 12, 12, 12, 12, 12, 12, 12, 10, 8, 6}, {5, 7, 9, 11, 12, 12, 11, 10, 8, 6, 4, 2},
-      {10, 11, 12, 11, 10, 9, 10, 11, 10, 8, 6, 4},   {7, 9, 11, 13, 14, 13, 12, 11, 10, 9, 8, 7},
+      {8, 10, 12, 12, 12, 11, 10, 9, 8, 6, 4, 2},     {6, 7, 8, 8, 8, 8, 8, 8, 7, 6, 5, 4},      {11, 13, 14, 14, 13, 12, 11, 10, 9, 7, 5, 3}, {9, 10, 11, 12, 13, 14, 13, 11, 9, 6, 3, 1},
+      {12, 12, 12, 12, 12, 12, 12, 12, 12, 10, 8, 6}, {5, 7, 9, 11, 12, 12, 11, 10, 8, 6, 4, 2}, {10, 11, 12, 11, 10, 9, 10, 11, 10, 8, 6, 4}, {7, 9, 11, 13, 14, 13, 12, 11, 10, 9, 8, 7},
   };
   const unsigned *profile = widths[outline[0] % 8];
   for (unsigned r = 0; r < 12; ++r) {
@@ -91,14 +85,12 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
     centered(cells, r, crowns[crown[0] % 8][r]);
 
   static const char *eye_rows[8][2] = {
-      {"[###]  [###]", "  V      V  "},   {" /--\\  /--\\ ", " \\__/  \\__/ "}, {" \\##\\  /##/ ", "  \\_/  \\_/  "},
-      {"============", "[--O----O--]"},   {" .--.  .--. ", " (XX)  (XX) "},     {" /^^\\  /^^\\ ", " |..|  |..| "},
-      {"  <>    <>  ", " /__\\  /__\\ "}, {" [::]  [::] ", "  --    --  "},
+      {"[###]  [###]", "  V      V  "}, {" /--\\  /--\\ ", " \\__/  \\__/ "}, {" \\##\\  /##/ ", "  \\_/  \\_/  "}, {"============", "[--O----O--]"},
+      {" .--.  .--. ", " (XX)  (XX) "}, {" /^^\\  /^^\\ ", " |..|  |..| "},   {"  <>    <>  ", " /__\\  /__\\ "},   {" [::]  [::] ", "  --    --  "},
   };
   centered(cells, 5, eye_rows[eyes[0] % 8][0]);
   centered(cells, 6, eye_rows[eyes[0] % 8][1]);
-  static const char *noses[6][2] = {{"/\\", "\\/"},   {"||", "||"}, {"##", "VV"},
-                                    {"/\\", "/__\\"}, {"::", "[]"}, {"\\/", "||"}};
+  static const char *noses[6][2] = {{"/\\", "\\/"}, {"||", "||"}, {"##", "VV"}, {"/\\", "/__\\"}, {"::", "[]"}, {"\\/", "||"}};
   centered(cells, 8, noses[center[0] % 6][0]);
   centered(cells, 9, noses[center[0] % 6][1]);
   static const char *mouths[8][2] = {

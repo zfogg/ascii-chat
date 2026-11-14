@@ -249,8 +249,7 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx);
 image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, image_t *frame);
 /** Reuse capture-worker-owned storage; preserves it on allocation failure.
  * The caller destroys *output after capture joins. Input may equal *output. */
-asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame,
-                                                                image_t **output);
+asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame, image_t **output);
 
 /**
  * @brief Sleep to maintain target frame rate
@@ -375,8 +374,7 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
 
 /** Capture-owner callback for on-demand local audio; NULL keeps existing behavior. */
 typedef void *(*session_capture_audio_update_fn)(media_source_t *source, void *user_data);
-void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
-                                       void *user_data);
+void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update, void *user_data);
 
 /** @} */
 

@@ -4,14 +4,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-const char *const mcp_output_formats[] = {"png", "jpg",  "jpeg", "bmp", "webp", "gif", "mp4", "mov",
-                                          "mkv", "webm", "avi",  "flv", "ogv",  "ogg", "3gp", NULL};
+const char *const mcp_output_formats[] = {"png", "jpg", "jpeg", "bmp", "webp", "gif", "mp4", "mov", "mkv", "webm", "avi", "flv", "ogv", "ogg", "3gp", NULL};
 
 const char *mcp_output_mime(const char *extension) {
-  static const char *const mime[] = {"image/png",        "image/jpeg", "image/jpeg",      "image/bmp",
-                                     "image/webp",       "image/gif",  "video/mp4",       "video/quicktime",
-                                     "video/x-matroska", "video/webm", "video/x-msvideo", "video/x-flv",
-                                     "video/ogg",        "video/ogg",  "video/3gpp"};
+  static const char *const mime[] = {"image/png",        "image/jpeg", "image/jpeg",      "image/bmp",   "image/webp", "image/gif", "video/mp4", "video/quicktime",
+                                     "video/x-matroska", "video/webm", "video/x-msvideo", "video/x-flv", "video/ogg",  "video/ogg", "video/3gpp"};
   for (size_t i = 0; mcp_output_formats[i]; ++i)
     if (!strcmp(extension, mcp_output_formats[i]))
       return mime[i];
@@ -99,13 +96,11 @@ asciichat_error_t mcp_download_finalize(const mcp_policy_t *policy, yyjson_mut_d
   const char *prefix = policy->downloads_url_prefix;
   char fallback[128];
   if (!prefix || !*prefix) {
-    SAFE_SNPRINTF(fallback, sizeof(fallback), "%s://127.0.0.1:%d",
-                  policy->tls_cert && *policy->tls_cert ? "https" : "http", policy->port);
+    SAFE_SNPRINTF(fallback, sizeof(fallback), "%s://127.0.0.1:%d", policy->tls_cert && *policy->tls_cert ? "https" : "http", policy->port);
     prefix = fallback;
   }
   size_t prefix_len = strlen(prefix);
-  n = safe_snprintf(url, sizeof(url), "%s%sdownloads/%s", prefix,
-                    prefix_len && prefix[prefix_len - 1] == '/' ? "" : "/", new_name);
+  n = safe_snprintf(url, sizeof(url), "%s%sdownloads/%s", prefix, prefix_len && prefix[prefix_len - 1] == '/' ? "" : "/", new_name);
   if (n < 0 || (size_t)n >= sizeof(url))
     return SET_ERRNO(ERROR_INVALID_STATE, "Download URL is too long");
   if (strcmp(old, new_path)) {

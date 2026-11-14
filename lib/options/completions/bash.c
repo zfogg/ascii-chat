@@ -145,8 +145,7 @@ static asciichat_error_t bash_write_all_options(FILE *output) {
 
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+  const option_descriptor_t *discovery_svc_opts = options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   fprintf(output, "  # Discovery-service options (same as 'ascii-chat discovery-service --help')\n  local -a "
                   "discovery_svc_opts=(\n");
@@ -193,8 +192,7 @@ static void bash_write_enum_cases(FILE *output) {
       }
       if (!already_has) {
         combined_count++;
-        option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
-            combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+        option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
         if (temp) {
           combined_opts = temp;
           combined_opts[combined_count - 1] = binary_opts[i];
@@ -248,8 +246,7 @@ static void bash_write_enum_cases(FILE *output) {
       if (meta->numeric_range.min == 1 && meta->numeric_range.max == 9) {
         fprintf(output, "1 2 3 4 5 6 7 8 9");
       } else if (meta->numeric_range.max > 0) {
-        fprintf(output, "%d %d %d", meta->numeric_range.min, (meta->numeric_range.min + meta->numeric_range.max) / 2,
-                meta->numeric_range.max);
+        fprintf(output, "%d %d %d", meta->numeric_range.min, (meta->numeric_range.min + meta->numeric_range.max) / 2, meta->numeric_range.max);
       }
     }
 

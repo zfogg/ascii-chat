@@ -227,8 +227,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     log_warn("Failed to initialize NAT quality mutex");
   }
 
-  log_debug("Discovery session created (initiator=%d, acds=%s:%u)", session->is_initiator, session->acds_address,
-            session->acds_port);
+  log_debug("Discovery session created (initiator=%d, acds=%s:%u)", session->is_initiator, session->acds_address, session->acds_port);
 
   NAMED_REGISTER_ATOMIC(&session->liveness.last_pong_received_ms, "discovery.last_pong_received_ms", NULL);
   return session;
@@ -353,8 +352,7 @@ static void set_state(discovery_session_t *session, discovery_state_t new_state)
   session->state = new_state;
 
   // A host enters ACTIVE when it starts listening, before a peer connects.
-  if (new_state == DISCOVERY_STATE_ACTIVE && old_state != DISCOVERY_STATE_ACTIVE && !session->is_host &&
-      session->session_string[0]) {
+  if (new_state == DISCOVERY_STATE_ACTIVE && old_state != DISCOVERY_STATE_ACTIVE && !session->is_host && session->session_string[0]) {
     ascii_otel_call_session_used(session->session_string);
   }
 
@@ -399,8 +397,7 @@ static void *nat_detection_thread_fn(void *arg) {
 
   stun_server_t probe = {0};
   const char *probe_host = NULL;
-  if (!GET_OPTION(webrtc_skip_stun) &&
-      stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, &probe, 1) > 0) {
+  if (!GET_OPTION(webrtc_skip_stun) && stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, &probe, 1) > 0) {
     probe_host = probe.host;
     if (strncmp(probe_host, "stun:", 5) == 0)
       probe_host += 5;
@@ -418,8 +415,7 @@ static void *nat_detection_thread_fn(void *arg) {
     session->nat_quality_cached = true;
     session->nat_quality_measured_ms = session_get_current_time_ms();
     mutex_unlock(&session->nat_quality_mutex);
-    log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
-              nat_type_to_string(quality.nat_type));
+    log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality), nat_type_to_string(quality.nat_type));
   } else {
     log_warn("NAT detection failed in background thread; retaining the previous cache");
   }
@@ -476,8 +472,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   const char *endpoint_input = session->acds_url[0] != '\0' ? session->acds_url : session->acds_address;
   uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
   connection_endpoint_t endpoint = {0};
-  asciichat_error_t endpoint_result = network_connection_open("discovery_acds", endpoint_input, endpoint_default_port,
-                                                              NULL, &session->acds_connection, &endpoint);
+  asciichat_error_t endpoint_result = network_connection_open("discovery_acds", endpoint_input, endpoint_default_port, NULL, &session->acds_connection, &endpoint);
   if (endpoint_result != ASCIICHAT_OK) {
     set_error(session, endpoint_result, "Failed to connect to ACDS");
     return endpoint_result;
@@ -496,8 +491,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload,
-                                                 size_t length) {
+static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload, size_t length) {
   return packet_send_via_transport(transport, type, payload, length, 0);
 }
 static asciichat_error_t discovery_protocol_receive(discovery_session_t *session, acds_protocol_t *protocol) {
@@ -508,8 +502,7 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   if (result == ASCIICHAT_OK)
     result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
-  if (result != ASCIICHAT_OK &&
-      !(result == ERROR_INVALID_PASSWORD && session->state == DISCOVERY_STATE_JOINING_SESSION))
+  if (result != ASCIICHAT_OK && !(result == ERROR_INVALID_PASSWORD && session->state == DISCOVERY_STATE_JOINING_SESSION))
     set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
   return result;
 }
@@ -537,8 +530,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     // An empty address lets ACDS use the creator's observed source address.
     params.acds_expose_ip = GET_OPTION(discovery_expose_ip);
     params.server_port = (uint16_t)GET_OPTION(port);
-    if (GET_OPTION(quic_bind_address)[0] ||
-        (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+    if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
       params.quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : GET_OPTION(port));
     if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) {
       if (strlen(GET_OPTION(webtransport_public_url)) >= sizeof(params.webtransport_url)) {
@@ -547,8 +539,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
       }
       SAFE_STRNCPY(params.webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params.webtransport_url));
     }
-    asciichat_error_t result =
-        acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
+    asciichat_error_t result = acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));
     if (result != ASCIICHAT_OK) {
       acds_protocol_destroy(&protocol);
@@ -596,9 +587,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 /**
  * @brief Send SDP via ACDS signaling
  */
-static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
-                                                     const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
-                                                     const char *sdp, void *user_data) {
+static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type, const char *sdp, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -624,8 +613,7 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SE
   memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   // Send to ACDS
-  asciichat_error_t result =
-      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -640,9 +628,7 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SE
 /**
  * @brief Send ICE candidate via ACDS signaling
  */
-static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
-                                                     const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
-                                                     const char *mid, void *user_data) {
+static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate, const char *mid, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -678,8 +664,7 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[SE
   log_debug("Sending ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
 
   // Send to ACDS
-  asciichat_error_t result =
-      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -728,15 +713,13 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
  * the configured timeout. Trickle ICE can still establish a connection using
  * candidates gathered so far, so this is diagnostic rather than fatal.
  */
-static void discovery_on_gathering_timeout(const uint8_t participant_id[SESSION_ID_SIZE], uint32_t timeout_ms,
-                                           uint64_t elapsed_ms, void *user_data) {
+static void discovery_on_gathering_timeout(const uint8_t participant_id[SESSION_ID_SIZE], uint32_t timeout_ms, uint64_t elapsed_ms, void *user_data) {
   (void)user_data; // Session context not needed for logging
 
   log_warn("ICE candidate gathering is slower than expected; continuing trickle ICE");
-  log_debug("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0],
-            participant_id[1], participant_id[2], participant_id[3], participant_id[4], participant_id[5],
-            participant_id[6], participant_id[7], participant_id[8], participant_id[9], participant_id[10],
-            participant_id[11], participant_id[12], participant_id[13], participant_id[14], participant_id[15]);
+  log_debug("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0], participant_id[1], participant_id[2], participant_id[3], participant_id[4],
+            participant_id[5], participant_id[6], participant_id[7], participant_id[8], participant_id[9], participant_id[10], participant_id[11], participant_id[12], participant_id[13],
+            participant_id[14], participant_id[15]);
   log_warn("  Gathering timeout: %u ms (elapsed: %llu ms)", timeout_ms, (unsigned long long)elapsed_ms);
   log_debug("Possible causes include unreachable STUN/TURN servers or network filtering");
 }
@@ -755,8 +738,7 @@ static void discovery_on_gathering_timeout(const uint8_t participant_id[SESSION_
  * - Security: DataChannel uses DTLS encryption (automatic from libdatachannel)
  * - Encryption: ACIP layer may add additional encryption on top if needed
  */
-static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE],
-                                         void *user_data) {
+static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE], void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session) {
@@ -766,8 +748,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
 
   log_info("========== WebRTC DataChannel READY ==========");
   log_info("WebRTC DataChannel successfully established and wrapped in ACIP transport");
-  log_debug("  Remote participant: %02x%02x%02x%02x-...", participant_id[0], participant_id[1], participant_id[2],
-            participant_id[3]);
+  log_debug("  Remote participant: %02x%02x%02x%02x-...", participant_id[0], participant_id[1], participant_id[2], participant_id[3]);
   log_info("  Transport status: READY for media transmission");
   log_info("  Encryption: DTLS (automatic) + optional ACIP layer encryption");
 
@@ -846,8 +827,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   }
   const char *turn_username = custom_turn ? custom_username : session->turn_username;
   const char *turn_credential = custom_turn ? custom_credential : session->turn_password;
-  if (custom_turn && (strlen(turn_username) >= sizeof(session->turn_username) ||
-                      strlen(turn_credential) >= sizeof(session->turn_password))) {
+  if (custom_turn && (strlen(turn_username) >= sizeof(session->turn_username) || strlen(turn_credential) >= sizeof(session->turn_password))) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
   }
   if (custom_turn) {
@@ -859,8 +839,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   }
 
   const char *stun_servers_option = GET_OPTION(stun_servers);
-  bool default_stun_servers = !stun_servers_option || stun_servers_option[0] == '\0' ||
-                              strcmp(stun_servers_option, OPT_ENDPOINT_STUN_SERVERS_DEFAULT) == 0;
+  bool default_stun_servers = !stun_servers_option || stun_servers_option[0] == '\0' || strcmp(stun_servers_option, OPT_ENDPOINT_STUN_SERVERS_DEFAULT) == 0;
   bool tailscale_direct = default_stun_servers && is_tailscale_host(GET_OPTION(discovery_server));
 
   // A Tailscale discovery service already provides a private mesh path. Avoid
@@ -884,8 +863,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     }
 
     // Parse comma-separated STUN server list from options
-    session->stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                             session->stun_servers, max_stun_servers);
+    session->stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, session->stun_servers, max_stun_servers);
 
     if (session->stun_count == 0) {
       log_warn("No STUN servers configured, WebRTC may fail with symmetric NAT");
@@ -918,9 +896,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate TURN server array");
     }
 
-    asciichat_error_t parse_result =
-        webrtc_turn_servers_parse(turn_servers_str, turn_username, turn_credential, session->turn_servers,
-                                  max_turn_servers, &session->turn_count);
+    asciichat_error_t parse_result = webrtc_turn_servers_parse(turn_servers_str, turn_username, turn_credential, session->turn_servers, max_turn_servers, &session->turn_count);
     if (parse_result != ASCIICHAT_OK) {
       SAFE_FREE(session->turn_servers);
       session->turn_servers = NULL;
@@ -929,8 +905,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     }
 
     if (session->turn_count > 0) {
-      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count,
-               custom_turn ? "custom" : "ACDS");
+      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count, custom_turn ? "custom" : "ACDS");
     } else {
       log_warn("No valid TURN servers configured");
       SAFE_FREE(session->turn_servers);
@@ -948,8 +923,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   // responder now so it does not generate a competing offer for a browser.
   webrtc_peer_role_t role = (session->is_host || session->is_initiator) ? WEBRTC_ROLE_CREATOR : WEBRTC_ROLE_JOINER;
 
-  log_info("Initializing WebRTC peer manager (role=%s, stun_count=%zu, turn_count=%zu)",
-           role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);
+  log_info("Initializing WebRTC peer manager (role=%s, stun_count=%zu, turn_count=%zu)", role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);
 
   // ICE needs its own interface selection: the TCP listener and signaling
   // service addresses do not determine where a peer can receive UDP.
@@ -969,8 +943,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
                                             .user_data = session};
 
   // Create signaling callbacks
-  webrtc_signaling_callbacks_t signaling = {
-      .send_sdp = discovery_send_sdp_via_acds, .send_ice = discovery_send_ice_via_acds, .user_data = session};
+  webrtc_signaling_callbacks_t signaling = {.send_sdp = discovery_send_sdp_via_acds, .send_ice = discovery_send_ice_via_acds, .user_data = session};
 
   // Create peer manager
   asciichat_error_t result = webrtc_peer_manager_create(&pm_config, &signaling, &session->peer_manager);
@@ -1043,8 +1016,7 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
   const acip_webrtc_ice_t *ice_msg = (const acip_webrtc_ice_t *)data;
   uint16_t candidate_len = NET_TO_HOST_U16(ice_msg->candidate_len);
 
-  log_debug("★ ICE VALIDATION: len=%zu, sizeof(header)=%zu, candidate_len=%u, expected=%zu", len,
-            sizeof(acip_webrtc_ice_t), candidate_len, sizeof(acip_webrtc_ice_t) + candidate_len);
+  log_debug("★ ICE VALIDATION: len=%zu, sizeof(header)=%zu, candidate_len=%u, expected=%zu", len, sizeof(acip_webrtc_ice_t), candidate_len, sizeof(acip_webrtc_ice_t) + candidate_len);
 
   // FIXED: The payload contains candidate + null + mid + null, not just candidate
   // So we can't validate the exact size without parsing the strings first
@@ -1069,13 +1041,11 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
 /**
  * @brief Encode and send a handoff control frame or measured probe body
  */
-static asciichat_error_t discovery_handoff_send(discovery_session_t *session, consensus_handoff_message_t *message,
-                                                bool probe) {
+static asciichat_error_t discovery_handoff_send(discovery_session_t *session, consensus_handoff_message_t *message, bool probe) {
   size_t length = CONSENSUS_HANDOFF_HEADER + (probe ? CONSENSUS_HANDOFF_PROBE_BYTES : 0);
   uint8_t *bytes = SAFE_CALLOC(1, length, uint8_t *);
   consensus_handoff_encode(message, bytes);
-  asciichat_error_t result =
-      packet_send_via_transport(session->acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, length, 0);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, length, 0);
   SAFE_FREE(bytes);
   return result;
 }
@@ -1112,11 +1082,9 @@ static void discovery_commit_host(discovery_session_t *session, const consensus_
   memcpy(session->host_id, message->participant, SESSION_ID_SIZE);
   session->host_port = message->port;
   session->host_address[0] = 0;
-  session->handoff_pending = session->session_type == SESSION_TYPE_WEBRTC ||
-                             !memcmp(session->host_id, session->participant_id, SESSION_ID_SIZE);
+  session->handoff_pending = session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, SESSION_ID_SIZE);
   set_state(session, DISCOVERY_STATE_MIGRATING);
-  log_info("Committed successor %02x%02x generation=%u", message->participant[0], message->participant[1],
-           message->generation);
+  log_info("Committed successor %02x%02x generation=%u", message->participant[0], message->participant[1], message->generation);
 }
 
 /**
@@ -1126,8 +1094,7 @@ static void discovery_commit_host(discovery_session_t *session, const consensus_
  */
 static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
   consensus_handoff_message_t message;
-  if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
-      memcmp(message.session, session->session_id, SESSION_ID_SIZE))
+  if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK || memcmp(message.session, session->session_id, SESSION_ID_SIZE))
     return;
   if (message.generation < session->handoff_generation)
     return;
@@ -1155,8 +1122,7 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
     if (discovery_handoff_send(session, &message, false) != ASCIICHAT_OK)
       log_warn("Could not acknowledge successor preparation");
   } else if (message.kind == HANDOFF_PLAN) {
-    log_info("Prepared successor %02x%02x%02x%02x round=%u", message.participant[0], message.participant[1],
-             message.participant[2], message.participant[3], message.sequence);
+    log_info("Prepared successor %02x%02x%02x%02x round=%u", message.participant[0], message.participant[1], message.participant[2], message.participant[3], message.sequence);
   } else if (message.kind == HANDOFF_FAILED) {
     set_error(session, ERROR_NETWORK, "No eligible successor has fresh measurements and a prepared host");
   } else if (message.kind == HANDOFF_COMMIT) {
@@ -1219,23 +1185,15 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   session->handoff_last_sample_ms = now;
   start_nat_detection(session);
   if (!session->handoff_sequence)
-    log_info("Handoff identity=%02x%02x%02x%02x", session->participant_id[0], session->participant_id[1],
-             session->participant_id[2], session->participant_id[3]);
-  consensus_handoff_message_t message = {.kind = HANDOFF_SAMPLE_START,
-                                         .sequence = ++session->handoff_sequence,
-                                         .capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 0,
-                                         .nat_tier = 255,
-                                         .port = (uint16_t)GET_OPTION(port)};
+    log_info("Handoff identity=%02x%02x%02x%02x", session->participant_id[0], session->participant_id[1], session->participant_id[2], session->participant_id[3]);
+  consensus_handoff_message_t message = {
+      .kind = HANDOFF_SAMPLE_START, .sequence = ++session->handoff_sequence, .capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 0, .nat_tier = 255, .port = (uint16_t)GET_OPTION(port)};
   mutex_lock(&session->nat_quality_mutex);
-  if (session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
-      session->cached_nat_quality.detection_complete &&
-      (session->cached_nat_quality.lan_reachable || session->cached_nat_quality.has_public_ip ||
-       session->cached_nat_quality.upnp_available))
+  if (session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS && session->cached_nat_quality.detection_complete &&
+      (session->cached_nat_quality.lan_reachable || session->cached_nat_quality.has_public_ip || session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
-  if ((GET_OPTION(quic_bind_address)[0] ||
-       (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) &&
-      GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
+  if ((GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) && GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
     message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
@@ -1246,23 +1204,19 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   return discovery_handoff_send(session, &message, true);
 }
 
-static bool discovery_host_designation_is_current(const discovery_session_t *session,
-                                                  const acip_host_designated_t *host, uint32_t generation) {
-  if (memcmp(host->session_id, session->session_id, SESSION_ID_SIZE) ||
-      !memchr(host->host_address, 0, sizeof(host->host_address)) || !host->host_port ||
+static bool discovery_host_designation_is_current(const discovery_session_t *session, const acip_host_designated_t *host, uint32_t generation) {
+  if (memcmp(host->session_id, session->session_id, SESSION_ID_SIZE) || !memchr(host->host_address, 0, sizeof(host->host_address)) || !host->host_port ||
       host->connection_type > ACIP_CONNECTION_TYPE_TURN || generation < session->handoff_generation)
     return false;
   int order = discovery_compare_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
   if (order != 0)
     return order > 0;
   // The same authority may supply an endpoint that was not available at join time.
-  return !memcmp(session->host_id, host->host_id, SESSION_ID_SIZE) && !session->host_address[0] &&
-         host->host_address[0];
+  return !memcmp(session->host_id, host->host_id, SESSION_ID_SIZE) && !session->host_address[0] && host->host_address[0];
 }
 
 static bool discovery_host_endpoint_ready(const discovery_session_t *session, const acip_host_designated_t *host) {
-  return session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
-         !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE);
+  return session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] || !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE);
 }
 
 static void discovery_receive_host_designated(discovery_session_t *session, const void *data, size_t len) {
@@ -1275,9 +1229,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   uint16_t quic_port = 0;
   char webtransport_url[512];
   asciichat_errno_scope_t metadata_scope = errno_scope_begin();
-  asciichat_error_t metadata_result =
-      acds_transport_metadata_decode((const uint8_t *)data + sizeof(*host), len - sizeof(*host), &quic_port,
-                                     webtransport_url, sizeof(webtransport_url));
+  asciichat_error_t metadata_result = acds_transport_metadata_decode((const uint8_t *)data + sizeof(*host), len - sizeof(*host), &quic_port, webtransport_url, sizeof(webtransport_url));
   errno_scope_end(metadata_scope, ASCIICHAT_ERRNO_DISMISSED);
   if (metadata_result != ASCIICHAT_OK)
     return;
@@ -1292,8 +1244,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "accepted");
   bool changed = memcmp(session->host_id, host->host_id, SESSION_ID_SIZE) != 0;
   ASCII_OTEL_ATTR_INT("host.update.changed", changed);
-  ASCII_OTEL_ATTR_STRING("host.update.role",
-                         !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE) ? "host" : "participant");
+  ASCII_OTEL_ATTR_STRING("host.update.role", !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE) ? "host" : "participant");
   bool active = session->state == DISCOVERY_STATE_ACTIVE;
   bool connecting = session->state == DISCOVERY_STATE_CONNECTING_HOST;
   discovery_record_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
@@ -1307,8 +1258,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   if (changed && active)
     NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
   if ((changed && (active || connecting) && discovery_host_endpoint_ready(session, host)) ||
-      (session->state == DISCOVERY_STATE_MIGRATING && session->session_type != SESSION_TYPE_WEBRTC &&
-       host->host_address[0])) {
+      (session->state == DISCOVERY_STATE_MIGRATING && session->session_type != SESSION_TYPE_WEBRTC && host->host_address[0])) {
     // Worker teardown remains deferred to the existing role dispatcher.
     session->handoff_pending = true;
     set_state(session, DISCOVERY_STATE_MIGRATING);
@@ -1355,8 +1305,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   asciichat_error_t result;
   for (;;) {
     acds_protocol_init(&protocol, discovery_protocol_send, session->acds_transport);
-    acds_session_join_params_t params = {.session_string = session->session_string,
-                                         .has_password = session->password[0] != 0};
+    acds_session_join_params_t params = {.session_string = session->session_string, .has_password = session->password[0] != 0};
     memcpy(params.identity_pubkey, session->identity_pubkey, sizeof(params.identity_pubkey));
     memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
     SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
@@ -1397,9 +1346,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   session->session_type = joined->session_type;
   if (GET_OPTION(no_webrtc) || GET_OPTION(discovery_quic)) {
     if (!session->is_host && (!joined->server_address[0] || joined->server_port == 0)) {
-      const char *message = GET_OPTION(discovery_quic)
-                                ? "Direct QUIC requires a disclosed host endpoint"
-                                : "Direct TCP requires a disclosed host endpoint; WebRTC is disabled";
+      const char *message = GET_OPTION(discovery_quic) ? "Direct QUIC requires a disclosed host endpoint" : "Direct TCP requires a disclosed host endpoint; WebRTC is disabled";
       set_error(session, ERROR_NETWORK, message);
       buffer_release(alloc_buffer);
       return SET_ERRNO(ERROR_NETWORK, "%s", message);
@@ -1448,12 +1395,10 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   if (session->session_type != SESSION_TYPE_WEBRTC && joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
-    session->host_port =
-        GET_OPTION(discovery_quic) && advertised_quic_port ? advertised_quic_port : joined->server_port;
+    session->host_port = GET_OPTION(discovery_quic) && advertised_quic_port ? advertised_quic_port : joined->server_port;
     session->is_host = false;
 
-    log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",
-             session->host_address, session->host_port, session->session_type, session->participant_ctx);
+    log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)", session->host_address, session->host_port, session->session_type, session->participant_ctx);
     buffer_release(alloc_buffer);
 
     log_info("About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
@@ -1478,8 +1423,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   }
 
   // No host yet - need to negotiate
-  log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address,
-           joined->server_port);
+  log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address, joined->server_port);
   buffer_release(alloc_buffer);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
@@ -1574,8 +1518,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   } else {
     log_info("Calling join_session - participant_ctx before=%p", session->participant_ctx);
     asciichat_error_t result = join_session(session);
-    log_info("join_session returned - participant_ctx after=%p, state=%d, result=%d", session->participant_ctx,
-             session->state, result);
+    log_info("join_session returned - participant_ctx after=%p, state=%d, result=%d", session->participant_ctx, session->state, result);
     return result;
   }
 }
@@ -1687,8 +1630,7 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
 
       if (session->is_host) {
         // We become the host
-        log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)",
-                 nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
+        log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)", nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
         memcpy(session->host_id, session->participant_id, sizeof(session->host_id));
         SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
         session->host_port = session->negotiate.host_port;
@@ -1702,8 +1644,7 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
         set_state(session, DISCOVERY_STATE_STARTING_HOST);
       } else {
         // They are host (shouldn't happen in solo mode, but handle it)
-        log_info("👤 NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)",
-                 session->negotiate.host_address, session->negotiate.host_port,
+        log_info("👤 NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)", session->negotiate.host_address, session->negotiate.host_port,
                  nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
         SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
         session->host_port = session->negotiate.host_port;
@@ -1789,22 +1730,17 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   if (session->acds_transport) {
     uint8_t payload[sizeof(announcement) + ACDS_TRANSPORT_METADATA_MAX];
     size_t metadata_length = 0;
-    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] ||
-                          (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
                              ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port)
                              : 0;
-    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])
-                          ? GET_OPTION(webtransport_public_url)
-                          : "";
+    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]) ? GET_OPTION(webtransport_public_url) : "";
     asciichat_error_t sent = ASCIICHAT_OK;
     if (quic_port || *url)
-      sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX,
-                                            &metadata_length);
+      sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX, &metadata_length);
     if (sent != ASCIICHAT_OK)
       return sent;
     memcpy(payload, &announcement, sizeof(announcement));
-    sent = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, payload,
-                                     sizeof(announcement) + metadata_length, 0);
+    sent = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, payload, sizeof(announcement) + metadata_length, 0);
     if (sent != ASCIICHAT_OK)
       return sent;
     log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
@@ -1819,15 +1755,13 @@ static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *ses
   if (session->webrtc_retry_attempt >= max_attempts) {
     log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
     char error_msg[DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE];
-    snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)",
-             max_attempts + 1, timeout_ms);
+    snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)", max_attempts + 1, timeout_ms);
     set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
     return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "%s", error_msg);
   }
 
   uint32_t backoff_ms = calculate_backoff_delay_ms(session->webrtc_retry_attempt);
-  log_warn("WebRTC connection attempt %d/%d failed, retrying in %ums...", session->webrtc_retry_attempt + 1,
-           max_attempts + 1, backoff_ms);
+  log_warn("WebRTC connection attempt %d/%d failed, retrying in %ums...", session->webrtc_retry_attempt + 1, max_attempts + 1, backoff_ms);
   APP_CALLBACK_VOID(platform_pump_events);
   APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
 
@@ -1861,12 +1795,10 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 
   // If not ready and we haven't initiated connection yet, initiate it
   if (session->peer_manager && !session->webrtc_connection_initiated) {
-    log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1,
-             GET_OPTION(webrtc_reconnect_attempts) + 1);
+    log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1, GET_OPTION(webrtc_reconnect_attempts) + 1);
 
     // Initiate connection (generates offer, triggers SDP exchange)
-    asciichat_error_t conn_result =
-        webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
+    asciichat_error_t conn_result = webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
 
     if (conn_result != ASCIICHAT_OK) {
       log_error("Failed to initiate WebRTC connection: %d", conn_result);
@@ -1886,8 +1818,7 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 
     bool attempt_expired = session_get_current_time_ms() - session->webrtc_last_attempt_time_ms >= (uint64_t)timeout_ms;
     if (timed_out_count > 0 || attempt_expired) {
-      log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
-                timeout_ms);
+      log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count, timeout_ms);
 
       asciichat_error_t retry_result = discovery_session_retry_webrtc(session, timeout_ms);
       if (retry_result != ASCIICHAT_OK) {
@@ -2078,8 +2009,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     return result;
   }
 
-  if (session->state == DISCOVERY_STATE_ACTIVE || session->state == DISCOVERY_STATE_CONNECTING_HOST ||
-      session->state == DISCOVERY_STATE_MIGRATING) {
+  if (session->state == DISCOVERY_STATE_ACTIVE || session->state == DISCOVERY_STATE_CONNECTING_HOST || session->state == DISCOVERY_STATE_MIGRATING) {
     result = discovery_handoff_sample(session);
     if (result != ASCIICHAT_OK)
       return result;
@@ -2095,8 +2025,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   case DISCOVERY_STATE_STARTING_HOST:
     return discovery_session_start_host(session);
   case DISCOVERY_STATE_CONNECTING_HOST:
-    return session->session_type == SESSION_TYPE_WEBRTC ? discovery_session_connect_webrtc(session)
-                                                        : discovery_session_connect_tcp(session);
+    return session->session_type == SESSION_TYPE_WEBRTC ? discovery_session_connect_webrtc(session) : discovery_session_connect_tcp(session);
   case DISCOVERY_STATE_ACTIVE:
     return discovery_session_process_active(session, timeout_ns);
   case DISCOVERY_STATE_MIGRATING:
@@ -2142,8 +2071,7 @@ void discovery_session_stop(discovery_session_t *session) {
     memcpy(leave_msg.session_id, session->session_id, SESSION_ID_SIZE);
     memcpy(leave_msg.participant_id, session->participant_id, SESSION_ID_SIZE);
 
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg),
-                              0);
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg), 0);
   }
 
   set_state(session, DISCOVERY_STATE_ENDED);
@@ -2236,8 +2164,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
 
   uint64_t now_ms = session_get_current_time_ms();
 
-  if (session->liveness.ping_in_flight &&
-      atomic_load_u64(&session->liveness.last_pong_received_ms) >= session->liveness.last_ping_sent_ms) {
+  if (session->liveness.ping_in_flight && atomic_load_u64(&session->liveness.last_pong_received_ms) >= session->liveness.last_ping_sent_ms) {
     session->liveness.ping_in_flight = false;
     session->liveness.consecutive_failures = 0;
   }
@@ -2248,8 +2175,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
       // Ping timed out
       session->liveness.consecutive_failures++;
       session->liveness.ping_in_flight = false;
-      log_warn("Host ping timeout (attempt %u/%u, age=%llu ms)", session->liveness.consecutive_failures,
-               session->liveness.max_failures, (unsigned long long)ping_age_ms);
+      log_warn("Host ping timeout (attempt %u/%u, age=%llu ms)", session->liveness.consecutive_failures, session->liveness.max_failures, (unsigned long long)ping_age_ms);
 
       // Check if we've exceeded failure threshold
       if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
@@ -2270,8 +2196,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
     if (result == ASCIICHAT_OK) {
       session->liveness.last_ping_sent_ms = now_ms;
       session->liveness.ping_in_flight = true;
-      log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
-                session->liveness.max_failures);
+      log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1, session->liveness.max_failures);
     } else {
       log_warn("Failed to send ping to host: %d", result);
       session->liveness.consecutive_failures++;
@@ -2309,8 +2234,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   host_lost.disconnect_reason = disconnect_reason;
   host_lost.disconnect_time_ms = session->host_loss_detected_ms;
 
-  asciichat_error_t result =
-      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Could not report host loss to ACDS");
     return result;

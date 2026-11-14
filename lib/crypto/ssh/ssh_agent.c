@@ -257,11 +257,9 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   }
 }
 
-asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
-                                 uint8_t signature[ED25519_SIGNATURE_SIZE]) {
+asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!public_key || !message || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
-                     message, signature);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key, message, signature);
   }
 
   if (public_key->type != KEY_TYPE_ED25519) {
@@ -376,8 +374,7 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   uint32_t expected_total = 4 + 1 + 4 + sig_blob_len;
 
   if ((size_t)read_bytes < expected_total) {
-    return SET_ERRNO(ERROR_CRYPTO, "SSH agent response truncated (expected %u bytes, got %zd)", expected_total,
-                     read_bytes);
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent response truncated (expected %u bytes, got %zd)", expected_total, read_bytes);
   }
 
   // Signature blob format for Ed25519: string "ssh-ed25519", string signature(64 bytes)

@@ -44,8 +44,7 @@ typedef struct http_write {
 } http_write_t;
 static void write_done(uv_write_t *req, int status);
 static void connection_cb(uv_stream_t *listener, int status);
-static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
-                                          void *user_data);
+static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view, void *user_data);
 static asciichat_error_t http2_flush(http_server_client_t *client);
 
 struct http_server {
@@ -129,8 +128,7 @@ struct http_server_client {
   bool close_after_write;
 };
 static size_t http_max_response_body(const http_server_t *server) {
-  return server->config.max_response_body_bytes ? server->config.max_response_body_bytes
-                                                : server->config.max_request_body_bytes;
+  return server->config.max_response_body_bytes ? server->config.max_response_body_bytes : server->config.max_request_body_bytes;
 }
 size_t http_server_max_response_body(const http_server_t *server) {
   return server ? http_max_response_body(server) : 0;
@@ -190,8 +188,7 @@ static asciichat_error_t http_server_start_listener(http_server_t *s) {
     }
     if (s->config.bind_address6 && *s->config.bind_address6 && !strchr(bind_address, ':')) {
       struct sockaddr_in6 ipv6;
-      if (uv_ip6_addr(s->config.bind_address6, s->config.port, &ipv6) != 0 ||
-          uv_tcp_bind(&s->listener6, (const struct sockaddr *)&ipv6, UV_TCP_IPV6ONLY) != 0) {
+      if (uv_ip6_addr(s->config.bind_address6, s->config.port, &ipv6) != 0 || uv_tcp_bind(&s->listener6, (const struct sockaddr *)&ipv6, UV_TCP_IPV6ONLY) != 0) {
         http_server_rollback_start(s);
         return SET_ERRNO(ERROR_NETWORK, "Cannot bind IPv6 HTTP listener");
       }
@@ -201,8 +198,7 @@ static asciichat_error_t http_server_start_listener(http_server_t *s) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
   }
-  if (tcp_enabled && s->listener6_initialized && s->config.bind_address6 && *s->config.bind_address6 &&
-      !strchr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", ':') &&
+  if (tcp_enabled && s->listener6_initialized && s->config.bind_address6 && *s->config.bind_address6 && !strchr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", ':') &&
       uv_listen((uv_stream_t *)&s->listener6, (int)s->config.max_connections, connection_cb) != 0) {
     http_server_rollback_start(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen on IPv6 HTTP listener");
@@ -261,8 +257,7 @@ static void client_freed(uv_handle_t *handle) {
   SAFE_FREE(c);
 }
 
-static int http_select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length,
-                            const unsigned char *offered, unsigned int offered_length, void *arg) {
+static int http_select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_length, const unsigned char *offered, unsigned int offered_length, void *arg) {
   http_server_t *server = arg;
   unsigned char protocols[sizeof("h2") + sizeof("http/1.1")];
   unsigned int length = 0;
@@ -276,8 +271,7 @@ static int http_select_alpn(SSL *ssl, const unsigned char **out, unsigned char *
     memcpy(protocols + length, "http/1.1", 8);
     length += 8;
   }
-  if (!length || SSL_select_next_proto((unsigned char **)out, out_length, protocols, length, offered, offered_length) !=
-                     OPENSSL_NPN_NEGOTIATED)
+  if (!length || SSL_select_next_proto((unsigned char **)out, out_length, protocols, length, offered, offered_length) != OPENSSL_NPN_NEGOTIATED)
     return SSL_TLSEXT_ERR_NOACK;
   (void)ssl;
   return SSL_TLSEXT_ERR_OK;
@@ -476,8 +470,7 @@ static bool parse_request(http_server_client_t *c, http_request_t *r) {
         while (*value == ' ' || *value == '\t' || *value == ',')
           value++;
         const char *token = value;
-        while (*value && *value != ',' && *value != ';' && *value != '\r' && *value != '\n' && *value != ' ' &&
-               *value != '\t')
+        while (*value && *value != ',' && *value != ';' && *value != '\r' && *value != '\n' && *value != ' ' && *value != '\t')
           value++;
         size_t token_length = (size_t)(value - token);
         if (token_length == sizeof("chunked") - 1 && platform_strncasecmp(token, "chunked", token_length) == 0)
@@ -552,8 +545,7 @@ static void write_done(uv_write_t *req, int status) {
   http_write_t *write = req->data;
   if (write->client && write->client->pending_writes)
     write->client->pending_writes--;
-  if ((write->close_on_done || (write->client && write->client->close_after_write && !write->client->pending_writes)) &&
-      !uv_is_closing((uv_handle_t *)write->stream))
+  if ((write->close_on_done || (write->client && write->client->close_after_write && !write->client->pending_writes)) && !uv_is_closing((uv_handle_t *)write->stream))
     uv_close((uv_handle_t *)write->stream, client_freed);
   if (!status && write->client && write->client->http2)
     (void)http2_flush(write->client);
@@ -563,8 +555,7 @@ static void write_done(uv_write_t *req, int status) {
   SAFE_FREE(req);
   (void)status;
 }
-static asciichat_error_t client_write_plain(http_server_client_t *client, const char *data, size_t length,
-                                            bool close_on_done) {
+static asciichat_error_t client_write_plain(http_server_client_t *client, const char *data, size_t length, bool close_on_done) {
   if (!client->tls) {
     uv_write_t *request = SAFE_CALLOC(1, sizeof(*request), uv_write_t *);
     http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
@@ -755,8 +746,7 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (r->http3_submit)
     result = r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
   else if (r->client && r->client->http2_mode) {
-    result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status, r->headers,
-                                              r->header_count, r->body, r->body_length);
+    result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status, r->headers, r->header_count, r->body, r->body_length);
     if (result == ASCIICHAT_OK)
       result = http2_flush(r->client);
   } else {
@@ -772,8 +762,7 @@ asciichat_error_t http_response_finish(http_response_t *r) {
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
     }
     const char *version = r->protocol == HTTP_PROTOCOL_10 ? "HTTP/1.0" : "HTTP/1.1";
-    int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status,
-                          reason(r->status), r->body_length);
+    int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status, reason(r->status), r->body_length);
     for (size_t i = 0; i < r->header_count; i++)
       n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
     n += safe_snprintf(out + n, cap - (size_t)n, "\r\n");
@@ -790,12 +779,9 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   return result;
 }
 
-asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *method, const char *path,
-                                             const http_header_t *headers, size_t header_count, const void *body,
-                                             size_t body_length, const char *peer_address,
-                                             http3_submit_response_fn submit, void *submit_context) {
-  if (!server || !method || !path || (header_count && !headers) || (!body && body_length) || !submit ||
-      body_length > server->config.max_request_body_bytes)
+asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *method, const char *path, const http_header_t *headers, size_t header_count, const void *body, size_t body_length,
+                                             const char *peer_address, http3_submit_response_fn submit, void *submit_context) {
+  if (!server || !method || !path || (header_count && !headers) || (!body && body_length) || !submit || body_length > server->config.max_request_body_bytes)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 request");
   char path_copy[2048];
   if (strlen(path) >= sizeof(path_copy))
@@ -818,16 +804,10 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_RECEIVED, body_length);
   const char *peer = peer_address ? peer_address : "unknown";
   bool allowed = false;
-  if (rate_limiter_check(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST, &server->request_rate_limit, &allowed) !=
-          ASCIICHAT_OK ||
-      !allowed) {
+  if (rate_limiter_check(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST, &server->request_rate_limit, &allowed) != ASCIICHAT_OK || !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.server = server,
-                               .protocol = HTTP_PROTOCOL_3,
-                               .status = 429,
-                               .max_body_length = http_max_response_body(server),
-                               .http3_submit = submit,
-                               .http3_context = submit_context};
+    http_response_t limited = {
+        .server = server, .protocol = HTTP_PROTOCOL_3, .status = 429, .max_body_length = http_max_response_body(server), .http3_submit = submit, .http3_context = submit_context};
     return http_response_finish(&limited);
   }
   rate_limiter_record(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST);
@@ -835,12 +815,8 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   uint64_t request_start = time_get_ns();
   if (!http_request_admit(server)) {
-    http_response_t limited = {.server = server,
-                               .protocol = HTTP_PROTOCOL_3,
-                               .status = 429,
-                               .max_body_length = http_max_response_body(server),
-                               .http3_submit = submit,
-                               .http3_context = submit_context};
+    http_response_t limited = {
+        .server = server, .protocol = HTTP_PROTOCOL_3, .status = 429, .max_body_length = http_max_response_body(server), .http3_submit = submit, .http3_context = submit_context};
     return http_response_finish(&limited);
   }
   http_response_t response = {.server = server,
@@ -899,8 +875,7 @@ asciichat_error_t http_request_cancel(http_request_t *r) {
   r->cancelled = true;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
-                                          void *user_data) {
+static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view, void *user_data) {
   http_server_client_t *client = user_data;
   uint64_t request_start = time_get_ns();
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
@@ -926,9 +901,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   request.body_length = view->body_length;
   request.info.user_data = client->server->config.user_data;
   bool allowed = false;
-  if (rate_limiter_check(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST,
-                         &client->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
-      !allowed) {
+  if (rate_limiter_check(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST, &client->server->request_rate_limit, &allowed) != ASCIICHAT_OK || !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
     http_response_t limited = {.server = client->server,
                                .stream = (uv_stream_t *)&client->tcp,
@@ -1020,9 +993,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   }
   size_t required = c->length + (size_t)n + 1;
   if (required > c->capacity) {
-    size_t limit = c->server->config.max_request_body_bytes > SIZE_MAX - HTTP_READ_CAPACITY
-                       ? SIZE_MAX
-                       : c->server->config.max_request_body_bytes + HTTP_READ_CAPACITY;
+    size_t limit = c->server->config.max_request_body_bytes > SIZE_MAX - HTTP_READ_CAPACITY ? SIZE_MAX : c->server->config.max_request_body_bytes + HTTP_READ_CAPACITY;
     if (required > limit) {
       SAFE_FREE(base);
       client_close(c);
@@ -1051,11 +1022,9 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_RECEIVED, (size_t)n);
   SAFE_FREE(base);
   static const char h2_preface[] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-  if (!c->http2_mode && c->server->config.enable_http2 && c->length >= sizeof(h2_preface) - 1 &&
-      memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
+  if (!c->http2_mode && c->server->config.enable_http2 && c->length >= sizeof(h2_preface) - 1 && memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
     c->http2_mode = true;
-    if (http2_connection_create(&c->http2, http2_request_cb, c, c->server->config.max_request_body_bytes,
-                                http_max_response_body(c->server)) != ASCIICHAT_OK ||
+    if (http2_connection_create(&c->http2, http2_request_cb, c, c->server->config.max_request_body_bytes, http_max_response_body(c->server)) != ASCIICHAT_OK ||
         http2_connection_receive(c->http2, c->buffer, c->length) != ASCIICHAT_OK) {
       client_close(c);
       return;
@@ -1087,37 +1056,21 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     return;
   }
   bool allowed = false;
-  if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST,
-                         &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
-      !allowed) {
+  if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST, &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK || !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.server = c->server,
-                               .stream = s,
-                               .protocol = r.info.protocol,
-                               .max_body_length = http_max_response_body(c->server),
-                               .status = 429};
+    http_response_t limited = {.server = c->server, .stream = s, .protocol = r.info.protocol, .max_body_length = http_max_response_body(c->server), .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
     return;
   }
   rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
   if (!http_request_admit(c->server)) {
-    http_response_t limited = {.server = c->server,
-                               .stream = s,
-                               .protocol = r.info.protocol,
-                               .max_body_length = http_max_response_body(c->server),
-                               .status = 429};
+    http_response_t limited = {.server = c->server, .stream = s, .protocol = r.info.protocol, .max_body_length = http_max_response_body(c->server), .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
     return;
   }
-  http_response_t resp = {.server = c->server,
-                          .stream = s,
-                          .client = c,
-                          .protocol = r.info.protocol,
-                          .max_body_length = http_max_response_body(c->server),
-                          .inflight_accounted = true,
-                          .status = 200};
+  http_response_t resp = {.server = c->server, .stream = s, .client = c, .protocol = r.info.protocol, .max_body_length = http_max_response_body(c->server), .inflight_accounted = true, .status = 200};
   uint64_t request_start = time_get_ns();
   ASCII_OTEL_SCOPE(HTTP);
   ASCII_OTEL_ATTR_STRING("http.method", r.info.method);
@@ -1157,9 +1110,7 @@ static void connection_cb(uv_stream_t *l, int status) {
     }
     client_peer_address(c);
     bool allowed = false;
-    if (rate_limiter_check(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION,
-                           &DEFAULT_RATE_LIMITS[RATE_EVENT_CONNECTION], &allowed) != ASCIICHAT_OK ||
-        !allowed) {
+    if (rate_limiter_check(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION, &DEFAULT_RATE_LIMITS[RATE_EVENT_CONNECTION], &allowed) != ASCIICHAT_OK || !allowed) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
       client_close(c);
       return;
@@ -1229,8 +1180,7 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
-  if (cfg->basic_auth.enabled && (!cfg->basic_auth.username || !cfg->basic_auth.password ||
-                                  !cfg->basic_auth.username[0] || !cfg->basic_auth.password[0]))
+  if (cfg->basic_auth.enabled && (!cfg->basic_auth.username || !cfg->basic_auth.password || !cfg->basic_auth.username[0] || !cfg->basic_auth.password[0]))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Basic authentication requires non-empty credentials");
   if ((cfg->enable_http3 && !cfg->http3_endpoint) || ((cfg->tls_cert_path == NULL) != (cfg->tls_key_path == NULL)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/3 requires a pre-opened endpoint and TLS requires certificate and key");
@@ -1261,8 +1211,7 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     }
     if (cfg->tls_key_password)
       SSL_CTX_set_default_passwd_cb(s->tls_context, tls_password_cb);
-    if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_cert_path) != 1 ||
-        SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_key_path, SSL_FILETYPE_PEM) != 1 ||
+    if (SSL_CTX_use_certificate_chain_file(s->tls_context, cfg->tls_cert_path) != 1 || SSL_CTX_use_PrivateKey_file(s->tls_context, cfg->tls_key_path, SSL_FILETYPE_PEM) != 1 ||
         SSL_CTX_check_private_key(s->tls_context) != 1) {
       SSL_CTX_free(s->tls_context);
       s->tls_context = NULL;
@@ -1273,12 +1222,8 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     }
   }
   s->request_rate_limit.max_events =
-      cfg->max_requests_per_peer
-          ? (uint32_t)(cfg->max_requests_per_peer > UINT32_MAX ? UINT32_MAX : cfg->max_requests_per_peer)
-          : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].max_events;
-  s->request_rate_limit.window_secs = cfg->request_rate_window_seconds
-                                          ? cfg->request_rate_window_seconds
-                                          : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].window_secs;
+      cfg->max_requests_per_peer ? (uint32_t)(cfg->max_requests_per_peer > UINT32_MAX ? UINT32_MAX : cfg->max_requests_per_peer) : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].max_events;
+  s->request_rate_limit.window_secs = cfg->request_rate_window_seconds ? cfg->request_rate_window_seconds : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].window_secs;
   if (uv_loop_init(&s->loop) != 0) {
     rate_limiter_destroy(s->rate_limiter);
     mutex_destroy(&s->response_mutex);

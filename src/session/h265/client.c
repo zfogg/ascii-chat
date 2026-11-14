@@ -81,8 +81,7 @@ void h265_client_context_destroy(h265_client_context_t *ctx) {
   SAFE_FREE(ctx);
 }
 
-asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265_media_source_t source_type,
-                                                const char *source_location) {
+asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265_media_source_t source_type, const char *source_location) {
   if (!ctx) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid client context");
   }
@@ -132,8 +131,7 @@ asciichat_error_t h265_client_capture_and_encode(h265_client_context_t *ctx, uin
 
   memset(ctx->frame_buf, 128, ctx->frame_buf_size);
 
-  asciichat_error_t result =
-      h265_encode(ctx->encoder, ctx->current_width, ctx->current_height, ctx->frame_buf, output_buf, output_size);
+  asciichat_error_t result = h265_encode(ctx->encoder, ctx->current_width, ctx->current_height, ctx->frame_buf, output_buf, output_size);
 
   return result;
 }
@@ -144,8 +142,7 @@ void h265_client_request_keyframe(h265_client_context_t *ctx) {
   }
 }
 
-void h265_client_get_stats(h265_client_context_t *ctx, uint64_t *total_frames, uint64_t *keyframes,
-                           uint32_t *avg_bitrate) {
+void h265_client_get_stats(h265_client_context_t *ctx, uint64_t *total_frames, uint64_t *keyframes, uint32_t *avg_bitrate) {
   if (!ctx || !ctx->encoder)
     return;
 

@@ -52,9 +52,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return NULL;
   }
 
-  option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
-                                          (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY) |
-                                          (1 << MODE_MCP_SERVER);
+  option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) | (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY) | (1 << MODE_MCP_SERVER);
   if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & user_modes_mask)) {
     return "global";
   }
@@ -103,9 +101,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
 // Main Public API Functions
 // =============================================================================
 
-asciichat_error_t options_config_generate_manpage_template(const options_config_t *config, const char *program_name,
-                                                           const char *mode_name, const char *output_path,
-                                                           const char *brief_description) {
+asciichat_error_t options_config_generate_manpage_template(const options_config_t *config, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description) {
   if (!config || !program_name || !brief_description) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required parameters for man page generation");
   }
@@ -226,9 +222,7 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t options_builder_generate_manpage_template(options_builder_t *builder, const char *program_name,
-                                                            const char *mode_name, const char *output_path,
-                                                            const char *brief_description) {
+asciichat_error_t options_builder_generate_manpage_template(options_builder_t *builder, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description) {
   if (!builder || !program_name || !brief_description) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required parameters");
   }
@@ -272,8 +266,7 @@ static asciichat_error_t manpage_open_merged_output(const char *output_path, FIL
 
       char question[OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
-      bool overwrite =
-          ui_notice_confirm_kind(UI_PROMPT_MANPAGE_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_MANPAGE_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Man page generation cancelled.");
         return SET_ERRNO(ERROR_FILE_OPERATION, "User cancelled overwrite");
@@ -398,10 +391,8 @@ static void manpage_end_merge(FILE *f, const options_config_t *config, manpage_m
   // Before writing MERGE-END, generate content if not already done
   if (!state->merge_content_generated) {
     if (strcmp(state->current_merge_section, "ENVIRONMENT") == 0) {
-      log_debug("[MANPAGE] Generating ENVIRONMENT with %zu manual + %zu auto variables", state->manual_env_count,
-                config->num_descriptors);
-      char *env_content = manpage_content_generate_environment_with_manual(
-          config, state->manual_env_vars, state->manual_env_count, state->manual_env_descs);
+      log_debug("[MANPAGE] Generating ENVIRONMENT with %zu manual + %zu auto variables", state->manual_env_count, config->num_descriptors);
+      char *env_content = manpage_content_generate_environment_with_manual(config, state->manual_env_vars, state->manual_env_count, state->manual_env_descs);
       if (env_content && *env_content != '\0') {
         log_debug("[MANPAGE] Writing ENVIRONMENT content: %zu bytes", strlen(env_content));
         fprintf(f, "%s", env_content);
@@ -420,8 +411,7 @@ static void manpage_end_merge(FILE *f, const options_config_t *config, manpage_m
   manpage_clear_manual_environment(state);
 }
 
-static void manpage_collect_environment(manpage_merge_state_t *state, const char *p, const char *line_end,
-                                        size_t line_len) {
+static void manpage_collect_environment(manpage_merge_state_t *state, const char *p, const char *line_end, size_t line_len) {
   // Check if line starts with ".TP" or ".B " (groff markers)
   bool is_tp_marker = (line_len >= 3 && strncmp(p, ".TP", sizeof(".TP") - 1) == 0 && (line_len == 3 || isspace(p[3])));
   bool is_b_marker = (line_len >= 3 && strncmp(p, ".B ", sizeof(".B ") - 1) == 0);
@@ -451,10 +441,8 @@ static void manpage_collect_environment(manpage_merge_state_t *state, const char
       // Store the variable name
       if (state->manual_env_count >= state->manual_env_capacity) {
         state->manual_env_capacity = state->manual_env_capacity == 0 ? 16 : state->manual_env_capacity * 2;
-        state->manual_env_vars =
-            SAFE_REALLOC(state->manual_env_vars, state->manual_env_capacity * sizeof(const char *), const char **);
-        state->manual_env_descs =
-            SAFE_REALLOC(state->manual_env_descs, state->manual_env_capacity * sizeof(const char *), const char **);
+        state->manual_env_vars = SAFE_REALLOC(state->manual_env_vars, state->manual_env_capacity * sizeof(const char *), const char **);
+        state->manual_env_descs = SAFE_REALLOC(state->manual_env_descs, state->manual_env_capacity * sizeof(const char *), const char **);
       }
 
       state->manual_env_vars[state->manual_env_count] = var_name;
@@ -582,8 +570,7 @@ static void manpage_write_auto_content(FILE *f, const options_config_t *config, 
   }
 }
 
-static void manpage_write_auto_line(FILE *f, const options_config_t *config, manpage_merge_state_t *state,
-                                    const char *p, const char *line_end, size_t line_len) {
+static void manpage_write_auto_line(FILE *f, const options_config_t *config, manpage_merge_state_t *state, const char *p, const char *line_end, size_t line_len) {
   // Preserve comment lines that come before the section header
   if (!state->found_section_header && strstr(p, ".\\\"") != NULL && strstr(p, ".\\\"") < line_end) {
     // Skip comment lines in AUTO sections that contain "auto-generated" text
@@ -672,8 +659,7 @@ static void manpage_merge_template(FILE *f, const options_config_t *config, cons
       // Write all manual content (not in AUTO section)
       // Skip marker comment lines: .\" AUTO-*, .\" MANUAL-*, .\" MERGE-*
       // These are internal build-time control comments
-      bool is_marker_comment = (strstr(p, ".\\\" AUTO-") != NULL && strstr(p, ".\\\" AUTO-") < line_end) ||
-                               (strstr(p, ".\\\" MANUAL-") != NULL && strstr(p, ".\\\" MANUAL-") < line_end) ||
+      bool is_marker_comment = (strstr(p, ".\\\" AUTO-") != NULL && strstr(p, ".\\\" AUTO-") < line_end) || (strstr(p, ".\\\" MANUAL-") != NULL && strstr(p, ".\\\" MANUAL-") < line_end) ||
                                (strstr(p, ".\\\" MERGE-") != NULL && strstr(p, ".\\\" MERGE-") < line_end);
       if (!is_marker_comment) {
         fwrite(p, 1, line_len + 1, f);
@@ -685,9 +671,7 @@ static void manpage_merge_template(FILE *f, const options_config_t *config, cons
   }
 }
 
-asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
-                                                         const char *mode_name, const char *output_path,
-                                                         const char *brief_description) {
+asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description) {
   (void)mode_name;         // Not used
   (void)program_name;      // Not used
   (void)brief_description; // Not used
@@ -765,8 +749,7 @@ const parsed_section_t *find_section(const parsed_section_t *sections, size_t nu
 }
 
 #ifndef NDEBUG
-asciichat_error_t options_config_generate_final_manpage(const char *template_path, const char *output_path,
-                                                        const char *version_string, const char *content_file_path) {
+asciichat_error_t options_config_generate_final_manpage(const char *template_path, const char *output_path, const char *version_string, const char *content_file_path) {
   (void)template_path;
   (void)output_path;
   (void)version_string;

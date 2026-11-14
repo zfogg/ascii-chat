@@ -58,8 +58,7 @@ asciichat_error_t media_playlist_parse(const char *text, media_playlist_t *list)
           const char *next = text;
           while (*next == ' ' || *next == '\t')
             ++next;
-          bool path_start = *next == '\'' || *next == '"' || *next == '/' || *next == '\\' ||
-                            (isalpha((unsigned char)next[0]) && next[1] == ':');
+          bool path_start = *next == '\'' || *next == '"' || *next == '/' || *next == '\\' || (isalpha((unsigned char)next[0]) && next[1] == ':');
           const char *scheme = strstr(next, "://");
           const char *space = strpbrk(next, " \t\r\n");
           if (path_start || (scheme && (!space || scheme < space)))
@@ -74,8 +73,7 @@ asciichat_error_t media_playlist_parse(const char *text, media_playlist_t *list)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Media artifact is too long");
     memcpy(argument, start, bytes);
     argument[bytes] = '\0';
-    bool url = strstr(argument, "://") &&
-               strncmp(argument + (argument[0] == '\'' || argument[0] == '"'), "file://", sizeof("file://") - 1) != 0;
+    bool url = strstr(argument, "://") && strncmp(argument + (argument[0] == '\'' || argument[0] == '"'), "file://", sizeof("file://") - 1) != 0;
     asciichat_error_t result = media_playlist_append(&parsed, argument, url);
     if (result != ASCIICHAT_OK)
       return result;

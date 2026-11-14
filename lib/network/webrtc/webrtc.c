@@ -146,8 +146,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   socklen_t length = sizeof(addr);
-  if (socket_bind(pc->port_reservation, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
-      socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) != 0) {
+  if (socket_bind(pc->port_reservation, (struct sockaddr *)&addr, sizeof(addr)) != 0 || socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) != 0) {
     webrtc_release_port(pc);
     return;
   }
@@ -166,8 +165,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
     gateway.sin_family = AF_INET;
     gateway.sin_port = htons(5351);
     gateway.sin_addr.s_addr = pc->mapping->gateway;
-    if (socket_connect(pc->port_reservation, (struct sockaddr *)&gateway, sizeof(gateway)) == 0 &&
-        socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) == 0) {
+    if (socket_connect(pc->port_reservation, (struct sockaddr *)&gateway, sizeof(gateway)) == 0 && socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) == 0) {
       inet_ntop(AF_INET, &addr.sin_addr, pc->mapping->internal_ip, sizeof(pc->mapping->internal_ip));
     }
   }
@@ -185,8 +183,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
   rtc_config->portRangeBegin = port;
   rtc_config->portRangeEnd = port;
   rtc_config->bindAddress = pc->mapping->internal_ip;
-  log_info("WebRTC UDP mapping ready before ICE gathering: %s:%u -> %s:%u", pc->mapping->external_ip,
-           pc->mapping->mapped_port, pc->mapping->internal_ip, port);
+  log_info("WebRTC UDP mapping ready before ICE gathering: %s:%u -> %s:%u", pc->mapping->external_ip, pc->mapping->mapped_port, pc->mapping->internal_ip, port);
 }
 
 // ============================================================================
@@ -243,10 +240,8 @@ static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) 
     break;
   case RTC_CONNECTED:
     new_state = WEBRTC_STATE_CONNECTED;
-    char local_candidate[NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE],
-        remote_candidate[NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE];
-    if (rtcGetSelectedCandidatePair(pc_id, local_candidate, sizeof(local_candidate), remote_candidate,
-                                    sizeof(remote_candidate)) >= 0) {
+    char local_candidate[NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE], remote_candidate[NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE];
+    if (rtcGetSelectedCandidatePair(pc_id, local_candidate, sizeof(local_candidate), remote_candidate, sizeof(remote_candidate)) >= 0) {
       log_info("WebRTC selected local candidate: %s", local_candidate);
       log_info("WebRTC selected remote candidate: %s", remote_candidate);
     }
@@ -432,8 +427,7 @@ static void on_datachannel_message_adapter(int dc_id, const char *data, int size
     const uint8_t *pkt = (const uint8_t *)data;
     log_dev("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
             "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-            dc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
-            pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+            dc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10], pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
   } else {
     log_dev("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d (no data or too small)", dc_id, size);
   }
@@ -606,15 +600,13 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
       const turn_server_t *server = &config->turn_servers[i];
       char username[WEBRTC_ESCAPED_AUTH_BUFFER_SIZE];
       char credential[WEBRTC_ESCAPED_AUTH_BUFFER_SIZE];
-      encode_turn_userinfo(config->turn_username ? config->turn_username : server->username, username,
-                           sizeof(username));
-      encode_turn_userinfo(config->turn_credential ? config->turn_credential : server->credential, credential,
-                           sizeof(credential));
+      encode_turn_userinfo(config->turn_username ? config->turn_username : server->username, username, sizeof(username));
+      encode_turn_userinfo(config->turn_credential ? config->turn_credential : server->credential, credential, sizeof(credential));
       const char *address = strchr(server->url, ':') + 1;
       while (*address == '/')
         address++;
-      SAFE_SNPRINTF(turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE, WEBRTC_TURN_URL_BUFFER_SIZE, "%.*s%s:%s@%s",
-                    (int)(strchr(server->url, ':') - server->url + 1), server->url, username, credential, address);
+      SAFE_SNPRINTF(turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE, WEBRTC_TURN_URL_BUFFER_SIZE, "%.*s%s:%s@%s", (int)(strchr(server->url, ':') - server->url + 1), server->url, username, credential,
+                    address);
       ice_servers[config->stun_count + i] = turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE;
     }
   }
@@ -816,8 +808,7 @@ asciichat_error_t webrtc_add_remote_candidate(webrtc_peer_connection_t *pc, cons
 // DataChannel Management
 // ============================================================================
 
-asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const char *label,
-                                            webrtc_data_channel_t **dc_out) {
+asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const char *label, webrtc_data_channel_t **dc_out) {
   if (!pc || !label || !dc_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -895,8 +886,7 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
     const uint8_t *pkt = (const uint8_t *)data;
     log_dev("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
             "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-            dc->rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
-            pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+            dc->rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10], pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
   } else {
     log_dev("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)", dc->rtc_id, size);
   }
@@ -968,8 +958,7 @@ void webrtc_close_datachannel(webrtc_data_channel_t *dc) {
 // DataChannel Callbacks
 // =============================================================================
 
-asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
-                                                   const webrtc_datachannel_callbacks_t *callbacks) {
+asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc, const webrtc_datachannel_callbacks_t *callbacks) {
   if (!dc) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
   }

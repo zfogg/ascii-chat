@@ -86,9 +86,9 @@
  * cmake --preset default -B build
  * cmake --build build --target ascii-chat test-network-events
  * ./build/bin/test-network-events
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/event_io --ascii-chat-binary build/bin/ascii-chat
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
+ * uv run --frozen python -m pytest tests/python/tests/integration/event_io --ascii-chat-binary build/bin/ascii-chat
+ * uv run --frozen python -m pytest tests/python/tests/integration/network --ascii-chat-binary build/bin/ascii-chat
+ * uv run --frozen python -m pytest tests/python/tests/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
  * ```
  *
  * Use `.exe` executable names on Windows. The standalone test covers fragmented

@@ -7,7 +7,7 @@
  * From the repository root, with BUILD_TESTS enabled:
  *   cmake --build build --target ascii-chat test-yt-dlp-fixture test-extractor-audio
  *   ctest --test-dir build -R "^media-extractor$" --output-on-failure
- *   uv run --project tests/ascii_chat_tests python tests/integration/media_extractor.py `
+ *   uv run python tests/integration/media_extractor.py `
  *     --binary build/bin/ascii-chat.exe --fixture build/test-fixtures/fake-yt-dlp.exe `
  *     --audio-probe build/bin/test-extractor-audio.exe MediaExtractor.test_combined_stream_is_used_for_both_decoders
  *

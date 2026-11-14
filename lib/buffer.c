@@ -137,8 +137,7 @@ asciichat_error_t buffer_domain_create(const buffer_domain_config_t *config, buf
   domain->config = config ? *config : defaults;
   if (!domain->config.limit_bytes)
     domain->config.limit_bytes = BUFFER_DOMAIN_LIMIT;
-  if (mutex_init(&domain->mutex,
-                 domain->config.control ? "reserved_control_buffer_pool" : "shared_media_buffer_pool") != 0) {
+  if (mutex_init(&domain->mutex, domain->config.control ? "reserved_control_buffer_pool" : "shared_media_buffer_pool") != 0) {
     atomic_fetch_sub_u64(&process_bytes, sizeof(*domain));
     SAFE_FREE(domain);
     return SET_ERRNO(ERROR_THREAD, "Cannot initialize buffer domain mutex");
@@ -225,8 +224,7 @@ asciichat_error_t buffer_acquire(buffer_domain_t *domain, size_t size, size_t al
       /* A miss may reclaim idle capacity, but a release never scans a pool. */
       trim_locked(domain, true);
     }
-    bool fits =
-        charge <= domain->config.limit_bytes && domain->stats.reserved_bytes <= domain->config.limit_bytes - charge;
+    bool fits = charge <= domain->config.limit_bytes && domain->stats.reserved_bytes <= domain->config.limit_bytes - charge;
     bool reserved = fits && process_reserve(charge, domain->config.control);
     if (fits && !reserved && domain->stats.cached_bytes) {
       trim_locked(domain, true);
@@ -338,8 +336,7 @@ void buffer_unref(const void *data) {
   domain->stats.live_bytes -= node->charge;
   domain->stats.requested_bytes -= node->length;
   bool done = domain->closing && !domain->stats.outstanding;
-  if (!domain->closing && node->capacity <= BUFFER_MAX_CACHED && node->charge <= domain->config.cache_bytes &&
-      domain->stats.cached_bytes <= domain->config.cache_bytes - node->charge) {
+  if (!domain->closing && node->capacity <= BUFFER_MAX_CACHED && node->charge <= domain->config.cache_bytes && domain->stats.cached_bytes <= domain->config.cache_bytes - node->charge) {
     node->returned_at = time_get_ns();
     BUFFER_POISON(node->data, node->capacity);
     node->next = domain->bins[node->bin];
@@ -392,9 +389,8 @@ void buffer_domain_stats(buffer_domain_t *domain, buffer_stats_t *out) {
 void buffer_domain_log_stats(buffer_domain_t *domain, const char *name) {
   buffer_stats_t stats;
   buffer_domain_stats(domain, &stats);
-  log_debug("Buffers %s: reserved=%zu live=%zu requested=%zu cached=%zu outstanding=%zu hits=%llu failures=%llu",
-            name ? name : "default", stats.reserved_bytes, stats.live_bytes, stats.requested_bytes, stats.cached_bytes,
-            stats.outstanding, (unsigned long long)stats.hits, (unsigned long long)stats.failures);
+  log_debug("Buffers %s: reserved=%zu live=%zu requested=%zu cached=%zu outstanding=%zu hits=%llu failures=%llu", name ? name : "default", stats.reserved_bytes, stats.live_bytes,
+            stats.requested_bytes, stats.cached_bytes, stats.outstanding, (unsigned long long)stats.hits, (unsigned long long)stats.failures);
 }
 
 void buffer_system_init(void) {

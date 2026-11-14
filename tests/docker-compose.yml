@@ -49,7 +49,7 @@ services:
       - |
         PYTHON3=$$(uv python find 3.15)
         export UV_PYTHON="$$PYTHON3"
-        uv sync --project tests/ascii_chat_tests --frozen
+        uv sync --frozen
         cmake --preset docker -DPython3_EXECUTABLE="$$PYTHON3"
         cmake --build build_docker --target tests
         ctest --test-dir build_docker --output-on-failure --parallel 0
@@ -110,7 +110,7 @@ services:
       - |
         PYTHON3=$$(uv python find 3.15)
         export UV_PYTHON="$$PYTHON3"
-        uv sync --project tests/ascii_chat_tests --frozen
+        uv sync --frozen
         cmake --preset docker -DPython3_EXECUTABLE="$$PYTHON3" -DOPENSSL_ROOT_DIR=/opt/openssl
         cmake --build build_docker --target tests
         ctest --test-dir build_docker --output-on-failure --parallel 0

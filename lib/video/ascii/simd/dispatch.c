@@ -43,8 +43,7 @@ const simd_backend_t *simd_backend(void) {
       // A diagnostic override can never bypass the CPU/OS safety check.
       selected = simd_select_backend(0);
       for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
-        if (strcmp(requested, backends[i].name) == 0 &&
-            (features & backends[i].required_features) == backends[i].required_features) {
+        if (strcmp(requested, backends[i].name) == 0 && (features & backends[i].required_features) == backends[i].required_features) {
           selected = &backends[i];
           break;
         }

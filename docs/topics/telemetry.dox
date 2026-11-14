@@ -70,7 +70,7 @@
  *
  * Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
  * transport tests still validate spans, metrics, sampling and failures without
- * network I/O. `tests/python/integration/telemetry/test_disabled.py` runs real native media with explicit collector
+ * network I/O. `tests/python/tests/integration/telemetry/test_disabled.py` runs real native media with explicit collector
  * and signal overrides and asserts zero received requests. Historical exported-load
  * measurements below describe earlier manual runs; they are not test permissions.
  *
@@ -97,7 +97,7 @@
  * environment:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --extra telemetry python tests/scripts/check_query_names.py --build-dir build
+ * uv run --extra telemetry python tests/scripts/check_query_names.py --build-dir build
  * ```
  *
  * Install the matching Spaniel verifier at its immutable source revision and make
@@ -135,7 +135,7 @@
  * and restores the original session in a finally block:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_spaniel_alert_pack.py
+ * uv run --frozen python tests/manual/probe_spaniel_alert_pack.py
  * ```
  *
  * Debug and Dev builds export traces, logs, and metrics to the local Compose
@@ -469,7 +469,7 @@
  * The sustained-load test is deliberately absent from CTest. Run it explicitly:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
+ * uv run --frozen python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
  * ```
  *
  * It measures payload bytes and spans with default sampling, compares disabled/enabled elapsed and child CPU time, records exported RSS,
@@ -539,7 +539,7 @@
  * cycles and checks live export before terminating its disposable child:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
+ * uv run --frozen python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
  * # macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll
  * ```
  *
@@ -574,7 +574,7 @@
  * four ERROR spans and exact counter totals with media sampling set to zero:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
+ * uv run --frozen python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
  * ```
  *
  * ## TUI usage

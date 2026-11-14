@@ -28,8 +28,7 @@ yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
 }
 static yyjson_mut_doc *tool_result(yyjson_val *id, const http_renderer_process_result_t *r) {
   yyjson_mut_doc *d = envelope(id);
-  yyjson_mut_val *root = yyjson_mut_doc_get_root(d), *result = yyjson_mut_obj(d), *content = yyjson_mut_arr(d),
-                 *item = yyjson_mut_obj(d);
+  yyjson_mut_val *root = yyjson_mut_doc_get_root(d), *result = yyjson_mut_obj(d), *content = yyjson_mut_arr(d), *item = yyjson_mut_obj(d);
   yyjson_mut_obj_add_str(d, item, "type", "text");
   const char *text = r->error[0] ? r->error : r->text && r->text[0] ? r->text : r->output_path;
   yyjson_mut_obj_add_strcpy(d, item, "text", text ? text : "");
@@ -73,8 +72,7 @@ static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments)
   if (arguments && (!yyjson_is_obj(arguments) || yyjson_obj_size(arguments)))
     return mcp_error(id, -32602, "device_list accepts no arguments");
   yyjson_mut_doc *d = envelope(id);
-  yyjson_mut_val *result = yyjson_mut_obj(d), *data = yyjson_mut_obj(d), *video = yyjson_mut_arr(d),
-                 *audio = yyjson_mut_arr(d), *errors = yyjson_mut_arr(d);
+  yyjson_mut_val *result = yyjson_mut_obj(d), *data = yyjson_mut_obj(d), *video = yyjson_mut_arr(d), *audio = yyjson_mut_arr(d), *errors = yyjson_mut_arr(d);
   webcam_device_info_t *cameras = NULL;
   audio_device_info_t *microphones = NULL;
   unsigned camera_count = 0, microphone_count = 0;
@@ -99,8 +97,7 @@ static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments)
   err = audio_list_input_devices(&microphones, &microphone_count);
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t context;
-    yyjson_mut_arr_add_strcpy(d, errors,
-                              HAS_ERRNO(&context) ? context.context_message : "Cannot enumerate microphones");
+    yyjson_mut_arr_add_strcpy(d, errors, HAS_ERRNO(&context) ? context.context_message : "Cannot enumerate microphones");
   } else {
     for (unsigned i = 0; i < microphone_count; ++i) {
       yyjson_mut_val *device = yyjson_mut_obj(d);
@@ -115,10 +112,8 @@ static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments)
   audio_free_device_list(microphones);
   yyjson_mut_obj_add_val(d, data, "video_devices", video);
   yyjson_mut_obj_add_val(d, data, "audio_devices", audio);
-  yyjson_mut_obj_add_val(d, data, "default_video_device",
-                         default_video < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_video));
-  yyjson_mut_obj_add_val(d, data, "default_audio_device",
-                         default_audio < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_audio));
+  yyjson_mut_obj_add_val(d, data, "default_video_device", default_video < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_video));
+  yyjson_mut_obj_add_val(d, data, "default_audio_device", default_audio < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_audio));
   yyjson_mut_obj_add_val(d, data, "errors", errors);
   yyjson_mut_val *content = yyjson_mut_arr(d), *item = yyjson_mut_obj(d);
   char *text = yyjson_mut_val_write(data, 0, NULL);
@@ -142,8 +137,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
   http_renderer_process_result_t result;
   uint64_t render_started = time_get_ns();
   log_info("MCP render started");
-  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT &&
-      (job->request.source_path[0] || job->request.source_url[0])) {
+  if (job->request.output_type == HTTP_RENDER_OUTPUT_TEXT && (job->request.source_path[0] || job->request.source_url[0])) {
     http_render_request_t shared_request;
     http_render_request_init(&shared_request);
     shared_request.source.type = job->request.source_url[0] ? HTTP_RENDER_SOURCE_URL : HTTP_RENDER_SOURCE_FILE;
@@ -154,8 +148,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
     shared_request.options = job->request.options;
     http_render_result_t shared_result = {0};
     const char *shared_source = job->request.source_url[0] ? job->request.source_url : job->request.source_path;
-    asciichat_error_t shared_error =
-        http_renderer_render_file(shared_source, &shared_request, &shared_result, cancelled);
+    asciichat_error_t shared_error = http_renderer_render_file(shared_source, &shared_request, &shared_result, cancelled);
     memset(&result, 0, sizeof(result));
     result.elapsed_ms = shared_result.elapsed_ms;
     if (shared_error == ASCIICHAT_OK) {
@@ -203,8 +196,7 @@ static void run_job(void *arg, atomic_t *cancelled) {
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
   for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
-    if (!j->renderer_job.started ||
-        (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
+    if (!j->renderer_job.started || (!all && (!http_renderer_job_is_done(&j->renderer_job) || (s->policy.hosted && j->connection))))
       continue;
     http_renderer_job_join(&j->renderer_job);
     yyjson_doc_free(j->message);
@@ -215,26 +207,21 @@ void mcp_jobs_reap(mcp_server_t *s, bool all) {
 }
 static bool same_id(yyjson_val *a, yyjson_val *b) {
   return a && b &&
-         ((yyjson_is_str(a) && yyjson_is_str(b) && yyjson_get_len(a) == yyjson_get_len(b) &&
-           !strcmp(yyjson_get_str(a), yyjson_get_str(b))) ||
+         ((yyjson_is_str(a) && yyjson_is_str(b) && yyjson_get_len(a) == yyjson_get_len(b) && !strcmp(yyjson_get_str(a), yyjson_get_str(b))) ||
           (yyjson_is_int(a) && yyjson_is_int(b) && yyjson_get_sint(a) == yyjson_get_sint(b)));
 }
-yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, const char *session_id,
-                             bool *pending) {
+yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, const char *session_id, bool *pending) {
   ASCII_OTEL_SCOPE(MCP_REQUEST);
   ASCII_OTEL_ATTR_STRING("rpc.system", "jsonrpc");
   ASCII_OTEL_ATTR_STRING("mcp.transport", s->policy.hosted ? "http" : "stdio");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REQUESTS, 1);
   *pending = false;
-  yyjson_val *root = yyjson_doc_get_root(message), *id = mcp_get(root, "id"), *method = mcp_get(root, "method"),
-             *version = mcp_get(root, "jsonrpc");
-  if (!yyjson_is_obj(root) || !yyjson_is_str(version) || strcmp(yyjson_get_str(version), "2.0") ||
-      !yyjson_is_str(method) || strlen(yyjson_get_str(method)) != yyjson_get_len(method) ||
+  yyjson_val *root = yyjson_doc_get_root(message), *id = mcp_get(root, "id"), *method = mcp_get(root, "method"), *version = mcp_get(root, "jsonrpc");
+  if (!yyjson_is_obj(root) || !yyjson_is_str(version) || strcmp(yyjson_get_str(version), "2.0") || !yyjson_is_str(method) || strlen(yyjson_get_str(method)) != yyjson_get_len(method) ||
       (id && !yyjson_is_str(id) && !yyjson_is_int(id)))
     return mcp_error(id, -32600, "Invalid JSON-RPC request");
   const char *name = yyjson_get_str(method);
-  static const char *const methods[] = {
-      "initialize", "ping", "tools/list", "tools/call", "notifications/initialized", "notifications/cancelled"};
+  static const char *const methods[] = {"initialize", "ping", "tools/list", "tools/call", "notifications/initialized", "notifications/cancelled"};
   const char *method_name = "unknown";
   for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); i++)
     if (!strcmp(name, methods[i]))
@@ -250,8 +237,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       yyjson_val *cancel = mcp_get(params, "requestId");
       for (unsigned i = 0; i < s->policy.max_jobs; ++i)
         if (s->jobs[i].renderer_job.started &&
-            (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
-             ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
+            (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) || ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
           http_renderer_job_cancel(&s->jobs[i].renderer_job);
     }
@@ -272,18 +258,16 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     yyjson_mut_obj_add_str(d, info, "name", "ascii-chat");
     yyjson_mut_obj_add_str(d, info, "version", ASCII_CHAT_VERSION_FULL);
     yyjson_mut_obj_add_val(d, result, "serverInfo", info);
-    const char *instructions =
-        s->policy.restricted && s->policy.hosted
-            ? "Render uploaded bytes or HTTP(S) media URLs as ASCII art. The hosted server cannot access your webcam "
-              "or "
-              "local filesystem. Rendered files are returned as temporary download links with UTC expiration "
-              "timestamps; "
-              "links expire after 30 minutes. Use output_format to select the file format, snapshot-delay to set clip "
-              "duration, and options.audio=true to include source audio."
-            : "Render media as ASCII art. Uploaded bytes must be base64 encoded by the client. snapshot-delay measures "
-              "capture duration after the first rendered frame; use seek for media timestamps. output_path saves ASCII "
-              "art "
-              "as an image/video and never replaces an existing file.";
+    const char *instructions = s->policy.restricted && s->policy.hosted ? "Render uploaded bytes or HTTP(S) media URLs as ASCII art. The hosted server cannot access your webcam "
+                                                                          "or "
+                                                                          "local filesystem. Rendered files are returned as temporary download links with UTC expiration "
+                                                                          "timestamps; "
+                                                                          "links expire after 30 minutes. Use output_format to select the file format, snapshot-delay to set clip "
+                                                                          "duration, and options.audio=true to include source audio."
+                                                                        : "Render media as ASCII art. Uploaded bytes must be base64 encoded by the client. snapshot-delay measures "
+                                                                          "capture duration after the first rendered frame; use seek for media timestamps. output_path saves ASCII "
+                                                                          "art "
+                                                                          "as an image/video and never replaces an existing file.";
     yyjson_mut_obj_add_str(d, result, "instructions", instructions);
     return d;
   }
@@ -319,8 +303,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     }
   if (!j) {
     char message[128];
-    safe_snprintf(message, sizeof(message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs,
-                  s->policy.max_jobs == 1 ? "" : "s");
+    safe_snprintf(message, sizeof(message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs, s->policy.max_jobs == 1 ? "" : "s");
     return mcp_error(id, -32000, message);
   }
   yyjson_val *arguments = mcp_get(params, "arguments");

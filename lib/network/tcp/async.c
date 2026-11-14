@@ -96,8 +96,7 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     uint8_t *ciphertext = tcp->ciphertext.data;
     size_t length = 0;
     packet_header_t outer;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity,
-                                 &outer, &length);
+    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity, &outer, &length);
     if (result == ERROR_MEMORY) {
       mutex_unlock(&tcp->mutex);
       return result;
@@ -187,22 +186,17 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   atomic_fetch_sub_u64(&tcp->received_count, 1);
   packet_header_t header;
   memcpy(&header, packet->data, sizeof(header));
-  packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type),
-                                .data = (uint8_t *)packet->data + sizeof(header),
-                                .len = packet->size - sizeof(header),
-                                .allocated_buffer = packet->data,
-                                .allocated_size = packet->size};
+  packet_envelope_t envelope = {
+      .type = NET_TO_HOST_U16(header.type), .data = (uint8_t *)packet->data + sizeof(header), .len = packet->size - sizeof(header), .allocated_buffer = packet->data, .allocated_size = packet->size};
   asciichat_error_t result = ASCIICHAT_OK;
   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
     result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
     if (result == ASCIICHAT_OK) {
       memcpy(&header, envelope.allocated_buffer, sizeof(header));
-      if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC ||
-          (envelope.len && asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)))
+      if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || (envelope.len && asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)))
         result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted async packet");
     }
-  } else if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
-             !packet_is_initial_handshake_type(envelope.type)) {
+  } else if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && !packet_is_initial_handshake_type(envelope.type)) {
     result = SET_ERRNO(ERROR_CRYPTO, "Unexpected plaintext packet");
   }
   if (result == ASCIICHAT_OK && envelope.consumed) {
@@ -283,8 +277,7 @@ static socket_t async_socket(acip_transport_t *transport) {
 }
 static bool async_pending(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  bool pending = atomic_load_u64(&tcp->received_count) != 0 || atomic_load_bool(&tcp->closed) ||
-                 atomic_load_bool(&tcp->interrupted);
+  bool pending = atomic_load_u64(&tcp->received_count) != 0 || atomic_load_bool(&tcp->closed) || atomic_load_bool(&tcp->interrupted);
   return pending;
 }
 static void async_destroy(acip_transport_t *transport) {
@@ -358,8 +351,7 @@ static size_t async_queued_bytes(acip_transport_t *transport) {
 static asciichat_error_t async_wait_writable(acip_transport_t *transport, uint64_t timeout_ns) {
   async_tcp_t *tcp = transport->impl_data;
   mutex_lock(&tcp->mutex);
-  while (atomic_load_u64(&tcp->queued_wire_bytes) != 0 && !atomic_load_bool(&tcp->closed) &&
-         !atomic_load_bool(&tcp->interrupted)) {
+  while (atomic_load_u64(&tcp->queued_wire_bytes) != 0 && !atomic_load_bool(&tcp->closed) && !atomic_load_bool(&tcp->interrupted)) {
     if (cond_timedwait(&tcp->writable, &tcp->mutex, timeout_ns) == ERROR_NETWORK_TIMEOUT)
       break;
   }

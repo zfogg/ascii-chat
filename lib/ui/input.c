@@ -3,10 +3,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
 #include <ascii-chat/util/utf8.h>
-asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int width, int height, const char *text,
-                                  size_t cursor, bool preserve_quotes) {
-  if (!buffer || !text || row < 1 || col < 1 || width < 5 || height < 1 || cursor > strlen(text) ||
-      !utf8_is_valid(text) || (cursor && ((unsigned char)text[cursor] & 0xc0) == 0x80))
+asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int width, int height, const char *text, size_t cursor, bool preserve_quotes) {
+  if (!buffer || !text || row < 1 || col < 1 || width < 5 || height < 1 || cursor > strlen(text) || !utf8_is_valid(text) || (cursor && ((unsigned char)text[cursor] & 0xc0) == 0x80))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid input field text, cursor or geometry");
   int lines = 1;
   size_t cursor_line = 0;
@@ -81,8 +79,7 @@ static size_t previous(const char *text, size_t cursor) {
 }
 
 void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *position, keyboard_key_t key) {
-  if (!buffer || !capacity || !length || !position || *length >= capacity || *position > *length ||
-      strnlen(buffer, capacity) != *length || !utf8_is_valid(buffer) ||
+  if (!buffer || !capacity || !length || !position || *length >= capacity || *position > *length || strnlen(buffer, capacity) != *length || !utf8_is_valid(buffer) ||
       (*position && ((unsigned char)buffer[*position] & 0xc0) == 0x80)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid line editor storage, UTF-8 or cursor");
     return;
@@ -128,8 +125,7 @@ void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *po
 }
 
 asciichat_error_t ui_input_insert(char *buffer, size_t capacity, size_t *length, size_t *cursor, const char *text) {
-  if (!buffer || !length || !cursor || !text || *length >= capacity || *cursor > *length ||
-      strnlen(buffer, capacity) != *length || !utf8_is_valid(text) || !utf8_is_valid(buffer) ||
+  if (!buffer || !length || !cursor || !text || *length >= capacity || *cursor > *length || strnlen(buffer, capacity) != *length || !utf8_is_valid(text) || !utf8_is_valid(buffer) ||
       (*cursor && ((unsigned char)buffer[*cursor] & 0xc0) == 0x80))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid input insertion storage, text or cursor");
   size_t bytes = strlen(text);

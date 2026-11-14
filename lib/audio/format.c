@@ -1,12 +1,9 @@
 #include <ascii-chat/audio/format.h>
 #include <math.h>
 
-asciichat_error_t audio_route_capture(const float *input, size_t frames, unsigned channels, int first_channel,
-                                      unsigned selected_channels, float *output) {
-  if (!input || !output || channels == 0 || channels > AUDIO_DEVICE_MAX_CHANNELS ||
-      (selected_channels != 1 && selected_channels != 2) || first_channel < -1 ||
-      (first_channel >= 0 &&
-       ((unsigned)first_channel >= channels || selected_channels > channels - (unsigned)first_channel)))
+asciichat_error_t audio_route_capture(const float *input, size_t frames, unsigned channels, int first_channel, unsigned selected_channels, float *output) {
+  if (!input || !output || channels == 0 || channels > AUDIO_DEVICE_MAX_CHANNELS || (selected_channels != 1 && selected_channels != 2) || first_channel < -1 ||
+      (first_channel >= 0 && ((unsigned)first_channel >= channels || selected_channels > channels - (unsigned)first_channel)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid microphone channel routing");
   for (size_t frame = 0; frame < frames; frame++) {
     float left, right;
@@ -25,10 +22,8 @@ asciichat_error_t audio_route_capture(const float *input, size_t frames, unsigne
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsigned input_channels, float *output,
-                                         unsigned output_channels) {
-  if (!input || !output || (input_channels != 1 && input_channels != 2) ||
-      (output_channels != 1 && output_channels != 2))
+asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsigned input_channels, float *output, unsigned output_channels) {
+  if (!input || !output || (input_channels != 1 && input_channels != 2) || (output_channels != 1 && output_channels != 2))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Only mono and stereo PCM are supported");
   // Backwards iteration also permits in-place mono expansion.
   if (input_channels == 1 && output_channels == 2) {
@@ -49,10 +44,8 @@ asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsi
   return ASCIICHAT_OK;
 }
 
-size_t audio_resample_stereo(audio_resampler_t *state, const float *input, size_t frames, double input_rate,
-                             float *output, size_t capacity, double output_rate) {
-  if (!state || !input || !output || !frames || !isfinite(input_rate) || !isfinite(output_rate) || input_rate < 8000 ||
-      input_rate > 192000 || output_rate < 8000 || output_rate > 192000) {
+size_t audio_resample_stereo(audio_resampler_t *state, const float *input, size_t frames, double input_rate, float *output, size_t capacity, double output_rate) {
+  if (!state || !input || !output || !frames || !isfinite(input_rate) || !isfinite(output_rate) || input_rate < 8000 || input_rate > 192000 || output_rate < 8000 || output_rate > 192000) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stereo resampling buffers, frame count, or sample rates");
     return 0;
   }

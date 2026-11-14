@@ -33,8 +33,7 @@
 
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   if (element_size == 0 || capacity == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ring buffer parameters: element_size=%zu, capacity=%zu", element_size,
-              capacity);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ring buffer parameters: element_size=%zu, capacity=%zu", element_size, capacity);
     return NULL;
   }
 
@@ -348,8 +347,7 @@ void framebuffer_clear(framebuffer_t *fb) {
         MARK_FRAME_FREED((frame_t *)&multi_frame); // Mark as freed to detect use-after-free
         buffer_release(multi_frame.data);
       } else if (!IS_MAGIC_VALID(multi_frame.magic, FRAME_MAGIC) && multi_frame.magic != 0) {
-        SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x during clear",
-                  multi_frame.magic);
+        SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x during clear", multi_frame.magic);
       }
     }
   } else if (fb->rb->element_size == sizeof(frame_t)) {
@@ -374,8 +372,7 @@ void framebuffer_clear(framebuffer_t *fb) {
   if (fb->rb->buffer) {
     // Check for integer overflow before multiplication
     if (fb->rb->capacity > SIZE_MAX / fb->rb->element_size) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu", fb->rb->capacity,
-                fb->rb->element_size);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu", fb->rb->capacity, fb->rb->element_size);
       mutex_unlock(&fb->mutex);
       return;
     }
@@ -388,8 +385,7 @@ void framebuffer_clear(framebuffer_t *fb) {
 
 // Multi-source frame functions for multi-user support
 
-bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size,
-                                   uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp) {
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size, uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp) {
   if (!fb || !fb->rb || !frame_data || frame_size == 0) {
     return false;
   }
@@ -417,8 +413,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
       .size = frame_size,
       .data = data_copy,
   };
-  SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str,
-              strlen(client_id_str) + 1);
+  SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str, strlen(client_id_str) + 1);
 
   // Thread-safe access to framebuffer
   mutex_lock(&fb->mutex);
@@ -448,8 +443,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
   if (result) {
     // Validate frame magic
     if (!IS_MAGIC_VALID(frame->magic, FRAME_MAGIC)) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)", frame->magic,
-                FRAME_MAGIC);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
       memset(frame->source_client_id, 0, sizeof(frame->source_client_id));
@@ -459,8 +453,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)", frame->size,
-                frame->data);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)", frame->size, frame->data);
       mutex_unlock(&fb->mutex);
       return false;
     }
@@ -484,8 +477,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
   if (result) {
     // Validate frame magic
     if (!IS_MAGIC_VALID(frame->magic, FRAME_MAGIC)) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek",
-                frame->magic, FRAME_MAGIC);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek", frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
       memset(frame->source_client_id, 0, sizeof(frame->source_client_id));
@@ -495,8 +487,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek",
-                frame->size, frame->data);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek", frame->size, frame->data);
       mutex_unlock(&fb->mutex);
       return false;
     }

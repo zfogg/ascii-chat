@@ -151,8 +151,7 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 }
 
 // Format IP address from socket address structure
-asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
-                                               socklen_t *length) {
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address, socklen_t *length) {
   if (!host || !*host || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid numeric socket address");
   struct sockaddr_in ipv4 = {.sin_family = AF_INET, .sin_port = htons(port)};
@@ -281,8 +280,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
 // Parse address with optional port from string
 // Handles IPv4, IPv6 (with or without brackets), and hostnames
 // If no port is specified, uses default_port
-int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size,
-                                     uint16_t *port_output, uint16_t default_port) {
+int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size, uint16_t *port_output, uint16_t default_port) {
   if (!input || !address_output || !port_output || address_output_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return -1;
@@ -366,8 +364,7 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
     // No colon - just address/hostname, no port
     // Validate and normalize before checking the ASCII output capacity.
     char ascii[HOSTNAME_BUFFER_SIZE];
-    if (hostname_to_ascii(input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') ||
-        ascii[strlen(ascii) - 1] == '.') {
+    if (hostname_to_ascii(input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') || ascii[strlen(ascii) - 1] == '.') {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid address format: %s", input);
       return -1;
     }
@@ -393,15 +390,13 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
 
   // Check if extracted address contains ':' - that would be IPv6 without brackets (invalid with port)
   if (strchr(host_input, ':') != NULL) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "IPv6 addresses must use brackets when specifying port: [%s]:%s instead of %s",
-              host_input, last_colon + 1, input);
+    SET_ERRNO(ERROR_INVALID_PARAM, "IPv6 addresses must use brackets when specifying port: [%s]:%s instead of %s", host_input, last_colon + 1, input);
     return -1;
   }
 
   // Validate address part is valid IPv4 or hostname
   char ascii[HOSTNAME_BUFFER_SIZE];
-  if (hostname_to_ascii(host_input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') ||
-      ascii[strlen(ascii) - 1] == '.') {
+  if (hostname_to_ascii(host_input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') || ascii[strlen(ascii) - 1] == '.') {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid address format: %s", host_input);
     return -1;
   }
@@ -870,12 +865,9 @@ asciichat_error_t expand_ipv6(const char *ipv6, char *expanded_out, size_t out_s
   }
 
   // Format as full expanded form: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx
-  size_t written =
-      SAFE_SNPRINTF(expanded_out, out_size, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-                    (addr.s6_addr[0] << 8) | addr.s6_addr[1], (addr.s6_addr[2] << 8) | addr.s6_addr[3],
-                    (addr.s6_addr[4] << 8) | addr.s6_addr[5], (addr.s6_addr[6] << 8) | addr.s6_addr[7],
-                    (addr.s6_addr[8] << 8) | addr.s6_addr[9], (addr.s6_addr[10] << 8) | addr.s6_addr[11],
-                    (addr.s6_addr[12] << 8) | addr.s6_addr[13], (addr.s6_addr[14] << 8) | addr.s6_addr[15]);
+  size_t written = SAFE_SNPRINTF(expanded_out, out_size, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x", (addr.s6_addr[0] << 8) | addr.s6_addr[1], (addr.s6_addr[2] << 8) | addr.s6_addr[3],
+                                 (addr.s6_addr[4] << 8) | addr.s6_addr[5], (addr.s6_addr[6] << 8) | addr.s6_addr[7], (addr.s6_addr[8] << 8) | addr.s6_addr[9],
+                                 (addr.s6_addr[10] << 8) | addr.s6_addr[11], (addr.s6_addr[12] << 8) | addr.s6_addr[13], (addr.s6_addr[14] << 8) | addr.s6_addr[15]);
 
   if (written >= out_size) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output buffer too small");
@@ -943,8 +935,7 @@ int is_anycast_ipv6(const char *ipv6) {
 
   // 6to4 relay anycast: 192.88.99.0/24 (mapped to 2002:c058:6301::)
   // Check if it matches 2002:c058:6301::
-  if (addr.s6_addr[0] == 0x20 && addr.s6_addr[1] == 0x02 && addr.s6_addr[2] == 0xc0 && addr.s6_addr[3] == 0x58 &&
-      addr.s6_addr[4] == 0x63 && addr.s6_addr[5] == 0x01) {
+  if (addr.s6_addr[0] == 0x20 && addr.s6_addr[1] == 0x02 && addr.s6_addr[2] == 0xc0 && addr.s6_addr[3] == 0x58 && addr.s6_addr[4] == 0x63 && addr.s6_addr[5] == 0x01) {
     // Check if remaining bytes are zero (anycast)
     int is_zero = 1;
     for (int i = 6; i < 16; i++) {
@@ -1460,15 +1451,13 @@ int is_internet_ipv6(const char *ip) {
   }
 
   // Exclude IPv4-mapped IPv6: ::ffff:0:0/96
-  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 &&
-      addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
+  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 && addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
       addr.s6_addr[8] == 0 && addr.s6_addr[9] == 0 && addr.s6_addr[10] == 0xFF && addr.s6_addr[11] == 0xFF) {
     return 0;
   }
 
   // Exclude IPv4-compatible IPv6: ::/96 (deprecated)
-  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 &&
-      addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
+  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 && addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
       addr.s6_addr[8] == 0 && addr.s6_addr[9] == 0 && addr.s6_addr[10] == 0 && addr.s6_addr[11] == 0) {
     // But not ::, which we already excluded above
     if (addr.s6_addr[12] != 0 || addr.s6_addr[13] != 0 || addr.s6_addr[14] != 0 || addr.s6_addr[15] != 0) {

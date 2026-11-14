@@ -48,8 +48,7 @@ static const char *notice_label(ui_notice_severity_t severity) {
   }
 }
 
-static void border(frame_buffer_t *buffer, int width, ui_popup_edge_t edge, bool unicode, ui_notice_severity_t severity,
-                   bool color) {
+static void border(frame_buffer_t *buffer, int width, ui_popup_edge_t edge, bool unicode, ui_notice_severity_t severity, bool color) {
   if (!buffer)
     return;
   log_color_t shade = severity == UI_NOTICE_FATAL     ? LOG_COLOR_FATAL
@@ -61,8 +60,7 @@ static void border(frame_buffer_t *buffer, int width, ui_popup_edge_t edge, bool
   frame_buffer_printf(buffer, "\n%s%s", color ? "\033[1m" : "", color ? notice_color(severity) : "");
 }
 
-int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severity_t severity, int cols, bool unicode,
-                     bool color) {
+int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severity_t severity, int cols, bool unicode, bool color) {
   if (!text)
     text = "";
   const char *body = text;
@@ -99,9 +97,7 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
       int bytes = utf8_next_char_bytes(text, (size_t)(text_end - text));
       if (bytes <= 0)
         bytes = 1;
-      bool control = (unsigned char)*text < 32 || (unsigned char)*text == 127 ||
-                     (bytes == 2 && (unsigned char)text[0] == 0xc2 && (unsigned char)text[1] >= 0x80 &&
-                      (unsigned char)text[1] <= 0x9f);
+      bool control = (unsigned char)*text < 32 || (unsigned char)*text == 127 || (bytes == 2 && (unsigned char)text[0] == 0xc2 && (unsigned char)text[1] >= 0x80 && (unsigned char)text[1] <= 0x9f);
       int cells = control ? 1 : utf8_display_width_n(text, (size_t)bytes);
       if (cells < 0)
         cells = 1;
@@ -193,9 +189,7 @@ typedef struct {
 
 const char *ui_notice_title(const void *data) {
   const notice_snapshot_t *notice = data;
-  return notice->severity == UI_NOTICE_WARNING                                         ? "warning"
-         : notice->severity == UI_NOTICE_DANGER || notice->severity == UI_NOTICE_FATAL ? "error"
-                                                                                       : "notice";
+  return notice->severity == UI_NOTICE_WARNING ? "warning" : notice->severity == UI_NOTICE_DANGER || notice->severity == UI_NOTICE_FATAL ? "error" : "notice";
 }
 
 #define FIRST_USE_LINE_COUNT 64
@@ -284,14 +278,8 @@ static void render_first_use(terminal_size_t size, const notice_snapshot_t *noti
   char enter[128], escape[128], footer[512];
   ui_help_keys(enter, sizeof(enter), "Enter");
   ui_help_keys(escape, sizeof(escape), "Esc");
-  snprintf(footer, sizeof(footer), "%d/%d %s %s %s%s", page + 1, pages, enter, page + 1 == pages ? "done" : "next",
-           escape, width >= 25 ? " close" : "");
-  ui_popup_t popup = {.title = notice->text + notice->title_offset,
-                      .lines = visible,
-                      .line_count = visible_count,
-                      .footer = footer,
-                      .top_margin = logo_rows,
-                      .minimum_width = width + 4};
+  snprintf(footer, sizeof(footer), "%d/%d %s %s %s%s", page + 1, pages, enter, page + 1 == pages ? "done" : "next", escape, width >= 25 ? " close" : "");
+  ui_popup_t popup = {.title = notice->text + notice->title_offset, .lines = visible, .line_count = visible_count, .footer = footer, .top_margin = logo_rows, .minimum_width = width + 4};
   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
   if (!output)
     return;
@@ -374,8 +362,7 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
   bool tty = platform_isatty(STDERR_FILENO);
   bool color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO, options_terminal_settings());
   bool unicode = tty && terminal_should_use_utf8(GET_OPTION(force_utf8));
-  if (severity != UI_NOTICE_FATAL && tty && ui_controller_is_presenting() && !ui_controller_is_owner() &&
-      !GET_OPTION(snapshot_mode)) {
+  if (severity != UI_NOTICE_FATAL && tty && ui_controller_is_presenting() && !ui_controller_is_owner() && !GET_OPTION(snapshot_mode)) {
     size_t text_bytes = strlen(text) + 1;
     size_t bytes = sizeof(notice_snapshot_t) + text_bytes;
     notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
@@ -392,8 +379,7 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     snapshot->rendered_page = -1;
     snapshot->rendered_cols = snapshot->rendered_rows = 0;
     memcpy(snapshot->text, text, text_bytes);
-    asciichat_error_t result = ui_controller_submit(
-        UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
+    asciichat_error_t result = ui_controller_submit(UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
     SAFE_FREE(snapshot);
     return result;
   }
@@ -417,8 +403,7 @@ asciichat_error_t ui_notice_present_first_use(const char *title, const char *tex
   if (!title || !text || !marker_path || !platform_isatty(STDERR_FILENO) || GET_OPTION(snapshot_mode))
     return SET_ERRNO(ERROR_INVALID_PARAM, "First-use notice requires an interactive terminal and marker path");
   size_t text_bytes = strlen(text) + 1, title_bytes = strlen(title) + 1, marker_bytes = strlen(marker_path) + 1;
-  if (title_bytes > SIZE_MAX - marker_bytes - sizeof(notice_snapshot_t) ||
-      text_bytes > SIZE_MAX - title_bytes - marker_bytes - sizeof(notice_snapshot_t))
+  if (title_bytes > SIZE_MAX - marker_bytes - sizeof(notice_snapshot_t) || text_bytes > SIZE_MAX - title_bytes - marker_bytes - sizeof(notice_snapshot_t))
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "First-use notice is too large");
   size_t bytes = sizeof(notice_snapshot_t) + text_bytes + title_bytes + marker_bytes;
   notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
@@ -438,8 +423,7 @@ asciichat_error_t ui_notice_present_first_use(const char *title, const char *tex
   memcpy(snapshot->text, text, text_bytes);
   memcpy(snapshot->text + text_bytes, title, title_bytes);
   memcpy(snapshot->text + snapshot->marker_offset, marker_path, marker_bytes);
-  asciichat_error_t result = ui_controller_submit(
-      UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 20, .rows = 8}, render_notice, snapshot, bytes);
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 20, .rows = 8}, render_notice, snapshot, bytes);
   SAFE_FREE(snapshot);
   return result;
 }
@@ -463,8 +447,7 @@ ui_notice_key_result_t ui_notice_first_use_key(const void *data, int key) {
   if (key == KEY_LEFT && page > 0) {
     atomic_store(&notice->presented_page, -1);
     atomic_store(&notice->page, page - 1);
-  } else if ((key == '\r' || key == '\n' || key == KEY_RIGHT) && pages > 0 &&
-             atomic_load(&notice->presented_page) == page) {
+  } else if ((key == '\r' || key == '\n' || key == KEY_RIGHT) && pages > 0 && atomic_load(&notice->presented_page) == page) {
     if (page + 1 < pages) {
       atomic_store(&notice->presented_page, -1);
       atomic_store(&notice->page, page + 1);
@@ -482,11 +465,9 @@ void ui_notice_first_use_complete(const void *data) {
   asciichat_errno_scope_t scope = errno_scope_begin();
   FILE *marker = platform_fopen("first-use instructions", notice->text + notice->marker_offset, "w");
   if (!marker) {
-    log_warn("Could not save first-use instructions state; the notice may appear again: %s",
-             notice->text + notice->marker_offset);
+    log_warn("Could not save first-use instructions state; the notice may appear again: %s", notice->text + notice->marker_offset);
   } else if (fclose(marker) != 0) {
-    log_warn("Could not finish saving first-use instructions state; the notice may appear again: %s",
-             notice->text + notice->marker_offset);
+    log_warn("Could not finish saving first-use instructions state; the notice may appear again: %s", notice->text + notice->marker_offset);
   }
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
 }
@@ -495,18 +476,13 @@ bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned
   return ui_notice_confirm_kind(UI_PROMPT_CONFIRMATION, severity, text, timeout_seconds);
 }
 
-bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
-                            unsigned timeout_seconds) {
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text, unsigned timeout_seconds) {
   ui_prompt_kind_t previous_kind = g_prompt_kind;
   g_prompt_kind = kind;
   ui_notice_severity_t previous = g_prompt_severity;
   g_prompt_severity = severity;
   if (terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
-    log_msg(severity == UI_NOTICE_FATAL     ? LOG_FATAL
-            : severity == UI_NOTICE_DANGER  ? LOG_ERROR
-            : severity == UI_NOTICE_WARNING ? LOG_WARN
-                                            : LOG_INFO,
-            __FILE__, __LINE__, __func__, "%s", text);
+    log_msg(severity == UI_NOTICE_FATAL ? LOG_FATAL : severity == UI_NOTICE_DANGER ? LOG_ERROR : severity == UI_NOTICE_WARNING ? LOG_WARN : LOG_INFO, __FILE__, __LINE__, __func__, "%s", text);
   else
     ui_notice_log(severity, __FILE__, __LINE__, __func__, "CONFIRMATION REQUIRED", "%s", text);
   bool accepted = platform_prompt_yes_no_timeout(text, false, timeout_seconds);

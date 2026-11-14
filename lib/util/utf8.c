@@ -229,8 +229,7 @@ const char *utf8_strcasestr(const char *haystack, const char *needle) {
 
   // Case-fold the needle (pattern to search for)
   utf8proc_uint8_t *needle_folded = NULL;
-  utf8proc_ssize_t needle_folded_len =
-      utf8proc_map((const utf8proc_uint8_t *)needle, (utf8proc_ssize_t)needle_len, &needle_folded, options);
+  utf8proc_ssize_t needle_folded_len = utf8proc_map((const utf8proc_uint8_t *)needle, (utf8proc_ssize_t)needle_len, &needle_folded, options);
 
   if (needle_folded_len < 0 || !needle_folded) {
     // Invalid UTF-8 in needle
@@ -253,13 +252,11 @@ const char *utf8_strcasestr(const char *haystack, const char *needle) {
 
     // Case-fold the current haystack window
     utf8proc_uint8_t *haystack_folded = NULL;
-    utf8proc_ssize_t haystack_folded_len =
-        utf8proc_map((const utf8proc_uint8_t *)haystack_pos, (utf8proc_ssize_t)needle_len, &haystack_folded, options);
+    utf8proc_ssize_t haystack_folded_len = utf8proc_map((const utf8proc_uint8_t *)haystack_pos, (utf8proc_ssize_t)needle_len, &haystack_folded, options);
 
     if (haystack_folded_len >= 0 && haystack_folded) {
       // Compare case-folded strings
-      if ((size_t)haystack_folded_len == (size_t)needle_folded_len &&
-          memcmp(haystack_folded, needle_folded, (size_t)needle_folded_len) == 0) {
+      if ((size_t)haystack_folded_len == (size_t)needle_folded_len && memcmp(haystack_folded, needle_folded, (size_t)needle_folded_len) == 0) {
         // Match found!
         free(haystack_folded);
         free(needle_folded);

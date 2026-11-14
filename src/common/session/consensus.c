@@ -114,18 +114,14 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
   return result;
 }
 
-asciichat_error_t session_consensus_create(const uint8_t my_id[SESSION_ID_SIZE], bool is_leader,
-                                           const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
-                                           int num_participants, const session_consensus_callbacks_t *callbacks,
-                                           session_consensus_t **out_consensus) {
+asciichat_error_t session_consensus_create(const uint8_t my_id[SESSION_ID_SIZE], bool is_leader, const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int num_participants,
+                                           const session_consensus_callbacks_t *callbacks, session_consensus_t **out_consensus) {
   if (!my_id || !callbacks || !out_consensus) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: my_id=%p, callbacks=%p, out_consensus=%p", my_id,
-                     callbacks, out_consensus);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: my_id=%p, callbacks=%p, out_consensus=%p", my_id, callbacks, out_consensus);
   }
 
   if (!callbacks->send_packet || !callbacks->on_election || !callbacks->get_metrics) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Required callbacks missing: send_packet=%p, on_election=%p, get_metrics=%p",
-                     callbacks->send_packet, callbacks->on_election, callbacks->get_metrics);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Required callbacks missing: send_packet=%p, on_election=%p, get_metrics=%p", callbacks->send_packet, callbacks->on_election, callbacks->get_metrics);
   }
 
   if (num_participants < 1 || num_participants > MAX_SESSION_PARTICIPANTS) {
@@ -157,8 +153,7 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[SESSION_ID_SIZE],
   }
 
   // Create coordinator
-  err = consensus_coordinator_create(my_id, consensus->topology, session_consensus_election_bridge, consensus,
-                                     &consensus->coordinator);
+  err = consensus_coordinator_create(my_id, consensus->topology, session_consensus_election_bridge, consensus, &consensus->coordinator);
   if (err != ASCIICHAT_OK) {
     consensus_topology_destroy(consensus->topology);
     SAFE_FREE(consensus);
@@ -167,8 +162,7 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[SESSION_ID_SIZE],
 
   consensus_coordinator_set_metrics_provider(consensus->coordinator, callbacks->get_metrics, callbacks->context);
 
-  log_debug("Session consensus created: my_id=%.*s, is_leader=%d, participants=%d", 16, my_id, is_leader,
-            num_participants);
+  log_debug("Session consensus created: my_id=%.*s, is_leader=%d, participants=%d", 16, my_id, is_leader, num_participants);
 
   *out_consensus = consensus;
   return ASCIICHAT_OK;
@@ -199,10 +193,7 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
   return consensus_coordinator_process(consensus->coordinator, timeout_ms);
 }
 
-asciichat_error_t
-session_consensus_set_topology(session_consensus_t *consensus,
-                               const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
-                               int num_participants) {
+asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus, const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int num_participants) {
   if (!consensus || !participant_ids) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -227,8 +218,7 @@ session_consensus_set_topology(session_consensus_t *consensus,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_consensus_on_collection_start(session_consensus_t *consensus, uint32_t round_id,
-                                                        uint64_t deadline_ns) {
+asciichat_error_t session_consensus_on_collection_start(session_consensus_t *consensus, uint32_t round_id, uint64_t deadline_ns) {
   if (!consensus) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "consensus is NULL");
   }
@@ -236,9 +226,7 @@ asciichat_error_t session_consensus_on_collection_start(session_consensus_t *con
   return consensus_coordinator_on_collection_start(consensus->coordinator, round_id, deadline_ns);
 }
 
-asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus,
-                                                    const uint8_t sender_id[SESSION_ID_SIZE],
-                                                    const participant_metrics_t *metrics, uint8_t num_metrics) {
+asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus, const uint8_t sender_id[SESSION_ID_SIZE], const participant_metrics_t *metrics, uint8_t num_metrics) {
   if (!consensus || !sender_id || !metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -246,12 +234,8 @@ asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consens
   return consensus_coordinator_on_stats_update(consensus->coordinator, sender_id, metrics, num_metrics);
 }
 
-asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus,
-                                                       const uint8_t host_id[SESSION_ID_SIZE],
-                                                       const char host_address[ACIP_ADDRESS_SIZE], uint16_t host_port,
-                                                       const uint8_t backup_id[SESSION_ID_SIZE],
-                                                       const char backup_address[ACIP_ADDRESS_SIZE],
-                                                       uint16_t backup_port) {
+asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[SESSION_ID_SIZE], const char host_address[ACIP_ADDRESS_SIZE], uint16_t host_port,
+                                                       const uint8_t backup_id[SESSION_ID_SIZE], const char backup_address[ACIP_ADDRESS_SIZE], uint16_t backup_port) {
   if (!consensus || !host_id || !backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -264,21 +248,15 @@ asciichat_error_t session_consensus_on_election_result(session_consensus_t *cons
 
   // Then call the mode's election callback
   if (consensus->on_election) {
-    return consensus->on_election(consensus->context, host_id, host_address, host_port, backup_id, backup_address,
-                                  backup_port);
+    return consensus->on_election(consensus->context, host_id, host_address, host_port, backup_id, backup_address, backup_port);
   }
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus,
-                                                     uint8_t out_host_id[SESSION_ID_SIZE],
-                                                     char out_host_address[ACIP_ADDRESS_SIZE], uint16_t *out_host_port,
-                                                     uint8_t out_backup_id[SESSION_ID_SIZE],
-                                                     char out_backup_address[ACIP_ADDRESS_SIZE],
-                                                     uint16_t *out_backup_port) {
-  if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address ||
-      !out_backup_port) {
+asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[SESSION_ID_SIZE], char out_host_address[ACIP_ADDRESS_SIZE], uint16_t *out_host_port,
+                                                     uint8_t out_backup_id[SESSION_ID_SIZE], char out_backup_address[ACIP_ADDRESS_SIZE], uint16_t *out_backup_port) {
+  if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address || !out_backup_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 

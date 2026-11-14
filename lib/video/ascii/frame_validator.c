@@ -56,8 +56,7 @@ bool frame_validate_integrity(const char *frame_data, size_t frame_size) {
     // Log the garbage for debugging
     log_warn("FRAME_VALIDATION: Found %zu garbage bytes after reset at offset %zu (frame size %zu): "
              "[%02x %02x %02x %02x ...]",
-             garbage_size, expected_end, frame_size, garbage[0], garbage_size > 1 ? garbage[1] : 0,
-             garbage_size > 2 ? garbage[2] : 0, garbage_size > 3 ? garbage[3] : 0);
+             garbage_size, expected_end, frame_size, garbage[0], garbage_size > 1 ? garbage[1] : 0, garbage_size > 2 ? garbage[2] : 0, garbage_size > 3 ? garbage[3] : 0);
 
     return false;
   }

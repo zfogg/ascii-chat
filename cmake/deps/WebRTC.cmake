@@ -21,12 +21,8 @@ function(asciichat_build_aec3)
     FetchContent_Declare(asciichat_aec3
         BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_aec3"
         URL https://github.com/zhixingheyixsh/webrtc_AEC3/archive/c1dbdb9924f59d9b3c09189673286665d55f6a5e.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        # Populate first; configure the patched root explicitly below.
-        SOURCE_SUBDIR ascii-chat-patched-manual
-        )
-    # Populate without adding the project, even if a parent supplied the first
-    # declaration without SOURCE_SUBDIR. Its CMake files must be patched first.
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    # Populate without adding the project. Its CMake files must be patched first.
     FetchContent_GetProperties(asciichat_aec3)
     if(TARGET AudioProcess OR TARGET aec3 OR TARGET api OR TARGET base)
         message(FATAL_ERROR "AEC3 targets already exist; ascii-chat must patch AEC3 before it is added")

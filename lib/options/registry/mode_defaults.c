@@ -25,15 +25,14 @@
 /**
  * @brief Mode metadata for all modes
  */
-static const mode_descriptor_t g_mode_descriptors[] = {
-    {MODE_SERVER, "server", "Multi-client video broadcast server", "server-like"},
-    {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery and registration service", "server-like"},
-    {MODE_CLIENT, "client", "Connect to a server and send/receive streams", "client-like"},
-    {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
-    {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
-    {MODE_MCP_SERVER, "mcp-server", "MCP media rendering tools", "server-like"},
-    {MODE_API_SERVER, "api-server", "HTTP image-to-ASCII API", "server-like"},
-    {MODE_INVALID, NULL, NULL, NULL}};
+static const mode_descriptor_t g_mode_descriptors[] = {{MODE_SERVER, "server", "Multi-client video broadcast server", "server-like"},
+                                                       {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery and registration service", "server-like"},
+                                                       {MODE_CLIENT, "client", "Connect to a server and send/receive streams", "client-like"},
+                                                       {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
+                                                       {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
+                                                       {MODE_MCP_SERVER, "mcp-server", "MCP media rendering tools", "server-like"},
+                                                       {MODE_API_SERVER, "api-server", "HTTP image-to-ASCII API", "server-like"},
+                                                       {MODE_INVALID, NULL, NULL, NULL}};
 
 /**
  * @brief Get mode descriptor by mode
@@ -209,8 +208,7 @@ void apply_mode_specific_defaults(options_t *opts) {
   const int *mode_websocket_port = (const int *)get_default_websocket_port(opts->detected_mode);
   if (mode_websocket_port) {
     // Only update if still at a generic default (27226 or 27227)
-    if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
-        opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+    if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT || opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
       opts->websocket_port = *mode_websocket_port;
     }
   }
@@ -218,8 +216,7 @@ void apply_mode_specific_defaults(options_t *opts) {
   // If TLS cert+key are provided and websocket-port was not explicitly set,
   // default to 443 (standard HTTPS/WSS port) instead of the mode default.
   if (opts->tls_cert[0] != '\0' && opts->tls_key[0] != '\0') {
-    if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
-        opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+    if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT || opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
       opts->websocket_port = 443;
     }
   }

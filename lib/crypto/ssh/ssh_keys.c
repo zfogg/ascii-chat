@@ -48,13 +48,10 @@
 // =============================================================================
 
 // Forward declarations
-static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out,
-                                               size_t *blob_len);
+static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out, size_t *blob_len);
 #ifndef EMSCRIPTEN_BUILD
-static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len,
-                                                     const char *passphrase, const uint8_t *salt, size_t salt_len,
-                                                     uint32_t rounds, const char *cipher_name, uint8_t **decrypted_out,
-                                                     size_t *decrypted_len);
+static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len, const char *passphrase, const uint8_t *salt, size_t salt_len, uint32_t rounds,
+                                                     const char *cipher_name, uint8_t **decrypted_out, size_t *decrypted_len);
 
 /**
  * @brief Decrypt OpenSSH encrypted private key using AES-CTR or AES-CBC
@@ -73,10 +70,8 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
  * @param decrypted_len Output length of decrypted data
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len,
-                                                     const char *passphrase, const uint8_t *salt, size_t salt_len,
-                                                     uint32_t rounds, const char *cipher_name, uint8_t **decrypted_out,
-                                                     size_t *decrypted_len) {
+static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len, const char *passphrase, const uint8_t *salt, size_t salt_len, uint32_t rounds,
+                                                     const char *cipher_name, uint8_t **decrypted_out, size_t *decrypted_len) {
   // OpenSSH uses: key_len + iv_len derived from bcrypt_pbkdf
   // For AES-256: key=32 bytes, iv=16 bytes = 48 bytes total
   const size_t key_size = 32;
@@ -112,8 +107,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
     br_aes_ct_ctr_init(&aes_ctx, key, key_size);
 
     // Extract initial counter value from bytes 12-15 of derived IV (big-endian)
-    uint32_t initial_counter = ((uint32_t)derived_iv[12] << 24) | ((uint32_t)derived_iv[13] << 16) |
-                               ((uint32_t)derived_iv[14] << 8) | ((uint32_t)derived_iv[15]);
+    uint32_t initial_counter = ((uint32_t)derived_iv[12] << 24) | ((uint32_t)derived_iv[13] << 16) | ((uint32_t)derived_iv[14] << 8) | ((uint32_t)derived_iv[15]);
 
     // Decrypt in-place
     memcpy(decrypted, encrypted_blob, blob_len);
@@ -143,8 +137,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
 #endif
 
 // Base64 decode SSH key blob
-static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out,
-                                               size_t *blob_len) {
+static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out, size_t *blob_len) {
   if (!base64 || !blob_out || !blob_len) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for base64 decode");
   }
@@ -199,8 +192,7 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED
   // [32 bytes: Ed25519 public key]
 
   if (blob_len < SSH_KEY_HEADER_SIZE) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key blob too small: %zu bytes (expected at least %d)", blob_len,
-                     SSH_KEY_HEADER_SIZE);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key blob too small: %zu bytes (expected at least %d)", blob_len, SSH_KEY_HEADER_SIZE);
   }
 
   // Extract Ed25519 public key (last 32 bytes)
@@ -351,8 +343,7 @@ static asciichat_error_t ssh_private_key_decode_pem(ssh_private_key_parse_t *sta
 
   // Decode the base64 data
 
-  asciichat_error_t decode_result =
-      base64_decode_ssh_key(clean_base64, strlen(clean_base64), &state->key_blob, &state->key_blob_len);
+  asciichat_error_t decode_result = base64_decode_ssh_key(clean_base64, strlen(clean_base64), &state->key_blob, &state->key_blob_len);
   SAFE_FREE(clean_base64);
 
   if (decode_result != ASCIICHAT_OK) {
@@ -527,8 +518,7 @@ static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
     }
-    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password,
-                                    SSH_PASSWORD_INPUT_BUFFER_SIZE, UI_PROMPT_SSH_PASSPHRASE) != 0) {
+    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, SSH_PASSWORD_INPUT_BUFFER_SIZE, UI_PROMPT_SSH_PASSPHRASE) != 0) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
     }
@@ -598,9 +588,8 @@ static asciichat_error_t ssh_private_key_decrypt(ssh_private_key_parse_t *state,
   state->decrypted_blob_len = 0;
 
   // Note: decrypt_openssh_private_key derives IV from bcrypt_pbkdf, not from encrypted data
-  asciichat_error_t decrypt_result = decrypt_openssh_private_key(
-      encrypted_blob, encrypted_data_len, state->password, state->bcrypt_salt, state->salt_len, state->bcrypt_rounds,
-      state->ciphername, &state->decrypted_blob, &state->decrypted_blob_len);
+  asciichat_error_t decrypt_result = decrypt_openssh_private_key(encrypted_blob, encrypted_data_len, state->password, state->bcrypt_salt, state->salt_len, state->bcrypt_rounds, state->ciphername,
+                                                                 &state->decrypted_blob, &state->decrypted_blob_len);
 
   // Clean up password immediately after use
   ssh_private_key_clear_password(state);
@@ -664,8 +653,7 @@ static asciichat_error_t ssh_private_key_read_decrypted_type(ssh_private_key_par
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key_parse_t *state, const char *key_path,
-                                                                 private_key_t *key_out) {
+static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key_parse_t *state, const char *key_path, private_key_t *key_out) {
   // Read public key length
   if (state->dec_offset + 4 > state->decrypted_blob_len) {
     ssh_private_key_cleanup(state);
@@ -737,8 +725,7 @@ static void ssh_private_key_cache_in_agent(const char *key_path, const private_k
   }
 }
 
-static asciichat_error_t ssh_private_key_parse_encrypted(ssh_private_key_parse_t *state, const char *key_path,
-                                                         private_key_t *key_out) {
+static asciichat_error_t ssh_private_key_parse_encrypted(ssh_private_key_parse_t *state, const char *key_path, private_key_t *key_out) {
   asciichat_error_t result = ssh_private_key_read_encryption(state, key_path);
   if (result != ASCIICHAT_OK)
     return result;
@@ -770,8 +757,8 @@ static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *st
   state->offset += 4;
 
   log_debug("num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, state->offset, state->key_blob_len);
-  log_debug("Raw bytes at offset %zu: %02x %02x %02x %02x", state->offset, state->key_blob[state->offset],
-            state->key_blob[state->offset + 1], state->key_blob[state->offset + 2], state->key_blob[state->offset + 3]);
+  log_debug("Raw bytes at offset %zu: %02x %02x %02x %02x", state->offset, state->key_blob[state->offset], state->key_blob[state->offset + 1], state->key_blob[state->offset + 2],
+            state->key_blob[state->offset + 3]);
   log_debug("After num_keys, offset=%zu", state->offset);
 
   if (num_keys != 1) {
@@ -785,8 +772,7 @@ static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *st
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey length: %s", key_path);
   }
 
-  log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", state->offset,
-            state->key_blob[state->offset], state->key_blob[state->offset + 1], state->key_blob[state->offset + 2],
+  log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", state->offset, state->key_blob[state->offset], state->key_blob[state->offset + 1], state->key_blob[state->offset + 2],
             state->key_blob[state->offset + 3]);
 
   uint32_t pubkey_len = read_u32_be(&state->key_blob[state->offset]);
@@ -832,8 +818,7 @@ static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *st
   // For Ed25519, the public key should be 32 bytes, but let's be more flexible
   if (pubkey_data_len < 32) {
     ssh_private_key_cleanup(state);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH public key data too small (%u bytes, expected at least 32): %s",
-                     pubkey_data_len, key_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH public key data too small (%u bytes, expected at least 32): %s", pubkey_data_len, key_path);
   }
 
   // Read Ed25519 public key (first 32 bytes) for validation
@@ -924,8 +909,7 @@ static asciichat_error_t ssh_private_key_read_private_header(ssh_private_key_par
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *state, const char *key_path,
-                                                      private_key_t *key_out) {
+static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *state, const char *key_path, private_key_t *key_out) {
   // Read private key
   if (state->offset + 4 > state->key_blob_len) {
     ssh_private_key_cleanup(state);
@@ -944,8 +928,7 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
   // But OpenSSH format may have additional data
   if (privkey_data_len < 64) {
     ssh_private_key_cleanup(state);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key data length is %u (expected at least 64): %s",
-                     privkey_data_len, key_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key data length is %u (expected at least 64): %s", privkey_data_len, key_path);
   }
 
   // Extract the Ed25519 private key (first 32 bytes)
@@ -1060,15 +1043,12 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   size_t header_len = fread(header, 1, sizeof(header) - 1, test_file);
   if (header_len > 0) {
     header[header_len] = '\0';
-    if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
-        strstr(header, "BEGIN EC PRIVATE KEY") != NULL || strstr(header, "BEGIN PGP PRIVATE KEY") != NULL ||
-        strstr(header, "BEGIN PGP SECRET KEY") != NULL) {
+    if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL || strstr(header, "BEGIN EC PRIVATE KEY") != NULL ||
+        strstr(header, "BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "BEGIN PGP SECRET KEY") != NULL) {
       is_valid_key_file = true;
     } else {
       uint8_t first_packet = (uint8_t)header[0];
-      unsigned int packet_tag = (first_packet & 0x80u)
-                                    ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu))
-                                    : 0u;
+      unsigned int packet_tag = (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
       is_valid_key_file = packet_tag == 5u;
     }
   }
@@ -1083,9 +1063,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   struct stat st;
   if (stat(validated_path, &st) == 0) {
     if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
-      NOTICE(DANGER, "UNSAFE PRIVATE KEY PERMISSIONS",
-             "SSH key file %s has overly permissive permissions: %o.\nRun chmod 600 on this key file before retrying.",
-             key_path, st.st_mode & 0777);
+      NOTICE(DANGER, "UNSAFE PRIVATE KEY PERMISSIONS", "SSH key file %s has overly permissive permissions: %o.\nRun chmod 600 on this key file before retrying.", key_path, st.st_mode & 0777);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key file has overly permissive permissions: %s", key_path);
     }
   }
@@ -1098,8 +1076,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
 // Key Conversion Functions
 // =============================================================================
 
-asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
-                                           uint8_t x25519_pk[X25519_KEY_SIZE]) {
+asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE], uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!ed25519_pk || !x25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_pk=%p, x25519_pk=%p", ed25519_pk, x25519_pk);
   }
@@ -1112,8 +1089,7 @@ asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBL
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE],
-                                            uint8_t x25519_sk[X25519_KEY_SIZE]) {
+asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE], uint8_t x25519_sk[X25519_KEY_SIZE]) {
   if (!ed25519_sk || !x25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_sk=%p, x25519_sk=%p", ed25519_sk, x25519_sk);
   }
@@ -1130,11 +1106,9 @@ asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRI
 // SSH Key Operations
 // =============================================================================
 
-asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[ED25519_SIGNATURE_SIZE]) {
+asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!key || !message || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, message=%p, signature=%p", key, message,
-                     signature);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, message=%p, signature=%p", key, message, signature);
   }
 
   if (key->type != KEY_TYPE_ED25519) {
@@ -1232,12 +1206,10 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
-                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message, size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
                                            const char *gpg_key_id) {
   if (!public_key || !message || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
-                     message, signature);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key, message, signature);
   }
 
   // Try standard Ed25519 verification first

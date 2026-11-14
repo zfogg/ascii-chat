@@ -23,8 +23,8 @@ typedef svint32_t vec_t;
 #define SELECT(mask, a, b) svsel_s32(mask, a, b)
 #define LOAD(p) svld1_s32(pg, (const int32_t *)(p))
 #define STORE(p, v) svst1_s32(pg, (int32_t *)(p), v)
-#define BEGIN_BLOCK                                                                                                    \
-  size_t active = count - i < LANES ? count - i : LANES;                                                               \
+#define BEGIN_BLOCK                                                                                                                                                                                    \
+  size_t active = count - i < LANES ? count - i : LANES;                                                                                                                                               \
   svbool_t pg = svwhilelt_b32((uint64_t)i, (uint64_t)count)
 #define HAS_BLOCK (i < count)
 #else

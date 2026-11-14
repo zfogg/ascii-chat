@@ -32,8 +32,7 @@ typedef struct terminal_fd_reader_s {
 
 asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out) {
   if (fd < 0 || frame_height <= 0 || !out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid reader parameters: fd=%d, height=%d, output=%p", fd, frame_height,
-                     (void *)out);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid reader parameters: fd=%d, height=%d, output=%p", fd, frame_height, (void *)out);
   }
 
   FILE *fp = platform_fdopen("terminal_fd_reader", fd, "r");
@@ -140,8 +139,7 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
   }
 
   *out_frame = frame_data;
-  log_debug_every(NS_PER_SEC_INT, "read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
-                  reader->frame_height);
+  log_debug_every(NS_PER_SEC_INT, "read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width, reader->frame_height);
   return ASCIICHAT_OK;
 }
 

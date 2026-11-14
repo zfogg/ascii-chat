@@ -39,8 +39,7 @@ static int h265_thread_count(void) {
 static bool is_hardware_encoder(const AVCodec *codec) {
   if (!codec || !codec->name)
     return false;
-  return strstr(codec->name, "_d3d12va") != NULL || strstr(codec->name, "_nvenc") != NULL ||
-         strstr(codec->name, "_qsv") != NULL || strstr(codec->name, "_amf") != NULL ||
+  return strstr(codec->name, "_d3d12va") != NULL || strstr(codec->name, "_nvenc") != NULL || strstr(codec->name, "_qsv") != NULL || strstr(codec->name, "_amf") != NULL ||
          strstr(codec->name, "_mf") != NULL;
 }
 
@@ -314,8 +313,7 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
   }
 }
 
-asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
-                              uint8_t *output_buf, size_t *output_size) {
+asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data, uint8_t *output_buf, size_t *output_size) {
   ASCII_OTEL_SCOPE(H265_ENCODE);
   ASCII_OTEL_ATTR_INT("video.frame.width", width);
   ASCII_OTEL_ATTR_INT("video.frame.height", height);
@@ -429,8 +427,7 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_WIDTH, encoder->frame->width);
   ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_HEIGHT, encoder->frame->height);
   if (required_size)
-    ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_RATIO,
-                      (double)encoder->frame->width * encoder->frame->height * 3 / (double)required_size);
+    ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_RATIO, (double)encoder->frame->width * encoder->frame->height * 3 / (double)required_size);
   log_dev("[H265_ENCODE_DONE] Encoding complete, output_size=%zu", required_size);
 
   return ASCIICHAT_OK;
@@ -530,8 +527,7 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
   return ASCIICHAT_OK;
 }
 
-void h265_encoder_get_stats(h265_encoder_t *encoder, uint64_t *total_frames, uint64_t *keyframes,
-                            uint32_t *avg_bitrate) {
+void h265_encoder_get_stats(h265_encoder_t *encoder, uint64_t *total_frames, uint64_t *keyframes, uint32_t *avg_bitrate) {
   if (!encoder)
     return;
 

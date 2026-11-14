@@ -131,8 +131,7 @@ char *manpage_content_generate_examples(const options_config_t *config) {
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (example->description) {
-      offset +=
-          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(example->description));
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(example->description));
     }
 
     // Free mode names array

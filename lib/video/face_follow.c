@@ -28,8 +28,7 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
   bool retain = state->tracking && now - state->last_seen < 1.5;
   for (size_t i = 0; i < count; i++) {
     face_follow_rect_t box = faces[i].box;
-    if (!isfinite(box.x) || !isfinite(box.y) || !isfinite(box.w) || !isfinite(box.h) || faces[i].confidence < 0.65f ||
-        box.w <= 0 || box.h <= 0)
+    if (!isfinite(box.x) || !isfinite(box.y) || !isfinite(box.w) || !isfinite(box.h) || faces[i].confidence < 0.65f || box.w <= 0 || box.h <= 0)
       continue;
     float cx = box.x + box.w * 0.5f, cy = box.y + box.h * 0.5f;
     float score;
@@ -71,8 +70,7 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
   // Keep the entire composition fixed through breathing and detector box noise.
   float dx = fabsf(cx - state->anchor_x) / state->target.w;
   float dy = fabsf(cy - state->anchor_y) / state->target.h;
-  if (state->pan_pending &&
-      (cx - state->anchor_x) * state->pan_direction_x + (cy - state->anchor_y) * state->pan_direction_y <= 0)
+  if (state->pan_pending && (cx - state->anchor_x) * state->pan_direction_x + (cy - state->anchor_y) * state->pan_direction_y <= 0)
     state->pan_pending = false;
   if (dx < 0.12f && dy < 0.09f)
     state->pan_pending = false;
@@ -138,6 +136,5 @@ void face_follow_tick(face_follow_state_t *state, double now, bool enabled) {
   float size = expf(logf(state->crop.w) + (logf(target.w) - logf(state->crop.w)) * zoom);
   if (fabsf(size - target.w) < 0.0001f)
     size = target.w;
-  state->crop =
-      (face_follow_rect_t){clampf(cx - size * 0.5f, 0, 1 - size), clampf(cy - size * 0.5f, 0, 1 - size), size, size};
+  state->crop = (face_follow_rect_t){clampf(cx - size * 0.5f, 0, 1 - size), clampf(cy - size * 0.5f, 0, 1 - size), size, size};
 }

@@ -18,8 +18,7 @@ void ui_progress_format(char *out, size_t cap, double fraction, int width) {
   int filled = (int)(fraction * width);
   size_t used = 0;
   for (int i = 0; i < width; ++i) {
-    const char *glyph =
-        terminal_should_use_utf8(GET_OPTION(force_utf8)) ? (i < filled ? "█" : "░") : (i < filled ? "#" : ".");
+    const char *glyph = terminal_should_use_utf8(GET_OPTION(force_utf8)) ? (i < filled ? "█" : "░") : (i < filled ? "#" : ".");
     const char *cell = colored_string(i < filled ? LOG_COLOR_INFO : LOG_COLOR_GREY, glyph);
     size_t n = strlen(cell);
     if (n >= cap - used) {
@@ -48,10 +47,9 @@ void ui_spinner_render(frame_buffer_t *out, int row, int col, uint64_t elapsed_n
   unsigned phase = (unsigned)((elapsed_ns / 100000000) % 8);
   for (unsigned dot = 0; dot < 8; ++dot) {
     bool lit = (phase + 8 - dot) % 8 < 3;
-    frame_buffer_printf(
-        out, "\033[%d;%dH%s", row + y[dot], col + x[dot],
-        colored_string(lit ? LOG_COLOR_WARN : LOG_COLOR_GREY, terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "●"
-                                                              : lit                                            ? "o"
-                                                                                                               : "."));
+    frame_buffer_printf(out, "\033[%d;%dH%s", row + y[dot], col + x[dot],
+                        colored_string(lit ? LOG_COLOR_WARN : LOG_COLOR_GREY, terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "●"
+                                                                              : lit                                            ? "o"
+                                                                                                                               : "."));
   }
 }

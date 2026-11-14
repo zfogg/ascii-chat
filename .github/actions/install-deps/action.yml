@@ -124,14 +124,14 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
+        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v17-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v9" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v10" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
-        echo "  cmake: ${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}"
+        echo "  cmake: ${os}-${arch}-cmake-deps-v17-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v2"
-        echo "  build: ${os}-${arch}-build-v9"
+        echo "  build: ${os}-${arch}-build-v10"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -158,14 +158,14 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v17-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v9"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v10"
 
         Write-Host "Computed cache keys:"
-        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
+        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v17-${depsHash}-${installHash}"
         Write-Host "  ccache: ${os}-${arch}-ccache-v2"
-        Write-Host "  build: ${os}-${arch}-build-v8"
+        Write-Host "  build: ${os}-${arch}-build-v10"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
@@ -340,7 +340,7 @@ runs:
         # the package installation above runs as root, discard that root-owned
         # project venv so the following runner-user uv sync can recreate it
         # against the runner user's uv-managed Python.
-        sudo rm -rf tests/ascii_chat_tests/.venv tests/ascii_chat_tests/*.egg-info
+        sudo rm -rf /.venv tests/python/ascii_chat_tests/*.egg-info
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
@@ -445,14 +445,13 @@ runs:
           }
         }
 
-        Ensure-Scoop
-        Ensure-ScoopBucket -Bucket 'main'
-        Ensure-ScoopBucket -Bucket 'extras'
-
         # The matching LLVM development archive is installed separately below.
-        # doxygen is needed for generating documentation included in installers
-        # NOTE: git is already pre-installed on GitHub Actions Windows runners
-        $basePackages = @('ninja', 'ccache', 'doxygen')
+        # doxygen is needed for generating documentation included in installers.
+        # GitHub's AMD64 image has Chocolatey and its packages resolve much
+        # faster than Scoop; ARM64 retains the Scoop path.
+        $basePackages = @('ninja', 'ccache') | Where-Object {
+          $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
+        }
 
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
@@ -460,26 +459,27 @@ runs:
         }
         $packages = $basePackages + $extra
 
+        Ensure-Scoop
+        Ensure-ScoopBucket -Bucket 'main'
+        Ensure-ScoopBucket -Bucket 'extras'
         foreach ($pkg in $packages) {
           Install-ScoopPackage -Package $pkg
         }
 
-        # Add scoop shims to PATH (both user and global locations)
-        # Global installs (--global) go to C:\ProgramData\scoop
-        $scoopShimsUser = Join-Path $env:USERPROFILE 'scoop\shims'
-        $scoopShimsGlobal = 'C:\ProgramData\scoop\shims'
-        $foundShims = $false
-        foreach ($shimsPath in @($scoopShimsGlobal, $scoopShimsUser)) {
+        # Persist Scoop shims for later action steps without failing when a
+        # runner uses only one of the user/global locations.
+        foreach ($shimsPath in @(
+            (Join-Path $env:USERPROFILE 'scoop\shims'),
+            'C:\ProgramData\scoop\shims'
+          )) {
           if (Test-Path $shimsPath) {
-            Write-Host "Adding scoop shims to PATH: $shimsPath"
             Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
-            $foundShims = $true
           }
         }
-        if (-not $foundShims) {
-          Write-Host "No scoop shims found"
-          exit 1
-        }
+
+        # Scoop is a native command and can leave a non-zero process status
+        # after a successful install; do not leak that status from this step.
+        exit 0
 
     # The MSI supplies the compiler; the matching development archive supplies LLVM C++ libraries.
     - name: Install LLVM 23 (Windows)
@@ -727,22 +727,14 @@ runs:
         # Clone vcpkg to a temp location
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
-          Write-Host "Cloning vcpkg..."
-          # The pinned baseline needs historical port blobs. A filtered clone
-          # can leave those blobs unavailable even after fetching the remote
-          # refs, causing vcpkg manifest checkout failures on Windows ARM64.
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone https://github.com/microsoft/vcpkg.git $vcpkgDir
+          # This full single-branch clone is intentionally allowed to take
+          # several minutes: vcpkg versioning requires historical port blobs.
+          Write-Host "Cloning vcpkg history for the pinned baseline..."
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone --no-tags --single-branch https://github.com/microsoft/vcpkg.git $vcpkgDir
           if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
           Push-Location $vcpkgDir
-          # Keep in sync with vcpkg.json builtin-baseline
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 checkout 530d2d2f0864684f20b32a0596459646906d35fe
+          git checkout --detach 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          # Materialize all blobs now so CMake cannot trigger a delayed
-          # promisor fetch while resolving manifest port versions.
-          git config --unset remote.origin.promisor 2>$null
-          git config --unset remote.origin.partialclonefilter 2>$null
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --no-filter origin
-          if ($LASTEXITCODE -ne 0) { throw "Could not materialize the vcpkg checkout" }
           Pop-Location
         }
 
@@ -757,29 +749,6 @@ runs:
         # Set VCPKG_ROOT for CMake
         Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgDir"
         Add-Content -Path $env:GITHUB_PATH -Value "$vcpkgDir"
-
-    # =========================================================================
-    # Pre-built Tools Download (Windows)
-    # A prebuilt BearSSL library is optional on Windows x64.
-    - name: Download pre-built BearSSL (Windows)
-      if: inputs.os == 'windows' && inputs.github-token != '' && runner.arch == 'X64'
-      shell: pwsh
-      run: |
-        $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
-        New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-        $PSNativeCommandUseErrorActionPreference = $false
-        # The prebuilt artifact is optional. Bound the GitHub API download so
-        # a transient GitHub/network stall falls back to the source build.
-        $env:GH_HTTP_TIMEOUT = "30s"
-        gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
-        if ($LASTEXITCODE -eq 0) {
-          Move-Item -LiteralPath (Join-Path $bearsslDir "bearssls.Windows.amd64.lib") -Destination (Join-Path $bearsslDir "bearssls.lib") -Force
-        } else {
-          Write-Host "Prebuilt BearSSL unavailable; CMake will build it from source"
-          $LASTEXITCODE = 0
-        }
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
 
     # NOTE: CMake dependency cache is saved by the workflow files (build.yml, release.yml)
     # AFTER cmake configure runs, not here. This ensures BearSSL and other deps built

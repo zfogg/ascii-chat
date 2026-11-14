@@ -105,13 +105,13 @@ The transport tests above complete with exit code zero.
 
 ```powershell
 ctest --test-dir build -R "^(network-connections|network-events|webrtc-security|session-connections|transport-backpressure|participant-media|peer-ready|crypto-policy|host-render|runtime-settings)$" --output-on-failure
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/event_io --ascii-chat-binary build/bin/ascii-chat.exe
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/client_connection --ascii-chat-binary build/bin/ascii-chat.exe
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat.exe
-uv run --project tests/ascii_chat_tests --frozen python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe
-uv run --project tests/ascii_chat_tests --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24
-uv run --project tests/ascii_chat_tests --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24 --transport discovery-tcp
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/perf507/bin/test-backpressure-live.exe --backpressure-output build/issue-507/windows/congestion --backpressure-codecs raw,h264
+uv run --frozen python -m pytest tests/python/tests/integration/event_io --ascii-chat-binary build/bin/ascii-chat.exe
+uv run --frozen python -m pytest tests/python/tests/integration/client_connection --ascii-chat-binary build/bin/ascii-chat.exe
+uv run --frozen python -m pytest tests/python/tests/integration/network --ascii-chat-binary build/bin/ascii-chat.exe
+uv run --frozen python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe
+uv run --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24
+uv run --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24 --transport discovery-tcp
+uv run --frozen python -m pytest tests/python/tests/integration/backpressure --backpressure-probe build/perf507/bin/test-backpressure-live.exe --backpressure-output build/issue-507/windows/congestion --backpressure-codecs raw,h264
 cd web/web
 vp test run
 vp check --fix

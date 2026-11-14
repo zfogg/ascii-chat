@@ -15,6 +15,7 @@
 #include "ascii-chat/debug/named.h"
 #include "libplatform/rwlock.h"
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/source_root.h>
 #include "libplatform/thread.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
@@ -141,8 +142,7 @@ static bool metadata_copy_entry(const named_entry_t *entry, named_metadata_t *ou
   const char *name = entry->name ? entry->name : "?";
   const char *type = entry->type ? entry->type : "object";
   const char *format = entry->format_spec ? entry->format_spec : "0x%tx";
-  if (strlen(name) >= sizeof(output->name) || strlen(type) >= sizeof(output->type) ||
-      strlen(format) >= sizeof(output->format))
+  if (strlen(name) >= sizeof(output->name) || strlen(type) >= sizeof(output->type) || strlen(format) >= sizeof(output->format))
     return false;
   memcpy(output->name, name, strlen(name) + 1);
   memcpy(output->type, type, strlen(type) + 1);
@@ -226,8 +226,7 @@ bool named_metadata_copy(uintptr_t key, named_metadata_t *output) {
     return copied;
   }
   named_metadata_entry_t lookup = {.key = key};
-  const named_metadata_entry_t *entry =
-      cache->count ? bsearch(&lookup, cache->entries, cache->count, sizeof(*cache->entries), metadata_compare) : NULL;
+  const named_metadata_entry_t *entry = cache->count ? bsearch(&lookup, cache->entries, cache->count, sizeof(*cache->entries), metadata_compare) : NULL;
   if (!entry || !entry->valid)
     return false;
   *output = entry->metadata;
@@ -301,12 +300,11 @@ static _Atomic uint64_t named_generation = 0;
  * @brief Initialize a named registry entry with all fields
  * @note Assumes entry->name is already set (may be pre-allocated or via entry_strdup)
  */
-static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec, const char *file,
-                             int line, const char *func) {
+static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec, const char *file, int line, const char *func) {
   entry->generation = ++named_generation;
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file, ASCIICHAT_OWNED_SOURCE_DIRS)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 }
@@ -325,8 +323,7 @@ static const char *named_lookup_name_unlocked(uintptr_t parent_key) {
   return entry ? entry->name : NULL;
 }
 
-const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func, uintptr_t parent_key) {
+const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec, const char *file, int line, const char *func, uintptr_t parent_key) {
 #ifdef NDEBUG
   // In release builds, skip debug registry and return the base name
   return base_name ? base_name : "?";
@@ -396,8 +393,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   return entry->name;
 }
 
-const char *named_register_fmt(uintptr_t key, const char *type, const char *format_spec, const char *file, int line,
-                               const char *func, const char *fmt, ...) {
+const char *named_register_fmt(uintptr_t key, const char *type, const char *format_spec, const char *file, int line, const char *func, const char *fmt, ...) {
   if (!type || !format_spec || !fmt) {
     return "?";
   }
@@ -571,8 +567,7 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
     const char *type = entry->type ? entry->type : type_hint;
     const char *name = entry->name ? entry->name : "unknown";
     if (entry->file && entry->func && entry->line > 0) {
-      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key, entry->file,
-               entry->line, entry->func);
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key, entry->file, entry->line, entry->func);
     } else {
       snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, name, (ptrdiff_t)key);
     }
@@ -655,8 +650,7 @@ asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required, bool *completed,
-                                              named_snapshot_fn copy, void *data) {
+asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required, bool *completed, named_snapshot_fn copy, void *data) {
   if (!required || !completed || !copy)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protected registry snapshot");
   *completed = false;

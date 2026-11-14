@@ -52,7 +52,5 @@ void session_connection_interrupt_transport(acip_transport_t *transport);
  * The caller owns the resulting network object, including on startup failure;
  * no workers may use it until this call succeeds. Password storage is borrowed.
  * detach clears borrowed aliases before a password retry releases its owner. */
-asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port,
-                                               const network_connect_config_t *config, network_connection_t **owner,
-                                               char *password, size_t capacity, network_connection_prepare_fn prepare,
-                                               void (*detach)(void *), void *context);
+asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port, const network_connect_config_t *config, network_connection_t **owner, char *password,
+                                               size_t capacity, network_connection_prepare_fn prepare, void (*detach)(void *), void *context);

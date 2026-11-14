@@ -73,8 +73,7 @@ static inline uint8x16_t apply_ordered_dither(uint8x16_t color, int pixel_offset
   uint8x16_t dither_values = vqtbl1q_u8(dither_matrix, position_vec);
 #else
   uint8x8x2_t table = {{vget_low_u8(dither_matrix), vget_high_u8(dither_matrix)}};
-  uint8x16_t dither_values =
-      vcombine_u8(vtbl2_u8(table, vget_low_u8(position_vec)), vtbl2_u8(table, vget_high_u8(position_vec)));
+  uint8x16_t dither_values = vcombine_u8(vtbl2_u8(table, vget_low_u8(position_vec)), vtbl2_u8(table, vget_high_u8(position_vec)));
 #endif
 
   // Scale dither values by strength (0-255 range)

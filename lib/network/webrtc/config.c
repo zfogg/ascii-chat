@@ -6,8 +6,7 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
-asciichat_error_t webrtc_turn_servers_parse(const char *csv_urls, const char *username, const char *credential,
-                                            turn_server_t *servers, size_t capacity, size_t *count_out) {
+asciichat_error_t webrtc_turn_servers_parse(const char *csv_urls, const char *username, const char *credential, turn_server_t *servers, size_t capacity, size_t *count_out) {
   if (!csv_urls || !username || !credential || !servers || !count_out || capacity == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid TURN server configuration");
 

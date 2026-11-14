@@ -156,9 +156,8 @@ static char *extract_http_body(const char *response, size_t response_len) {
 
 // Return the status code, or -1 for a malformed status line.
 static int parse_http_status(const char *response, size_t length) {
-  if (length < 13 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[7] == '\0' ||
-      response[8] != ' ' || response[9] < '0' || response[9] > '9' || response[10] < '0' || response[10] > '9' ||
-      response[11] < '0' || response[11] > '9' || (response[12] != ' ' && response[12] != '\r'))
+  if (length < 13 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[7] == '\0' || response[8] != ' ' || response[9] < '0' || response[9] > '9' || response[10] < '0' ||
+      response[10] > '9' || response[11] < '0' || response[11] > '9' || (response[12] != ' ' && response[12] != '\r'))
     return -1;
   return (response[9] - '0') * 100 + (response[10] - '0') * 10 + response[11] - '0';
 }

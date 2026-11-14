@@ -12,16 +12,15 @@ static asciichat_error_t clock_step(crypto_rekey_session_t *s, uint64_t now) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t send_rekey_packet(crypto_rekey_session_t *s, unsigned flow, crypto_rekey_message_t type,
-                                           const void *payload, size_t length) {
+static asciichat_error_t send_rekey_packet(crypto_rekey_session_t *s, unsigned flow, crypto_rekey_message_t type, const void *payload, size_t length) {
   if (length > CRYPTO_PUBLIC_KEY_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Rekey message exceeds its bound");
   return s->send(s->context, flow, type, payload, length);
 }
 
 static bool settled(crypto_rekey_session_t *s) {
-  return !s->deferred_request && !s->waiting_response && !s->expecting_complete && !s->remote_requested &&
-         !s->security->pending_prepared && !s->security->previous_valid && s->peer_ack == s->security->key_epoch;
+  return !s->deferred_request && !s->waiting_response && !s->expecting_complete && !s->remote_requested && !s->security->pending_prepared && !s->security->previous_valid &&
+         s->peer_ack == s->security->key_epoch;
 }
 
 static asciichat_error_t observe_epoch(crypto_rekey_session_t *s) {
@@ -50,23 +49,15 @@ static asciichat_error_t observe_epoch(crypto_rekey_session_t *s) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t crypto_rekey_session_init(crypto_rekey_session_t *s, crypto_record_t *security,
-                                            crypto_rekey_emit_fn send, void *context, uint64_t now) {
+asciichat_error_t crypto_rekey_session_init(crypto_rekey_session_t *s, crypto_record_t *security, crypto_rekey_emit_fn send, void *context, uint64_t now) {
   if (!s || s->security || !security || !security->crypto || !send || now == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session rekey initialization");
-  *s = (crypto_rekey_session_t){.security = security,
-                                .send = send,
-                                .context = context,
-                                .activated_ns = now,
-                                .last_ns = now,
-                                .seen_epoch = security->key_epoch,
-                                .peer_ack = security->key_epoch};
+  *s = (crypto_rekey_session_t){.security = security, .send = send, .context = context, .activated_ns = now, .last_ns = now, .seen_epoch = security->key_epoch, .peer_ack = security->key_epoch};
   return ASCIICHAT_OK;
 }
 
 static bool request_allowed(crypto_rekey_session_t *s, uint64_t now) {
-  return now - s->activated_ns >= (uint64_t)REKEY_MIN_INTERVAL &&
-         (!s->last_request_ns || now - s->last_request_ns >= (uint64_t)REKEY_MIN_REQUEST_INTERVAL);
+  return now - s->activated_ns >= (uint64_t)REKEY_MIN_INTERVAL && (!s->last_request_ns || now - s->last_request_ns >= (uint64_t)REKEY_MIN_REQUEST_INTERVAL);
 }
 
 asciichat_error_t crypto_rekey_session_tick(crypto_rekey_session_t *s, uint64_t now) {
@@ -97,9 +88,7 @@ asciichat_error_t crypto_rekey_session_tick(crypto_rekey_session_t *s, uint64_t 
   if (!settled(s) || !request_allowed(s, now))
     return ASCIICHAT_OK;
   crypto_context_t *crypto = s->security->crypto;
-  bool threshold =
-      crypto->rekey_packet_count >= crypto->rekey_packet_threshold ||
-      (crypto->rekey_time_threshold > 0 && now - s->activated_ns >= (uint64_t)crypto->rekey_time_threshold);
+  bool threshold = crypto->rekey_packet_count >= crypto->rekey_packet_threshold || (crypto->rekey_time_threshold > 0 && now - s->activated_ns >= (uint64_t)crypto->rekey_time_threshold);
   if (!s->requested && !threshold)
     return ASCIICHAT_OK;
   s->requested = false;
@@ -124,9 +113,8 @@ asciichat_error_t crypto_rekey_session_request(crypto_rekey_session_t *s, uint64
   return crypto_rekey_session_tick(s, now);
 }
 
-asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *s, unsigned flow, unsigned delivery,
-                                               crypto_rekey_message_t type, const void *payload, size_t bytes,
-                                               uint64_t now, bool *consumed) {
+asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *s, unsigned flow, unsigned delivery, crypto_rekey_message_t type, const void *payload, size_t bytes, uint64_t now,
+                                               bool *consumed) {
   if (!consumed || (!payload && bytes) || flow >= CRYPTO_RECORD_CHANNELS || type > CRYPTO_REKEY_NEEDED)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rekey input");
   *consumed = false;
@@ -140,8 +128,7 @@ asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *s, unsign
     return crypto_rekey_session_tick(s, now);
   *consumed = true;
   uint64_t epoch = s->security->key_epoch;
-  if (delivery != CRYPTO_RECORD_RELIABLE || s->security->last_receive_epoch != epoch ||
-      (type != CRYPTO_REKEY_MARKER && flow != 0))
+  if (delivery != CRYPTO_RECORD_RELIABLE || s->security->last_receive_epoch != epoch || (type != CRYPTO_REKEY_MARKER && flow != 0))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "session rekey message has invalid flow, delivery, or epoch");
   crypto_context_t *crypto = s->security->crypto;
   if (type == CRYPTO_REKEY_MARKER || type == CRYPTO_REKEY_ACK) {
@@ -164,8 +151,8 @@ asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *s, unsign
     if (!s->exchange_ns)
       s->requested = true;
   } else if (type == CRYPTO_REKEY_REQUEST) {
-    if (s->security->server || bytes != CRYPTO_PUBLIC_KEY_SIZE || s->waiting_response || s->expecting_complete ||
-        s->deferred_request || s->security->previous_valid || s->security->pending_prepared || s->peer_ack != epoch)
+    if (s->security->server || bytes != CRYPTO_PUBLIC_KEY_SIZE || s->waiting_response || s->expecting_complete || s->deferred_request || s->security->previous_valid || s->security->pending_prepared ||
+        s->peer_ack != epoch)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected session ephemeral rekey request");
     s->exchange_ns = now;
     s->remote_requested = false;
@@ -186,8 +173,7 @@ asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *s, unsign
       result = send_rekey_packet(s, 0, CRYPTO_REKEY_COMPLETE, &proof, 1);
     }
   } else {
-    if (s->security->server || !s->expecting_complete || bytes != 1 || ((const uint8_t *)payload)[0] || !epoch ||
-        s->security->pending_prepared)
+    if (s->security->server || !s->expecting_complete || bytes != 1 || ((const uint8_t *)payload)[0] || !epoch || s->security->pending_prepared)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected session rekey confirmation");
     s->expecting_complete = false;
     s->activated_ns = now;

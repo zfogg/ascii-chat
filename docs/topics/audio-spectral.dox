@@ -71,6 +71,12 @@
  * | `--audio-pitch-correct`          | Experimental monophonic correction to the nearest semitone (capture only) |
  *
  * The normal `ASCII_CHAT_...` environment variables and registry configuration apply.
+ * The terminal FFT visualization is enabled with `--fft`. It uses the shared
+ * FFTW backend and defaults to a dB range of `-62:-6`, which is intended to
+ * keep ordinary speech/music visible while still showing quieter background
+ * audio. Use `--fft-scale linear`, `--fft-scale log`, or a custom dB range such
+ * as `--fft-scale -72:-3`; custom ranges must be between -120 and 0 dB and
+ * span at least 12 dB.
  * The FFT size is validated before audio startup. Effects are selected when creating
  * a pipeline; these are startup settings, not live controls.
  *
@@ -124,9 +130,9 @@
  * ```sh
  * cmake --preset default -B build
  * cmake --build build
- * uv sync --project tests/ascii_chat_tests --extra audio
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_spectral.py build/bin/asciichat.dll
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
+ * uv sync --extra audio
+ * uv run --frozen python tests/audio/probe_spectral.py build/bin/asciichat.dll
+ * uv run --frozen python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
  * ```
  *
  * Pass the shared library path for your platform. The tests call the compiled C/C++
@@ -137,12 +143,12 @@
  * AEC3/capture chain. Benchmarks include Python call overhead and report wall time,
  * not whole-application CPU utilization. Criterion is not supported on Windows.
  *
- * For physical recording, list device indices with `uv run --project tests/ascii_chat_tests --extra audio python -m sounddevice`, obtain
+ * For physical recording, list device indices with `uv run --extra audio python -m sounddevice`, obtain
  * the attributed speech fixture described in the evidence README, then run:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/record_spectral.py --library build/bin/asciichat.dll --source speech-source.wav --input-device 34 --output-device 27
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_spectral.py --library build/bin/asciichat.dll --source speech-source.wav
+ * uv run --frozen python tests/audio/record_spectral.py --library build/bin/asciichat.dll --source speech-source.wav --input-device 34 --output-device 27
+ * uv run --frozen python tests/audio/analyze_spectral.py --library build/bin/asciichat.dll --source speech-source.wav
  * ```
  *
  * The recorder plays 12 seconds of speech between silent intervals and saves raw
@@ -161,9 +167,9 @@
  * state off. To reproduce on a machine with the selected audio devices:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
- * uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
+ * uv run --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
+ * uv run --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
+ * uv run --frozen python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
  * ```
  *
  * The encrypted loopback test disables host identity verification only in its child
@@ -196,7 +202,7 @@
  * verification must inspect the peer's received recording.
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
+ * uv run --frozen python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
  * ```
  *
  * This checks sample bounds, each section's energy, sweep frequency, silence,

@@ -42,8 +42,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
 }
 
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks) {
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
   ASCII_OTEL_SCOPE(ACIP_CLIENT_RECEIVE_AND_DISPATCH);
   if (!callbacks)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing client packet callbacks");
@@ -60,11 +59,9 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 // Client Send (to server)
 // =============================================================================
 
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format) {
+asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format) {
   ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME);
-  log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport,
-          pixel_data);
+  log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport, pixel_data);
 
   if (!transport || !pixel_data) {
     log_dev("★ ACIP_SEND_IMAGE_FRAME: Invalid params");
@@ -101,8 +98,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
  * @param height Frame height in pixels
  * @return Error code
  */
-asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
-                                             const void *pixel_data, uint32_t width, uint32_t height) {
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder, const void *pixel_data, uint32_t width, uint32_t height) {
   ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME_H265);
   if (!transport || !encoder || !pixel_data) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Invalid params");
@@ -129,8 +125,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 #endif
   size_t encoded_size = output_buffer_size;
   log_dev("[ACIP_SEND_H265_3] Calling h265_encode");
-  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-                                                output_buffer, &encoded_size);
+  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &encoded_size);
   log_dev("[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu", encode_result, encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
@@ -148,8 +143,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   // Send via transport
   log_dev("[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes", total_size);
-  asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
   return result;

@@ -58,7 +58,7 @@ if(BUILD_TESTS)
     foreach(check IN ITEMS ruff ty)
         add_test(NAME python-${check} COMMAND ${CMAKE_COMMAND} -E env
             "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
-            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests
+            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}
             --frozen --python ${Python3_EXECUTABLE} ${check} check ${CMAKE_SOURCE_DIR}/tests)
         set_tests_properties(python-${check} PROPERTIES LABELS "unit;python;static" TIMEOUT 120)
     endforeach()
@@ -70,9 +70,9 @@ if(BUILD_TESTS)
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
             ${CMAKE_COMMAND} -E env "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
-            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests
+            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}
             --frozen --python ${Python3_EXECUTABLE} -m pytest
-            ${CMAKE_SOURCE_DIR}/tests/python/${suite}
+            ${CMAKE_SOURCE_DIR}/tests/python/tests/${suite}
             --junitxml=${CMAKE_BINARY_DIR}/Testing/${name}.xml ${ARGN})
         set_tests_properties(${name} PROPERTIES PROCESSORS ${CPU_CORES} TIMEOUT 300)
     endfunction()
@@ -1334,7 +1334,7 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_pytest(python-fps-performance performance/fps -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-fps-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
-        --ignore=${CMAKE_SOURCE_DIR}/tests/python/integration/discovery/test_discovery_webrtc.py)
+        --ignore=${CMAKE_SOURCE_DIR}/tests/python/tests/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery-webrtc integration/discovery/test_discovery_webrtc.py
         --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)

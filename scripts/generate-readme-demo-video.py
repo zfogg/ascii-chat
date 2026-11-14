@@ -3,8 +3,8 @@
 
 Dependencies: Python 3.10+, Pillow, pyte, FFmpeg/ffprobe, and pywinpty on Windows
 or pexpect on Unix. Install Python packages with:
-    uv sync --project tests/ascii_chat_tests --frozen
-    uv sync --project tests/ascii_chat_tests --frozen
+    uv sync --frozen
+    uv sync --frozen
 
 The terminal recording is retained alongside logs, sampled screen text, chapter
 images, commands, and timings in --work-dir. No desktop/camera recording or
@@ -93,10 +93,10 @@ def parser():
         description="Film ascii-chat's live keyboard controls and TUIs, with synchronized music, at 33 fps.",
         formatter_class=HelpFormatter,
         epilog="""Examples:
-  uv run --project tests/ascii_chat_tests --frozen python scripts/generate-readme-demo-video.py --opt-text-overlay
-  uv run --project tests/ascii_chat_tests --frozen python scripts/generate-readme-demo-video.py --media-file-start 0:28 --speed 1.1
-  uv run --project tests/ascii_chat_tests --frozen python scripts/generate-readme-demo-video.py --width 1600 --height 900 --optimize=false
-  uv run --project tests/ascii_chat_tests --frozen python scripts/generate-readme-demo-video.py --dry-run
+  uv run --frozen python scripts/generate-readme-demo-video.py --opt-text-overlay
+  uv run --frozen python scripts/generate-readme-demo-video.py --media-file-start 0:28 --speed 1.1
+  uv run --frozen python scripts/generate-readme-demo-video.py --width 1600 --height 900 --optimize=false
+  uv run --frozen python scripts/generate-readme-demo-video.py --dry-run
 
 The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's

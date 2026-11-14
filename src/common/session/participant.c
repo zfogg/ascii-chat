@@ -149,8 +149,7 @@ static asciichat_error_t participant_join(void *context);
 static void participant_release(void *context);
 
 static void participant_connection_init(session_participant_t *p) {
-  session_connection_init(&p->connection,
-                          (session_connection_ops_t){participant_interrupt, participant_join, participant_release}, p);
+  session_connection_init(&p->connection, (session_connection_ops_t){participant_interrupt, participant_join, participant_release}, p);
 }
 
 session_participant_t *session_participant_create(const session_participant_config_t *config) {
@@ -219,8 +218,7 @@ void session_participant_destroy(session_participant_t *p) {
 
   session_participant_disconnect(p);
   // A failed join retains the participant and its resources for a safe retry.
-  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED || p->video_thread_created ||
-      p->audio_thread_created)
+  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED || p->video_thread_created || p->audio_thread_created)
     return;
 
   // Clear sensitive data
@@ -236,8 +234,7 @@ void session_participant_destroy(session_participant_t *p) {
  * Session Participant Connection Functions
  * ============================================================================ */
 
-static asciichat_error_t participant_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
-                                             const char *password, void *context) {
+static asciichat_error_t participant_prepare(network_connection_t *network, const connection_endpoint_t *endpoint, const char *password, void *context) {
   (void)endpoint;
   session_participant_t *p = context;
   asciichat_error_t result = network_connection_prepare_security(network, false, password);
@@ -272,13 +269,10 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   participant_connection_init(p);
   char password[PASSWORD_BUFFER_SIZE] = {0};
   SAFE_STRNCPY(password, p->password, sizeof(password));
-  network_connect_config_t quic_config = {.timeout_ms = 10000,
-                                          .tls_ca_file = p->tls_ca_file[0] ? p->tls_ca_file : NULL,
-                                          .quic_audio_datagrams = p->quic_audio_datagrams,
-                                          .quic_visual_datagrams = p->quic_visual_datagrams};
+  network_connect_config_t quic_config = {
+      .timeout_ms = 10000, .tls_ca_file = p->tls_ca_file[0] ? p->tls_ca_file : NULL, .quic_audio_datagrams = p->quic_audio_datagrams, .quic_visual_datagrams = p->quic_visual_datagrams};
   const network_connect_config_t *connect_config = strncmp(p->address, "quic://", 7) == 0 ? &quic_config : NULL;
-  result = session_connection_establish("participant", p->address, p->port, connect_config, &p->network, password,
-                                        sizeof(password), participant_prepare, NULL, p);
+  result = session_connection_establish("participant", p->address, p->port, connect_config, &p->network, password, sizeof(password), participant_prepare, NULL, p);
   sodium_memzero(password, sizeof(password));
   p->transport = network_connection_transport(p->network);
   p->transport_ownership = p->network ? ACIP_TRANSPORT_OWNED : ACIP_TRANSPORT_BORROWED;
@@ -492,8 +486,7 @@ static void *participant_audio_capture_thread(void *arg) {
 
   while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
-    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer + collected,
-                                                      OPUS_FRAME_SAMPLES * AUDIO_CHANNELS - collected);
+    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer + collected, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS - collected);
     if (samples_read <= 0) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
@@ -516,8 +509,7 @@ static void *participant_audio_capture_thread(void *arg) {
     collected = 0;
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-      asciichat_error_t err = acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1,
-                                                         AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
+      asciichat_error_t err = acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
@@ -667,11 +659,8 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
     asciichat_errno_scope_t checkpoint = errno_checkpoint();
-    client_audio_pipeline_config_t profile =
-        client_audio_pipeline_config_for_source(source && media_source_has_audio(source));
-    p->opus_encoder =
-        opus_codec_create_encoder_channels((opus_application_t)profile.opus_application, AUDIO_SAMPLE_RATE,
-                                           profile.opus_bitrate, profile.encoder_channels);
+    client_audio_pipeline_config_t profile = client_audio_pipeline_config_for_source(source && media_source_has_audio(source));
+    p->opus_encoder = opus_codec_create_encoder_channels((opus_application_t)profile.opus_application, AUDIO_SAMPLE_RATE, profile.opus_bitrate, profile.encoder_channels);
     if (!p->opus_encoder) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
       session_participant_stop_audio(p);
@@ -720,14 +709,12 @@ void session_participant_stop_audio(session_participant_t *p) {
  * Session Participant Transport Functions (WebRTC Integration)
  * ============================================================================ */
 
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
-                                                    acip_transport_ownership_t ownership) {
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport, acip_transport_ownership_t ownership) {
   if (!p || !p->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
   }
 
-  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
-      p->audio_thread_created)
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created || p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before replacing its transport");
 
   log_info("Setting transport=%p (was=%p)", transport, p->transport);
@@ -768,8 +755,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 asciichat_error_t session_participant_take_connection(session_participant_t *p, network_connection_t **connection) {
   if (!p || !p->initialized || !connection)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing participant connection output");
-  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
-      p->audio_thread_created)
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created || p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its connection");
   if (!p->network)
     return SET_ERRNO(ERROR_INVALID_STATE, "Participant does not own a connection");
@@ -826,13 +812,11 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result != ASCIICHAT_OK)
     return result;
   mutex_lock(&p->settings_mutex);
-  if ((header.request && (header.request > p->settings_request || header.request < p->settings_applied_request)) ||
-      header.revision < p->settings.version) {
+  if ((header.request && (header.request > p->settings_request || header.request < p->settings_applied_request)) || header.revision < p->settings.version) {
     mutex_unlock(&p->settings_mutex);
     return ASCIICHAT_OK;
   }
-  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
-            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *), *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
   session_settings_to_options(&p->settings, current);
   result = options_prepare_json(current, json, json_length, candidate, true);
   if (result == ASCIICHAT_OK) {

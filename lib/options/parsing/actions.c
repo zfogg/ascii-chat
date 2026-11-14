@@ -270,16 +270,14 @@ void action_show_capabilities_immediate(void) {
 
   const char *color_level_name = terminal_color_level_name(caps.color_level);
   log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
-  printf("  %s: %s\n", colored_string(label_color, "Color Level"),
-         colored_string(color_level_color, (char *)color_level_name));
+  printf("  %s: %s\n", colored_string(label_color, "Color Level"), colored_string(color_level_color, (char *)color_level_name));
 
   char colors_buf[OPTIONS_PARSING_ACTIONS_COLORS_BUFFER_SIZE];
   snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
   printf("  %s: %s\n", colored_string(label_color, "Max Colors"), colored_string(number_color, colors_buf));
 
   log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
-  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"),
-         colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
+  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"), colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
 
   const char *render_mode_str = "unknown";
   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
@@ -289,15 +287,12 @@ void action_show_capabilities_immediate(void) {
   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
   }
-  printf("  %s: %s\n", colored_string(label_color, "Render Mode"),
-         colored_string(string_color, (char *)render_mode_str));
+  printf("  %s: %s\n", colored_string(label_color, "Render Mode"), colored_string(string_color, (char *)render_mode_str));
   printf("  %s: %s\n", colored_string(label_color, "TERM"), colored_string(string_color, (char *)caps.term_type));
-  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"),
-         colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
+  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"), colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
 
   log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
-  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
-         colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
+  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"), colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
 
   char bitmask_buf[OPTIONS_PARSING_ACTIONS_BITMASK_BUFFER_SIZE];
   snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
@@ -394,8 +389,7 @@ static void execute_show_capabilities(void) {
   // Color Level: green if good, red if none/bad
   const char *color_level_name = terminal_color_level_name(caps.color_level);
   log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
-  printf("  %s: %s\n", colored_string(label_color, "Color Level"),
-         colored_string(color_level_color, (char *)color_level_name));
+  printf("  %s: %s\n", colored_string(label_color, "Color Level"), colored_string(color_level_color, (char *)color_level_name));
 
   char colors_buf[OPTIONS_PARSING_ACTIONS_COLORS_BUFFER_SIZE];
   snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
@@ -403,8 +397,7 @@ static void execute_show_capabilities(void) {
 
   // UTF-8: green if Yes, red if No
   log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
-  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"),
-         colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
+  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"), colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
 
   const char *render_mode_str = "unknown";
   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
@@ -414,16 +407,13 @@ static void execute_show_capabilities(void) {
   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
   }
-  printf("  %s: %s\n", colored_string(label_color, "Render Mode"),
-         colored_string(string_color, (char *)render_mode_str));
+  printf("  %s: %s\n", colored_string(label_color, "Render Mode"), colored_string(string_color, (char *)render_mode_str));
   printf("  %s: %s\n", colored_string(label_color, "TERM"), colored_string(string_color, (char *)caps.term_type));
-  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"),
-         colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
+  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"), colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
 
   // Detection Reliable: green if Yes, red if No
   log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
-  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
-         colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
+  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"), colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
 
   char bitmask_buf[OPTIONS_PARSING_ACTIONS_BITMASK_BUFFER_SIZE];
   snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
@@ -441,10 +431,8 @@ static void execute_show_capabilities(void) {
 void action_show_version(void) {
   bool use_colors = terminal_should_color_output(STDOUT_FILENO, options_terminal_settings());
   if (use_colors) {
-    printf("%s %s (%s, %s)\n", colored_string(LOG_COLOR_WARN, "ascii-chat"),
-           colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
-           colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE),
-           colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
+    printf("%s %s (%s, %s)\n", colored_string(LOG_COLOR_WARN, "ascii-chat"), colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
+           colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE), colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
   } else {
     printf("ascii-chat %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
   }
@@ -508,8 +496,7 @@ void action_create_manpage(const char *output_path) {
   // Resources are loaded automatically based on build type:
   // - Production (Release): From embedded binary data
   // - Development (Debug): From filesystem files
-  asciichat_error_t err =
-      options_config_generate_manpage_merged(config, "ascii-chat", NULL, path_to_use, "Video chat in your terminal");
+  asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, path_to_use, "Video chat in your terminal");
 
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
@@ -607,14 +594,11 @@ void action_completions(const char *shell_name, const char *output_path) {
       char question[OPTIONS_PARSING_ACTIONS_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
       asciichat_errno_scope_t prompt_scope = errno_checkpoint();
-      bool overwrite =
-          ui_notice_confirm_kind(UI_PROMPT_COMPLETION_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_COMPLETION_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
         asciichat_error_context_t context;
-        action_exit(errno_peek_since(prompt_scope, &context) && context.code == ERROR_PROMPT_TIMEOUT
-                        ? ERROR_PROMPT_TIMEOUT
-                        : 0);
+        action_exit(errno_peek_since(prompt_scope, &context) && context.code == ERROR_PROMPT_TIMEOUT ? ERROR_PROMPT_TIMEOUT : 0);
       }
 
       log_plain("Overwriting existing completions file...");
@@ -719,10 +703,8 @@ option_action_fn options_action_callback(const char *name, bool immediate) {
     option_action_fn callback;
     option_action_fn early_callback;
   } actions[] = {
-      {"list-webcams", action_list_webcams, action_list_webcams},
-      {"list-microphones", action_list_microphones, action_list_microphones},
-      {"list-speakers", action_list_speakers, action_list_speakers},
-      {"show-capabilities", action_show_capabilities, action_show_capabilities_immediate},
+      {"list-webcams", action_list_webcams, action_list_webcams},           {"list-microphones", action_list_microphones, action_list_microphones},
+      {"list-speakers", action_list_speakers, action_list_speakers},        {"show-capabilities", action_show_capabilities, action_show_capabilities_immediate},
       {"check-update", action_check_update, action_check_update_immediate},
   };
   if (!name)

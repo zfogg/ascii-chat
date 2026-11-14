@@ -43,8 +43,7 @@ static void *http_renderer_job_main(void *argument) {
   return NULL;
 }
 
-asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute,
-                                          void *context) {
+asciichat_error_t http_renderer_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute, void *context) {
   if (!job || !execute || job->started)
     return SET_ERRNO(ERROR_INVALID_STATE, "Renderer job is already active");
   memset(job, 0, sizeof(*job));
@@ -90,15 +89,12 @@ static void *http_renderer_service_main(void *argument) {
   if (atomic_load_bool(&job->cancelled)) {
     job->result.cancelled = true;
     error = SET_ERRNO(ERROR_INVALID_STATE, "HTTP render cancelled");
-  } else if (job->request.source.type != HTTP_RENDER_SOURCE_UPLOAD &&
-             job->request.source.type != HTTP_RENDER_SOURCE_FILE &&
-             job->request.source.type != HTTP_RENDER_SOURCE_URL) {
+  } else if (job->request.source.type != HTTP_RENDER_SOURCE_UPLOAD && job->request.source.type != HTTP_RENDER_SOURCE_FILE && job->request.source.type != HTTP_RENDER_SOURCE_URL) {
     error = SET_ERRNO(ERROR_INVALID_PARAM, "HTTP renderer source is not supported");
   } else if (renderer->config.max_input_bytes && job->request.source.body_length > renderer->config.max_input_bytes) {
     error = SET_ERRNO(ERROR_BUFFER_OVERFLOW, "HTTP render input exceeds the configured limit");
   } else {
-    const char *source =
-        job->request.source.type == HTTP_RENDER_SOURCE_URL ? job->request.source.url : job->request.source.path;
+    const char *source = job->request.source.type == HTTP_RENDER_SOURCE_URL ? job->request.source.url : job->request.source.path;
     error = http_renderer_render_file(source, &job->request, &job->result, &job->cancelled);
   }
   job->result.error = error;
@@ -123,8 +119,7 @@ asciichat_error_t http_renderer_init(http_renderer_t **out, const http_renderer_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request, void *user_data,
-                                       http_renderer_job_t **out_job) {
+asciichat_error_t http_renderer_submit(http_renderer_t *renderer, const http_render_request_t *request, void *user_data, http_renderer_job_t **out_job) {
   if (!renderer || !request || !out_job)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP renderer submission");
   *out_job = NULL;
@@ -251,8 +246,7 @@ static asciichat_error_t http_render_result_reserve_frame(http_render_result_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text, size_t length,
-                                                    uint64_t timestamp_ms) {
+asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result, const char *text, size_t length, uint64_t timestamp_ms) {
   if (!result || (!text && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid text frame");
   asciichat_error_t err = http_render_result_reserve_frame(result);
@@ -267,8 +261,7 @@ asciichat_error_t http_render_result_add_text_frame(http_render_result_t *result
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path,
-                                                    uint64_t timestamp_ms) {
+asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result, const char *path, uint64_t timestamp_ms) {
   if (!result || !path || !*path)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid file frame");
   asciichat_error_t err = http_render_result_reserve_frame(result);
@@ -282,8 +275,7 @@ asciichat_error_t http_render_result_add_file_frame(http_render_result_t *result
 
 static char *http_renderer_render_image(const image_t *image, const http_render_request_t *request) {
   size_t width = request->options.width > 0 ? (size_t)request->options.width : 80;
-  size_t height = request->options.height > 0 ? (size_t)request->options.height
-                                              : (size_t)((double)width * image->h / image->w / 2.0);
+  size_t height = request->options.height > 0 ? (size_t)request->options.height : (size_t)((double)width * image->h / image->w / 2.0);
   if (!height)
     height = 1;
   image_t *scaled = image_new(width, height);
@@ -295,11 +287,7 @@ static char *http_renderer_render_image(const image_t *image, const http_render_
     const struct {
       const char *name;
       palette_type_t type;
-    } palettes[] = {{"standard", PALETTE_STANDARD},
-                    {"blocks", PALETTE_BLOCKS},
-                    {"digital", PALETTE_DIGITAL},
-                    {"minimal", PALETTE_MINIMAL},
-                    {"cool", PALETTE_COOL}};
+    } palettes[] = {{"standard", PALETTE_STANDARD}, {"blocks", PALETTE_BLOCKS}, {"digital", PALETTE_DIGITAL}, {"minimal", PALETTE_MINIMAL}, {"cool", PALETTE_COOL}};
     for (size_t i = 0; i < sizeof(palettes) / sizeof(palettes[0]); ++i)
       if (!strcmp(request->options.palette, palettes[i].name)) {
         palette = get_builtin_palette(palettes[i].type)->chars;
@@ -318,8 +306,7 @@ static char *http_renderer_render_image(const image_t *image, const http_render_
                           : request->options.color_mode == TERM_COLOR_256     ? ASCII_COLOR_256
                           : request->options.color_mode == TERM_COLOR_16      ? ASCII_COLOR_16
                                                                               : ASCII_COLOR_NONE;
-    ascii =
-        ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
+    ascii = ascii_render_halfblocks((const uint8_t *)scaled->pixels, scaled->w, scaled->h, 0, color, simd_cells_backend());
   } else if (request->options.color_mode == TERM_COLOR_TRUECOLOR)
     ascii = image_print_color_simd(scaled, false, false, palette);
   else if (request->options.color_mode == TERM_COLOR_256)
@@ -332,8 +319,7 @@ static char *http_renderer_render_image(const image_t *image, const http_render_
   return ascii;
 }
 
-asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request,
-                                            http_render_result_t *result, atomic_t *cancelled) {
+asciichat_error_t http_renderer_render_file(const char *path, const http_render_request_t *request, http_render_result_t *result, atomic_t *cancelled) {
   if (!path || !request || !result)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP render requires a source path, request, and result");
   memset(result, 0, sizeof(*result));

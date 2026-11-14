@@ -18,6 +18,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/util/utf8.h>
 #include <yyjson.h>
 #include <stdint.h>
@@ -100,8 +101,7 @@ static const char *log_level_to_string(log_level_t level) {
   }
 }
 
-void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func,
-                    const char *message) {
+void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func, const char *message) {
   if (fd < 0 || !message) {
     return;
   }
@@ -140,7 +140,7 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
 
     /* Add file (if not NULL) - normalize to project-relative path */
     if (file) {
-      const char *rel_file = extract_project_relative_path(file);
+      const char *rel_file = extract_project_relative_path(file, ASCIICHAT_OWNED_SOURCE_DIRS);
       yyjson_mut_obj_add_str(doc, header, "file", rel_file);
     }
 
@@ -284,7 +284,7 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
   /* Escape the strings (normalize file path to project-relative) */
   json_escape_async_safe(message, escaped_message, sizeof(escaped_message));
   if (file) {
-    const char *rel_file = extract_project_relative_path(file);
+    const char *rel_file = extract_project_relative_path(file, ASCIICHAT_OWNED_SOURCE_DIRS);
     json_escape_async_safe(rel_file, escaped_file, sizeof(escaped_file));
   } else {
     escaped_file[0] = '\0';
@@ -303,8 +303,7 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
                          "{\"header\":{\"timestamp\":\"%s\",\"level\":\"%s\",\"tid\":%lu,"
                          "\"file\":\"%s\",\"line\":%d,\"func\":\"%s\"},"
                          "\"body\":{\"message\":\"%s\"}}\n",
-                         timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : "", line,
-                         func ? escaped_func : "", escaped_message);
+                         timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : "", line, func ? escaped_func : "", escaped_message);
 
   /* Write to fd if successful */
   if (written > 0 && written < (int)sizeof(json_buffer)) {

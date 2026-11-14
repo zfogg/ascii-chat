@@ -36,8 +36,7 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
     if (strlen(GET_OPTION(discovery_service_key)) > 0) {
       log_debug("Verifying ACDS server key for %s...", acds_config.server_address);
       uint8_t acds_pubkey[ED25519_PUBLIC_KEY_SIZE];
-      asciichat_error_t verify_result =
-          discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
+      asciichat_error_t verify_result = discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
       if (verify_result != ASCIICHAT_OK) {
         NOTICE(DANGER, "ACDS VERIFICATION FAILED", "ACDS key verification failed for %s", acds_config.server_address);
         return SET_ERRNO(ERROR_CRYPTO_AUTH, "Cannot verify discovery host identity");
@@ -63,8 +62,7 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
     acds_client_disconnect(&acds_client);
 
     if (acds_result != ASCIICHAT_OK || !lookup_result.found) {
-      log_error("ACDS session lookup failed for '%s': %s", GET_OPTION(session_string),
-                lookup_result.found ? "session not found" : "lookup error");
+      log_error("ACDS session lookup failed for '%s': %s", GET_OPTION(session_string), lookup_result.found ? "session not found" : "lookup error");
       return SET_ERRNO(ERROR_CRYPTO_AUTH, "Cannot verify discovery host identity");
     }
 
@@ -77,8 +75,7 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
 
     // Set expected server key for verification during handshake
     connection->crypto_ctx->verify_server_key = true;
-    SAFE_STRNCPY(connection->crypto_ctx->expected_server_key, server_key_hex,
-                 sizeof(connection->crypto_ctx->expected_server_key) - 1);
+    SAFE_STRNCPY(connection->crypto_ctx->expected_server_key, server_key_hex, sizeof(connection->crypto_ctx->expected_server_key) - 1);
     log_debug("ACDS session lookup succeeded - server identity will be verified");
     log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }

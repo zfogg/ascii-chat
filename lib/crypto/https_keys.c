@@ -172,8 +172,7 @@ asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size
 
 asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys) {
   if (!username || !keys_out || !num_keys) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out,
-              num_keys);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out, num_keys);
     return ERROR_INVALID_PARAM;
   }
 
@@ -193,8 +192,7 @@ asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Parse SSH keys from the response
-  asciichat_error_t parse_result =
-      parse_ssh_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
+  asciichat_error_t parse_result = parse_ssh_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
 
   // Clean up response text
   SAFE_FREE(response_text);
@@ -204,8 +202,7 @@ asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, 
 
 asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys) {
   if (!username || !keys_out || !num_keys) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out,
-              num_keys);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out, num_keys);
     return ERROR_INVALID_PARAM;
   }
 
@@ -225,8 +222,7 @@ asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Parse SSH keys from the response
-  asciichat_error_t parse_result =
-      parse_ssh_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
+  asciichat_error_t parse_result = parse_ssh_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
 
   // Clean up response text
   SAFE_FREE(response_text);
@@ -236,8 +232,7 @@ asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, 
 
 asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys) {
   if (!username || !keys_out || !num_keys) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out,
-              num_keys);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out, num_keys);
     return ERROR_INVALID_PARAM;
   }
 
@@ -257,8 +252,7 @@ asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Parse GPG keys from the response
-  asciichat_error_t parse_result =
-      parse_gpg_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
+  asciichat_error_t parse_result = parse_gpg_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
 
   // Clean up response text
   SAFE_FREE(response_text);
@@ -268,8 +262,7 @@ asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, 
 
 asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys) {
   if (!username || !keys_out || !num_keys) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out,
-              num_keys);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: username=%p, keys_out=%p, num_keys=%p", username, keys_out, num_keys);
     return ERROR_INVALID_PARAM;
   }
 
@@ -289,8 +282,7 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Parse GPG keys from the response
-  asciichat_error_t parse_result =
-      parse_gpg_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
+  asciichat_error_t parse_result = parse_gpg_keys_from_response(response_text, response_len, keys_out, num_keys, MAX_CLIENTS);
 
   // Clean up response text
   SAFE_FREE(response_text);
@@ -302,8 +294,7 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
 // Key Parsing from HTTPS Responses
 // =============================================================================
 
-asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
-                                               size_t *num_keys, size_t max_keys) {
+asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len, char ***keys_out, size_t *num_keys, size_t max_keys) {
   if (!response_text || !keys_out || !num_keys) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for SSH key parsing");
     return ERROR_INVALID_PARAM;
@@ -396,8 +387,7 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
-                                               size_t *num_keys, size_t max_keys) {
+asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len, char ***keys_out, size_t *num_keys, size_t max_keys) {
   (void)max_keys;
   if (!response_text || !keys_out || !num_keys) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for GPG key parsing");
@@ -505,8 +495,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
     char list_cmd[BUFFER_SIZE_SMALL];
-    safe_snprintf(list_cmd, sizeof(list_cmd),
-                  "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
+    safe_snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
     FILE *list_fp = NULL;
     if (platform_popen("gpg_https_list", list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it

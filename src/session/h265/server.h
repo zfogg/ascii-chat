@@ -59,9 +59,8 @@ h265_server_client_t *h265_server_get_client_decoder(h265_server_context_t *ctx,
  * RGBA conversion: Each ASCII character (0-255) becomes a grayscale pixel
  * where pixel = (ascii_val, ascii_val, ascii_val, 255)
  */
-asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, const uint8_t *h265_packet,
-                                                 size_t packet_size, uint8_t *output_rgba, uint16_t *output_width,
-                                                 uint16_t *output_height, size_t *output_size);
+asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, const uint8_t *h265_packet, size_t packet_size, uint8_t *output_rgba, uint16_t *output_width, uint16_t *output_height,
+                                                 size_t *output_size);
 
 /**
  * Remove a client decoder (when client disconnects)
@@ -80,5 +79,4 @@ void h265_server_remove_client(h265_server_context_t *ctx, uint32_t client_id);
  * @param last_width Output: width of last decoded frame
  * @param last_height Output: height of last decoded frame
  */
-void h265_server_client_get_stats(h265_server_client_t *client, uint64_t *total_frames, uint64_t *keyframes,
-                                  uint16_t *last_width, uint16_t *last_height);
+void h265_server_client_get_stats(h265_server_client_t *client, uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t *last_height);

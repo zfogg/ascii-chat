@@ -84,7 +84,7 @@
  *
  * ```
  * build/bin/test-backpressure
- * uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure \
+ * uv run --frozen python -m pytest tests/python/tests/integration/backpressure \
  *   --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
  * ```
  *

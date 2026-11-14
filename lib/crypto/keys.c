@@ -18,10 +18,12 @@
 #include <defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/util/url.h>                   // For url_is_valid(), url_parse()
 #include <ascii-chat/crypto/gpg/export.h>          // For gpg_get_public_key()
 #include <ascii-chat/network/http/client/client.h> // For https_get()
 #include <libplatform/filesystem.h>
+#include <libplatform/util/string.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -57,8 +59,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     bool looks_like_base64 = true;
     for (size_t i = 0; i < input_len; i++) {
       char c = input[i];
-      if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' ||
-            c == '=')) {
+      if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=')) {
         looks_like_base64 = false;
         break;
       }
@@ -78,19 +79,16 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
         // Validate SSH key blob structure
         // Format: [4 bytes: length][11 bytes: "ssh-ed25519"][4 bytes: length][32 bytes: key]
         if (blob_len >= 4) {
-          uint32_t key_type_len =
-              ((uint32_t)blob[0] << 24) | ((uint32_t)blob[1] << 16) | ((uint32_t)blob[2] << 8) | blob[3];
+          uint32_t key_type_len = ((uint32_t)blob[0] << 24) | ((uint32_t)blob[1] << 16) | ((uint32_t)blob[2] << 8) | blob[3];
           if (key_type_len == 11 && blob_len >= 15 && memcmp(blob + 4, "ssh-ed25519", 11) == 0) {
             // Valid ssh-ed25519 blob, extract the 32-byte public key
             if (blob_len >= 19) {
-              uint32_t pubkey_len =
-                  ((uint32_t)blob[15] << 24) | ((uint32_t)blob[16] << 16) | ((uint32_t)blob[17] << 8) | blob[18];
+              uint32_t pubkey_len = ((uint32_t)blob[15] << 24) | ((uint32_t)blob[16] << 16) | ((uint32_t)blob[17] << 8) | blob[18];
               if (pubkey_len == 32 && blob_len >= 51) {
                 // Extract Ed25519 public key
                 key_out->type = KEY_TYPE_ED25519;
                 memcpy(key_out->key, blob + 19, CRYPTO_PUBLIC_KEY_SIZE);
-                platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64",
-                                 sizeof(key_out->comment) - 1);
+                platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64", sizeof(key_out->comment) - 1);
                 return ASCIICHAT_OK;
               }
             }
@@ -144,8 +142,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     // Check if it's valid hex
     bool is_valid_hex = true;
     for (int i = 0; i < 64; i++) {
-      if (!((input[i] >= '0' && input[i] <= '9') || (input[i] >= 'a' && input[i] <= 'f') ||
-            (input[i] >= 'A' && input[i] <= 'F'))) {
+      if (!((input[i] >= '0' && input[i] <= '9') || (input[i] >= 'a' && input[i] <= 'f') || (input[i] >= 'A' && input[i] <= 'F'))) {
         is_valid_hex = false;
         break;
       }
@@ -182,9 +179,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         uint8_t first_packet = (uint8_t)line[0];
-        unsigned int packet_tag =
-            (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu))
-                                   : 0u;
+        unsigned int packet_tag = (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
         bool armored_gpg = strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL;
         if (armored_gpg || packet_tag == 6u) {
           if (fseek(f, 0, SEEK_END) != 0) {
@@ -232,8 +227,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     // Validate key ID format (must be 8, 16, or 40 hex characters)
     size_t key_id_len = strlen(key_id);
     if (key_id_len != 8 && key_id_len != 16 && key_id_len != 40) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 8, 16, or 40 hex chars)",
-                       key_id_len);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 8, 16, or 40 hex chars)", key_id_len);
     }
 
     // Validate hex characters
@@ -342,7 +336,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     // libsodium expects the seed in first 32 bytes and public key in second 32 bytes
     memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);                           // Secret key (seed)
     memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Public key
-    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Also store in public_key field
+    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);                      // Also store in public_key field
 
     // Store comment
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
@@ -352,8 +346,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   uint8_t first_packet = bytes_read > 0 ? (uint8_t)header[0] : 0;
-  unsigned int first_packet_tag =
-      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
+  unsigned int first_packet_tag = (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
   if (bytes_read > 0 && first_packet_tag == 5u) {
     f = platform_fopen("file_stream", normalized_path, "rb");
     if (!f) {
@@ -436,8 +429,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
       if (strlen(specifier) > 0) {
         // Recursively parse this single specifier (will not re-enter comma handling)
         size_t current_num = 0;
-        asciichat_error_t result =
-            parse_public_keys(specifier, &keys_out[*num_keys], &current_num, max_keys - *num_keys);
+        asciichat_error_t result = parse_public_keys(specifier, &keys_out[*num_keys], &current_num, max_keys - *num_keys);
         if (result == ASCIICHAT_OK && current_num > 0) {
           *num_keys += current_num;
         } else {
@@ -492,8 +484,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
     }
 
     if (result != ASCIICHAT_OK || num_fetched_keys == 0) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch keys from %s for user: %s", is_github ? "GitHub" : "GitLab",
-                       username);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch keys from %s for user: %s", is_github ? "GitHub" : "GitLab", username);
     }
 
     // Parse each fetched key (only Ed25519 keys will succeed)
@@ -511,8 +502,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
     SAFE_FREE(keys);
 
     if (*num_keys == 0) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid Ed25519 keys found for %s user: %s", is_github ? "GitHub" : "GitLab",
-                       username);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid Ed25519 keys found for %s user: %s", is_github ? "GitHub" : "GitLab", username);
     }
 
     log_debug("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
@@ -634,8 +624,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
   char line[BUFFER_SIZE_LARGE];
   bool has_first_line = fgets(line, sizeof(line), f) != NULL;
   uint8_t first_packet = has_first_line ? (uint8_t)line[0] : 0;
-  unsigned int first_packet_tag =
-      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
+  unsigned int first_packet_tag = (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
   if (has_first_line && (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
     if (fseek(f, 0, SEEK_END) != 0) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to seek OpenPGP key file: %s", path);
@@ -727,9 +716,7 @@ asciichat_error_t hex_decode(const char *hex, uint8_t *output, size_t output_len
   size_t expected_hex_len = output_len * 2;
 
   if (hex_len != expected_hex_len) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Hex string length (%zu) doesn't match expected output length (%zu * 2 = %zu)", hex_len,
-                     output_len, expected_hex_len);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Hex string length (%zu) doesn't match expected output length (%zu * 2 = %zu)", hex_len, output_len, expected_hex_len);
   }
 
   // Decode hex string to binary
@@ -740,8 +727,7 @@ asciichat_error_t hex_decode(const char *hex, uint8_t *output, size_t output_len
 
     // Validate hex character
     if (*endptr != '\0' || byte > 255) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hex character at position %zu: '%c%c'", i * 2, hex[i * 2],
-                       hex[i * 2 + 1]);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hex character at position %zu: '%c%c'", i * 2, hex[i * 2], hex[i * 2 + 1]);
     }
 
     output[i] = (uint8_t)byte;

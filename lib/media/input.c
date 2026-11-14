@@ -61,8 +61,7 @@ asciichat_error_t media_input_normalize(const char *text, char *output, size_t c
         return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid escape in file URI");
       c = (unsigned char)(hex_digit((unsigned char)text[i + 1]) * 16 + hex_digit((unsigned char)text[i + 2]));
       i += 2;
-    } else if (!url && !uri && !quote && !windows_path && c == '\\' && i + 1 < length &&
-               (text[i + 1] == ' ' || text[i + 1] == '\'' || text[i + 1] == '"' || text[i + 1] == '\\')) {
+    } else if (!url && !uri && !quote && !windows_path && c == '\\' && i + 1 < length && (text[i + 1] == ' ' || text[i + 1] == '\'' || text[i + 1] == '"' || text[i + 1] == '\\')) {
       c = (unsigned char)text[++i];
     } else if (!url && !uri && (c == '\'' || c == '"')) {
       if (quote && c == (unsigned char)quote)

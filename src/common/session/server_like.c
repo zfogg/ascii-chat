@@ -181,8 +181,7 @@ nat_upnp_context_t *session_server_like_get_upnp_ctx(void) {
  * Helpers
  * ============================================================================ */
 
-asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port,
-                                                     const char **txt, size_t txt_count) {
+asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port, const char **txt, size_t txt_count) {
   if (!g_mdns_ctx) {
     return SET_ERRNO(ERROR_INVALID_STATE, "mDNS context not initialized");
   }
@@ -348,8 +347,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   } else {
     log_info("UPnP status: disabled");
     if (ipv4_listener && (!ipv4_has_value || strcmp(address, "0.0.0.0") == 0 || is_lan_ipv4(address))) {
-      log_info("For connections from outside your LAN, try --port-forwarding or forward TCP port %d on your router.",
-               port);
+      log_info("For connections from outside your LAN, try --port-forwarding or forward TCP port %d on your router.", port);
     }
   }
 

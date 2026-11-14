@@ -11,8 +11,7 @@
 static void mcp_stats_view(stats_view_t *view, void *data) {
   const mcp_server_t *server = data;
   stats_view_add_header(view, "MCP transport");
-  stats_view_add(view, "Transport: %s   Render concurrency limit: %u", server->policy.hosted ? "HTTP" : "stdio",
-                 server->policy.max_jobs);
+  stats_view_add(view, "Transport: %s   Render concurrency limit: %u", server->policy.hosted ? "HTTP" : "stdio", server->policy.max_jobs);
   if (server->policy.hosted)
     stats_view_add(view, "Listener: %s:%d/mcp", server->policy.address, server->policy.port);
   stats_view_add(view, "Render duration includes capture, encoding, and output publication.");
@@ -35,9 +34,7 @@ int mcp_server_main(void) {
                              .downloads_url_prefix = GET_OPTION(mcp_downloads_url_prefix)};
   if (s->policy.restricted && s->policy.hosted && s->policy.downloads_url_prefix && *s->policy.downloads_url_prefix) {
     const char *prefix = s->policy.downloads_url_prefix;
-    const char *authority = !strncmp(prefix, "https://", sizeof("https://") - 1) ? prefix + 8
-                            : !strncmp(prefix, "http://", sizeof("http://") - 1) ? prefix + 7
-                                                                                 : NULL;
+    const char *authority = !strncmp(prefix, "https://", sizeof("https://") - 1) ? prefix + 8 : !strncmp(prefix, "http://", sizeof("http://") - 1) ? prefix + 7 : NULL;
     if (!authority || !*authority || *authority == '/' || strpbrk(prefix, " \t\r\n?#")) {
       SAFE_FREE(s);
       return SET_ERRNO(ERROR_CONFIG, "--downloads-url-prefix must be an HTTP(S) URL without query or fragment");
@@ -96,8 +93,7 @@ int mcp_server_main(void) {
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate MCP render jobs");
   }
-  log_info("MCP server started (%s, %s capabilities, %u render jobs)", s->policy.hosted ? "HTTP" : "stdio",
-           s->policy.restricted ? "restricted" : "local", s->policy.max_jobs);
+  log_info("MCP server started (%s, %s capabilities, %u render jobs)", s->policy.hosted ? "HTTP" : "stdio", s->policy.restricted ? "restricted" : "local", s->policy.max_jobs);
   if (s->policy.hosted) {
     platform_systemd_notify_status("MCP HTTP listener started");
     platform_systemd_notify_ready();

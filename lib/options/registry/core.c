@@ -92,9 +92,8 @@ asciichat_error_t registry_validate_unique_options(void) {
 
     for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
       if (g_options_registry[j].short_name == short_name) {
-        return SET_ERRNO(ERROR_CONFIG,
-                         "Duplicate short option '-%c' for '--%s' and '--%s' at registry indices %zu and %zu",
-                         short_name, g_options_registry[i].long_name, g_options_registry[j].long_name, i, j);
+        return SET_ERRNO(ERROR_CONFIG, "Duplicate short option '-%c' for '--%s' and '--%s' at registry indices %zu and %zu", short_name, g_options_registry[i].long_name,
+                         g_options_registry[j].long_name, i, j);
       }
     }
   }

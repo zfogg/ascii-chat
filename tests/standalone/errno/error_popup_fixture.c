@@ -99,11 +99,11 @@ static int journal_contract(void) {
   if (ASCIICHAT_SOURCE_ROOT[0]) {
     CHECK(symbol_format_source_path("test-error-popup-fixture.exe",
                                     ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source,
-                                    sizeof(source), &external) == ASCIICHAT_OK);
+                                    sizeof(source), &external, ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
     CHECK(!external);
     CHECK(!strcmp(source, "tests\\standalone\\errno\\error_popup_fixture.c"));
   }
-  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external) ==
+  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) ==
         ASCIICHAT_OK);
   CHECK(external);
   CHECK(!strcmp(source, "D:\\external\\vendor.c"));

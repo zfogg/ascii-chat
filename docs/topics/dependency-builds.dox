@@ -25,9 +25,11 @@
  * configurations, while each build directory keeps its own generated files and
  * objects.
  *
- * `ASCIICHAT_SHARED_DEPS=ON` selects shared native dependencies;
- * `ASCIICHAT_SHARED_DEPS=OFF` selects static source targets. WASM, iOS and musl
- * retain their static dependency policy. AEC3's upstream components remain static
+ * Debug and Dev builds default to shared native dependencies; Release-style
+ * builds default to static dependencies. `ASCIICHAT_SHARED_DEPS=ON` explicitly
+ * selects shared dependencies and `ASCIICHAT_STATIC_DEPS=ON` explicitly selects
+ * static dependencies. WASM, iOS and musl retain their static dependency policy.
+ * AEC3's upstream components remain static
  * and can be linked into either the shared ascii-chat library or an executable.
  * CMake records the circular dependency between its factory and implementation,
  * so consumers do not need whole-archive flags or hand-written archive lists.

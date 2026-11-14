@@ -79,28 +79,28 @@ runs:
         mkdir -p "${{ inputs.ccache-directory }}"
 
     - name: Save configure directory cache
-      if: always() && inputs.configure-cache-key != '' && inputs.configure-cache-hit != 'true'
+      if: success() && inputs.configure-cache-key != '' && inputs.configure-cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ${{ inputs.build-directory }}
         key: ${{ inputs.configure-cache-key }}
 
     - name: Save build directory cache
-      if: always() && inputs.build-cache-key != '' && inputs.build-cache-hit != 'true'
+      if: success() && inputs.build-cache-key != '' && inputs.build-cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ${{ inputs.build-directory }}
         key: ${{ inputs.build-cache-key }}
 
     - name: Save dependency cache
-      if: always() && inputs.cache-deps-enabled == 'true' && inputs.deps-cache-directory != '' && inputs.deps-cache-key != '' && inputs.deps-cache-hit != 'true'
+      if: success() && inputs.cache-deps-enabled == 'true' && inputs.deps-cache-directory != '' && inputs.deps-cache-key != '' && inputs.deps-cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ${{ inputs.deps-cache-directory }}
         key: ${{ inputs.deps-cache-key }}
 
     - name: Save ccache directory
-      if: always() && inputs.cache-ccache-enabled == 'true' && inputs.ccache-directory != '' && inputs.ccache-cache-key != '' && inputs.ccache-cache-hit != 'true'
+      if: success() && inputs.cache-ccache-enabled == 'true' && inputs.ccache-directory != '' && inputs.ccache-cache-key != '' && inputs.ccache-cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ${{ inputs.ccache-directory }}

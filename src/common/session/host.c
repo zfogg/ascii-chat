@@ -340,8 +340,7 @@ asciichat_error_t session_host_destroy(session_host_t *host) {
  * Session Host Server Control Functions
  * ============================================================================ */
 
-asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t ptype,
-                                              const void *data, size_t len) {
+asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t ptype, const void *data, size_t len) {
   if (!host || !host->initialized || (!data && len))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host packet");
   acip_transport_t *client_transport = session_host_get_client_transport(host, client_id);
@@ -359,13 +358,10 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
       size_t expected_size = 0;
       size_t pixel_count = 0;
 
-      if (pixel_format < PIXEL_FORMAT_RGB || pixel_format > PIXEL_FORMAT_BGRA || width == 0 || height == 0 ||
-          width > INT_MAX || height > INT_MAX ||
-          checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK ||
-          checked_size_mul(pixel_count, bytes_per_pixel, &expected_size) != ASCIICHAT_OK ||
+      if (pixel_format < PIXEL_FORMAT_RGB || pixel_format > PIXEL_FORMAT_BGRA || width == 0 || height == 0 || width > INT_MAX || height > INT_MAX ||
+          checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK || checked_size_mul(pixel_count, bytes_per_pixel, &expected_size) != ASCIICHAT_OK ||
           expected_size != pixel_data_size) {
-        log_warn("Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)", client_id, width,
-                 height, pixel_format, pixel_data_size);
+        log_warn("Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)", client_id, width, height, pixel_format, pixel_data_size);
       } else {
         // Frame dimensions and pixel format are network-order fields. Resize
         // this participant's image when its capture dimensions change.
@@ -401,8 +397,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
                 dst[p * 3 + 2] = src[bgra ? 0 : 2];
               }
             }
-            log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u, format %u)", client_id, width,
-                            height, pixel_format);
+            log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u, format %u)", client_id, width, height, pixel_format);
             break;
           }
         }
@@ -449,8 +444,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               if (frame_size > 0) {
                 // Allocate buffer for decoded samples
                 float decoded_samples[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)]; // Max 20ms @ 48kHz
-                int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size,
-                                                      decoded_samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
+                int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size, decoded_samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
                 if (decoded_count > 0) {
                   host->clients[j].audio_active = true;
                   // Write samples to ringbuffer one at a time
@@ -461,8 +455,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               }
               current_frame += frame_size;
             }
-            log_debug_every(NS_PER_MS_INT, "Audio batch received from client %u (%u frames)", client_id,
-                            batch_frame_count);
+            log_debug_every(NS_PER_MS_INT, "Audio batch received from client %u (%u frames)", client_id, batch_frame_count);
             break;
           }
         }
@@ -516,8 +509,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
           acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
           result = acip_settings_encode(&header, "", query, sizeof(query), &query_length);
           if (result == ASCIICHAT_OK)
-            result =
-                acip_settings_request(&target->rendering, query, query_length, reply, sizeof(reply), &reply_length);
+            result = acip_settings_request(&target->rendering, query, query_length, reply, sizeof(reply), &reply_length);
         }
       }
     } else if (!target->rendering.revision)
@@ -609,9 +601,7 @@ static void host_forget_viewer_history(session_host_t *host, uint32_t viewer_id)
   }
 }
 
-static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
-                                    const terminal_capabilities_t *caps, const char *palette, uint32_t viewer_id,
-                                    size_t *size) {
+static char *host_create_video_grid(session_host_t *host, int count, int width, int height, const terminal_capabilities_t *caps, const char *palette, uint32_t viewer_id, size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -629,14 +619,10 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
       continue;
     uint64_t start = time_get_ns();
-    ascii_stabilizer_t *history =
-        caps->stabilize ? host_render_history(host, viewer_id, host->clients[i].client_id) : NULL;
-    sources[index].frame_data =
-        ascii_convert_with_buffers_stabilized(host->clients[i].incoming_video, cell_width, cell_height, caps, false,
-                                              false, palette, false, NULL, NULL, history);
+    ascii_stabilizer_t *history = caps->stabilize ? host_render_history(host, viewer_id, host->clients[i].client_id) : NULL;
+    sources[index].frame_data = ascii_convert_with_buffers_stabilized(host->clients[i].incoming_video, cell_width, cell_height, caps, false, false, palette, false, NULL, NULL, history);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
-    stats_counter_add(stats_runtime_scope(),
-                      sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
+    stats_counter_add(stats_runtime_scope(), sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
     sources[index].frame_size = sources[index].frame_data ? strlen(sources[index].frame_data) : 0;
     ++index;
     if (fallback)
@@ -689,9 +675,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
             continue;
         } else {
           session_host_render_config_t config = {0};
-          if (!host->render_target.get_config ||
-              host->render_target.get_config(host->render_target.context, &config) != ASCIICHAT_OK || !config.palette ||
-              config.width <= 0 || config.height <= 0)
+          if (!host->render_target.get_config || host->render_target.get_config(host->render_target.context, &config) != ASCIICHAT_OK || !config.palette || config.width <= 0 || config.height <= 0)
             continue;
           caps = config.caps;
           palette = config.palette;
@@ -735,15 +719,10 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       if (!caps.stabilize)
         host_forget_viewer_history(host, viewer_id);
       int cached = 0;
-      while (cached < grid_count &&
-             (grids[cached].caps.stabilize != caps.stabilize ||
-              (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
-              grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode ||
-              grids[cached].caps.text_renderer != caps.text_renderer ||
-              grids[cached].caps.palette_explicit != caps.palette_explicit ||
-              grids[cached].caps.color_level != caps.color_level ||
-              grids[cached].caps.utf8_support != caps.utf8_support ||
-              grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
+      while (cached < grid_count && (grids[cached].caps.stabilize != caps.stabilize || (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
+                                     grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode || grids[cached].caps.text_renderer != caps.text_renderer ||
+                                     grids[cached].caps.palette_explicit != caps.palette_explicit || grids[cached].caps.color_level != caps.color_level ||
+                                     grids[cached].caps.utf8_support != caps.utf8_support || grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
         ++cached;
       if (cached == grid_count) {
         grids[cached].viewer_id = viewer_id;
@@ -751,8 +730,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
         grids[cached].height = height;
         grids[cached].caps = caps;
         grids[cached].palette = palette;
-        grids[cached].frame =
-            host_create_video_grid(host, count, width, height, &caps, palette, viewer_id, &grids[cached].size);
+        grids[cached].frame = host_create_video_grid(host, count, width, height, &caps, palette, viewer_id, &grids[cached].size);
         ++grid_count;
       }
       host_grid_t *grid = &grids[cached];
@@ -795,8 +773,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
         uint32_t effects = (caps.capabilities & TERM_CAP_MATRIX_RAIN) ? FRAME_RENDER_CONTRACT_RAIN : 0;
         if (count > 1)
           effects |= FRAME_RENDER_CONTRACT_GRID;
-        acip_send_ascii_frame_contract(recipient->transport, &host->frame_workspace, output, output_size, width, height,
-                                       &rendering, effects, "session-host");
+        acip_send_ascii_frame_contract(recipient->transport, &host->frame_workspace, output, output_size, width, height, &rendering, effects, "session-host");
       }
       SAFE_FREE(rain_frame);
     }
@@ -839,8 +816,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
       continue;
     ASCII_OTEL_SCOPE(SERVER_AUDIO);
     if (!client->opus_encoder)
-      client->opus_encoder =
-          opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
+      client->opus_encoder = opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
     if (!client->opus_encoder) {
       result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
       continue;
@@ -851,12 +827,10 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
       mixed[j] = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
     }
     uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
-    size_t opus_len = opus_codec_encode(client->opus_encoder, mixed, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer,
-                                        sizeof(opus_buffer));
+    size_t opus_len = opus_codec_encode(client->opus_encoder, mixed, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-      asciichat_error_t sent = acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1,
-                                                          AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
+      asciichat_error_t sent = acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
       if (sent != ASCIICHAT_OK)
         log_warn("Failed to send mixed audio to client %u", client->client_id);
     }
@@ -881,8 +855,7 @@ static void *host_render_thread(void *arg) {
 
   log_info("Host render thread started");
 
-  bool waiting_for_peer = GET_OPTION(detected_mode) == MODE_DISCOVERY && !GET_OPTION(snapshot_mode) &&
-                          GET_OPTION(splash_screen) && terminal_is_interactive() && terminal_is_stdout_tty();
+  bool waiting_for_peer = GET_OPTION(detected_mode) == MODE_DISCOVERY && !GET_OPTION(snapshot_mode) && GET_OPTION(splash_screen) && terminal_is_interactive() && terminal_is_stdout_tty();
   host->snapshot_first_frame_ns = 0;
   uint64_t last_video_render_ns = 0;
   uint64_t audio_deadline_ns = 0;
@@ -895,8 +868,7 @@ static void *host_render_thread(void *arg) {
       for (int i = 0; i < host->max_clients; ++i) {
         session_host_client_t *client = &host->clients[i];
         // Capabilities establish protocol readiness without requiring camera frames.
-        if (client->active && client->participant_type == PARTICIPANT_TYPE_NETWORK && client->render_width > 0 &&
-            client->render_height > 0) {
+        if (client->active && client->participant_type == PARTICIPANT_TYPE_NETWORK && client->render_width > 0 && client->render_height > 0) {
           peer_ready = true;
           break;
         }
@@ -916,8 +888,7 @@ static void *host_render_thread(void *arg) {
     }
 
     // Complete snapshots only after a local frame, outside the client lock.
-    if (host->snapshot_first_frame_ns > 0 &&
-        (double)(time_get_ns() - host->snapshot_first_frame_ns) / NS_PER_SEC_INT >= GET_OPTION(snapshot_delay)) {
+    if (host->snapshot_first_frame_ns > 0 && (double)(time_get_ns() - host->snapshot_first_frame_ns) / NS_PER_SEC_INT >= GET_OPTION(snapshot_delay)) {
       APP_CALLBACK_VOID(signal_exit);
       break;
     }
@@ -962,8 +933,7 @@ static asciichat_error_t host_connection_open(network_connection_t *connection, 
   if (!client)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate host connection");
   network_connection_set_context(connection, client);
-  client->client_id = session_host_add_client(host, network_connection_transport(connection), ACIP_TRANSPORT_BORROWED,
-                                              network_connection_peer(connection), 0);
+  client->client_id = session_host_add_client(host, network_connection_transport(connection), ACIP_TRANSPORT_BORROWED, network_connection_peer(connection), 0);
   if (!client->client_id)
     return SET_ERRNO(ERROR_SESSION_FULL, "Host has no participant capacity");
   mutex_lock(&host->clients_mutex);
@@ -972,8 +942,7 @@ static asciichat_error_t host_connection_open(network_connection_t *connection, 
       host->clients[i].connection = connection;
   mutex_unlock(&host->clients_mutex);
   if (network_connection_state(connection) == NETWORK_READY)
-    return session_host_set_client_transport(host, client->client_id, network_connection_transport(connection),
-                                             ACIP_TRANSPORT_BORROWED);
+    return session_host_set_client_transport(host, client->client_id, network_connection_transport(connection), ACIP_TRANSPORT_BORROWED);
   asciichat_error_t result = network_connection_prepare_security(connection, true, host->password);
   if (result != ASCIICHAT_OK)
     return result;
@@ -994,18 +963,15 @@ static asciichat_error_t host_connection_open(network_connection_t *connection, 
                                                 .forbid_encryption = GET_OPTION(no_encrypt)};
   return ASCIICHAT_OK;
 }
-static asciichat_error_t host_connection_packet(network_connection_t *connection, packet_type_t type,
-                                                const void *payload, size_t length, void *arg) {
+static asciichat_error_t host_connection_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *arg) {
   host_connection_t *client = network_connection_context(connection);
   if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
-    asciichat_error_t result = network_negotiation_receive(
-        &client->negotiation, network_connection_transport(connection), type, payload, length);
+    asciichat_error_t result = network_negotiation_receive(&client->negotiation, network_connection_transport(connection), type, payload, length);
     if (result == ASCIICHAT_OK && client->negotiation.ready) {
       network_connection_ready(connection);
       // Admission attaches the transport before security negotiation. Publish
       // protocol readiness only now, so browser peers can begin STREAM_START.
-      return session_host_set_client_transport(arg, client->client_id, network_connection_transport(connection),
-                                               ACIP_TRANSPORT_BORROWED);
+      return session_host_set_client_transport(arg, client->client_id, network_connection_transport(connection), ACIP_TRANSPORT_BORROWED);
     }
     return result;
   }
@@ -1049,16 +1015,15 @@ asciichat_error_t session_host_start(session_host_t *host) {
     result = session_quic_listeners_open(host->port, &host->quic_endpoint, &host->webtransport_endpoint);
   if (result != ASCIICHAT_OK)
     return result;
-  network_server_config_t config = {
-      .quic_endpoint = host->quic_endpoint,
-      .webtransport_endpoint = host->webtransport_endpoint,
-      .port = host->port,
-      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
-      .bind_ipv4 = true,
-      .max_connections = host->max_clients,
-      .partial_timeout_ms = 30000,
-      .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
-      .user_data = host};
+  network_server_config_t config = {.quic_endpoint = host->quic_endpoint,
+                                    .webtransport_endpoint = host->webtransport_endpoint,
+                                    .port = host->port,
+                                    .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "127.0.0.1",
+                                    .bind_ipv4 = true,
+                                    .max_connections = host->max_clients,
+                                    .partial_timeout_ms = 30000,
+                                    .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
+                                    .user_data = host};
   result = network_server_create(&config, &host->network_server);
   if (result == ASCIICHAT_OK)
     result = network_server_start(host->network_server);
@@ -1126,14 +1091,12 @@ bool session_host_is_running(session_host_t *host) {
  * Session Host Client Management Functions
  * ============================================================================ */
 
-uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport,
-                                 acip_transport_ownership_t ownership, const char *ip, int port) {
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport, acip_transport_ownership_t ownership, const char *ip, int port) {
   if (!host || !host->initialized) {
     return 0;
   }
 
-  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) ||
-      (!transport && ownership == ACIP_TRANSPORT_OWNED)) {
+  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) || (!transport && ownership == ACIP_TRANSPORT_OWNED)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
     return 0;
   }
@@ -1170,9 +1133,8 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers
-      host->clients[i].incoming_video = image_new(480, 270); // Network-optimal size (HD preview)
-      host->clients[i].incoming_audio = ringbuffer_create(
-          sizeof(float), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * HOST_AUDIO_BUFFER_FRAMES); // ~200ms buffer @ 48kHz
+      host->clients[i].incoming_video = image_new(480, 270);                                                                                // Network-optimal size (HD preview)
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * HOST_AUDIO_BUFFER_FRAMES); // ~200ms buffer @ 48kHz
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         // Cleanup on allocation failure
@@ -1249,8 +1211,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
 
       // Allocate media buffers (same as network clients)
       host->clients[i].incoming_video = image_new(480, 270);
-      host->clients[i].incoming_audio =
-          ringbuffer_create(sizeof(float), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * HOST_AUDIO_BUFFER_FRAMES);
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * HOST_AUDIO_BUFFER_FRAMES);
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         if (host->clients[i].incoming_video) {
@@ -1292,8 +1253,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
-  if (!frame->pixels || frame->w <= 0 || frame->h <= 0 ||
-      image_validate_dimensions((size_t)frame->w, (size_t)frame->h) != ASCIICHAT_OK)
+  if (!frame->pixels || frame->w <= 0 || frame->h <= 0 || image_validate_dimensions((size_t)frame->w, (size_t)frame->h) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid injected image");
   size_t pixel_bytes;
   if (image_calc_rgb_size((size_t)frame->w, (size_t)frame->h, &pixel_bytes) != ASCIICHAT_OK)
@@ -1303,8 +1263,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
 
   // Find memory participant
   for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active && host->clients[i].client_id == participant_id &&
-        host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+    if (host->clients[i].active && host->clients[i].client_id == participant_id && host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
 
       if (!host->clients[i].incoming_video) {
         mutex_unlock(&host->clients_mutex);
@@ -1339,8 +1298,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
   return SET_ERRNO(ERROR_NOT_FOUND, "Memory participant not found");
 }
 
-asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
-                                            size_t count) {
+asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples, size_t count) {
   if (!host || !host->initialized || !samples || count == 0 || count % AUDIO_CHANNELS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
@@ -1349,8 +1307,7 @@ asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t parti
 
   // Find memory participant
   for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active && host->clients[i].client_id == participant_id &&
-        host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+    if (host->clients[i].active && host->clients[i].client_id == participant_id && host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
 
       if (!host->clients[i].incoming_audio) {
         mutex_unlock(&host->clients_mutex);
@@ -1502,8 +1459,7 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].active && host->clients[i].transport) {
-      asciichat_error_t send_result = acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame,
-                                                            frame_len, 80, 24, "session-host");
+      asciichat_error_t send_result = acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame, frame_len, 80, 24, "session-host");
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
         result = send_result;
@@ -1530,10 +1486,8 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].client_id == client_id && host->clients[i].active) {
-      asciichat_error_t result = host->clients[i].transport
-                                     ? acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame,
-                                                             frame_len, 80, 24, "session-host")
-                                     : SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no transport", client_id);
+      asciichat_error_t result = host->clients[i].transport ? acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame, frame_len, 80, 24, "session-host")
+                                                            : SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no transport", client_id);
       mutex_unlock(&host->clients_mutex);
       return result;
     }
@@ -1606,8 +1560,7 @@ static void native_display_frame(void *context, const char *frame, size_t size, 
     host->display_logging_disabled = true;
   }
   session_display_render_frame(host->display_context, frame);
-  if (GET_OPTION(snapshot_mode) && host->snapshot_first_frame_ns == 0 &&
-      session_display_has_first_frame(host->display_context))
+  if (GET_OPTION(snapshot_mode) && host->snapshot_first_frame_ns == 0 && session_display_has_first_frame(host->display_context))
     host->snapshot_first_frame_ns = time_get_ns();
 }
 
@@ -1616,10 +1569,7 @@ asciichat_error_t session_host_set_display(session_host_t *host, struct session_
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   mutex_lock(&host->clients_mutex);
   host->display_context = display;
-  host->render_target = display ? (session_host_render_target_t){.get_config = native_display_config,
-                                                                 .render_frame = native_display_frame,
-                                                                 .context = host}
-                                : (session_host_render_target_t){0};
+  host->render_target = display ? (session_host_render_target_t){.get_config = native_display_config, .render_frame = native_display_frame, .context = host} : (session_host_render_target_t){0};
   mutex_unlock(&host->clients_mutex);
   return ASCIICHAT_OK;
 }
@@ -1700,14 +1650,12 @@ void session_host_stop_render(session_host_t *host) {
  * Session Host Transport Functions (WebRTC Integration)
  * ============================================================================ */
 
-asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
-                                                    acip_transport_t *transport, acip_transport_ownership_t ownership) {
+asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id, acip_transport_t *transport, acip_transport_ownership_t ownership) {
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Host is NULL or not initialized");
   }
 
-  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) ||
-      (!transport && ownership == ACIP_TRANSPORT_OWNED))
+  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) || (!transport && ownership == ACIP_TRANSPORT_OWNED))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
 
   mutex_lock(&host->clients_mutex);

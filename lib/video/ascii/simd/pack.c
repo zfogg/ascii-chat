@@ -59,8 +59,7 @@ void FN(simd_pack_)(const uint8_t *rgb, uint32_t *out, size_t count) {
     simd_pack_scalar(rgb + 3 * i, out + i, count - i);
 }
 
-void FN(simd_halfblock_)(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg,
-                         size_t count, unsigned mode, const uint32_t keys[5]) {
+void FN(simd_halfblock_)(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg, size_t count, unsigned mode, const uint32_t keys[5]) {
   size_t i = 0;
   for (; HAS_BLOCK; i += LANES) {
     BEGIN_BLOCK;
@@ -72,12 +71,8 @@ void FN(simd_halfblock_)(const uint32_t *top, const uint32_t *bottom, uint32_t *
     vec_t transparent;
 #endif
     if (mode == 0) {
-      vec_t yt = SHR(
-          ADD(ADD(MUL(SHR(t, 16), SET(76)), MUL(AND(SHR(t, 8), SET(255)), SET(150))), MUL(AND(t, SET(255)), SET(29))),
-          8);
-      vec_t yb = SHR(
-          ADD(ADD(MUL(SHR(b, 16), SET(76)), MUL(AND(SHR(b, 8), SET(255)), SET(150))), MUL(AND(b, SET(255)), SET(29))),
-          8);
+      vec_t yt = SHR(ADD(ADD(MUL(SHR(t, 16), SET(76)), MUL(AND(SHR(t, 8), SET(255)), SET(150))), MUL(AND(t, SET(255)), SET(29))), 8);
+      vec_t yb = SHR(ADD(ADD(MUL(SHR(b, 16), SET(76)), MUL(AND(SHR(b, 8), SET(255)), SET(150))), MUL(AND(b, SET(255)), SET(29))), 8);
       transparent = BOTH(LT(yt, SET(16)), LT(yb, SET(16)));
       vec_t shade = SHR(yt, 6);
       key = SET((int32_t)keys[0]);

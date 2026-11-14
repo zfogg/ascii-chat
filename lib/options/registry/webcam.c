@@ -12,6 +12,7 @@
 
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
 #include <string.h>
 
 static bool parse_test_pattern(const char *arg, void *dest, char **error_msg) {
@@ -68,23 +69,6 @@ const registry_entry_t g_webcam_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.enum_values = pattern_values, .input_type = OPTION_INPUT_ENUM},
      NULL},
-    {"list-webcams",
-     '\0',
-     OPTION_TYPE_ACTION,
-     0,
-     NULL,
-     0,
-     "List available webcam devices by index and exit.",
-     "WEBCAM",
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_BINARY,
-     {0},
-     NULL},
+    {"list-webcams", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available webcam devices by index and exit.", "WEBCAM", NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY, {0}, NULL},
 
     REGISTRY_TERMINATOR()};

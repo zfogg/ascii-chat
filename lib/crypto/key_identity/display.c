@@ -8,8 +8,7 @@
 #include <string.h>
 #include <ascii-chat/util/utf8.h>
 
-asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out,
-                                      size_t size) {
+asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out, size_t size) {
   if (!out || !size)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing identity output buffer");
   out[0] = '\0';
@@ -72,8 +71,7 @@ const char *key_identity_art_end(const char *text) {
   row += sizeof(border) - 1;
   for (unsigned i = 0; i < KEYMASK_ROWS - 2; ++i) {
     const char *end = strchr(row, '\n');
-    if (!end || end - row < 2 || row[0] != '|' || end[-1] != '|' ||
-        utf8_display_width_n(row, (size_t)(end - row)) != KEYMASK_WIDTH)
+    if (!end || end - row < 2 || row[0] != '|' || end[-1] != '|' || utf8_display_width_n(row, (size_t)(end - row)) != KEYMASK_WIDTH)
       return NULL;
     row = end + 1;
   }

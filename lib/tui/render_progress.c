@@ -73,8 +73,7 @@ static void progress_render(terminal_size_t size, const void *data) {
       memcpy(line, cursor, length);
       line[length] = '\0';
       char *expanded = ansi_expand_rle(line, length);
-      truncate_with_ellipsis(expanded ? expanded : line, clipped, snapshot->length + UI_CLIPPED_TEXT_OVERHEAD,
-                             size.cols - 1);
+      truncate_with_ellipsis(expanded ? expanded : line, clipped, snapshot->length + UI_CLIPPED_TEXT_OVERHEAD, size.cols - 1);
       SAFE_FREE(expanded);
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
@@ -87,12 +86,9 @@ static void progress_render(terminal_size_t size, const void *data) {
     snprintf(total, sizeof(total), "%llu", (unsigned long long)snapshot->total);
   else
     snprintf(total, sizeof(total), "?");
-  const char *phase = snapshot->failed       ? "Recording failed"
-                      : snapshot->finalizing ? "Finalizing file"
-                                             : "Rendering file";
-  snprintf(label, sizeof(label), " %c %s (%llu:%02llu) (frame %llu/%s) ",
-           "|/-\\"[(elapsed / (125 * NS_PER_MS_INT)) % 4], phase, (unsigned long long)(seconds / 60),
-           (unsigned long long)(seconds % 60), (unsigned long long)snapshot->completed, total);
+  const char *phase = snapshot->failed ? "Recording failed" : snapshot->finalizing ? "Finalizing file" : "Rendering file";
+  snprintf(label, sizeof(label), " %c %s (%llu:%02llu) (frame %llu/%s) ", "|/-\\"[(elapsed / (125 * NS_PER_MS_INT)) % 4], phase, (unsigned long long)(seconds / 60), (unsigned long long)(seconds % 60),
+           (unsigned long long)snapshot->completed, total);
   int width = (int)strlen(label);
   if (width > size.cols - 2) {
     width = size.cols - 2;
@@ -126,10 +122,8 @@ static void progress_render(terminal_size_t size, const void *data) {
 // The presentation callback reads only the controller-owned copy and never takes this mutex.
 static void progress_publish(render_progress_t *progress) {
   if (progress->active)
-    ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, progress->fd, (terminal_size_t){.cols = 20, .rows = 5},
-                         progress_render, progress->snapshot,
-                         sizeof(*progress->snapshot) + progress->snapshot->length +
-                             progress->snapshot->destination_length + 2);
+    ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, progress->fd, (terminal_size_t){.cols = 20, .rows = 5}, progress_render, progress->snapshot,
+                         sizeof(*progress->snapshot) + progress->snapshot->length + progress->snapshot->destination_length + 2);
 }
 
 render_progress_t *render_progress_create(bool enabled, const char *destination) {
@@ -163,8 +157,7 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
   uint64_t now = time_get_ns();
   // The overlay refreshes at most eight times per second. Expanding and copying
   // every full-resolution frame only slows the encoder and cannot be displayed.
-  if (succeeded && !progress->snapshot->failed && progress->last_preview_ns && now >= progress->last_preview_ns &&
-      now - progress->last_preview_ns < 125 * NS_PER_MS_INT) {
+  if (succeeded && !progress->snapshot->failed && progress->last_preview_ns && now >= progress->last_preview_ns && now - progress->last_preview_ns < 125 * NS_PER_MS_INT) {
     ++progress->snapshot->completed;
     mutex_unlock(&progress->mutex);
     return;
@@ -174,13 +167,11 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
   // Oversized frames still encode normally; omit their terminal preview.
   if (length > PREVIEW_MAX_BYTES)
     length = 0;
-  progress_snapshot_t *next =
-      SAFE_CALLOC(1, sizeof(*next) + length + progress->snapshot->destination_length + 2, progress_snapshot_t *);
+  progress_snapshot_t *next = SAFE_CALLOC(1, sizeof(*next) + length + progress->snapshot->destination_length + 2, progress_snapshot_t *);
   memcpy(next, progress->snapshot, sizeof(*next));
   next->length = length;
   memcpy(next->frame, frame, length);
-  memcpy(next->frame + length + 1, progress->snapshot->frame + progress->snapshot->length + 1,
-         next->destination_length + 1);
+  memcpy(next->frame + length + 1, progress->snapshot->frame + progress->snapshot->length + 1, next->destination_length + 1);
   if (!next->started_ns)
     next->started_ns = time_get_ns();
   if (succeeded)

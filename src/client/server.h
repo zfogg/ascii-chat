@@ -150,8 +150,7 @@ bool server_connection_is_lost(client_connection_t *connection);
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data,
-                                       size_t len);
+asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data, size_t len);
 
 /**
  * @brief Thread-safe batched audio packet transmission
@@ -163,8 +162,7 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples,
-                                                   int num_samples, int batch_count);
+asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples, int num_samples, int batch_count);
 
 /**
  * @brief Thread-safe Opus audio frame transmission
@@ -180,8 +178,7 @@ asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connecti
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
-                                           int sample_rate, int frame_duration);
+asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size, int sample_rate, int frame_duration);
 
 /**
  * @brief Thread-safe Opus audio batch packet transmission
@@ -197,8 +194,7 @@ asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, cons
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data,
-                                                 size_t opus_size, const uint16_t *frame_sizes, int frame_count);
+asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes, int frame_count);
 
 /**
  * @brief Thread-safe image frame transmission
@@ -214,8 +210,7 @@ asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width,
-                                            uint32_t height, uint32_t pixel_format);
+asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format);
 
 /**
  * @brief Send HEVC/H.264-encoded video frame to server (thread-safe)
@@ -233,9 +228,7 @@ asciichat_error_t threaded_send_image_frame(client_connection_t *connection, con
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data,
-                                                    uint32_t width, uint32_t height, video_codec_t codec,
-                                                    bool *encoding_failed);
+asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data, uint32_t width, uint32_t height, video_codec_t codec, bool *encoding_failed);
 
 /**
  * @brief Thread-safe ping packet transmission
@@ -274,8 +267,7 @@ asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connect
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
-                                                               unsigned short height);
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width, unsigned short height);
 
 /**
  * @brief Thread-safe client join packet transmission
@@ -286,8 +278,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name,
-                                                   uint32_t capabilities);
+asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name, uint32_t capabilities);
 
 /* ============================================================================
  * Thread-Safe Packet Sending Functions

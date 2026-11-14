@@ -63,8 +63,7 @@ struct asciichat_mdns_t {
   bool advertising;
   _Atomic bool stop_advertising;
   platform_thread_t advertiser;
-  char service_type[NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE], instance[NETWORK_MDNS_INSTANCE_BUFFER_SIZE],
-      host[NETWORK_MDNS_HOST_BUFFER_SIZE], query_service[NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE];
+  char service_type[NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE], instance[NETWORK_MDNS_INSTANCE_BUFFER_SIZE], host[NETWORK_MDNS_HOST_BUFFER_SIZE], query_service[NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE];
   char txt[MDNS_MAX_TXT_RECORDS][NETWORK_MDNS_TXT_BUFFER_SIZE];
   mdns_record_t ptr, additional[18];
   size_t additional_count;
@@ -100,9 +99,8 @@ static void bonjour_record_error(asciichat_mdns_t *mdns, DNSServiceErrorType err
     mdns->query_error = error;
 }
 
-static void bonjour_address(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
-                            DNSServiceErrorType error, const char *hostname, const struct sockaddr *address,
-                            uint32_t ttl, void *context) {
+static void bonjour_address(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error, const char *hostname, const struct sockaddr *address, uint32_t ttl,
+                            void *context) {
   bonjour_resolver_t *resolver = context;
   if (error != kDNSServiceErr_NoError) {
     bonjour_record_error(resolver->owner, error);
@@ -119,9 +117,8 @@ static void bonjour_address(DNSServiceRef ref, DNSServiceFlags flags, uint32_t i
   (void)hostname;
 }
 
-static void bonjour_resolved(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
-                             DNSServiceErrorType error, const char *fullname, const char *host, uint16_t port,
-                             uint16_t txt_length, const unsigned char *txt, void *context) {
+static void bonjour_resolved(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error, const char *fullname, const char *host, uint16_t port, uint16_t txt_length,
+                             const unsigned char *txt, void *context) {
   bonjour_resolver_t *resolver = context;
   asciichat_mdns_t *mdns = resolver->owner;
   if (error != kDNSServiceErr_NoError) {
@@ -139,8 +136,7 @@ static void bonjour_resolved(DNSServiceRef ref, DNSServiceFlags flags, uint32_t 
     safe_snprintf(found->txt, sizeof(found->txt), "session_string=%.*s", (int)length, (const char *)session);
   if (resolver->address_ref)
     return;
-  error = DNSServiceGetAddrInfo(&resolver->address_ref, 0, interface_index, kDNSServiceProtocol_IPv4, host,
-                                bonjour_address, resolver);
+  error = DNSServiceGetAddrInfo(&resolver->address_ref, 0, interface_index, kDNSServiceProtocol_IPv4, host, bonjour_address, resolver);
   if (error != kDNSServiceErr_NoError)
     bonjour_record_error(mdns, error);
   (void)ref;
@@ -148,9 +144,7 @@ static void bonjour_resolved(DNSServiceRef ref, DNSServiceFlags flags, uint32_t 
   (void)interface_index;
 }
 
-static void bonjour_browsed(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
-                            DNSServiceErrorType error, const char *name, const char *type, const char *domain,
-                            void *context) {
+static void bonjour_browsed(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error, const char *name, const char *type, const char *domain, void *context) {
   asciichat_mdns_t *mdns = context;
   if (error != kDNSServiceErr_NoError) {
     mdns->query_error = error;
@@ -251,16 +245,13 @@ static void mdns_stop_advertising(asciichat_mdns_t *mdns) {
 #else
   atomic_store(&mdns->stop_advertising, true);
   thread_join(&mdns->advertiser, NULL);
-  mdns_goodbye_multicast(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns->ptr, NULL, 0, mdns->additional,
-                         mdns->additional_count);
+  mdns_goodbye_multicast(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns->ptr, NULL, 0, mdns->additional, mdns->additional_count);
 #endif
   mdns->advertising = false;
 }
 
-static int mdns_service_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry,
-                                 uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
-                                 size_t size, size_t name_offset, size_t name_length, size_t record_offset,
-                                 size_t record_length, void *user_data) {
+static int mdns_service_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry, uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
+                                 size_t size, size_t name_offset, size_t name_length, size_t record_offset, size_t record_length, void *user_data) {
   (void)ttl;
   (void)name_length;
   (void)record_offset;
@@ -274,11 +265,9 @@ static int mdns_service_callback(int sock, const struct sockaddr *from, size_t a
     return 0;
   uint8_t response[MDNS_BUFFER_SIZE];
   if (rclass & MDNS_UNICAST_RESPONSE)
-    mdns_query_answer_unicast(sock, from, addrlen, response, sizeof(response), query_id, (mdns_record_type_t)rtype,
-                              name, strlen(name), mdns->ptr, NULL, 0, mdns->additional, mdns->additional_count);
+    mdns_query_answer_unicast(sock, from, addrlen, response, sizeof(response), query_id, (mdns_record_type_t)rtype, name, strlen(name), mdns->ptr, NULL, 0, mdns->additional, mdns->additional_count);
   else
-    mdns_query_answer_multicast(sock, response, sizeof(response), mdns->ptr, NULL, 0, mdns->additional,
-                                mdns->additional_count);
+    mdns_query_answer_multicast(sock, response, sizeof(response), mdns->ptr, NULL, 0, mdns->additional, mdns->additional_count);
   return 0;
 }
 
@@ -321,8 +310,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
 
   log_debug("Advertising mDNS service: %s (%s:%d)", service->name, service->host, service->port);
 
-  if (!service->port || !service->name[0] || !service->type[0] || !service->host[0] || service->txt_count > 16 ||
-      (service->txt_count && !service->txt_records))
+  if (!service->port || !service->name[0] || !service->type[0] || !service->host[0] || service->txt_count > 16 || (service->txt_count && !service->txt_records))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS service records");
   if (strlen(service->name) > 55 || strlen(service->type) > 180 || strlen(service->host) > 240)
     return SET_ERRNO(ERROR_INVALID_PARAM, "mDNS service name is too long");
@@ -352,17 +340,15 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     safe_snprintf(key, sizeof(key), "%.*s", (int)key_length, service->txt_records[i]);
     const void *value = separator ? separator + 1 : NULL;
     size_t value_length = separator ? strlen(separator + 1) : 0;
-    if (value_length > UINT8_MAX ||
-        TXTRecordSetValue(&txt_record, key, (uint8_t)value_length, value) != kDNSServiceErr_NoError) {
+    if (value_length > UINT8_MAX || TXTRecordSetValue(&txt_record, key, (uint8_t)value_length, value) != kDNSServiceErr_NoError) {
       TXTRecordDeallocate(&txt_record);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
     }
   }
   char instance_name[NETWORK_MDNS_INSTANCE_NAME_BUFFER_SIZE];
   safe_snprintf(instance_name, sizeof(instance_name), "%s-%u", service->name, service->port);
-  DNSServiceErrorType error = DNSServiceRegister(
-      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service->port),
-      TXTRecordGetLength(&txt_record), TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
+  DNSServiceErrorType error = DNSServiceRegister(&mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service->port), TXTRecordGetLength(&txt_record),
+                                                 TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
   TXTRecordDeallocate(&txt_record);
   if (error != kDNSServiceErr_NoError)
     return SET_ERRNO(ERROR_NETWORK, "Cannot register mDNS service with Bonjour (error %d)", error);
@@ -374,31 +360,22 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
   mdns->socket_fd = mdns_socket_open_ipv4(&listen_address);
   if (mdns->socket_fd < 0)
     return SET_ERRNO(ERROR_NETWORK_BIND, "Cannot listen for mDNS service queries");
-  safe_snprintf(mdns->service_type, sizeof(mdns->service_type), "%s%s", service->type,
-                strstr(service->type, ".local") ? (service->type[strlen(service->type) - 1] == '.' ? "" : ".")
-                                                : ".local.");
+  safe_snprintf(mdns->service_type, sizeof(mdns->service_type), "%s%s", service->type, strstr(service->type, ".local") ? (service->type[strlen(service->type) - 1] == '.' ? "" : ".") : ".local.");
   safe_snprintf(mdns->instance, sizeof(mdns->instance), "%s-%u.%s", service->name, service->port, mdns->service_type);
-  safe_snprintf(mdns->host, sizeof(mdns->host), "%s%s", service->host,
-                strstr(service->host, ".local") ? (service->host[strlen(service->host) - 1] == '.' ? "" : ".")
-                                                : ".local.");
+  safe_snprintf(mdns->host, sizeof(mdns->host), "%s%s", service->host, strstr(service->host, ".local") ? (service->host[strlen(service->host) - 1] == '.' ? "" : ".") : ".local.");
   mdns_string_t type = {mdns->service_type, strlen(mdns->service_type)};
   mdns_string_t instance = {mdns->instance, strlen(mdns->instance)};
   mdns->ptr = (mdns_record_t){.name = type, .type = MDNS_RECORDTYPE_PTR, .data.ptr.name = instance};
-  mdns->additional[0] = (mdns_record_t){.name = instance,
-                                        .type = MDNS_RECORDTYPE_SRV,
-                                        .data.srv = {.name = {mdns->host, strlen(mdns->host)}, .port = service->port}};
+  mdns->additional[0] = (mdns_record_t){.name = instance, .type = MDNS_RECORDTYPE_SRV, .data.srv = {.name = {mdns->host, strlen(mdns->host)}, .port = service->port}};
   mdns->additional_count = 1;
   asciichat_errno_scope_t route_scope = errno_checkpoint();
   socket_t route = socket_create("mdns_route", AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (route != INVALID_SOCKET_VALUE) {
-    struct sockaddr_in multicast = {
-        .sin_family = AF_INET, .sin_port = htons(MDNS_PORT), .sin_addr.s_addr = htonl(0xe00000fb)};
+    struct sockaddr_in multicast = {.sin_family = AF_INET, .sin_port = htons(MDNS_PORT), .sin_addr.s_addr = htonl(0xe00000fb)};
     struct sockaddr_in local = {0};
     socklen_t length = sizeof(local);
-    if (socket_connect(route, (struct sockaddr *)&multicast, sizeof(multicast)) == 0 &&
-        socket_getsockname(route, (struct sockaddr *)&local, &length) == 0)
-      mdns->additional[mdns->additional_count++] =
-          (mdns_record_t){.name = {mdns->host, strlen(mdns->host)}, .type = MDNS_RECORDTYPE_A, .data.a.addr = local};
+    if (socket_connect(route, (struct sockaddr *)&multicast, sizeof(multicast)) == 0 && socket_getsockname(route, (struct sockaddr *)&local, &length) == 0)
+      mdns->additional[mdns->additional_count++] = (mdns_record_t){.name = {mdns->host, strlen(mdns->host)}, .type = MDNS_RECORDTYPE_A, .data.a.addr = local};
     socket_close(route);
   }
   errno_scope_end(route_scope, ASCIICHAT_ERRNO_DISMISSED);
@@ -407,13 +384,10 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     char *value = strchr(mdns->txt[i], '=');
     if (value)
       *value++ = '\0';
-    mdns->additional[mdns->additional_count++] = (mdns_record_t){
-        .name = instance,
-        .type = MDNS_RECORDTYPE_TXT,
-        .data.txt = {.key = {mdns->txt[i], strlen(mdns->txt[i])}, .value = {value, value ? strlen(value) : 0}}};
+    mdns->additional[mdns->additional_count++] =
+        (mdns_record_t){.name = instance, .type = MDNS_RECORDTYPE_TXT, .data.txt = {.key = {mdns->txt[i], strlen(mdns->txt[i])}, .value = {value, value ? strlen(value) : 0}}};
   }
-  if (mdns_announce_multicast(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns->ptr, NULL, 0,
-                              mdns->additional, mdns->additional_count) < 0)
+  if (mdns_announce_multicast(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns->ptr, NULL, 0, mdns->additional, mdns->additional_count) < 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot announce mDNS service");
   atomic_store(&mdns->stop_advertising, false);
   if (platform_thread_create(&mdns->advertiser, "mdns_advertiser", mdns_advertiser, mdns) != 0)
@@ -441,10 +415,8 @@ asciichat_error_t asciichat_mdns_unadvertise(asciichat_mdns_t *mdns, const char 
  * Called by mdns_query_recv for each record received.
  * Extracts service name, type, addresses, and port information.
  */
-static int mdns_record_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry,
-                                uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
-                                size_t size, size_t name_offset, size_t name_length, size_t record_offset,
-                                size_t record_length, void *user_data) {
+static int mdns_record_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry, uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
+                                size_t size, size_t name_offset, size_t name_length, size_t record_offset, size_t record_length, void *user_data) {
   asciichat_mdns_t *mdns = (asciichat_mdns_t *)user_data;
 
   if (!mdns || !mdns->callback) {
@@ -453,8 +425,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
   // A complete SRV answer binds one instance to a host and port. PTR/A/TXT
   // records alone are never exposed as selectable, port-zero servers.
-  if ((entry != MDNS_ENTRYTYPE_ANSWER && entry != MDNS_ENTRYTYPE_ADDITIONAL) ||
-      (rtype != MDNS_RECORDTYPE_SRV && rtype != MDNS_RECORDTYPE_TXT) || !ttl)
+  if ((entry != MDNS_ENTRYTYPE_ANSWER && entry != MDNS_ENTRYTYPE_ADDITIONAL) || (rtype != MDNS_RECORDTYPE_SRV && rtype != MDNS_RECORDTYPE_TXT) || !ttl)
     return 0;
   asciichat_mdns_discovery_t discovery = {0};
   discovery.ttl = ttl;
@@ -478,10 +449,8 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
     mdns_record_txt_t records[MDNS_MAX_TXT_RECORDS];
     size_t count = mdns_record_parse_txt(data, size, record_offset, record_length, records, 16);
     for (size_t i = 0; i < count; ++i) {
-      if (records[i].key.length == strlen("session_string") &&
-          memcmp(records[i].key.str, "session_string", records[i].key.length) == 0 && records[i].value.length < 256)
-        safe_snprintf(cached->txt, sizeof(cached->txt), "session_string=%.*s", (int)records[i].value.length,
-                      records[i].value.str);
+      if (records[i].key.length == strlen("session_string") && memcmp(records[i].key.str, "session_string", records[i].key.length) == 0 && records[i].value.length < 256)
+        safe_snprintf(cached->txt, sizeof(cached->txt), "session_string=%.*s", (int)records[i].value.length, records[i].value.str);
     }
     if (cached->port)
       mdns->callback(cached, mdns->callback_data);
@@ -489,8 +458,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   }
   if (record_length < 7)
     return 0;
-  mdns_record_srv_t srv =
-      mdns_record_parse_srv(data, size, record_offset, record_length, discovery.host, sizeof(discovery.host) - 1);
+  mdns_record_srv_t srv = mdns_record_parse_srv(data, size, record_offset, record_length, discovery.host, sizeof(discovery.host) - 1);
   if (!srv.port || !srv.name.length)
     return 0;
   discovery.port = srv.port;
@@ -513,27 +481,22 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   return 0;
 }
 
-static int mdns_send_query_on_interface(asciichat_mdns_t *mdns, const char *service_type, size_t service_type_len,
-                                        struct in_addr address) {
+static int mdns_send_query_on_interface(asciichat_mdns_t *mdns, const char *service_type, size_t service_type_len, struct in_addr address) {
   if (setsockopt(mdns->socket_fd, IPPROTO_IP, IP_MULTICAST_IF, (const char *)&address, sizeof(address)) != 0)
     return -1;
-  return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
-                         mdns->buffer_capacity, 0);
+  return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer, mdns->buffer_capacity, 0);
 }
 
 static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *service_type, size_t service_type_len) {
   int sent = 0;
 #ifdef _WIN32
   ULONG size = 0;
-  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL,
-                           NULL, &size) == ERROR_BUFFER_OVERFLOW) {
+  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL, NULL, &size) == ERROR_BUFFER_OVERFLOW) {
     IP_ADAPTER_ADDRESSES *adapters = SAFE_MALLOC(size, IP_ADAPTER_ADDRESSES *);
     if (adapters) {
-      if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST,
-                               NULL, adapters, &size) == NO_ERROR) {
+      if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL, adapters, &size) == NO_ERROR) {
         for (IP_ADAPTER_ADDRESSES *adapter = adapters; adapter; adapter = adapter->Next) {
-          if (adapter->OperStatus != IfOperStatusUp || adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK ||
-              adapter->NoMulticast)
+          if (adapter->OperStatus != IfOperStatusUp || adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK || adapter->NoMulticast)
             continue;
           for (IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress; unicast; unicast = unicast->Next) {
             if (!unicast->Address.lpSockaddr || unicast->Address.lpSockaddr->sa_family != AF_INET)
@@ -551,8 +514,7 @@ static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *se
   struct ifaddrs *interfaces = NULL;
   if (getifaddrs(&interfaces) == 0) {
     for (struct ifaddrs *interface = interfaces; interface; interface = interface->ifa_next) {
-      if (!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET || !(interface->ifa_flags & IFF_UP) ||
-          !(interface->ifa_flags & IFF_MULTICAST) || (interface->ifa_flags & IFF_LOOPBACK))
+      if (!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET || !(interface->ifa_flags & IFF_UP) || !(interface->ifa_flags & IFF_MULTICAST) || (interface->ifa_flags & IFF_LOOPBACK))
         continue;
       struct in_addr address = ((struct sockaddr_in *)interface->ifa_addr)->sin_addr;
       if (mdns_send_query_on_interface(mdns, service_type, service_type_len, address) >= 0)
@@ -562,13 +524,11 @@ static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *se
   }
 #endif
   if (!sent)
-    return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
-                           mdns->buffer_capacity, 0);
+    return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer, mdns->buffer_capacity, 0);
   return 0;
 }
 
-asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *service_type,
-                                       asciichat_mdns_discovery_callback_fn callback, void *user_data) {
+asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *service_type, asciichat_mdns_discovery_callback_fn callback, void *user_data) {
   if (!mdns || !service_type || !callback) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS query parameters");
   }
@@ -583,8 +543,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Service type cannot be empty");
   }
 
-  safe_snprintf(mdns->query_service, sizeof(mdns->query_service), "%s%s", service_type,
-                service_type[service_type_len - 1] == '.' ? "" : ".");
+  safe_snprintf(mdns->query_service, sizeof(mdns->query_service), "%s%s", service_type, service_type[service_type_len - 1] == '.' ? "" : ".");
   mdns->callback = callback;
   mdns->callback_data = user_data;
   mdns->discovered_count = 0;
@@ -599,8 +558,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
   size_t length = strlen(regtype);
   if (length && regtype[length - 1] == '.')
     regtype[length - 1] = '\0';
-  DNSServiceErrorType error =
-      DNSServiceBrowse(&mdns->browser, 0, kDNSServiceInterfaceIndexAny, regtype, "local.", bonjour_browsed, mdns);
+  DNSServiceErrorType error = DNSServiceBrowse(&mdns->browser, 0, kDNSServiceInterfaceIndexAny, regtype, "local.", bonjour_browsed, mdns);
   if (error != kDNSServiceErr_NoError)
     return SET_ERRNO(ERROR_NETWORK, "Cannot browse mDNS services with Bonjour (error %d)", error);
   return ASCIICHAT_OK;
@@ -650,8 +608,7 @@ asciichat_error_t asciichat_mdns_update(asciichat_mdns_t *mdns, int timeout_ms) 
   struct pollfd fd = {.fd = mdns->socket_fd, .events = POLLIN};
   if (socket_poll(&fd, 1, (int64_t)timeout_ms * NS_PER_MS_INT) <= 0)
     return ASCIICHAT_OK;
-  int num_records =
-      mdns_query_recv(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns_record_callback, mdns, mdns->query_id);
+  int num_records = mdns_query_recv(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns_record_callback, mdns, mdns->query_id);
 
   if (num_records < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to receive mDNS query responses");

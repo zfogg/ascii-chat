@@ -108,8 +108,7 @@ static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opt
         fprintf(output, "%s[", name);
         zsh_escape_desc(output, opts[i].help_text);
         fprintf(output, "]'\n");
-      } else if (opts[i].metadata.input_type == OPTION_INPUT_FILEPATH ||
-                 (opts[i].arg_placeholder && strstr(opts[i].arg_placeholder, "FILE"))) {
+      } else if (opts[i].metadata.input_type == OPTION_INPUT_FILEPATH || (opts[i].arg_placeholder && strstr(opts[i].arg_placeholder, "FILE"))) {
         fprintf(output, "%s=[", name);
         zsh_escape_desc(output, opts[i].help_text);
         fprintf(output, "]:file:_files'\n");
@@ -311,8 +310,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   /* Discovery-service options - grouped by category */
   size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+  const option_descriptor_t *discovery_svc_opts = options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
     zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count, false);

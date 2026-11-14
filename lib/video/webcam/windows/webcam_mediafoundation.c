@@ -61,8 +61,7 @@ static HRESULT enumerate_devices_and_print(void) {
   }
 
   // Set the device type to video capture
-  hr =
-      IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+  hr = IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
   if (FAILED(hr)) {
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
     goto cleanup;
@@ -179,8 +178,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  hr =
-      IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+  hr = IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
   if (FAILED(hr)) {
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
     goto error;
@@ -224,8 +222,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   hr = MFCreateAttributes(&readerAttrs, 1);
   if (FAILED(hr)) {
     log_error("Failed to create reader attributes: 0x%08x", hr);
-    result =
-        SET_ERRNO(ERROR_WEBCAM, "Failed to create reader attributes for device %d (HRESULT: 0x%08x)", device_index, hr);
+    result = SET_ERRNO(ERROR_WEBCAM, "Failed to create reader attributes for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -247,9 +244,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-    result =
-        SET_ERRNO(ERROR_WEBCAM_IN_USE,
-                  "Failed to create Media Foundation source reader for device %d (HRESULT: 0x%08x)", device_index, hr);
+    result = SET_ERRNO(ERROR_WEBCAM_IN_USE, "Failed to create Media Foundation source reader for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -276,8 +271,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   UINT64 bestSize = ((UINT64)640 << 32) | 480;
   for (DWORD index = 0;; index++) {
     IMFMediaType *nativeType = NULL;
-    hr =
-        IMFSourceReader_GetNativeMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &nativeType);
+    hr = IMFSourceReader_GetNativeMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &nativeType);
     if (hr == MF_E_NO_MORE_TYPES)
       break;
     if (FAILED(hr)) {
@@ -285,22 +279,18 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       break;
     }
     UINT64 nativeSize = 0, nativeRate = 0;
-    if (SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_SIZE, &nativeSize)) &&
-        SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_RATE, &nativeRate))) {
+    if (SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_SIZE, &nativeSize)) && SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_RATE, &nativeRate))) {
       UINT32 numerator = (UINT32)(nativeRate >> 32), denominator = (UINT32)nativeRate;
       UINT64 width = nativeSize >> 32, height = (UINT32)nativeSize;
       UINT64 pixels = width * height;
       UINT64 distance = pixels > 640 * 480 ? pixels - 640 * 480 : 640 * 480 - pixels;
       if (numerator && denominator) {
-        log_dev("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width, (unsigned long long)height,
-                (double)numerator / denominator);
+        log_dev("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width, (unsigned long long)height, (double)numerator / denominator);
         UINT64 candidate = (UINT64)numerator * bestDenominator;
         UINT64 best = (UINT64)bestNumerator * denominator;
         bool within_budget = pixels <= 640 * 480;
         bool best_within_budget = (bestSize >> 32) * (UINT32)bestSize <= 640 * 480;
-        if (!bestType || (within_budget && !best_within_budget) ||
-            (within_budget == best_within_budget &&
-             (candidate > best || (candidate == best && distance < bestDistance)))) {
+        if (!bestType || (within_budget && !best_within_budget) || (within_budget == best_within_budget && (candidate > best || (candidate == best && distance < bestDistance)))) {
           if (bestType)
             IMFMediaType_Release(bestType);
           bestType = nativeType;
@@ -404,8 +394,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-    result =
-        SET_ERRNO(ERROR_WEBCAM_IN_USE, "Failed to read test frame from device %d (HRESULT: 0x%08x)", device_index, hr);
+    result = SET_ERRNO(ERROR_WEBCAM_IN_USE, "Failed to read test frame from device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -545,8 +534,7 @@ read_latest:
   QueryPerformanceCounter(&end);
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
-  log_debug_every(5 * US_PER_SEC_INT, "ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr,
-                  flags, sample);
+  log_debug_every(5 * US_PER_SEC_INT, "ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -605,8 +593,7 @@ read_latest:
       webcam_frame_clock_reset(&ctx->clock);
     if (!ctx->last_backlog_log_ns || wall_ns - ctx->last_backlog_log_ns >= NS_PER_SEC_INT) {
       ctx->last_backlog_log_ns = wall_ns;
-      log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)",
-                ctx->device_index, backlog_ms, discarded, flushed);
+      log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)", ctx->device_index, backlog_ms, discarded, flushed);
     }
     return NULL;
   }
@@ -617,9 +604,7 @@ read_latest:
     if (system_time >= 0 && device_time <= (UINT64)system_time)
       device_age_ms = (double)((UINT64)system_time - device_time) / 10000.0;
   }
-  double device_interval_ms = ctx->last_sample_timestamp >= 0 && timestamp >= ctx->last_sample_timestamp
-                                  ? (double)(timestamp - ctx->last_sample_timestamp) / 10000.0
-                                  : -1;
+  double device_interval_ms = ctx->last_sample_timestamp >= 0 && timestamp >= ctx->last_sample_timestamp ? (double)(timestamp - ctx->last_sample_timestamp) / 10000.0 : -1;
   ctx->last_sample_timestamp = timestamp;
   if (!ctx->last_frame_log_ns || wall_ns - ctx->last_frame_log_ns >= NS_PER_SEC_INT) {
     ctx->last_frame_log_ns = wall_ns;
@@ -705,8 +690,7 @@ read_latest:
 
   // Use FFmpeg's runtime-selected SIMD converter instead of a per-pixel C copy.
   // Keep the context across frames, including changes in capture dimensions.
-  ctx->rgb_converter = sws_getCachedContext(ctx->rgb_converter, (int)width, (int)height, AV_PIX_FMT_BGRA, (int)width,
-                                            (int)height, AV_PIX_FMT_RGB24, SWS_POINT, NULL, NULL, NULL);
+  ctx->rgb_converter = sws_getCachedContext(ctx->rgb_converter, (int)width, (int)height, AV_PIX_FMT_BGRA, (int)width, (int)height, AV_PIX_FMT_RGB24, SWS_POINT, NULL, NULL, NULL);
   size_t stride_bytes = (size_t)(ctx->stride < 0 ? -(int64_t)ctx->stride : ctx->stride);
   if (!ctx->rgb_converter || stride_bytes < (size_t)width * 4 || bufferLength < stride_bytes * height) {
     IMFMediaBuffer_Unlock(buffer);
@@ -738,8 +722,7 @@ read_latest:
     ctx->last_copy_log_ns = complete_ns;
     log_debug("CAMERA_COPY: device=%u request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f "
               "device_age_ms=%.2f",
-              ctx->device_index, (unsigned long long)request_ns, (unsigned long long)wall_ns,
-              (unsigned long long)complete_ns, (double)(wall_ns - request_ns) / NS_PER_MS_INT,
+              ctx->device_index, (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns, (double)(wall_ns - request_ns) / NS_PER_MS_INT,
               (double)(complete_ns - wall_ns) / NS_PER_MS_INT, device_age_ms);
   }
   return img;
@@ -809,8 +792,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   }
 
   // Set the device type to video capture
-  hr =
-      IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+  hr = IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
   if (FAILED(hr)) {
     result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
     goto cleanup;
@@ -842,8 +824,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
     LPWSTR friendlyName = NULL;
     UINT32 nameLength = 0;
 
-    hr = IMFActivate_GetAllocatedString(mf_devices[i], &MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &friendlyName,
-                                        &nameLength);
+    hr = IMFActivate_GetAllocatedString(mf_devices[i], &MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &friendlyName, &nameLength);
     if (SUCCEEDED(hr) && friendlyName) {
       // Convert wide string to UTF-8
       int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);

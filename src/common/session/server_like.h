@@ -81,8 +81,7 @@ ASCIICHAT_API asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
 
 ASCIICHAT_API nat_upnp_context_t *session_server_like_get_upnp_ctx(void);
 
-ASCIICHAT_API asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port,
-                                                                   const char **txt, size_t txt_count);
+ASCIICHAT_API asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port, const char **txt, size_t txt_count);
 
 ASCIICHAT_API bool session_server_like_shutdown_requested(void);
 

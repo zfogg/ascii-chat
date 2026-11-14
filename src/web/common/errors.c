@@ -2,14 +2,14 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <emscripten/emscripten.h>
 
 static asciichat_error_context_t browser_error_frames[ASCIICHAT_ERRNO_MAX_DEPTH];
 static size_t browser_error_count;
 
 size_t browser_error_snapshot(void) {
-  asciichat_errno_snapshot_t snapshot =
-      errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  asciichat_errno_snapshot_t snapshot = errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
   browser_error_count = snapshot.copied;
   return snapshot.total;
 }
@@ -30,7 +30,7 @@ const char *browser_error_message(size_t index) {
 
 const char *browser_error_file(size_t index) {
   const asciichat_error_context_t *frame = browser_error_at(index);
-  return frame && frame->file ? extract_project_relative_path(frame->file) : "";
+  return frame && frame->file ? extract_project_relative_path(frame->file, ASCIICHAT_OWNED_SOURCE_DIRS) : "";
 }
 
 const char *browser_error_full_file(size_t index) {

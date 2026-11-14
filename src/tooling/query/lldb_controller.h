@@ -281,8 +281,7 @@ public:
    * @param expand_depth How deep to expand struct members (0 = don't expand)
    * @return VariableInfo or nullopt if not found
    */
-  [[nodiscard]] std::optional<VariableInfo> readVariable(const std::string &name, uint32_t frame_index = 0,
-                                                         uint32_t expand_depth = 0) const;
+  [[nodiscard]] std::optional<VariableInfo> readVariable(const std::string &name, uint32_t frame_index = 0, uint32_t expand_depth = 0) const;
 
   /**
    * @brief List all variables in scope at a frame
@@ -292,8 +291,7 @@ public:
    * @param include_statics Include static variables
    * @return Vector of VariableInfo structs
    */
-  [[nodiscard]] std::vector<VariableInfo> listVariables(uint32_t frame_index = 0, bool include_args = true,
-                                                        bool include_locals = true, bool include_statics = false) const;
+  [[nodiscard]] std::vector<VariableInfo> listVariables(uint32_t frame_index = 0, bool include_args = true, bool include_locals = true, bool include_statics = false) const;
 
   // =========================================================================
   // Breakpoints
@@ -345,8 +343,7 @@ public:
    * @param frame_index Which frame context (0 = current)
    * @return VariableInfo with result, or nullopt on failure
    */
-  [[nodiscard]] std::optional<VariableInfo> evaluateExpression(const std::string &expression,
-                                                               uint32_t frame_index = 0) const;
+  [[nodiscard]] std::optional<VariableInfo> evaluateExpression(const std::string &expression, uint32_t frame_index = 0) const;
 
 private:
   // LLDB objects (mutable because LLDB's SB API methods aren't const-correct)

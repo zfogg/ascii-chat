@@ -19,8 +19,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                         uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
+asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "public_key and secret_key cannot be NULL");
   }
@@ -34,8 +33,7 @@ asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_S
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                     uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
+asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!path || !public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path, public_key, and secret_key cannot be NULL");
   }
@@ -87,8 +85,7 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED2551
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                     const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
+asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!path || !public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path, public_key, and secret_key cannot be NULL");
   }
@@ -131,8 +128,7 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
   return ASCIICHAT_OK;
 }
 
-void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                               char fingerprint[HEX_STRING_SIZE_32]) {
+void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[HEX_STRING_SIZE_32]) {
   if (!public_key || !fingerprint) {
     log_error("NULL parameters");
     return;
