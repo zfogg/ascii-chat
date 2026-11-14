@@ -13,6 +13,7 @@
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/config.h>
+#include <ascii-chat/options/schema.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <libflags/builder.h>
@@ -29,6 +30,12 @@ static asciichat_error_t completions_generate_with_libflags(completion_format_t 
   options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
   if (!config)
     return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
+
+  const options_config_t *schema_config = config;
+  if (config_schema_build_from_configs(&schema_config, 1) != ASCIICHAT_OK) {
+    options_config_destroy(config);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion metadata");
+  }
 
   flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
   if (!builder) {
