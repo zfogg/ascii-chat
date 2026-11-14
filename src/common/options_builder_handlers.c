@@ -32,8 +32,6 @@ static bool is_set_double(const void *field, const option_descriptor_t *desc);
 static bool is_set_callback(const void *field, const option_descriptor_t *desc);
 static bool is_set_action(const void *field, const option_descriptor_t *desc);
 
-static asciichat_error_t apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc);
 static asciichat_error_t apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc);
 static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc);
 static asciichat_error_t apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc);
@@ -58,8 +56,8 @@ static void format_help_placeholder_action(char *buf, size_t bufsize);
 // ============================================================================
 
 const option_builder_handler_t g_builder_handlers[] = {
-    [OPTION_TYPE_BOOL] = {is_set_bool, apply_env_bool, apply_cli_bool, format_help_placeholder_bool},
-    [OPTION_TYPE_INT] = {is_set_int, apply_env_int, apply_cli_int, format_help_placeholder_int},
+    [OPTION_TYPE_BOOL] = {is_set_bool, NULL, apply_cli_bool, format_help_placeholder_bool},
+    [OPTION_TYPE_INT] = {is_set_int, NULL, apply_cli_int, format_help_placeholder_int},
     [OPTION_TYPE_STRING] = {is_set_string, apply_env_string, apply_cli_string, format_help_placeholder_string},
     [OPTION_TYPE_DOUBLE] = {is_set_double, apply_env_double, apply_cli_double, format_help_placeholder_double},
     [OPTION_TYPE_CALLBACK] = {is_set_callback, apply_env_callback, apply_cli_callback, format_help_placeholder_callback},
@@ -94,65 +92,7 @@ static bool is_set_action(const void *field, const option_descriptor_t *desc) {
   return false;
 }
 
-// --- apply_env handlers ---
-static asciichat_error_t apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc) {
-  // Safely read the current bool value (may be uninitialized)
-  unsigned char current_byte = 0;
-  memcpy(&current_byte, field, 1);
-  bool current_value = (current_byte != 0);
-
-  // Safely read the default value
-  bool default_val = false;
-  if (desc && desc->default_value) {
-    unsigned char default_byte = 0;
-    memcpy(&default_byte, desc->default_value, 1);
-    default_val = (default_byte != 0);
-  }
-
-  if (!env_value && current_value != default_val) {
-    return ASCIICHAT_OK; // Preserve a configured value when the environment is unset.
-  }
-
-  bool value = false;
-  if (env_value) {
-    if (!flags_parse_bool_relaxed(env_value, &value)) {
-      log_warn("Invalid boolean value for environment variable '%s': %s", desc && desc->env_var_name ? desc->env_var_name : "unknown", env_value);
-      return ASCIICHAT_OK;
-    }
-  } else if (desc && desc->default_value) {
-    unsigned char default_byte = 0;
-    memcpy(&default_byte, desc->default_value, 1);
-    value = (default_byte != 0);
-  }
-
-  unsigned char value_byte = value ? 1 : 0;
-  memcpy(field, &value_byte, 1);
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
-  if (env_value) {
-    char *endptr;
-    long parsed = strtol(env_value, &endptr, 10);
-    if (*endptr == '\0' && parsed >= INT_MIN && parsed <= INT_MAX) {
-      int value = (int)parsed;
-      memcpy(field, &value, sizeof(int));
-    }
-    return ASCIICHAT_OK;
-  }
-  // No env var — apply descriptor default only if field hasn't been changed from descriptor default
-  int current_value = 0;
-  memcpy(&current_value, field, sizeof(int));
-  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
-  if (current_value != default_val)
-    return ASCIICHAT_OK;
-  if (desc->default_value) {
-    int value = *(const int *)desc->default_value;
-    memcpy(field, &value, sizeof(int));
-  }
-  return ASCIICHAT_OK;
-}
-
+// --- apply_env handlers for ascii-chat-specific storage and callbacks ---
 static asciichat_error_t apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc) {
   const char *current_value = (const char *)field;
   const char *default_val = NULL;
