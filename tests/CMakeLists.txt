@@ -29,6 +29,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 #   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
+# CI explicitly requests Criterion tests even for configurations whose preset
+# normally disables the test graph. Preserve that contract before any target
+# guards below evaluate BUILD_TESTS.
+if(ASCIICHAT_FORCE_CRITERION_TESTS)
+    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
+endif()
+
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
