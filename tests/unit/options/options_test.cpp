@@ -95,7 +95,8 @@ static int test_options_init_with_fork(char **argv, int argc, int is_client) {
   }
   argv_copy.push_back(nullptr);
 
-  return options_init(argc, argv_copy.data()) == ASCIICHAT_OK ? 0 : 1;
+  asciichat_error_t result = options_init(argc, argv_copy.data());
+  return result == ASCIICHAT_OK ? 0 : 1;
 #else
   pid_t pid = fork();
   if (pid < 0) {
