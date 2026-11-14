@@ -1,7 +1,4 @@
 #include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
-#include <ascii-chat/tests/catch2_test_helpers.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
