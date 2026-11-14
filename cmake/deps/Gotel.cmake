@@ -25,6 +25,13 @@ add_library(asciichat-gotel-sqlite INTERFACE)
 if(SQLITE3_INCLUDE_DIRS)
     target_include_directories(asciichat-gotel-sqlite INTERFACE ${SQLITE3_INCLUDE_DIRS})
 endif()
+if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+    # FindSQLite3 may expose only the Windows library filename (for example
+    # `sqlite3.lib`). Gotel is built in its dependency-cache directory, so the
+    # consuming link command must also receive the vcpkg library directory.
+    target_link_directories(asciichat-gotel-sqlite INTERFACE
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/$<CONFIG>/lib")
+endif()
 target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)

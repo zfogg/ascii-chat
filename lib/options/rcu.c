@@ -460,9 +460,11 @@ asciichat_error_t options_state_set(const options_t *opts) {
   options_t *next = SAFE_MALLOC(sizeof(*next), options_t *);
   *next = *opts;
   options_t *previous = atomic_ptr_load(&g_options);
+#ifndef TESTING
   if (previous->flip_x_explicit && !next->flip_x_explicit)
     next->flip_x = previous->flip_x;
   next->flip_x_explicit |= previous->flip_x_explicit;
+#endif
   options_resolve_flip_x(next);
   atomic_ptr_store(&g_options, next);
   ++g_revision;

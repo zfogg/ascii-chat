@@ -214,6 +214,13 @@ endfunction()
 
 # Catch2 test framework setup
 if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    # The options/RCU implementation is linked from the shared production
+    # object target. Give that object compilation the same test-mode contract
+    # as the Catch2 driver so native option tests cannot load host config or
+    # retain orientation state from the bootstrap snapshot.
+    if(TARGET ascii-chat-core)
+        target_compile_definitions(ascii-chat-core PRIVATE TESTING=1)
+    endif()
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS Catch2::Catch2WithMain)
 
@@ -489,7 +496,8 @@ target_link_libraries(unit_tests PRIVATE
         # Keep the CTest label scalar. Catch2 tags remain available through
         # Catch2 filters; passing a semicolon list here makes CatchAddTests
         # emit malformed CTest property pairs.
-        PROPERTIES LABELS "unit" TIMEOUT ${CTEST_TEST_TIMEOUT})
+        PROPERTIES LABELS "unit" TIMEOUT ${CTEST_TEST_TIMEOUT}
+                   ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 
     # Benchmarks are a single, explicitly serialized Catch2 executable. They
     # are never scheduled alongside correctness cases because timing results

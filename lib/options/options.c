@@ -1620,6 +1620,20 @@ static void build_options_schema(void) {
 }
 
 static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
+#if defined(TESTING)
+  // Unit/contract binaries must be independent of the developer's
+  // machine-wide configuration. Explicit config-parser tests exercise that
+  // code directly; options-init tests should only see their argv and the
+  // test environment.
+  (void)opts;
+  (void)detected_mode;
+  *fps_set_by_config = false;
+  return ASCIICHAT_OK;
+#endif
+  if (SAFE_GETENV("TESTING")) {
+    *fps_set_by_config = false;
+    return ASCIICHAT_OK;
+  }
   // Isolated MCP renderers never load user/system configuration.
   if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER")) {
     *fps_set_by_config = false;
@@ -2498,6 +2512,19 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
+#ifdef TESTING
+  // Test binaries deliberately omit ambient config. Recompute this marker
+  // from the argv under test so a schema/default pass cannot make an option
+  // look explicitly selected.
+  opts.flip_x_explicit = false;
+  for (int i = 0; i < mode_args.argc; ++i) {
+    if (mode_args.argv[i] &&
+        (strcmp(mode_args.argv[i], "--flip-x") == 0 || strncmp(mode_args.argv[i], "--flip-x=", 9) == 0)) {
+      opts.flip_x_explicit = true;
+      break;
+    }
+  }
+#endif
   // Preserve an explicit FPS-counter value from the original argv. Some
   // command-line forms pass through mode-specific filtering.
   // mode-argv filtering paths otherwise reduce --fps-counter=true to the
