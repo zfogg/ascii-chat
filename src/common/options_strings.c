@@ -16,7 +16,7 @@
 
 #include <ascii-chat/options/options.h> // For asciichat_mode_t and MODE_ enums
 #include <ascii-chat/options/strings.h>
-#include <ascii-chat/options/levenshtein.h>
+#include <libflags/levenshtein.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/registry.h>
 #include <libplatform/terminal.h>           // For terminal color modes
@@ -121,14 +121,14 @@ const char *asciichat_suggest_mode(const char *input) {
   const char **names = NULL;
   size_t count = asciichat_get_all_mode_strings(&names);
 
-  // Create NULL-terminated array for levenshtein_find_similar
+  // Create a NULL-terminated array for libflags suggestion matching.
   static const char *null_terminated[MODE_NAME_CAPACITY + 1]; // Max 32 modes + NULL
   for (size_t i = 0; i < count && i < MODE_NAME_CAPACITY; i++) {
     null_terminated[i] = names[i];
   }
   null_terminated[count] = NULL;
 
-  return levenshtein_find_similar(input, null_terminated);
+  return flags_levenshtein_find_similar(input, null_terminated);
 }
 
 // ============================================================================
@@ -203,5 +203,5 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
 
   size_t value_count = 0;
   const char **values = options_registry_get_enum_values(option_name, NULL, &value_count);
-  return values ? levenshtein_find_similar(input, values) : NULL;
+  return values ? flags_levenshtein_find_similar(input, values) : NULL;
 }

@@ -22,7 +22,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/levenshtein.h>
+#include <libflags/levenshtein.h>
 #include <ascii-chat/options/validation.h>
 #include <libplatform/terminal.h>
 #include <sys/stat.h>
@@ -43,7 +43,7 @@
 
 // Find the most similar option name to an unknown option
 // Returns the best matching option name, or NULL if no good match found
-// Note: Uses LEVENSHTEIN_SUGGESTION_THRESHOLD from levenshtein.h
+// Note: Uses FLAGS_LEVENSHTEIN_SUGGESTION_THRESHOLD from libflags.
 const char *find_similar_option(const char *unknown_opt, const struct option *options) {
   if (!unknown_opt || !options) {
     return NULL;
@@ -53,7 +53,7 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
   size_t best_distance = SIZE_MAX;
 
   for (int i = 0; options[i].name != NULL; i++) {
-    size_t dist = levenshtein(unknown_opt, options[i].name);
+    size_t dist = flags_levenshtein(unknown_opt, options[i].name);
     if (dist < best_distance) {
       best_distance = dist;
       best_match = options[i].name;
@@ -61,7 +61,7 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
   }
 
   // Only suggest if the distance is within our threshold
-  if (best_distance <= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+  if (best_distance <= FLAGS_LEVENSHTEIN_SUGGESTION_THRESHOLD) {
     return best_match;
   }
 

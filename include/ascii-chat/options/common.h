@@ -51,7 +51,6 @@
  *
  * **Option Parsing Helpers**:
  *
- * - `find_similar_option()`: Typo detection using Levenshtein distance
  * - `validate_positive_int_opt()`: Validate positive integers
  * - `validate_port_opt()`: Validate port numbers (1-65535)
  * - `validate_fps_opt()`: Validate frame rates
@@ -118,7 +117,7 @@ extern "C" {
  * @param options Array of valid option structures (must be NULL-terminated)
  * @return Suggested option name, or NULL if no good match found
  *
- * @note Uses LEVENSHTEIN_SUGGESTION_THRESHOLD to filter poor matches
+ * @note Uses libflags's suggestion threshold to filter poor matches.
  *
  * Example:
  * @code
