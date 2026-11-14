@@ -104,4 +104,20 @@ if(NOT ZLIB_FOUND)
     endif()
 endif()
 
+# libwebsockets configures in a nested scope and may re-read ZLIB_LIBRARY from
+# the cache. Never let a stale NOTFOUND value escape into that subproject when
+# a usable imported target or system zlib is already available.
+if(ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+    if(UNIX)
+        find_library(_ASCIICHAT_ZLIB_LIBRARY NAMES z zlib)
+        if(_ASCIICHAT_ZLIB_LIBRARY)
+            set(ZLIB_LIBRARY "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE FILEPATH
+                "zlib library used by dependency subprojects" FORCE)
+        endif()
+    elseif(TARGET ZLIB::ZLIB)
+        set(ZLIB_LIBRARY ZLIB::ZLIB CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+    endif()
+endif()
+
 message(STATUS "${BoldGreen}✓${ColorReset} zlib found")
