@@ -294,9 +294,13 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_custom_section(b, "KEYBINDINGS",
                                      "Available in ascii-chat client, mirror, and discovery modes. "
                                      "While rendering, press '?' to display a keyboard shortcuts help menu showing:\n"
-                                     "  - Available keybindings (?, Space, arrows, m, c, f, r, -)\n"
-                                     "  - Press - to toggle the FPS counter (always visible in keyboard help).\n"
-                                     "  - Current settings (volume, color mode, audio status, etc.)",
+                                     "  - ? to toggle help, Space to pause, arrows to seek or change volume\n"
+                                     "  - m to mute; c/f to cycle color mode/filter; r to cycle render mode\n"
+                                     "  - Shift-r to cycle text renderer; Shift-s to toggle stabilization\n"
+                                     "  - x/y to flip horizontally/vertically; w to toggle face follow\n"
+                                     "  - 1/2/3 to toggle Matrix rain, waveform, or audio frequencies\n"
+                                     "  - - to toggle the FPS counter; z to toggle Zalgo intensity\n"
+                                     "  - Current settings include volume, color mode, renderer, stabilization, and animations",
                                      OPTION_MODE_CLIENT_LIKE);
 
   // Add environment variables section (all modes)
