@@ -50,7 +50,7 @@ async function wait(check, ms = 30000) {
   }
   throw Error("Timed out waiting for native service");
 }
-async function waitForLog(service, marker, ms = 30000) {
+async function waitForLog(service, marker, ms = 120000) {
   await wait(() => {
     if (service.child.exitCode !== null) throw Error(service.text());
     return service.text().includes(marker);

@@ -4926,8 +4926,6 @@ async function ClientModule(moduleArg = {}) {
     throw "unwind";
   };
   var getHeapMax = () => 268435456;
-  var _emscripten_get_heap_max = () => getHeapMax();
-  var _emscripten_num_logical_cores = () => navigator["hardwareConcurrency"];
   var growMemory = (size) => {
     var oldHeapSize = wasmMemory.buffer.byteLength;
     var pages = ((size - oldHeapSize + 65535) / 65536) | 0;
@@ -5844,8 +5842,8 @@ async function ClientModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1929823: () => Module.getRandomValue(),
-    1929859: () => {
+    1925456: () => Module.getRandomValue(),
+    1925492: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -5877,6 +5875,25 @@ async function ClientModule(moduleArg = {}) {
         }
     },
   };
+  function js_console_log(level, message) {
+    const msg = UTF8ToString(message);
+    switch (level) {
+      case 0:
+      case 1:
+      case 2:
+        console.log(msg);
+        break;
+      case 3:
+        console.warn(msg);
+        break;
+      case 4:
+      case 5:
+        console.error(msg);
+        break;
+      default:
+        console.log(msg);
+    }
+  }
   var ___getTypeName = makeInvalidEarlyAccess("___getTypeName");
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
@@ -6194,9 +6211,7 @@ async function ClientModule(moduleArg = {}) {
       emscripten_date_now: _emscripten_date_now,
       emscripten_err: _emscripten_err,
       emscripten_exit_with_live_runtime: _emscripten_exit_with_live_runtime,
-      emscripten_get_heap_max: _emscripten_get_heap_max,
       emscripten_get_now: _emscripten_get_now,
-      emscripten_num_logical_cores: _emscripten_num_logical_cores,
       emscripten_resize_heap: _emscripten_resize_heap,
       environ_get: _environ_get,
       environ_sizes_get: _environ_sizes_get,
@@ -6208,6 +6223,7 @@ async function ClientModule(moduleArg = {}) {
       invoke_iii,
       invoke_iiiii,
       invoke_viiii,
+      js_console_log,
       memory: wasmMemory,
       proc_exit: _proc_exit,
     };

@@ -5840,8 +5840,8 @@ async function MirrorModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1774671: () => Module.getRandomValue(),
-    1774707: () => {
+    1772800: () => Module.getRandomValue(),
+    1772836: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -5873,6 +5873,25 @@ async function MirrorModule(moduleArg = {}) {
         }
     },
   };
+  function js_console_log(level, message) {
+    const msg = UTF8ToString(message);
+    switch (level) {
+      case 0:
+      case 1:
+      case 2:
+        console.log(msg);
+        break;
+      case 3:
+        console.warn(msg);
+        break;
+      case 4:
+      case 5:
+        console.error(msg);
+        break;
+      default:
+        console.log(msg);
+    }
+  }
   var ___getTypeName = makeInvalidEarlyAccess("___getTypeName");
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
@@ -6188,6 +6207,7 @@ async function MirrorModule(moduleArg = {}) {
       invoke_iii,
       invoke_iiiii,
       invoke_viiii,
+      js_console_log,
       memory: wasmMemory,
       proc_exit: _proc_exit,
     };

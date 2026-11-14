@@ -35,6 +35,19 @@ function(copy_windows_dlls TARGET_NAME)
 
         include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
+        # QUIC dependencies are built outside vcpkg and must be staged too.
+        if(TARGET asciichat-ngtcp2 AND TARGET asciichat-ngtcp2-crypto AND TARGET asciichat-nghttp3)
+            get_target_property(_quic_runtime_type asciichat-ngtcp2 TYPE)
+            if(_quic_runtime_type STREQUAL "SHARED_LIBRARY")
+                foreach(_quic_runtime asciichat-ngtcp2 asciichat-ngtcp2-crypto asciichat-nghttp3)
+                    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                            "$<TARGET_FILE:${_quic_runtime}>" "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                        VERBATIM)
+                endforeach()
+            endif()
+        endif()
+
         # Determine vcpkg installed directory
         if(DEFINED _VCPKG_INSTALLED_DIR)
             set(VCPKG_INSTALLED "${_VCPKG_INSTALLED_DIR}")
