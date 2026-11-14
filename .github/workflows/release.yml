@@ -574,7 +574,7 @@ jobs:
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
-          CMAKE_ARGS=""
+          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=OFF"
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
           fi
