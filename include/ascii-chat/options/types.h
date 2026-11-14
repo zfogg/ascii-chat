@@ -50,27 +50,4 @@ typedef enum {
   DEPENDENCY_IMPLIES,
 } dependency_type_t;
 
-/** @brief Legacy registry view used only by ascii-chat completion adapters. */
-typedef struct {
-  const char *long_name;
-  char short_name;
-  option_type_t type;
-  size_t offset;
-  const char *help_text;
-  const char *group;
-  const char *arg_placeholder;
-  bool hide_from_mode_help;
-  bool hide_from_binary_help;
-  const void *default_value;
-  bool required;
-  const char *env_var_name;
-  bool (*validate)(const void *options_struct);
-  bool (*parse_fn)(const char *arg, void *dest, char **error_msg);
-  void (*action_fn)(void);
-  bool owns_memory;
-  bool optional_arg;
-  option_mode_bitmask_t mode_bitmask;
-  option_metadata_t metadata;
-  const void *(*mode_default_getter)(asciichat_mode_t mode);
-} option_descriptor_t;
 

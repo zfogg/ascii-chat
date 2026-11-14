@@ -42,4 +42,3 @@ asciichat_error_t registry_validate_unique_options(void);
 void registry_init_size(void);
 const registry_entry_t *registry_find_entry_by_name(const char *long_name);
 const registry_entry_t *registry_find_entry_by_short(char short_name);
-option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry);

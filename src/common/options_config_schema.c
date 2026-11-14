@@ -115,7 +115,7 @@ static size_t get_field_size(option_type_t type, size_t offset) {
 /**
  * @brief Helper function to check if descriptor should be added to schema
  */
-static bool should_add_descriptor(const option_descriptor_t *desc, const option_descriptor_t **existing, size_t count) {
+static bool should_add_descriptor(const registry_entry_t *desc, const registry_entry_t **existing, size_t count) {
   if (!desc || desc->type == OPTION_TYPE_ACTION) {
     return false; // Skip actions (not an error, just filtering)
   }
@@ -160,7 +160,7 @@ static char *store_dynamic_string(const char *str) {
   return stored;
 }
 
-static asciichat_error_t config_schema_build_from_descriptors(const option_descriptor_t *descriptors, size_t descriptor_total) {
+static asciichat_error_t config_schema_build_from_registry_entries(const registry_entry_t *descriptors, size_t descriptor_total) {
   // Free existing dynamic schema if any
   if (g_dynamic_schema) {
     SAFE_FREE(g_dynamic_schema);
@@ -180,7 +180,7 @@ static asciichat_error_t config_schema_build_from_descriptors(const option_descr
   }
 
   // Collect registry descriptors and deduplicate fields shared by modes.
-  const option_descriptor_t *all_descriptors[SCHEMA_OPTION_CAPACITY] = {0}; // Max expected options
+  const registry_entry_t *all_descriptors[SCHEMA_OPTION_CAPACITY] = {0}; // Max expected options
   size_t descriptor_count = 0;
   for (size_t i = 0; i < descriptor_total && descriptor_count < SCHEMA_OPTION_CAPACITY; ++i)
     if (descriptors[i].long_name && should_add_descriptor(&descriptors[i], all_descriptors, descriptor_count))
@@ -199,7 +199,7 @@ static asciichat_error_t config_schema_build_from_descriptors(const option_descr
   char category_buffer[OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE];
 
   for (size_t i = 0; i < descriptor_count; i++) {
-    const option_descriptor_t *desc = all_descriptors[i];
+    const registry_entry_t *desc = all_descriptors[i];
     if (!desc || !desc->long_name || !desc->group) {
       continue;
     }
@@ -250,7 +250,7 @@ static asciichat_error_t config_schema_build_from_descriptors(const option_descr
     meta->field_offset = desc->offset;
     meta->field_size = get_field_size(meta->type, desc->offset);
     // Use builder's validate function directly - it receives the full options struct
-    meta->validate_fn = desc->validate;
+    meta->validate_fn = desc->validate_fn;
     // Use builder's parse function for CALLBACK types
     meta->parse_fn = desc->parse_fn;
     meta->description = desc->help_text;
@@ -278,11 +278,7 @@ static asciichat_error_t config_schema_build_from_descriptors(const option_descr
 
 asciichat_error_t config_schema_build_from_registry(void) {
   registry_init_size();
-  static option_descriptor_t descriptors[OPTIONS_REGISTRY_CAPACITY];
-  memset(descriptors, 0, sizeof(descriptors));
-  for (size_t i = 0; i < g_registry_size; ++i)
-    descriptors[i] = registry_entry_to_descriptor(&g_options_registry[i]);
-  return config_schema_build_from_descriptors(descriptors, g_registry_size);
+  return config_schema_build_from_registry_entries(g_options_registry, g_registry_size);
 }
 
 // ============================================================================

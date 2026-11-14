@@ -154,34 +154,3 @@ const registry_entry_t *registry_find_entry_by_short(char short_name) {
   return NULL;
 }
 
-/**
- * @brief Convert registry entry to option descriptor
- */
-option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry) {
-  option_descriptor_t desc = {0};
-  if (entry) {
-    desc.long_name = entry->long_name;
-    desc.short_name = entry->short_name;
-    desc.type = entry->type;
-    desc.offset = entry->offset;
-    desc.help_text = entry->help_text;
-    desc.group = entry->group;
-    desc.arg_placeholder = entry->arg_placeholder;
-    desc.hide_from_mode_help = false;
-    // Hide discovery service options from binary-level help (they're for discovery-service mode only)
-    desc.hide_from_binary_help = (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC);
-    desc.default_value = entry->default_value;
-    desc.required = entry->required;
-    desc.env_var_name = entry->env_var_name;
-    desc.validate = entry->validate_fn;
-    desc.parse_fn = entry->parse_fn;
-    desc.action_fn = NULL;
-    desc.owns_memory = entry->owns_memory;
-    desc.optional_arg = entry->optional_arg;
-    desc.mode_bitmask = entry->mode_bitmask;
-    desc.metadata = entry->metadata;
-    desc.mode_default_getter = entry->mode_default_getter;
-  }
-  return desc;
-}
-
