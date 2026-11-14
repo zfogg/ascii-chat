@@ -22,7 +22,7 @@
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/resources.h>
 #include <ascii-chat/options/manpage/parser.h>
-#include <ascii-chat/options/manpage/formatter.h>
+#include <libflags/manpage/formatter.h>
 #include <ascii-chat/options/manpage/merger.h>
 #include <ascii-chat/options/manpage/content/options.h>
 #include <ascii-chat/options/manpage/content/environment.h>
@@ -120,7 +120,7 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   }
 
   // Write title/header
-  manpage_fmt_write_title(f, program_name, mode_name, brief_description);
+  flags_manpage_write_title(f, program_name, mode_name, brief_description);
 
   // Write SYNOPSIS
   char *synopsis_content = NULL;
@@ -141,11 +141,11 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   }
 
   // Write DESCRIPTION
-  manpage_fmt_write_section(f, "DESCRIPTION");
+  flags_manpage_write_section(f, "DESCRIPTION");
   fprintf(f, ".B ascii-chat\nis a terminal-based video chat application that converts webcam video to ASCII\n");
   fprintf(f, "art in real-time. It enables video chat directly in your terminal, whether you're\n");
   fprintf(f, "using a local console, a remote SSH session, or any terminal emulator.\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
   // Write USAGE
   char *usage_content = NULL;
@@ -192,27 +192,27 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   }
 
   // Write placeholder manual sections
-  manpage_fmt_write_section(f, "FILES");
+  flags_manpage_write_section(f, "FILES");
   fprintf(f, ".I ~/.ascii-chat/config.toml\n");
   fprintf(f, "User configuration file\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
-  manpage_fmt_write_section(f, "NOTES");
+  flags_manpage_write_section(f, "NOTES");
   fprintf(f, "For more information and examples, visit the project repository.\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
-  manpage_fmt_write_section(f, "BUGS");
+  flags_manpage_write_section(f, "BUGS");
   fprintf(f, "Report bugs at the project issue tracker.\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
-  manpage_fmt_write_section(f, "AUTHOR");
+  flags_manpage_write_section(f, "AUTHOR");
   fprintf(f, "Contributed by the ascii-chat community.\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
-  manpage_fmt_write_section(f, "SEE ALSO");
+  flags_manpage_write_section(f, "SEE ALSO");
   fprintf(f, ".B man(1),\n");
   fprintf(f, ".B groff_man(7)\n");
-  manpage_fmt_write_blank_line(f);
+  flags_manpage_write_blank_line(f);
 
   if (should_close) {
     fclose(f);

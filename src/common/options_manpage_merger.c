@@ -11,7 +11,7 @@
 #define MANPAGE_INITIAL_BUFFER_SIZE 512
 
 #include <ascii-chat/options/manpage/merger.h>
-#include <ascii-chat/options/manpage/formatter.h>
+#include <libflags/manpage/formatter.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>

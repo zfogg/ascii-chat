@@ -82,7 +82,6 @@
 #include <libflags/flags.h>
 #include <libflags/commands.h>
 #include <libflags/completions/completions.h>
-#include <libflags/manpage/formatter.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/systemd.h>
 #include <libplatform/terminal.h>
@@ -157,37 +156,6 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
   return parsed == FLAGS_COMPLETION_UNKNOWN ? COMPLETION_FORMAT_UNKNOWN : (completion_format_t)parsed;
 }
 
-const char *manpage_fmt_escape_groff(const char *text) {
-  return flags_manpage_escape_groff(text);
-}
-
-void manpage_fmt_write_section(FILE *output, const char *section_name) {
-  flags_manpage_write_section(output, section_name);
-}
-
-void manpage_fmt_write_blank_line(FILE *output) {
-  flags_manpage_write_blank_line(output);
-}
-
-void manpage_fmt_write_bold(FILE *output, const char *text) {
-  flags_manpage_write_bold(output, text);
-}
-
-void manpage_fmt_write_italic(FILE *output, const char *text) {
-  flags_manpage_write_italic(output, text);
-}
-
-void manpage_fmt_write_tagged_paragraph(FILE *output) {
-  flags_manpage_write_tagged_paragraph(output);
-}
-
-void manpage_fmt_write_text(FILE *output, const char *text) {
-  flags_manpage_write_text(output, text);
-}
-
-void manpage_fmt_write_title(FILE *output, const char *program_name, const char *mode_name, const char *description) {
-  flags_manpage_write_title(output, program_name, mode_name, description);
-}
 
 option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
   if (!count)
