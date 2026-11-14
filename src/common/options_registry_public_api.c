@@ -67,38 +67,54 @@ asciichat_error_t options_registry_add_all_to_flags_builder(flags_schema_builder
     flags_value_type_t type;
     flags_option_behavior_t behavior = FLAGS_BEHAVIOR_VALUE;
     switch (entry->type) {
-    case OPTION_TYPE_BOOL: type = FLAGS_TYPE_BOOL; break;
-    case OPTION_TYPE_INT: type = FLAGS_TYPE_INT64; break;
-    case OPTION_TYPE_DOUBLE: type = FLAGS_TYPE_DOUBLE; break;
-    case OPTION_TYPE_STRING: type = FLAGS_TYPE_STRING; break;
-    case OPTION_TYPE_CALLBACK: type = FLAGS_TYPE_CUSTOM; break;
-    case OPTION_TYPE_ACTION: type = FLAGS_TYPE_CUSTOM; behavior = FLAGS_BEHAVIOR_ACTION; break;
-    default: continue;
+    case OPTION_TYPE_BOOL:
+      type = FLAGS_TYPE_BOOL;
+      break;
+    case OPTION_TYPE_INT:
+      type = FLAGS_TYPE_INT64;
+      break;
+    case OPTION_TYPE_DOUBLE:
+      type = FLAGS_TYPE_DOUBLE;
+      break;
+    case OPTION_TYPE_STRING:
+      type = FLAGS_TYPE_STRING;
+      break;
+    case OPTION_TYPE_CALLBACK:
+      type = FLAGS_TYPE_CUSTOM;
+      break;
+    case OPTION_TYPE_ACTION:
+      type = FLAGS_TYPE_CUSTOM;
+      behavior = FLAGS_BEHAVIOR_ACTION;
+      break;
+    default:
+      continue;
     }
     flags_option_spec_t option = {.name = entry->long_name,
-                                        .short_name = entry->short_name,
-                                        .description = entry->help_text,
-                                        .group = entry->group,
-                                        .required = entry->required,
-                                        .metavar = entry->arg_placeholder,
-                                        .environment_name = entry->env_var_name,
-                                        .type = type,
-                                        .behavior = behavior,
-                                        .default_operation = entry->type == OPTION_TYPE_BOOL ? FLAGS_VALUE_TOGGLE : FLAGS_VALUE_ASSIGN,
-                                        .argument_requirement = entry->type == OPTION_TYPE_BOOL || entry->type == OPTION_TYPE_ACTION ? FLAGS_ARGUMENT_NONE :
-                                                                                                                                             entry->optional_arg ? FLAGS_ARGUMENT_OPTIONAL : FLAGS_ARGUMENT_REQUIRED,
-                                        .storage_offset = entry->offset,
-                                        .storage_size = entry->type == OPTION_TYPE_STRING ? sizeof(char *) : entry->type == OPTION_TYPE_DOUBLE ? sizeof(double) : entry->type == OPTION_TYPE_BOOL ? sizeof(bool) : sizeof(int),
-                                        .default_value = entry->default_value,
-                                        .enum_values = entry->metadata.enum_values,
-                                        .enum_value_count = 0,
-                                        .dynamic_string = entry->owns_memory,
-                                        .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
-                                        .validation_regex = entry->metadata.validation_pattern,
-                                        .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
-                                                           ? registry_flags_change
-                                                           : NULL,
-                                        .user_data = (void *)entry};
+                                  .short_name = entry->short_name,
+                                  .description = entry->help_text,
+                                  .group = entry->group,
+                                  .required = entry->required,
+                                  .metavar = entry->arg_placeholder,
+                                  .environment_name = entry->env_var_name,
+                                  .type = type,
+                                  .behavior = behavior,
+                                  .default_operation = entry->type == OPTION_TYPE_BOOL ? FLAGS_VALUE_TOGGLE : FLAGS_VALUE_ASSIGN,
+                                  .argument_requirement = entry->type == OPTION_TYPE_BOOL || entry->type == OPTION_TYPE_ACTION ? FLAGS_ARGUMENT_NONE
+                                                          : entry->optional_arg                                                ? FLAGS_ARGUMENT_OPTIONAL
+                                                                                                                               : FLAGS_ARGUMENT_REQUIRED,
+                                  .storage_offset = entry->offset,
+                                  .storage_size = entry->type == OPTION_TYPE_STRING   ? sizeof(char *)
+                                                  : entry->type == OPTION_TYPE_DOUBLE ? sizeof(double)
+                                                  : entry->type == OPTION_TYPE_BOOL   ? sizeof(bool)
+                                                                                      : sizeof(int),
+                                  .default_value = entry->default_value,
+                                  .enum_values = entry->metadata.enum_values,
+                                  .enum_value_count = 0,
+                                  .dynamic_string = entry->owns_memory,
+                                  .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
+                                  .validation_regex = entry->metadata.validation_pattern,
+                                  .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) ? registry_flags_change : NULL,
+                                  .user_data = (void *)entry};
     if (entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION)
       option.storage_size = 0;
     if (entry->metadata.enum_values) {

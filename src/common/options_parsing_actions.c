@@ -485,8 +485,7 @@ void action_create_manpage(const char *output_path) {
     action_exit(ERROR_FILE_OPERATION);
   }
   const flags_manpage_metadata_t metadata = {.program_name = "ascii-chat", .section = "1", .description = "Video chat in your terminal"};
-  const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) &&
-                       flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
+  const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) && flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
   if (output != stdout)
     fclose(output);
   flags_schema_builder_destroy(builder);

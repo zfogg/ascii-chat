@@ -153,4 +153,3 @@ const registry_entry_t *registry_find_entry_by_short(char short_name) {
   }
   return NULL;
 }
-

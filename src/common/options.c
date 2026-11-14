@@ -126,9 +126,8 @@ static asciichat_error_t options_json_validate_value(const registry_entry_t *ent
     return SET_ERRNO(ERROR_INVALID_PARAM, "test-pattern must be boolean, 0 or 1");
   }
   const char *type = options_json_type(entry);
-  bool valid = (!strcmp(type, "boolean") && yyjson_is_bool(value)) || (!strcmp(type, "integer") && yyjson_is_int(value)) ||
-               (!strcmp(type, "number") && yyjson_is_num(value)) || (!strcmp(type, "string") && yyjson_is_str(value)) ||
-               (!strcmp(entry->long_name, "seek") && yyjson_is_num(value));
+  bool valid = (!strcmp(type, "boolean") && yyjson_is_bool(value)) || (!strcmp(type, "integer") && yyjson_is_int(value)) || (!strcmp(type, "number") && yyjson_is_num(value)) ||
+               (!strcmp(type, "string") && yyjson_is_str(value)) || (!strcmp(entry->long_name, "seek") && yyjson_is_num(value));
   if (!valid)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Wrong type for %s", entry->long_name);
   if (yyjson_is_str(value) && (yyjson_get_len(value) > 4096 || strlen(yyjson_get_str(value)) != yyjson_get_len(value)))
@@ -231,7 +230,6 @@ static void js_log_options(const char *msg) {
   (void)msg;
 }
 
-
 static asciichat_error_t options_generate_completion_with_libflags(completion_format_t format, FILE *output) {
   flags_schema_builder_t *builder = flags_schema_builder_create();
   if (!builder) {
@@ -242,10 +240,10 @@ static asciichat_error_t options_generate_completion_with_libflags(completion_fo
     return SET_ERRNO(ERROR_CONFIG, "Failed to populate completion schema");
   }
 
-  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH
+  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH   ? FLAGS_COMPLETION_BASH
                                    : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH
-                                   : format == COMPLETION_FORMAT_ZSH ? FLAGS_COMPLETION_ZSH
-                                   : FLAGS_COMPLETION_POWERSHELL;
+                                   : format == COMPLETION_FORMAT_ZSH  ? FLAGS_COMPLETION_ZSH
+                                                                      : FLAGS_COMPLETION_POWERSHELL;
   bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
   flags_schema_builder_destroy(builder);
   return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
@@ -275,7 +273,6 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
   flags_completion_shell_t parsed = flags_completion_shell_parse(shell_name);
   return parsed == FLAGS_COMPLETION_UNKNOWN ? COMPLETION_FORMAT_UNKNOWN : (completion_format_t)parsed;
 }
-
 
 // ============================================================================
 // Global Action Flag Tracking
@@ -493,8 +490,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     }
   }
   const registry_entry_t *registry = options_registry_get_raw();
-  const option_mode_bitmask_t command_modes[] = {OPTION_MODE_SERVER, OPTION_MODE_CLIENT, OPTION_MODE_MIRROR,
-                                                 OPTION_MODE_DISCOVERY_SVC, OPTION_MODE_MCP_SERVER, OPTION_MODE_API_SERVER};
+  const option_mode_bitmask_t command_modes[] = {OPTION_MODE_SERVER, OPTION_MODE_CLIENT, OPTION_MODE_MIRROR, OPTION_MODE_DISCOVERY_SVC, OPTION_MODE_MCP_SERVER, OPTION_MODE_API_SERVER};
   flags_command_t *command_nodes[] = {server, client, mirror, discovery_service, mcp_server, api_server};
   for (size_t i = 0; i < schema->option_count; ++i) {
     const flags_option_spec_t *option = &schema->options[i];
@@ -1799,9 +1795,7 @@ static bool add_ascii_chat_dependencies(flags_schema_builder_t *builder) {
 asciichat_error_t options_validate_libflags(options_t *options) {
   if (!options)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Options storage is NULL");
-  const option_mode_bitmask_t mode_mask = options->detected_mode == MODE_DISCOVERY
-                                              ? OPTION_MODE_ALL
-                                              : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << options->detected_mode));
+  const option_mode_bitmask_t mode_mask = options->detected_mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << options->detected_mode));
   flags_schema_builder_t *builder = flags_schema_builder_create();
   if (!builder)
     return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags validation schema");
@@ -2716,7 +2710,7 @@ asciichat_error_t options_init(int argc, char **argv) {
 
 cleanup:
   if (result != ASCIICHAT_OK)
-  SAFE_FREE(mode_args.allocated);
+    SAFE_FREE(mode_args.allocated);
   return result;
 }
 
