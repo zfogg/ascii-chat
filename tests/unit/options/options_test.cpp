@@ -605,8 +605,8 @@ TEST_CASE("options/valid_palettes", "[options]") {
   char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"program", "client", "--palette", valid_palettes[i], NULL};
-    int result = test_options_init_with_fork(argv, 4, true);
+    char *argv[] = {"program", "client", "--palette", valid_palettes[i], "--renderer", "luminance", NULL};
+    int result = test_options_init_with_fork(argv, 6, true);
     ASCIICHAT_REQUIRE_EQ(result, 0, "Valid palette %s should not cause exit", valid_palettes[i]);
   }
 
@@ -1196,7 +1196,7 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "truecolor alias should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_digital, ARGV_LIST("client", "--palette", "digital"), true,
+    test_palette_digital, ARGV_LIST("client", "--palette", "digital", "--renderer", "luminance"), true,
     { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_DIGITAL); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "digital palette should not cause exit"); })
 

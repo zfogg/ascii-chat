@@ -1668,6 +1668,7 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
   bool saved_flip_x = opts->flip_x;
   bool saved_flip_y = opts->flip_y;
+  bool saved_flip_x_explicit = opts->flip_x_explicit;
   bool saved_fps_counter = opts->fps_counter;
   if (SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = OPT_FLIP_X_DEFAULT;
@@ -1676,6 +1677,9 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (defaults_result != ASCIICHAT_OK) {
     return defaults_result;
   }
+  // Applying schema defaults must not make flip-x look user-specified. Keep
+  // the explicit bit from configuration/earlier CLI processing only.
+  opts->flip_x_explicit = saved_flip_x_explicit;
   // An enabled environment flag overrides the opposite config-file choice.
   const char *encrypt_env = SAFE_GETENV("ASCII_CHAT_ENCRYPT");
   const char *no_encrypt_env = SAFE_GETENV("ASCII_CHAT_NO_ENCRYPT");
