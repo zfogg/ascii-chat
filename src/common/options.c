@@ -508,6 +508,25 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
       return SET_ERRNO(ERROR_MEMORY, "Failed to register command option");
     }
   }
+  const registry_entry_t *registry = options_registry_get_raw();
+  const option_mode_bitmask_t command_modes[] = {OPTION_MODE_SERVER, OPTION_MODE_CLIENT, OPTION_MODE_MIRROR,
+                                                 OPTION_MODE_DISCOVERY_SVC, OPTION_MODE_MCP_SERVER, OPTION_MODE_API_SERVER};
+  flags_command_t *command_nodes[] = {server, client, mirror, discovery_service, mcp_server, api_server};
+  for (size_t i = 0; i < schema->option_count; ++i) {
+    const flags_option_spec_t *option = &schema->options[i];
+    const registry_entry_t *entry = registry;
+    while (entry && entry->long_name && strcmp(entry->long_name, option->name) != 0)
+      ++entry;
+    if (!entry || !entry->long_name)
+      continue;
+    for (size_t mode_index = 0; mode_index < sizeof(command_modes) / sizeof(command_modes[0]); ++mode_index)
+      if (entry->mode_bitmask & command_modes[mode_index])
+        if (!flags_command_add_option(command_nodes[mode_index], option)) {
+          flags_schema_builder_destroy(schema_builder);
+          flags_command_destroy(root);
+          return SET_ERRNO(ERROR_MEMORY, "Failed to register command-specific option");
+        }
+  }
   flags_command_set_implicit_for_option(root, mirror, "file");
   flags_command_set_implicit_for_option(root, mirror, "url");
   flags_command_resolution_t resolution;
