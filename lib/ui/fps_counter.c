@@ -30,6 +30,7 @@ struct fps_counter_s {
   bool dark_background;
   unsigned int effective_fps;
   int last_fps;
+  int last_valid_fps;
   bool measuring;
   bool written;
   bool failed;
@@ -55,6 +56,7 @@ fps_counter_t *fps_counter_create(void) {
   }
 
   counter->last_fps = -1;
+  counter->last_valid_fps = 0;
   counter->effective_fps = 60;
   counter->dark_background = true;
   counter->report_start = time_get_ns();
@@ -84,6 +86,7 @@ void fps_counter_tick(fps_counter_t *counter) {
 void fps_counter_reset(fps_counter_t *counter) {
   if (counter) {
     counter->head = counter->count = 0;
+    counter->last_valid_fps = 0;
     memset(counter->frame_times, 0, sizeof(counter->frame_times));
   }
 }
@@ -95,8 +98,13 @@ void fps_counter_tick_at(fps_counter_t *counter, uint64_t now) {
 
   if (counter->count) {
     uint64_t previous = counter->frame_times[(counter->head + FPS_WINDOW_SIZE - 1) % FPS_WINDOW_SIZE];
-    if (now <= previous || now - previous >= 2000000000ULL)
-      fps_counter_reset(counter);
+    if (now <= previous || now - previous >= 2000000000ULL) {
+      // Start a new sample window without discarding the last valid value.
+      // Modal overlays can stop media writes long enough for the rolling
+      // window to expire, but should continue displaying the source rate.
+      counter->head = counter->count = 0;
+      memset(counter->frame_times, 0, sizeof(counter->frame_times));
+    }
   }
 
   // Record current time at head position
@@ -109,6 +117,10 @@ void fps_counter_tick_at(fps_counter_t *counter, uint64_t now) {
   if (counter->count < FPS_WINDOW_SIZE) {
     counter->count++;
   }
+
+  float measured = fps_counter_get_at(counter, now);
+  if (measured > 0.0f)
+    counter->last_valid_fps = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
 }
 
 float fps_counter_get(fps_counter_t *counter) {
@@ -220,8 +232,12 @@ size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity,
   // window. Keep the last visible value during a forced overlay redraw so
   // opening keyboard help does not make an otherwise-live stream display 0.
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
-  if (redrawn && value == 0 && counter->last_fps > 0)
-    value = counter->last_fps;
+  if (redrawn && value == 0) {
+    if (counter->last_valid_fps > 0)
+      value = counter->last_valid_fps;
+    else if (counter->last_fps > 0)
+      value = counter->last_fps;
+  }
   // Keep both FPS fields three columns wide. A fixed overlay width prevents
   // the label from shifting or leaving stale cells as values change digits.
   // `FPS:ddd/ddd` is eleven columns wide, so start ten columns before the
