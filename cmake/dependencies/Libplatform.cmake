@@ -27,7 +27,7 @@ set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/lib
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
     GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 17838af
+    GIT_TAG 90a9dd8
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
