@@ -33,7 +33,7 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
         'target_compile_definitions(ascii-chat-probe PRIVATE REQUIRE_DEFINE=1)\n'
         'set_property(TARGET ascii-chat-probe PROPERTY C_STANDARD 17)\n', encoding="utf-8"
     )
-    module = (ROOT / "deps" / "defer" / "Defer.cmake").as_posix()
+    module = (ROOT / "deps" / "recast" / "Recast.cmake").as_posix()
     (project / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.30)\nproject(probe C)\n"
         "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
@@ -75,7 +75,7 @@ def test_external_defer_emscripten_compile_database(tmp_path: Path) -> None:
         '#ifndef __EMSCRIPTEN__\n#error wrong target\n#endif\n'
         'int probe(void) { int result = 0; defer(result++); return result; }\n', encoding="utf-8"
     )
-    module = (ROOT / "deps" / "defer" / "Defer.cmake").as_posix()
+    module = (ROOT / "deps" / "recast" / "Recast.cmake").as_posix()
     (project / "CMakeLists.txt").write_text(
         'cmake_minimum_required(VERSION 3.30)\nproject(probe C)\nset(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{module}")\nadd_library(probe STATIC probe.c)\n'

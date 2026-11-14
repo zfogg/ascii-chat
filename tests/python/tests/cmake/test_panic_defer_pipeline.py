@@ -50,7 +50,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         'cmake_minimum_required(VERSION 3.30)\nproject(panic_defer C CXX)\n'
         'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{(ROOT / "cmake" / "tooling" / "Panic.cmake").as_posix()}")\n'
-        f'include("{(ROOT / "deps" / "defer" / "Defer.cmake").as_posix()}")\n'
+        f'include("{(ROOT / "deps" / "recast" / "Recast.cmake").as_posix()}")\n'
         'ascii_panic_prepare()\nadd_subdirectory(src)\nset(DEFER_SOURCE_HOOK ascii_panic_defer_source)\n'
         'defer_targets(ascii-chat)\nascii_panic_finalize()\n',
         encoding="utf-8",
