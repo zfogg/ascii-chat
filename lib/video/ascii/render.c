@@ -10,7 +10,7 @@
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <libplatform/util/string.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>

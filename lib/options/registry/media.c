@@ -87,8 +87,7 @@ static bool parse_media_url(const char *arg, void *field, char **error) {
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
 // ============================================================================
-const registry_entry_t g_media_entries[] = {
-    // Media File Streaming Options
+const registry_entry_t g_media_entries[] = { // Media File Streaming Options
     {"file",
      'f',
      OPTION_TYPE_STRING,

@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "common/session/capture.h"
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 

@@ -46,17 +46,6 @@ async function unusedTcpPorts(count: number): Promise<number[]> {
   return ports;
 }
 
-async function unusedUdpPort(): Promise<number> {
-  const socket = dgram.createSocket("udp4");
-  await new Promise<void>((resolve, reject) => {
-    socket.once("error", reject);
-    socket.bind(0, "127.0.0.1", resolve);
-  });
-  const address = socket.address();
-  await new Promise<void>((resolve) => socket.close(() => resolve()));
-  return address.port;
-}
-
 function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true });
@@ -80,6 +69,36 @@ async function dockerNetworkIp(network: string): Promise<string> {
   const subnet = parsed[0]?.IPAM.Config[0]?.Subnet;
   if (!subnet) throw new Error(`Docker network ${network} has no subnet`);
   return `${subnet.split(".").slice(0, 3).join(".")}.10`;
+}
+
+async function unusedTransportPort(): Promise<number> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const port = 20_000 + Math.floor(Math.random() * 10_000);
+    const tcp = net.createServer();
+    const udp = dgram.createSocket("udp4");
+    try {
+      await new Promise<void>((resolve, reject) => {
+        tcp.once("error", reject);
+        tcp.listen(port, "127.0.0.1", resolve);
+      });
+      await new Promise<void>((resolve, reject) => {
+        udp.once("error", reject);
+        udp.bind(port, "127.0.0.1", resolve);
+      });
+      return port;
+    } catch {
+      // Windows may reserve a port for one protocol but not the other.
+    } finally {
+      if (tcp.listening)
+        await new Promise<void>((resolve) => tcp.close(() => resolve()));
+      try {
+        udp.close();
+      } catch {
+        // The UDP socket may never have bound after the TCP probe failed.
+      }
+    }
+  }
+  throw new Error("Could not reserve a shared TCP/UDP host port");
 }
 
 async function stopProcess(child: ChildProcess | undefined): Promise<void> {
@@ -272,8 +291,10 @@ async function runCryptoRenderCase(
       const acdsWsPort = ports[1]!;
       const serverTcpPort = ports[2]!;
       const serverWsPort = ports[3]!;
-      const turnPort = await unusedUdpPort();
-      const relayStart = 52_000 + Math.floor(Math.random() * 11_000);
+      const turnPort = await unusedTransportPort();
+      // Keep the host relay range below Windows' commonly excluded 50k+ UDP
+      // ranges; Docker maps every relay port explicitly.
+      const relayStart = 30_000 + Math.floor(Math.random() * 10_000);
       const relayEnd = relayStart + 15;
       const subnetOctet = 20 + Math.floor(Math.random() * 200);
       const subnet = `10.252.${subnetOctet}.0/24`;

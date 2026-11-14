@@ -13,16 +13,14 @@
   };
   import factory from "/wasm/mirror.js";
   const m = await factory({ print() {}, printErr() {} });
-  const r = new m.TerminalRendererBinding(2, 2, 12, false, 0);
+  const r = new m.AsciiRendererBinding(2, 2, 12, false, 0);
   assert.equal(r.valid(), true);
-  const w = r.width(),
-    h = r.height();
+  const { width: w, height: h } = r.dimensions();
   for (const glyph of ["▀", "▄", "█"]) {
     const frame = `\x1b[38;2;255;0;0m\x1b[48;2;0;0;255m${glyph.repeat(2)}\n${glyph.repeat(2)}`;
     for (let pass = 0; pass < 2; pass++) {
-      assert.equal(r.feed(frame), 0);
-      const pixels = new Uint8ClampedArray(w * h * 4);
-      assert.equal(r.copyPixels(pixels), true);
+      const pixels = r.render(frame, 0);
+      assert.equal(Boolean(pixels), true);
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
           const upper = y % (h / 2) < Math.floor(h / 4);

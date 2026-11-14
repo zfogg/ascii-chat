@@ -41,8 +41,7 @@ typedef struct {
  * Test Helpers
  * ============================================================================ */
 
-static void cleanup(void) {
-}
+static void cleanup(void) {}
 
 // Keep each category isolated without spawning a process for every table row.
 TestSuite(url_validator, .fini = cleanup);

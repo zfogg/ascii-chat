@@ -8,8 +8,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/thread.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/errno.h>
-#include <ascii-chat/platform/symbols.h>
+#include <libplatform/errno.h>
+#include <ascii-chat/os/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
@@ -33,10 +33,10 @@ static_assert(ERROR_INVALID_STATE != WIN32_ERROR_INVALID_STATE);
 #endif
 
 #ifndef CHECK
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "Test failed: %s at line %d", #expr, __LINE__);                                    \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "Test failed: %s at line %d", #expr, __LINE__);                                                                                                                    \
   } while (0)
 #endif
 
@@ -45,8 +45,7 @@ static inline asciichat_error_t capture_public_error(acip_transport_t *transport
   CHECK(len > sizeof(packet_header_t));
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  CHECK(packet_parse_error_message((const uint8_t *)data + sizeof(packet_header_t), len - sizeof(packet_header_t),
-                                   &code, message, sizeof(message), NULL) == ASCIICHAT_OK);
+  CHECK(packet_parse_error_message((const uint8_t *)data + sizeof(packet_header_t), len - sizeof(packet_header_t), &code, message, sizeof(message), NULL) == ASCIICHAT_OK);
   CHECK(code == ERROR_INTERNAL);
   CHECK(strcmp(message, asciichat_error_string(ERROR_INTERNAL)) == 0);
   CHECK(strstr(message, "Delivery may be partial") == NULL);
@@ -66,9 +65,8 @@ static inline asciichat_error_t failing_send(acip_transport_t *transport, const 
   return SET_ERRNO(ERROR_NETWORK, "Delivery may be partial");
 }
 static inline void network_recovery_contract(void) {
-  const asciichat_error_t expected[] = {ERROR_INTERNAL,          ERROR_SESSION_NOT_FOUND,  ERROR_SESSION_FULL,
-                                        ERROR_INVALID_PASSWORD,  ERROR_INVALID_SIGNATURE,  ERROR_RATE_LIMITED,
-                                        ERROR_ACDS_STRING_TAKEN, ERROR_ACDS_STRING_INVALID};
+  const asciichat_error_t expected[] = {ERROR_INTERNAL,          ERROR_SESSION_NOT_FOUND, ERROR_SESSION_FULL,      ERROR_INVALID_PASSWORD,
+                                        ERROR_INVALID_SIGNATURE, ERROR_RATE_LIMITED,      ERROR_ACDS_STRING_TAKEN, ERROR_ACDS_STRING_INVALID};
   for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); ++i) {
     acip_error_t wire = {.error_code = (uint8_t)i};
     memset(wire.error_message, 'x', sizeof(wire.error_message));
@@ -518,10 +516,8 @@ static inline void *formatted_error_worker(void *data) {
 }
 
 static inline void formatted_error_contract(void) {
-  CHECK(strcmp(asciichat_error_format("Camera unavailable", ERROR_WEBCAM_IN_USE),
-               "Camera unavailable: Webcam in use by another application (code=21)") == 0);
-  CHECK(strcmp(asciichat_error_format(NULL, ERROR_WEBCAM_IN_USE), asciichat_error_format("", ERROR_WEBCAM_IN_USE)) ==
-        0);
+  CHECK(strcmp(asciichat_error_format("Camera unavailable", ERROR_WEBCAM_IN_USE), "Camera unavailable: Webcam in use by another application (code=21)") == 0);
+  CHECK(strcmp(asciichat_error_format(NULL, ERROR_WEBCAM_IN_USE), asciichat_error_format("", ERROR_WEBCAM_IN_USE)) == 0);
   const char *first = asciichat_error_format("100% complete %s %n", ERROR_INTERNAL);
   char copy[ASCIICHAT_ERRNO_MESSAGE_MAX + 256];
   snprintf(copy, sizeof(copy), "%s", first);
@@ -536,11 +532,9 @@ static inline void formatted_error_contract(void) {
   CHECK(strstr(asciichat_error_format(long_message, ERROR_WEBCAM_IN_USE), "(code=21)") != NULL);
   CHECK(strstr(asciichat_error_format(NULL, (asciichat_error_t)9999), "(code=9999)") != NULL);
   CHECK(strstr(asciichat_error_format(NULL, ASCIICHAT_OK), "(code=0)") != NULL);
-  CHECK(strcmp(asciichat_error_format(asciichat_error_string(ERROR_INTERNAL), ERROR_INTERNAL),
-               asciichat_error_format(NULL, ERROR_INTERNAL)) == 0);
+  CHECK(strcmp(asciichat_error_format(asciichat_error_string(ERROR_INTERNAL), ERROR_INTERNAL), asciichat_error_format(NULL, ERROR_INTERNAL)) == 0);
   for (int code = 0; code <= 115; ++code)
-    CHECK(strstr(asciichat_error_format(NULL, (asciichat_error_t)code),
-                 asciichat_error_string((asciichat_error_t)code)) != NULL);
+    CHECK(strstr(asciichat_error_format(NULL, (asciichat_error_t)code), asciichat_error_string((asciichat_error_t)code)) != NULL);
   char unicode_message[ASCIICHAT_ERRNO_MESSAGE_MAX + 8];
   memset(unicode_message, 'x', ASCIICHAT_ERRNO_MESSAGE_MAX - 2);
   memcpy(unicode_message + ASCIICHAT_ERRNO_MESSAGE_MAX - 2, "\xc3\xa9\xc3\xa9", 5);

@@ -544,7 +544,9 @@ set_source_files_properties(
 # Keep per-pixel rendering and frame validation responsive in Debug builds.
 # Debug information and sanitizer instrumentation remain enabled.
 set_property(SOURCE
-    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/common.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/glyph.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/output_buffer.c"
     "${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/ascii.c"
@@ -598,10 +600,21 @@ ascii_chat_add_face_detector(ascii-chat-video)
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
-if(TARGET fftw3f)
+if(TARGET FFTW3::fftw3f)
+    set(FFTW_FLOAT_LIBRARY FFTW3::fftw3f)
+elseif(TARGET fftw3f)
     set(FFTW_FLOAT_LIBRARY fftw3f)
 else()
-    find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFTW_FLOAT QUIET IMPORTED_TARGET fftw3f)
+    endif()
+    if(FFTW_FLOAT_FOUND AND FFTW_FLOAT_LIBRARIES)
+        set(FFTW_FLOAT_LIBRARY "${FFTW_FLOAT_LIBRARIES}")
+        target_link_directories(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY_DIRS})
+    else()
+        find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
+    endif()
 endif()
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -999,7 +1012,9 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
-    target_link_libraries(ascii-chat-shared PRIVATE libplatform)
+    # Consumers of the shared object also call platform APIs directly (tests,
+    # tooling, and small probes), so keep libplatform transitively visible.
+    target_link_libraries(ascii-chat-shared PUBLIC libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1970,7 +1985,9 @@ target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
-    target_link_options(ascii-chat-shared PRIVATE "${FFTW_FLOAT_LIBRARY}")
+    if(TARGET FFTW3::fftw3f)
+        target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
+    endif()
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})

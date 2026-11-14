@@ -3,7 +3,7 @@
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/parser.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -22,8 +22,7 @@ static options_config_t *documentation_config(void) {
   options_builder_add_mode(builder, "server", "Host a session");
   options_builder_add_mode(builder, "client", "Join a session");
   options_builder_add_example(builder, OPTION_MODE_SERVER, "--port 27224", "Host securely", false);
-  options_builder_add_example_utility(builder, OPTION_MODE_MIRROR, "cat sample.mp4 | ascii-chat mirror -f -",
-                                      "Pipe a video", true);
+  options_builder_add_example_utility(builder, OPTION_MODE_MIRROR, "cat sample.mp4 | ascii-chat mirror -f -", "Pipe a video", true);
   options_config_t *config = options_builder_build(builder);
   options_builder_destroy(builder);
   cr_assert_not_null(config);
@@ -93,8 +92,7 @@ Test(option_documentation, templates_and_merged_manpages_contain_generated_optio
     platform_close(fd);
   const char *modes[] = {NULL, "server", "client", "mirror", "discovery-service"};
   for (size_t i = 0; i < sizeof(modes) / sizeof(*modes); ++i) {
-    cr_assert_eq(options_config_generate_manpage_template(config, "ascii-chat", modes[i], path, "Terminal chat"),
-                 ASCIICHAT_OK);
+    cr_assert_eq(options_config_generate_manpage_template(config, "ascii-chat", modes[i], path, "Terminal chat"), ASCIICHAT_OK);
     FILE *stream = platform_fopen("manpage-test", path, "r");
     cr_assert_not_null(stream);
     char *text = read_stream(stream);
@@ -122,11 +120,10 @@ Test(option_documentation, templates_and_merged_manpages_contain_generated_optio
 }
 
 Test(option_documentation, parser_preserves_manual_merge_and_unmarked_section_content) {
-  const char *input =
-      ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
-      ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
-      ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
-      "prose\n";
+  const char *input = ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
+                      ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
+                      ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
+                      "prose\n";
   parsed_section_t *sections = NULL;
   size_t count = 0;
   cr_assert_eq(manpage_parser_parse_memory(input, strlen(input), &sections, &count), ASCIICHAT_OK);

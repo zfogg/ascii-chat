@@ -9,14 +9,14 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/paths.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/os/filesystem.h>
 #include <ascii-chat/util/string.h>
 
 TestSuite(platform_filesystem);
 
 Test(platform_filesystem, data_directories_are_platform_specific) {
   platform_directory_list_t list = {0};
-  cr_assert_eq(platform_get_data_dir_candidates(&list), ASCIICHAT_OK);
+  cr_assert_eq(platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &list), ASCIICHAT_OK);
 
 #ifdef _WIN32
   const char *program_data = platform_getenv("PROGRAMDATA");

@@ -2,8 +2,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/question.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/crypto/discovery_keys.h>
@@ -29,16 +29,9 @@ int main(int argc, char **argv) {
   if (asciichat_shared_init(argv[2], true, true) != ASCIICHAT_OK)
     return 3;
   bool signal_fixture = !strncmp(kind, "signal-", 7);
-  char *options[] = {"ui-probe",
-                     "--no-check-update",
-                     "--log-file",
-                     argv[2],
-                     "mirror",
-                     "--splash-screen=true",
-                     strstr(kind, "fft") ? "--fft" : "--waveform",
-                     "--audio-source",
-                     strstr(kind, "mic") ? "mic" : "call",
-                     NULL};
+  char *options[] = {
+      "ui-probe", "--no-check-update", "--log-file", argv[2], "mirror", "--splash-screen=true", strstr(kind, "fft") ? "--fft" : "--waveform", "--audio-source", strstr(kind, "mic") ? "mic" : "call",
+      NULL};
   if (options_init(signal_fixture ? 9 : 6, options) != ASCIICHAT_OK)
     return 4;
   keyboard_init();
@@ -51,8 +44,7 @@ int main(int argc, char **argv) {
   if (!strcmp(kind, "capture-render")) {
     log_io_t capture = log_io_start();
     const char frame[] = "CAPTURE FRAME";
-    ok = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = 20, .rows = 10}, frame,
-                               sizeof(frame) - 1) == ASCIICHAT_OK;
+    ok = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = 20, .rows = 10}, frame, sizeof(frame) - 1) == ASCIICHAT_OK;
     ui_controller_redraw();
     platform_sleep_ns(5 * NS_PER_SEC_INT);
     log_io_stop(capture, "capture-render");
@@ -84,17 +76,13 @@ int main(int argc, char **argv) {
     platform_sleep_ns(8 * NS_PER_SEC_INT);
     ui_notice_dismiss();
   } else if (!strcmp(kind, "text")) {
-    ok = platform_prompt_question("Account name", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) == 0 &&
-         !strcmp(answer, "alice");
+    ok = platform_prompt_question("Account name", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) == 0 && !strcmp(answer, "alice");
   } else if (!strcmp(kind, "password")) {
-    ok = prompt_password("Server password required - please enter password:", answer, sizeof(answer)) == 0 &&
-         !strcmp(answer, "s3cret");
+    ok = prompt_password("Server password required - please enter password:", answer, sizeof(answer)) == 0 && !strcmp(answer, "s3cret");
   } else if (!strcmp(kind, "ssh-password")) {
-    ok = prompt_password_simple("Encrypted SSH key - enter passphrase", answer, sizeof(answer)) == 0 &&
-         !strcmp(answer, "s3cret");
+    ok = prompt_password_simple("Encrypted SSH key - enter passphrase", answer, sizeof(answer)) == 0 && !strcmp(answer, "s3cret");
   } else if (!strcmp(kind, "gpg-password")) {
-    ok = platform_prompt_question("Enter passphrase for GPG key", answer, sizeof(answer), PROMPT_OPTS_PASSWORD) == 0 &&
-         !strcmp(answer, "s3cret");
+    ok = platform_prompt_question("Enter passphrase for GPG key", answer, sizeof(answer), PROMPT_OPTS_PASSWORD) == 0 && !strcmp(answer, "s3cret");
   } else if (!strcmp(kind, "hidden-password")) {
     prompt_opts_t opts = {.echo = false, .same_line = true, .mask_char = 0};
     ok = platform_prompt_question("Hidden password", answer, sizeof(answer), opts) == 0 && !strcmp(answer, "s3cret");
@@ -112,20 +100,16 @@ int main(int argc, char **argv) {
     uint8_t old_key[32] = {1}, new_key[32] = {2};
     ok = discovery_keys_verify_change("fixture.invalid", old_key, new_key) != ASCIICHAT_OK;
   } else if (!strcmp(kind, "update-yes") || !strcmp(kind, "update-no")) {
-    update_check_result_t update = {.update_available = true,
-                                    .check_succeeded = true,
-                                    .latest_version = "v99.0.0",
-                                    .current_version = "v1.0.0",
-                                    .release_url = "https://example.invalid/releases/test"};
+    update_check_result_t update = {
+        .update_available = true, .check_succeeded = true, .latest_version = "v99.0.0", .current_version = "v1.0.0", .release_url = "https://example.invalid/releases/test"};
     update_banner_set_result(&update);
     bool expected = !strcmp(kind, "update-yes");
     ok = update_banner_show_prompt(display) == expected;
     if (expected)
       update_banner_print_instructions();
   } else if (!strcmp(kind, "mdns") || !strcmp(kind, "mdns-cancel") || !strcmp(kind, "mdns-long")) {
-    ui_mdns_server_t servers[24] = {
-        {.name = "fixture-one", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27224},
-        {.name = "fixture-two", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27225}};
+    ui_mdns_server_t servers[24] = {{.name = "fixture-one", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27224},
+                                    {.name = "fixture-two", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27225}};
     bool long_list = !strcmp(kind, "mdns-long");
     int count = long_list ? 24 : 2;
     if (long_list) {

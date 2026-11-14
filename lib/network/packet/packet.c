@@ -656,23 +656,67 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   asciichat_error_t result = acip_security_decrypt(crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, CRYPTO_RECORD_RELIABLE, envelope->data, envelope->len, &plaintext, &plaintext_length, NULL, &consumed);
   if (result != ASCIICHAT_OK)
     return result;
+  if (!plaintext || plaintext_length < sizeof(packet_header_t)) {
+    buffer_release(plaintext);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Decrypted packet is smaller than its header");
+  }
+
   packet_header_t header;
   memcpy(&header, plaintext, sizeof(header));
-  if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) && envelope->allocated_size >= plaintext_length) {
-    memcpy(envelope->allocated_buffer, plaintext, plaintext_length);
-    buffer_release(plaintext);
-    plaintext = envelope->allocated_buffer;
-  } else {
-    buffer_release(envelope->allocated_buffer);
-    envelope->allocated_size = buffer_capacity(plaintext);
+  // Keep the decrypted buffer separate from the received ciphertext buffer.
+  // Transport implementations may share or recycle their receive allocation;
+  // overwriting it here makes the lifetime and capacity metadata ambiguous.
+  // The envelope owns one plaintext allocation after this point.
+  void *received_buffer = envelope->allocated_buffer;
+  if (received_buffer && received_buffer != plaintext) {
+    if (buffer_is_unique(received_buffer))
+      sodium_memzero(received_buffer, buffer_capacity(received_buffer));
+    buffer_release(received_buffer);
   }
   envelope->type = NET_TO_HOST_U16(header.type);
   envelope->data = plaintext + sizeof(header);
   envelope->len = plaintext_length - sizeof(header);
   envelope->allocated_buffer = plaintext;
+  envelope->allocated_size = buffer_capacity(plaintext);
   envelope->was_encrypted = true;
   envelope->consumed = consumed;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out) {
+  if (!wire || !out || length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet envelope input");
+  *out = (packet_envelope_t){0};
+  packet_header_t wire_header;
+  asciichat_error_t result = packet_validate(wire, length, 0, &wire_header);
+  if (result != ASCIICHAT_OK)
+    return result;
+  void *owned = buffer_alloc(NULL, length);
+  if (!owned)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate packet envelope");
+  memcpy(owned, wire, length);
+  packet_header_t header = wire_header;
+  out->type = NET_TO_HOST_U16(header.type);
+  out->data = (uint8_t *)owned + sizeof(header);
+  out->len = length - sizeof(header);
+  out->allocated_buffer = owned;
+  out->allocated_size = length;
+  result = packet_decrypt_envelope(out, crypto_ctx);
+  if (result != ASCIICHAT_OK) {
+    packet_envelope_release(out);
+  }
+  return result;
+}
+
+void packet_envelope_release(packet_envelope_t *envelope) {
+  if (!envelope)
+    return;
+  if (envelope->allocated_buffer) {
+    if (buffer_is_unique(envelope->allocated_buffer))
+      sodium_memzero(envelope->allocated_buffer, buffer_capacity(envelope->allocated_buffer));
+    buffer_release(envelope->allocated_buffer);
+  }
+  *envelope = (packet_envelope_t){0};
 }
 
 size_t packet_format_error_stack(char *buffer, size_t size) {

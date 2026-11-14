@@ -17,10 +17,10 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
-  PeerCryptoSession,
+  BrowserSession,
   ConnectionState,
   PacketType,
-  parsePacket,
+  processClientEvent,
   type ParsedPacket,
 } from "../wasm/client";
 
@@ -30,7 +30,7 @@ type Peer = {
   outbound?: OutboundQueue;
   pc: RTCPeerConnection;
   bridge: WebRTCBridge | null;
-  crypto: PeerCryptoSession | null;
+  crypto: BrowserSession | null;
   id: number;
   session: JoinedSession;
   ice: RTCIceCandidateInit[];
@@ -164,7 +164,13 @@ export class BrowserHostSession implements ClientSession {
         queueMicrotask(() => {
           if (this.closed) return;
           if (id === this.localId) {
-            const packet = parsePacket(bytes);
+            const parsed = processClientEvent({
+              type: "receive-transport-packet",
+              packet: bytes,
+            });
+            if (parsed.code || !parsed.packet)
+              throw new Error(`Host packet parsing failed (${parsed.code})`);
+            const packet = parsed.packet;
             this.packetCallback?.(packet, bytes.slice(22));
           } else {
             for (const [key, peer] of this.peers) {
@@ -282,7 +288,7 @@ export class BrowserHostSession implements ClientSession {
           id: 0,
           ordered: true,
         });
-        remote.crypto = await PeerCryptoSession.create(
+        remote.crypto = await BrowserSession.create(
           {
             ...this.options.cryptoOptions,
             password:
@@ -315,7 +321,15 @@ export class BrowserHostSession implements ClientSession {
                   );
                 }
                 if (!decoded) return;
-                const packet = parsePacket(decoded);
+                const parsed = processClientEvent({
+                  type: "receive-transport-packet",
+                  packet: decoded,
+                });
+                if (parsed.code || !parsed.packet)
+                  throw new Error(
+                    `Peer packet parsing failed (${parsed.code})`,
+                  );
+                const packet = parsed.packet;
                 this.receive(remote.id, packet.type, decoded.slice(22));
               } catch (error) {
                 this.removePeer(key);
@@ -396,9 +410,6 @@ export class BrowserHostSession implements ClientSession {
     this.receive(this.localId, type, payload);
     if (this.needsKeyframe(type) && payload[0]! & 1)
       this.localKeyframes.add(type);
-  }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array) {
-    this.sendPacket(type, payload);
   }
   getBufferedAmount() {
     return Math.max(

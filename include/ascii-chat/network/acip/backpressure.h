@@ -24,7 +24,9 @@ typedef enum {
 } acip_admission_t;
 
 /**
- * @brief This is the handoff point for acip outbound stats. Callers fill `application_bytes`, `backend_bytes`, `backend_reserved_bytes`, `peak_bytes` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for acip outbound stats. Callers fill `application_bytes`, `backend_bytes`,
+ * `backend_reserved_bytes`, `peak_bytes` before passing it on; consumers read the values during the operation and
+ * return ownership only where the member contract explicitly says they do.
  */
 typedef struct {
   size_t application_bytes, backend_bytes, backend_reserved_bytes, peak_bytes;

@@ -655,20 +655,10 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, c
     write = SAFE_MALLOC(sizeof(*write), event_write_t *);
   }
   *write = (event_write_t){.stream = stream, .done = done, .arg = arg, .size = size, .storage = storage};
-  if (!write->storage.data && mapped) {
-    if (socket_send_buffer_alloc(size, &write->storage) != ASCIICHAT_OK) {
-      SAFE_FREE(write);
-      uv_mutex_unlock(&stream->mutex);
-      return SET_ERRNO(ERROR_MEMORY, "Async copy avoidance exceeds process buffer budget");
-    }
-  } else if (!write->storage.data) {
-    write->storage.data = buffer_alloc(NULL, size);
-    write->storage.capacity = size;
-  }
-  if (!write->storage.data) {
+  if (!write->storage.data && socket_send_buffer_alloc(size, &write->storage) != ASCIICHAT_OK) {
     SAFE_FREE(write);
     uv_mutex_unlock(&stream->mutex);
-    return SET_ERRNO(ERROR_MEMORY, "Async output exceeds process buffer budget");
+    return SET_ERRNO(ERROR_MEMORY, mapped ? "Async copy avoidance exceeds process buffer budget" : "Async output exceeds process buffer budget");
   }
   write->request.data = write;
   size_t offset = 0;

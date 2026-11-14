@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include "http_renderer.h"
+#include "common/http_renderer.h"
 
 Test(http_renderer, request_initializes_safe_defaults) {
   http_render_request_t request;

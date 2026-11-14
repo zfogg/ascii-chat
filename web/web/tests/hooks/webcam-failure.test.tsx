@@ -208,7 +208,7 @@ function setup() {
     clientRef: {
       current: {
         getState: () => ConnectionState.CONNECTED,
-        sendUnencryptedAcipPacket: send,
+        sendPacket: send,
       },
     },
     connectionState: ConnectionState.CONNECTED,

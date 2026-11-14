@@ -170,7 +170,7 @@ bun run wasm:clean
 
 **Build locations:**
 
-- Source: `src/web/mirror.c`, `src/web/client.c`
+- Source: `src/web/mirror.c`, `lib/network/browser/client.c`
 - Output: `src/wasm/dist/mirror_web.js`, `src/wasm/dist/client_web.js`, `.wasm` files
 - CMake config: Root `CMakeLists.txt` with `mirror-web` and `client-web` targets
 

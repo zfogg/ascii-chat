@@ -1,8 +1,3 @@
-export { AsciiCanvas } from "./AsciiRenderer";
-export type {
-  AsciiRendererHandle,
-  AsciiRendererProps,
-} from "./AsciiRenderer/types";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { Card } from "./Card";
@@ -19,3 +14,8 @@ export { Link } from "./Link";
 export { NotFound } from "./NotFound";
 export { PreCode } from "./PreCode";
 export { UsageExamplesSection } from "./UsageExamplesSection";
+export { AsciiCanvas } from "./AsciiRenderer";
+export type {
+  AsciiRendererHandle,
+  AsciiRendererProps,
+} from "./AsciiRenderer/types";

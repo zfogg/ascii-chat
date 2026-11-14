@@ -9,7 +9,11 @@
 
 // Mock Web Audio API if needed
 if (typeof AudioContext === "undefined") {
-  global.AudioContext = class MockAudioContext {} as any;
+  global.AudioContext = class MockAudioContext {
+    close(): Promise<void> {
+      return Promise.resolve();
+    }
+  } as typeof AudioContext;
 }
 
 // Mock WebSocket if needed
@@ -20,7 +24,7 @@ if (typeof WebSocket === "undefined") {
     close() {}
     addEventListener() {}
     removeEventListener() {}
-  } as any;
+  } as typeof WebSocket;
 }
 
 console.log("[Test Setup] Test environment initialized");

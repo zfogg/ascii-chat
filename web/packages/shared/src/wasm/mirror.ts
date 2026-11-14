@@ -1,5 +1,5 @@
 import type { MainModule } from "./generated/mirror-bindings";
-import { RendererCore } from "ascii-chat";
+import { CanvasRenderer } from "ascii-chat";
 import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -13,7 +13,6 @@ import {
   type OptionValues,
 } from "@ascii-chat/shared/wasm/options";
 export type MirrorModule = MainModule & {
-  HEAPU8: Uint8Array;
   canvas?: HTMLCanvasElement;
 };
 
@@ -27,7 +26,9 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
-let renderer: RendererCore | null = null;
+let mirrorSession: InstanceType<MirrorModule["MirrorSessionBinding"]> | null =
+  null;
+let renderer: CanvasRenderer | null = null;
 
 function releaseFrameBinding(): void {
   renderer?.dispose();
@@ -50,7 +51,7 @@ export function adoptMirrorWasmModule(module: MirrorModule): void {
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
   releaseFrameBinding();
-  wasmModule?.sessionRenderCleanup();
+  mirrorSession?.resetRender();
   if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
 }
@@ -104,14 +105,19 @@ export async function initMirrorWasm(
   }
 
   try {
-    const initResult = wasmModule.initMirror(options?.initialOptions ?? {});
-    if (initResult !== 0) {
-      throw new Error(`Failed to initialize mirror C code: ${initResult}`);
-    }
+    mirrorSession = new wasmModule.MirrorSessionBinding(
+      options?.initialOptions ?? {},
+    );
+    if (!mirrorSession.valid())
+      throw new Error(
+        `Failed to initialize mirror C code: ${mirrorSession.error()}`,
+      );
 
     resetRuntimeOptions(wasmModule);
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
+    mirrorSession?.delete();
+    mirrorSession = null;
     wasmModule = null;
     throw err;
   }
@@ -123,20 +129,25 @@ export async function initMirrorWasm(
 export function cleanupMirrorWasm(): void {
   releaseFrameBinding();
   if (wasmModule) {
-    wasmModule.mirror_cleanup();
+    mirrorSession?.close();
+    mirrorSession?.delete();
+    mirrorSession = null;
     resetRuntimeOptions(wasmModule);
     wasmModule = null;
   }
 }
 
 export function resetRenderStabilizer(): void {
-  wasmModule?.sessionRenderResetStabilizer();
+  if (wasmModule) {
+    renderer ??= CanvasRenderer.fromModule(wasmModule);
+    renderer.reset();
+  }
 }
 
 /** Release per-session rendering state while keeping the shared module alive. */
 export function cleanupRenderSession(): void {
   releaseFrameBinding();
-  wasmModule?.sessionRenderCleanup();
+  mirrorSession?.resetRender();
 }
 
 /**
@@ -152,15 +163,12 @@ export function convertFrameToAscii(
   srcWidth: number,
   srcHeight: number,
   contentFit: "contain" | "cover" = "contain",
+  source?: unknown,
 ): string {
   if (!wasmModule) {
     throw new Error(
       "WASM module not initialized. Call initMirrorWasm() first.",
     );
-  }
-
-  if (!wasmModule.HEAPU8) {
-    throw new Error("WASM module not fully initialized. HEAPU8 is undefined.");
   }
 
   // Validate dimensions
@@ -185,15 +193,13 @@ export function convertFrameToAscii(
     );
   }
 
-  // Growing the WASM heap can invalidate a view supplied by a caller.
-  const input =
-    rgbaData.buffer === wasmModule.HEAPU8.buffer ? rgbaData.slice() : rgbaData;
-  renderer ??= RendererCore.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   const frame = renderer.render(
-    input,
+    rgbaData,
     srcWidth,
     srcHeight,
     contentFit === "contain",
+    source,
   );
   if (frame === undefined) {
     throw new Error(
@@ -210,11 +216,9 @@ export function transformCaptureRgba(
   height: number,
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  if (rgba.buffer === wasmModule.HEAPU8.buffer)
-    throw new Error("Capture input must be JavaScript-owned");
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
     throw new Error("Invalid capture dimensions");
-  renderer ??= RendererCore.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   renderer.transform(rgba, width, height);
 }
 
@@ -230,14 +234,9 @@ export function submitAudioVisualizationSamples(
   source: AudioVisualizationSource = "media",
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const input =
-    samples.buffer === wasmModule.HEAPU8.buffer ? samples.slice() : samples;
-  renderer ??= RendererCore.fromModule(wasmModule);
-  renderer.submitAudio(input, source);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
+  renderer.submitAudio(samples, source);
 }
-
-/** @deprecated Use submitAudioVisualizationSamples. */
-export const submitAudioSamples = submitAudioVisualizationSamples;
 
 export function renderAudioVisualization(
   width: number,
@@ -252,7 +251,7 @@ export function renderAudioVisualization(
       fft: mode === "fft",
     });
   }
-  renderer ??= RendererCore.fromModule(wasmModule);
+  renderer ??= CanvasRenderer.fromModule(wasmModule);
   const frame = renderer.renderAudio(width, height, source);
   return frame;
 }
@@ -277,7 +276,7 @@ export function renderAudioVisualizationFrame(
  * Check if WASM module is ready
  */
 export function isWasmReady(): boolean {
-  return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
+  return wasmModule !== null;
 }
 
 /**

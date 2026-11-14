@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/keys.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/tests/logging.h>
@@ -62,9 +62,7 @@ Test(discovery_cache, saved_key_is_standard_openssh_and_roundtrips) {
   cr_assert_str_eq(algorithm, "ssh-ed25519");
   uint8_t wire[64];
   size_t length = 0;
-  cr_assert_eq(sodium_base642bin(wire, sizeof(wire), encoded, strlen(encoded), NULL, &length, NULL,
-                                 sodium_base64_VARIANT_ORIGINAL),
-               0);
+  cr_assert_eq(sodium_base642bin(wire, sizeof(wire), encoded, strlen(encoded), NULL, &length, NULL, sodium_base64_VARIANT_ORIGINAL), 0);
   const uint8_t prefix[] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
   cr_assert_eq(length, sizeof(prefix) + sizeof(key));
   cr_assert_arr_eq(wire, prefix, sizeof(prefix));

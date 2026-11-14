@@ -11,7 +11,7 @@
 #include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
-#include <libplatform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/prompt.h>
@@ -19,10 +19,10 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include "../../../src/common/session/display.h"
 
-#define REQUIRE(condition)                                                                                             \
-  do {                                                                                                                 \
-    if (!(condition))                                                                                                  \
-      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                               \
+#define REQUIRE(condition)                                                                                                                                                                             \
+  do {                                                                                                                                                                                                 \
+    if (!(condition))                                                                                                                                                                                  \
+      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                                                                                                               \
   } while (0)
 
 static bool wait_for_screen(ui_screen_t screen) {
@@ -35,8 +35,7 @@ static bool wait_for_screen(ui_screen_t screen) {
 static asciichat_error_t probe(const char *mode) {
   if (strcmp(mode, "modal-lifecycle") == 0) {
     REQUIRE(keyboard_init() == ASCIICHAT_OK);
-    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "PARENT-LOGS", 11) ==
-            ASCIICHAT_OK);
+    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "PARENT-LOGS", 11) == ASCIICHAT_OK);
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     REQUIRE(ui_prompt_present("Modal", "", 0, false) == ASCIICHAT_OK);
     keyboard_help_toggle_terminal(1);
@@ -48,8 +47,7 @@ static asciichat_error_t probe(const char *mode) {
     ui_controller_dismiss(UI_SCREEN_PROMPT, UI_SCREEN_LOGS);
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     // A rejected submission must leave the owner and retained terminal intact.
-    REQUIRE(ui_controller_submit(UI_SCREEN_PROMPT, 1, (terminal_size_t){.cols = 40, .rows = 6}, NULL, "x", 1) ==
-            ERROR_INVALID_PARAM);
+    REQUIRE(ui_controller_submit(UI_SCREEN_PROMPT, 1, (terminal_size_t){.cols = 40, .rows = 6}, NULL, "x", 1) == ERROR_INVALID_PARAM);
     CLEAR_ERRNO();
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
     keyboard_help_toggle_terminal(1);
@@ -87,8 +85,7 @@ static asciichat_error_t probe(const char *mode) {
     ui_controller_remove(UI_SCREEN_LOGS);
     ui_controller_dismiss(UI_SCREEN_PROMPT, UI_SCREEN_LOGS);
     REQUIRE(ui_controller_interactive_screen() == -1);
-    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "NEW-LOGS", 8) ==
-            ASCIICHAT_OK);
+    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "NEW-LOGS", 8) == ASCIICHAT_OK);
     REQUIRE(ui_prompt_present("Replaced modal", "", 0, false) == ASCIICHAT_OK);
     ui_controller_select_interactive(UI_SCREEN_LOGS);
     ui_controller_dismiss(UI_SCREEN_PROMPT, -1);
@@ -160,12 +157,9 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(terminal_set_echo(true) == ASCIICHAT_OK);
     REQUIRE(platform_write_all(1, "RESTORED", 8) == 8);
     REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'y');
-  } else if (strcmp(mode, "password") == 0 || strcmp(mode, "password-cancel") == 0 ||
-             strcmp(mode, "password-box") == 0) {
+  } else if (strcmp(mode, "password") == 0 || strcmp(mode, "password-cancel") == 0 || strcmp(mode, "password-box") == 0) {
     char password[32];
-    int result = strcmp(mode, "password-box") == 0
-                     ? prompt_password("Test passphrase", password, sizeof(password))
-                     : prompt_password_simple("Test passphrase", password, sizeof(password));
+    int result = strcmp(mode, "password-box") == 0 ? prompt_password("Test passphrase", password, sizeof(password)) : prompt_password_simple("Test passphrase", password, sizeof(password));
     if (strcmp(mode, "password-cancel") != 0) {
       REQUIRE(result == 0);
       REQUIRE(strcmp(password, "sécret") == 0);

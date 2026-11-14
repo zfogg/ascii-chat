@@ -682,9 +682,6 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
         ${CMAKE_SOURCE_DIR}/lib/discovery/adjectives.c
         ${CMAKE_SOURCE_DIR}/lib/discovery/nouns.c
     )
-    if(WIN32)
-        list(APPEND _strings_srcs ${CMAKE_SOURCE_DIR}/lib/platform/windows/getopt.c)
-    endif()
     if(USE_MUSL)
         list(APPEND _strings_srcs ${CMAKE_SOURCE_DIR}/lib/musl_c23_compat.c)
     endif()
@@ -714,6 +711,9 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     # For musl/static builds, LIBSODIUM_LIBRARIES points to .a file
     # For dynamic builds, it points to .so/.dylib
     target_link_libraries(ascii-chat-strings PRIVATE ${LIBSODIUM_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(ascii-chat-strings PRIVATE libplatform)
+    endif()
 
     # Static linking for release builds (musl on Linux only)
     # Note: macOS doesn't support fully static binaries - it uses dynamic linking for libc

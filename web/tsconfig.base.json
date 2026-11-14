@@ -29,6 +29,7 @@
     "noUnusedParameters": true,
     "paths": {
       "ascii-chat": ["../src/web/renderer/src/index.ts"],
+      "ascii-chat/*": ["../src/web/renderer/src/*"],
       "@ascii-chat/shared/wasm/options": [
         "./packages/shared/src/wasm/options.ts"
       ],

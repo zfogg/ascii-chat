@@ -222,14 +222,12 @@ int main(int argc, char **argv) {
     receiver = peers[1].transport;
   } else {
     if (!strcmp(mode, "quic") || datagrams) {
-      quic_config_t server = {
-          .certificate_file = argv[2], .private_key_file = argv[3], .enable_datagrams = datagrams};
+      quic_config_t server = {.certificate_file = argv[2], .private_key_file = argv[3], .enable_datagrams = datagrams};
       quic_config_t client = {.ca_file = argv[2],
-                                   .enable_datagrams = datagrams,
-                                   .prefer_audio_datagrams = datagrams,
-                                   .prefer_visual_datagrams = datagrams};
-      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &server, &endpoints[1]) ==
-            ASCIICHAT_OK);
+                              .enable_datagrams = datagrams,
+                              .prefer_audio_datagrams = datagrams,
+                              .prefer_visual_datagrams = datagrams};
+      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &server, &endpoints[1]) == ASCIICHAT_OK);
       CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &client, &endpoints[0]) ==
             ASCIICHAT_OK);
       struct sockaddr_storage address;

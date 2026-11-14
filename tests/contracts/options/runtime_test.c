@@ -35,8 +35,7 @@ static void test_flip_defaults(void) {
     cr_assert_eq(options_set_bool("fft", false), ASCIICHAT_OK);
     cr_assert(GET_OPTION(flip_x));
   }
-  options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
-                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
+  options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false}, {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -82,8 +81,7 @@ static void test_transactions(void) {
   cr_assert_eq(options_set_int("width", 80), ASCIICHAT_OK);
   const options_t *borrowed = options_get();
   uint64_t before = options_revision();
-  options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120},
-                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
+  options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120}, {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   cr_assert(GET_OPTION(width) == 80 && options_revision() == before);
@@ -91,19 +89,23 @@ static void test_transactions(void) {
   edits[1].value.integer = 30;
   options_patch_result_t result;
   cr_assert(options_apply_patch(&patch, &result) == ASCIICHAT_OK && result.changed && result.revision == before + 1);
+  cr_assert_eq(GET_OPTION(fps), 30);
+  edits[0].value.integer = 100;
+  edits[1].value.integer = 0;
+  cr_assert_eq(options_apply_patch(&patch, &result), ASCIICHAT_OK);
+  cr_assert(result.changed && result.revision == before + 2);
+  cr_assert(GET_OPTION(width) == 100 && GET_OPTION(fps) == 0);
   patch.expected_revision = before;
   edits[0].value.integer = 90;
-  cr_assert(options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 120);
+  cr_assert(options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 100);
   CLEAR_ERRNO();
   cr_assert_neq(options_set_double("speakers_volume", NAN), ASCIICHAT_OK);
   CLEAR_ERRNO();
-  cr_assert_neq(options_apply_json("{\"fps\":30,\"fps\":60}", 19, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
-                ASCIICHAT_OK);
+  cr_assert_neq(options_apply_json("{\"fps\":30,\"fps\":60}", 19, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
   const char nul_key[] = "{\"width\\u0000hidden\":99}";
-  cr_assert_neq(options_apply_json(nul_key, sizeof(nul_key) - 1, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
-                ASCIICHAT_OK);
-  cr_assert_eq(GET_OPTION(width), 120);
+  cr_assert_neq(options_apply_json(nul_key, sizeof(nul_key) - 1, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(width), 100);
   CLEAR_ERRNO();
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);
@@ -160,21 +162,27 @@ static void test_remote(void) {
   for (int i = 0; i < 2; ++i)
     cr_assert_eq(acip_render_settings_prepare(&clients[i], values), ASCIICHAT_OK);
   uint64_t local_revision = options_revision();
-  cr_assert_eq(
-      request(&clients[0],
-              "{\"width\":55,\"color_filter\":3,\"render_mode\":2,\"palette_type\":6,\"palette_custom\":\" .+#\"}",
-              UINT32_MAX)
-          .status,
-      0);
-  cr_assert(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM &&
-            !strcmp(clients[0].palette, " .+#"));
+  cr_assert_eq(request(&clients[0], "{\"width\":55,\"color_filter\":3,\"render_mode\":2,\"palette_type\":6,\"palette_custom\":\" .+#\"}", UINT32_MAX).status, 0);
+  cr_assert(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM && !strcmp(clients[0].palette, " .+#"));
   cr_assert(clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD);
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
   cr_assert_eq(clients[1].palette_length, 95);
-  cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
-  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status,
+  cr_assert_eq(request(&clients[1],
+                       "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}",
+                       UINT32_MAX)
+                   .status,
                0);
+  cr_assert_not(clients[1].caps.palette_explicit);
+  cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(
+      request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX)
+          .status,
+      0);
+  cr_assert_not(clients[1].caps.palette_explicit);
+  cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status, 0);
   cr_assert(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
   acip_render_settings_t glyph_previous = clients[1];
   cr_assert_neq(request(&clients[1], "{\"palette_custom\":\"\\u2603\"}", UINT32_MAX).status, 0);

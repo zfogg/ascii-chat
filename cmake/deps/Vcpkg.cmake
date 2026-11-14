@@ -121,8 +121,8 @@ endif()
 # =============================================================================
 
 if(VCPKG_MANIFEST_MODE AND VCPKG_TOOLCHAIN_LOADED)
-    # Manifest mode: packages installed in build directory
-    set(_vcpkg_installed_dir "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+    # Respect vcpkg's installed directory override in manifest mode.
+    set(_vcpkg_installed_dir "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
 else()
     # Classic mode: packages in global vcpkg installation
     set(_vcpkg_installed_dir "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")

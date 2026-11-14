@@ -1,83 +1,100 @@
-const HANDOFF_FRAME_SIZE = 64;
-const HANDOFF_PROBE_PAYLOAD_SIZE = 65536;
 import { getClientModule } from "../wasm/client";
+import type { BrowserHostBinding } from "@ascii-chat/shared/wasm";
 import type { JoinedSession } from "./acdsProtocol";
 
 export const HANDOFF_PACKET = 6090;
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
-  private generation = 0;
-  private sequence = 0;
   private stopped = false;
   private prepared = false;
+  private preparedHost: BrowserHostBinding | null = null;
+  private binding: InstanceType<
+    NonNullable<ReturnType<typeof getClientModule>>["HandoffBinding"]
+  > | null = null;
   constructor(
     private joined: JoinedSession,
     private send: (type: number, data: Uint8Array) => void,
     private commit: (id: Uint8Array) => void,
     private progress?: (stage: string) => void,
   ) {
+    const module = getClientModule();
+    if (!module) throw new Error("Client WASM module is unavailable");
+    this.binding = new module.HandoffBinding(
+      this.joined.sessionId,
+      this.joined.participantId,
+    );
+    if (!this.binding.valid()) {
+      const code = this.binding.error();
+      this.binding.delete();
+      this.binding = null;
+      throw new Error(`Handoff session initialization failed (${code})`);
+    }
     this.timer = setInterval(() => this.sample(), 5000);
     this.sample();
   }
-  private frame(
-    kind: number,
-    generation: number,
-    sequence: number,
-  ): Uint8Array {
-    const module = getClientModule();
-    if (!module) throw new Error("Client WASM module is unavailable");
-    const frame = module.handoffEncode(
-      kind,
-      this.joined.sessionId,
-      this.joined.participantId,
-      generation,
-      sequence,
-      2,
-      255,
-      0,
-    );
-    if (!frame) throw new Error("Invalid handoff identifiers");
-    return frame;
-  }
   private sample(): void {
     if (this.stopped) return;
-    const sequence = ++this.sequence;
     try {
-      this.send(HANDOFF_PACKET, this.frame(1, 0, sequence));
-      const bytes = new Uint8Array(
-        HANDOFF_FRAME_SIZE + HANDOFF_PROBE_PAYLOAD_SIZE,
-      );
-      bytes.set(this.frame(2, 0, sequence));
-      this.send(HANDOFF_PACKET, bytes);
+      const binding = this.binding;
+      if (!binding) throw new Error("Handoff session is unavailable");
+      const result = binding.process({ type: "sample" }) as {
+        code: number;
+        outputs?: Uint8Array[];
+      };
+      if (result.code)
+        throw new Error(`Handoff sampling failed (${result.code})`);
+      for (const packet of result.outputs ?? [])
+        this.send(HANDOFF_PACKET, packet);
     } catch (error) {
       console.warn("[HandoffProtocol] sample unavailable", error);
     }
   }
   receive(type: number, bytes: Uint8Array): boolean {
     if (type !== HANDOFF_PACKET) return false;
-    if (
-      bytes.length < HANDOFF_FRAME_SIZE ||
-      !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
-    )
-      return true;
-    const module = getClientModule();
-    if (!module) throw new Error("Client WASM module is unavailable");
-    const action = module.handoffDecode(bytes);
-    if (!action) throw new Error("Invalid handoff frame");
-    if (action.generation < this.generation) return true;
-    this.generation = action.generation;
+    const binding = this.binding;
+    if (!binding) throw new Error("Handoff session is unavailable");
+    const actionResult = binding.process({
+      type: "receive",
+      packet: bytes,
+    }) as {
+      code: number;
+      handled?: boolean;
+      action?: {
+        kind: number;
+        participant: Uint8Array;
+        generation: number;
+        sequence: number;
+      } | null;
+    };
+    if (actionResult.code)
+      throw new Error(`Invalid handoff frame (${actionResult.code})`);
+    const action = actionResult.action ?? null;
+    // Native handoff state owns frame validation, session matching, and
+    // generation ordering. A valid stale/irrelevant frame is handled with no
+    // browser action required.
+    if (!action) return true;
     if (
       action.kind === 3 &&
       action.participant.every(
         (value, i) => value === this.joined.participantId[i],
       )
     ) {
-      const result = module.browser_host_create();
-      this.prepared = result === 0;
+      const module = getClientModule();
+      if (!module) throw new Error("Client WASM module is unavailable");
+      const host = new module.BrowserHostBinding();
+      this.preparedHost = host;
+      this.prepared = host.valid();
       this.send(
         HANDOFF_PACKET,
-        this.frame(result ? 7 : 4, action.generation, action.sequence),
+        (
+          binding.process({
+            type: "ack",
+            kind: 4,
+            generation: action.generation,
+            sequence: action.sequence,
+          }) as { bytes?: Uint8Array }
+        ).bytes ?? bytes,
       );
     } else if (action.kind === 5) {
       this.progress?.(
@@ -107,7 +124,9 @@ export class HandoffProtocol {
   }
   private releasePreparedHost(): void {
     if (this.prepared) {
-      getClientModule()?.browser_host_destroy();
+      this.preparedHost?.close();
+      this.preparedHost?.delete();
+      this.preparedHost = null;
       this.prepared = false;
     }
   }
@@ -115,5 +134,8 @@ export class HandoffProtocol {
     this.stopped = true;
     clearInterval(this.timer);
     this.releasePreparedHost();
+    this.binding?.close();
+    this.binding?.delete();
+    this.binding = null;
   }
 }

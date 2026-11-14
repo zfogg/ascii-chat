@@ -5,11 +5,13 @@ import { ConnectionState } from "../../src/wasm/client";
 const harness = vi.hoisted(() => ({
   init: vi.fn(async () => {}),
   crypto: vi.fn(async () => {}),
+  capabilities: vi.fn(() => {}),
   key: vi.fn(async () => "public-key"),
   cleanup: vi.fn(),
   address: vi.fn(),
   callback: vi.fn(),
   begin: vi.fn(() => 0),
+  events: [] as Record<string, unknown>[],
   sockets: [] as {
     close: ReturnType<typeof vi.fn>;
     state: (state: string) => void;
@@ -19,12 +21,33 @@ vi.mock("../../src/wasm/client", async (original) => ({
   ...(await original<typeof import("../../src/wasm/client")>()),
   initClientWasm: harness.init,
   configureClientCrypto: harness.crypto,
+  configureBrowserCapabilities: harness.capabilities,
   generateKeypair: harness.key,
-  resolveCryptoPolicy: () => 1,
   cleanupClientWasm: harness.cleanup,
-  setServerAddress: harness.address,
-  registerSendPacketCallback: harness.callback,
-  getClientModule: () => ({ client_handshake_begin: harness.begin }),
+  processClientEvent: vi.fn((event: Record<string, unknown>) => {
+    harness.events.push(event);
+    return event["type"] === "send-packet"
+      ? {
+          code: 0,
+          state: ConnectionState.CONNECTED,
+          bytes: new Uint8Array([9]),
+        }
+      : event["type"] === "receive-transport-packet"
+        ? {
+            code: 0,
+            state: ConnectionState.CONNECTED,
+            packet: { type: 2002, length: 3, client_id: 0, crc32: 0 },
+            payload: new Uint8Array([1, 2, 3]),
+          }
+        : event["type"] === "begin-handshake"
+          ? { code: harness.begin(), state: ConnectionState.HANDSHAKE }
+          : event["type"] === "resolve-crypto-policy"
+            ? { code: 0, mode: 1, state: ConnectionState.CONNECTED }
+            : event["type"] === "set-server"
+              ? (harness.address(event["host"], event["port"]),
+                { code: 0, state: ConnectionState.CONNECTED })
+              : { code: 0, state: ConnectionState.CONNECTED };
+  }),
 }));
 vi.mock("../../src/network/SocketBridge", () => ({
   SocketBridge: class {
@@ -45,8 +68,10 @@ vi.mock("../../src/network/SocketBridge", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   harness.sockets = [];
+  harness.events = [];
   harness.init.mockImplementation(async () => {});
   harness.crypto.mockImplementation(async () => {});
+  harness.capabilities.mockImplementation(() => {});
   harness.key.mockImplementation(async () => "public-key");
 });
 const create = () =>
@@ -57,6 +82,14 @@ const create = () =>
   });
 
 describe("client startup ownership", () => {
+  it("reports the selected WebSocket transport without datagrams", async () => {
+    const client = create();
+    await client.connect();
+    expect(harness.capabilities).toHaveBeenCalledWith(
+      expect.objectContaining({ datagrams: false, maxDatagramPayload: 0 }),
+    );
+    client.disconnect();
+  });
   it("drains cancelled initialization before a replacement session starts", async () => {
     let resume!: () => void;
     harness.init.mockImplementationOnce(
@@ -105,7 +138,6 @@ describe("client startup ownership", () => {
       ["localhost", 8443],
       ["localhost", 8443],
     ]);
-    expect(harness.callback).toHaveBeenCalledTimes(2);
     client.disconnect();
     expect(harness.sockets[0]!.close).toHaveBeenCalledTimes(1);
   });
@@ -157,5 +189,27 @@ describe("client startup ownership", () => {
     await vi.waitFor(() => expect(states.at(-1)).toBe(ConnectionState.ERROR));
     expect(harness.sockets[0]!.close).toHaveBeenCalledTimes(1);
     expect(harness.begin).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses one owned session event for complete packet receive sequencing", async () => {
+    const client = create();
+    const packets: Uint8Array[] = [];
+    client.onPacketReceived((_packet, payload) => packets.push(payload));
+    await client.connect();
+    (
+      client as unknown as { handlePacket(packet: Uint8Array): void }
+    ).handlePacket(new Uint8Array(32));
+    const receiveEvents = harness.events.filter(
+      (event) => event["type"] === "receive-transport-packet",
+    );
+    expect(receiveEvents).toHaveLength(1);
+    expect(
+      harness.events.some((event) => event["type"] === "receive-packet"),
+    ).toBe(false);
+    expect(
+      harness.events.some((event) => event["type"] === "send-packet"),
+    ).toBe(false);
+    expect(packets).toEqual([new Uint8Array([1, 2, 3])]);
+    client.disconnect();
   });
 });

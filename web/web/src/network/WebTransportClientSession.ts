@@ -1,5 +1,4 @@
 import { clientEndpoint } from "./clientEndpoint";
-import { getSecurityEpoch } from "../wasm/client";
 import { serializeClientInitialization } from "./ClientInitialization";
 import { OutboundQueue } from "./OutboundQueue";
 import type { ClientSession } from "./Transport";
@@ -11,10 +10,9 @@ import {
   generateKeypair,
   initClientWasm,
   PacketType,
-  PeerCryptoSession,
-  parsePacket,
-  serializePacket,
-  setServerAddress,
+  BrowserSession,
+  processClientEvent,
+  throwWasmError,
   type ClientCryptoOptions,
   type ParsedPacket,
 } from "../wasm/client";
@@ -40,7 +38,7 @@ export class WebTransportClientSession implements ClientSession {
   private publicKey: string | null = null;
   private cancelled = false;
   private ownsWasm = false;
-  private peerCrypto: PeerCryptoSession | null = null;
+  private securitySession: BrowserSession | null = null;
   private preparing = false;
   private connectPromise: Promise<void> | null = null;
   private droppedDatagrams = 0;
@@ -101,7 +99,16 @@ export class WebTransportClientSession implements ClientSession {
               const url = new URL(this.options.serverUrl);
               if (url.protocol !== "https:")
                 throw new Error("WebTransport requires an HTTPS URL");
-              setServerAddress(url.hostname, Number(url.port) || 443);
+              const serverResult = processClientEvent({
+                type: "set-server",
+                host: url.hostname,
+                port: Number(url.port) || 443,
+              });
+              if (serverResult.code)
+                throwWasmError(
+                  serverResult.code,
+                  "Failed to set server address",
+                );
               this.publicKey = publicKey;
               succeeded = true;
               return true;
@@ -112,7 +119,7 @@ export class WebTransportClientSession implements ClientSession {
           });
       if (!prepared || this.cancelled) return;
       if (this.options.discoveryPeer) {
-        this.peerCrypto = await PeerCryptoSession.create(
+        this.securitySession = await BrowserSession.create(
           this.options.cryptoOptions ?? {},
           true,
           false,
@@ -123,7 +130,7 @@ export class WebTransportClientSession implements ClientSession {
           return;
         }
       }
-      const peer = this.peerCrypto;
+      const peer = this.securitySession;
       peer?.beginQuic();
       const channel = new WebTransportAcipChannel(
         this.options.serverUrl,
@@ -169,7 +176,13 @@ export class WebTransportClientSession implements ClientSession {
           },
           packet: ({ packet }) => {
             if (this.cancelled) return;
-            const parsed = parsePacket(packet);
+            const parsedResult = processClientEvent({
+              type: "receive-transport-packet",
+              packet,
+            });
+            if (parsedResult.code || !parsedResult.packet)
+              throw new Error(`Packet parsing failed (${parsedResult.code})`);
+            const parsed = parsedResult.packet;
             this.onPacket?.(parsed, packet.slice(22));
           },
           keyframe: (type, stream) =>
@@ -238,7 +251,10 @@ export class WebTransportClientSession implements ClientSession {
     );
   }
   getCryptoEpoch(): number {
-    return this.peerCrypto ? this.peerCrypto.quicEpoch : getSecurityEpoch();
+    return this.securitySession
+      ? this.securitySession.quicEpoch
+      : (processClientEvent({ type: "quic-event", operation: "state" }).epoch ??
+          -1);
   }
 
   getUploadFeedback() {
@@ -255,7 +271,16 @@ export class WebTransportClientSession implements ClientSession {
   sendPacket(type: number, payload: Uint8Array): void {
     if (this.state !== ConnectionState.CONNECTED || !this.outbound)
       throw new Error("Security negotiation is not complete");
-    const admission = this.outbound.submit(serializePacket(type, payload, 0));
+    const serialized = processClientEvent({
+      type: "send-packet",
+      packetType: type,
+      payload,
+      clientId: 0,
+      encrypt: false,
+    });
+    if (serialized.code || !serialized.bytes)
+      throw new Error(`Packet serialization failed (${serialized.code})`);
+    const admission = this.outbound.submit(serialized.bytes);
     if (
       admission === "congested" &&
       type !== PacketType.IMAGE_FRAME &&
@@ -264,9 +289,6 @@ export class WebTransportClientSession implements ClientSession {
       type !== PacketType.IMAGE_FRAME_H265
     )
       throw new Error("Reliable outbound queue is congested");
-  }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
-    this.sendPacket(type, payload);
   }
   disconnect(): void {
     if (this.cancelled) return;
@@ -280,8 +302,8 @@ export class WebTransportClientSession implements ClientSession {
     this.setState(ConnectionState.DISCONNECTED);
   }
   private releaseWasm(): void {
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (!this.ownsWasm) return;
     this.ownsWasm = false;
     cleanupClientWasm();

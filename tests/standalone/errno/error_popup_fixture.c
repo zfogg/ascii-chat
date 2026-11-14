@@ -6,9 +6,9 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/os/keyboard.h>
+#include <libplatform/filesystem.h>
+#include <ascii-chat/os/symbols.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
@@ -59,8 +59,7 @@ static void *produce_errors(void *opaque) {
         char message[2048];
         size_t used = 0;
         for (int i = 0; i < 30; ++i)
-          used += safe_snprintf(message + used, sizeof(message) - used,
-                                "LONG_ERROR line %02d: Unicode caf\xc3\xa9; /a/very/long/media/path.mp4\n", i);
+          used += safe_snprintf(message + used, sizeof(message) - used, "LONG_ERROR line %02d: Unicode caf\xc3\xa9; /a/very/long/media/path.mp4\n", i);
         SET_ERRNO(ERROR_MEDIA_DECODE, "%s", message);
       } else if (request == 5) {
         SET_ERRNO(ERROR_GENERAL, "CONTROL_ERROR: untrusted \033[2J payload");
@@ -84,27 +83,25 @@ static void *produce_errors(void *opaque) {
   return NULL;
 }
 
-#define CHECK(expression)                                                                                              \
-  do {                                                                                                                 \
-    if (!(expression)) {                                                                                               \
-      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression);                         \
-      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);                                 \
-      return 1;                                                                                                        \
-    }                                                                                                                  \
+#define CHECK(expression)                                                                                                                                                                              \
+  do {                                                                                                                                                                                                 \
+    if (!(expression)) {                                                                                                                                                                               \
+      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression);                                                                                                         \
+      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);                                                                                                                 \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 static int journal_contract(void) {
   char source[512];
   bool external;
   if (ASCIICHAT_SOURCE_ROOT[0]) {
-    CHECK(symbol_format_source_path("test-error-popup-fixture.exe",
-                                    ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source,
-                                    sizeof(source), &external, ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
+    CHECK(symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source, sizeof(source), &external,
+                                    ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
     CHECK(!external);
     CHECK(!strcmp(source, "tests\\standalone\\errno\\error_popup_fixture.c"));
   }
-  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) ==
-        ASCIICHAT_OK);
+  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) == ASCIICHAT_OK);
   CHECK(external);
   CHECK(!strcmp(source, "D:\\external\\vendor.c"));
   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
@@ -119,10 +116,8 @@ static int journal_contract(void) {
   error_packet_t *rejection_packet = (error_packet_t *)rejection;
   uint32_t rejection_code = ERROR_INVALID_PASSWORD;
   uint32_t rejection_length = sizeof(rejection_text) - 1;
-  rejection_packet->error_code = ((rejection_code & 0xffU) << 24) | ((rejection_code & 0xff00U) << 8) |
-                                 ((rejection_code >> 8) & 0xff00U) | (rejection_code >> 24);
-  rejection_packet->message_length = ((rejection_length & 0xffU) << 24) | ((rejection_length & 0xff00U) << 8) |
-                                     ((rejection_length >> 8) & 0xff00U) | (rejection_length >> 24);
+  rejection_packet->error_code = ((rejection_code & 0xffU) << 24) | ((rejection_code & 0xff00U) << 8) | ((rejection_code >> 8) & 0xff00U) | (rejection_code >> 24);
+  rejection_packet->message_length = ((rejection_length & 0xffU) << 24) | ((rejection_length & 0xff00U) << 8) | ((rejection_length >> 8) & 0xff00U) | (rejection_length >> 24);
   memcpy(rejection + sizeof(error_packet_t), rejection_text, sizeof(rejection_text) - 1);
   bool suppressed = errno_notifications_suppress(true);
   asciichat_errno_scope_t rejection_scope = errno_scope_begin();
@@ -174,9 +169,7 @@ static int journal_contract(void) {
 }
 
 static void background(ui_screen_t screen) {
-  const char *label = screen == UI_SCREEN_STATUS   ? "STATUS_BACKGROUND"
-                      : screen == UI_SCREEN_SPLASH ? "SPLASH_BACKGROUND"
-                                                   : "MEDIA_BACKGROUND";
+  const char *label = screen == UI_SCREEN_STATUS ? "STATUS_BACKGROUND" : screen == UI_SCREEN_SPLASH ? "SPLASH_BACKGROUND" : "MEDIA_BACKGROUND";
   char text[512];
   int length = safe_snprintf(text, sizeof(text), "\033[H\033[2J%s\nProduction controller PTY fixture\n", label);
   (void)ui_controller_present(screen, STDOUT_FILENO, (terminal_size_t){20, 5}, text, (size_t)length);
@@ -272,8 +265,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(action, "help")) {
           keyboard_help_toggle_terminal(ui_controller_active_fd());
         } else if (!strcmp(action, "dialog")) {
-          (void)ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){40, 10}, dialog, &number,
-                                     sizeof(number));
+          (void)ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){40, 10}, dialog, &number, sizeof(number));
         } else if (!strcmp(action, "stop")) {
           stop = true;
         }

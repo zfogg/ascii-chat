@@ -20,11 +20,10 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
-  PeerCryptoSession,
+  BrowserSession,
   ConnectionState,
   PacketType,
-  parsePacket,
-  serializePacket,
+  processClientEvent,
   type ParsedPacket,
 } from "../wasm/client";
 import type { ClientCryptoOptions } from "../wasm/client";
@@ -93,7 +92,7 @@ export class WebRTCSession implements ClientSession {
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
-  private peerCrypto: PeerCryptoSession | null = null;
+  private securitySession: BrowserSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -108,6 +107,7 @@ export class WebRTCSession implements ClientSession {
   private signalingQueue = Promise.resolve();
   private closed = false;
   private lookedUp = false;
+  private everConnected = false;
 
   /**
    * A native peer installs its DataChannel receive callback while registering
@@ -121,6 +121,7 @@ export class WebRTCSession implements ClientSession {
     this.disconnectedTimer = null;
     this.clearTimer();
     this.installPeerErrorReporter();
+    this.everConnected = true;
     this.setState(ConnectionState.CONNECTED);
     this.options.onProgress?.(
       `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
@@ -374,7 +375,11 @@ export class WebRTCSession implements ClientSession {
         this.peer.connectionState === "failed" ||
         this.peer.connectionState === "closed"
       ) {
-        this.waitForSuccessor();
+        if (this.everConnected) this.waitForSuccessor();
+        else
+          this.fail(
+            new Error("WebRTC peer connection failed during negotiation."),
+          );
       } else if (this.peer.connectionState === "disconnected") {
         this.options.onProgress?.("WebRTC connection interrupted");
         if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
@@ -396,7 +401,7 @@ export class WebRTCSession implements ClientSession {
       negotiated: true,
       id: 0,
     });
-    this.peerCrypto = await PeerCryptoSession.create(
+    this.securitySession = await BrowserSession.create(
       {
         ...this.options.cryptoOptions,
         password: this.options.cryptoOptions?.password || this.options.password,
@@ -409,8 +414,8 @@ export class WebRTCSession implements ClientSession {
       },
     );
     if (this.closed) {
-      this.peerCrypto.close();
-      this.peerCrypto = null;
+      this.securitySession.close();
+      this.securitySession = null;
       return;
     }
     channel.onopen = () => {
@@ -423,10 +428,16 @@ export class WebRTCSession implements ClientSession {
         channel,
         (bytes) => {
           try {
-            const decoded = this.peerCrypto!.receive(bytes);
+            const decoded = this.securitySession!.receive(bytes);
             if (!decoded) return;
             bytes = decoded;
-            const packet = parsePacket(bytes);
+            const parsed = processClientEvent({
+              type: "receive-transport-packet",
+              packet: bytes,
+            });
+            if (parsed.code || !parsed.packet)
+              throw new Error(`Peer packet parsing failed (${parsed.code})`);
+            const packet = parsed.packet;
             if (packet.type === PacketType.ERROR_MESSAGE) {
               const action = presentRemoteError(bytes.slice(22));
               if (action !== RemoteErrorAction.Continue) {
@@ -478,16 +489,22 @@ export class WebRTCSession implements ClientSession {
         this.peer?.sctp?.maxMessageSize,
       );
       try {
-        this.peerCrypto!.flush();
+        this.securitySession!.flush();
       } catch (error) {
         this.fail(error);
       }
     };
     channel.onclose = () => {
-      if (!this.closed) this.waitForSuccessor();
+      if (this.closed) return;
+      if (this.everConnected) this.waitForSuccessor();
+      else
+        this.fail(new Error("WebRTC data channel closed during negotiation."));
     };
     channel.onerror = () => {
-      if (!this.closed) this.waitForSuccessor();
+      if (this.closed) return;
+      if (this.everConnected) this.waitForSuccessor();
+      else
+        this.fail(new Error("WebRTC data channel failed during negotiation."));
     };
     const offer = await this.peer.createOffer();
     await this.peer.setLocalDescription(offer);
@@ -506,8 +523,8 @@ export class WebRTCSession implements ClientSession {
     this.quic = null;
     this.outbound?.close();
     this.outbound = null;
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;
@@ -621,7 +638,7 @@ export class WebRTCSession implements ClientSession {
     if (!this.outbound)
       this.outbound = new OutboundQueue(
         () => this.bridge?.getBufferedAmount() ?? 0,
-        (packet) => this.peerCrypto!.sendPacket(packet),
+        (packet) => this.securitySession!.sendPacket(packet),
         () => {
           // A failed media queue must not discard the independent ACDS
           // connection needed to commit a successor. Stop this peer and its
@@ -630,7 +647,16 @@ export class WebRTCSession implements ClientSession {
           this.waitForSuccessor();
         },
       );
-    const admission = this.outbound.submit(serializePacket(type, payload, 0));
+    const serialized = processClientEvent({
+      type: "send-packet",
+      packetType: type,
+      payload,
+      clientId: 0,
+      encrypt: false,
+    });
+    if (serialized.code || !serialized.bytes)
+      throw new Error(`Packet serialization failed (${serialized.code})`);
+    const admission = this.outbound.submit(serialized.bytes);
     if (
       admission === "congested" &&
       type !== PacketType.IMAGE_FRAME &&
@@ -639,9 +665,6 @@ export class WebRTCSession implements ClientSession {
       type !== PacketType.IMAGE_FRAME_H265
     )
       throw new Error("Reliable outbound queue is congested");
-  }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
-    this.sendPacket(type, payload);
   }
   onStateChange(callback: (state: ConnectionState) => void): void {
     this.stateCallback = callback;
@@ -679,8 +702,8 @@ export class WebRTCSession implements ClientSession {
     this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
-    this.peerCrypto?.close();
-    this.peerCrypto = null;
+    this.securitySession?.close();
+    this.securitySession = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;

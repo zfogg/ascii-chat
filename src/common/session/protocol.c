@@ -14,6 +14,7 @@
 #include <string.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
@@ -188,6 +189,7 @@ static void receive_error(const error_packet_t *header, const char *message, voi
 
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media, acip_client_callbacks_t control) {
   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
+  acip_client_session_init(&protocol->client_session, transport, &control);
   protocol->effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 }
 
@@ -231,8 +233,11 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   asciichat_error_t result;
   if (type == PACKET_TYPE_PING && !protocol->control.on_ping)
     result = acip_send_pong(protocol->transport);
-  else
-    result = acip_handle_client_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
+  else {
+    acip_client_session_t dispatch = protocol->client_session;
+    dispatch.callbacks = common ? media : protocol->control;
+    result = acip_client_session_dispatch(&dispatch, type, payload, length);
+  }
   if (result == ASCIICHAT_OK)
     result = protocol->callback_result;
   if (result == ASCIICHAT_OK) {
@@ -304,6 +309,12 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
     caps.capabilities |= TERM_CAP_MATRIX_RAIN;
   else
     caps.capabilities &= ~(uint32_t)TERM_CAP_MATRIX_RAIN;
+  if (opts->renderer == ASCII_RENDERER_GLYPH)
+    caps.capabilities |= TERM_CAP_GLYPH_RENDERER;
+  if (opts->palette_explicit)
+    caps.capabilities |= TERM_CAP_EXPLICIT_PALETTE;
+  if (opts->stabilize)
+    caps.capabilities |= TERM_CAP_STABILIZE;
   net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
   net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
   net_packet.color_count = HOST_TO_NET_U32(caps.color_count);

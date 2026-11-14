@@ -27,7 +27,7 @@ declare module "ws" {
     path?: string;
     noServer?: boolean;
     clientTracking?: boolean;
-    perMessageDeflate?: any;
+    perMessageDeflate?: boolean | object;
     maxPayload?: number;
     skipUTF8Validation?: boolean;
   }
@@ -71,7 +71,7 @@ declare module "ws" {
     constructor(
       address: string | URL,
       protocols?: string | string[],
-      options?: any,
+      options?: WebSocketOptions,
     );
     on(event: "open", listener: () => void): this;
     on(event: "message", listener: (data: RawData) => void): this;
@@ -85,8 +85,16 @@ declare module "ws" {
       callback?: (err?: Error) => void,
     ): void;
     close(code?: number, reason?: string | Buffer): void;
-    ping(data?: any, mask?: boolean, callback?: (err?: Error) => void): void;
-    pong(data?: any, mask?: boolean, callback?: (err?: Error) => void): void;
+    ping(
+      data?: RawData,
+      mask?: boolean,
+      callback?: (err?: Error) => void,
+    ): void;
+    pong(
+      data?: RawData,
+      mask?: boolean,
+      callback?: (err?: Error) => void,
+    ): void;
     terminate(): void;
 
     readyState: number;
@@ -98,7 +106,7 @@ declare module "ws" {
     bufferedAmount: number;
     binaryType: "nodebuffer" | "arraybuffer" | "fragments";
     url?: string;
-    extensions?: Record<string, any>;
+    extensions?: Record<string, string>;
     protocol?: string;
   }
 }

@@ -23,13 +23,13 @@ Test(ui_components, explicit_utf8_overrides_detection_and_auto_uses_capabilities
   options_t options = *options_get();
   options.force_utf8 = UTF8_SETTING_FALSE;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert_not(terminal_should_use_utf8());
+  cr_assert_not(terminal_should_use_utf8(options.force_utf8));
   options.force_utf8 = UTF8_SETTING_TRUE;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert(terminal_should_use_utf8());
+  cr_assert(terminal_should_use_utf8(options.force_utf8));
   options.force_utf8 = UTF8_SETTING_AUTO;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert_eq(terminal_should_use_utf8(), terminal_supports_utf8());
+  cr_assert_eq(terminal_should_use_utf8(options.force_utf8), terminal_supports_utf8());
 }
 
 Test(ui_components, popup_borders_follow_utf8_policy_and_no_color_is_plain) {
@@ -179,13 +179,7 @@ Test(ui_components, invalid_widget_arguments_set_context) {
 Test(ui_components, help_measure_includes_settings_and_popup_chrome) {
   const ui_help_entry_t entries[] = {{"Ctrl-U / Left", "Older logs"}, {"0", "Sync primitives"}};
   const char *settings[] = {"Current Settings:", "Volume : 100%", "Audio : enabled"};
-  ui_help_menu_t m = {.title = "Help",
-                      .entries = entries,
-                      .count = 2,
-                      .settings = settings,
-                      .settings_count = 3,
-                      .footer = "? closes",
-                      .top_margin = 5};
+  ui_help_menu_t m = {.title = "Help", .entries = entries, .count = 2, .settings = settings, .settings_count = 3, .footer = "? closes", .top_margin = 5};
   terminal_size_t size = ui_help_menu_measure(&m);
   cr_assert_geq(size.cols, 40);
   cr_assert_eq(size.rows, 16);

@@ -1,7 +1,7 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/coverage.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
@@ -11,9 +11,10 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/wakeup.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/wakeup.h>
+#include <libplatform/rwlock.h>
 #include <libplatform/thread.h>
+#include <libplatform/debug/sync.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/tui/controller.h>
@@ -42,12 +43,12 @@ static void inspect_atomic(uintptr_t key, void *value) {
 }
 #endif
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr)) {                                                                                                     \
-      log_error("Regression failed at line %d: %s", __LINE__, #expr);                                                  \
-      return 1;                                                                                                        \
-    }                                                                                                                  \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr)) {                                                                                                                                                                                     \
+      log_error("Regression failed at line %d: %s", __LINE__, #expr);                                                                                                                                  \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 static platform_wakeup_t *test_wakeup;
@@ -160,8 +161,7 @@ static void count_entry(uintptr_t key, const char *name, void *unused) {
     registry_lock = (rwlock_t *)key;
 }
 
-static void find_controller(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
-                            int line, void *data) {
+static void find_controller(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   (void)generation;
   (void)file;
   (void)line;
@@ -353,8 +353,7 @@ int main(int argc, char **argv) {
     // to the inspector's inventory.
     NAMED_REGISTER_ATOMIC(&sync_values[0], "sync_fixture_value", NULL);
     CHECK(named_registry_for_each(count_entry, NULL, &(bool){false}) == ASCIICHAT_OK);
-    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC PREPARING", 14) ==
-          ASCIICHAT_OK);
+    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC PREPARING", 14) == ASCIICHAT_OK);
     platform_sleep_ns(NS_PER_SEC_INT);
     if (!strcmp(argv[1], "stale")) {
       CHECK(registry_lock != NULL);
@@ -363,14 +362,12 @@ int main(int argc, char **argv) {
       ui_sync_handle_key(KEY_0);
       platform_sleep_ns(NS_PER_SEC_INT);
       ui_sync_handle_key(KEY_0);
-      CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY",
-                                  18) == ASCIICHAT_OK);
+      CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) == ASCIICHAT_OK);
       rwlock_wrlock(registry_lock);
       for (;;)
         platform_sleep_ns(NS_PER_SEC_INT);
     }
-    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) ==
-          ASCIICHAT_OK);
+    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) == ASCIICHAT_OK);
     CHECK(mutex_init(&rate_hot, "zzz_rate_hot") == ASCIICHAT_OK);
     CHECK(mutex_init(&rate_warm, "aaa_rate_warm") == ASCIICHAT_OK);
     CHECK(cond_init(&sort_actions, "sort_actions") == ASCIICHAT_OK);
@@ -427,14 +424,12 @@ int main(int argc, char **argv) {
   if (!strcmp(argv[1], "ui")) {
     CHECK(platform_isatty(STDOUT_FILENO));
     const char snapshot[] = "retained snapshot";
-    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot,
-                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot, sizeof(snapshot)) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
 #ifndef NDEBUG
     bool completed = false;
     size_t required = 0;
-    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK &&
-          completed);
+    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK && completed);
     CHECK(controller_mutex);
     uint64_t query_locks = controller_mutex->lock_count;
 #endif
@@ -446,16 +441,14 @@ int main(int argc, char **argv) {
     CHECK(controller_mutex->lock_count == query_locks);
 #endif
     CHECK(!ui_controller_state().covered);
-    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){200, 200}, slow_render, snapshot,
-                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){200, 200}, slow_render, snapshot, sizeof(snapshot)) == ASCIICHAT_OK);
     CHECK(ui_controller_state().covered);
     ui_controller_select_interactive(UI_SCREEN_SYNC);
     CHECK(ui_controller_state().screen == -1);
     ui_controller_select_interactive(UI_SCREEN_HELP);
     uint64_t start = time_get_ns();
     CHECK(ui_controller_state().screen == UI_SCREEN_HELP);
-    CHECK(ui_controller_present(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, "replacement", 11) ==
-          ASCIICHAT_OK);
+    CHECK(ui_controller_present(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, "replacement", 11) == ASCIICHAT_OK);
     CHECK(time_get_ns() - start < 500 * NS_PER_MS_INT);
     CHECK(!ui_controller_state().covered);
     platform_thread_t remover;
@@ -466,8 +459,7 @@ int main(int argc, char **argv) {
     CHECK(thread_join(&remover, NULL) == ASCIICHAT_OK);
     CHECK(atomic_load(&removed));
     atomic_store(&entered, false);
-    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, self_remove, snapshot,
-                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, self_remove, snapshot, sizeof(snapshot)) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     ui_controller_finish(STDOUT_FILENO, "\nUI FINISHED\n", 13);
     ui_controller_shutdown();
@@ -476,13 +468,11 @@ int main(int argc, char **argv) {
     // Warm all three slots, then verify publishing fixed-size frames allocates nothing.
     atomic_store(&entered, false);
     atomic_store(&proceed, false);
-    CHECK(ui_controller_submit(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot,
-                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(ui_controller_submit(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot, sizeof(snapshot)) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     const char media[] = "frame stays immutable";
     for (unsigned i = 0; i < 8; ++i)
-      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) ==
-            ASCIICHAT_OK);
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
 #ifndef NDEBUG
     bool found = false;
     CHECK(named_registry_for_each(count_entry, NULL, &found) == ASCIICHAT_OK && found);
@@ -490,8 +480,7 @@ int main(int argc, char **argv) {
     uint64_t media_memory_locks = memory_mutex->lock_count;
 #endif
     for (unsigned i = 0; i < 1000; ++i)
-      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) ==
-            ASCIICHAT_OK);
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
 #ifndef NDEBUG
     CHECK(memory_mutex->lock_count == media_memory_locks);
 #endif
@@ -501,8 +490,7 @@ int main(int argc, char **argv) {
   } else {
 #ifndef NDEBUG
     for (unsigned i = 0; i < 600; ++i)
-      CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) !=
-            NULL);
+      CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) != NULL);
     bool completed = false;
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(seen == 600);
@@ -582,8 +570,7 @@ int main(int argc, char **argv) {
       CHECK(mutex_stack_get_all_threads(&stacks, &counts, &count) == 0);
       for (int i = 0; i < count; ++i)
         for (int j = 0; j < counts[i]; ++j)
-          pending |=
-              stacks[i][j].mutex_key == (uintptr_t)&test_mutex && stacks[i][j].state == MUTEX_STACK_STATE_PENDING;
+          pending |= stacks[i][j].mutex_key == (uintptr_t)&test_mutex && stacks[i][j].state == MUTEX_STACK_STATE_PENDING;
       mutex_stack_free_all_threads(stacks, counts, count);
       platform_sleep_ns(NS_PER_MS_INT);
     }
@@ -604,14 +591,14 @@ int main(int argc, char **argv) {
         holders += stacks[i][j].mutex_key == (uintptr_t)&test_mutex;
     mutex_stack_free_all_threads(stacks, counts, count);
     CHECK(holders == 1);
-    CHECK(atomic_load_u64(&test_cond.waiting_count) == 1);
+    CHECK(atomic_load(&test_cond.waiting_count) == 1);
     cond_signal(&test_cond);
     mutex_unlock(&test_mutex);
     CHECK(thread_join(&holder, NULL) == ASCIICHAT_OK);
-    CHECK(atomic_load_u64(&test_cond.waiting_count) == 0);
+    CHECK(atomic_load(&test_cond.waiting_count) == 0);
     mutex_lock(&test_mutex);
     CHECK(cond_timedwait(&test_cond, &test_mutex, NS_PER_MS_INT) == ETIMEDOUT);
-    CHECK(atomic_load_u64(&test_cond.waiting_count) == 0);
+    CHECK(atomic_load(&test_cond.waiting_count) == 0);
     mutex_unlock(&test_mutex);
     // Two real waiters share one wall-clock interval, not two thread-seconds.
     uint64_t completed_wait = test_cond.total_wait_ns;
@@ -619,10 +606,10 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < 2; ++i)
       CHECK(platform_thread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     deadline = time_get_ns() + NS_PER_SEC_INT;
-    while (atomic_load_u64(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
+    while (atomic_load(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
       platform_sleep_ms(1);
     mutex_lock(&test_mutex);
-    CHECK(atomic_load_u64(&test_cond.waiting_count) == 2);
+    CHECK(atomic_load(&test_cond.waiting_count) == 2);
     uint64_t wait_started = test_cond.wait_started_ns, total_wait = 0;
     CHECK(wait_started);
     uint64_t query_now = time_get_ns();
@@ -654,18 +641,16 @@ int main(int argc, char **argv) {
       CHECK(!named_registry_read(queue_keys[i], "atomic", inspect_atomic, &observed));
     audio_ring_buffer_t *audio = audio_ring_buffer_create();
     CHECK(audio != NULL);
-    uintptr_t audio_keys[] = {(uintptr_t)&audio->write_index,          (uintptr_t)&audio->read_index,
-                              (uintptr_t)&audio->discard_pending,      (uintptr_t)&audio->discard_to_index,
-                              (uintptr_t)&audio->jitter_buffer_filled, (uintptr_t)&audio->crossfade_samples_remaining,
-                              (uintptr_t)&audio->crossfade_fade_in,    (uintptr_t)&audio->underrun_count};
+    uintptr_t audio_keys[] = {(uintptr_t)&audio->write_index,       (uintptr_t)&audio->read_index,           (uintptr_t)&audio->discard_pending,
+                              (uintptr_t)&audio->discard_to_index,  (uintptr_t)&audio->jitter_buffer_filled, (uintptr_t)&audio->crossfade_samples_remaining,
+                              (uintptr_t)&audio->crossfade_fade_in, (uintptr_t)&audio->underrun_count};
     for (size_t i = 0; i < 8; ++i)
       CHECK(named_registry_read(audio_keys[i], "atomic", inspect_atomic, &observed));
     audio_ring_buffer_destroy(audio);
     for (size_t i = 0; i < 8; ++i)
       CHECK(!named_registry_read(audio_keys[i], "atomic", inspect_atomic, &observed));
     int type_fixture;
-    named_register((uintptr_t)&type_fixture, "type_fixture", "regression_type", "0x%tx", __FILE__, __LINE__, __func__,
-                   0);
+    named_register((uintptr_t)&type_fixture, "type_fixture", "regression_type", "0x%tx", __FILE__, __LINE__, __func__, 0);
     CHECK(named_registry_has_type("regression_type_suffix", strlen("regression_type")));
     CHECK(!named_registry_has_type("regression_typ", strlen("regression_typ")));
     CHECK(!named_registry_has_type(NULL, 1));
@@ -692,13 +677,11 @@ int main(int argc, char **argv) {
     // Previously copied strings survive removal, and address reuse invalidates
     // both positive and negative cache entries.
     CHECK(!strcmp(metadata.type, "regression_type"));
-    named_register((uintptr_t)&type_fixture, "replacement", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__,
-                   0);
+    named_register((uintptr_t)&type_fixture, "replacement", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__, 0);
     CHECK(named_metadata_copy((uintptr_t)&type_fixture, &metadata));
     CHECK(strstr(metadata.name, "replacement") != NULL);
     CHECK(!strcmp(metadata.type, "replacement_type"));
-    named_register((uintptr_t)&type_fixture, "latest_alias", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__,
-                   0);
+    named_register((uintptr_t)&type_fixture, "latest_alias", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__, 0);
     CHECK(named_metadata_copy((uintptr_t)&type_fixture, &metadata));
     CHECK(strstr(metadata.name, "latest_alias") != NULL);
     named_unregister((uintptr_t)&type_fixture);
