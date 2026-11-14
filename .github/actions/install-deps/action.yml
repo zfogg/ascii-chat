@@ -445,16 +445,10 @@ runs:
           }
         }
 
-        Ensure-Scoop
-        Ensure-ScoopBucket -Bucket 'main'
-        Ensure-ScoopBucket -Bucket 'extras'
-
         # The matching LLVM development archive is installed separately below.
-        # doxygen is needed for generating documentation included in installers
-        # NOTE: git is already pre-installed on GitHub Actions Windows runners
-        # GitHub's Windows images commonly provide these already. Avoid
-        # invoking Scoop for preinstalled tools; Scoop can spend many minutes
-        # resolving an otherwise unnecessary package on AMD64 runners.
+        # doxygen is needed for generating documentation included in installers.
+        # GitHub's AMD64 image has Chocolatey and its packages resolve much
+        # faster than Scoop; ARM64 retains the Scoop path.
         $basePackages = @('ninja', 'ccache', 'doxygen') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
         }
@@ -465,8 +459,18 @@ runs:
         }
         $packages = $basePackages + $extra
 
-        foreach ($pkg in $packages) {
-          Install-ScoopPackage -Package $pkg
+        if ($env:RUNNER_ARCH -eq 'X64') {
+          foreach ($pkg in $packages) {
+            choco install $pkg --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed to install $pkg" }
+          }
+        } else {
+          Ensure-Scoop
+          Ensure-ScoopBucket -Bucket 'main'
+          Ensure-ScoopBucket -Bucket 'extras'
+          foreach ($pkg in $packages) {
+            Install-ScoopPackage -Package $pkg
+          }
         }
 
         # Add scoop shims to PATH (both user and global locations)
