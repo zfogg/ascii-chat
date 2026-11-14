@@ -109,7 +109,7 @@
  * exercise both direct camera-track and video-element capture, and check the source
  * rectangle drawn before ASCII conversion. They save screenshots and timestamped
  * crop samples. A seated fixture adds small shifts, a brief lean, and a sustained
- * move, checking that the view holds before deliberately reframing. The eleven Criterion controller
+ * move, checking that the view holds before deliberately reframing. The eleven Catch2 controller
  * tests in `tests/unit/video/face_follow_test.c` additionally exercise startup with
  * no face, normal webcam framing, transient loss, a larger bystander, frame-rate
  * independence, disabling, seated jitter, brief leans, pan grace, and zoom grace.

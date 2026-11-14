@@ -24,11 +24,11 @@
  * Static and shared library targets remain available independently of the
  * executable's dependency policy.
  *
- * On Criterion-supported systems, `cmake --workflow --preset tests` builds the
+ * On Catch2-supported systems, `cmake --workflow --preset tests` builds the
  * test target and runs the complete suite. The `unit`, `integration` and
  * `performance` test presets use the tests-enabled configuration. Windows does
- * not support Criterion; use the executable smoke workflows there. On Intel
- * macOS, run Criterion tests through Docker as described in AGENTS.md.
+ * not support Catch2; use the executable smoke workflows there. On Intel
+ * macOS, run Catch2 tests through Docker as described in AGENTS.md.
  *
  * Dependency source downloads can be shared. New configurations keep legacy
  * dependency build/install outputs inside their own binary directories. Explicit

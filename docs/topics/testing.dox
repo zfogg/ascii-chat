@@ -35,7 +35,7 @@
  * Prefer `SECTION` for branches sharing setup, `REQUIRE` for fatal
  * preconditions, `CHECK` for collecting failures, and Catch2 matchers for
  * readable string/container assertions. Use `INFO` and `CAPTURE` for
- * diagnostics. Catch2 generators replace Criterion theories:
+ * diagnostics. Catch2 generators replace Catch2 theories:
  * @code{.cpp}
  * auto size = GENERATE(1u, 16u, 256u, 4096u);
  * CAPTURE(size);
@@ -73,6 +73,6 @@
  * @section testing_troubleshooting Troubleshooting
  * List tests with `unit_tests --list-tests` and inspect CTest with `ctest -N`.
  * Run a focused case with a Catch2 expression and write XML with
- * `--reporter junit --out path.xml`. Criterion filters and XML directories
+ * `--reporter junit --out path.xml`. Catch2 filters and XML directories
  * are no longer supported.
  */

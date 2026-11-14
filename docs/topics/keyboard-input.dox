@@ -34,18 +34,18 @@
  *
  * ## Validation
  *
- * The normal Criterion suites exercise the production library with the configured
+ * The normal Catch2 suites exercise the production library with the configured
  * sanitizers: platform keyboard text/editing, UI text editing/event collection,
  * terminal replies, log search, and UTF-8 utilities. The password PTY regression
  * also types and deletes accented characters, CJK, and supplementary emoji.
  *
- * On a configured Linux/macOS Clang build with Criterion and pkg-config, run:
+ * On a configured Linux/macOS Clang build with Catch2 and pkg-config, run:
  *
  * ```sh
  * uv run --frozen python tests/scripts/keyboard_text_coverage.py --build build
  * ```
  *
- * This runs the same exhaustive Criterion tests for every non-NUL Unicode scalar,
+ * This runs the same exhaustive Catch2 tests for every non-NUL Unicode scalar,
  * malformed UTF-8, fragmented input, and UTF-16 recovery. It requires **100% line and
  * branch coverage of the three `keyboard_text_*` Unicode functions in
  * `lib/platform/keyboard.c`** and writes its counters, gcov listing, and summary under

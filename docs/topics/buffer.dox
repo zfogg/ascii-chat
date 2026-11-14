@@ -70,7 +70,7 @@
  *
  * @section buffer_validation Validation
  * Build test-buffer-ownership and run ctest -R '^buffer-ownership$'. This native
- * suite runs on Windows, Linux and macOS without Criterion. It tests alignment,
+ * suite runs on Windows, Linux and macOS without Catch2. It tests alignment,
  * size-class reuse, overflow, exhaustion, immutable sharing, failure preservation,
  * shutdown with outstanding owners, concurrent trimming, MPMC ownership transfer,
  * process-wide exhaustion with control reserve, queues and media storage.

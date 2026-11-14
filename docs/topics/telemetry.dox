@@ -65,7 +65,7 @@
  * Every Python test imports the shared `tests/_environment.py` bootstrap before
  * loading helpers or launching native children. It sets `TESTING=1` and disables
  * signals as a second default. As in the existing C helper, presence of TESTING or
- * CRITERION_TEST denotes test mode, including the string value `0`. Do not remove
+ * TESTING denotes test mode, including the string value `0`. Do not remove
  * those variables to enable export in tests.
  *
  * Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
@@ -415,12 +415,12 @@
  * native unit/wire tests in its repository, including forced HTTP 503 recovery,
  * structured retry events, cumulative custom instruments and SQLite delta buckets.
  *
- * The Criterion suite `test_unit_otel_otel` exercises the host API and ascii-chat
+ * The Catch2 suite `test_unit_otel_otel` exercises the host API and ascii-chat
  * adapter, including all signal masks, context restoration, sampling and budgets,
  * metric intervals/validation, retries and permanent loss, queue saturation, SQLite
  * lifecycle, and the complete application catalog. It links `gotel::testing` from
  * c-gotel; fake clocks, scripted no-I/O transport and atomic event counts remain
- * independent of Criterion. The Python integration test shares c-gotel's loopback
+ * independent of Catch2. The Python integration test shares c-gotel's loopback
  * collector/OTLP decoder and waits for complete asynchronous exports.
  *
  * Collector failures produce local warnings at most once every 30 seconds while

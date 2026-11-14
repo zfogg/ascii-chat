@@ -141,7 +141,7 @@
  * frequency accuracy, gating, compression, EQ bounds, pitch correction, gain control,
  * non-finite input, reset, empty-mixer locking, recipient isolation, and the existing
  * AEC3/capture chain. Benchmarks include Python call overhead and report wall time,
- * not whole-application CPU utilization. Criterion is not supported on Windows.
+ * not whole-application CPU utilization. Catch2 is not supported on Windows.
  *
  * For physical recording, list device indices with `uv run --extra audio python -m sounddevice`, obtain
  * the attributed speech fixture described in the evidence README, then run:

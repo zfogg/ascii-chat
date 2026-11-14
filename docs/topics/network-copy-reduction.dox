@@ -100,7 +100,7 @@
  *
  * On Windows use `python` and the `.exe` binary. CTest configures vcpkg DLL paths;
  * direct benchmark invocation also needs the dependency DLL directories on `PATH`.
- * The test does not require Criterion and links the production library.
+ * The test does not require Catch2 and links the production library.
  *
  * The suite verifies CRC continuity, empty slices, length rejection, short writes,
  * blocked-peer deadlines, malformed headers/CRCs, partial-header disconnects,

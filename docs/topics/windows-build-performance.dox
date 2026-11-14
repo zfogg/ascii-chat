@@ -90,7 +90,7 @@
  * native launchers, so their timing combines cache hits and launcher savings.
  *
  * The C/C++ PCH regression and Windows export tests can be run separately from
- * Criterion:
+ * Catch2:
  *
  * ```powershell
  * uv run --frozen python -m pytest tests/python/tests/cmake/test_ccache_pch.py
