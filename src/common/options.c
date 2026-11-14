@@ -69,6 +69,7 @@
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
 #include <ascii-chat/options/registry/core.h>
+#include <ascii-chat/options/registry.h>
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/strings.h> // Enum/mode string conversions
@@ -81,6 +82,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <libplatform/system.h>
 #include <libflags/flags.h>
+#include <libflags/builder.h>
 #include <libflags/commands.h>
 #include <yyjson.h>
 #include <libflags/completions/completions.h>
@@ -1816,6 +1818,7 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
 }
 
 static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode, int mode_argc, char **mode_argv, int *remaining_argc, char ***remaining_argv) {
+  (void)config;
   // Extract binary-level options BEFORE applying unified defaults
   // (which might override them from config files)
   binary_level_opts_t binary_before_defaults = extract_binary_level(opts);
@@ -1885,11 +1888,34 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   bool saved_flip_x_for_parse = opts->flip_x;
   bool saved_flip_y_for_parse = opts->flip_y;
   // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
-  // Parse mode-specific arguments
+  // Parse generic flags through libflags. Mode detection and positional
+  // interpretation remain application-owned; the option schema, storage,
+  // defaults, environment names, scalar parsing, callbacks, and actions do
+  // not.
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
-  log_dev("About to parse options_config with mode_bitmask=%u, mode_argc=%d", mode_bitmask, mode_argc);
-  asciichat_error_t result = options_config_parse(config, mode_argc, mode_argv, opts, mode_bitmask, remaining_argc, remaining_argv);
-  log_dev("options_config_parse returned: %d", result);
+  flags_schema_builder_t *flags_builder = flags_schema_builder_create();
+  if (!flags_builder)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags schema builder");
+  if (options_registry_add_all_to_flags_builder(flags_builder, mode_bitmask) != ASCIICHAT_OK) {
+    flags_schema_builder_destroy(flags_builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build libflags option schema");
+  }
+  flags_context_t *flags_context = flags_create(flags_schema_builder_schema(flags_builder), opts, sizeof(*opts));
+  if (!flags_context) {
+    flags_schema_builder_destroy(flags_builder);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags option context");
+  }
+  flags_parse_result_t parsed = {0};
+  const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
+  flags_destroy_preserving_storage(flags_context);
+  flags_schema_builder_destroy(flags_builder);
+  if (!parsed_ok)
+    return SET_ERRNO(ERROR_USAGE, "Failed to parse command-line options");
+  if (remaining_argc)
+    *remaining_argc = parsed.positional_argc;
+  if (remaining_argv)
+    *remaining_argv = parsed.positional_argv;
+  asciichat_error_t result = ASCIICHAT_OK;
   if (cli_encrypt && !cli_no_encrypt && opts->encrypt_enabled)
     opts->no_encrypt = false;
   if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
