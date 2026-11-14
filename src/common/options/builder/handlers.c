@@ -16,6 +16,7 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/string.h>
 #include <libflags/values.h>
+#include <libflags/values.h>
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -203,10 +204,8 @@ static asciichat_error_t apply_env_string(void *field, const char *env_value, co
 static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
   if (!env_value || env_value[0] == '\0')
     return ASCIICHAT_OK; // Preserve the existing value when the environment is unset.
-  char *endptr;
-  errno = 0;
-  double value = strtod(env_value, &endptr);
-  if (endptr == env_value || *endptr != '\0' || errno == ERANGE || !isfinite(value))
+  double value = 0.0;
+  if (!flags_parse_double(env_value, &value))
     return SET_ERRNO(ERROR_USAGE, "Invalid floating-point value for environment variable %s: %s", desc->env_var_name ? desc->env_var_name : "unknown", env_value);
   memcpy(field, &value, sizeof(double));
   return ASCIICHAT_OK;
@@ -334,10 +333,8 @@ static asciichat_error_t apply_cli_double(void *field, const char *opt_value, co
     return ERROR_USAGE;
   }
 
-  char *endptr;
-  double value = strtod(opt_value, &endptr);
-  // Check: endptr must have advanced past the input, and must be at the string end
-  if (endptr == opt_value || *endptr != '\0') {
+  double value = 0.0;
+  if (!flags_parse_double(opt_value, &value)) {
     return ERROR_USAGE;
   }
   memcpy(field, &value, sizeof(double));
