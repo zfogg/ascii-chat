@@ -737,12 +737,11 @@ runs:
           # Keep in sync with vcpkg.json builtin-baseline
           git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 checkout 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          # Materialize all blobs now so CMake cannot trigger a delayed
-          # promisor fetch while resolving manifest port versions.
-          git config --unset remote.origin.promisor 2>$null
-          git config --unset remote.origin.partialclonefilter 2>$null
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --no-filter origin
-          if ($LASTEXITCODE -ne 0) { throw "Could not materialize the vcpkg checkout" }
+          # Fetch only the pinned baseline. A full --no-filter fetch can take
+          # the entire Windows runner window and is unnecessary for manifest
+          # mode; the baseline commit contains the required port metadata.
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 1 origin 530d2d2f0864684f20b32a0596459646906d35fe
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
           Pop-Location
         }
 
