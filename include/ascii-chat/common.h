@@ -31,8 +31,8 @@
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include "os/api.h"        // IWYU pragma: keep
-#include "os/filesystem.h" // platform file and descriptor helpers
+#include <ascii-chat/api.h>        // IWYU pragma: keep
+#include <libplatform/filesystem.h> // platform file and descriptor helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
 #include <util/string.h>

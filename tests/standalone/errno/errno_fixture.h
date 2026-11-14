@@ -9,7 +9,7 @@
 #include <libplatform/thread.h>
 #include <libplatform/system.h>
 #include <libplatform/errno.h>
-#include <ascii-chat/os/symbols.h>
+#include <libplatform/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>

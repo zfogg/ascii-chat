@@ -5,7 +5,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/common/sync.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/util/time.h>
 
 #include <math.h>

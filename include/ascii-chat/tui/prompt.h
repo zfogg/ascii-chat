@@ -1,7 +1,7 @@
 #pragma once
 #include <ascii-chat/asciichat_errno.h>
 #include <stddef.h>
-#include <ascii-chat/os/question.h>
+#include <libplatform/question.h>
 
 /** Only display-safe text crosses this boundary; never pass an unmasked password. */
 asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor, bool secret);

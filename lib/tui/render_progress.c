@@ -13,7 +13,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/time.h>

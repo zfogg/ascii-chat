@@ -11,7 +11,7 @@
 #ifndef PARALLEL_CONNECT_H
 #define PARALLEL_CONNECT_H
 
-#include "../os/socket.h"
+#include <libplatform/socket.h>
 #include "../common.h"
 
 /**

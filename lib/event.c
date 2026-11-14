@@ -1,4 +1,4 @@
-#include <ascii-chat/os/event.h>
+#include <ascii-chat/network/event.h>
 #include <ascii-chat/common.h>
 #include <uv.h>
 #include <string.h>

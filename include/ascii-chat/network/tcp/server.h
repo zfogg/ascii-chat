@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/os/event.h>
+#include <ascii-chat/network/event.h>
 #include <libplatform/atomic.h>
 #include "../../common.h"
 #include <libplatform/socket.h>

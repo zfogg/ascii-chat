@@ -92,7 +92,7 @@
 
 #include "../options/options.h"
 #ifdef _WIN32
-#include "../os/windows/getopt.h"
+#include <libplatform/windows/getopt.h>
 #else
 #include <getopt.h>
 #endif

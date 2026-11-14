@@ -108,7 +108,7 @@ void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *po
     while (end < len && word_space((unsigned char)buffer[end]))
       ++end;
   } else {
-    char text[UTF8_BUFFER_SIZE];
+    char text[ASCII_CHAT_UTF8_BUFFER_SIZE];
     if (key == '\t' || (key >= 32 && key != 127)) {
       if (keyboard_text_encode(key, text))
         (void)ui_input_insert(buffer, capacity, length, position, text);

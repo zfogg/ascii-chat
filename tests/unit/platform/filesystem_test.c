@@ -9,7 +9,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/paths.h>
-#include <ascii-chat/os/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/string.h>
 
 TestSuite(platform_filesystem);
