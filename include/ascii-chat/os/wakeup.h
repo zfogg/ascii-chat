@@ -12,6 +12,7 @@ extern "C" {
 
 #endif
 
+#if 0
 typedef struct platform_wakeup platform_wakeup_t;
 
 /** Coalescing notification for a single consumer. Publish work before signal;
