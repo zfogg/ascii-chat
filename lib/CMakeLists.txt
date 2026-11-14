@@ -131,7 +131,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_embedded.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_resources.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_parser.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_formatter.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_merger.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_options.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_environment.c
