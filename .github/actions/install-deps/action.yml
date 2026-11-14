@@ -727,21 +727,15 @@ runs:
         # Clone vcpkg to a temp location
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
-          Write-Host "Cloning vcpkg..."
-          # The pinned baseline needs historical port blobs. A filtered clone
-          # can leave those blobs unavailable even after fetching the remote
-          # refs, causing vcpkg manifest checkout failures on Windows ARM64.
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone https://github.com/microsoft/vcpkg.git $vcpkgDir
-          if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
+          Write-Host "Fetching pinned vcpkg baseline..."
+          New-Item -ItemType Directory -Force -Path $vcpkgDir | Out-Null
           Push-Location $vcpkgDir
-          # Keep in sync with vcpkg.json builtin-baseline
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 checkout 530d2d2f0864684f20b32a0596459646906d35fe
-          if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          # Fetch only the pinned baseline. A full --no-filter fetch can take
-          # the entire Windows runner window and is unnecessary for manifest
-          # mode; the baseline commit contains the required port metadata.
+          git init
+          git remote add origin https://github.com/microsoft/vcpkg.git
           git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 1 origin 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
+          git checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
           Pop-Location
         }
 
