@@ -1400,6 +1400,46 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
 // Parsing and Validation
 // ============================================================================
 
+static bool apply_libflags_environment_scalar(void *field, const option_descriptor_t *desc, const options_config_t *config) {
+  if (!field || !desc || !config)
+    return false;
+
+  flags_value_type_t type;
+  size_t size = desc->type == OPTION_TYPE_BOOL ? sizeof(bool) : desc->type == OPTION_TYPE_INT ? sizeof(int) : 0;
+  switch (desc->type) {
+  case OPTION_TYPE_BOOL: type = FLAGS_TYPE_BOOL; break;
+  case OPTION_TYPE_INT: type = FLAGS_TYPE_INT64; break;
+  default: return false;
+  }
+
+  const char *aliases[2] = {NULL, NULL};
+  size_t alias_count = 0;
+  if (config->environment_prefix && strcmp(config->environment_prefix, "ASCII_CHAT_") == 0 && desc->long_name) {
+    if (strcmp(desc->long_name, "port") == 0)
+      aliases[alias_count++] = "PORT";
+    else if (strcmp(desc->long_name, "websocket-port") == 0)
+      aliases[alias_count++] = "WS_PORT";
+  }
+
+  const flags_option_spec_t option = {.name = desc->long_name,
+                                      .environment_name = desc->env_var_name,
+                                      .environment_aliases = aliases,
+                                      .environment_alias_count = alias_count,
+                                      .type = type,
+                                      .behavior = FLAGS_BEHAVIOR_VALUE,
+                                      .argument_requirement = FLAGS_ARGUMENT_REQUIRED,
+                                      .default_value = desc->default_value,
+                                      .storage_size = size};
+  const flags_schema_t schema = {.options = &option, .option_count = 1};
+  flags_context_t *context = flags_create(&schema, field, size);
+  if (!context)
+    return false;
+  const flags_environment_config_t environment = {.prefix = config->environment_prefix, .derive_names = true};
+  bool ok = flags_set_defaults(context) && flags_set_environment_config(context, &environment) && flags_apply_environment(context);
+  flags_destroy(context);
+  return ok;
+}
+
 asciichat_error_t options_config_set_defaults(const options_config_t *config, void *options_struct) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
@@ -1411,7 +1451,13 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     const option_descriptor_t *desc = &config->descriptors[i];
     void *field = base + desc->offset;
 
-    // Check environment variable first (primary)
+    if (desc->type == OPTION_TYPE_BOOL || desc->type == OPTION_TYPE_INT) {
+      if (!apply_libflags_environment_scalar(field, desc, config))
+        return SET_ERRNO(ERROR_USAGE, "Invalid environment value for option %s", desc->long_name ? desc->long_name : "unknown");
+      continue;
+    }
+
+    // Check environment variable first (primary) for callback and string options.
     const char *env_value = NULL;
     char derived_env_name[256];
     const char *env_name = desc->env_var_name;
