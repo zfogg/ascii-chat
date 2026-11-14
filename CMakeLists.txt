@@ -21,8 +21,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # =============================================================================
 # Centralized dependency cache configuration
 # This section must run AFTER BuildTypes.cmake is included (where CMAKE_BUILD_TYPE is set)
-# Docker builds use .deps-cache/<arch>/ (amd64 or arm64), WSL builds use
-# .deps-cache/wsl/<distribution>/, and native builds use .deps-cache/
+# Docker builds use .deps-cache/docker/<arch>/ (amd64 or arm64), WASM builds
+# use .deps-cache/wasm/, WSL builds use .deps-cache/wsl/<distribution>/, and
+# native builds use .deps-cache/
 # Musl dependencies are stored in musl/ subdirectory
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
@@ -31,7 +32,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # Only compute cache root if not already passed from parent build
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "")
     if(DEFINED ENV{DOCKER_OS})
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
     elseif(EXISTS "/.dockerenv")
         message(WARNING "Running in Docker without DOCKER_OS set - using generic 'docker' cache path. Set DOCKER_OS=amd64 or DOCKER_OS=arm64 to avoid cross-arch conflicts.")
         set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)" FORCE)
@@ -72,7 +73,7 @@ endif()
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
 if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "" OR WEB_DEPS_CACHE_DIR MATCHES "[/\\\\]_deps[/\\\\]legacy[/\\\\]")
-    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
 endif()
 
 # Shared source download cache for FetchContent (not build-type-qualified)
@@ -83,9 +84,9 @@ if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "")
 endif()
 
 # Web-specific source cache for FetchContent (keeps web sources separate)
-# Sources are shared across build types but kept in web/ subdirectory
+# Sources are shared across build types but kept in wasm/ subdirectory
 if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
-    set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/src" CACHE PATH "Web FetchContent source cache" FORCE)
+    set(WEB_FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
 endif()
 
 # Validate paths are not empty (which would create directories at root /)
