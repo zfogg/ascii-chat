@@ -1817,6 +1817,31 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
   return ASCIICHAT_OK;
 }
 
+static bool add_ascii_chat_dependencies(flags_schema_builder_t *builder) {
+  static const flags_dependency_t dependencies[] = {
+      {"url", "file", FLAGS_DEPENDENCY_CONFLICTS, "Option --url cannot be used with --file"},
+      {"url", "loop", FLAGS_DEPENDENCY_CONFLICTS, "Option --url cannot be used with --loop"},
+      {"no-encrypt", "encrypt", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-encrypt with --encrypt"},
+      {"no-auth", "key", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-auth with --key"},
+      {"no-auth", "password", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-auth with --password"},
+      {"no-auth", "client-keys", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-auth with --client-keys"},
+      {"no-auth", "server-key", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-auth with --server-key"},
+      {"no-compress", "compression-level", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use --no-compress with --compression-level"},
+      {"encode-audio", "no-encode-audio", FLAGS_DEPENDENCY_CONFLICTS, "Cannot use both --encode-audio and --no-encode-audio"},
+      {"waveform", "matrix", FLAGS_DEPENDENCY_CONFLICTS, "Option --waveform cannot be used with --matrix"},
+      {"fft", "matrix", FLAGS_DEPENDENCY_CONFLICTS, "Option --fft cannot be used with --matrix"},
+      {"waveform", "fft", FLAGS_DEPENDENCY_CONFLICTS, "Options --waveform and --fft cannot be used together"},
+      {"waveform", "stretch", FLAGS_DEPENDENCY_CONFLICTS, "Option --waveform cannot be used with --stretch"},
+      {"fft", "stretch", FLAGS_DEPENDENCY_CONFLICTS, "Option --fft cannot be used with --stretch"},
+      {"snapshot-delay", "snapshot", FLAGS_DEPENDENCY_REQUIRES, "Option --snapshot-delay requires --snapshot"},
+      {"loop", "file", FLAGS_DEPENDENCY_REQUIRES, "Option --loop requires --file"},
+  };
+  for (size_t i = 0; i < sizeof(dependencies) / sizeof(dependencies[0]); ++i)
+    if (!flags_schema_builder_add_dependency(builder, &dependencies[i]))
+      return false;
+  return true;
+}
+
 static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode, int mode_argc, char **mode_argv, int *remaining_argc, char ***remaining_argv) {
   (void)config;
   // Extract binary-level options BEFORE applying unified defaults
@@ -1886,6 +1911,10 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (options_registry_add_all_to_flags_builder(flags_builder, mode_bitmask) != ASCIICHAT_OK) {
     flags_schema_builder_destroy(flags_builder);
     return SET_ERRNO(ERROR_CONFIG, "Failed to build libflags option schema");
+  }
+  if (!add_ascii_chat_dependencies(flags_builder)) {
+    flags_schema_builder_destroy(flags_builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build libflags option dependencies");
   }
   flags_context_t *flags_context = flags_create(flags_schema_builder_schema(flags_builder), opts, sizeof(*opts));
   if (!flags_context) {
