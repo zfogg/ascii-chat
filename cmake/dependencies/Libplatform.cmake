@@ -41,10 +41,21 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 if(NOT TARGET libplatform)
+    # Coverage instrumentation belongs to the final executable.  Passing
+    # --coverage while linking libplatform's shared object pulls Clang's
+    # profile runtime into the DSO, leaving non-exported llvm_gcda_* symbols
+    # unresolved when lld links the executable with sanitizers.  Keep the
+    # compile flags inherited by libplatform, but suppress coverage only for
+    # this shared-library configure step.
+    set(_ascii_chat_saved_shared_linker_flags "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "--coverage" "" CMAKE_SHARED_LINKER_FLAGS
+        "${CMAKE_SHARED_LINKER_FLAGS}")
     add_subdirectory(
         "${_ascii_chat_libplatform_source}"
         "${_ascii_chat_libplatform_build}"
         EXCLUDE_FROM_ALL)
+    set(CMAKE_SHARED_LINKER_FLAGS "${_ascii_chat_saved_shared_linker_flags}")
+    unset(_ascii_chat_saved_shared_linker_flags)
 endif()
 
 if(TARGET asciichat-project-includes)
