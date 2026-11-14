@@ -268,15 +268,6 @@ void signal_exit(void) {
   if (cb) {
     cb();
   }
-#ifdef _WIN32
-  // The console/input thread may be the only thread able to observe Ctrl-C
-  // while the render thread is inside terminal output or device teardown.
-  // Drain telemetry here with its hard deadline, then bypass the potentially
-  // blocked UI/atexit graph.  Process-owned resources are reclaimed by the
-  // OS, while telemetry gets the same bounded drain as normal shutdown.
-  ascii_otel_shutdown();
-  _Exit(130);
-#endif
 }
 
 void set_interrupt_callback(void (*cb)(void)) {
@@ -540,7 +531,10 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * ============================================================================ */
 
 static void on_exit_show_cursor(void) {
-  ui_controller_restore_terminal();
+  if (shutdown_is_requested())
+    ui_controller_restore_terminal_output();
+  else
+    ui_controller_restore_terminal();
 }
 
 /* ============================================================================
@@ -1204,8 +1198,10 @@ int main(int argc, char *argv[]) {
   asciichat_error_t requested_exit = errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
-  stats_runtime_stop();
-  ascii_otel_exit(exit_code);
+  if (!shutdown_is_requested())
+    stats_runtime_stop();
+  if (!shutdown_is_requested())
+    ascii_otel_exit(exit_code);
   log_debug("Shutdown: entering telemetry shutdown");
   ascii_otel_shutdown();
   log_debug("Shutdown: telemetry shutdown complete");

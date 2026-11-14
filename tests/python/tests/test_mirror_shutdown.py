@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 
-def _send_ctrl_c(pid: int) -> None:
+def _send_ctrl_c(pid: int, count: int = 1) -> None:
     helper = r"""
 import ctypes
 import sys
@@ -18,6 +18,7 @@ from ctypes import wintypes
 kernel = ctypes.WinDLL("kernel32", use_last_error=True)
 kernel.FreeConsole()
 target = int(sys.argv[1])
+count = int(sys.argv[2])
 if not kernel.AttachConsole(target):
     raise ctypes.WinError(ctypes.get_last_error())
 GENERIC_WRITE = 0x40000000
@@ -34,14 +35,16 @@ class KEY_EVENT_RECORD(ctypes.Structure):
     _fields_ = [("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD), ("wVirtualKeyCode", wintypes.WORD), ("wVirtualScanCode", wintypes.WORD), ("UnicodeChar", wintypes.WCHAR), ("dwControlKeyState", wintypes.DWORD)]
 class INPUT_RECORD(ctypes.Structure):
     _fields_ = [("EventType", wintypes.WORD), ("KeyEvent", KEY_EVENT_RECORD)]
-events = (INPUT_RECORD * 2)(INPUT_RECORD(1, KEY_EVENT_RECORD(True, 1, 0x43, 0, "c", 0x0008)), INPUT_RECORD(1, KEY_EVENT_RECORD(False, 1, 0x43, 0, "c", 0x0008)))
+events = (INPUT_RECORD * (2 * count))(*sum(([INPUT_RECORD(1, KEY_EVENT_RECORD(True, 1, 0x43, 0, "c", 0x0008)), INPUT_RECORD(1, KEY_EVENT_RECORD(False, 1, 0x43, 0, "c", 0x0008))] for _ in range(count)), []))
 written = wintypes.DWORD()
-if not kernel.WriteConsoleInputW(handle, events, 2, ctypes.byref(written)) or written.value != 2:
+if not kernel.WriteConsoleInputW(handle, events, 2 * count, ctypes.byref(written)) or written.value != 2 * count:
     raise ctypes.WinError(ctypes.get_last_error())
 kernel.CloseHandle(handle)
 kernel.FreeConsole()
 """
-    subprocess.run([sys.executable, "-c", helper, str(pid)], check=True, timeout=5)
+    subprocess.run(
+        [sys.executable, "-c", helper, str(pid), str(count)], check=True, timeout=5
+    )
 
 
 @pytest.mark.terminal
@@ -91,9 +94,7 @@ def test_mirror_ctrl_c_cancels_unreachable_telemetry(
                 break
             time.sleep(0.1)
         started = time.monotonic()
-        for _ in range(ctrl_c_count):
-            _send_ctrl_c(process.pid)
-            time.sleep(0.05)
+        _send_ctrl_c(process.pid, ctrl_c_count)
         try:
             process.wait(timeout=1)
         except subprocess.TimeoutExpired:
