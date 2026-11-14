@@ -13,6 +13,9 @@
 
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/common.h>
+#include <ascii-chat/options/registry.h>
+#include <libflags/builder.h>
+#include <libflags/help.h>
 #include <libflags/format.h>
 #include <libflags/values.h>
 
@@ -685,15 +688,17 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     return;
   }
 
-  // Get unified config
-  const options_config_t *config = options_preset_unified(metadata->program_name, metadata->description);
-  if (!config) {
-    (void)fprintf(desc, "Error: Failed to create options config\n");
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder) {
+    (void)fprintf(desc, "Error: Failed to create libflags schema\n");
     return;
   }
-
-  options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
-  options_config_destroy(config);
+  const option_mode_bitmask_t mode_mask = mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << mode));
+  if (options_registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK ||
+      !flags_help_write_options(flags_schema_builder_schema(builder), metadata->program_name, metadata->description, desc)) {
+    (void)fprintf(desc, "Error: Failed to render options\n");
+  }
+  flags_schema_builder_destroy(builder);
 }
 
 // ============================================================================
