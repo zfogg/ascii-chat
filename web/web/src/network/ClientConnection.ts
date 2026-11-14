@@ -361,14 +361,11 @@ export class ClientConnection {
         discovery: Boolean(this.options.discoveryHandshake),
       });
       if (packetResult.code)
-        throwWasmError(packetResult.code, "Packet processing failed");
-      const drained = drainClientOutputs();
-      if (drained.code)
-        throwWasmError(drained.code, "Failed to drain transport output");
-      for (const { packet } of [
-        ...(packetResult.outputs ?? []),
-        ...(drained.outputs ?? []),
-      ])
+        throwWasmError(
+          packetResult.code,
+          packetResult.message ?? "Packet processing failed",
+        );
+      for (const { packet } of packetResult.outputs ?? [])
         this.socket?.send(packet);
       const next = packetResult.state;
       if (next !== undefined && next !== this.transportState) {

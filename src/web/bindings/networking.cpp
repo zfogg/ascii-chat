@@ -162,12 +162,9 @@ public:
     emscripten::val response = result(0);
     response.set("ready", browser_client_ready(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
-    response.set("acceptedPackets", emscripten::val::global("BigInt")(
-                                        std::to_string(browser_transport_accepted_packets(transport_.get()))));
-    response.set("droppedPackets", emscripten::val::global("BigInt")(
-                                       std::to_string(browser_transport_dropped_packets(transport_.get()))));
-    response.set("droppedBytes",
-                 emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
+    response.set("acceptedPackets", emscripten::val::global("BigInt")(std::to_string(browser_transport_accepted_packets(transport_.get()))));
+    response.set("droppedPackets", emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_packets(transport_.get()))));
+    response.set("droppedBytes", emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
@@ -193,10 +190,8 @@ public:
       const size_t metadata_size = contract["length"].as<size_t>();
       const bool compressed = (flags & 2) != 0;
       emscripten::val response = result(0);
-      if (!input_size || input_size > 16 * 1024 * 1024 || !original_size || original_size > 16 * 1024 * 1024 ||
-          metadata_size > 275 || (!compressed && input_size != original_size)) {
-        response.set("code",
-                     static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded frame or metadata size")));
+      if (!input_size || input_size > 16 * 1024 * 1024 || !original_size || original_size > 16 * 1024 * 1024 || metadata_size > 275 || (!compressed && input_size != original_size)) {
+        response.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded frame or metadata size")));
         response.set("ok", false);
         response.set("decodeFailed", false);
         response.set("bytes", binding_copy_output(nullptr, 0));
@@ -206,13 +201,11 @@ public:
       auto metadata = binding_copy_input(contract);
       std::vector<uint8_t> decoded(compressed ? original_size : 0);
       const uint8_t *text = compressed ? decoded.data() : input.data();
-      int code =
-          compressed ? browser_client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
+      int code = compressed ? browser_client_decode_frame_data(input.data(), input.size(), decoded.data(), decoded.size()) : 0;
       const bool decode_failed = code != 0;
       if (!code)
-        code = browser_client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size,
-                                             width, height, checksum, flags,
-                                             metadata.empty() ? nullptr : metadata.data(), metadata.size());
+        code = browser_client_validate_frame(transport_.get(), reinterpret_cast<const char *>(text), original_size, width, height, checksum, flags, metadata.empty() ? nullptr : metadata.data(),
+                                             metadata.size());
       response.set("code", code);
       response.set("ok", code == 0);
       response.set("decodeFailed", decode_failed);
@@ -240,9 +233,7 @@ public:
     if (type == "begin-handshake") {
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
       const int code =
-          discovery
-              ? static_cast<int>(browser_client_acds_handshake_begin(transport_.get(), event["mode"].as<uint8_t>()))
-              : static_cast<int>(browser_client_handshake_begin(transport_.get()));
+          discovery ? static_cast<int>(browser_client_acds_handshake_begin(transport_.get(), event["mode"].as<uint8_t>())) : static_cast<int>(browser_client_handshake_begin(transport_.get()));
       return code ? result(code) : drainOutputs();
     }
     if (type == "configure-crypto") {
@@ -252,9 +243,8 @@ public:
       int code;
       if ((secret.empty() || secret.size() == 64) && (key.empty() || key.size() == 32)) {
         pass.push_back(0);
-        code = browser_client_configure_crypto_options(
-            transport_.get(), pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-            secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
+        code = browser_client_configure_crypto_options(transport_.get(), pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr, secret.empty() ? nullptr : secret.data(),
+                                                       key.empty() ? nullptr : key.data());
       } else {
         code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client identity or verification key length");
       }
@@ -306,9 +296,8 @@ public:
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Browser client payload is too large"));
       std::vector<uint8_t> output(input.size() + sizeof(packet_header_t) + 512);
       size_t output_length = 0;
-      const int code = browser_client_send_packet(transport_.get(), packet_type, client_id, encrypt,
-                                                  input.empty() ? nullptr : input.data(), input.size(), output.data(),
-                                                  output.size(), &output_length);
+      const int code =
+          browser_client_send_packet(transport_.get(), packet_type, client_id, encrypt, input.empty() ? nullptr : input.data(), input.size(), output.data(), output.size(), &output_length);
       if (!input.empty())
         sodium_memzero(input.data(), input.size());
       auto response = result(code);
@@ -324,8 +313,7 @@ public:
       std::vector<uint8_t> payload(input.size() + 128);
       browser_client_packet_result_t packet{};
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
-      const int code = browser_client_receive_packet(transport_.get(), discovery, input.data(), input.size(),
-                                                     payload.data(), payload.size(), &packet);
+      const int code = browser_client_receive_packet(transport_.get(), discovery, input.data(), input.size(), payload.data(), payload.size(), &packet);
       if (!input.empty())
         sodium_memzero(input.data(), input.size());
       if (code)
@@ -351,19 +339,16 @@ public:
       return response;
     }
     if (type == "resolve-crypto-policy") {
-      const int mode = browser_client_resolve_crypto_policy(transport_.get(), event["wss"].as<bool>(),
-                                                            event["encryption"].as<int>());
+      const int mode = browser_client_resolve_crypto_policy(transport_.get(), event["wss"].as<bool>(), event["encryption"].as<int>());
       emscripten::val response = result(mode < 0 ? SET_ERRNO(ERROR_INVALID_PARAM, "Invalid crypto policy") : 0);
       response.set("mode", mode);
       return response;
     }
     if (type == "configure-browser-capabilities") {
       browser_capabilities_.datagrams = event["datagrams"].isUndefined() ? false : event["datagrams"].as<bool>();
-      const size_t max_datagram_payload =
-          event["maxDatagramPayload"].isUndefined() ? 0 : event["maxDatagramPayload"].as<size_t>();
+      const size_t max_datagram_payload = event["maxDatagramPayload"].isUndefined() ? 0 : event["maxDatagramPayload"].as<size_t>();
       browser_capabilities_.max_datagram_payload = browser_capabilities_.datagrams ? max_datagram_payload : 0;
-      browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams,
-                                         browser_capabilities_.max_datagram_payload);
+      browser_transport_set_capabilities(transport_.get(), browser_capabilities_.datagrams, browser_capabilities_.max_datagram_payload);
       emscripten::val response = result(0);
       response.set("capabilities", emscripten::val::object());
       response["capabilities"].set("datagrams", browser_capabilities_.datagrams);
@@ -395,17 +380,15 @@ public:
       }
       if (operation != "seal" && operation != "open")
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown QUIC operation: %s", operation.c_str()));
-      if (event["packet"].isUndefined() || event["packet"].isNull() || event["flow"].isUndefined() ||
-          event["delivery"].isUndefined())
+      if (event["packet"].isUndefined() || event["packet"].isNull() || event["flow"].isUndefined() || event["delivery"].isUndefined())
         return result(SET_ERRNO(ERROR_INVALID_PARAM, "QUIC packet, flow, and delivery are required"));
       auto input = binding_copy_input(event["packet"]);
       const bool seal = operation == "seal";
       std::vector<uint8_t> output(input.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;
-      const int code = browser_transport_security_packet(transport_.get(), seal, event["flow"].as<unsigned>(),
-                                                         event["delivery"].as<unsigned>(), input.data(), input.size(),
-                                                         output.data(), output.size(), &length, &sequence);
+      const int code = browser_transport_security_packet(transport_.get(), seal, event["flow"].as<unsigned>(), event["delivery"].as<unsigned>(), input.data(), input.size(), output.data(),
+                                                         output.size(), &length, &sequence);
       emscripten::val response = result(code);
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       response.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
@@ -425,12 +408,9 @@ public:
       response.set("code", output_code);
     response.set("epoch", browser_transport_security_epoch(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
-    response.set("acceptedPackets", emscripten::val::global("BigInt")(
-                                        std::to_string(browser_transport_accepted_packets(transport_.get()))));
-    response.set("droppedPackets", emscripten::val::global("BigInt")(
-                                       std::to_string(browser_transport_dropped_packets(transport_.get()))));
-    response.set("droppedBytes",
-                 emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
+    response.set("acceptedPackets", emscripten::val::global("BigInt")(std::to_string(browser_transport_accepted_packets(transport_.get()))));
+    response.set("droppedPackets", emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_packets(transport_.get()))));
+    response.set("droppedBytes", emscripten::val::global("BigInt")(std::to_string(browser_transport_dropped_bytes(transport_.get()))));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
   }
@@ -461,9 +441,7 @@ private:
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
-      response.set("message", has_context && context.context_message[0]
-                                  ? std::string(context.context_message)
-                                  : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      response.set("message", has_context && context.context_message[0] ? std::string(context.context_message) : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
       response.set("retryable", network_error_action(static_cast<asciichat_error_t>(code)) == NETWORK_ERROR_RETRY);
     }
     return response;
@@ -479,7 +457,14 @@ private:
       outputs.call<void>("push", output);
       browser_transport_output_pop(transport_.get());
     }
-    if (browser_transport_base(transport_.get())->crypto_ctx) {
+    // Authenticated-but-unencrypted sessions complete the ACIP handshake but
+    // never create encrypted record/control traffic. Only ask the record
+    // layer for pending control packets when encryption is actually enabled;
+    // otherwise crypto_record_init() correctly rejects the request as not
+    // applicable and would turn a successful auth-only handshake into a
+    // spurious ERROR_INVALID_STATE result.
+    const crypto_context_t *crypto = browser_transport_base(transport_.get())->crypto_ctx;
+    if (crypto && crypto->encrypt_data) {
       for (unsigned index = 0; index < 32; ++index) {
         uint8_t data[256];
         size_t length = 0;
@@ -500,8 +485,7 @@ private:
     }
     return outputs;
   }
-  std::unique_ptr<browser_transport_t, decltype(&browser_transport_destroy)> transport_{nullptr,
-                                                                                        &browser_transport_destroy};
+  std::unique_ptr<browser_transport_t, decltype(&browser_transport_destroy)> transport_{nullptr, &browser_transport_destroy};
   struct {
     // Only datagrams affect native ACIP transport policy. WebTransport and
     // WebRTC selection, and HEVC encoder/decoder selection, belong to the

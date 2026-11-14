@@ -50,6 +50,12 @@ async function wait(check, ms = 30000) {
   }
   throw Error("Timed out waiting for native service");
 }
+async function waitForLog(service, marker, ms = 30000) {
+  await wait(() => {
+    if (service.child.exitCode !== null) throw Error(service.text());
+    return service.text().includes(marker);
+  }, ms);
+}
 function launch(name, args) {
   const log = join(directory, name + ".log");
   const child = launchNative(
@@ -97,10 +103,7 @@ const acds = launch("acds", [
 ]);
 const browser = await chromium.launch({ headless: true });
 try {
-  await wait(() => {
-    if (acds.child.exitCode !== null) throw Error(acds.text());
-    return portReady(acdsPort);
-  });
+  await waitForLog(acds, "WebSocket server starting event loop");
   const cases = [
     ["default", [], {}, undefined, 0, true],
     ["explicit", [], {}, true, 1, true],
@@ -153,34 +156,22 @@ try {
     mode,
     ok,
   ] of cases) {
-    const hostPort = await port();
-    let hostWs;
-    do hostWs = await port();
-    while (hostWs === hostPort);
     const host = launch(name, [
-      "server",
-      "0.0.0.0",
-      "--port",
-      String(hostPort),
-      "--websocket-port",
-      String(hostWs),
       "--status-screen=false",
-      "--discovery",
-      "--webrtc",
       "--discovery-service",
       "127.0.0.1",
       "--discovery-service-port",
       String(acdsPort),
+      "--test-pattern",
+      "0",
+      "--no-audio-playback",
       ...(flags.includes("--key") ? [] : ["--key", join(directory, "host")]),
       ...flags,
     ]);
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
-      await wait(() => {
-        if (host.child.exitCode !== null) throw Error(host.text());
-        return portReady(hostPort);
-      });
+      await waitForLog(host, "Session created:");
       const sessionName = await wait(
         () => host.text().match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/)?.[1],
       );

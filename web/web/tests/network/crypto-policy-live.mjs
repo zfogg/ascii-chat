@@ -33,6 +33,19 @@ async function portReady(value) {
     socket.setTimeout(100, () => finish(false));
   });
 }
+async function waitForLog(server, marker, ms = 120000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    assert.equal(
+      server.exitCode,
+      null,
+      `Server exited while waiting for ${marker}`,
+    );
+    if (server.text().includes(marker)) return;
+    await pause(50);
+  }
+  throw Error(`Timed out waiting for native log marker: ${marker}`);
+}
 for (const name of ["server", "client", "wrong"])
   execFileSync("ssh-keygen", [
     "-q",
@@ -226,9 +239,9 @@ try {
       "--status-screen=false",
       ...(item.secure
         ? [
-            "--websocket-tls-cert",
+            "--tls-cert",
             join(directory, "tls.pem"),
-            "--websocket-tls-key",
+            "--tls-key",
             join(directory, "tls.key"),
           ]
         : []),
@@ -263,16 +276,7 @@ try {
     });
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
     try {
-      let ready = false;
-      for (let i = 0; i < 400; i++) {
-        if (await portReady(tcp)) {
-          ready = true;
-          break;
-        }
-        assert.equal(server.exitCode, null, `Server exited: ${log}`);
-        await pause(100);
-      }
-      assert(ready, `Server did not start: ${log}`);
+      await waitForLog(server, "WebSocket server starting event loop");
       const page = await context.newPage();
       page.on("pageerror", (error) => console.error(error));
       await page.goto(`${vite}/tests/network/crypto-policy.html`);
