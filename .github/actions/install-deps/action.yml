@@ -758,8 +758,20 @@ runs:
           if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
           git checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 10000 origin
-          if ($LASTEXITCODE -ne 0) { throw "Could not fetch vcpkg port history" }
+          $historyFetch = Start-Job -ScriptBlock {
+            param($Repo)
+            Push-Location $Repo
+            git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --unshallow origin
+            if ($LASTEXITCODE -ne 0) { throw "git fetch --unshallow failed with exit code $LASTEXITCODE" }
+            Pop-Location
+          } -ArgumentList $vcpkgDir
+          if (-not (Wait-Job $historyFetch -Timeout 900)) {
+            Stop-Job $historyFetch -ErrorAction SilentlyContinue
+            Remove-Job $historyFetch -Force -ErrorAction SilentlyContinue
+            throw "Timed out fetching full vcpkg port history"
+          }
+          Receive-Job $historyFetch -ErrorAction Stop
+          Remove-Job $historyFetch -Force -ErrorAction SilentlyContinue
           Pop-Location
         }
 
