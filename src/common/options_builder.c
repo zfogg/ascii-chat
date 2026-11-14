@@ -1717,27 +1717,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     }
   }
 
-  if (desc->type == OPTION_TYPE_BOOL || ((desc->type == OPTION_TYPE_INT || desc->type == OPTION_TYPE_DOUBLE) && opt_value)) {
-    flags_value_type_t type = desc->type == OPTION_TYPE_BOOL ? FLAGS_TYPE_BOOL : desc->type == OPTION_TYPE_INT ? FLAGS_TYPE_INT64 : FLAGS_TYPE_DOUBLE;
-    const size_t storage_size = desc->type == OPTION_TYPE_BOOL ? sizeof(bool) : desc->type == OPTION_TYPE_INT ? sizeof(int) : sizeof(double);
-    const flags_option_spec_t option = {.name = desc->long_name,
-                                        .type = type,
-                                        .behavior = FLAGS_BEHAVIOR_VALUE,
-                                        .argument_requirement = desc->type == OPTION_TYPE_BOOL ? FLAGS_ARGUMENT_NONE : FLAGS_ARGUMENT_REQUIRED,
-                                        .storage_size = storage_size,
-                                        .default_value = desc->default_value};
-    const flags_schema_t schema = {.options = &option, .option_count = 1};
-    flags_context_t *flags = flags_create(&schema, field, storage_size);
-    if (!flags)
-      return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags parser for --%s", desc->long_name);
-    bool parsed = opt_value ? flags_set_text(flags, desc->long_name, opt_value, FLAGS_SOURCE_COMMAND_LINE)
-                            : flags_set(flags, desc->long_name, &(flags_value_t){.boolean = true}, FLAGS_SOURCE_COMMAND_LINE);
-    flags_destroy(flags);
-    if (!parsed)
-      return SET_ERRNO(ERROR_USAGE, "Invalid value for --%s", desc->long_name);
-    return ASCIICHAT_OK;
-  }
-
   // Handle option based on type using the handler registry
   if (desc->type < NUM_OPTION_TYPES) {
     const option_builder_handler_t *handler = &g_builder_handlers[desc->type];
