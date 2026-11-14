@@ -19,6 +19,7 @@
 
 #include "../../options/builder.h"
 #include "../../options/manpage.h"
+#include <libflags/manpage/parser.h>
 #include <stdio.h>
 
 /**
@@ -39,7 +40,7 @@
  *
  * @ingroup options_manpage
  */
-char *manpage_merger_merge_options(const options_config_t *config, const parsed_section_t *existing_section);
+char *manpage_merger_merge_options(const options_config_t *config, const flags_manpage_section_t *existing_section);
 
 /**
  * @brief Merge environment variables from auto-generated and manual sources
@@ -58,7 +59,7 @@ char *manpage_merger_merge_options(const options_config_t *config, const parsed_
  *
  * @ingroup options_manpage
  */
-char *manpage_merger_merge_environment(const options_config_t *config, const parsed_section_t *existing_section);
+char *manpage_merger_merge_environment(const options_config_t *config, const flags_manpage_section_t *existing_section);
 
 /**
  * @brief Merge positional arguments and examples
@@ -74,7 +75,7 @@ char *manpage_merger_merge_environment(const options_config_t *config, const par
  *
  * @ingroup options_manpage
  */
-char *manpage_merger_merge_positional(const options_config_t *config, const parsed_section_t *existing_section);
+char *manpage_merger_merge_positional(const options_config_t *config, const flags_manpage_section_t *existing_section);
 
 /**
  * @brief Get auto-generated usage content

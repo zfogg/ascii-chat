@@ -12,6 +12,7 @@
 
 #include <ascii-chat/options/manpage/merger.h>
 #include <libflags/manpage/formatter.h>
+#include <libflags/manpage/parser.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
@@ -22,7 +23,7 @@
 // Merger Functions
 // ============================================================================
 
-char *manpage_merger_merge_options(const options_config_t *config, const parsed_section_t *existing_section) {
+char *manpage_merger_merge_options(const options_config_t *config, const flags_manpage_section_t *existing_section) {
   (void)existing_section; // Unused for now
 
   if (!config) {
@@ -41,7 +42,7 @@ char *manpage_merger_merge_options(const options_config_t *config, const parsed_
   return content;
 }
 
-char *manpage_merger_merge_environment(const options_config_t *config, const parsed_section_t *existing_section) {
+char *manpage_merger_merge_environment(const options_config_t *config, const flags_manpage_section_t *existing_section) {
   (void)existing_section; // Unused for now
 
   if (!config) {
@@ -60,7 +61,7 @@ char *manpage_merger_merge_environment(const options_config_t *config, const par
   return content;
 }
 
-char *manpage_merger_merge_positional(const options_config_t *config, const parsed_section_t *existing_section) {
+char *manpage_merger_merge_positional(const options_config_t *config, const flags_manpage_section_t *existing_section) {
   (void)existing_section; // Unused for now
 
   if (!config) {

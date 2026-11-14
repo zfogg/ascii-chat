@@ -2,7 +2,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/manpage.h>
-#include <ascii-chat/options/manpage/parser.h>
+#include <libflags/manpage/parser.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
@@ -109,12 +109,16 @@ Test(option_documentation, templates_and_merged_manpages_contain_generated_optio
   HAS_ERRNO(&context);
   cr_assert_eq(result, ASCIICHAT_OK, "%s", context.context_message);
   size_t count = 0;
-  parsed_section_t *sections = parse_manpage_sections(path, &count);
+  flags_manpage_section_t *sections = NULL;
+  FILE *generated = fopen(path, "rb");
+  cr_assert_not_null(generated);
+  cr_assert(flags_manpage_parser_parse(generated, &sections, &count));
+  fclose(generated);
   cr_assert_not_null(sections);
   cr_assert_gt(count, 3);
-  cr_assert_not_null(find_section(sections, count, "DESCRIPTION"));
-  cr_assert_not_null(find_section(sections, count, "OPTIONS"));
-  free_parsed_sections(sections, count);
+  cr_assert_not_null(flags_manpage_parser_find(sections, count, "DESCRIPTION"));
+  cr_assert_not_null(flags_manpage_parser_find(sections, count, "OPTIONS"));
+  flags_manpage_parser_free(sections, count);
   cr_assert_eq(platform_delete_temp_file(path), 0);
   options_config_destroy(config);
 }
@@ -124,26 +128,26 @@ Test(option_documentation, parser_preserves_manual_merge_and_unmarked_section_co
                       ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
                       ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
                       "prose\n";
-  parsed_section_t *sections = NULL;
+  flags_manpage_section_t *sections = NULL;
   size_t count = 0;
-  cr_assert_eq(manpage_parser_parse_memory(input, strlen(input), &sections, &count), ASCIICHAT_OK);
+  cr_assert(flags_manpage_parser_parse_memory(input, strlen(input), &sections, &count));
   cr_assert_eq(count, 4);
-  const parsed_section_t *section = manpage_parser_find_section(sections, count, "DESCRIPTION");
+  const flags_manpage_section_t *section = flags_manpage_parser_find(sections, count, "DESCRIPTION");
   cr_assert_not_null(section);
-  cr_assert_eq(section->type, SECTION_TYPE_MANUAL);
+  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_MANUAL);
   cr_assert_not_null(strstr(section->content, "Keep this prose"));
-  section = manpage_parser_find_section(sections, count, "OPTIONS");
-  cr_assert_eq(section->type, SECTION_TYPE_AUTO);
-  section = manpage_parser_find_section(sections, count, "ENVIRONMENT");
-  cr_assert_eq(section->type, SECTION_TYPE_MERGE);
-  section = manpage_parser_find_section(sections, count, "NOTES");
-  cr_assert_eq(section->type, SECTION_TYPE_UNMARKED);
-  cr_assert_null(manpage_parser_find_section(sections, count, "MISSING"));
-  manpage_parser_free_sections(sections, count);
-  cr_assert_eq(manpage_parser_parse_memory(NULL, 1, &sections, &count), ERROR_INVALID_PARAM);
-  cr_assert_eq(manpage_parser_parse_memory("", 0, &sections, &count), ERROR_INVALID_PARAM);
-  cr_assert_eq(manpage_parser_parse_file(NULL, &sections, &count), ERROR_INVALID_PARAM);
-  manpage_parser_free_sections(NULL, 0);
+  section = flags_manpage_parser_find(sections, count, "OPTIONS");
+  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_AUTO);
+  section = flags_manpage_parser_find(sections, count, "ENVIRONMENT");
+  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_MERGE);
+  section = flags_manpage_parser_find(sections, count, "NOTES");
+  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_UNMARKED);
+  cr_assert_null(flags_manpage_parser_find(sections, count, "MISSING"));
+  flags_manpage_parser_free(sections, count);
+  cr_assert_not(flags_manpage_parser_parse_memory(NULL, 1, &sections, &count));
+  cr_assert_not(flags_manpage_parser_parse_memory("", 0, &sections, &count));
+  cr_assert_not(flags_manpage_parser_parse_file(NULL, &sections, &count));
+  flags_manpage_parser_free(NULL, 0);
 }
 
 Test(option_documentation, mode_names_and_groff_escaping_are_stable) {

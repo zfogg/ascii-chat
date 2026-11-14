@@ -23,35 +23,6 @@
 #include <stddef.h>
 
 /**
- * @brief Owned slice of a parsed roff man-page section
- * @brief Section type marker
- */
-typedef enum {
-  SECTION_TYPE_AUTO,    ///< Fully auto-generated, manual edits lost on regeneration
-  SECTION_TYPE_MANUAL,  ///< Manually maintained, never touched by generator
-  SECTION_TYPE_MERGE,   ///< Intelligently merged: auto + manual content
-  SECTION_TYPE_UNMARKED ///< No marker found, defaults to MANUAL
-} section_type_t;
-
-/**
- * @brief Owned slice of a parsed roff man-page section
- *
- * The parser copies the section name and complete section text, records the
- * source line range, and marks whether AUTO, MANUAL, or MERGE directives were
- * found.  The section array and both allocated strings are released together
- * by the man-page parser free function.
- */
-typedef struct {
-  char *section_name;  ///< Section name (e.g., "ENVIRONMENT", "OPTIONS")
-  section_type_t type; ///< Section type (AUTO/MANUAL/MERGE/UNMARKED)
-  char *content;       ///< Full section content (including .SH header)
-  size_t content_len;  ///< Length of content
-  size_t start_line;   ///< Line number where section starts (1-based)
-  size_t end_line;     ///< Line number where section ends (1-based)
-  bool has_markers;    ///< True if marked with AUTO/MANUAL/MERGE markers
-} parsed_section_t;
-
-/**
  * @brief Generate a man page template from options builder configuration
  *
  * Creates a man page template at the specified path with auto-generated sections:
@@ -174,40 +145,6 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
  *             Resources are now loaded automatically from embedded resources.
  */
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description);
-
-/**
- * @brief Parse existing man page template to extract sections
- *
- * @param filepath Path to existing man page template (.1.in file)
- * @param num_sections Output: number of sections found
- * @return Array of parsed sections (caller must free with free_parsed_sections)
- * @return NULL on error
- *
- * @ingroup options
- */
-parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_sections);
-
-/**
- * @brief Free parsed sections array
- *
- * @param sections Array of parsed sections (can be NULL)
- * @param num_sections Number of sections
- *
- * @ingroup options
- */
-void free_parsed_sections(parsed_section_t *sections, size_t num_sections);
-
-/**
- * @brief Find section by name
- *
- * @param sections Array of parsed sections
- * @param num_sections Number of sections
- * @param section_name Section name to find (case-sensitive)
- * @return Pointer to section, or NULL if not found
- *
- * @ingroup options
- */
-const parsed_section_t *find_section(const parsed_section_t *sections, size_t num_sections, const char *section_name);
 
 /**
  * @brief Generate final man page (.1) from template (.1.in) with version substitution and optional content file

@@ -21,7 +21,6 @@
 
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/resources.h>
-#include <ascii-chat/options/manpage/parser.h>
 #include <libflags/manpage/formatter.h>
 #include <ascii-chat/options/manpage/merger.h>
 #include <ascii-chat/options/manpage/content/options.h>
@@ -715,37 +714,6 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
   log_debug("Generated merged man page to %s", output_path ? output_path : "stdout");
   return ASCIICHAT_OK;
-}
-
-parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_sections) {
-  if (!filepath || !num_sections) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-    return NULL;
-  }
-
-  FILE *f = platform_fopen("file_stream", filepath, "r");
-  if (!f) {
-    SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open file: %s", filepath);
-    return NULL;
-  }
-
-  parsed_section_t *sections = NULL;
-  asciichat_error_t err = manpage_parser_parse_file(f, &sections, num_sections);
-  fclose(f);
-
-  if (err != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  return sections;
-}
-
-void free_parsed_sections(parsed_section_t *sections, size_t num_sections) {
-  manpage_parser_free_sections(sections, num_sections);
-}
-
-const parsed_section_t *find_section(const parsed_section_t *sections, size_t num_sections, const char *section_name) {
-  return manpage_parser_find_section(sections, num_sections, section_name);
 }
 
 #ifndef NDEBUG
