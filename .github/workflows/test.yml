@@ -417,7 +417,7 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DPython3_EXECUTABLE="${{ github.workspace }}//.venv/bin/python" \
+            -DPython3_EXECUTABLE="${{ startsWith(matrix.os, 'windows') && format('{0}/.venv/Scripts/python.exe', github.workspace) || format('{0}/.venv/bin/python', github.workspace) }}" \
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
