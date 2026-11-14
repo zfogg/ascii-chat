@@ -329,6 +329,23 @@ jobs:
           rpmbuild --version
           echo "All packaging tools verified!"
 
+      - name: Validate CMake dependency cache
+        shell: bash
+        run: |
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              rm -rf "$cache_root"
+              break
+            fi
+          done
+
       - name: Configure with CMake
         run: |
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
@@ -576,6 +593,23 @@ jobs:
           echo "Removing cached WebRTC source..."
           rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
           echo "WebRTC cache cleared - will re-fetch with patches applied"
+
+      - name: Validate CMake dependency cache
+        shell: bash
+        run: |
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              rm -rf "$cache_root"
+              break
+            fi
+          done
 
       - name: Configure with CMake
         run: |
@@ -830,6 +864,23 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+
+      - name: Validate CMake dependency cache
+        shell: pwsh
+        run: |
+          $cacheRoot = Join-Path $PWD ".deps-cache\Release"
+          $required = @(
+            (Join-Path $cacheRoot "asciichat_libuv-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_zstd-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_portaudio-src\CMakeLists.txt")
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              Write-Host "Incomplete CMake dependency cache: missing $path"
+              Remove-Item -LiteralPath $cacheRoot -Recurse -Force -ErrorAction SilentlyContinue
+              break
+            }
+          }
 
       - name: Configure with CMake
         shell: pwsh
