@@ -141,7 +141,10 @@ static asciichat_error_t apply_env_bool(void *field, const char *env_value, cons
 
   bool value = false;
   if (env_value) {
-    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, OPT_VALUE_TRUE) == 0 || strcmp(env_value, "yes") == 0 || strcmp(env_value, "on") == 0);
+    if (!flags_parse_bool_relaxed(env_value, &value)) {
+      log_warn("Invalid boolean value for environment variable '%s': %s", desc && desc->env_var_name ? desc->env_var_name : "unknown", env_value);
+      return ASCIICHAT_OK;
+    }
   } else if (desc && desc->default_value) {
     unsigned char default_byte = 0;
     memcpy(&default_byte, desc->default_value, 1);
