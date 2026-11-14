@@ -136,8 +136,8 @@ function(configure_include_directories)
         # Also remove host include flags inherited from the runner environment;
         # an explicit -I/usr/include wins over the compiler's target search
         # paths even when -nostdlibinc is active.
-        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-        string(REGEX REPLACE "(^| )-I/usr/include([^ ]*)?( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        string(REGEX REPLACE "(^| )(-I|-isystem[ ]+)/usr/include([^ ]*)?( |$)" " " CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+        string(REGEX REPLACE "(^| )(-I|-isystem[ ]+)/usr/include([^ ]*)?( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         string(APPEND CMAKE_C_FLAGS " -I${MUSL_INCLUDE_DIR}")
         string(APPEND CMAKE_CXX_FLAGS " -I${MUSL_INCLUDE_DIR}")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags" FORCE)

@@ -75,9 +75,16 @@ function(asciichat_build_libwebsockets)
     FetchContent_Declare(asciichat_libwebsockets
         BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_libwebsockets"
         URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_SUBDIR asciichat-patch-first)
-    FetchContent_MakeAvailable(asciichat_libwebsockets)
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    FetchContent_GetProperties(asciichat_libwebsockets)
+    if(NOT asciichat_libwebsockets_POPULATED)
+        cmake_policy(PUSH)
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
+        FetchContent_Populate(asciichat_libwebsockets)
+        cmake_policy(POP)
+    endif()
     set(LWS_SOURCE_DIR "${asciichat_libwebsockets_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libwebsockets-cmake.cmake")
     add_subdirectory("${asciichat_libwebsockets_SOURCE_DIR}" "${asciichat_libwebsockets_BINARY_DIR}" EXCLUDE_FROM_ALL)

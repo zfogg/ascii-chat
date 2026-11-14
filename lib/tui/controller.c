@@ -457,11 +457,23 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   bool synchronized = g_render_snapshot != NULL || help_media_overlay;
   g_help_sync_open = help_media_overlay;
-  bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
+  // A frame can legitimately occupy the terminal's last column and row.
+  // Disable DECAWM while presenting it so writing the bottom-right cell does
+  // not trigger an implicit wrap/scroll before the synchronized update ends.
+  static const char begin_media_frame[] = "\033[?2026h\033[?7l";
+  static const char begin_media_write[] = "\033[?7l";
+  bool protect_media_wrap = ui_controller_current_screen() == UI_SCREEN_MEDIA || help_media_overlay;
+  const char *begin_sequence = synchronized ? begin_media_frame : begin_media_write;
+  size_t begin_length = synchronized ? sizeof(begin_media_frame) - 1 : sizeof(begin_media_write) - 1;
+  bool started = !protect_media_wrap || write_output_chunk(fd, begin_sequence, begin_length) == begin_length;
   uint64_t sync_started_ns = g_stats_media && synchronized ? time_get_ns() : 0;
   size_t written = 0;
   bool superseded = false;
   while (started && written < len) {
+    if (shutdown_is_requested()) {
+      superseded = true;
+      break;
+    }
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
     if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
@@ -506,12 +518,15 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     }
   }
   // End the update even when input superseded the frame halfway through.
-  static const char end_with_query[] = "\033[?2026l\033]11;?\033\\";
+  static const char end_with_query[] = "\033[1G\033[?7h\033[?2026l\033]11;?\033\\";
   bool probe = synchronized && g_probe_frame && written == len && started;
   if (probe)
     g_probe_requested_ns = time_get_ns();
-  size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
-  bool ended = g_help_sync_open || !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+  static const char end_frame[] = "\033[1G\033[?7h\033[?2026l";
+  static const char end_media[] = "\033[1G\033[?7h";
+  const char *end_sequence = probe ? end_with_query : synchronized ? end_frame : end_media;
+  size_t end_length = probe ? sizeof(end_with_query) - 1 : synchronized ? sizeof(end_frame) - 1 : sizeof(end_media) - 1;
+  bool ended = !protect_media_wrap || write_output_chunk(fd, end_sequence, end_length) == end_length;
   if (superseded && ended) {
     // A prompt can take ownership while a large media frame is being sent.
     // The frame is deliberately allowed to stop at a row boundary, but its
@@ -1240,9 +1255,13 @@ static void *presentation_main(void *unused) {
           fps_counter_frame_end(g_fps, time_get_ns());
       }
       if (!covered && show_fps && !g_media_overlay_written)
-        fps_counter_render(g_fps, screen->fd, size.cols, active == UI_SCREEN_HELP);
+        // The frame may have repainted the overlay's row without owning the
+        // synchronized media write. Always repaint the complete label here;
+        // suppressing unchanged values leaves a stale/blank FPS label that
+        // visibly flickers as the UI redraws.
+        fps_counter_render(g_fps, screen->fd, size.cols, true);
       if (g_help_sync_open) {
-        (void)write_output_chunk(screen->fd, "\033[?2026l", 8);
+        (void)write_output_chunk(screen->fd, "\033[1G\033[?7h\033[?2026l", 17);
         g_help_sync_open = false;
       }
     }
@@ -1876,8 +1895,17 @@ asciichat_error_t ui_controller_printf(int fd, const char *format, ...) {
 
 void ui_controller_restore_terminal(void) {
   ui_controller_shutdown();
-  if (platform_isatty(STDOUT_FILENO))
-    ui_controller_write(STDOUT_FILENO, "\033[0m\033[?25h", 10);
+  ui_controller_restore_terminal_output();
+}
+
+void ui_controller_restore_terminal_output(void) {
+  if (!platform_isatty(STDOUT_FILENO))
+    return;
+  // This path runs immediately before a bounded process exit. Avoid the
+  // controller locks that may be held by the render thread.
+  terminal_screen_leave();
+  static const char sequence[] = "\033[0m\033[?25h";
+  (void)platform_write_all(STDOUT_FILENO, sequence, sizeof(sequence) - 1);
 }
 
 static void render_logs(terminal_size_t size, const void *snapshot) {

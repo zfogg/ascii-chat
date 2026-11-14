@@ -5,6 +5,9 @@ function(asciichat_configure_source_root source_root binary_root)
     if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
         # Release compiler flags already make project source locations relative.
         set(ASCIICHAT_SOURCE_ROOT "")
+        # Do not embed the checkout's dependency cache path in release binaries.
+        # The cache is a build-time location and is not meaningful at runtime.
+        set(ASCIICHAT_DEPS_CACHE_ROOT "")
     else()
         string(REPLACE "\\" "/" ASCIICHAT_SOURCE_ROOT "${source_root}")
     endif()

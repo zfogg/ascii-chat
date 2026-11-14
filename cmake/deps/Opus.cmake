@@ -59,7 +59,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
 find_dependency_library(
     NAME OPUS
-    VCPKG_NAMES opus
+    # vcpkg's Windows static port installs libopus.lib, while other
+    # platforms and triplets expose the shorter opus library name.
+    VCPKG_NAMES opus libopus
     HEADER opus/opus.h
     PKG_CONFIG opus
     HOMEBREW_PKG opus

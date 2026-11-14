@@ -255,7 +255,11 @@ void signal_exit(void) {
   // other threads may hold mutex locks. We avoid log_console() here to prevent
   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
   // The shutdown will be logged by normal thread context later.
-  atomic_store_bool(&g_should_exit, true);
+  // Ctrl-C can arrive through both the console-control handler and the
+  // terminal input path.  Only the first request may run the shutdown
+  // callback; running it twice races teardown and can leave the process stuck.
+  if (atomic_exchange_bool(&g_should_exit, true))
+    return;
   log_info("Shutdown signal received");
   // Interrupt telemetry network I/O immediately. Full drain/free remains in
   // the normal teardown path, but cancellation must not wait for atexit.
@@ -527,7 +531,10 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * ============================================================================ */
 
 static void on_exit_show_cursor(void) {
-  ui_controller_restore_terminal();
+  if (shutdown_is_requested())
+    ui_controller_restore_terminal_output();
+  else
+    ui_controller_restore_terminal();
 }
 
 /* ============================================================================
@@ -1191,8 +1198,10 @@ int main(int argc, char *argv[]) {
   asciichat_error_t requested_exit = errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
-  stats_runtime_stop();
-  ascii_otel_exit(exit_code);
+  if (!shutdown_is_requested())
+    stats_runtime_stop();
+  if (!shutdown_is_requested())
+    ascii_otel_exit(exit_code);
   log_debug("Shutdown: entering telemetry shutdown");
   ascii_otel_shutdown();
   log_debug("Shutdown: telemetry shutdown complete");

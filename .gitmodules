@@ -51,3 +51,6 @@
 [submodule "deps/ascii-chat-deps/libplatform"]
 	path = deps/ascii-chat-deps/libplatform
 	url = https://github.com/zfogg/libplatform.git
+[submodule "deps/ascii-chat-deps/libfacedetection"]
+	path = deps/ascii-chat-deps/libfacedetection
+	url = https://github.com/ShiqiYu/libfacedetection.git
