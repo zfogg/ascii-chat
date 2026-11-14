@@ -34,15 +34,15 @@
 #define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0}
 #else
 // In debug mode, atomic_t has debug fields that need initialization
-#define LOG_ATOMIC_UINT64_INIT(val)                                                                                    \
-  {.impl = (uint64_t)0,                                                                                                \
-   .change_count = (uint64_t)0,                                                                                        \
-   .last_store_time_ns = (uint64_t)0,                                                                                  \
-   .last_load_time_ns = (uint64_t)0,                                                                                   \
-   .store_count = (uint64_t)0,                                                                                         \
-   .load_count = (uint64_t)0,                                                                                          \
-   .cas_count = (uint64_t)0,                                                                                           \
-   .cas_success_count = (uint64_t)0,                                                                                   \
+#define LOG_ATOMIC_UINT64_INIT(val)                                                                                                                                                                    \
+  {.impl = (uint64_t)0,                                                                                                                                                                                \
+   .change_count = (uint64_t)0,                                                                                                                                                                        \
+   .last_store_time_ns = (uint64_t)0,                                                                                                                                                                  \
+   .last_load_time_ns = (uint64_t)0,                                                                                                                                                                   \
+   .store_count = (uint64_t)0,                                                                                                                                                                         \
+   .load_count = (uint64_t)0,                                                                                                                                                                          \
+   .cas_count = (uint64_t)0,                                                                                                                                                                           \
+   .cas_success_count = (uint64_t)0,                                                                                                                                                                   \
    .fetch_count = (uint64_t)0}
 #endif
 #include <stdbool.h>
@@ -57,7 +57,6 @@ struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included
 typedef struct color_scheme_t color_scheme_t;
 struct session_log_buffer; /* Opaque - full definition in session/session_log_buffer.h */
 typedef struct session_log_buffer session_log_buffer_t;
-
 
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
@@ -315,10 +314,8 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
  * terminals. Both representations are routed as one logical log entry.
  * @ingroup logging
  */
-void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message,
-                          const char *plain_message);
-#define log_colored_msg(level, colored_message, plain_message)                                                         \
-  log_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
+void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message, const char *plain_message);
+#define log_colored_msg(level, colored_message, plain_message) log_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
 
 /**
  * @brief Write semantically colored terminal text without persistent logging
@@ -329,10 +326,8 @@ void log_colored_msg_impl(log_level_t level, const char *file, int line, const c
  * This is the terminal-only counterpart to log_colored_msg().
  * @ingroup logging
  */
-void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func,
-                                   const char *colored_message, const char *plain_message);
-#define log_terminal_colored_msg(level, colored_message, plain_message)                                                \
-  log_terminal_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
+void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message, const char *plain_message);
+#define log_terminal_colored_msg(level, colored_message, plain_message) log_terminal_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
 
 /**
  * @brief Plain logging without timestamps or levels
@@ -531,8 +526,7 @@ struct acip_transport;
  * @param ... Format arguments
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction,
-                                  const char *file, int line, const char *func, const char *fmt, ...);
+asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction, const char *file, int line, const char *func, const char *fmt, ...);
 
 /**
  * @name Logging Macros
@@ -564,16 +558,16 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  * @ingroup logging
  */
 #ifdef _MSC_VER
-#define log_only(bitmask, level, ...)                                                                                  \
-  do {                                                                                                                 \
-    if ((bitmask) & LOG_BIT(level))                                                                                    \
-      log_as(level, __VA_ARGS__);                                                                                      \
+#define log_only(bitmask, level, ...)                                                                                                                                                                  \
+  do {                                                                                                                                                                                                 \
+    if ((bitmask) & LOG_BIT(level))                                                                                                                                                                    \
+      log_as(level, __VA_ARGS__);                                                                                                                                                                      \
   } while (0)
 #else
-#define log_only(bitmask, level, ...)                                                                                  \
-  ({                                                                                                                   \
-    if ((bitmask) & LOG_BIT(level))                                                                                    \
-      log_as(level, __VA_ARGS__);                                                                                      \
+#define log_only(bitmask, level, ...)                                                                                                                                                                  \
+  ({                                                                                                                                                                                                   \
+    if ((bitmask) & LOG_BIT(level))                                                                                                                                                                    \
+      log_as(level, __VA_ARGS__);                                                                                                                                                                      \
   })
 #endif
 
@@ -720,28 +714,28 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  * @ingroup logging
  */
 #ifdef NDEBUG
-#define log_every(log_level, interval_us, fmt, ...)                                                                    \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                         \
-    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
-    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                 \
-    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
-      if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                   \
-        log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                   \
-      }                                                                                                                \
-    }                                                                                                                  \
+#define log_every(log_level, interval_us, fmt, ...)                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                         \
+    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                                                                                                        \
+    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                                                                                                 \
+    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                                                                                                 \
+      if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                                                                                                   \
+        log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                                                                                                   \
+      }                                                                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define log_every(log_level, interval_us, fmt, ...)                                                                    \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                         \
-    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
-    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                 \
-    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
-      if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                   \
-        log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                    \
-      }                                                                                                                \
-    }                                                                                                                  \
+#define log_every(log_level, interval_us, fmt, ...)                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                         \
+    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                                                                                                        \
+    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                                                                                                 \
+    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                                                                                                 \
+      if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                                                                                                   \
+        log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                                                                                                    \
+      }                                                                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   } while (0)
 #endif
 
@@ -789,26 +783,26 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  * @ingroup logging
  */
 #ifdef NDEBUG
-#define log_nth(log_level, n, fmt, ...)                                                                                \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
-    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                      \
-    uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
-    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                 \
-    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
-      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
-    }                                                                                                                  \
+#define log_nth(log_level, n, fmt, ...)                                                                                                                                                                \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                             \
+    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                                                                                                      \
+    uint64_t _log_nth_new = _log_nth_count + 1;                                                                                                                                                        \
+    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                                                                                                 \
+    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                                                                                                           \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                                                                                                     \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define log_nth(log_level, n, fmt, ...)                                                                                \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
-    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                      \
-    uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
-    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                 \
-    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
-    }                                                                                                                  \
+#define log_nth(log_level, n, fmt, ...)                                                                                                                                                                \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                             \
+    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                                                                                                      \
+    uint64_t _log_nth_new = _log_nth_count + 1;                                                                                                                                                        \
+    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                                                                                                 \
+    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                                                                                                           \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                                                                                                      \
+    }                                                                                                                                                                                                  \
   } while (0)
 #endif
 
@@ -830,24 +824,24 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  * @ingroup logging
  */
 #ifdef NDEBUG
-#define log_once(log_level, fmt, ...)                                                                                  \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
-    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                    \
-    if (_log_once_count == 0) {                                                                                        \
-      atomic_store_u64(&_log_once_counter, 1);                                                                         \
-      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
-    }                                                                                                                  \
+#define log_once(log_level, fmt, ...)                                                                                                                                                                  \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                            \
+    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                                                                                                    \
+    if (_log_once_count == 0) {                                                                                                                                                                        \
+      atomic_store_u64(&_log_once_counter, 1);                                                                                                                                                         \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                                                                                                     \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define log_once(log_level, fmt, ...)                                                                                  \
-  do {                                                                                                                 \
-    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
-    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                    \
-    if (_log_once_count == 0) {                                                                                        \
-      atomic_store_u64(&_log_once_counter, 1);                                                                         \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
-    }                                                                                                                  \
+#define log_once(log_level, fmt, ...)                                                                                                                                                                  \
+  do {                                                                                                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                                                                                                            \
+    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                                                                                                    \
+    if (_log_once_count == 0) {                                                                                                                                                                        \
+      atomic_store_u64(&_log_once_counter, 1);                                                                                                                                                         \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                                                                                                      \
+    }                                                                                                                                                                                                  \
   } while (0)
 #endif
 
