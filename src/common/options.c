@@ -274,44 +274,6 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
 }
 
 
-option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
-  if (!count)
-    return NULL;
-
-  option_descriptor_t *combined = NULL;
-  size_t combined_count = 0;
-  const asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
-  for (size_t mode_index = 0; mode_index < sizeof(modes) / sizeof(modes[0]); mode_index++) {
-    size_t mode_count = 0;
-    const option_descriptor_t *mode_options = options_registry_get_for_mode(modes[mode_index], &mode_count);
-    if (!mode_options)
-      continue;
-    for (size_t option_index = 0; option_index < mode_count; option_index++) {
-      bool found = false;
-      for (size_t existing_index = 0; existing_index < combined_count; existing_index++) {
-        if (strcmp(combined[existing_index].long_name, mode_options[option_index].long_name) == 0) {
-          found = true;
-          break;
-        }
-      }
-      if (found)
-        continue;
-      option_descriptor_t *resized = SAFE_REALLOC(combined, (combined_count + 1) * sizeof(*combined), option_descriptor_t *);
-      if (!resized) {
-        SAFE_FREE(combined);
-        SAFE_FREE(mode_options);
-        *count = 0;
-        return NULL;
-      }
-      combined = resized;
-      combined[combined_count++] = mode_options[option_index];
-    }
-    SAFE_FREE(mode_options);
-  }
-  *count = combined_count;
-  return combined;
-}
-
 // ============================================================================
 // Global Action Flag Tracking
 // ============================================================================

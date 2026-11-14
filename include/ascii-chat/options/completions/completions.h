@@ -115,7 +115,6 @@ completion_format_t completions_parse_shell_name(const char *shell_name);
  *
  * @note The caller must free the returned pointer with SAFE_FREE()
  */
-option_descriptor_t *completions_collect_all_modes_unique(size_t *count);
 
 #ifdef __cplusplus
 }
