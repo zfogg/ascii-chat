@@ -416,12 +416,10 @@ TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
 // Theory Tests for Option Combinations
 // =============================================================================
 
-static constexpr bool option_combinations_catch2_data[] = {
-    true, false, // is_client/no_encrypt/has_key sample values
-};
-
 TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
-  bool is_client{}; bool no_encrypt{}; bool has_key{};
+  bool is_client = GENERATE(true, false);
+  bool no_encrypt = GENERATE(true, false);
+  bool has_key = GENERATE(true, false);
   // Reset globals and getopt state before each theory iteration
   reset_crypto_options();
 

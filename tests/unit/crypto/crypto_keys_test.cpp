@@ -576,12 +576,8 @@ TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
 // Theory Tests for Key Type Validation
 // =============================================================================
 
-static auto key_type_validation_catch2_data = {
-    KEY_TYPE_UNKNOWN, KEY_TYPE_ED25519, KEY_TYPE_X25519, KEY_TYPE_GPG,
-};
-
 TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
-  key_type_t key_type{};
+  key_type_t key_type = GENERATE(KEY_TYPE_UNKNOWN, KEY_TYPE_ED25519, KEY_TYPE_X25519, KEY_TYPE_GPG);
   ASCIICHAT_ASSUME(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG);
 
   public_key_t key;

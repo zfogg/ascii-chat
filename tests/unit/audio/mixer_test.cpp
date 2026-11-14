@@ -772,7 +772,8 @@ TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]
 static constexpr int audio_bounds_property_catch2_data[] = {1, 2, 3, 4, 8};
 
 TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
-  size_t num_sources{}; float amplitude{};
+  size_t num_sources = GENERATE(Catch::Generators::from_range(audio_bounds_property_catch2_data));
+  float amplitude = GENERATE(0.1f, 0.5f, 1.0f, 1.5f, 2.0f);
   ASCIICHAT_ASSUME(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES);
   ASCIICHAT_ASSUME(amplitude > 0.0f && amplitude <= 2.0f);
 

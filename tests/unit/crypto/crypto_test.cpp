@@ -145,12 +145,8 @@ TEST_CASE("crypto/password_verification", "[crypto]") {
 
 // Theory: Encryption roundtrip property - decrypt(encrypt(data)) == data
 // Replaces: encrypt_decrypt_password_based and encrypt_decrypt_key_exchange
-static auto encryption_roundtrip_property_catch2_data = {
-    1, 16, 64, 256, 512, 1024, 2048,
-};
-
 TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
-  size_t data_size{};
+  size_t data_size = GENERATE(1u, 16u, 64u, 256u, 512u, 1024u, 2048u);
   ASCIICHAT_ASSUME(data_size > 0 && data_size <= 2048);
 
   crypto_context_t ctx;
@@ -183,12 +179,8 @@ TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
 }
 
 // Theory: Key exchange encryption roundtrip
-static auto key_exchange_roundtrip_property_catch2_data = {
-    1, 32, 128, 512, 1024,
-};
-
 TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
-  size_t data_size{};
+  size_t data_size = GENERATE(1u, 32u, 128u, 512u, 1024u);
   ASCIICHAT_ASSUME(data_size > 0 && data_size <= 1024);
 
   crypto_context_t ctx1, ctx2;
@@ -399,12 +391,8 @@ TEST_CASE("crypto/get_status", "[crypto]") {
 // =============================================================================
 
 // Theory: Nonce uniqueness property - same plaintext encrypted twice produces different ciphertext
-static auto nonce_uniqueness_property_catch2_data = {
-    8, 64, 256,
-};
-
 TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
-  size_t data_size{};
+  size_t data_size = GENERATE(8u, 64u, 256u);
   ASCIICHAT_ASSUME(data_size > 0 && data_size <= 256);
 
   crypto_context_t ctx;

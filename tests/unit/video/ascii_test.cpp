@@ -34,13 +34,9 @@ void ascii_test_fini(void) {
  * ============================================================================ */
 
 // Theory: Image size property - ascii_convert should work for various dimensions
-static auto image_size_property_catch2_data = {
-    1, 2, 4, 8, 16, 32, 64,
-    1, 2, 4, 8, 16, 32, 64,
-};
-
 TEST_CASE("ascii/image_size_property", "[ascii]") {
-  int width{}; int height{};
+  int width = GENERATE(1, 2, 4, 8, 16, 32, 64);
+  int height = GENERATE(1, 2, 4, 8, 16, 32, 64);
   ASCIICHAT_ASSUME(width > 0 && width <= 64);
   ASCIICHAT_ASSUME(height > 0 && height <= 64);
 
@@ -410,12 +406,8 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
  * ============================================================================ */
 
 // Theory: Width padding property - padding should preserve content and add correct spacing
-static auto width_padding_property_catch2_data = {
-    0, 1, 3, 5, 10, 20,
-};
-
 TEST_CASE("ascii/width_padding_property", "[ascii]") {
-  int pad_width{};
+  int pad_width = GENERATE(0, 1, 3, 5, 10, 20);
   ASCIICHAT_ASSUME(pad_width >= 0 && pad_width <= 20);
 
   const char *frame = "Hello\nWorld\nTest";
@@ -434,12 +426,8 @@ TEST_CASE("ascii/width_padding_property", "[ascii]") {
 }
 
 // Theory: Height padding property - padding should preserve content and add correct spacing
-static auto height_padding_property_catch2_data = {
-    0, 1, 2, 5, 10,
-};
-
 TEST_CASE("ascii/height_padding_property", "[ascii]") {
-  int pad_height{};
+  int pad_height = GENERATE(0, 1, 2, 5, 10);
   ASCIICHAT_ASSUME(pad_height >= 0 && pad_height <= 10);
 
   const char *frame = "Hello\nWorld\nTest";

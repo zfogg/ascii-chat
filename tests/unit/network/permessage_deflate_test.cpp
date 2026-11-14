@@ -144,12 +144,8 @@ static void generate_test_data(uint8_t *data, size_t size, int pattern) {
 /**
  * Theory: Small messages decompress correctly
  */
-static auto small_messages_catch2_data = {
-    1, 8, 64, 256, 512,
-};
-
 TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
-  size_t msg_size{};
+  size_t msg_size = GENERATE(1u, 8u, 64u, 256u, 512u);
   ASCIICHAT_ASSUME(msg_size > 0 && msg_size <= 512);
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
@@ -184,12 +180,8 @@ TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
 /**
  * Theory: Medium messages (typical video frame size)
  */
-static auto medium_messages_catch2_data = {
-    1024, 4096, 16384, 65536,
-};
-
 TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
-  size_t msg_size{};
+  size_t msg_size = GENERATE(1024u, 4096u, 16384u, 65536u);
   ASCIICHAT_ASSUME(msg_size > 0 && msg_size <= 65536);
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
@@ -217,12 +209,8 @@ TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
 /**
  * Theory: Various compression patterns
  */
-static auto compression_patterns_catch2_data = {
-    0, 1, 2, 3,
-};
-
 TEST_CASE("permessage_deflate/compression_patterns", "[permessage_deflate]") {
-  int pattern{};
+  int pattern = GENERATE(0, 1, 2, 3);
   size_t msg_size = 8192;
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
