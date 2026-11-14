@@ -550,7 +550,7 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
   ASCII_OTEL_SCOPE(MEDIA_SOURCE_START_VIDEO);
   if (!source)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing media source");
-  if ((!source->audio_only && source->type != MEDIA_SOURCE_WEBCAM) || source->webcam_ctx || GET_OPTION(test_pattern) || GET_OPTION(waveform) || GET_OPTION(fft))
+  if ((!source->audio_only && source->type != MEDIA_SOURCE_WEBCAM) || source->webcam_ctx || GET_OPTION(test_pattern))
     return ASCIICHAT_OK;
   if (source->type != MEDIA_SOURCE_WEBCAM)
     source->webcam_index = GET_OPTION(webcam_index);
@@ -562,8 +562,7 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
 }
 
 bool media_source_uses_webcam(media_source_t *source) {
-  return source &&
-         ((source->type == MEDIA_SOURCE_WEBCAM && !GET_OPTION(waveform) && !GET_OPTION(fft)) || (source->audio_only && !GET_OPTION(test_pattern) && !GET_OPTION(waveform) && !GET_OPTION(fft)));
+  return source && ((source->type == MEDIA_SOURCE_WEBCAM && !GET_OPTION(test_pattern)) || (source->audio_only && !GET_OPTION(test_pattern)));
 }
 
 image_t *media_source_read_video(media_source_t *source) {
