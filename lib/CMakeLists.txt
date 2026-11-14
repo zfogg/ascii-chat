@@ -26,6 +26,7 @@ target_include_directories(asciichat-project-includes INTERFACE
 set(CORE_SRCS
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
+    ${LIB_DIR}/util/symbols.c
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
