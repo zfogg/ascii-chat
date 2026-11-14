@@ -315,10 +315,19 @@ macro(_find_llvm_tool VAR_NAME)
         # llvm-config reports /usr/lib/llvm-23/bin).  Accept only that linker
         # fallback; all other LLVM tools must remain from one installation.
         if(VAR_NAME STREQUAL "ASCIICHAT_LLD_EXECUTABLE" AND NOT ${VAR_NAME})
-            find_program(${VAR_NAME}
-                NAMES ${_tool_names}
-                DOC "LLVM linker from the system PATH"
-            )
+            if(UNIX AND NOT APPLE)
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    PATHS /usr/bin /usr/local/bin
+                    NO_DEFAULT_PATH
+                    DOC "LLVM linker from the system tool directories"
+                )
+            else()
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    DOC "LLVM linker from the system PATH"
+                )
+            endif()
         endif()
     else()
         # Fallback mode: search PATH (from environment) first, then known locations
