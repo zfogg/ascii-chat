@@ -90,7 +90,7 @@
  *
  * CMake uses the standalone C++ transformer by default. It writes generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
- * The `deps/defer` submodule supplies the CMake integration. CMake downloads a
+ * The `deps/recast` submodule supplies the CMake integration. CMake downloads a
  * release for the build host and verifies its checksum; `DEFER_NATIVE_BINARY`
  * can point to an existing host executable instead. The native build does not
  * require Python or LLVM development libraries for defer. The tool reads each
