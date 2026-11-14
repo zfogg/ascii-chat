@@ -30,6 +30,16 @@ FetchContent_Declare(libplatform
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
+# libplatform is linked as a native shared library. Keep its dependency-only
+# objects in the platform's normal object format: the application may enable
+# ThinLTO for release builds, but embedding LLVM bitcode in this archive makes
+# it unusable by the system linker used for the shared library.
+foreach(_ascii_chat_no_lto_target IN ITEMS libplatform libplatform-objects ascii-chat-utf8proc utf8proc libplatform-utf8proc)
+    if(TARGET ${_ascii_chat_no_lto_target})
+        set_property(TARGET ${_ascii_chat_no_lto_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION OFF)
+    endif()
+endforeach()
+
 # libplatform is an independently built shared library. Do not propagate the
 # application's gcov instrumentation into its objects: Clang's profile runtime
 # is linked into each instrumented executable, while lld rejects a shared
