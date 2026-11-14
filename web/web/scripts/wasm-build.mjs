@@ -216,7 +216,7 @@ if (
     manifest.sourceHash !== sourceHash()
   ) {
     throw new Error(
-      "Prebuilt WASM is stale. Rebuild mirror-web and client-web.",
+      `Prebuilt WASM is stale. Rebuild mirror-web and client-web (manifest ${manifest.sourceHash}, sources ${sourceHash()}).`,
     );
   }
   for (const file of files) {
