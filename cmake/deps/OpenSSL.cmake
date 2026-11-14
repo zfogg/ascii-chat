@@ -357,6 +357,19 @@ endif()
 # from the dependency cache.  The musl and iOS branches above remain separate
 # because those targets do not have a usable host OpenSSL installation.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
+    # Restored CMake caches can refer to dependency files absent on this
+    # runner. Clear those stale entries before asking CMake to rediscover the
+    # host OpenSSL installation.
+    foreach(_openssl_path OPENSSL_ROOT_DIR OPENSSL_INCLUDE_DIR OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY)
+        set(_openssl_probe_path "${${_openssl_path}}")
+        if(_openssl_path STREQUAL "OPENSSL_INCLUDE_DIR")
+            string(APPEND _openssl_probe_path "/openssl/ssl.h")
+        endif()
+        if(DEFINED ${_openssl_path} AND NOT "${${_openssl_path}}" STREQUAL "" AND NOT EXISTS "${_openssl_probe_path}")
+            unset(${_openssl_path} CACHE)
+            unset(${_openssl_path})
+        endif()
+    endforeach()
     find_package(OpenSSL REQUIRED)
     message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} found (system): ${OPENSSL_SSL_LIBRARY}")
     return()
