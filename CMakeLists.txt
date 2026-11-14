@@ -29,7 +29,17 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # Note: Use FORCE to ensure computed paths always reflect current CMAKE_SOURCE_DIR and CMAKE_BUILD_TYPE
 # Only compute cache root if not already passed from parent build
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "")
-    if(DEFINED ENV{DOCKER_OS})
+    # WSL distributions share the Windows checkout but cannot reuse native
+    # CMake subbuilds or binaries. Keep their build-type caches under one
+    # portable, distro-independent namespace: .deps-cache/wsl/<type>/.
+    set(_ascii_chat_kernel_release "")
+    if(UNIX AND EXISTS "/proc/sys/kernel/osrelease")
+        file(READ "/proc/sys/kernel/osrelease" _ascii_chat_kernel_release)
+    endif()
+    if(DEFINED ENV{WSL_INTEROP} OR _ascii_chat_kernel_release MATCHES "[Ww][Ss][Ll]|[Mm]icrosoft")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/wsl" CACHE PATH
+            "Root directory for WSL dependency cache" FORCE)
+    elseif(DEFINED ENV{DOCKER_OS})
         set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
     elseif(EXISTS "/.dockerenv")
         message(WARNING "Running in Docker without DOCKER_OS set - using generic 'docker' cache path. Set DOCKER_OS=amd64 or DOCKER_OS=arm64 to avoid cross-arch conflicts.")
@@ -37,6 +47,7 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "
     else()
         set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)" FORCE)
     endif()
+    unset(_ascii_chat_kernel_release)
 endif()
 
 # Build-type-specific cache directory
