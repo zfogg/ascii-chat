@@ -137,6 +137,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
 
   // Only register initialization tracking once
   if (!g_shared_initialized) {
+    static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
+    symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
+
     // 1. TIMER SYSTEM - Initialize first so timing is available for everything else
     if (!timer_system_init()) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
@@ -151,8 +154,6 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
       return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");
     }
     debug_memory_ensure_init();
-    static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
-    symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
     symbol_cache_init();
 #endif
 
