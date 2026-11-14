@@ -4,7 +4,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <libplatform/system.h>
