@@ -82,6 +82,10 @@ include(${_cmake_dir}/dependencies/Libplatform.cmake)
 set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
+set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
+if(NOT EXISTS "${LIBFLAGS_ROOT}/include/libflags/flags.h")
+    set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/../libflags-src")
+endif()
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -101,6 +105,7 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
+    ${LIBFLAGS_ROOT}/include
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
@@ -178,6 +183,22 @@ set(LIB_SRC_COMMON
 
     # Options system
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
+    ${LIBFLAGS_ROOT}/lib/builder/builder.c
+    ${LIBFLAGS_ROOT}/lib/commands.c
+    ${LIBFLAGS_ROOT}/lib/completions/completions.c
+    ${LIBFLAGS_ROOT}/lib/config/config.c
+    ${LIBFLAGS_ROOT}/lib/config/keys.c
+    ${LIBFLAGS_ROOT}/lib/format.c
+    ${LIBFLAGS_ROOT}/lib/help.c
+    ${LIBFLAGS_ROOT}/lib/json.c
+    ${LIBFLAGS_ROOT}/lib/levenshtein.c
+    ${LIBFLAGS_ROOT}/lib/log.c
+    ${LIBFLAGS_ROOT}/lib/manpage/formatter.c
+    ${LIBFLAGS_ROOT}/lib/manpage/manpage.c
+    ${LIBFLAGS_ROOT}/lib/manpage/parser.c
+    ${LIBFLAGS_ROOT}/lib/options.c
+    ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
+    ${LIBFLAGS_ROOT}/lib/storage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_enums.c
