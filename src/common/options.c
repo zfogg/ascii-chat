@@ -105,6 +105,12 @@
 #include <string.h>
 #include <math.h>
 
+static void options_flags_log_event(const flags_log_event_t *event, void *user_data) {
+  (void)user_data;
+  if (event && event->message)
+    log_error("%s", event->message);
+}
+
 static const char *options_json_type(const registry_entry_t *entry) {
   if (entry->type == OPTION_TYPE_BOOL)
     return "boolean";
@@ -534,6 +540,21 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     flags_schema_builder_destroy(schema_builder);
     flags_command_destroy(root);
     return SET_ERRNO(ERROR_USAGE, "Unable to resolve command");
+  }
+  flags_context_t *command_context = flags_create(flags_schema_builder_schema(schema_builder), NULL, 0);
+  if (!command_context) {
+    flags_schema_builder_destroy(schema_builder);
+    flags_command_destroy(root);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create command validation context");
+  }
+  flags_logging_config_t logging = {.callback = options_flags_log_event, .user_data = NULL};
+  flags_set_logging(command_context, &logging);
+  bool order_valid = flags_command_validate_order(command_context, root, argc, argv, &resolution);
+  flags_destroy(command_context);
+  if (!order_valid) {
+    flags_schema_builder_destroy(schema_builder);
+    flags_command_destroy(root);
+    return SET_ERRNO(ERROR_USAGE, "Invalid command-line option order");
   }
   flags_command_t *resolved_command = resolution.command;
   int first_positional_idx = resolution.first_positional_index;
