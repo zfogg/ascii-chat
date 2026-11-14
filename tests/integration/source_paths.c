@@ -5,7 +5,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/util/symbols.h>
+#include <libplatform/symbols.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -72,10 +72,10 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   cr_assert_eq(strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5), "crt\\vcstartup\\src\\startup\\exe_common.inl"), 0);
   cr_assert_eq(strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c"), 0);
 
-  cr_assert(symbol_module_is_project("ascii-chat.exe"));
-  cr_assert(symbol_module_is_project("libasciichat.0.3.0.dylib"));
-  cr_assert(symbol_module_is_project("asciichat.dll"));
-  cr_assert(!symbol_module_is_project("ucrtbase.dll"));
+  cr_assert(symbol_module_is_project("ascii-chat.exe", "ascii-chat.exe", NULL));
+  cr_assert(symbol_module_is_project("libasciichat.0.3.0.dylib", NULL, "asciichat.0.3.0.dylib"));
+  cr_assert(symbol_module_is_project("asciichat.dll", NULL, "libasciichat.dll"));
+  cr_assert(!symbol_module_is_project("ucrtbase.dll", "ascii-chat.exe", "asciichat.dll"));
 }
 
 Test(source_paths, log_headers_and_memory_reports_preserve_locations) {

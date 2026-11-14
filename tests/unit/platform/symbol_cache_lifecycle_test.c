@@ -6,7 +6,6 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/pcre2.h>
-#include <ascii-chat/util/symbols.h>
 #include <stdlib.h>
 
 TestSuite(symbol_cache_lifecycle);
@@ -125,9 +124,9 @@ Test(symbol_cache_lifecycle, cached_names_are_copied_and_updates_do_not_invalida
 }
 
 Test(symbol_cache_lifecycle, project_module_detection_handles_paths_and_external_modules) {
-  cr_assert(symbol_module_is_project("ascii-chat"));
-  cr_assert(symbol_module_is_project("C:\\tools\\ASCII-CHAT.EXE"));
-  cr_assert(symbol_module_is_project("libasciichat.so.0.1.0"));
-  cr_assert_not(symbol_module_is_project("libc.so.6"));
-  cr_assert_not(symbol_module_is_project(NULL));
+  cr_assert(symbol_module_is_project("ascii-chat", "ascii-chat", NULL));
+  cr_assert(symbol_module_is_project("C:\\tools\\ASCII-CHAT.EXE", "ascii-chat.exe", NULL));
+  cr_assert(symbol_module_is_project("libasciichat.so.0.1.0", NULL, "asciichat.so.0.1.0"));
+  cr_assert_not(symbol_module_is_project("libc.so.6", "ascii-chat", "asciichat.so"));
+  cr_assert_not(symbol_module_is_project(NULL, "ascii-chat", "asciichat.so"));
 }
