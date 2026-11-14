@@ -16,6 +16,7 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/string.h>
 #include <libflags/values.h>
+#include <libflags/storage.h>
 #include <libflags/values.h>
 #include <string.h>
 #include <limits.h>
@@ -65,46 +66,19 @@ const option_builder_handler_t g_builder_handlers[] = {
     [OPTION_TYPE_ACTION] = {is_set_action, apply_env_action, apply_cli_action, format_help_placeholder_action},
 };
 static bool is_set_bool(const void *field, const option_descriptor_t *desc) {
-  // Safely read the bool value (may be uninitialized)
-  unsigned char value_byte = 0;
-  memcpy(&value_byte, field, 1);
-  bool value = (value_byte != 0);
-
-  bool default_val = false;
-  if (desc && desc->default_value) {
-    unsigned char default_byte = 0;
-    memcpy(&default_byte, desc->default_value, 1);
-    default_val = (default_byte != 0);
-  }
-  return value != default_val;
+  return flags_storage_is_set(FLAGS_TYPE_BOOL, field, sizeof(bool), desc ? desc->default_value : NULL, sizeof(bool));
 }
 
 static bool is_set_int(const void *field, const option_descriptor_t *desc) {
-  int value = *(const int *)field;
-  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
-  return value != default_val;
+  return flags_storage_is_set(FLAGS_TYPE_INT64, field, sizeof(int), desc ? desc->default_value : NULL, sizeof(int));
 }
 
 static bool is_set_string(const void *field, const option_descriptor_t *desc) {
-  const char *value = (const char *)field;
-  const char *default_val = NULL;
-  if (desc->default_value) {
-    default_val = *(const char *const *)desc->default_value;
-  }
-  if (!default_val) {
-    return (value && value[0] != '\0');
-  }
-  return strcmp(value, default_val) != 0;
+  return flags_storage_is_set(FLAGS_TYPE_STRING, field, OPTIONS_BUFF_SIZE, desc ? desc->default_value : NULL, sizeof(char *));
 }
 
 static bool is_set_double(const void *field, const option_descriptor_t *desc) {
-  double value = 0.0;
-  double default_val = 0.0;
-  memcpy(&value, field, sizeof(double));
-  if (desc->default_value) {
-    memcpy(&default_val, desc->default_value, sizeof(double));
-  }
-  return value != default_val;
+  return flags_storage_is_set(FLAGS_TYPE_DOUBLE, field, sizeof(double), desc ? desc->default_value : NULL, sizeof(double));
 }
 
 static bool is_set_callback(const void *field, const option_descriptor_t *desc) {
@@ -207,10 +181,8 @@ static asciichat_error_t apply_env_string(void *field, const char *env_value, co
 static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
   if (!env_value || env_value[0] == '\0')
     return ASCIICHAT_OK; // Preserve the existing value when the environment is unset.
-  double value = 0.0;
-  if (!flags_parse_double(env_value, &value))
+  if (!flags_storage_apply_text(FLAGS_TYPE_DOUBLE, field, sizeof(double), env_value))
     return SET_ERRNO(ERROR_USAGE, "Invalid floating-point value for environment variable %s: %s", desc->env_var_name ? desc->env_var_name : "unknown", env_value);
-  memcpy(field, &value, sizeof(double));
   return ASCIICHAT_OK;
 }
 
@@ -263,11 +235,9 @@ static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, cons
   bool new_value = false;
 
   if (opt_value == NULL) {
-    // No value provided (flag without =value), toggle the current value
-    unsigned char current_byte = 0;
-    memcpy(&current_byte, field, 1);
-    bool current_value = (current_byte != 0);
-    new_value = !current_value;
+    if (!flags_storage_apply_text(FLAGS_TYPE_BOOL, field, sizeof(bool), NULL))
+      return SET_ERRNO(ERROR_USAGE, "Option --%s could not toggle", desc ? desc->long_name : "unknown");
+    return ASCIICHAT_OK;
   } else {
     // Value provided (--option=value), parse it
     asciichat_error_t parse_result = parse_bool_value(opt_value, &new_value, desc);
@@ -335,11 +305,9 @@ static asciichat_error_t apply_cli_double(void *field, const char *opt_value, co
     return ERROR_USAGE;
   }
 
-  double value = 0.0;
-  if (!flags_parse_double(opt_value, &value)) {
+  if (!flags_storage_apply_text(FLAGS_TYPE_DOUBLE, field, sizeof(double), opt_value)) {
     return ERROR_USAGE;
   }
-  memcpy(field, &value, sizeof(double));
 
   return ASCIICHAT_OK;
 }
