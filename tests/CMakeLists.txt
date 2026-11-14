@@ -16,7 +16,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 #   - All test_* executable targets (Catch2-based)
 #   - tests, test_debug, test_release, test_all custom targets
 #   - tests-timer-start, tests-timer-end (build timing targets)
-#   - tests-catch2-build or tests-lib-build (internal build targets)
+#   -  or tests-lib-build (internal build targets)
 #
 # Note: Library runtime tests (test-static-lib, test-shared-lib) are handled
 # by TestLibs.cmake and only require BUILD_TESTS, not Catch2.
@@ -196,7 +196,7 @@ function(asciichat_configure_contract target)
     if(NOT APPLE)
         target_link_options(${target} PRIVATE -Wl,--no-gc-sections)
     endif()
-    foreach(build_target tests tests-catch2-build test_all)
+    foreach(build_target tests test_all)
         if(TARGET ${build_target})
             add_dependencies(${build_target} ${target})
         endif()
@@ -208,7 +208,7 @@ function(asciichat_add_contract_test name target)
     add_test(NAME ${name} COMMAND ${target}
         --reporter junit::out=${TEST_XML_DIR}/${name}.xml)
     asciichat_fail_on_lsan_report(${name})
-    set_tests_properties(${name} PROPERTIES LABELS "catch2;contract"
+    set_tests_properties(${name} PROPERTIES LABELS "contract"
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
 endfunction()
@@ -554,7 +554,7 @@ target_link_libraries(benchmarks PRIVATE
         --reporter junit::out=${TEST_XML_DIR}/benchmarks.xml
         --colour-mode ansi)
     set_tests_properties(benchmarks PROPERTIES
-        LABELS "benchmark;performance;catch2;serial"
+        LABELS "benchmark;performance;serial"
         RUN_SERIAL TRUE
         TIMEOUT 600
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
@@ -905,12 +905,6 @@ target_link_libraries(benchmarks PRIVATE
     set(ALL_TIMED_TEST_TARGETS unit_tests benchmarks ${ALL_TEST_TARGETS}
         CACHE INTERNAL "All native test targets for timing")
 
-    # Internal target to build all Catch2 tests (without timing)
-    add_custom_target(tests-catch2-build
-        DEPENDS unit_tests benchmarks ${ALL_TEST_TARGETS}
-        COMMENT "Building Catch2 test executables"
-    )
-
     # Build all test executables without running them.
     add_custom_target(tests
         DEPENDS unit_tests benchmarks ${ALL_TEST_TARGETS}
@@ -927,29 +921,27 @@ target_link_libraries(benchmarks PRIVATE
             COMMENT "Finishing test build timing"
             VERBATIM
         )
-        add_dependencies(tests-timer-end tests-timer-start tests-catch2-build)
+        add_dependencies(tests-timer-end tests-timer-start unit_tests benchmarks ${ALL_TEST_TARGETS})
         add_dependencies(tests tests-timer-end)
-    else()
-        add_dependencies(tests tests-catch2-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
     # CTest distributes test executables over all detected cores.
     add_custom_target(test_debug
-        DEPENDS tests-catch2-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in debug mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     add_custom_target(test_release
-        DEPENDS tests-catch2-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in release mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     # Overall test target
     add_custom_target(test_all
-        DEPENDS tests-catch2-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running all tests (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
@@ -959,14 +951,14 @@ target_link_libraries(benchmarks PRIVATE
     # Also add them to the timed test targets and timer dependency chain
     if(TARGET test-static-lib)
         add_dependencies(test_all test-static-lib)
-        add_dependencies(tests-catch2-build test-static-lib)
+        add_dependencies(tests test-static-lib)
         if(TARGET tests-timer-start)
             add_dependencies(test-static-lib tests-timer-start)
         endif()
     endif()
     if(TARGET test-shared-lib)
         add_dependencies(test_all test-shared-lib)
-        add_dependencies(tests-catch2-build test-shared-lib)
+        add_dependencies(tests test-shared-lib)
         if(TARGET tests-timer-start)
             add_dependencies(test-shared-lib tests-timer-start)
         endif()
@@ -1160,7 +1152,7 @@ if(TARGET ascii-chat-shared)
         if(BUILD_TESTS)
             asciichat_add_contract_test(source-paths test-source-paths)
             set_tests_properties(source-paths PROPERTIES LABELS "integration" TIMEOUT 30)
-            foreach(test_build_target tests tests-catch2-build tests-lib-build)
+            foreach(test_build_target tests-lib-build)
                 if(TARGET ${test_build_target})
                     add_dependencies(${test_build_target} test-source-paths)
                 endif()
@@ -1251,7 +1243,7 @@ if(TARGET ascii-chat-static)
     target_include_directories(test-crypto-logging PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-crypto-logging PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
-        foreach(test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-crypto-logging)
             endif()
@@ -1298,7 +1290,7 @@ if(TARGET ascii-chat-static)
     set_target_properties(test-error-popup-fixture PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
-        foreach(test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-error-popup-fixture)
             endif()
@@ -1324,7 +1316,7 @@ if(TARGET ascii-chat-static)
     set_target_properties(test-errno-tui-fixture PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS AND NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        foreach(test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-errno-tui-fixture)
             endif()
@@ -1370,7 +1362,7 @@ if(TARGET ascii-chat-static)
     apply_sanitizers_to_target(ui-native-probe)
     set_target_properties(ui-native-probe PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_target tests tests-catch2-build)
+    foreach(test_target tests)
         if(TARGET ${test_target})
             add_dependencies(${test_target} ui-native-probe test-errno-stacks)
             if(TARGET test-sync-regressions)
@@ -1412,7 +1404,7 @@ if(BUILD_TESTS)
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         asciichat_add_contract_test(splash-init test-splash-init)
-        set_tests_properties(splash-init PROPERTIES LABELS "catch2;contract;integration;thread")
+        set_tests_properties(splash-init PROPERTIES LABELS "contract;integration;thread")
     else()
         add_test(NAME splash-init COMMAND $<TARGET_FILE:test-splash-init>)
         set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
@@ -1432,7 +1424,7 @@ if(BUILD_TESTS)
         LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     # Cover both the documented tests target and the Catch2 run targets.
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-client-like-lifecycle test-splash-init)
         endif()
@@ -1446,7 +1438,7 @@ if(BUILD_TESTS)
     apply_sanitizers_to_target(test-mdns-advertiser)
     set_target_properties(test-mdns-advertiser PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-mdns-advertiser)
         endif()
@@ -1485,7 +1477,7 @@ if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     apply_sanitizers_to_target(test-discovery-session-process)
     set_target_properties(test-discovery-session-process PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-discovery-session-process)
         endif()
@@ -1494,7 +1486,7 @@ if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         ${CMAKE_SOURCE_DIR}/tests/python/tools/run_discovery_catch2.py
         $<TARGET_FILE:test-discovery-session-process> --jobs 1 --timeout 30
         --reporter junit::out=${TEST_XML_DIR}/discovery-session-process.xml)
-    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration;catch2;contract" TIMEOUT 120)
+    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration;contract" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
@@ -1515,7 +1507,7 @@ if(BUILD_TESTS AND TARGET ascii-chat)
         --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-discovery-session-ownership PROPERTIES LABELS "integration;python;network"
         RUN_SERIAL TRUE)
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
         endif()
@@ -1744,7 +1736,7 @@ if(TARGET ascii-chat-static)
                     "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
             endif()
         endif()
-        foreach(quic_test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(quic_test_build_target tests-lib-build)
             if(TARGET ${quic_test_build_target})
                 add_dependencies(${quic_test_build_target} test-traffic-metadata test-quic-stream
                     test-quic-tls test-quic-http3 test-quic-dependencies)
@@ -1823,7 +1815,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
         --reporter junit::out=${TEST_XML_DIR}/discovery-nat-refresh.xml)
     asciichat_fail_on_lsan_report(discovery-nat-refresh)
-    set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;catch2;contract" TIMEOUT 60
+    set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()
 
@@ -1850,7 +1842,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
-        foreach(test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-host-render)
             endif()
@@ -1904,7 +1896,7 @@ if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     apply_sanitizers_to_target(test-participant-media)
     set_target_properties(test-participant-media PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-participant-media)
         endif()
@@ -2234,7 +2226,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     apply_sanitizers_to_target(test-session-connections)
     set_target_properties(test-session-connections PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-session-connections)
         endif()
@@ -2255,7 +2247,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     apply_sanitizers_to_target(test-peer-ready)
     set_target_properties(test-peer-ready PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-peer-ready)
         endif()
@@ -2271,7 +2263,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
     apply_sanitizers_to_target(test-terminal-pty)
     set_target_properties(test-terminal-pty PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-catch2-build test_all)
+    foreach(test_build_target tests test_all)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-terminal-pty)
         endif()
@@ -2316,7 +2308,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             --transports tcp,webrtc,quic,quic-datagrams
             --output ${CMAKE_BINARY_DIR}/test_artifacts/transport-metrics)
         set_tests_properties(transport-metrics PROPERTIES LABELS "integration;standalone" TIMEOUT 180 RUN_SERIAL TRUE)
-        foreach(_metrics_build_target tests tests-catch2-build tests-lib-build)
+        foreach(_metrics_build_target tests-lib-build)
             if(TARGET ${_metrics_build_target})
                 add_dependencies(${_metrics_build_target} test-transport-metrics)
             endif()
@@ -2356,7 +2348,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         target_include_directories(test-${outbound_fixture} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
         set_target_properties(test-${outbound_fixture} PROPERTIES LINKER_LANGUAGE CXX
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-        foreach(test_build_target tests tests-catch2-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-${outbound_fixture})
             endif()
@@ -2418,7 +2410,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     target_link_libraries(test-media-capture-pacing PRIVATE Catch2::Catch2WithMain)
     target_include_directories(test-media-capture-pacing PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
     add_test(NAME media-capture-pacing COMMAND test-media-capture-pacing)
-    set_tests_properties(media-capture-pacing PROPERTIES LABELS "unit;standalone;media;catch2" TIMEOUT 10)
+    set_tests_properties(media-capture-pacing PROPERTIES LABELS "unit;standalone;media;" TIMEOUT 10)
     if(TARGET tests)
         add_dependencies(tests test-media-capture-pacing)
     endif()
@@ -2572,7 +2564,7 @@ foreach(contract_test IN LISTS contract_tests)
     if(NOT category MATCHES "(^|;)(unit|integration|performance)(;|$)")
         set_property(TEST ${contract_test} APPEND PROPERTY LABELS integration)
     endif()
-    set_property(TEST ${contract_test} APPEND PROPERTY LABELS catch2 contract)
+    set_property(TEST ${contract_test} APPEND PROPERTY LABELS  contract)
 endforeach()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
@@ -2767,7 +2759,7 @@ if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)
         set_property(TEST python-panic APPEND PROPERTY ENVIRONMENT
             "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
     endif()
-    foreach(_test_build_target IN ITEMS tests tests-catch2-build tests-lib-build)
+    foreach(_test_build_target IN ITEMS tests-lib-build)
         if(TARGET ${_test_build_target})
             add_dependencies(${_test_build_target} ascii-panic-report)
         endif()
