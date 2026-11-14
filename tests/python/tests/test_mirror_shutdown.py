@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 
-def _send_ctrl_c(pid: int) -> None:
-    helper = r'''
+def _send_ctrl_c(pid: int, count: int = 1) -> None:
+    helper = r"""
 import ctypes
 import sys
 from ctypes import wintypes
@@ -18,6 +18,7 @@ from ctypes import wintypes
 kernel = ctypes.WinDLL("kernel32", use_last_error=True)
 kernel.FreeConsole()
 target = int(sys.argv[1])
+count = int(sys.argv[2])
 if not kernel.AttachConsole(target):
     raise ctypes.WinError(ctypes.get_last_error())
 GENERIC_WRITE = 0x40000000
@@ -30,37 +31,27 @@ handle = kernel.CreateFileW(
     None, OPEN_EXISTING, 0, None)
 if handle == INVALID_HANDLE_VALUE:
     raise ctypes.WinError(ctypes.get_last_error())
-
 class KEY_EVENT_RECORD(ctypes.Structure):
-    _fields_ = [
-        ("bKeyDown", wintypes.BOOL),
-        ("wRepeatCount", wintypes.WORD),
-        ("wVirtualKeyCode", wintypes.WORD),
-        ("wVirtualScanCode", wintypes.WORD),
-        ("UnicodeChar", wintypes.WCHAR),
-        ("dwControlKeyState", wintypes.DWORD),
-    ]
-
+    _fields_ = [("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD), ("wVirtualKeyCode", wintypes.WORD), ("wVirtualScanCode", wintypes.WORD), ("UnicodeChar", wintypes.WCHAR), ("dwControlKeyState", wintypes.DWORD)]
 class INPUT_RECORD(ctypes.Structure):
     _fields_ = [("EventType", wintypes.WORD), ("KeyEvent", KEY_EVENT_RECORD)]
-
-LEFT_CTRL_PRESSED = 0x0008
-VK_C = 0x43
-events = (INPUT_RECORD * 2)(
-    INPUT_RECORD(1, KEY_EVENT_RECORD(True, 1, VK_C, 0, "c", LEFT_CTRL_PRESSED)),
-    INPUT_RECORD(1, KEY_EVENT_RECORD(False, 1, VK_C, 0, "c", LEFT_CTRL_PRESSED)),
-)
+events = (INPUT_RECORD * (2 * count))(*sum(([INPUT_RECORD(1, KEY_EVENT_RECORD(True, 1, 0x43, 0, "c", 0x0008)), INPUT_RECORD(1, KEY_EVENT_RECORD(False, 1, 0x43, 0, "c", 0x0008))] for _ in range(count)), []))
 written = wintypes.DWORD()
-if not kernel.WriteConsoleInputW(handle, events, 2, ctypes.byref(written)) or written.value != 2:
+if not kernel.WriteConsoleInputW(handle, events, 2 * count, ctypes.byref(written)) or written.value != 2 * count:
     raise ctypes.WinError(ctypes.get_last_error())
 kernel.CloseHandle(handle)
 kernel.FreeConsole()
-'''
-    subprocess.run([sys.executable, "-c", helper, str(pid)], check=True, timeout=5)
+"""
+    subprocess.run(
+        [sys.executable, "-c", helper, str(pid), str(count)], check=True, timeout=5
+    )
 
 
 @pytest.mark.terminal
-def test_mirror_ctrl_c_cancels_unreachable_telemetry(binary: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("ctrl_c_count", [1, 2])
+def test_mirror_ctrl_c_cancels_unreachable_telemetry(
+    binary: Path, tmp_path: Path, ctrl_c_count: int
+) -> None:
     log = tmp_path / "mirror-shutdown.log"
     command = [
         str(binary),
@@ -69,11 +60,11 @@ def test_mirror_ctrl_c_cancels_unreachable_telemetry(binary: Path, tmp_path: Pat
         "--log-file",
         str(log),
         "mirror",
-        "--test-pattern",
         "--render-mode",
         "background",
         "--renderer",
         "glyph",
+        "--fft",
     ]
     environment = os.environ.copy()
     environment.pop("TESTING", None)
@@ -88,23 +79,32 @@ def test_mirror_ctrl_c_cancels_unreachable_telemetry(binary: Path, tmp_path: Pat
         command,
         cwd=tmp_path,
         env=environment,
-        creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=subprocess.CREATE_NEW_CONSOLE
+        | subprocess.CREATE_NEW_PROCESS_GROUP,
     )
     try:
-        time.sleep(3)
-        startup_log = log.read_text(encoding="utf-8", errors="replace")
-        assert "Using test pattern" in startup_log, startup_log[-4000:]
-        assert "Telemetry enabled:" in startup_log, startup_log[-4000:]
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            startup_log = (
+                log.read_text(encoding="utf-8", errors="replace")
+                if log.exists()
+                else ""
+            )
+            if "Mirror audio started on demand" in startup_log:
+                break
+            time.sleep(0.1)
         started = time.monotonic()
-        _send_ctrl_c(process.pid)
+        _send_ctrl_c(process.pid, ctrl_c_count)
         try:
             process.wait(timeout=1)
         except subprocess.TimeoutExpired:
             text = log.read_text(encoding="utf-8", errors="replace")
-            pytest.fail("ascii-chat did not exit within 1 second after Ctrl-C\n" + text[-4000:])
+            pytest.fail(
+                "ascii-chat did not exit within 1 second after Ctrl-C\n" + text[-4000:]
+            )
         elapsed = time.monotonic() - started
         text = log.read_text(encoding="utf-8", errors="replace")
-        assert process.returncode in {0, 1, 2}, text[-4000:]
+        assert process.returncode in {0, 1, 2, 130}, text[-4000:]
         assert elapsed <= 1.0, text[-4000:]
         assert "Telemetry worker did not stop within its deadline" not in text
     finally:

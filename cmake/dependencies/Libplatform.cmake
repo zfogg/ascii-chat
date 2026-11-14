@@ -6,7 +6,7 @@
 
 include(FetchContent)
 
-if(USE_MUSL)
+if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_ascii_chat_libplatform_shared OFF)
 elseif(ASCIICHAT_SHARED_DEPS)
     set(_ascii_chat_libplatform_shared ON)

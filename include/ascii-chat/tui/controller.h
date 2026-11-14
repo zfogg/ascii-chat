@@ -63,6 +63,8 @@ void ui_controller_packet_begin(void);
 void ui_controller_packet_end(void);
 /** Stop presentation and restore cursor visibility on an interactive terminal. */
 void ui_controller_restore_terminal(void);
+/** Restore terminal output without acquiring controller/UI locks. */
+void ui_controller_restore_terminal_output(void);
 void ui_controller_redraw(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);

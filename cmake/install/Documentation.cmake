@@ -162,10 +162,10 @@ foreach(MANPAGE \${MANPAGES})
     get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
 
     # Directory pages contain machine-specific paths and are not API references.
-    file(STRINGS "\${MANPAGE}" MANPAGE_TITLE LIMIT_COUNT 1)
-    if(MANPAGE_TITLE MATCHES "Directory Reference")
-        file(REMOVE "\${MANPAGE}")
-        math(EXPR DELETED_COUNT "\${DELETED_COUNT} + 1")
+    file(STRINGS \"\${MANPAGE}\" MANPAGE_TITLE LIMIT_COUNT 1)
+    if(MANPAGE_TITLE MATCHES \"Directory Reference\")
+        file(REMOVE \"\${MANPAGE}\")
+        math(EXPR DELETED_COUNT \"\${DELETED_COUNT} + 1\")
         continue()
     endif()
 
