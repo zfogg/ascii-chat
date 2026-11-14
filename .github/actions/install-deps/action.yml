@@ -471,23 +471,16 @@ runs:
           foreach ($pkg in $packages) {
             Install-ScoopPackage -Package $pkg
           }
-        }
 
-        if ($env:RUNNER_ARCH -ne 'X64') {
-          # Add scoop shims to PATH for the ARM64 fallback installer.
-          $scoopShimsUser = Join-Path $env:USERPROFILE 'scoop\shims'
-          $scoopShimsGlobal = 'C:\ProgramData\scoop\shims'
-          $foundShims = $false
-          foreach ($shimsPath in @($scoopShimsGlobal, $scoopShimsUser)) {
+          # Persist Scoop shims for later action steps without failing when a
+          # runner uses only one of the user/global locations.
+          foreach ($shimsPath in @(
+              (Join-Path $env:USERPROFILE 'scoop\shims'),
+              'C:\ProgramData\scoop\shims'
+            )) {
             if (Test-Path $shimsPath) {
-              Write-Host "Adding scoop shims to PATH: $shimsPath"
               Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
-              $foundShims = $true
             }
-          }
-          if (-not $foundShims) {
-            Write-Host "No scoop shims found"
-            exit 1
           }
         }
 
