@@ -35,8 +35,7 @@ typedef void (*ui_render_fn)(terminal_size_t size, const void *snapshot);
  * waits for an in-flight callback to finish, so producers must not hold locks
  * needed by that callback while removing its screen.
  */
-asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
-                                       const void *snapshot, size_t bytes);
+asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render, const void *snapshot, size_t bytes);
 void ui_controller_remove(ui_screen_t screen);
 /** Retire a modal and atomically restore its previous interactive owner if still live.
  * Does not steal focus from a screen selected after the modal opened. */
@@ -64,6 +63,8 @@ void ui_controller_packet_begin(void);
 void ui_controller_packet_end(void);
 /** Stop presentation and restore cursor visibility on an interactive terminal. */
 void ui_controller_restore_terminal(void);
+/** Restore terminal output without acquiring controller/UI locks. */
+void ui_controller_restore_terminal_output(void);
 void ui_controller_redraw(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);
@@ -100,8 +101,7 @@ size_t ui_controller_trim_utf8_chunk(const char *data, size_t length);
 void ui_controller_finish(int fd, const char *data, size_t len);
 
 /** Publish an owned copy of an already rendered frame. */
-asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
-                                        size_t len);
+asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data, size_t len);
 
 asciichat_error_t ui_controller_printf(int fd, const char *format, ...);
 
@@ -109,8 +109,7 @@ asciichat_error_t ui_controller_printf(int fd, const char *format, ...);
 const animation_sample_t *ui_controller_animation_sample(void);
 
 /** Redraw retained media without treating it as a newly acquired frame for FPS. */
-asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
-                                                 size_t len);
+asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data, size_t len);
 
 /** Carry the acquisition start time with the next media snapshot on this producer thread. */
 void ui_controller_frame_acquired_at(uint64_t started_ns);

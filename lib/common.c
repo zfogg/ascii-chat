@@ -222,6 +222,15 @@ void asciichat_shared_destroy(void) {
   }
   shutdown_done = true;
 
+  // Ctrl-C has already stopped the application pipeline. Diagnostic workers
+  // may be inside logging/registry code and joining them from the atexit
+  // thread can deadlock. Restore the terminal output state and let the OS
+  // reclaim those process-owned workers after the remaining atexit handlers.
+  if (shutdown_is_requested()) {
+    ui_controller_restore_terminal_output();
+    return;
+  }
+
   // Stop diagnostic readers before destroying symbols or synchronization state.
   debug_sync_cleanup_thread();
   debug_errno_cleanup_thread();

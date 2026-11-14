@@ -9,7 +9,8 @@
 #include <string.h>
 
 static float waveform_spectral_centroid(const float *samples, size_t sample_count, size_t center) {
-  static const float frequencies[] = {55.0f, 110.0f, 220.0f, 440.0f, 880.0f, 1760.0f, 3520.0f, 7040.0f, 14080.0f};
+  static const float coefficients[] = {1.999948168f, 1.999792673f, 1.999170736f, 1.996683633f, 1.986745531f, 1.947157806f, 1.791423520f, 1.209198230f, -0.537839641f};
+  static const float log_frequencies[] = {4.007333185f, 4.700480366f, 5.393627546f, 6.086774727f, 6.779921907f, 7.473069088f, 8.166216269f, 8.859363449f, 9.552510630f};
   const size_t window_size = 1024;
   const size_t half_window = window_size / 2;
   size_t start = center > half_window ? center - half_window : 0;
@@ -18,8 +19,8 @@ static float waveform_spectral_centroid(const float *samples, size_t sample_coun
 
   float weighted_log_frequency = 0.0f;
   float total_weight = 0.0f;
-  for (size_t frequency_index = 0; frequency_index < sizeof(frequencies) / sizeof(frequencies[0]); frequency_index++) {
-    float coefficient = 2.0f * cosf(6.28318530718f * frequencies[frequency_index] / AUDIO_VISUALIZATION_SAMPLE_RATE);
+  for (size_t frequency_index = 0; frequency_index < sizeof(coefficients) / sizeof(coefficients[0]); frequency_index++) {
+    float coefficient = coefficients[frequency_index];
     float q1 = 0.0f, q2 = 0.0f;
     for (size_t i = 0; i < window_size; i++) {
       float position = (float)i / (float)(window_size - 1);
@@ -30,7 +31,7 @@ static float waveform_spectral_centroid(const float *samples, size_t sample_coun
     }
     float power = fmaxf(q1 * q1 + q2 * q2 - coefficient * q1 * q2, 0.0f);
     float magnitude = sqrtf(power);
-    weighted_log_frequency += magnitude * logf(frequencies[frequency_index]);
+    weighted_log_frequency += magnitude * log_frequencies[frequency_index];
     total_weight += magnitude;
   }
   return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;

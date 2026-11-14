@@ -92,7 +92,7 @@ def test_fps_toggle_does_not_halve_media_rate(binary, test_environment, source_a
     environment["ASCII_CHAT_FPS_COUNTER"] = "false"
     args = [
         str(binary), "--quiet", "--no-check-update", "mirror", *source_args,
-        "--width", "40", "--height", "20", "--splash-screen=false", "--audio=false",
+        "--width", "40", "--height", "20", "--fps", "60", "--splash-screen=false", "--audio=false",
     ]
     term = Terminal(args, rows=20, cols=80, terminal_replies=True, environment=environment)
     try:
@@ -101,19 +101,16 @@ def test_fps_toggle_does_not_halve_media_rate(binary, test_environment, source_a
         term.pump(1)
         term.raw.clear()
         term.write("-")
-        term.pump(0.5)
-        if "FPS:" not in "".join(term.raw):
-            # WinPTY can lose the first byte while the input worker finishes
-            # entering raw mode. The second write is only a transport retry;
-            # the rendering observation below is never restarted.
-            term.write("-")
         term.expect(lambda text: "FPS:" in text, "FPS counter did not appear after '-'", timeout=5)
         start = time.monotonic()
         frame_counts = []
         synchronized_overlay_counts = []
+        missing_labels = 0
         previous_raw_length = 0
         while time.monotonic() - start < 25:
-            term.pump(1.0)
+            term.pump(0.25)
+            if not any("FPS:" in row for row in term.screen.display):
+                missing_labels += 1
             raw = "".join(term.raw)
             new_output = raw[previous_raw_length:]
             previous_raw_length = len(raw)
@@ -127,10 +124,15 @@ def test_fps_toggle_does_not_halve_media_rate(binary, test_environment, source_a
         assert sum(synchronized_overlay_counts[-5:]) >= sum(frame_counts[-5:]) - 5, (
             f"FPS overlay was outside synchronized frames: frames={frame_counts}, overlays={synchronized_overlay_counts}"
         )
+        assert missing_labels == 0, f"FPS label disappeared from the terminal screen {missing_labels} times"
         assert len(values) >= 10, f"FPS counter did not produce a sustained reading: {values}"
         steady = values[10:]
-        expected_min = 40 if source_args[0] == "--test-pattern" else 25
-        assert min(steady or values) >= expected_min, f"FPS value dipped after toggle: {values}"
+        steady_values = steady or values
+        # A 60 FPS target is measured through WinPTY, so individual rolling
+        # samples can lose a few frames to the scheduler. Require the stream
+        # to remain near 60 without accepting a sustained half-rate stall.
+        assert sorted(steady_values)[len(steady_values) // 10] >= 52, f"FPS value stayed below the 60 FPS target: {values}"
+        assert sum(value >= 55 for value in steady_values) / len(steady_values) >= 0.8, f"FPS value was not sustained near 60: {values}"
     finally:
         term.close()
 
@@ -159,5 +161,31 @@ def test_large_height_only_frame_keeps_presenting(binary, test_environment):
         # A low floor catches the multi-second presentation stalls without
         # requiring a particular frame rate from a shared test machine.
         assert any(value >= 10 for value in values), f"FPS counter never reached 10: {values[-20:]}"
+    finally:
+        term.close()
+
+
+@pytest.mark.parametrize("visualization", ["--waveform", "--fft"])
+def test_audio_visualization_rows_do_not_shift(binary, test_environment, visualization):
+    args = [
+        str(binary), "--quiet", "--no-check-update", "mirror", "--test-audio", visualization,
+        "--width", "200", "--height", "100", "--splash-screen=false", "--audio=false",
+    ]
+    term = Terminal(args, rows=110, cols=200, terminal_replies=True, environment=test_environment)
+    frames = []
+    tail = ""
+    try:
+        deadline = time.monotonic() + 25
+        while time.monotonic() < deadline:
+            try:
+                chunk = term.output.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            text = tail + chunk
+            frames.extend(re.findall(r"\x1b\[\?2026h(.*?)\x1b\[\?2026l", text, re.DOTALL))
+            tail = text[-16:]
+        assert len(frames) >= 10, f"Audio visualization stopped rendering: {len(frames)} frames"
+        for frame in frames:
+            assert not re.search(r"(?<!\r)\n", frame), "Audio visualization emitted a bare newline and can vertically shift"
     finally:
         term.close()

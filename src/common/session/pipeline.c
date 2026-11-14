@@ -601,9 +601,14 @@ static void *pipeline_input_thread(void *data) {
     return NULL;
   while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-    if (key != KEY_NONE)
+    if (key != KEY_NONE) {
+      // Ctrl-C must wake the render loop immediately.  The global exit flag
+      // is also set by the handler, but stopping the pipeline here prevents a
+      // frame wait or terminal read from extending shutdown.
+      if ((int)key == 3)
+        atomic_store_bool(&pipeline->stop, true);
       pipeline->keyboard_handler(pipeline->capture, (int)key, pipeline->input_data);
-    else
+    } else
       platform_sleep_ms(10);
   }
   return NULL;
@@ -721,7 +726,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   ascii_otel_pipeline_progress(3, 0);
   if (thread_is_initialized(&pipeline->input_tid) && thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
-
   return ASCIICHAT_OK;
 }
 
@@ -748,7 +752,12 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
 
   if (thread_is_initialized(&pipeline->input_tid) && thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread during shutdown");
-  session_display_begin_drain(pipeline->display, 0, false);
+  // During Ctrl-C the presentation thread may be inside terminal output. Its
+  // drain handshake waits for that output to complete and can deadlock the
+  // shutdown path. The pending frame is still released below; normal exits
+  // retain the full display drain.
+  if (!shutdown_is_requested())
+    session_display_begin_drain(pipeline->display, 0, false);
 
   // A timeout must never let the owner free memory still referenced by a worker.
   // Capture observes stop; encode drains its queue and exits once capture is done.
@@ -756,7 +765,8 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     if (thread_join(&pipeline->capture_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline capture thread");
   }
-  session_display_begin_drain(pipeline->display, pipeline->frames_accepted, true);
+  if (!shutdown_is_requested())
+    session_display_begin_drain(pipeline->display, pipeline->frames_accepted, true);
   if (thread_is_initialized(&pipeline->encode_tid)) {
     if (thread_join(&pipeline->encode_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline encode thread");

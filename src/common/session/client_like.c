@@ -781,6 +781,9 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
   // The statistics worker owns the UI/input path. Stop it before tearing down
   // the display and capture objects it may still be polling.
   stats_runtime_stop();
+  if (APP_CALLBACK_BOOL(should_exit)) {
+    return result;
+  }
   // Preparation can fail before the normal update check wait above.
   update_banner_cancel_check();
   update_banner_wait_for_check();
@@ -813,7 +816,6 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
     SAFE_FREE(state->audio_ctx);
     state->audio_ctx = NULL;
   }
-
   // Destroy display (check global context to see if discovery mode already destroyed it)
   // Discovery participant mode may destroy the display early and clear the global context
   session_display_ctx_t *current_global = session_display_get_global_context();

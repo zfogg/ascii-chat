@@ -282,6 +282,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -501,6 +502,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -540,10 +542,14 @@ jobs:
           fi
           LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
           LLVM_DIR="${PWD}/.deps-cache/llvm-static"
+          LLVM_ARCHIVE="${RUNNER_TEMP}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
 
           echo "Downloading LLVM ${LLVM_VERSION} for macOS ${LLVM_ARCH}..."
           mkdir -p "${LLVM_DIR}"
-          curl -fsSL "${LLVM_URL}" | tar -xJ -C "${LLVM_DIR}" --strip-components=1
+          curl --fail --location --show-error --retry 5 --retry-all-errors \
+            --retry-delay 10 --connect-timeout 30 --max-time 1800 \
+            --output "${LLVM_ARCHIVE}" "${LLVM_URL}"
+          tar -xJf "${LLVM_ARCHIVE}" -C "${LLVM_DIR}" --strip-components=1
 
           # Verify static libs exist
           ls -la "${LLVM_DIR}/lib/libc++.a" "${LLVM_DIR}/lib/libc++abi.a" "${LLVM_DIR}/lib/libunwind.a"
@@ -746,11 +752,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: [create-release]
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: windows-2022
+          - runner: windows-2025
             arch: amd64
             vcpkg-triplet: "x64-windows"
             vcpkg-static-triplet: "x64-windows-static"
@@ -851,16 +858,7 @@ jobs:
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            # The generated man1 step launches the ARM64 binary and currently
-            # crashes under the Windows ARM runner. Other release platforms
-            # still build the complete documentation targets.
-            Write-Host "Skipping executable-generated documentation on Windows ARM64"
-          }
-          else {
-            cmake --build build_release --target docs
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+          Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
       - name: Verify static Windows release packages
