@@ -16,7 +16,7 @@
 #include <ascii-chat/debug/backtrace.h>
 #include <libplatform/backtrace.h>
 #include <libplatform/thread.h>
-#include <ascii-chat/os/errno.h>
+#include <libplatform/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/source_root.h>

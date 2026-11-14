@@ -30,7 +30,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/terminal.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>

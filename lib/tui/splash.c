@@ -36,7 +36,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/system.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>

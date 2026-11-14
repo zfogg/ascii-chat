@@ -8,7 +8,7 @@
  */
 
 #include <ascii-chat/terminal/fd/writer.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <stdlib.h>
 #include <stdio.h>

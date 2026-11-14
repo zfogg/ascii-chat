@@ -22,7 +22,7 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
 
   // Track the last character/grapheme for RLE expansion
   // UTF-8 characters can be up to 4 bytes
-  char last_char[UTF8_BUFFER_SIZE] = " ";
+  char last_char[ASCII_CHAT_UTF8_BUFFER_SIZE] = " ";
   size_t last_char_len = 1;
 
   size_t i = 0;

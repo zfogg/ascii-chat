@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <string.h>
 #include <locale.h>
 

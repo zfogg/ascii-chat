@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/input.h>

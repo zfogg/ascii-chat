@@ -38,7 +38,7 @@
 #include "session/display.h"
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/thread.h>

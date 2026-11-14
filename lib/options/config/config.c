@@ -28,7 +28,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
-#include <ascii-chat/os/question.h>
+#include <libplatform/question.h>
 #include <sys/stat.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>

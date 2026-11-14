@@ -121,7 +121,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../asciichat_errno.h"
-#include "../../os/socket.h"
+#include <libplatform/socket.h>
 #include "../../network/acip/acds.h"
 #include "../../crypto/handshake/common.h"
 #include "../../crypto/policy.h"
