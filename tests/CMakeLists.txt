@@ -404,6 +404,7 @@ if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     file(GLOB_RECURSE UNIT_TEST_SRCS CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.cpp)
     add_executable(unit_tests ${UNIT_TEST_SRCS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp
         ${CMAKE_SOURCE_DIR}/lib/tests/common.c
         ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
         ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
@@ -485,12 +486,16 @@ target_link_libraries(unit_tests PRIVATE
         OUTPUT_DIR "${CATCH2_XML_DIR}"
         OUTPUT_SUFFIX ".xml"
         DL_PATHS ${_catch2_test_dll_paths}
-        PROPERTIES LABELS "unit;catch2" TIMEOUT ${CTEST_TEST_TIMEOUT})
+        # Keep the CTest label scalar. Catch2 tags remain available through
+        # Catch2 filters; passing a semicolon list here makes CatchAddTests
+        # emit malformed CTest property pairs.
+        PROPERTIES LABELS "unit" TIMEOUT ${CTEST_TEST_TIMEOUT})
 
     # Benchmarks are a single, explicitly serialized Catch2 executable. They
     # are never scheduled alongside correctness cases because timing results
     # must not compete for CPU, coverage counters, or shared media resources.
     add_executable(benchmarks ${BENCHMARK_SRCS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp
         ${CMAKE_SOURCE_DIR}/lib/tests/common.c
         ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
         ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
@@ -571,7 +576,7 @@ target_link_libraries(benchmarks PRIVATE
         # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
 
         # Configure BUILD_RPATH to prefer locally built libraries over system-installed ones
         # This ensures tests use the correct libasciichat from build/lib instead of /usr/local/lib
