@@ -92,31 +92,14 @@
  *
  * ## Usage Patterns
  *
- * **Pattern 1: Get all options for a specific mode**
- * ```c
- * size_t num_opts;
- * const option_descriptor_t *opts = options_registry_get_for_mode(MODE_CLIENT, &num_opts);
- * for (size_t i = 0; i < num_opts; i++) {
- *     printf(\"%s: %s\\n\", opts[i].long_name, opts[i].help_text);
- * }
- * ```
- *
- * **Pattern 2: Look up individual options**
- * ```c
- * const option_descriptor_t *port_opt = options_registry_find_by_name(\"port\");
- * if (port_opt && (port_opt->mode_bitmask & OPTION_MODE_SERVER)) {
- *     printf(\"Port option available in server mode\\n\");
- * }
- * ```
- *
- * **Pattern 3: Populate a libflags schema with registry options**
+ * **Pattern 1: Populate a libflags schema with registry options**
  * ```c
  * flags_schema_builder_t *builder = flags_schema_builder_create();
  * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL);
  * const flags_schema_t *schema = flags_schema_builder_schema(builder);
  * ```
  *
- * **Pattern 4: Get shell completion metadata**
+ * **Pattern 2: Get shell completion metadata**
  * ```c
  * const option_metadata_t *meta = options_registry_get_metadata(\"color-mode\");
  * if (meta && meta->input_type == OPTION_INPUT_ENUM) {
@@ -164,11 +147,6 @@
  *
  * **Core Functions**:
  * - `options_registry_add_all_to_flags_builder()`: Populate a libflags schema
- * - `options_registry_find_by_name()`: Find option by long name (e.g., \"port\")
- * - `options_registry_find_by_short()`: Find option by short name (e.g., 'p')
- * - `options_registry_get_for_mode()`: Get all options for a specific mode
- * - `options_registry_get_binary_options()`: Get all binary-level options
- * - `options_registry_get_for_display()`: Get options filtered for help/completions display
  *
  * **Completion Metadata Functions** (Phase 3):
  * - `options_registry_get_metadata()`: Get complete metadata for option
