@@ -540,10 +540,14 @@ jobs:
           fi
           LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
           LLVM_DIR="${PWD}/.deps-cache/llvm-static"
+          LLVM_ARCHIVE="${RUNNER_TEMP}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
 
           echo "Downloading LLVM ${LLVM_VERSION} for macOS ${LLVM_ARCH}..."
           mkdir -p "${LLVM_DIR}"
-          curl -fsSL "${LLVM_URL}" | tar -xJ -C "${LLVM_DIR}" --strip-components=1
+          curl --fail --location --show-error --retry 5 --retry-all-errors \
+            --retry-delay 10 --connect-timeout 30 --max-time 1800 \
+            --output "${LLVM_ARCHIVE}" "${LLVM_URL}"
+          tar -xJf "${LLVM_ARCHIVE}" -C "${LLVM_DIR}" --strip-components=1
 
           # Verify static libs exist
           ls -la "${LLVM_DIR}/lib/libc++.a" "${LLVM_DIR}/lib/libc++abi.a" "${LLVM_DIR}/lib/libunwind.a"
