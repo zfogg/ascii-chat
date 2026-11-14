@@ -454,6 +454,7 @@ options_builder_t *options_builder_create(size_t struct_size) {
   builder->struct_size = struct_size;
   builder->program_name = NULL;
   builder->description = NULL;
+  builder->environment_prefix = "ASCII_CHAT_";
   builder->owned_strings_builder = NULL;
   builder->num_owned_strings_builder = 0;
   builder->owned_strings_builder_capacity = 0;
@@ -474,6 +475,7 @@ options_builder_t *options_builder_from_preset(const options_config_t *preset) {
 
   builder->program_name = preset->program_name;
   builder->description = preset->description;
+  builder->environment_prefix = preset->environment_prefix;
 
   // Copy all descriptors
   for (size_t i = 0; i < preset->num_descriptors; i++) {
@@ -643,6 +645,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
   config->struct_size = builder->struct_size;
   config->program_name = builder->program_name;
   config->description = builder->description;
+  config->environment_prefix = builder->environment_prefix;
 
   // Initialize memory management
   config->owned_strings = builder->owned_strings_builder;
@@ -1012,6 +1015,14 @@ void options_builder_set_arg_placeholder(options_builder_t *builder, const char 
     return;
   }
   builder->descriptors[builder->num_descriptors - 1].arg_placeholder = arg_placeholder;
+}
+
+void options_builder_set_environment_prefix(options_builder_t *builder, const char *prefix) {
+  if (!builder) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder is NULL");
+    return;
+  }
+  builder->environment_prefix = prefix;
 }
 
 // ============================================================================
@@ -1404,7 +1415,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     const char *env_value = NULL;
     char derived_env_name[256];
     const char *env_name = desc->env_var_name;
-    if (!env_name && desc->long_name && flags_derive_environment_name("ASCII_CHAT_", desc->long_name, derived_env_name, sizeof(derived_env_name))) {
+    if (!env_name && desc->long_name && config->environment_prefix && flags_derive_environment_name(config->environment_prefix, desc->long_name, derived_env_name, sizeof(derived_env_name))) {
       env_name = derived_env_name;
     }
     if (env_name) {
@@ -1417,7 +1428,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       env_value = NULL;
     }
     // Check shorter alias names as fallback if primary not set
-    if (!env_value) {
+    if (!env_value && config->environment_prefix && strcmp(config->environment_prefix, "ASCII_CHAT_") == 0) {
       if (env_name && strcmp(env_name, "ASCII_CHAT_PORT") == 0) {
         env_value = SAFE_GETENV("PORT");
       } else if (env_name && strcmp(env_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {

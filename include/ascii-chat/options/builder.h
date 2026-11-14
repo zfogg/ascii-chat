@@ -424,6 +424,7 @@ typedef struct {
   size_t struct_size;       ///< sizeof(options_t) for bounds checking
   const char *program_name; ///< For usage header
   const char *description;  ///< For usage header
+  const char *environment_prefix; ///< Prefix used for derived environment names
 
   // Programmatic help generation metadata
   usage_descriptor_t *usage_lines; ///< Array of usage line descriptors
@@ -487,6 +488,7 @@ typedef struct {
   size_t struct_size;
   const char *program_name;
   const char *description;
+  const char *environment_prefix;
 
   // Track dynamically allocated strings owned by the builder, to be transferred to config
   char **owned_strings_builder;
@@ -753,6 +755,13 @@ void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bi
  * @param arg_placeholder Custom placeholder text (e.g., "SHELL [FILE]"), or NULL to use type-based placeholder
  */
 void options_builder_set_arg_placeholder(options_builder_t *builder, const char *arg_placeholder);
+
+/**
+ * @brief Sets the prefix used for automatically derived environment names.
+ * @param builder Builder to update.
+ * @param prefix Prefix such as `ASCII_CHAT_`, or NULL to disable derivation.
+ */
+void options_builder_set_environment_prefix(options_builder_t *builder, const char *prefix);
 
 // ============================================================================
 // Completion Metadata (NEW - Phase 2)
