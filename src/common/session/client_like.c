@@ -781,9 +781,12 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
   // The statistics worker owns the UI/input path. Stop it before tearing down
   // the display and capture objects it may still be polling.
   stats_runtime_stop();
-  if (APP_CALLBACK_BOOL(should_exit)) {
-    return result;
-  }
+  // A shutdown request is the reason cleanup is most important.  Returning
+  // here used to leave the display, capture, audio, and global callbacks live
+  // while main continued through process-wide teardown.  That made Ctrl+C
+  // races intermittent and allowed renderer transitions to touch partially
+  // destroyed session state.  Cleanup is ordered and idempotent, so continue
+  // through the normal teardown path even after an interrupt.
   // Preparation can fail before the normal update check wait above.
   update_banner_cancel_check();
   update_banner_wait_for_check();

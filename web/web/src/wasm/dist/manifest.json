@@ -1,12 +1,24 @@
 {
-  "sourceHash": "e71045b94ad20cd5d5b4d1fb80176e15e48545c09345692a128e61e9f5f56b5d",
+  "sourceHash": "5116b08fd16cd38cf5784eee1d04cd61e237d464d005f4678ec1aa3b91a08566",
   "capabilities": {
     "mirror": {
       "module": "mirror",
       "protocolVersion": "2.3.0",
-      "codecs": ["raw", "h264", "hevc", "opus"],
-      "transports": ["webrtc", "webtransport", "websocket"],
-      "rendererModes": ["luminance", "glyph"],
+      "codecs": [
+        "raw",
+        "h264",
+        "hevc",
+        "opus"
+      ],
+      "transports": [
+        "webrtc",
+        "webtransport",
+        "websocket"
+      ],
+      "rendererModes": [
+        "luminance",
+        "glyph"
+      ],
       "features": {
         "stabilization": true,
         "renderer": true,
@@ -16,8 +28,17 @@
     "client": {
       "module": "client",
       "protocolVersion": "2.3.0",
-      "codecs": ["raw", "h264", "hevc", "opus"],
-      "transports": ["webrtc", "webtransport", "websocket"],
+      "codecs": [
+        "raw",
+        "h264",
+        "hevc",
+        "opus"
+      ],
+      "transports": [
+        "webrtc",
+        "webtransport",
+        "websocket"
+      ],
       "rendererModes": [],
       "features": {
         "stabilization": false,
@@ -27,10 +48,10 @@
     }
   },
   "files": {
-    "mirror.js": "9aa505f0cebfff856c18a9bd836483b5f001fac1d0d98632cb9377ca4ec2318e",
-    "mirror.wasm": "285e4408505b2ec3bba202b06b5e16c4b8765375059e6c6aeb29e2bfa1d296b3",
-    "client.js": "c3f7406d1f440dbc051d139f9782f67a7d2b3c52989aef8f2047bd9c29a494ec",
-    "client.wasm": "6cda3c6ec96aac5e8d76b2c4bbaa9ad0c4b2af17f49c7235e885bfc38b023388"
+    "mirror.js": "62e201d67532c8b6b0262c4e82a1fcacbb3b4a77112fef402d96950297a3740c",
+    "mirror.wasm": "279d26b9b7890dac2c7595f0cca72aecc23adc109e6504c5369dc2ab39cf2e71",
+    "client.js": "439e432ac4d41eda56c93493361d8a750f98aa8d68cda35b6459a13c8210a268",
+    "client.wasm": "26c4bceb50a2eee98c43866e1729a550c55baf11d305007509ec0d48e8f6bd52"
   },
   "types": {
     "mirror-bindings.d.ts": "d096c3e2c9aa444d06dfd2a3672f0430356d3106794eb2e9678df442af421671",

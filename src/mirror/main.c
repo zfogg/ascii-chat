@@ -218,11 +218,6 @@
 #include <string.h>
 #include <stdint.h>
 
-static inline void js_mirror_log(const char *msg) {
-  if (msg)
-    log_debug("MIRROR-START: %s", msg);
-}
-
 /* ============================================================================
  * Mode-Specific Keyboard Handler
  * ============================================================================ */
@@ -259,7 +254,6 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
-  js_mirror_log("mirror_run: ENTRY");
   log_debug("capture=%p display=%p", (void *)capture, (void *)display);
 
   // Get the render loop's should_exit callback from session_client_like

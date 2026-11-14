@@ -1169,9 +1169,9 @@ static asciichat_error_t validate_early_color_mode(int argc, char **argv) {
 }
 
 static void initialize_binary_options(options_t *opts, asciichat_mode_t detected_mode, const binary_actions_t *actions) {
-  log_debug("initialize_binary_options: before systemd");
+  log_dev("initialize_binary_options: before systemd");
   opts->no_check_update = actions->no_check_update_flag_seen || platform_systemd_is_managed();
-  log_debug("initialize_binary_options: after systemd");
+  log_dev("initialize_binary_options: after systemd");
   opts->detected_mode = detected_mode;
   if (actions->has_action) {
     // Immediate output actions must not allocate or validate a log path before
@@ -1182,9 +1182,9 @@ static void initialize_binary_options(options_t *opts, asciichat_mode_t detected
     SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
 #endif
   } else if (!platform_systemd_is_managed()) {
-    log_debug("initialize_binary_options: before log path");
+    log_dev("initialize_binary_options: before log path");
     char *log_filename = options_get_log_filepath(detected_mode, opts);
-    log_debug("initialize_binary_options: after log path");
+    log_dev("initialize_binary_options: after log path");
     SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   } else {
     SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
@@ -1693,9 +1693,9 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
-  log_debug("About to parse options_config with mode_bitmask=%u, mode_argc=%d", mode_bitmask, mode_argc);
+  log_dev("About to parse options_config with mode_bitmask=%u, mode_argc=%d", mode_bitmask, mode_argc);
   asciichat_error_t result = options_config_parse(config, mode_argc, mode_argv, opts, mode_bitmask, remaining_argc, remaining_argv);
-  log_debug("options_config_parse returned: %d", result);
+  log_dev("options_config_parse returned: %d", result);
   if (cli_encrypt && !cli_no_encrypt && opts->encrypt_enabled)
     opts->no_encrypt = false;
   if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
@@ -1755,14 +1755,14 @@ static asciichat_error_t publish_options_for_validation(options_t *opts) {
   // redundant --audio flag (and override a stale false config value).
   if (opts->test_audio || opts->waveform || opts->fft)
     opts->audio_enabled = true;
-  log_debug("Publishing parsed options to RCU before validation");
+  log_dev("Publishing parsed options to RCU before validation");
   asciichat_error_t early_publish = options_state_set(opts);
   if (early_publish != ASCIICHAT_OK) {
     log_error("Failed to publish parsed options to RCU state early");
 
     return early_publish;
   }
-  log_debug("Successfully published options to RCU");
+  log_dev("Successfully published options to RCU");
   return ASCIICHAT_OK;
 }
 
@@ -2053,9 +2053,9 @@ static asciichat_error_t validate_option_strings(const options_t *opts) {
 
 static asciichat_error_t validate_parsed_options(options_t *opts, options_config_t *config, int remaining_argc, char **remaining_argv) {
   // Validate options
-  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
+  log_dev("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
   asciichat_error_t result = validate_options_and_report(config, opts);
-  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%s", asciichat_error_format(NULL, result));
+  log_dev("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%s", asciichat_error_format(NULL, result));
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -2074,9 +2074,9 @@ static asciichat_error_t validate_parsed_options(options_t *opts, options_config
 static asciichat_error_t finalize_mode_defaults(options_t *opts, asciichat_mode_t detected_mode) {
   // Mode-specific post-processing
   // Apply mode-specific defaults (port, websocket-port)
-  log_debug("★ APPLY_MODE_SPECIFIC: About to call");
+  log_dev("★ APPLY_MODE_SPECIFIC: About to call");
   apply_mode_specific_defaults(opts);
-  log_debug("★ APPLY_MODE_SPECIFIC: Done");
+  log_dev("★ APPLY_MODE_SPECIFIC: Done");
   log_dev("Applied mode-specific defaults: port=%d, websocket_port=%d", opts->port, opts->websocket_port);
 
   if (detected_mode == MODE_DISCOVERY_SERVICE) {
@@ -2117,7 +2117,7 @@ static asciichat_error_t collect_server_identity_keys(options_t *opts, asciichat
 }
 
 static void finalize_dimensions(options_t *opts) {
-  log_debug("★ STAGE 7.2: About to update dimensions");
+  log_dev("★ STAGE 7.2: About to update dimensions");
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
@@ -2343,7 +2343,7 @@ static void apply_logging_color_scheme(const options_t *opts) {
         js_log_options("After log_set_color_scheme");
         js_log_options("Color scheme applied");
         js_log_options("Before log_debug color scheme");
-        log_debug("Color scheme applied: %s", opts->color_scheme_name);
+        log_dev("Color scheme applied: %s", opts->color_scheme_name);
         js_log_options("After log_debug color scheme");
       } else {
         js_log_options("scheme is null");
@@ -2356,7 +2356,7 @@ static void apply_logging_color_scheme(const options_t *opts) {
 }
 
 asciichat_error_t options_init(int argc, char **argv) {
-  log_debug("starting with argc=%d, argv[0]=%s, argv[1]=%s", argc, (argv && argc > 0 && argv[0]) ? argv[0] : "(null)", (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
+  log_dev("starting with argc=%d, argv[0]=%s, argv[1]=%s", argc, (argv && argc > 0 && argv[0]) ? argv[0] : "(null)", (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
   asciichat_error_t result = validate_options_argv(argc, argv);
   if (result != ASCIICHAT_OK) {
     return result;
@@ -2365,7 +2365,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
-  log_debug("options_init: state initialized");
+  log_dev("options_init: state initialized");
 
   // Discover binary actions before mode parsing so help and early exits need no media setup.
   handle_help_option(argc, argv);
@@ -2374,7 +2374,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
-  log_debug("options_init: binary actions scanned");
+  log_dev("options_init: binary actions scanned");
   set_action_flag(actions.has_action);
 
   asciichat_mode_t detected_mode = MODE_DISCOVERY;
@@ -2401,9 +2401,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   options_t opts = options_t_new();
-  log_debug("options_init: options constructed");
+  log_dev("options_init: options constructed");
   initialize_binary_options(&opts, detected_mode, &actions);
-  log_debug("options_init: binary options initialized");
+  log_dev("options_init: binary options initialized");
   bool handled = false;
   result = handle_immediate_actions(&opts, &actions, &handled);
   if (result != ASCIICHAT_OK || handled) {
@@ -2484,12 +2484,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  log_debug("★ OPTIONS_CONFIG_DESTROY: About to call");
+  log_dev("★ OPTIONS_CONFIG_DESTROY: About to call");
   options_config_destroy(config);
   config = NULL;
-  log_debug("★ OPTIONS_CONFIG_DESTROY: Done");
+  log_dev("★ OPTIONS_CONFIG_DESTROY: Done");
 
-  log_debug("★ STAGE 7: Starting post-processing");
+  log_dev("★ STAGE 7: Starting post-processing");
   // Resolve identity, dimensions, and media before exposing the final options to actions.
   result = collect_server_identity_keys(&opts, detected_mode, argc, argv);
   if (result != ASCIICHAT_OK) {

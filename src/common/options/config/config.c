@@ -169,8 +169,8 @@ static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mod
 #define CONFIG_DEBUG(fmt, ...)                                                                                                                                                                         \
   do {                                                                                                                                                                                                 \
     /* Debug messages are only shown in debug builds after logging is initialized */                                                                                                                   \
-    /* Use log_debug which safely checks initialization itself */                                                                                                                                      \
-    log_debug(fmt, ##__VA_ARGS__);                                                                                                                                                                     \
+    /* Use log_dev which safely checks initialization itself */                                                                                                                                        \
+    log_dev(fmt, ##__VA_ARGS__);                                                                                                                                                                       \
   } while (0)
 
 /** @} */
@@ -885,7 +885,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
 
       if (!applies_to_mode) {
-        log_debug("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
+        log_dev("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
         continue;
       }
     }
@@ -1215,7 +1215,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // Log that we're attempting to load config (before logging is initialized, use stderr)
   // Only print if terminal output is enabled (suppress with --quiet)
   if (config_path && log_get_terminal_output()) {
-    log_debug("Loading configuration from: %s", display_path);
+    log_dev("Loading configuration from: %s", display_path);
   }
 
   // Check if config file exists
@@ -1282,12 +1282,12 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   errno_scope_end(schema_scope, ASCIICHAT_ERRNO_DISMISSED);
   // In non-strict mode, continue even if some options failed validation
 
-  CONFIG_DEBUG("Loaded configuration from %s", display_path);
+  log_dev("Loaded configuration from %s", display_path);
 
   // Log successful config load (use stderr since logging may not be initialized yet)
   // Only print if terminal output is enabled (suppress with --quiet)
   if (log_get_terminal_output()) {
-    log_debug("Loaded configuration from: %s", display_path);
+    log_dev("Loaded configuration from: %s", display_path);
   }
 
   // Update RCU system with modified options (for test compatibility)

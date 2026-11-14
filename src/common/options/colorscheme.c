@@ -427,7 +427,7 @@ asciichat_error_t colorscheme_set_active_scheme(const char *name) {
   atomic_fetch_add(&g_scheme_revision, 1);
   mutex_unlock(&g_colorscheme_mutex);
 
-  log_debug("Switched to color scheme: %s", name);
+  log_dev("Switched to color scheme: %s", name);
   return ASCIICHAT_OK;
 }
 

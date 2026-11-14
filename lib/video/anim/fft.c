@@ -24,6 +24,7 @@ static struct {
   unsigned int width, height;
   audio_visualization_source_t source;
   int color_mode;
+  terminal_render_mode_t render_mode;
   uint64_t updated_ns;
   bool valid;
 } fft_cache;
@@ -129,8 +130,9 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     height *= 2;
   static_mutex_lock(&fft_cache_mutex);
   uint64_t now = time_get_ns();
-  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source && fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
-      now - fft_cache.updated_ns < FFT_REFRESH_NS) {
+  terminal_render_mode_t render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
+  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source && fft_cache.color_mode == color_mode && fft_cache.render_mode == render_mode &&
+      now >= fft_cache.updated_ns && now - fft_cache.updated_ns < FFT_REFRESH_NS) {
     size_t cached_cells = (size_t)width * height;
     char *cached = SAFE_MALLOC(cached_cells, char *);
     unsigned char *cached_colors = SAFE_MALLOC(cached_cells * 3, unsigned char *);
@@ -243,6 +245,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   fft_cache.height = height;
   fft_cache.source = source;
   fft_cache.color_mode = color_mode;
+  fft_cache.render_mode = render_mode;
   fft_cache.updated_ns = time_get_ns();
   fft_cache.valid = true;
   static_mutex_unlock(&fft_cache_mutex);

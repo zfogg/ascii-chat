@@ -70,6 +70,7 @@ typedef struct {
   media_snapshot_slot_t *slot;
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
+  uint64_t media_epoch;
   _Alignas(max_align_t) char data[];
   /**
    */
@@ -339,6 +340,7 @@ static void publish_screen_locked(void) {
 static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
+static _Atomic uint64_t g_media_epoch;
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
@@ -475,7 +477,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     }
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
-    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA && ui_controller_current_screen() != UI_SCREEN_HELP) {
       superseded = true;
       break;
     }
@@ -506,7 +508,11 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       sync_started_ns = time_get_ns();
     }
   }
-  if (started && g_stats_media && GET_OPTION(fps_counter)) {
+  // When help covers media, keep the FPS overlay inside the same synchronized
+  // update as the menu and backdrop. Writing it afterward causes a visible
+  // one-frame gap while the terminal presents the help screen.
+  bool include_media_overlay = g_stats_media || help_media_overlay;
+  if (started && include_media_overlay && GET_OPTION(fps_counter)) {
     char overlay[128];
     size_t overlay_length = fps_counter_format(g_fps, overlay, sizeof(overlay), g_render_size.cols, true);
     if (overlay_length) {
@@ -1207,18 +1213,25 @@ static void *presentation_main(void *unused) {
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
-        stats_media_begin(context.fresh && context.drew);
+        if (active == UI_SCREEN_MEDIA && screen->owned->media_epoch != atomic_load(&g_media_epoch))
+          goto frame_complete;
+        // Only a fresh media presentation participates in media write
+        // cancellation and FPS accounting. Help and other modal screens can
+        // be rendered over a media backdrop, but their own output must not be
+        // treated as a supersedable media frame.
+        bool fresh_media = context.fresh && context.drew;
+        stats_media_begin(fresh_media);
         // Probe terminal acknowledgement support during startup only. Once a
         // frontend has answered (or timed out), media presentation must not
         // make every frame wait on an optional terminal protocol round trip.
         // The mailbox already retains the newest frame when a frontend is
         // temporarily busy, so steady-state video should follow capture FPS.
-        g_probe_frame = context.fresh && context.drew && reply_support == 0;
+        g_probe_frame = fresh_media && reply_support == 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
         if (written == ASCIICHAT_OK && active == UI_SCREEN_NOTICE && context.drew && !covered && !errors)
           ui_notice_frame_presented(screen->snapshot);
-        if (context.fresh && context.drew) {
+        if (fresh_media) {
           fps_counter_write_begin(g_fps);
           // A frontend reply drains the complete update. A local console query
           // adds an RPC without establishing any stronger completion boundary.
@@ -1250,7 +1263,7 @@ static void *presentation_main(void *unused) {
             reply_written_ns = time_get_ns();
           }
         }
-        if (context.drew && !awaiting_reply)
+        if (fresh_media && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
       if (!covered && show_fps && !g_media_overlay_written)
@@ -1515,6 +1528,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     return ASCIICHAT_OK;
   }
   copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
+  copy->media_epoch = screen == UI_SCREEN_MEDIA ? atomic_load(&g_media_epoch) : 0;
   copy->submitted_ns = time_get_ns();
   copy->acquisition_started_ns = screen == UI_SCREEN_MEDIA ? g_acquisition_started_ns : 0;
   screen_t *slot = &g_screens[screen];
@@ -1826,6 +1840,13 @@ void ui_controller_redraw(void) {
     return;
   mutex_lock(&g_mutex);
   g_redraw = true;
+  cond_signal(&g_render_requested);
+  mutex_unlock(&g_mutex);
+}
+
+void ui_controller_invalidate_media(void) {
+  atomic_fetch_add(&g_media_epoch, 1);
+  mutex_lock(&g_mutex);
   cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
 }
