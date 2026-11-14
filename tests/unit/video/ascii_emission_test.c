@@ -4,7 +4,7 @@
 #include <criterion/criterion.h>
 #endif
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
@@ -164,6 +164,96 @@ static void decode(const char *text, terminal_cell_t *cells, int width, int heig
   cr_assert_eq(y, height - 1, "missing rows");
   cr_assert_eq(fg, -1);
   cr_assert_eq(bg, -1);
+}
+
+static char *test_render_glyph_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette, bool background) {
+  const ascii_render_options_t options = {.kind = ASCII_RENDERER_GLYPH, .color = color, .backend = ops, .palette = palette, .background = background};
+  return ascii_render_image(image, &options);
+}
+static char *test_render_glyph(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette) {
+  return test_render_glyph_mode(image, color, ops, palette, false);
+}
+
+Test(ascii_emission, renderer_api_dispatches_and_rejects_unknown_kind) {
+  rgb_pixel_t pixels[64];
+  for (int i = 0; i < 64; ++i)
+    pixels[i] = (rgb_pixel_t){100, 100, 100};
+  image_t glyph_image = {.w = 8, .h = 8, .pixels = pixels};
+  image_t luminance_image = {.w = 1, .h = 1, .pixels = pixels};
+  ascii_render_options_t options = {.kind = ASCII_RENDERER_LUMINANCE, .color = ASCII_COLOR_NONE, .palette = " .#@", .backend = &simd_cells_scalar};
+  char *actual = ascii_render_image(&luminance_image, &options);
+  char *expected = ascii_render(&luminance_image, options.palette, options.color, false, false, options.backend);
+  cr_assert_not_null(actual);
+  cr_assert_not_null(expected);
+  cr_assert_str_eq(actual, expected);
+  SAFE_FREE(actual);
+  SAFE_FREE(expected);
+  options.kind = ASCII_RENDERER_GLYPH;
+  actual = ascii_render_image(&glyph_image, &options);
+  cr_assert_not_null(actual);
+  cr_assert(strchr(options.palette, actual[0]) != NULL);
+  SAFE_FREE(actual);
+  options.kind = (ascii_renderer_t)99;
+  cr_assert_null(ascii_render_image(&glyph_image, &options));
+  CLEAR_ERRNO();
+}
+
+Test(ascii_emission, monochrome_fallback_does_not_emit_color_resets) {
+  simd_cells_t fallback = simd_cells_scalar;
+  fallback.emit_mono = NULL;
+  uint32_t glyphs[] = {'A', 'B'};
+  uint32_t foreground[] = {1, UINT32_MAX};
+  uint32_t background[] = {2, UINT32_MAX};
+  outbuf_t output = {0};
+  ascii_emit_prepared_row(&output, ASCII_COLOR_NONE, &fallback, glyphs, foreground, background, 2);
+  ob_term(&output);
+  cr_assert_str_eq(output.buf, "AB");
+  SAFE_FREE(output.buf);
+}
+
+Test(ascii_emission, fine_block_geometry_preserves_single_pixel_edges) {
+  rgb_pixel_t pixels[64] = {0};
+  for (int x = 0; x < 8; ++x)
+    pixels[56 + x] = (rgb_pixel_t){120, 120, 120};
+  image_t image = {.w = 8, .h = 8, .pixels = pixels};
+  char *output = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "_\xe2\x96\x81");
+  cr_assert_not_null(output);
+  terminal_cell_t cell = {0};
+  decode(output, &cell, 1, 1, true);
+  cr_assert_str_eq(cell.glyph, "\xe2\x96\x81");
+  SAFE_FREE(output);
+}
+
+Test(ascii_emission, stabilization_rejects_isoluminant_color_motion) {
+  ascii_stabilizer_t state = {0};
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 1, 1), ASCIICHAT_OK);
+  state.elapsed_ns = 16000000;
+  ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+  rgb_pixel_t pixels[2] = {{150, 0, 0}, {150, 0, 0}};
+  image_t image = {.w = 1, .h = 1, .pixels = pixels};
+  char *first = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
+  cr_assert_not_null(first);
+  SAFE_FREE(first);
+  pixels[0] = (rgb_pixel_t){0, 77, 0};
+  char *next = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
+  cr_assert_not_null(next);
+  cr_assert_eq(state.cells[0].color, 0x004d00);
+  SAFE_FREE(next);
+  ascii_stabilizer_reset(&state);
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 2, 2), ASCIICHAT_OK);
+  state.elapsed_ns = 16000000;
+  pixels[0] = pixels[1] = (rgb_pixel_t){150, 0, 0};
+  first = ascii_render_halfblocks((const uint8_t *)pixels, 1, 2, 3, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  cr_assert_not_null(first);
+  SAFE_FREE(first);
+  pixels[0] = pixels[1] = (rgb_pixel_t){0, 77, 0};
+  next = ascii_render_halfblocks((const uint8_t *)pixels, 1, 2, 3, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  cr_assert_not_null(next);
+  cr_assert_eq(state.cells[0].color, 0x004d00);
+  cr_assert_eq(state.cells[1].color, 0x004d00);
+  SAFE_FREE(next);
+  ascii_stabilizer_set_target(prior);
+  ascii_stabilizer_reset(&state);
 }
 
 Test(ascii_emission, all_backends_terminal_cells, .timeout = 120) {
@@ -492,7 +582,7 @@ Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
     for (int value = 0; value < 256; ++value) {
       for (int i = 0; i < image.w * image.h; ++i)
         pixels[i] = (rgb_pixel_t){value, value, value};
-      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      char *output = glyph ? test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
       cr_assert_not_null(output);
       if (value && output[0] != previous) {
         boundary = value;
@@ -509,13 +599,13 @@ Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
     ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
     for (int i = 0; i < image.w * image.h; ++i)
       pixels[i] = (rgb_pixel_t){boundary - 1, boundary - 1, boundary - 1};
-    char *initial = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+    char *initial = glyph ? test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
     cr_assert_not_null(initial);
     for (int frame = 0; frame < 6; ++frame) {
       int value = boundary - (frame % 2);
       for (int i = 0; i < image.w * image.h; ++i)
         pixels[i] = (rgb_pixel_t){value, value, value};
-      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      char *output = glyph ? test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
       cr_assert_not_null(output);
       cr_assert_eq(output[0], initial[0], "stationary threshold jitter should not switch glyphs");
       SAFE_FREE(output);
@@ -659,7 +749,7 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
   image_t image = {.w = 2, .h = 2, .pixels = pixels};
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR};
   ascii_stabilizer_t history = {.fixed_step_ns = 16666667};
-  const terminal_render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
+  const render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
   const ascii_renderer_t renderers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
   for (size_t r = 0; r < sizeof(renderers) / sizeof(renderers[0]); ++r) {
     caps.text_renderer = renderers[r];
@@ -692,6 +782,77 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
 }
 #endif
 
+Test(ascii_emission, glyph_background_matches_luminance_color_policy) {
+  const rgb_pixel_t colors[] = {{0, 0, 0}, {255, 255, 255}, {255, 0, 0}, {0, 255, 0}};
+  rgb_pixel_t coarse_pixels[4];
+  rgb_pixel_t fine_pixels[32 * 8];
+  for (int x = 0; x < 4; ++x)
+    coarse_pixels[x] = colors[x];
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 32; ++x)
+      fine_pixels[y * 32 + x] = colors[x / 8];
+  image_t coarse = {.w = 4, .h = 1, .pixels = coarse_pixels};
+  image_t fine = {.w = 32, .h = 8, .pixels = fine_pixels};
+  const ascii_color_t modes[] = {ASCII_COLOR_TRUE, ASCII_COLOR_256, ASCII_COLOR_16};
+  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+    char *luminance = ascii_render(&coarse, "@", modes[m], true, false, &simd_cells_scalar);
+    char *glyph = test_render_glyph_mode(&fine, modes[m], &simd_cells_scalar, "@", true);
+    cr_assert_not_null(luminance);
+    cr_assert_not_null(glyph);
+    terminal_cell_t expected[4] = {0}, actual[4] = {0};
+    decode(luminance, expected, 4, 1, true);
+    decode(glyph, actual, 4, 1, true);
+    for (int i = 0; i < 4; ++i) {
+      cr_assert_eq(actual[i].bg, expected[i].bg, "background for color %d and mode %d", i, modes[m]);
+      cr_assert_eq(actual[i].fg, expected[i].fg, "foreground for color %d and mode %d", i, modes[m]);
+    }
+    SAFE_FREE(luminance);
+    SAFE_FREE(glyph);
+  }
+}
+
+Test(ascii_emission, glyph_indexed_dither_is_stable_and_spatial) {
+  rgb_pixel_t pixels[32 * 32];
+  for (size_t i = 0; i < 32 * 32; ++i)
+    pixels[i] = (rgb_pixel_t){100, 100, 100};
+  image_t image = {.w = 32, .h = 32, .pixels = pixels};
+  const ascii_color_t modes[] = {ASCII_COLOR_16, ASCII_COLOR_256};
+  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+    char *first = test_render_glyph(&image, modes[m], &simd_cells_scalar, "@");
+    char *second = test_render_glyph(&image, modes[m], &simd_cells_scalar, "@");
+    cr_assert_not_null(first);
+    cr_assert_not_null(second);
+    cr_assert_str_eq(first, second, "stationary frames must use the same dither pattern");
+    terminal_cell_t cells[16] = {0};
+    decode(first, cells, 4, 4, true);
+    bool varied = false;
+    for (int i = 1; i < 16; ++i)
+      varied |= cells[i].fg != cells[0].fg;
+    cr_assert(varied, "ordered dithering must distribute quantization levels spatially in mode %d", modes[m]);
+    SAFE_FREE(first);
+    SAFE_FREE(second);
+  }
+}
+
+Test(ascii_emission, glyph_matching_lifts_dark_detail_by_default) {
+  rgb_pixel_t pixels[64];
+  for (int i = 0; i < 64; ++i)
+    pixels[i] = (rgb_pixel_t){40, 40, 40};
+  image_t image = {.w = 8, .h = 8, .pixels = pixels};
+  char *output = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  cr_assert_not_null(output);
+  cr_assert_eq(output[0], '~', "dark glyph density should reflect the automatic luminance lift");
+  SAFE_FREE(output);
+  for (int background = 0; background <= 1; ++background) {
+    output = test_render_glyph_mode(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", background);
+    cr_assert_not_null(output);
+    terminal_cell_t cell = {0};
+    decode(output, &cell, 1, 1, true);
+    cr_assert_eq(background ? cell.bg : cell.fg, background ? 0x282828 : 0x949494, "automatic luminance lift must preserve the renderer color calculation");
+    SAFE_FREE(output);
+  }
+}
+
 Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
   rgb_pixel_t pixels[64];
   image_t image = {.w = 8, .h = 8, .pixels = pixels};
@@ -711,6 +872,7 @@ Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
       // The renderer averages each channel before computing luminance.
       int v = sums[i] / 4;
       luminance[i] = (77 * v + 150 * v + 29 * v) >> 8;
+      luminance[i] += (luminance[i] * (255 - luminance[i]) + 256) / 512;
     }
     int mean = 0;
     for (int i = 0; i < 16; ++i)
@@ -733,7 +895,7 @@ Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
         best_error = error;
       }
     }
-    char *output = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+    char *output = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
     cr_assert_not_null(output);
     cr_assert_eq((unsigned char)output[0], (unsigned)(best + 32), "sample=%d", sample);
     SAFE_FREE(output);
@@ -752,7 +914,7 @@ Test(ascii_emission, optimized_luminance_matches_generic_hysteresis) {
   for (unsigned old = 0; old < 256; old += 3) {
     for (unsigned current = 0; current < 256; current += 5) {
       unsigned old_bin = old >> 2, bin = current >> 2;
-      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .valid = true};
+      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .source_color = old * 0x010101u, .valid = true};
       memset(reference.samples, old, sizeof(reference.samples));
       state.cells[0] = reference;
       uint64_t best = UINT64_MAX, previous = UINT64_MAX;
@@ -821,7 +983,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
 #endif
   rgb_pixel_t pixels[16 * 8] = {{0}};
   image_t image = {.w = 16, .h = 8, .pixels = pixels};
-  char *black = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  char *black = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
   cr_assert_not_null(black);
   cr_assert_str_eq(black, "  ");
   SAFE_FREE(black);
@@ -832,7 +994,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
         pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
     }
   }
-  char *shapes = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  char *shapes = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
   cr_assert_not_null(shapes);
   cr_assert_eq(strlen(shapes), 2);
   cr_assert(shapes[0] != shapes[1], "perpendicular strokes should select different glyphs");
@@ -842,13 +1004,13 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   for (int i = 0; i < 128 * 64; ++i)
     varied_pixels[i] = (rgb_pixel_t){(uint8_t)(i * 73), (uint8_t)(i * 37), (uint8_t)(i * 19)};
   image_t varied_image = {.w = 128, .h = 64, .pixels = varied_pixels};
-  char *scalar_glyphs = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  char *scalar_glyphs = test_render_glyph(&varied_image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
   cr_assert_not_null(scalar_glyphs);
   terminal_cell_t expected_glyphs[16 * 8] = {0};
   decode(scalar_glyphs, expected_glyphs, 16, 8, false);
   simd_cells_t fallback = simd_cells_scalar;
   fallback.glyph_shape_correlation = NULL;
-  char *fallback_glyphs = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, &fallback, NULL);
+  char *fallback_glyphs = test_render_glyph(&varied_image, ASCII_COLOR_NONE, &fallback, NULL);
   cr_assert_not_null(fallback_glyphs);
   cr_assert_str_eq(fallback_glyphs, scalar_glyphs);
   SAFE_FREE(fallback_glyphs);
@@ -863,7 +1025,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
       }
       cr_assert_eq(backends[b].luma->glyph_shape_correlation(samples, mask), glyph_shape_correlation_scalar(samples, mask), "glyph dot product differs for backend %s", backends[b].name);
     }
-    char *output = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, backends[b].luma, NULL);
+    char *output = test_render_glyph(&varied_image, ASCII_COLOR_NONE, backends[b].luma, NULL);
     cr_assert_not_null(output);
     terminal_cell_t actual_glyphs[16 * 8] = {0};
     decode(output, actual_glyphs, 16, 8, false);
@@ -872,22 +1034,22 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
     SAFE_FREE(output);
   }
   SAFE_FREE(scalar_glyphs);
-  char *restricted = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "@#");
+  char *restricted = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "@#");
   cr_assert_not_null(restricted);
   cr_assert_eq(strlen(restricted), 2);
   cr_assert(strspn(restricted, "@#") == 2, "glyphs must come from the requested palette");
   SAFE_FREE(restricted);
   const char *invalid_palettes[] = {"", "@\x01", "@\x7f", "\xe2\x98\x83"};
   for (size_t i = 0; i < sizeof(invalid_palettes) / sizeof(invalid_palettes[0]); ++i) {
-    cr_assert(!ascii_glyph_palette_supported(invalid_palettes[i]));
-    cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, invalid_palettes[i]));
+    cr_assert(!ascii_render_palette_supported(ASCII_RENDERER_GLYPH, invalid_palettes[i]));
+    cr_assert_null(test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, invalid_palettes[i]));
   }
 
-  cr_assert(ascii_glyph_palette_supported(" \xe2\x96\x88"));
+  cr_assert(ascii_render_palette_supported(ASCII_RENDERER_GLYPH, " \xe2\x96\x88"));
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 16; ++x)
       pixels[y * 16 + x] = x < 8 ? (rgb_pixel_t){0, 0, 0} : (rgb_pixel_t){255, 255, 255};
-  char *blocks = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, " \xe2\x96\x88");
+  char *blocks = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, " \xe2\x96\x88");
   cr_assert_not_null(blocks);
   terminal_cell_t block_cells[2] = {0};
   decode(blocks, block_cells, 2, 1, false);
@@ -901,25 +1063,50 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
       uint8_t value = bright ? 255 : 0;
       pixels[y * 16 + x] = (rgb_pixel_t){value, value, value};
     }
-  blocks = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x84");
+  blocks = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x84");
   cr_assert_not_null(blocks);
   decode(blocks, block_cells, 2, 1, false);
   cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
   cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x84");
   SAFE_FREE(blocks);
 
+  // Equal-luminance colors still have a visible boundary whose orientation
+  // should influence the selected glyph.
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 16; ++x) {
+      bool red = x < 8 ? y < 4 : x < 12;
+      pixels[y * 16 + x] = red ? (rgb_pixel_t){150, 0, 0} : (rgb_pixel_t){0, 77, 0};
+    }
+  char *chromatic = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x8c");
+  cr_assert_not_null(chromatic);
+  decode(chromatic, block_cells, 2, 1, true);
+  cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
+  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x8c");
+  SAFE_FREE(chromatic);
+
   memset(pixels, 0, sizeof(pixels));
   for (int y = 0; y < 8; ++y)
     for (int x = 3; x <= 4; ++x)
       pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
   pixels[0] = (rgb_pixel_t){80, 110, 140};
-  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x88");
+  char *color = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x88");
   cr_assert_not_null(color);
   terminal_cell_t cells[2] = {0};
   decode(color, cells, 2, 1, true);
   int red_ink = (cells[0].fg >> 16) & 255;
   int blue_ink = cells[0].fg & 255;
-  cr_assert(red_ink >= 128 && blue_ink - red_ink <= 4, "glyph color must reflect the entire cell, not its first pixel");
+  cr_assert(red_ink >= 128 && blue_ink - red_ink <= 8, "glyph color must reflect the entire cell, not its first pixel");
+  SAFE_FREE(color);
+
+  for (int i = 0; i < 16 * 8; ++i)
+    pixels[i] = (rgb_pixel_t){100, 100, 100};
+  pixels[0] = (rgb_pixel_t){0, 255, 0};
+  color = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x88");
+  cr_assert_not_null(color);
+  decode(color, cells, 2, 1, true);
+  int green_ink = (cells[0].fg >> 8) & 255;
+  red_ink = (cells[0].fg >> 16) & 255;
+  cr_assert(green_ink - red_ink <= 5, "one noisy pixel must not dominate the glyph color");
   SAFE_FREE(color);
 
   rgb_pixel_t split_pixels[64];
@@ -931,23 +1118,21 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   for (int i = 0; i < 64; ++i)
     flat_pixels[i] = (rgb_pixel_t){40, 80, 140};
   image_t flat = {.w = 8, .h = 8, .pixels = flat_pixels};
-  char *flat_output = ascii_render_glyph_match_mode(&flat, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
+  char *flat_output = test_render_glyph_mode(&flat, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
   cr_assert_not_null(flat_output);
   terminal_cell_t flat_cell[1] = {0};
   decode(flat_output, flat_cell, 1, 1, true);
   cr_assert_neq(flat_cell[0].glyph[0], 'B');
   cr_assert_neq(flat_cell[0].glyph[0], ' ');
-  cr_assert_eq(flat_cell[0].bg, 0x050a11);
-  cr_assert((flat_cell[0].fg & 255) >= 128);
-  cr_assert(((flat_cell[0].fg >> 16) & 255) < ((flat_cell[0].fg >> 8) & 255));
-  cr_assert(((flat_cell[0].fg >> 8) & 255) < (flat_cell[0].fg & 255));
+  cr_assert_eq(flat_cell[0].bg, 0x28508c);
+  cr_assert_eq(flat_cell[0].fg, 0xffffff);
   SAFE_FREE(flat_output);
-  char *scalar_fitted = ascii_render_glyph_match_mode(&varied_image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
+  char *scalar_fitted = test_render_glyph_mode(&varied_image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
   cr_assert_not_null(scalar_fitted);
   for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
     if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
       continue;
-    char *other_fitted = ascii_render_glyph_match_mode(&varied_image, ASCII_COLOR_TRUE, backends[b].luma, NULL, true);
+    char *other_fitted = test_render_glyph_mode(&varied_image, ASCII_COLOR_TRUE, backends[b].luma, NULL, true);
     cr_assert_not_null(other_fitted);
     cr_assert_str_eq(other_fitted, scalar_fitted, "fitted glyph output differs for backend %s", backends[b].name);
     SAFE_FREE(other_fitted);
@@ -958,17 +1143,17 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_eq(ascii_stabilizer_prepare(&fitted_history, 1, 1, 7), ASCIICHAT_OK);
   fitted_history.elapsed_ns = 16000000;
   ascii_stabilizer_t *old_target = ascii_stabilizer_set_target(&fitted_history);
-  char *first_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
+  char *first_fitted = test_render_glyph_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
   cr_assert_not_null(first_fitted);
   SAFE_FREE(first_fitted);
   for (int y = 0; y < 8; ++y)
     for (int x = 4; x < 8; ++x)
       split_pixels[y * 8 + x].b = 195;
-  char *next_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
+  char *next_fitted = test_render_glyph_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
   cr_assert_not_null(next_fitted);
   terminal_cell_t stable_cell[1] = {0};
   decode(next_fitted, stable_cell, 1, 1, true);
-  cr_assert_eq(stable_cell[0].bg & 255, 12, "substantial color motion must not blend the old background");
+  cr_assert_eq(stable_cell[0].bg & 255, 97, "substantial color motion must not blend the old background");
   SAFE_FREE(next_fitted);
   ascii_stabilizer_set_target(old_target);
   ascii_stabilizer_reset(&fitted_history);
@@ -978,17 +1163,17 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_eq(ascii_stabilizer_prepare(&fitted_history, 1, 1, 7), ASCIICHAT_OK);
   fitted_history.elapsed_ns = 16000000;
   old_target = ascii_stabilizer_set_target(&fitted_history);
-  first_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
+  first_fitted = test_render_glyph_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
   cr_assert_not_null(first_fitted);
   SAFE_FREE(first_fitted);
   for (int i = 0; i < 64; ++i)
     split_pixels[i] = (rgb_pixel_t){0, 77, 0};
-  next_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
+  next_fitted = test_render_glyph_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
   cr_assert_not_null(next_fitted);
   decode(next_fitted, stable_cell, 1, 1, true);
-  cr_assert_eq((stable_cell[0].fg >> 16) & 255, 0, "isoluminant color changes must not blend old ink");
+  cr_assert_eq(stable_cell[0].fg, 0xffffff, "dark backgrounds require white ink");
   cr_assert_eq((stable_cell[0].bg >> 16) & 255, 0, "isoluminant color changes must not blend old background");
-  cr_assert((stable_cell[0].fg & 0xff00) != 0);
+  cr_assert_eq((stable_cell[0].bg >> 8) & 255, 77);
   SAFE_FREE(next_fitted);
   ascii_stabilizer_set_target(old_target);
   ascii_stabilizer_reset(&fitted_history);
@@ -1001,7 +1186,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   image_t colored_image = {.w = 16, .h = 16, .pixels = colored_pixels};
   const ascii_color_t color_modes[] = {ASCII_COLOR_TRUE, ASCII_COLOR_256, ASCII_COLOR_16};
   for (size_t m = 0; m < sizeof(color_modes) / sizeof(color_modes[0]); ++m) {
-    char *output = ascii_render_glyph_match(&colored_image, color_modes[m], &simd_cells_scalar, "@");
+    char *output = test_render_glyph(&colored_image, color_modes[m], &simd_cells_scalar, "@");
     cr_assert_not_null(output);
     terminal_cell_t result[4] = {0};
     decode(output, result, 2, 2, true);
@@ -1014,7 +1199,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
     SAFE_FREE(output);
   }
   image.w = 15;
-  cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL));
+  cr_assert_null(test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL));
 }
 
 #ifdef ASCII_EMISSION_STANDALONE

@@ -168,6 +168,8 @@ Test(mcp_requests, accepted_sources_produce_bounded_cli_arguments_and_staged_upl
       {MCP_FILE, "{\"data_base64\":\"AA==\",\"mime_type\":\"image/png\"}", "--audio-capture-source=media"},
       {MCP_FILE, "{\"options\":{\"test-audio\":true}}", "--waveform=true"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true},\"timeout_ms\":1000}", "--test-pattern=0"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"renderer\":\"glyph\"}}", "--renderer=glyph"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":0}}", "--fps=0"},
       {MCP_URL, "{\"url\":\"http://127.0.0.1/frame\"}", "--url=http://127.0.0.1/frame"},
       {MCP_URL, "{\"url\":\"https://localhost/frame\"}", "--url=https://localhost/frame"},
       {MCP_URL, "{\"url\":\"rtsp://localhost/frame\"}", "--url=rtsp://localhost/frame"},
@@ -284,7 +286,7 @@ Test(mcp_requests, protocol_envelopes_reject_invalid_types_and_worker_start_fail
                    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
                    "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
                    -32603);
-  cr_assert_not(server.jobs[0].renderer_job.started);
+  cr_assert_not(server.jobs[0].started);
   cr_assert_null(server.jobs[0].message);
   cr_assert_null(server.jobs[0].request.argv);
 }

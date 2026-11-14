@@ -14,6 +14,7 @@
 #include <string.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
@@ -304,6 +305,12 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
     caps.capabilities |= TERM_CAP_MATRIX_RAIN;
   else
     caps.capabilities &= ~(uint32_t)TERM_CAP_MATRIX_RAIN;
+  if (opts->renderer == ASCII_RENDERER_GLYPH)
+    caps.capabilities |= TERM_CAP_GLYPH_RENDERER;
+  if (opts->palette_explicit)
+    caps.capabilities |= TERM_CAP_EXPLICIT_PALETTE;
+  if (opts->stabilize)
+    caps.capabilities |= TERM_CAP_STABILIZE;
   net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
   net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
   net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
