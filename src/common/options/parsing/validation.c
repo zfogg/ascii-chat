@@ -17,6 +17,7 @@
 #include <ascii-chat/log/log.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render/render.h>
@@ -301,6 +302,11 @@ int validate_opt_ip_address(const char *value_str, char *parsed_address, size_t 
     }
     return -1;
   }
+
+  // Normalize Unicode hostnames (including full-width ASCII) before DNS.
+  char normalized_hostname[OPTIONS_BUFF_SIZE];
+  if (hostname_to_ascii(value_str, normalized_hostname, sizeof(normalized_hostname)) == ASCIICHAT_OK)
+    value_str = normalized_hostname;
 
   // Otherwise, try to resolve as hostname
   char resolved_ip[OPTIONS_BUFF_SIZE];
