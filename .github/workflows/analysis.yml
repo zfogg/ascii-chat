@@ -87,7 +87,7 @@ jobs:
         run: |
           # Configure with CMake for static analysis
           # Disable PCH to avoid clang-tidy issues with missing PCH files
-          cmake --preset github -DBUILD_TESTS=OFF -DASCIICHAT_USE_PCH=OFF
+          cmake --preset github -DBUILD_TESTS=OFF -DASCIICHAT_USE_PCH=OFF -DASCIICHAT_ENABLE_COVERAGE=OFF
 
       - name: Save configure cache
         if: always()
