@@ -28,12 +28,9 @@ Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_setti
   const struct {
     const char *text;
     int mode;
-  } colors[] = {{"auto", COLOR_MODE_AUTO},       {"a", COLOR_MODE_AUTO},
-                {"mono", COLOR_MODE_NONE},       {"none", COLOR_MODE_NONE},
-                {"ansi", COLOR_MODE_16_COLOR},   {"16color", COLOR_MODE_16_COLOR},
-                {"256", COLOR_MODE_256_COLOR},   {"256color", COLOR_MODE_256_COLOR},
-                {"24bit", COLOR_MODE_TRUECOLOR}, {"tc", COLOR_MODE_TRUECOLOR},
-                {"rgb", COLOR_MODE_TRUECOLOR},   {"true", COLOR_MODE_TRUECOLOR}};
+  } colors[] = {{"auto", COLOR_MODE_AUTO},       {"a", COLOR_MODE_AUTO},           {"mono", COLOR_MODE_NONE},     {"none", COLOR_MODE_NONE},
+                {"ansi", COLOR_MODE_16_COLOR},   {"16color", COLOR_MODE_16_COLOR}, {"256", COLOR_MODE_256_COLOR}, {"256color", COLOR_MODE_256_COLOR},
+                {"24bit", COLOR_MODE_TRUECOLOR}, {"tc", COLOR_MODE_TRUECOLOR},     {"rgb", COLOR_MODE_TRUECOLOR}, {"true", COLOR_MODE_TRUECOLOR}};
   for (size_t i = 0; i < sizeof(colors) / sizeof(*colors); ++i) {
     cr_assert_eq(parse_color_mode_option(colors[i].text, options), ASCIICHAT_OK);
     cr_assert_eq(options->color_mode, colors[i].mode);
@@ -43,9 +40,7 @@ Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_setti
   const char *renders[] = {"fg", "foreground", "bg", "background", "half-block", "halfblock"};
   for (size_t i = 0; i < 6; ++i) {
     cr_assert_eq(parse_render_mode_option(renders[i], options), ASCIICHAT_OK);
-    cr_assert_eq(options->render_mode, i < 2   ? RENDER_MODE_FOREGROUND
-                                       : i < 4 ? RENDER_MODE_BACKGROUND
-                                               : RENDER_MODE_HALF_BLOCK);
+    cr_assert_eq(options->render_mode, i < 2 ? RENDER_MODE_FOREGROUND : i < 4 ? RENDER_MODE_BACKGROUND : RENDER_MODE_HALF_BLOCK);
   }
   cr_assert_eq(parse_render_mode_option("bad", options), ERROR_INVALID_PARAM);
   cr_assert_eq(options->render_mode, RENDER_MODE_HALF_BLOCK);
@@ -103,8 +98,7 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
 }
 
 Test(common_parsers, suggestions_explain_mode_restrictions_and_reject_unrelated_names) {
-  option_descriptor_t descriptors[] = {{.long_name = "width", .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR},
-                                       {.long_name = "max-clients", .mode_bitmask = OPTION_MODE_SERVER}};
+  option_descriptor_t descriptors[] = {{.long_name = "width", .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR}, {.long_name = "max-clients", .mode_bitmask = OPTION_MODE_SERVER}};
   options_config_t config = {.descriptors = descriptors, .num_descriptors = 2};
   const char *suggestion = find_similar_option_with_mode("--widht", &config, OPTION_MODE_CLIENT);
   cr_assert_not_null(suggestion);
@@ -115,8 +109,7 @@ Test(common_parsers, suggestions_explain_mode_restrictions_and_reject_unrelated_
   cr_assert_null(find_similar_option_with_mode("--unrelated-unknown-flag", &config, OPTION_MODE_CLIENT));
   cr_assert_str_eq(format_available_modes(OPTION_MODE_BINARY), "global options");
   cr_assert_str_eq(format_available_modes(0), "unknown mode");
-  const char *all = format_available_modes(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR |
-                                           OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC);
+  const char *all = format_available_modes(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC);
   cr_assert_not_null(strstr(all, "default"));
   cr_assert_not_null(strstr(all, "discovery-service"));
 }

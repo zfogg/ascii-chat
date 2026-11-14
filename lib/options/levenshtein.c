@@ -143,14 +143,13 @@ const char *levenshtein_find_similar(const char *unknown, const char *const *can
   const char *best_match = NULL;
   size_t best_distance = SIZE_MAX;
 
-  recast_closure(consider_candidate, void, (const char *candidate),
-                 (copy(unknown), ref(best_match), ref(best_distance)), {
-                   const size_t distance = levenshtein(unknown, candidate);
-                   if (distance < best_distance) {
-                     best_distance = distance;
-                     best_match = candidate;
-                   }
-                 });
+  recast_closure(consider_candidate, void, (const char *candidate), (copy(unknown), ref(best_match), ref(best_distance)), {
+    const size_t distance = levenshtein(unknown, candidate);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best_match = candidate;
+    }
+  });
 
   for (int i = 0; candidates[i] != NULL; i++) {
     recast_call(consider_candidate, candidates[i]);
