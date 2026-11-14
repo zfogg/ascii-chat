@@ -8,7 +8,7 @@ static void setup(void) {
 }
 TestSuite(subprocess_contract, .init = setup, .fini = log_destroy, .timeout = 15);
 #ifndef _WIN32
-#include "../../../lib/platform/posix/terminal.h"
+#include "../../../deps/ascii-chat-deps/libplatform/lib/posix/terminal.h"
 #include <signal.h>
 #include <unistd.h>
 
