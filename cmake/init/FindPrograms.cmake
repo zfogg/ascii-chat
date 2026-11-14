@@ -310,6 +310,16 @@ macro(_find_llvm_tool VAR_NAME)
                 DOC "LLVM tool (fallback from PATH)"
             )
         endif()
+        # Some distributions package the linker separately from LLVM and
+        # expose it only through PATH (for example, lld-21 in /usr/bin while
+        # llvm-config reports /usr/lib/llvm-23/bin).  Accept only that linker
+        # fallback; all other LLVM tools must remain from one installation.
+        if(VAR_NAME STREQUAL "ASCIICHAT_LLD_EXECUTABLE" AND NOT ${VAR_NAME})
+            find_program(${VAR_NAME}
+                NAMES ${_tool_names}
+                DOC "LLVM linker from the system PATH"
+            )
+        endif()
     else()
         # Fallback mode: search PATH (from environment) first, then known locations
         find_program(${VAR_NAME}
