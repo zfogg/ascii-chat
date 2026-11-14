@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include <ascii-chat/platform/terminal.h>
+#include <libplatform/terminal.h>
 #include <ascii-chat/util/path.h>
 
 static bool ascii_case_equal(const char *left, const char *right) {
