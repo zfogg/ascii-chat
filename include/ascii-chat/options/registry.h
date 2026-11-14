@@ -109,11 +109,11 @@
  * }
  * ```
  *
- * **Pattern 3: Populate builder with registry options**
+ * **Pattern 3: Populate a libflags schema with registry options**
  * ```c
- * options_builder_t *builder = options_builder_create(sizeof(options_t));
- * options_registry_add_all_to_builder(builder);  // Add all registered options
- * options_config_t *config = options_builder_build(builder);
+ * flags_schema_builder_t *builder = flags_schema_builder_create();
+ * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL);
+ * const flags_schema_t *schema = flags_schema_builder_schema(builder);
  * ```
  *
  * **Pattern 4: Get shell completion metadata**
@@ -163,7 +163,7 @@
  * ## Registry Lookup Functions
  *
  * **Core Functions**:
- * - `options_registry_add_all_to_builder()`: Populate builder with all registry options
+ * - `options_registry_add_all_to_flags_builder()`: Populate a libflags schema
  * - `options_registry_find_by_name()`: Find option by long name (e.g., \"port\")
  * - `options_registry_find_by_short()`: Find option by short name (e.g., 'p')
  * - `options_registry_get_for_mode()`: Get all options for a specific mode
@@ -179,16 +179,17 @@
  *
  * ## RCU Thread-Safety Integration
  *
- * After registry options are parsed through the builder, they're published via RCU:
+ * After registry options are parsed through libflags, they're published via RCU:
  * ```c
  * // Build config from registered options
- * options_builder_t *builder = options_builder_create(sizeof(options_t));
- * options_registry_add_all_to_builder(builder);
- * options_config_t *config = options_builder_build(builder);
+ * flags_schema_builder_t *builder = flags_schema_builder_create();
+ * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL);
+ * const flags_schema_t *schema = flags_schema_builder_schema(builder);
  *
  * // Parse command line
  * options_t opts = options_t_new();
- * options_config_parse(config, argc, argv, &opts, MODE_DETECTION_RESULT, ...);
+ * flags_context_t *context = flags_create(schema, &opts, sizeof(opts));
+ * flags_parse(context, argc, argv, &result);
  *
  * // Publish to RCU (lock-free access from worker threads)
  * options_state_init();
@@ -197,7 +198,7 @@
  * // Worker threads now read lock-free via GET_OPTION() macro
  * ```
  *
- * @see builder.h - Builder API for constructing option configurations
+ * @see libflags/builder.h - Generic libflags schema construction
  * @see rcu.h - Thread-safe RCU-based access to published options
  * @see options.h - Unified options parsing system (uses registry internally)
  *
