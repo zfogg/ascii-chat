@@ -237,9 +237,14 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
   int fixed_first_col_width = (first_col_len > 0) ? first_col_len : 35;
-  int max_first_col_width = (term_width * 6) / 10;
-  if (max_first_col_width < 40)
-    max_first_col_width = 40;
+  // Keep enough room for a useful description column.  Letting the first
+  // column grow to 60% of a narrow terminal makes descriptions wrap one word
+  // at a time and stretches help vertically.  Long option names are handled
+  // by the existing next-line fallback below.
+  const int minimum_description_width = 45;
+  int max_first_col_width = term_width - 2 - 2 - minimum_description_width;
+  if (max_first_col_width < 20)
+    max_first_col_width = 20;
   if (fixed_first_col_width > max_first_col_width) {
     fixed_first_col_width = max_first_col_width;
   }
