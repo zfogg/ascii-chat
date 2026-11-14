@@ -75,7 +75,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7 # Bumped to force WebRTC rebuild with correct SIMD support
+          cache-version: v8 # Isolate caches after compiler/dependency integration changes
 
       - name: Clean cached build outputs
         run: |

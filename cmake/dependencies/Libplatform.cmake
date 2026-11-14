@@ -26,27 +26,12 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 FetchContent_Declare(libplatform
-    GIT_REPOSITORY https://github.com/zfogg/libplatform.git
-    GIT_TAG 977f3fbde7833698b877cb075e6125f7f2d06399
     SOURCE_DIR "${_ascii_chat_libplatform_source}"
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
 target_include_directories(asciichat-project-includes INTERFACE
     "${_ascii_chat_libplatform_source}/lib")
-
-# libplatform owns the shared path/logging helpers, so give it the checkout
-# root that CMake already knows instead of letting it fall back to ".".
-string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
-target_compile_definitions(libplatform-objects PRIVATE
-    LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
-target_include_directories(libplatform-objects PRIVATE
-    "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/lib"
-    "${CMAKE_SOURCE_DIR}/deps")
-if(TARGET gotel::gotel)
-    target_link_libraries(libplatform PRIVATE gotel::gotel)
-endif()
 if(FONTCONFIG_LINK_LIBRARIES)
     target_link_libraries(libplatform PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
 endif()
@@ -70,4 +55,3 @@ endif()
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)
-unset(_ascii_chat_source_root)

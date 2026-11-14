@@ -150,7 +150,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v8
 
       - name: Debug macOS environment
         if: matrix.os == 'macOS'

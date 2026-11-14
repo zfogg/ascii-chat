@@ -109,10 +109,14 @@ endif()
 # a usable imported target or system zlib is already available.
 if(ZLIB_LIBRARY MATCHES "-NOTFOUND$")
     if(UNIX)
-        find_library(_ASCIICHAT_ZLIB_LIBRARY NAMES z zlib)
+        unset(_ASCIICHAT_ZLIB_LIBRARY CACHE)
+        unset(_ASCIICHAT_ZLIB_LIBRARY)
+        find_library(_ASCIICHAT_ZLIB_LIBRARY NAMES z zlib NO_CACHE)
         if(_ASCIICHAT_ZLIB_LIBRARY)
             set(ZLIB_LIBRARY "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE FILEPATH
                 "zlib library used by dependency subprojects" FORCE)
+            set(ZLIB_LIBRARIES "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE STRING
+                "zlib libraries used by dependency subprojects" FORCE)
         endif()
     elseif(TARGET ZLIB::ZLIB)
         set(ZLIB_LIBRARY ZLIB::ZLIB CACHE STRING
