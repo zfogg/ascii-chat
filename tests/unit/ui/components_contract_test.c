@@ -23,13 +23,13 @@ Test(ui_components, explicit_utf8_overrides_detection_and_auto_uses_capabilities
   options_t options = *options_get();
   options.force_utf8 = UTF8_SETTING_FALSE;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert_not(terminal_should_use_utf8());
+  cr_assert_not(terminal_should_use_utf8(options.force_utf8));
   options.force_utf8 = UTF8_SETTING_TRUE;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert(terminal_should_use_utf8());
+  cr_assert(terminal_should_use_utf8(options.force_utf8));
   options.force_utf8 = UTF8_SETTING_AUTO;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  cr_assert_eq(terminal_should_use_utf8(), terminal_supports_utf8());
+  cr_assert_eq(terminal_should_use_utf8(options.force_utf8), terminal_supports_utf8());
 }
 
 Test(ui_components, popup_borders_follow_utf8_policy_and_no_color_is_plain) {
