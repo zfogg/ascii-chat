@@ -449,7 +449,7 @@ runs:
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
         # faster than Scoop; ARM64 retains the Scoop path.
-        $basePackages = @('ninja', 'ccache', 'doxygen') | Where-Object {
+        $basePackages = @('ninja', 'ccache') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
         }
 
@@ -473,21 +473,22 @@ runs:
           }
         }
 
-        # Add scoop shims to PATH (both user and global locations)
-        # Global installs (--global) go to C:\ProgramData\scoop
-        $scoopShimsUser = Join-Path $env:USERPROFILE 'scoop\shims'
-        $scoopShimsGlobal = 'C:\ProgramData\scoop\shims'
-        $foundShims = $false
-        foreach ($shimsPath in @($scoopShimsGlobal, $scoopShimsUser)) {
-          if (Test-Path $shimsPath) {
-            Write-Host "Adding scoop shims to PATH: $shimsPath"
-            Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
-            $foundShims = $true
+        if ($env:RUNNER_ARCH -ne 'X64') {
+          # Add scoop shims to PATH for the ARM64 fallback installer.
+          $scoopShimsUser = Join-Path $env:USERPROFILE 'scoop\shims'
+          $scoopShimsGlobal = 'C:\ProgramData\scoop\shims'
+          $foundShims = $false
+          foreach ($shimsPath in @($scoopShimsGlobal, $scoopShimsUser)) {
+            if (Test-Path $shimsPath) {
+              Write-Host "Adding scoop shims to PATH: $shimsPath"
+              Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
+              $foundShims = $true
+            }
           }
-        }
-        if (-not $foundShims) {
-          Write-Host "No scoop shims found"
-          exit 1
+          if (-not $foundShims) {
+            Write-Host "No scoop shims found"
+            exit 1
+          }
         }
 
     # The MSI supplies the compiler; the matching development archive supplies LLVM C++ libraries.
@@ -741,10 +742,12 @@ runs:
           Push-Location $vcpkgDir
           git init
           git remote add origin https://github.com/microsoft/vcpkg.git
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 1 origin 530d2d2f0864684f20b32a0596459646906d35fe
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 1 --filter=blob:none origin 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
           git checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --unshallow --filter=blob:none origin
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch vcpkg port history" }
           Pop-Location
         }
 

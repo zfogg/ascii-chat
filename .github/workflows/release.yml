@@ -851,16 +851,7 @@ jobs:
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            # The generated man1 step launches the ARM64 binary and currently
-            # crashes under the Windows ARM runner. Other release platforms
-            # still build the complete documentation targets.
-            Write-Host "Skipping executable-generated documentation on Windows ARM64"
-          }
-          else {
-            cmake --build build_release --target docs
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+          Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
       - name: Verify static Windows release packages
