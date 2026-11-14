@@ -1401,8 +1401,13 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
 
     // Check environment variable first (primary)
     const char *env_value = NULL;
-    if (desc->env_var_name) {
-      env_value = SAFE_GETENV(desc->env_var_name);
+    char derived_env_name[256];
+    const char *env_name = desc->env_var_name;
+    if (!env_name && desc->long_name && flags_derive_environment_name("ASCII_CHAT_", desc->long_name, derived_env_name, sizeof(derived_env_name))) {
+      env_name = derived_env_name;
+    }
+    if (env_name) {
+      env_value = SAFE_GETENV(env_name);
     }
     // Windows can expose an environment variable with an empty value as a
     // non-NULL string. Empty values are equivalent to unset for option
@@ -1412,9 +1417,9 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
     // Check shorter alias names as fallback if primary not set
     if (!env_value) {
-      if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_PORT") == 0) {
+      if (env_name && strcmp(env_name, "ASCII_CHAT_PORT") == 0) {
         env_value = SAFE_GETENV("PORT");
-      } else if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
+      } else if (env_name && strcmp(env_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
         env_value = SAFE_GETENV("WS_PORT");
       }
     }
