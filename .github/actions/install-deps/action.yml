@@ -761,8 +761,8 @@ runs:
           $historyFetch = Start-Job -ScriptBlock {
             param($Repo)
             Push-Location $Repo
-            git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --unshallow origin
-            if ($LASTEXITCODE -ne 0) { throw "git fetch --unshallow failed with exit code $LASTEXITCODE" }
+            git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 2147483647 origin 530d2d2f0864684f20b32a0596459646906d35fe
+            if ($LASTEXITCODE -ne 0) { throw "git fetch of full vcpkg history failed with exit code $LASTEXITCODE" }
             Pop-Location
           } -ArgumentList $vcpkgDir
           if (-not (Wait-Job $historyFetch -Timeout 900)) {
