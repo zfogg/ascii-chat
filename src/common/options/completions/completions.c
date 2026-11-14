@@ -29,7 +29,7 @@ asciichat_error_t completions_generate_powershell(FILE *output);
  *
  * ascii-chat owns the registry and its mode-specific metadata; libflags owns
  * the shell syntax and escaping for the common option list.  PowerShell is
- * kept on the ascii-chat path until libflags grows a PowerShell backend.
+ * and libflags owns the shell syntax and escaping for the common option list.
  */
 static asciichat_error_t completions_generate_with_libflags(completion_format_t format, FILE *output) {
   options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
@@ -42,7 +42,7 @@ static asciichat_error_t completions_generate_with_libflags(completion_format_t 
     return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
   }
 
-  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH : FLAGS_COMPLETION_ZSH;
+  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH : format == COMPLETION_FORMAT_ZSH ? FLAGS_COMPLETION_ZSH : FLAGS_COMPLETION_POWERSHELL;
   bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
   flags_schema_builder_destroy(builder);
   options_config_destroy(config);
@@ -58,9 +58,8 @@ asciichat_error_t completions_generate_for_shell(completion_format_t format, FIL
   case COMPLETION_FORMAT_BASH:
   case COMPLETION_FORMAT_FISH:
   case COMPLETION_FORMAT_ZSH:
-    return completions_generate_with_libflags(format, output);
   case COMPLETION_FORMAT_POWERSHELL:
-    return completions_generate_powershell(output);
+    return completions_generate_with_libflags(format, output);
   default:
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown completion format: %d", format);
   }
