@@ -237,11 +237,6 @@ TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") { auto&& generated_c
 // Ringbuffer Tests
 // =============================================================================
 
-// Theory: Ringbuffer roundtrip property - write(N) then read(N) should return same data
-static auto ringbuffer_roundtrip_property_catch2_data = {
-    10, 50, 100, 256, 512, 1024,
-};
-
 TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
   int sample_count = GENERATE(10, 50, 100, 256, 512, 1024);
 
@@ -327,11 +322,6 @@ TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
   SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
-
-// Theory: Ringbuffer overflow property - writes should not exceed available space
-static auto ringbuffer_overflow_property_catch2_data = {
-    500, 1000, 2000, 4000, 8000,
-};
 
 TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
   int write_size = GENERATE(500, 1000, 2000, 4000, 8000);

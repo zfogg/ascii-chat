@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file video/image.h
  * @brief Image Data Structures and Operations
@@ -60,6 +56,10 @@ extern "C" {
 #include <libplatform/compiler.h>
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Keep dependency structures at their normal alignment; only image types are packed.
 #ifdef _WIN32

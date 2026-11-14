@@ -25,17 +25,12 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 
-// External getopt variable that needs resetting between tests
-extern int optind;
-
 // Reset global options between tests to prevent pollution
 static void reset_crypto_options(void) {
   // Shutdown and reinitialize RCU state to clear all previous state
   options_state_destroy();
   options_state_init();
 
-  // Reset optind for getopt_long (critical for multiple test runs)
-  optind = 1;
 }
 
 static int options_init_exit_code(int argc, char **argv) {
@@ -417,9 +412,20 @@ TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
 // =============================================================================
 
 TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
-  bool is_client = GENERATE(true, false);
-  bool no_encrypt = GENERATE(true, false);
-  bool has_key = GENERATE(true, false);
+  struct option_combination_t {
+    bool is_client;
+    bool no_encrypt;
+    bool has_key;
+  };
+  static constexpr option_combination_t combinations[] = {
+      {true, true, true},  {true, true, false},  {true, false, true},  {true, false, false},
+      {false, true, true}, {false, true, false}, {false, false, true}, {false, false, false},
+  };
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(combinations));
+  const auto &combination = generated_case;
+  const bool is_client = combination.is_client;
+  const bool no_encrypt = combination.no_encrypt;
+  const bool has_key = combination.has_key;
   // Reset globals and getopt state before each theory iteration
   reset_crypto_options();
 
