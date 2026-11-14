@@ -506,7 +506,11 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       sync_started_ns = time_get_ns();
     }
   }
-  if (started && g_stats_media && GET_OPTION(fps_counter)) {
+  // When help covers media, keep the FPS overlay inside the same synchronized
+  // update as the menu and backdrop. Writing it afterward causes a visible
+  // one-frame gap while the terminal presents the help screen.
+  bool include_media_overlay = g_stats_media || help_media_overlay;
+  if (started && include_media_overlay && GET_OPTION(fps_counter)) {
     char overlay[128];
     size_t overlay_length = fps_counter_format(g_fps, overlay, sizeof(overlay), g_render_size.cols, true);
     if (overlay_length) {
