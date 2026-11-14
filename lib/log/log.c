@@ -594,8 +594,10 @@ session_log_buffer_t *log_get_history_buffer(void) {
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
 
+#if defined(DEBUG_MEMORY)
   debug_memory_set_report_writer(log_write_debug_memory_report, NULL);
   debug_memory_set_owned_source_dirs(ASCIICHAT_OWNED_SOURCE_DIRS);
+#endif
 
   if (!g_history)
     g_history = session_log_buffer_create();
