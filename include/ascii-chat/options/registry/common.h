@@ -47,9 +47,8 @@ typedef struct {
   bool owns_memory;
   bool optional_arg;
   option_mode_bitmask_t mode_bitmask;
-  option_metadata_t metadata; ///< Enum values, numeric ranges, examples
-  mode_default_getter_fn
-      mode_default_getter; ///< Mode-aware default getter (NULL if using default_value) - LAST for backward compat
+  option_metadata_t metadata;                 ///< Enum values, numeric ranges, examples
+  mode_default_getter_fn mode_default_getter; ///< Mode-aware default getter (NULL if using default_value) - LAST for backward compat
   /**
    */
 } registry_entry_t;
@@ -67,22 +66,22 @@ typedef struct {
  * @brief Initialize a terminator entry (sentinel value for array end)
  * Uses designated initializers to properly initialize all fields to zero/NULL
  */
-#define REGISTRY_TERMINATOR()                                                                                          \
-  {.long_name = NULL,                                                                                                  \
-   .short_name = '\0',                                                                                                 \
-   .type = OPTION_TYPE_BOOL,                                                                                           \
-   .offset = 0,                                                                                                        \
-   .default_value = NULL,                                                                                              \
-   .mode_default_getter = NULL,                                                                                        \
-   .default_value_size = 0,                                                                                            \
-   .help_text = NULL,                                                                                                  \
-   .group = NULL,                                                                                                      \
-   .arg_placeholder = NULL,                                                                                            \
-   .required = false,                                                                                                  \
-   .env_var_name = NULL,                                                                                               \
-   .validate_fn = NULL,                                                                                                \
-   .parse_fn = NULL,                                                                                                   \
-   .owns_memory = false,                                                                                               \
-   .optional_arg = false,                                                                                              \
-   .mode_bitmask = OPTION_MODE_NONE,                                                                                   \
+#define REGISTRY_TERMINATOR()                                                                                                                                                                          \
+  {.long_name = NULL,                                                                                                                                                                                  \
+   .short_name = '\0',                                                                                                                                                                                 \
+   .type = OPTION_TYPE_BOOL,                                                                                                                                                                           \
+   .offset = 0,                                                                                                                                                                                        \
+   .default_value = NULL,                                                                                                                                                                              \
+   .mode_default_getter = NULL,                                                                                                                                                                        \
+   .default_value_size = 0,                                                                                                                                                                            \
+   .help_text = NULL,                                                                                                                                                                                  \
+   .group = NULL,                                                                                                                                                                                      \
+   .arg_placeholder = NULL,                                                                                                                                                                            \
+   .required = false,                                                                                                                                                                                  \
+   .env_var_name = NULL,                                                                                                                                                                               \
+   .validate_fn = NULL,                                                                                                                                                                                \
+   .parse_fn = NULL,                                                                                                                                                                                   \
+   .owns_memory = false,                                                                                                                                                                               \
+   .optional_arg = false,                                                                                                                                                                              \
+   .mode_bitmask = OPTION_MODE_NONE,                                                                                                                                                                   \
    .metadata = {0}}
