@@ -78,3 +78,8 @@ if(NOT FFTW_FLOAT_LIBRARY)
     set(FFTW_FLOAT_LIBRARY fftw3f)
     set(FFTW_INCLUDE_DIRS "${asciichat_fftw_float_SOURCE_DIR}/api")
 endif()
+
+# The pkg-config result can include the float library as a bare `fftw3f` item.
+# Link the resolved archive or target below instead; passing the bare name to
+# Clang is interpreted as an input filename and breaks shared-library links.
+list(REMOVE_ITEM FFTW_LIBRARIES fftw3f)
