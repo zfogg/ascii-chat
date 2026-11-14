@@ -430,6 +430,19 @@ _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
 _find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump objdump)
 _find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings strings)
 
+# LLVM's binary-analysis utilities are not shipped by every Clang package.
+# The platform tools are ABI-compatible for these read-only inspections, so
+# retain the LLVM tool when present and fall back to the system implementation
+# when a valid LLVM installation does not provide it.
+if(NOT ASCIICHAT_LLVM_READELF_EXECUTABLE AND UNIX AND NOT APPLE)
+    find_program(ASCIICHAT_LLVM_READELF_EXECUTABLE NAMES readelf
+        DOC "ELF reader for binary validation")
+endif()
+if(NOT ASCIICHAT_LLVM_STRINGS_EXECUTABLE AND UNIX)
+    find_program(ASCIICHAT_LLVM_STRINGS_EXECUTABLE NAMES strings
+        DOC "String extractor for binary path validation")
+endif()
+
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
 # =============================================================================
