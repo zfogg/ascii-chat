@@ -22,7 +22,8 @@ The current process-boundary exceptions are:
 * `network/backpressure_live.c`, `network/client_ping_test.c`,
   `network/mdns_advertiser_fixture.c`, `network/prepare_test.c`,
   `network/quic_http3.c`, `network/quic_stream.c`, `network/quic_tls.c`,
-  `network/traffic_metadata.c`, and `network/vectored_test.c`: live transport,
+  `network/traffic_metadata.c`, `network/transport_metrics.c`, and
+  `network/vectored_test.c`: live transport,
   ACIP, QUIC, mDNS, or compatibility processes whose lifetime and wire I/O are
   inspected by a parent harness.
 * `media/capture_open_test.c`, `media/extractor_audio_probe.c`,
@@ -35,8 +36,9 @@ The current process-boundary exceptions are:
 * `crc32/test.c`, `log_io/test.c`, and `upnp/test.c`: isolated compiler tests;
   their Python drivers create temporary source trees and compile each ABI or
   platform variant independently, which is the behavior under test.
-* `tui/splash_init.c` and `session/terminal_resize_test.cpp`: terminal
-  lifecycle probes when an external harness owns the process.
+* `tui/splash_init.c`: the fallback terminal lifecycle probe used only when
+  the Catch2 contract target is unavailable. The normal native test build uses
+  `contracts/tui/splash_init_test.cpp`.
 
 These exceptions must remain thin fixtures/probes. Their actual assertions
 belong in the Python harness or in the maintained Catch2 suites under
