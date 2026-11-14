@@ -41,38 +41,10 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 if(NOT TARGET libplatform)
-    # Coverage instrumentation belongs to the final executable.  Passing
-    # --coverage while linking libplatform's shared object pulls Clang's
-    # profile runtime into the DSO, leaving non-exported llvm_gcda_* symbols
-    # unresolved when lld links the executable with sanitizers.  Keep the
-    # compile flags inherited by libplatform, but suppress coverage only for
-    # this shared-library configure step.
-    set(_ascii_chat_saved_c_flags "${CMAKE_C_FLAGS}")
-    set(_ascii_chat_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
-    set(_ascii_chat_saved_shared_linker_flags "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(_ascii_chat_saved_exe_linker_flags "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REPLACE "--coverage" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    string(REPLACE "-fprofile-arcs" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    string(REPLACE "-ftest-coverage" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    string(REPLACE "--coverage" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "-fprofile-arcs" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "-ftest-coverage" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "--coverage" "" CMAKE_SHARED_LINKER_FLAGS
-        "${CMAKE_SHARED_LINKER_FLAGS}")
-    string(REPLACE "--coverage" "" CMAKE_EXE_LINKER_FLAGS
-        "${CMAKE_EXE_LINKER_FLAGS}")
     add_subdirectory(
         "${_ascii_chat_libplatform_source}"
         "${_ascii_chat_libplatform_build}"
         EXCLUDE_FROM_ALL)
-    set(CMAKE_C_FLAGS "${_ascii_chat_saved_c_flags}")
-    set(CMAKE_CXX_FLAGS "${_ascii_chat_saved_cxx_flags}")
-    set(CMAKE_SHARED_LINKER_FLAGS "${_ascii_chat_saved_shared_linker_flags}")
-    set(CMAKE_EXE_LINKER_FLAGS "${_ascii_chat_saved_exe_linker_flags}")
-    unset(_ascii_chat_saved_c_flags)
-    unset(_ascii_chat_saved_cxx_flags)
-    unset(_ascii_chat_saved_shared_linker_flags)
-    unset(_ascii_chat_saved_exe_linker_flags)
 endif()
 
 if(TARGET asciichat-project-includes)
