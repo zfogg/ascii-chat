@@ -67,17 +67,20 @@ function(asciichat_configure_quic)
                                       "-DCMAKE_SYSTEM_PROCESSOR:STRING=${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
-    get_target_property(_quic_ssl_type OpenSSL::SSL TYPE)
-    get_target_property(_quic_crypto_type OpenSSL::Crypto TYPE)
-    if(_quic_ssl_type STREQUAL "SHARED_LIBRARY")
-        set(_quic_ssl_file "$<TARGET_LINKER_FILE:OpenSSL::SSL>")
-    else()
-        set(_quic_ssl_file "$<TARGET_FILE:OpenSSL::SSL>")
+    # ExternalProject is a separate CMake invocation, so generator expressions
+    # such as $<TARGET_FILE:OpenSSL::SSL> cannot be evaluated there. Resolve
+    # the selected imported targets to concrete paths before passing them to
+    # ngtcp2; this preserves the exact OpenSSL selected by the parent build.
+    get_target_property(_quic_ssl_file OpenSSL::SSL IMPORTED_LOCATION)
+    get_target_property(_quic_crypto_file OpenSSL::Crypto IMPORTED_LOCATION)
+    if(NOT _quic_ssl_file OR _quic_ssl_file MATCHES "NOTFOUND")
+        set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
     endif()
-    if(_quic_crypto_type STREQUAL "SHARED_LIBRARY")
-        set(_quic_crypto_file "$<TARGET_LINKER_FILE:OpenSSL::Crypto>")
-    else()
-        set(_quic_crypto_file "$<TARGET_FILE:OpenSSL::Crypto>")
+    if(NOT _quic_crypto_file OR _quic_crypto_file MATCHES "NOTFOUND")
+        set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
+    endif()
+    if(NOT _quic_ssl_file OR NOT _quic_crypto_file)
+        message(FATAL_ERROR "Could not resolve selected OpenSSL library paths for QUIC")
     endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
