@@ -55,7 +55,7 @@
  * libflags can bind without an adapter; the legacy path continues to handle
  * enums, callbacks, and mode-specific normalization during this migration.
  */
-static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mode) {
+flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask) {
   size_t count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&count);
   if (!metadata)
@@ -67,8 +67,7 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
 
   for (size_t i = 0; i < count; ++i) {
     const config_option_metadata_t *meta = &metadata[i];
-    option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1U << mode);
-    if (!meta->toml_key || (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_bit)))
+    if (!meta->toml_key || (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_mask)))
       continue;
 
     // These values have application-level range/dependency validation in the
@@ -128,7 +127,7 @@ static flags_schema_builder_t *config_build_libflags_schema(asciichat_mode_t mod
 
 /** Applies generic scalar TOML values before ascii-chat's richer validation. */
 static void config_apply_libflags_scalars(const char *path, asciichat_mode_t mode, options_t *opts) {
-  flags_schema_builder_t *builder = config_build_libflags_schema(mode);
+  flags_schema_builder_t *builder = options_config_build_flags_schema((option_mode_bitmask_t)(1U << mode));
   if (!builder)
     return;
   flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));

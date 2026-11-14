@@ -55,8 +55,18 @@
  */
 
 #include <stdbool.h>
+#include <libflags/builder.h>
 #include "../common.h"
 #include "../options/options.h" // For asciichat_mode_t
+
+/**
+ * @brief Build the generic libflags schema for an ascii-chat mode.
+ * @param mode_mask Mode bitmask whose options should be included.
+ * @return Owned schema builder, or NULL when the schema cannot be built.
+ * @note The caller owns the returned builder and must destroy it with
+ *       flags_schema_builder_destroy().
+ */
+flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Load configuration from TOML file and apply to global options

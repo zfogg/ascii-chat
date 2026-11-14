@@ -35,7 +35,7 @@ static asciichat_error_t completions_generate_with_libflags(completion_format_t 
   if (!config)
     return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
 
-  flags_schema_builder_t *builder = options_config_build_flags_schema(config);
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
   if (!builder) {
     options_config_destroy(config);
     return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
