@@ -1976,10 +1976,11 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   }
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
+  const bool schema_valid = parsed_ok && flags_validate(flags_context);
   flags_destroy_preserving_storage(flags_context);
   flags_schema_builder_destroy(flags_builder);
-  if (!parsed_ok)
-    return SET_ERRNO(ERROR_USAGE, "Failed to parse command-line options");
+  if (!parsed_ok || !schema_valid)
+    return SET_ERRNO(ERROR_USAGE, !parsed_ok ? "Failed to parse command-line options" : "Options violate a libflags dependency");
   if (remaining_argc)
     *remaining_argc = parsed.positional_argc;
   if (remaining_argv)
