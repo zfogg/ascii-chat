@@ -321,6 +321,10 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Apply command-line overrides
   ctx->caps = apply_color_mode_override(ctx->caps, options_terminal_settings());
+  // The platform capability probe describes what the terminal can do; it must
+  // not replace the user's selected output mode. Keep the application option
+  // authoritative for every local frame, including webcam rendering.
+  ctx->caps.render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
 
   // Initialize palette
   int palette_result = initialize_client_palette(config->palette_type, config->custom_palette, ctx->palette_chars, &ctx->palette_len, ctx->luminance_palette);

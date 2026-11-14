@@ -187,6 +187,13 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       candidates[candidate_count++] = i;
     }
   }
+  // An explicitly selected palette may be syntactically valid but empty after
+  // runtime option changes.  Do not enter the scoring loop with no candidates:
+  // the fallback below dereferences glyphs[best].
+  if (candidate_count == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Glyph renderer has no candidate glyphs");
+    return NULL;
+  }
   // Prepare coverage and its sufficient statistics once per frame.
   glyph_candidate_t glyphs[GLYPH_COUNT];
   // Precompute each mask's brightness and centered shape for correlation.

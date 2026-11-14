@@ -11,6 +11,7 @@
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/tui/notice.h>
 #include <libplatform/atomic.h>
 #include <ascii-chat/debug/backtrace.h>
@@ -798,7 +799,8 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
     backtrace_t trace = context->backtrace;
     trace.symbols = NULL;
     trace.tried_symbolize = false;
-    backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
+    // Symbolizer subprocess diagnostics must not leak into a live frame.
+    LOG_IO("symbolizer", { backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS); });
     if (trace.symbols)
       backtrace_print(LOG_ERROR, "Error backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, backtrace_filter_error_internal);
     backtrace_t_free(&trace);

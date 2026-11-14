@@ -66,6 +66,9 @@ void ui_controller_restore_terminal(void);
 /** Restore terminal output without acquiring controller/UI locks. */
 void ui_controller_restore_terminal_output(void);
 void ui_controller_redraw(void);
+
+/** Invalidate a media snapshot already queued for presentation. */
+void ui_controller_invalidate_media(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);
 void ui_controller_toggle_logs(void);

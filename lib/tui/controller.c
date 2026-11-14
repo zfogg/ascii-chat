@@ -70,6 +70,7 @@ typedef struct {
   media_snapshot_slot_t *slot;
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
+  uint64_t media_epoch;
   _Alignas(max_align_t) char data[];
   /**
    */
@@ -339,6 +340,7 @@ static void publish_screen_locked(void) {
 static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
+static _Atomic uint64_t g_media_epoch;
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
@@ -1211,6 +1213,8 @@ static void *presentation_main(void *unused) {
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
+        if (active == UI_SCREEN_MEDIA && screen->owned->media_epoch != atomic_load(&g_media_epoch))
+          goto frame_complete;
         // Only a fresh media presentation participates in media write
         // cancellation and FPS accounting. Help and other modal screens can
         // be rendered over a media backdrop, but their own output must not be
@@ -1524,6 +1528,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     return ASCIICHAT_OK;
   }
   copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
+  copy->media_epoch = screen == UI_SCREEN_MEDIA ? atomic_load(&g_media_epoch) : 0;
   copy->submitted_ns = time_get_ns();
   copy->acquisition_started_ns = screen == UI_SCREEN_MEDIA ? g_acquisition_started_ns : 0;
   screen_t *slot = &g_screens[screen];
@@ -1835,6 +1840,13 @@ void ui_controller_redraw(void) {
     return;
   mutex_lock(&g_mutex);
   g_redraw = true;
+  cond_signal(&g_render_requested);
+  mutex_unlock(&g_mutex);
+}
+
+void ui_controller_invalidate_media(void) {
+  atomic_fetch_add(&g_media_epoch, 1);
+  mutex_lock(&g_mutex);
   cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
 }
