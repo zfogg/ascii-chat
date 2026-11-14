@@ -331,6 +331,44 @@ Keyboard controls are available when running with local media sources
 (\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
 \fBclient\fR, and \fBdefault\fR modes.
 .PP
+.B Global Controls
+.TP
+.B ?
+Toggle the current keyboard-help screen.
+.TP
+.B Q / ESC
+Quit normally. Shift-Q or Shift-Esc requests a panic exit without cleanup.
+.TP
+.B V
+Open media from the clipboard.
+.TP
+.B O / o / CTRL-O
+Open the media-input prompt for a path or URL.
+.TP
+.B PASTE
+Queue dropped or pasted media.
+.TP
+.B < / >
+Select the previous or next media item and restart it.
+.TP
+.B [
+Toggle media playback for file sources.
+.TP
+.B ]
+Open the live log viewer/searcher TUI.
+.TP
+.B =
+Open the runtime statistics TUI.
+.TP
+.B 0
+Open or close the sync-primitives diagnostics TUI in debug builds.
+.TP
+.B `
+Open the errno-stacks diagnostic TUI when diagnostic UI support is enabled.
+.TP
+.B F12
+Open or close the version-update checker TUI.
+.PP
 .B Media Playback Controls
 .TP
 .B LEFT ARROW
@@ -358,14 +396,29 @@ Toggle audio mute/unmute.
 .B C
 Cycle through color modes: Mono → 16-color → 256-color → truecolor → mono.
 .TP
+.B F
+Cycle through color filters.
+.TP
+.B X
+Flip the webcam horizontally.
+.TP
+.B Y
+Flip the webcam vertically.
+.TP
+.B W
+Toggle face follow.
+.TP
+.B SHIFT-R
+Cycle between luminance and glyph text renderers.
+.TP
+.B SHIFT-S
+Toggle frame stabilization.
+.TP
 .B R
-Cycle through render modes: Foreground → background → half-Block → foreground.
+Cycle through render modes: Foreground → background → half-block → foreground.
 .TP
 .B -
 Toggle FPS counter overlay in the top-right corner.
-.TP
-.B F
-Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
 .PP
 .B Animation Controls
 .TP
@@ -379,6 +432,106 @@ Toggle the live audio waveform, disabling Matrix rain and the frequency display.
 Toggle the live audio frequency display (FFT), disabling Matrix rain and the waveform.
 Both visualizations use the source selected by --audio-source.
 Press the active visualization's key again to return to video.
+.PP
+.B Modal and Diagnostic TUI Controls
+.TP
+.B LOG VIEWER: UP / DOWN, J / K
+Scroll older or newer log entries.
+.TP
+.B LOG VIEWER: PAGEUP / PAGEDOWN, HOME / END
+Scroll by a page, jump to the oldest entry, or jump to the newest entry.
+.TP
+.B LOG VIEWER: LEFT / RIGHT, CTRL-U / CTRL-D
+Scroll by a larger page-sized step.
+.TP
+.B LOG VIEWER: ? / ESC
+Open or close the log viewer's local help.
+.TP
+.B SYNC TUI: ARROWS, PAGEUP / PAGEDOWN, HOME / END
+Navigate the selected synchronization primitive.
+.TP
+.B SYNC TUI: ESC
+Close the synchronization diagnostics screen.
+.TP
+.B ERROR POPUP: Q / ESC / ENTER
+Dismiss the displayed error notifications.
+.TP
+.B ERROR POPUP: ARROWS, PAGEUP / PAGEDOWN, HOME / END
+Select errors and scroll their details.
+.TP
+.B PROMPTS: ENTER / ESC / CTRL-C
+Accept or cancel a prompt. Text prompts also support Backspace, Delete,
+Left/Right, Home/End, and Shift-Enter in multiline input.
+.TP
+.B UPDATE CHECKER: ARROWS / ENTER / ESC
+Navigate actions, activate the selected action, or close the update checker.
+.TP
+.B UPDATE CHECKER: O / R
+Open the release page, or retry the update check.
+.TP
+.B UPDATE CONFIRMATION: Y / N / ESC
+Confirm or cancel an update installation.
+.TP
+.B RUNTIME STATS: = / ESC
+Close the runtime statistics TUI.
+.TP
+.B RUNTIME STATS: TAB / LEFT / RIGHT
+Switch between statistics pages.
+.TP
+.B MDNS/DISCOVERY: UP / DOWN, K / J
+Select the previous or next discovered service or session.
+.TP
+.B MDNS/DISCOVERY: HOME / END
+Jump to the first or last discovered item.
+.TP
+.B MDNS/DISCOVERY: ENTER
+Select the highlighted item.
+.TP
+.B MDNS/DISCOVERY: BACKSPACE / DELETE
+Edit the discovery or filter text.
+.TP
+.B MDNS/DISCOVERY: Q / ESC
+Cancel or close the discovery screen.
+.TP
+.B ERRNO STACKS: TAB
+Switch the selected diagnostic category or view.
+.TP
+.B ERRNO STACKS: S / X
+Toggle current/history view or clear the selected current error.
+.TP
+.B ERRNO STACKS: UP / DOWN, K / J
+Navigate diagnostic entries.
+.TP
+.B ERRNO STACKS: ` / ESC
+Close the errno-stacks diagnostic TUI.
+.TP
+.B NOTICES: ?
+Open the notice's contextual help.
+.TP
+.B NOTICES: LEFT / RIGHT / ENTER
+Navigate notice pages or acknowledge the current notice.
+.TP
+.B NOTICES: Q / ESC / CTRL-C
+Dismiss the notice.
+.TP
+.B LOG SEARCH: /
+Enter log-search mode.
+.TP
+.B LOG SEARCH: ENTER / ESC / CTRL-C
+Accept or cancel the search.
+.TP
+.B LOG SEARCH: BACKSPACE / DELETE / LEFT / RIGHT / HOME / END
+Edit and navigate the search query.
+.TP
+.B LOG SEARCH: CTRL-W / CTRL-DELETE
+Delete the previous or next word.
+.TP
+.B LOG SEARCH: CTRL-V / PASTE
+Insert clipboard or bracketed-paste text.
+.PP
+The keyboard-help overlay shown by \fB?\fR is the authoritative list for the
+current mode. Server, discovery-service, browser, release, and diagnostic
+builds may omit controls that are unavailable in that build or screen.
 .PP
 .B Keyboard Configuration
 .RS
