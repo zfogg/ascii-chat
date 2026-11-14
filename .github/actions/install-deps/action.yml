@@ -749,29 +749,12 @@ runs:
         # Clone vcpkg to a temp location
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
-          Write-Host "Fetching pinned vcpkg baseline..."
-          New-Item -ItemType Directory -Force -Path $vcpkgDir | Out-Null
+          Write-Host "Cloning vcpkg history for the pinned baseline..."
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone --no-tags --single-branch https://github.com/microsoft/vcpkg.git $vcpkgDir
+          if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
           Push-Location $vcpkgDir
-          git init
-          git remote add origin https://github.com/microsoft/vcpkg.git
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 1 --filter=blob:none origin 530d2d2f0864684f20b32a0596459646906d35fe
-          if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
-          git checkout --detach FETCH_HEAD
+          git checkout --detach 530d2d2f0864684f20b32a0596459646906d35fe
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          $historyFetch = Start-Job -ScriptBlock {
-            param($Repo)
-            Push-Location $Repo
-            git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 2147483647 origin 530d2d2f0864684f20b32a0596459646906d35fe
-            if ($LASTEXITCODE -ne 0) { throw "git fetch of full vcpkg history failed with exit code $LASTEXITCODE" }
-            Pop-Location
-          } -ArgumentList $vcpkgDir
-          if (-not (Wait-Job $historyFetch -Timeout 900)) {
-            Stop-Job $historyFetch -ErrorAction SilentlyContinue
-            Remove-Job $historyFetch -Force -ErrorAction SilentlyContinue
-            throw "Timed out fetching full vcpkg port history"
-          }
-          Receive-Job $historyFetch -ErrorAction Stop
-          Remove-Job $historyFetch -Force -ErrorAction SilentlyContinue
           Pop-Location
         }
 
