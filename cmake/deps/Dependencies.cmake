@@ -107,6 +107,11 @@ configure_mdns()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
 
+# Configure the shared libplatform target before libflags.  libflags must
+# reuse this target rather than creating a second copy of libplatform inside
+# its FetchContent build tree.
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
+
 # libflags consumes the application's selected PCRE2, yyjson, tomlc17, and
 # libplatform targets. Configure it only after those providers exist so an
 # ascii-chat build never creates duplicate private copies of those libraries.
