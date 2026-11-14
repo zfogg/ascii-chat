@@ -60,6 +60,20 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
 
+# gotel's gRPC adapter uses one private URL bit to distinguish its HTTP/2
+# transport. Keep that integration detail in the generated bridge header; do
+# not modify the pinned otlp-c checkout or require a commit in that repository.
+set(_asciichat_otlp_http_header
+    "${_asciichat_gotel_cache_dir}/build/otlp-tls/http_client.h")
+if(EXISTS "${_asciichat_otlp_http_header}")
+    file(READ "${_asciichat_otlp_http_header}" _asciichat_otlp_http_text)
+    if(NOT _asciichat_otlp_http_text MATCHES "int grpc;")
+        string(REPLACE "int tls;" "int tls;\n int grpc;"
+            _asciichat_otlp_http_text "${_asciichat_otlp_http_text}")
+        file(WRITE "${_asciichat_otlp_http_header}" "${_asciichat_otlp_http_text}")
+    endif()
+endif()
+
 if(_asciichat_fetchcontent_base_dir_was_defined)
     set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}")
     set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH

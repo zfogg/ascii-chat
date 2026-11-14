@@ -401,9 +401,8 @@ void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
   if (atomic_load_explicit(&stopping, memory_order_acquire))
-    gotel_cancel(&s->scope);
-  else
-    gotel_end(&s->scope);
+    gotel_outcome(&s->scope, GOTEL_OUTCOME_CANCELLED, NULL);
+  gotel_end(&s->scope);
   if (current_scope == s)
     current_scope = s->previous;
   s->retained = false;
