@@ -41,9 +41,16 @@ static void registry_flags_change(flags_context_t *context, const char *name, co
 }
 
 static bool registry_flags_parse(flags_context_t *context, const char *text, flags_value_t *value, void *user_data) {
-  (void)context;
-  (void)user_data;
-  if (!text || !value)
+  const registry_entry_t *entry = user_data;
+  if (!context || !entry || !text || !value || !entry->parse_fn)
+    return false;
+  void *storage = flags_context_storage(context);
+  if (!storage)
+    return false;
+  char *error = NULL;
+  bool parsed = entry->parse_fn(text, (char *)storage + entry->offset, &error);
+  free(error);
+  if (!parsed)
     return false;
   value->string = text;
   return true;
@@ -160,8 +167,7 @@ asciichat_error_t options_registry_add_all_to_flags_builder(flags_schema_builder
                                         .dynamic_string = entry->owns_memory,
                                         .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
                                         .validation_regex = entry->metadata.validation_pattern,
-                                        .on_change = entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION ||
-                                                               (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
+                                        .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
                                                            ? registry_flags_change
                                                            : NULL,
                                         .user_data = (void *)entry};
