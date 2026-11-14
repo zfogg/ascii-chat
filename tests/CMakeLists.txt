@@ -1850,7 +1850,13 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-lifecycle test-client-lifecycle)
     set_property(TEST client-lifecycle APPEND PROPERTY LABELS unit)
 
-    add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
+    add_executable(test-mcp-requests
+        contracts/mcp/request_contract_test.c
+        # request_contract_test.c includes the MCP protocol implementation
+        # directly.  Supply the shared renderer implementation it calls too;
+        # the imported static application library intentionally contains only
+        # the reusable library sources, not src/common/http_renderer.c.
+        ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c)
     asciichat_configure_contract(test-mcp-requests)
     target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
