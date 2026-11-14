@@ -70,15 +70,6 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
     if (!meta->toml_key || (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_mask)))
       continue;
 
-    // These values have application-level range/dependency validation in the
-    // legacy schema. Leaving them there prevents the generic scalar bridge
-    // from temporarily accepting a value that the application must reject.
-    // libflags' integer storage is int64_t-sized; options_t contains many
-    // ordinary int/enum fields, so let the application parser own all integer
-    // writes rather than risking an over-wide direct storage assignment.
-    if (meta->type == OPTION_TYPE_INT || meta->field_offset == offsetof(options_t, fps) || meta->field_offset == offsetof(options_t, snapshot_delay))
-      continue;
-
     flags_value_type_t type;
     size_t minimum_size;
     switch (meta->type) {
@@ -94,9 +85,10 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
       break;
     case OPTION_TYPE_DOUBLE:
       if (meta->field_size != sizeof(double))
-        continue;
+        if (meta->field_size != sizeof(float))
+          continue;
       type = FLAGS_TYPE_DOUBLE;
-      minimum_size = sizeof(double);
+      minimum_size = sizeof(float);
       break;
     case OPTION_TYPE_STRING:
       type = FLAGS_TYPE_STRING;
