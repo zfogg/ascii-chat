@@ -203,11 +203,25 @@ asciichat_error_t options_json_parse_value(const char *name, yyjson_val *value, 
     }
     SAFE_SNPRINTF(output, output_size, "0");
   }
-  option_descriptor_t descriptor = registry_entry_to_descriptor(entry);
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to build JSON validation schema");
+  if (options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to populate JSON validation schema");
+  }
   options_t *scratch = SAFE_CALLOC(1, sizeof(*scratch), options_t *);
-  error = g_builder_handlers[descriptor.type].apply_cli((char *)scratch + descriptor.offset, output, &descriptor);
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), scratch, sizeof(*scratch));
+  if (!context) {
+    SAFE_FREE(scratch);
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create JSON validation context");
+  }
+  const bool valid = flags_set_text(context, name, output, FLAGS_SOURCE_COMMAND_LINE);
+  flags_destroy_preserving_storage(context);
   SAFE_FREE(scratch);
-  return error;
+  flags_schema_builder_destroy(builder);
+  return valid ? ASCIICHAT_OK : SET_ERRNO(ERROR_INVALID_PARAM, "Invalid value for option: %s", name);
 }
 
 static void js_log_options(const char *msg) {
