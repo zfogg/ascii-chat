@@ -881,6 +881,17 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
     }
 
+    bool generic_scalar = meta->type == OPTION_TYPE_BOOL || meta->type == OPTION_TYPE_INT || meta->type == OPTION_TYPE_DOUBLE ||
+                          (meta->type == OPTION_TYPE_STRING && !meta->parse_fn);
+    bool scalar_exception = meta->field_offset == offsetof(options_t, test_pattern) || strcmp(meta->toml_key, "security.no_encrypt") == 0 ||
+                            strcmp(meta->toml_key, "display.palette_chars") == 0;
+    if (generic_scalar && !scalar_exception) {
+      // Ordinary scalar values were parsed and stored by libflags before this
+      // compatibility pass. Keep app-specific exceptions below.
+      option_set_flags[i] = true;
+      continue;
+    }
+
     // Skip if already set (avoid processing duplicates like log_file vs logging.log_file)
     if (option_set_flags[i]) {
       continue;
@@ -975,13 +986,6 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     // legacy path only for application callbacks and special normalization;
     // generic bool/int/double/string values were already applied by the
     // libflags schema bridge before this compatibility pass.
-    bool generic_scalar = meta->type == OPTION_TYPE_BOOL || meta->type == OPTION_TYPE_INT || meta->type == OPTION_TYPE_DOUBLE ||
-                          (meta->type == OPTION_TYPE_STRING && !meta->parse_fn);
-    if (generic_scalar) {
-      option_set_flags[i] = true;
-      continue;
-    }
-
     // Parse and validate value using handler
     char error_msg[BUFFER_SIZE_SMALL] = {0};
     option_parsed_value_t parsed = {0};
