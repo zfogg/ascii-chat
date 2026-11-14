@@ -47,6 +47,9 @@ target_include_directories(libplatform-objects PRIVATE
 if(TARGET gotel::gotel)
     target_link_libraries(libplatform PRIVATE gotel::gotel)
 endif()
+if(FONTCONFIG_LINK_LIBRARIES)
+    target_link_libraries(libplatform PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
+endif()
 
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides

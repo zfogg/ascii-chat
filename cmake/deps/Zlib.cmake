@@ -57,6 +57,18 @@ endif()
 
 # Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
 # then config mode, then fall back to pkg-config
+# A cached NOTFOUND path is not a valid result and can poison dependency
+# subprojects such as libwebsockets on a later configure.
+if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$")
+    unset(ZLIB_LIBRARY CACHE)
+    unset(ZLIB_LIBRARIES CACHE)
+    unset(ZLIB_INCLUDE_DIR CACHE)
+    unset(ZLIB_INCLUDE_DIRS CACHE)
+    unset(ZLIB_LIBRARY)
+    unset(ZLIB_LIBRARIES)
+    unset(ZLIB_INCLUDE_DIR)
+    unset(ZLIB_INCLUDE_DIRS)
+endif()
 find_package(ZLIB QUIET)
 
 if(NOT ZLIB_FOUND)

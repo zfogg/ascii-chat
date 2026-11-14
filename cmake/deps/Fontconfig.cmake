@@ -68,6 +68,7 @@ if(UNIX AND NOT APPLE)
 
     # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
     # (-L/path/to/lib -lfontconfig), so use it as-is
+    set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
