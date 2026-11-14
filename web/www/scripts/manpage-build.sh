@@ -15,7 +15,7 @@ if [ -d "$REPO_ROOT" ]; then
   man5_just_edited=$(perl -e 'exit(time - (stat($ARGV[0]))[9] <= 2 ? 0 : 1)' "$REPO_ROOT/share/man/man5/ascii-chat.5.in"; echo $?)
   if [ "$man1_just_edited" -eq "0" ] || [ "$man5_just_edited" -eq "0" ]; then
     echo "TOUCHING options.c"
-    touch "$REPO_ROOT/src/common/options/options.c"
+    touch "$REPO_ROOT/src/common/options.c"
   fi
 
   BUILD_DIR="$REPO_ROOT/build_release"
