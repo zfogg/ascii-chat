@@ -34,7 +34,7 @@
 #include <ascii-chat/options/options.h> // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <defer.h>
+#include <recast/defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
@@ -62,7 +62,7 @@ const char *get_known_hosts_path(void) {
       log_error("Failed to determine configuration directory for known_hosts");
       return NULL;
     }
-    defer(SAFE_FREE(config_dir));
+    DEFER(SAFE_FREE(config_dir));
 
     // Build path: config_dir + "known_hosts"
     size_t config_len = strlen(config_dir);
@@ -116,7 +116,7 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
     log_debug("KNOWN_HOSTS: Failed to search for known_hosts files: %d", search_result);
     return ASCIICHAT_OK;
   }
-  defer(config_file_list_destroy(&known_hosts_files));
+  DEFER(config_file_list_destroy(&known_hosts_files));
 
   // If no files found, this is an unknown host (first connection)
   if (known_hosts_files.count == 0) {
@@ -140,7 +140,7 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       log_debug("KNOWN_HOSTS: Failed to fdopen: %s", path);
       continue;
     }
-    defer(SAFE_FCLOSE(f));
+    DEFER(SAFE_FCLOSE(f));
 
     char line[BUFFER_SIZE_XLARGE];
 
@@ -154,10 +154,10 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
       if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
         continue; // Line doesn't match known_hosts format
       }
-      defer(SAFE_FREE(parsed_comment));
-      defer(SAFE_FREE(parsed_hex_key));
-      defer(SAFE_FREE(parsed_key_type));
-      defer(SAFE_FREE(parsed_ip_port));
+      DEFER(SAFE_FREE(parsed_comment));
+      DEFER(SAFE_FREE(parsed_hex_key));
+      DEFER(SAFE_FREE(parsed_key_type));
+      DEFER(SAFE_FREE(parsed_ip_port));
 
       // Check if IP:port matches what we're looking for (with IPv6 normalization)
       if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
@@ -249,7 +249,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   }
 
   FILE *f = platform_fdopen("known_hosts_stream", fd, "r");
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
   if (!f) {
     // Failed to open file descriptor as FILE*
     platform_close(fd);
@@ -279,10 +279,10 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
       continue; // Line doesn't match known_hosts format
     }
-    defer(SAFE_FREE(parsed_comment));
-    defer(SAFE_FREE(parsed_hex_key));
-    defer(SAFE_FREE(parsed_key_type));
-    defer(SAFE_FREE(parsed_ip_port));
+    DEFER(SAFE_FREE(parsed_comment));
+    DEFER(SAFE_FREE(parsed_hex_key));
+    DEFER(SAFE_FREE(parsed_key_type));
+    DEFER(SAFE_FREE(parsed_ip_port));
 
     // Check if IP:port matches what we're looking for (with IPv6 normalization)
     if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
@@ -318,7 +318,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   // Make a mutable copy of the path
   size_t len = strlen(path);
   char *tmp = SAFE_MALLOC(len + 1, char *);
-  defer(SAFE_FREE(tmp));
+  DEFER(SAFE_FREE(tmp));
   if (!tmp) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for path");
   }
@@ -386,7 +386,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
     return ERROR_CONFIG;
   }
   char *dir = SAFE_MALLOC(path_len + 1, char *);
-  defer(SAFE_FREE(dir));
+  DEFER(SAFE_FREE(dir));
   if (!dir) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
     return ERROR_MEMORY;
@@ -408,7 +408,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   log_debug("KNOWN_HOSTS: Opening file for append: %s", path);
   // Use "a" mode for append-only (simpler and works better with chmod)
   FILE *f = platform_fopen("file_stream", path, "a");
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
   if (!f) {
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create/open known hosts file: %s", path);
   }
@@ -477,7 +477,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
     return ASCIICHAT_OK;
   }
   FILE *f = platform_fdopen("known_hosts_stream", fd, "r");
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
   if (!f) {
     platform_close(fd);
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file: %s", path);
@@ -494,7 +494,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   // Read all lines into memory
   char **lines = NULL;
   size_t num_lines = 0;
-  defer({
+  DEFER({
     if (lines) {
       for (size_t i = 0; i < num_lines; i++) {
         SAFE_FREE(lines[i]);

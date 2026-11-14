@@ -31,28 +31,28 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         shutil.copy2(ROOT / "src" / "tooling" / "panic" / name, panic_source)
     source = source_dir / "main.c"
     source.write_text(
-        '#include <defer.h>\n'
+        '#include <recast/defer.h>\n'
         '#include <ascii-chat/tooling/panic/instrument_log.h>\n'
         'static int cleanup_count, log_count;\n'
         'ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER\n'
         'void asciichat_instr_log_line(const char *p, uint32_t l, const char *f, '
         'const char *s, uint8_t m) { (void)p; (void)l; (void)f; (void)s; (void)m; ++log_count; }\n'
-        'static int work(void) { defer(++cleanup_count); return 7; }\n'
+        'static int work(void) { DEFER(++cleanup_count); return 7; }\n'
         'int main(void) { int result = work(); return result != 7 || cleanup_count != 1 || log_count == 0; }\n',
         encoding="utf-8",
     )
     (source_dir / "other.c").write_text("int other(void) { return 3; }\n", encoding="utf-8")
     (source_dir / "CMakeLists.txt").write_text(
-        f'add_executable(ascii-chat main.c other.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "defer" / "cpp" / "include").as_posix()}")\n',
+        f'add_executable(ascii-chat main.c other.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "recast" / "cpp" / "include").as_posix()}")\n',
         encoding="utf-8",
     )
     (project / "CMakeLists.txt").write_text(
         'cmake_minimum_required(VERSION 3.30)\nproject(panic_defer C CXX)\n'
         'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{(ROOT / "cmake" / "tooling" / "Panic.cmake").as_posix()}")\n'
-        f'include("{(ROOT / "deps" / "defer" / "Defer.cmake").as_posix()}")\n'
+        f'include("{(ROOT / "deps" / "recast" / "Recast.cmake").as_posix()}")\n'
         'ascii_panic_prepare()\nadd_subdirectory(src)\nset(DEFER_SOURCE_HOOK ascii_panic_defer_source)\n'
-        'defer_targets(ascii-chat)\nascii_panic_finalize()\n',
+        'recast_targets(ascii-chat)\nascii_panic_finalize()\n',
         encoding="utf-8",
     )
     build = project / "build"
@@ -77,7 +77,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         assert "asciichat_instr_log_line" in instrumented_other.read_text(encoding="utf-8")
 
     # The transformer must not silently accept unsafe control flow.
-    unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); defer((void)0); }\n'
+    unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); DEFER((void)0); }\n'
     source.write_text(unsafe, encoding="utf-8")
     rejected = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True, check=False)
     assert rejected.returncode != 0

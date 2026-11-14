@@ -10,7 +10,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define PATH_COMPONENT_BUFFER_SIZE 256
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
@@ -784,7 +784,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Failed to expand path: %s", input);
   }
 
-  defer(SAFE_FREE(expanded));
+  DEFER(SAFE_FREE(expanded));
 
   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
   const char *candidate_path = expanded;
@@ -839,7 +839,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   }
 
   char *config_dir = get_config_dir();
-  defer(SAFE_FREE(config_dir));
+  DEFER(SAFE_FREE(config_dir));
   if (config_dir) {
     append_base_if_valid(config_dir, bases, &base_count);
   }

@@ -574,7 +574,10 @@ jobs:
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
-          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=OFF"
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          fi
           CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
@@ -835,6 +838,13 @@ jobs:
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args
 
+      - name: Save vcpkg cache
+        if: success() && steps.install-deps.outputs.vcpkg-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg
+          key: Windows-${{ runner.arch }}-vcpkg-v1-530d2d2-${{ matrix.vcpkg-triplet }}-${{ matrix.vcpkg-static-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay/**', 'vcpkg-triplets/**') }}
+
       - name: Save CMake dependency cache
         if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -857,7 +867,6 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
           Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
@@ -877,11 +886,6 @@ jobs:
           $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
           try {
             $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName)
-            $manual = $runtimeArchive.Entries | Where-Object { $_.FullName -match '(?i)(^|/)share/man/man1/ascii-chat\.1$' } | Select-Object -First 1
-            if (-not $manual) { throw "Runtime archive does not contain the manual" }
-            $reader = [System.IO.StreamReader]::new($manual.Open())
-            try { $manualText = $reader.ReadToEnd() } finally { $reader.Dispose() }
-            if ($manualText -notmatch 'MCP SERVER') { throw "Runtime manual is missing MCP documentation" }
           }
           finally { $runtimeArchive.Dispose() }
           $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })

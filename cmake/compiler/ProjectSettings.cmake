@@ -42,7 +42,7 @@ function(asciichat_apply_project_settings directory)
             # shared interface target so the transformer sees the same include
             # search path as the compiler.
             target_include_directories("${_target}" PRIVATE
-                "${PROJECT_SOURCE_DIR}/deps/defer/cpp/include")
+                "${PROJECT_SOURCE_DIR}/deps/recast/cpp/include")
             if(ASCIICHAT_ENABLE_IPO)
                 # Preserve target opt-outs, including Criterion test registration.
                 get_property(_ipo_default_set TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION SET)

@@ -14,7 +14,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 
@@ -65,7 +65,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate coordinator");
   }
 
-  defer_named(release_coordinator, SAFE_FREE(coordinator));
+  DEFER_NAMED(release_coordinator, SAFE_FREE(coordinator));
   memset(coordinator, 0, sizeof(*coordinator));
   memcpy(coordinator->my_id, my_id, SESSION_ID_SIZE);
   coordinator->topology = topology;
@@ -94,7 +94,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
   log_debug("Coordinator created for node %u, first round in 5 minutes", my_id[0]);
 
   *out_coordinator = coordinator;
-  defer_cancel(release_coordinator);
+  DEFER_CANCEL(release_coordinator);
   return ASCIICHAT_OK;
 }
 

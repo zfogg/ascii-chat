@@ -12,7 +12,7 @@
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/string.h>
 #include <libplatform/process.h>
@@ -339,7 +339,7 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
   // Parse each SSH key line
   line_start = response_text;
   size_t parsed_keys = 0;
-  defer_named(release_keys, {
+  DEFER_NAMED(release_keys, {
     for (size_t i = 0; i < parsed_keys; i++) {
       SAFE_FREE((*keys_out)[i]);
     }
@@ -383,7 +383,7 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
   }
 
   *num_keys = parsed_keys;
-  defer_cancel(release_keys);
+  DEFER_CANCEL(release_keys);
   return ASCIICHAT_OK;
 }
 
@@ -485,7 +485,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
   // Process each key ID to get full fingerprint
   size_t valid_keys = 0;
-  defer_named(release_keys, {
+  DEFER_NAMED(release_keys, {
     for (size_t i = 0; i < valid_keys; i++) {
       SAFE_FREE((*keys_out)[i]);
     }
@@ -561,6 +561,6 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 
   *num_keys = valid_keys;
-  defer_cancel(release_keys);
+  DEFER_CANCEL(release_keys);
   return ASCIICHAT_OK;
 }

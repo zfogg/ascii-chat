@@ -739,7 +739,7 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
     include("${DEFER_CONFIG_FILE}")
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
-    defer_targets(${_ascii_wasm_defer_targets})
+    recast_targets(${_ascii_wasm_defer_targets})
     # Defer parses headers before compiling, so libsodium's generated headers
     # must exist before any scan or transformation can run on a clean build.
     get_property(_wasm_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)

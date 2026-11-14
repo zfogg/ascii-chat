@@ -5,7 +5,7 @@
  */
 
 #include "backends.h"
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/debug/memory.h>
@@ -118,7 +118,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
     log_error("failed to allocate context");
     return NULL;
   }
-  defer_named(release_rain, SAFE_FREE(rain));
+  DEFER_NAMED(release_rain, SAFE_FREE(rain));
 
   rain->num_columns = num_columns;
   rain->num_rows = num_rows;
@@ -129,7 +129,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
     log_error("failed to allocate column array");
     return NULL;
   }
-  defer_named(release_columns, SAFE_FREE(rain->columns));
+  DEFER_NAMED(release_columns, SAFE_FREE(rain->columns));
 
   // Allocate previous brightness array
   size_t grid_size = (size_t)num_columns * (size_t)num_rows;
@@ -164,8 +164,8 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   animation_sample_t initial;
   animation_update(&rain->animation, 0, &initial);
   log_info("Digital rain initialized: %dx%d grid", num_columns, num_rows);
-  defer_cancel(release_columns);
-  defer_cancel(release_rain);
+  DEFER_CANCEL(release_columns);
+  DEFER_CANCEL(release_rain);
   return rain;
 }
 

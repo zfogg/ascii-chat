@@ -8,7 +8,7 @@
  */
 
 #include "ascii-chat/asciichat_errno.h"
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
@@ -141,13 +141,13 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
     return false;
   }
 
-  defer(crypto_regex_free_code(regex));
+  DEFER(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  defer(crypto_regex_free_match_data(match_data));
+  DEFER(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
@@ -184,13 +184,13 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
     return false;
   }
 
-  defer(crypto_regex_free_code(regex));
+  DEFER(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  defer(crypto_regex_free_match_data(match_data));
+  DEFER(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
@@ -223,13 +223,13 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
     return false;
   }
 
-  defer(crypto_regex_free_code(regex));
+  DEFER(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  defer(crypto_regex_free_match_data(match_data));
+  DEFER(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), match_data);
 
   if (rc < 0) {
@@ -254,13 +254,13 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
     return false;
   }
 
-  defer(crypto_regex_free_code(regex));
+  DEFER(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  defer(crypto_regex_free_match_data(match_data));
+  DEFER(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {

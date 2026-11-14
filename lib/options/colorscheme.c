@@ -12,7 +12,7 @@
 #define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
 #define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
@@ -709,7 +709,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
     if (!fp) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
     }
-    defer(fclose(fp));
+    DEFER(fclose(fp));
     if (fputs(toml_content, fp) < 0) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to %s", file_path);
     }
