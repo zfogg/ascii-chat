@@ -12,7 +12,7 @@
 #define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
 #define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>

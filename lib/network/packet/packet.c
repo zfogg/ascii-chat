@@ -9,7 +9,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/socket.h>

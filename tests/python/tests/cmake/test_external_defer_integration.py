@@ -23,8 +23,8 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
     include_dir = project / "private-headers"
     include_dir.mkdir()
     (include_dir / "config.h").write_text('#define CLEANUP_TEXT "cleaned"\n', encoding="utf-8")
-    header = ROOT / "deps" / "defer" / "cpp" / "include" / "defer.h"
-    shutil.copy2(header, source_dir / "defer.h")
+    header = ROOT / "deps" / "recast" / "cpp" / "include" / "recast" / "defer.h"
+    shutil.copy2(header, source_dir / "recast_defer.h")
     source = source_dir / "main.c"
     source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     (source_dir / "CMakeLists.txt").write_text(
@@ -51,7 +51,7 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
         f"-DDEFER_NATIVE_BINARY={binary}")
     run(cmake, "--build", str(build))
     source.write_text(
-        '#include "defer.h"\n#include <stdio.h>\n#include <config.h>\n'
+        '#include "recast_defer.h"\n#include <stdio.h>\n#include <config.h>\n'
         '#if !REQUIRE_DEFINE || __STDC_VERSION__ != 201710L\n#error incorrect compiler flags\n#endif\n'
         'int main(void) { defer(puts(CLEANUP_TEXT)); return 0; }\n', encoding="utf-8"
     )
@@ -69,9 +69,9 @@ def test_external_defer_emscripten_compile_database(tmp_path: Path) -> None:
         pytest.skip("CMake, Ninja, DEFER_TEST_BINARY and EMSCRIPTEN_TOOLCHAIN_FILE are required")
     project = tmp_path / "project"
     project.mkdir()
-    shutil.copy2(ROOT / "deps" / "defer" / "cpp" / "include" / "defer.h", project / "defer.h")
+    shutil.copy2(ROOT / "deps" / "recast" / "cpp" / "include" / "recast" / "defer.h", project / "recast_defer.h")
     (project / "probe.c").write_text(
-        '#include "defer.h"\n#include <emscripten/emscripten.h>\n'
+        '#include "recast_defer.h"\n#include <emscripten/emscripten.h>\n'
         '#ifndef __EMSCRIPTEN__\n#error wrong target\n#endif\n'
         'int probe(void) { int result = 0; defer(result++); return result; }\n', encoding="utf-8"
     )

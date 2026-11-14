@@ -7,7 +7,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system

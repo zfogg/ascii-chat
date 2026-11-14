@@ -14,7 +14,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define SSH_BCRYPT_SALT_SIZE 16
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 

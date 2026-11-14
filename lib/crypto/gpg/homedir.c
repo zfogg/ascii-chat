@@ -4,7 +4,7 @@
  * @brief Temporary GPG homedir management implementation
  */
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/crypto/gpg/homedir.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

@@ -10,7 +10,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define PATH_COMPONENT_BUFFER_SIZE 256
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>

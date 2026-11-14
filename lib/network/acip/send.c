@@ -25,7 +25,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>

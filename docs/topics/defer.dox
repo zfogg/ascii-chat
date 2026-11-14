@@ -8,7 +8,7 @@
  * @page topic_defer Defer Statements
  * @ingroup defer
  *
- * Include `<defer.h>` and place `defer(action);` in a
+ * Include `<recast/defer.h>` and place `defer(action);` in a
  * compound statement. The action runs when execution leaves that block. A
  * block action can be written as `defer({ statements; });`.
  * C++11 and later, including Objective-C++, use a native scope guard rather than build-time rewriting.
