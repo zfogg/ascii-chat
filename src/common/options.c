@@ -183,7 +183,7 @@ asciichat_error_t options_json_parse_value(const char *name, yyjson_val *value, 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing JSON option argument");
   *omitted = false;
   const registry_entry_t *entry = registry_find_entry_by_name(name);
-  if (!entry || entry->type < 0 || entry->type >= NUM_OPTION_TYPES || entry->type == OPTION_TYPE_ACTION || entry->owns_memory)
+  if (!entry || entry->type == OPTION_TYPE_ACTION || entry->owns_memory)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported value option: %s", name);
   asciichat_error_t error = options_json_validate_value(entry, value);
   if (error != ASCIICHAT_OK)

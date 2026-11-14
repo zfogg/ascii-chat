@@ -27,6 +27,19 @@
 #include <ascii-chat/video/rgba/color_filter.h> // For color_filter_from_cli_name()
 #include <libflags/values.h>
 
+static void to_lower(const char *input, char *output, size_t output_size) {
+  if (!output || output_size == 0)
+    return;
+  if (!input) {
+    output[0] = '\0';
+    return;
+  }
+  size_t i = 0;
+  for (; input[i] != '\0' && i + 1 < output_size; ++i)
+    output[i] = (char)tolower((unsigned char)input[i]);
+  output[i] = '\0';
+}
+
 // Helper function to convert string to lowercase in-place (non-destructive)
 /**
  * @brief Lookup table for setting string-to-enum mapping
