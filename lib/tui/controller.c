@@ -1207,18 +1207,23 @@ static void *presentation_main(void *unused) {
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
-        stats_media_begin(context.fresh && context.drew);
+        // Only a fresh media presentation participates in media write
+        // cancellation and FPS accounting. Help and other modal screens can
+        // be rendered over a media backdrop, but their own output must not be
+        // treated as a supersedable media frame.
+        bool fresh_media = active == UI_SCREEN_MEDIA && context.fresh && context.drew;
+        stats_media_begin(fresh_media);
         // Probe terminal acknowledgement support during startup only. Once a
         // frontend has answered (or timed out), media presentation must not
         // make every frame wait on an optional terminal protocol round trip.
         // The mailbox already retains the newest frame when a frontend is
         // temporarily busy, so steady-state video should follow capture FPS.
-        g_probe_frame = context.fresh && context.drew && reply_support == 0;
+        g_probe_frame = fresh_media && reply_support == 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
         if (written == ASCIICHAT_OK && active == UI_SCREEN_NOTICE && context.drew && !covered && !errors)
           ui_notice_frame_presented(screen->snapshot);
-        if (context.fresh && context.drew) {
+        if (fresh_media) {
           fps_counter_write_begin(g_fps);
           // A frontend reply drains the complete update. A local console query
           // adds an RPC without establishing any stronger completion boundary.
@@ -1250,7 +1255,7 @@ static void *presentation_main(void *unused) {
             reply_written_ns = time_get_ns();
           }
         }
-        if (context.drew && !awaiting_reply)
+        if (fresh_media && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
       if (!covered && show_fps && !g_media_overlay_written)
