@@ -175,10 +175,8 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   cr_assert_eq(acip_client_session_dispatch(&session, PACKET_TYPE_PING, payload, sizeof(payload)), ASCIICHAT_OK);
   cr_assert_eq(wire.callbacks, 1);
   uint8_t malformed = 0;
-  cr_assert_eq(packet_parse_envelope(&malformed, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
-               ERROR_INVALID_PARAM);
-  cr_assert_eq(acip_client_dispatch_packet(&transport, PACKET_TYPE_PING, payload, sizeof(payload), &callbacks),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_parse_envelope(&malformed, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope), ERROR_INVALID_PARAM);
+  cr_assert_eq(acip_client_dispatch_packet(&transport, PACKET_TYPE_PING, payload, sizeof(payload), &callbacks), ASCIICHAT_OK);
   cr_assert_eq(wire.callbacks, 2);
   cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
   cr_assert_eq(wire.callbacks, 3);
@@ -259,9 +257,7 @@ Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized
   cr_assert_not_null(wire);
   memset(payload, 0x5a, MAX_PACKET_SIZE);
   size_t wire_length = 0;
-  cr_assert_eq(packet_encode(PACKET_TYPE_PING, payload, MAX_PACKET_SIZE, 0, wire,
-                             sizeof(packet_header_t) + MAX_PACKET_SIZE, &wire_length),
-               ASCIICHAT_OK);
+  cr_assert_eq(packet_encode(PACKET_TYPE_PING, payload, MAX_PACKET_SIZE, 0, wire, sizeof(packet_header_t) + MAX_PACKET_SIZE, &wire_length), ASCIICHAT_OK);
   cr_assert_eq(wire_length, sizeof(packet_header_t) + MAX_PACKET_SIZE);
   packet_envelope_t envelope = {0};
   cr_assert_eq(packet_parse_envelope(wire, wire_length, NULL, &envelope), ASCIICHAT_OK);
@@ -274,8 +270,7 @@ Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized
 
   uint8_t *oversized = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1);
   cr_assert_not_null(oversized);
-  cr_assert_eq(packet_parse_envelope(oversized, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(packet_parse_envelope(oversized, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope), ERROR_INVALID_PARAM);
   buffer_release(oversized);
 }
 
