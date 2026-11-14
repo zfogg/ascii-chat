@@ -191,10 +191,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/levenshtein.c
     ${LIB_ROOT}/options/help_api.c
     ${LIB_ROOT}/options/completions/completions.c
-    ${LIB_ROOT}/options/completions/bash.c
-    ${LIB_ROOT}/options/completions/fish.c
-    ${LIB_ROOT}/options/completions/zsh.c
-    ${LIB_ROOT}/options/completions/powershell.c
     ${LIB_ROOT}/options/builder/builder.c
     ${LIB_ROOT}/options/builder/handlers.c
     ${LIB_ROOT}/options/builder/help.c

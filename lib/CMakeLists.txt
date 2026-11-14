@@ -141,10 +141,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options/manpage/content/positional.c
     # options/completions/
     ${CMAKE_SOURCE_DIR}/src/common/options/completions/completions.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/completions/bash.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/completions/fish.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/completions/zsh.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/completions/powershell.c
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)

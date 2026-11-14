@@ -18,12 +18,6 @@
 #include <libflags/builder.h>
 #include <libflags/completions/completions.h>
 
-/* Forward declarations for format-specific generators */
-asciichat_error_t completions_generate_bash(FILE *output);
-asciichat_error_t completions_generate_fish(FILE *output);
-asciichat_error_t completions_generate_zsh(FILE *output);
-asciichat_error_t completions_generate_powershell(FILE *output);
-
 /**
  * Generate the portable shell formats from the shared libflags schema.
  *
