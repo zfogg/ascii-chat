@@ -28,8 +28,6 @@
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
-#include <ascii-chat/options/manpage.h>
-#include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/schema.h>
