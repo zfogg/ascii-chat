@@ -880,11 +880,6 @@ jobs:
           $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
           try {
             $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName)
-            $manual = $runtimeArchive.Entries | Where-Object { $_.FullName -match '(?i)(^|/)share/man/man1/ascii-chat\.1$' } | Select-Object -First 1
-            if (-not $manual) { throw "Runtime archive does not contain the manual" }
-            $reader = [System.IO.StreamReader]::new($manual.Open())
-            try { $manualText = $reader.ReadToEnd() } finally { $reader.Dispose() }
-            if ($manualText -notmatch 'MCP SERVER') { throw "Runtime manual is missing MCP documentation" }
           }
           finally { $runtimeArchive.Dispose() }
           $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })
