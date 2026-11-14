@@ -24,6 +24,10 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
+
+#define ASCIICHAT_CATCH2_TEST_NAME(suite, name) #suite "/" #name
+#define ASCIICHAT_CATCH2_TEST_TAG(suite) "[" #suite "]"
+
 // Macro helpers for argv construction without brace-literals at call sites
 #define ARGV_LIST(...) (std::vector<const char *>{"program", __VA_ARGS__, nullptr})
 #define ARG_WRAP(list) list

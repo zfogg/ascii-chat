@@ -354,8 +354,6 @@ static inline void test_set_height(unsigned short int value) {
 /** @} */
 
 #ifdef __cplusplus
-#define ASCIICHAT_CATCH2_TEST_NAME(suite, name) #suite "/" #name
-#define ASCIICHAT_CATCH2_TEST_TAG(suite) "[" #suite "]"
 #define ASCIICHAT_REQUIRE(condition, ...) REQUIRE(static_cast<bool>(condition))
 #define ASCIICHAT_CHECK(condition, ...) CHECK(static_cast<bool>(condition))
 #define ASCIICHAT_REQUIRE_EQ(lhs, rhs, ...) REQUIRE((lhs) == (rhs))
