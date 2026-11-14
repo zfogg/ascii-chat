@@ -1005,6 +1005,9 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
+    if(_ascii_chat_platform_system_sources)
+        target_compile_definitions(ascii-chat-shared PRIVATE LIBPLATFORM_ASCII_CHAT_INTEGRATION=1)
+    endif()
     target_link_libraries(ascii-chat-shared PRIVATE libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
