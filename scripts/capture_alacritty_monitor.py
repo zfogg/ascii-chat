@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import time
 from pathlib import Path
 
 import pygetwindow as gw
 import pymonctl as pm
+import psutil
 import win32con
+import win32api
 import win32gui
+import win32process
 import pywintypes
 from PIL import ImageChops, ImageGrab, ImageStat
 
@@ -18,8 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ALACRITTY = Path(r"C:\Program Files\Alacritty\alacritty.exe")
 
 
-def alacritty_windows() -> list[object]:
-    return [window for window in gw.getAllWindows() if "alacritty" in window.title.lower()]
+def alacritty_windows(title: str) -> list[object]:
+    return [window for window in gw.getWindowsWithTitle(title) if window.visible]
 
 
 def force_terminate_alacritty() -> None:
@@ -28,7 +32,7 @@ def force_terminate_alacritty() -> None:
         raise RuntimeError(f"taskkill failed: {result.stdout.strip()} {result.stderr.strip()}")
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        if not alacritty_windows():
+        if not any(process.info["name"] and process.info["name"].lower() == "alacritty.exe" for process in psutil.process_iter(["name"])):
             return
         time.sleep(0.1)
     raise RuntimeError("old Alacritty windows remained after forced termination")
@@ -41,8 +45,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=ROOT)
     parser.add_argument("--samples", type=int, default=1, help="number of frame comparisons (default: 1)")
     parser.add_argument("--interval", type=float, default=3.0, help="seconds between comparisons (default: 3)")
+    parser.add_argument("--hold-seconds", type=float, default=0.0, help="keep the test window visible before cleanup")
     parser.add_argument("--ascii-args", nargs=argparse.REMAINDER, default=["mirror", "--test-pattern", "1"])
     return parser.parse_args()
+
+
+def focus_window(hwnd: int) -> None:
+    foreground = win32gui.GetForegroundWindow()
+    current_thread = win32api.GetCurrentThreadId()
+    foreground_thread = win32process.GetWindowThreadProcessId(foreground)[0] if foreground else 0
+    attached = foreground_thread and foreground_thread != current_thread
+    if attached:
+        win32process.AttachThreadInput(current_thread, foreground_thread, True)
+    try:
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+        win32gui.SetFocus(hwnd)
+    finally:
+        if attached:
+            win32process.AttachThreadInput(current_thread, foreground_thread, False)
 
 
 def main() -> None:
@@ -61,13 +82,14 @@ def main() -> None:
         raise RuntimeError(f"monitor index {args.monitor_index} is unavailable; found {len(monitors)} monitors")
     target = monitors[args.monitor_index]
     target_rect = (target.rect.left, target.rect.top, target.rect.right, target.rect.bottom)
-    command = [str(ALACRITTY), "--working-directory", str(ROOT), "-e", str(args.binary), *args.ascii_args]
+    window_title = f"ascii-chat-alacritty-integration-{os.getpid()}"
+    command = [str(ALACRITTY), "--title", window_title, "--working-directory", str(ROOT), "-e", str(args.binary), *args.ascii_args]
     process = subprocess.Popen(command)
     try:
         deadline = time.monotonic() + 10
         window = None
         while time.monotonic() < deadline:
-            windows = alacritty_windows()
+            windows = alacritty_windows(window_title)
             if windows:
                 window = windows[-1]
                 break
@@ -77,16 +99,26 @@ def main() -> None:
 
         hwnd = window._hWnd
         left, top, right, bottom = target_rect
+        window.restore()
+        window.moveTo(left, top)
+        window.resizeTo(right - left, bottom - top)
+        window.activate()
+        window.maximize()
         win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-        win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, left, top, right - left, bottom - top, win32con.SWP_SHOWWINDOW)
+        flags = win32con.SWP_SHOWWINDOW | win32con.SWP_NOACTIVATE
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, left, top, right - left, bottom - top, flags)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, left, top, right - left, bottom - top, flags)
+        win32gui.BringWindowToTop(hwnd)
         try:
-            win32gui.SetForegroundWindow(hwnd)
+            focus_window(hwnd)
         except pywintypes.error:
-            # Windows may reject foreground activation when the launcher is
-            # not the foreground process; placement and maximization still
-            # make the capture deterministic.
-            pass
-        win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+            raise RuntimeError(f"could not focus Alacritty hwnd={hwnd}") from None
+        foreground_hwnd = win32gui.GetForegroundWindow()
+        if foreground_hwnd != hwnd:
+            raise RuntimeError(f"Alacritty did not become foreground: expected={hwnd} actual={foreground_hwnd}")
+        win32gui.ShowWindow(foreground_hwnd, win32con.SW_MAXIMIZE)
+        if win32gui.GetWindowPlacement(hwnd)[1] != win32con.SW_SHOWMAXIMIZED:
+            raise RuntimeError(f"Alacritty did not maximize: hwnd={hwnd} rect={win32gui.GetWindowRect(hwnd)}")
         actual = win32gui.GetWindowRect(hwnd)
         if not (actual[0] < right and actual[2] > left and actual[1] < bottom and actual[3] > top):
             raise RuntimeError(f"Alacritty window was not placed on monitor {args.monitor_index}: {actual}")
@@ -128,6 +160,8 @@ def main() -> None:
         print(f"window={actual} hwnd={hwnd} pid={process.pid} title={window.title!r}")
         print(f"frame_a={frame_a}\nframe_b={frame_b}")
         print("samples=" + ",".join(f"{i}:{'changed' if changed else 'same'}:{mean:.2f}" for i, changed, mean in samples))
+        if args.hold_seconds > 0:
+            time.sleep(args.hold_seconds)
         if not any(changed for _, changed, _ in samples):
             raise AssertionError("Alacritty capture did not change during the integration test")
     finally:
