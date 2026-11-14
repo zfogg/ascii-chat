@@ -445,6 +445,22 @@ runs:
           }
         }
 
+        function Install-ChocoPackage {
+          param([string]$Package)
+          $job = Start-Job -ScriptBlock {
+            param($PackageName)
+            choco install $PackageName --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed to install $PackageName" }
+          } -ArgumentList $Package
+          if (-not (Wait-Job $job -Timeout 300)) {
+            Stop-Job $job -ErrorAction SilentlyContinue
+            Remove-Job $job -Force -ErrorAction SilentlyContinue
+            throw "Chocolatey installation timed out after 5 minutes: $Package"
+          }
+          Receive-Job $job -ErrorAction Stop
+          Remove-Job $job -Force -ErrorAction SilentlyContinue
+        }
+
         # The matching LLVM development archive is installed separately below.
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
@@ -461,8 +477,7 @@ runs:
 
         if ($env:RUNNER_ARCH -eq 'X64') {
           foreach ($pkg in $packages) {
-            choco install $pkg --no-progress -y
-            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed to install $pkg" }
+            Install-ChocoPackage -Package $pkg
           }
         } else {
           Ensure-Scoop
