@@ -14,6 +14,10 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # Keep libc++ selected for the project, but avoid noisy diagnostics from
     # those dependency compile commands.
     string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
+    # Clang diagnoses precedence and duplicate-platform-macro patterns in the
+    # external musl headers; keep these diagnostics out of project output.
+    string(APPEND _c " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
+    string(APPEND _cxx " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
     if(ALPINE_LIBCXX_INCLUDE_DIR)
         string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
     endif()
