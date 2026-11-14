@@ -670,11 +670,11 @@ You can also run individual test executables directly:
 ```bash
 # Configure with tests enabled and build the desired test targets
 cmake --preset default -B build -DBUILD_TESTS=ON
-cmake --build build --target test_unit_mixer test_performance_ascii_simd
+cmake --build build --target unit_tests benchmarks
 
 # Run individual tests
-build/bin/test_unit_mixer --verbose
-build/bin/test_performance_ascii_simd --filter "*monochrome*"
+ctest --test-dir build -R "unit\." --output-on-failure
+build/bin/benchmarks "[benchmark]"
 ```
 
 ## TODO

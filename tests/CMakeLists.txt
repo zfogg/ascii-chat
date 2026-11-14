@@ -553,7 +553,7 @@ target_link_libraries(benchmarks PRIVATE
         --reporter junit::out=${CATCH2_XML_DIR}/benchmarks.xml
         --colour-mode ansi)
     set_tests_properties(benchmarks PROPERTIES
-        LABELS "benchmark;catch2;serial"
+        LABELS "benchmark;performance;catch2;serial"
         RUN_SERIAL TRUE
         TIMEOUT 600
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")

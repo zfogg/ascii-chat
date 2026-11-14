@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file video/image.h
  * @brief Image Data Structures and Operations
@@ -610,6 +614,10 @@ char *rgb_to_ansi_bg(int r, int g, int b);
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef _WIN32
 #pragma pack(pop)

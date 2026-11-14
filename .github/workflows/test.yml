@@ -638,7 +638,7 @@ jobs:
         run: |
           cmake --build build
           echo "Performance test executables built:"
-          ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
+          ls -la build/bin/benchmarks 2>/dev/null || echo "No Catch2 benchmark executable found"
 
       - name: Run performance tests
         run: |
