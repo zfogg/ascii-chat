@@ -1,4 +1,5 @@
 import type { useSessionRecording } from "../hooks/useSessionRecording";
+import { HelpIcon } from "./HelpIcon";
 import {
   RECORDING_LIMIT_BYTES,
   RECORDING_LIMIT_MS,
@@ -19,27 +20,32 @@ export function RecordingControls({
       role="group"
       aria-label="Local recording"
     >
-      <button
-        type="button"
-        title="Save the displayed ASCII with enabled microphone, current file/screen audio and received peers. Speaker monitoring is independent. Recordings stay on this device."
-        className="recording-button border rounded px-3 py-2 border-red-600"
-        disabled={
-          recording.state === "finalizing" ||
-          (!active && (disabled || !recording.supported))
-        }
-        onClick={() => void (active ? recording.stop() : recording.start())}
-      >
-        <span aria-hidden="true" className="recording-button-size">
-          Finishing recording…
-        </span>
-        <span className="recording-button-label">
-          {recording.state === "finalizing"
-            ? "Finishing recording…"
-            : active
-              ? "Stop recording"
-              : "Record ASCII"}
-        </span>
-      </button>
+      <div className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          className="recording-button border rounded px-3 py-2 border-red-600"
+          disabled={
+            recording.state === "finalizing" ||
+            (!active && (disabled || !recording.supported))
+          }
+          onClick={() => void (active ? recording.stop() : recording.start())}
+        >
+          <span aria-hidden="true" className="recording-button-size">
+            Finishing recording…
+          </span>
+          <span className="recording-button-label">
+            {recording.state === "finalizing"
+              ? "Finishing recording…"
+              : active
+                ? "Stop recording"
+                : "Record ASCII"}
+          </span>
+        </button>
+        <HelpIcon
+          label="Record ASCII"
+          text="Save the displayed ASCII with enabled microphone, current file/screen audio and received peers. Speaker monitoring is independent. Recordings stay on this device."
+        />
+      </div>
       <div className="recording-details">
         <span aria-hidden="true" className="recording-details-size">
           Recording locally ({RECORDING_LIMIT_MS / 60_000} min /{" "}

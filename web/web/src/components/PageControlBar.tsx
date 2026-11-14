@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { UploadFile } from "./UploadFile";
 import { BandwidthMeter } from "./BandwidthMeter";
+import { HelpIcon } from "./HelpIcon";
 import { PanelChevron } from "./AnimatedPanel";
 import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 
@@ -115,12 +116,17 @@ export function PageControlBar({
             <span className="text-xs font-semibold text-purple-400">Host</span>
           )}
           {fps !== undefined && (
-            <span
-              className={`text-xs tabular-nums inline-block w-[13ch] shrink-0 ${getFpsColor()}`}
-              title="Counts C frames rendered on the canvas, including identical frames."
-            >
-              FPS: {fps}
-              {targetFps && ` / ${targetFps}`}
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <span
+                className={`text-xs tabular-nums inline-block w-[13ch] ${getFpsColor()}`}
+              >
+                FPS: {fps}
+                {targetFps && ` / ${targetFps}`}
+              </span>
+              <HelpIcon
+                label="FPS"
+                text="Counts C frames rendered on the canvas, including identical frames."
+              />
             </span>
           )}
           {fps !== undefined && showBandwidth && <BandwidthMeter />}

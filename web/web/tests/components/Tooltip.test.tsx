@@ -54,3 +54,21 @@ test("help icons show their tooltip on keyboard focus", () => {
   fireEvent.blur(screen.getByRole("button"));
   expect(screen.queryByRole("tooltip")).toBeNull();
 });
+
+test("a setting help icon exposes the same tooltip to keyboard users", () => {
+  render(
+    <Tooltip text="Color information" helpLabel="Color mode">
+      <select aria-label="Color mode">
+        <option>Auto</option>
+      </select>
+    </Tooltip>,
+  );
+  const help = screen.getByRole("button", { name: "Color mode help" });
+  fireEvent.focus(help);
+  expect(screen.getByRole("tooltip").textContent).toBe("Color information");
+  expect(help.getAttribute("aria-describedby")).toBe(
+    screen.getByRole("tooltip").id,
+  );
+  fireEvent.blur(help);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+});
