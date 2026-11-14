@@ -709,11 +709,18 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       double convert_ms = (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT;
       uint64_t epoch = frame->source_epoch;
       bool fresh = frame->fresh;
+      bool frame_visualization = frame->visualization;
       uint64_t acquisition_started_ns = frame->acquisition_started_ns;
       free_frame(frame);
       frame = NULL;
 
       if (ascii) {
+        // The option can change while conversion runs. Do not publish a
+        // synthetic visualization frame after KEY_3 has disabled it.
+        if (frame_visualization && !GET_OPTION(waveform) && !GET_OPTION(fft)) {
+          session_display_release_ascii(pipeline->display, ascii);
+          continue;
+        }
         if (epoch == session_capture_source_epoch(pipeline->capture)) {
           ui_controller_frame_acquired_at(acquisition_started_ns);
           session_display_write_ascii_frame(pipeline->display, ascii, fresh);
