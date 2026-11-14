@@ -37,14 +37,40 @@ function(asciichat_configure_quic)
     # with each other or with the parent project.
     include(ExternalProject)
 
+    if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
+        set(_quic_shared OFF)
+    else()
+        set(_quic_shared ${ASCIICHAT_SHARED_DEPS})
+    endif()
+    if(_quic_shared)
+        set(_quic_shared_type SHARED)
+        set(_quic_library_prefix "${CMAKE_SHARED_LIBRARY_PREFIX}")
+        set(_quic_library_suffix "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        set(_quic_ngtcp2_target ngtcp2)
+        set(_quic_ngtcp2_crypto_target ngtcp2_crypto_ossl)
+        set(_quic_nghttp3_target nghttp3)
+        set(_quic_enable_shared ON)
+        set(_quic_enable_static OFF)
+    else()
+        set(_quic_shared_type STATIC)
+        set(_quic_library_prefix "${CMAKE_STATIC_LIBRARY_PREFIX}")
+        set(_quic_library_suffix "${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(_quic_ngtcp2_target ngtcp2_static)
+        set(_quic_ngtcp2_crypto_target ngtcp2_crypto_ossl_static)
+        set(_quic_nghttp3_target nghttp3_static)
+        set(_quic_enable_shared OFF)
+        set(_quic_enable_static ON)
+    endif()
+    message(STATUS "QUIC dependency libraries: ${_quic_shared}")
+
     set(_quic_common_args
         "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
         "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
         "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON"
         "-DENABLE_LIB_ONLY:BOOL=ON"
-        "-DENABLE_STATIC_LIB:BOOL=ON"
-        "-DENABLE_SHARED_LIB:BOOL=OFF"
+        "-DENABLE_STATIC_LIB:BOOL=${_quic_enable_static}"
+        "-DENABLE_SHARED_LIB:BOOL=${_quic_enable_shared}"
         "-DBUILD_TESTING:BOOL=OFF")
     foreach(_variable CMAKE_TOOLCHAIN_FILE CMAKE_SYSROOT CMAKE_OSX_SYSROOT CMAKE_OSX_ARCHITECTURES
                       CMAKE_OSX_DEPLOYMENT_TARGET CMAKE_C_COMPILER_TARGET CMAKE_MSVC_RUNTIME_LIBRARY
@@ -84,9 +110,14 @@ function(asciichat_configure_quic)
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")
     set(_ngtcp2_build "${CMAKE_BINARY_DIR}/_deps/asciichat-ngtcp2")
     set(_nghttp3_build "${CMAKE_BINARY_DIR}/_deps/asciichat-nghttp3")
-    set(_ngtcp2_library "${_ngtcp2_build}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ngtcp2${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${CMAKE_STATIC_LIBRARY_PREFIX}ngtcp2_crypto_ossl${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(_nghttp3_library "${_nghttp3_build}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}nghttp3${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(_ngtcp2_library "${_ngtcp2_build}/lib/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
+    set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
+    set(_nghttp3_library "${_nghttp3_build}/lib/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
+    if(WIN32 AND _quic_shared)
+        set(_ngtcp2_import_library "${_ngtcp2_build}/lib/ngtcp2.lib")
+        set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl/ngtcp2_crypto_ossl.lib")
+        set(_nghttp3_import_library "${_nghttp3_build}/lib/nghttp3.lib")
+    endif()
     file(MAKE_DIRECTORY "${_ngtcp2_build}/lib/includes" "${_nghttp3_build}/lib/includes")
 
     # Configure the isolated dependency projects while the parent project is
@@ -139,7 +170,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ngtcp2_crypto_ossl_static -- --quiet
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
         BUILD_BYPRODUCTS "${_ngtcp2_library}" "${_ngtcp2_crypto_library}"
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
@@ -149,24 +180,35 @@ function(asciichat_configure_quic)
         BINARY_DIR "${_nghttp3_build}"
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target nghttp3_static -- --quiet
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} -- --quiet
         BUILD_BYPRODUCTS "${_nghttp3_library}"
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
 
-    add_library(asciichat-ngtcp2 STATIC IMPORTED GLOBAL)
+    add_library(asciichat-ngtcp2 ${_quic_shared_type} IMPORTED GLOBAL)
     set_target_properties(asciichat-ngtcp2 PROPERTIES IMPORTED_LOCATION "${_ngtcp2_library}")
-    add_library(asciichat-ngtcp2-crypto STATIC IMPORTED GLOBAL)
+    if(WIN32 AND _quic_shared)
+        set_target_properties(asciichat-ngtcp2 PROPERTIES IMPORTED_IMPLIB "${_ngtcp2_import_library}")
+    endif()
+    add_library(asciichat-ngtcp2-crypto ${_quic_shared_type} IMPORTED GLOBAL)
     set_target_properties(asciichat-ngtcp2-crypto PROPERTIES IMPORTED_LOCATION "${_ngtcp2_crypto_library}")
-    add_library(asciichat-nghttp3 STATIC IMPORTED GLOBAL)
+    if(WIN32 AND _quic_shared)
+        set_target_properties(asciichat-ngtcp2-crypto PROPERTIES IMPORTED_IMPLIB "${_ngtcp2_crypto_import_library}")
+    endif()
+    add_library(asciichat-nghttp3 ${_quic_shared_type} IMPORTED GLOBAL)
     set_target_properties(asciichat-nghttp3 PROPERTIES IMPORTED_LOCATION "${_nghttp3_library}")
+    if(WIN32 AND _quic_shared)
+        set_target_properties(asciichat-nghttp3 PROPERTIES IMPORTED_IMPLIB "${_nghttp3_import_library}")
+    endif()
 
     add_library(asciichat-quic INTERFACE)
     add_dependencies(asciichat-quic asciichat-ngtcp2-build asciichat-nghttp3-build)
     target_include_directories(asciichat-quic INTERFACE
         "${_ngtcp2_source}/lib/includes" "${_ngtcp2_build}/lib/includes" "${_ngtcp2_source}/crypto/includes"
         "${_nghttp3_source}/lib/includes" "${_nghttp3_build}/lib/includes")
-    target_compile_definitions(asciichat-quic INTERFACE NGTCP2_STATICLIB NGHTTP3_STATICLIB)
+    if(NOT _quic_shared)
+        target_compile_definitions(asciichat-quic INTERFACE NGTCP2_STATICLIB NGHTTP3_STATICLIB)
+    endif()
     target_link_libraries(asciichat-quic INTERFACE asciichat-ngtcp2-crypto asciichat-ngtcp2 asciichat-nghttp3 OpenSSL::SSL)
     if(WIN32)
         target_link_libraries(asciichat-quic INTERFACE ws2_32 bcrypt crypt32)

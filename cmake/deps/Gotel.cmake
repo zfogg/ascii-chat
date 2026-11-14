@@ -41,12 +41,14 @@ set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
 # Musl cannot safely consume host/shared dependency builds. Otherwise honor
 # ASCIICHAT_SHARED_DEPS: static remains the default, including Release, while
 # ASCIICHAT_SHARED_DEPS=ON explicitly selects shared dependencies.
-if(USE_MUSL)
+if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_asciichat_gotel_shared OFF)
 else()
     set(_asciichat_gotel_shared ${ASCIICHAT_SHARED_DEPS})
 endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
+set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
+    "Build gotel and its public dependencies as shared libraries" FORCE)
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
