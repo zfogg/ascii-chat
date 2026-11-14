@@ -475,7 +475,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     }
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
-    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA && ui_controller_current_screen() != UI_SCREEN_HELP) {
       superseded = true;
       break;
     }
@@ -1215,7 +1215,7 @@ static void *presentation_main(void *unused) {
         // cancellation and FPS accounting. Help and other modal screens can
         // be rendered over a media backdrop, but their own output must not be
         // treated as a supersedable media frame.
-        bool fresh_media = active == UI_SCREEN_MEDIA && context.fresh && context.drew;
+        bool fresh_media = context.fresh && context.drew;
         stats_media_begin(fresh_media);
         // Probe terminal acknowledgement support during startup only. Once a
         // frontend has answered (or timed out), media presentation must not
