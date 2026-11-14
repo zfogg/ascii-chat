@@ -1174,10 +1174,13 @@ endif()
 
 # Criterion buffer ownership, queue, budget, and concurrency contracts.
 if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    if(NOT TARGET ZLIB::ZLIB)
+        message(FATAL_ERROR "test-buffer-ownership requires the ZLIB::ZLIB target")
+    endif()
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.c)
     asciichat_configure_contract(test-buffer-ownership)
     target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
-        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ${ZLIB_LIBRARIES})
+        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB)
     if(WIN32)
         target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
     elseif(APPLE)
