@@ -95,7 +95,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_strings.c
     ${CMAKE_SOURCE_DIR}/src/common/options_runtime.c
     ${CMAKE_SOURCE_DIR}/src/common/options_layout.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage.c
     ${CMAKE_SOURCE_DIR}/src/common/options_help.c
     # options/builder/
     ${CMAKE_SOURCE_DIR}/src/common/options_builder.c
@@ -103,7 +102,6 @@ set(CORE_SRCS
     # options/config/
     ${CMAKE_SOURCE_DIR}/src/common/options_config.c
     ${CMAKE_SOURCE_DIR}/src/common/options_config_schema.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_config_presets.c
     # options/registry/
     ${CMAKE_SOURCE_DIR}/src/common/options_registry_metadata.c
     ${CMAKE_SOURCE_DIR}/src/common/options_registry_general.c
@@ -126,14 +124,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_parsing_validation.c
     ${CMAKE_SOURCE_DIR}/src/common/options_parsing_actions.c
     # options/manpage/
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_embedded.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_resources.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_merger.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_options.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_environment.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_usage.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_examples.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_positional.c
     # options/completions/
     # version
     ${LIB_DIR}/version.c

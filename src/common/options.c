@@ -63,9 +63,7 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/options/validation.h>
-#include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/completions/completions.h>
-#include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
 #include <ascii-chat/options/registry/core.h>
