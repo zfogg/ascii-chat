@@ -120,8 +120,6 @@ const config_option_metadata_t *config_schema_get_all(size_t *count);
  *
  * @note This should be called once during initialization before any config parsing
  */
-asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs);
-
 /**
  * @brief Builds configuration metadata directly from the ascii-chat registry.
  *

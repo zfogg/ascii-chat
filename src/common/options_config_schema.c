@@ -160,7 +160,7 @@ static char *store_dynamic_string(const char *str) {
   return stored;
 }
 
-asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs) {
+static asciichat_error_t config_schema_build_from_descriptors(const option_descriptor_t *descriptors, size_t descriptor_total) {
   // Free existing dynamic schema if any
   if (g_dynamic_schema) {
     SAFE_FREE(g_dynamic_schema);
@@ -179,35 +179,12 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     g_dynamic_strings_capacity = 0;
   }
 
-  // Count total unique descriptors (by offset) across all configs
-  // Use a simple approach: collect all descriptors, then deduplicate by offset
+  // Collect registry descriptors and deduplicate fields shared by modes.
   const option_descriptor_t *all_descriptors[SCHEMA_OPTION_CAPACITY] = {0}; // Max expected options
   size_t descriptor_count = 0;
-
-  // Collect descriptors from all configs
-  for (size_t cfg_idx = 0; cfg_idx < num_configs; cfg_idx++) {
-    const options_config_t *config = configs[cfg_idx];
-    if (!config) {
-      log_debug("Config %zu is NULL, skipping", cfg_idx);
-      continue;
-    }
-
-    if (!config->descriptors || config->num_descriptors == 0) {
-      log_debug("Config %zu has no descriptors", cfg_idx);
-      continue;
-    }
-
-    for (size_t i = 0; i < config->num_descriptors && descriptor_count < SCHEMA_OPTION_CAPACITY; i++) {
-      const option_descriptor_t *desc = &config->descriptors[i];
-      if (!desc) {
-        log_warn("Descriptor at index %zu in config %zu is NULL", i, cfg_idx);
-        continue;
-      }
-      if (should_add_descriptor(desc, all_descriptors, descriptor_count)) {
-        all_descriptors[descriptor_count++] = desc;
-      }
-    }
-  }
+  for (size_t i = 0; i < descriptor_total && descriptor_count < SCHEMA_OPTION_CAPACITY; ++i)
+    if (descriptors[i].long_name && should_add_descriptor(&descriptors[i], all_descriptors, descriptor_count))
+      all_descriptors[descriptor_count++] = &descriptors[i];
 
   // Allocate schema array
   g_dynamic_schema = SAFE_MALLOC(descriptor_count * sizeof(config_option_metadata_t), config_option_metadata_t *);
@@ -305,9 +282,7 @@ asciichat_error_t config_schema_build_from_registry(void) {
   memset(descriptors, 0, sizeof(descriptors));
   for (size_t i = 0; i < g_registry_size; ++i)
     descriptors[i] = registry_entry_to_descriptor(&g_options_registry[i]);
-  options_config_t registry_config = {.descriptors = descriptors, .num_descriptors = g_registry_size};
-  const options_config_t *configs[] = {&registry_config};
-  return config_schema_build_from_configs(configs, 1);
+  return config_schema_build_from_descriptors(descriptors, g_registry_size);
 }
 
 // ============================================================================
