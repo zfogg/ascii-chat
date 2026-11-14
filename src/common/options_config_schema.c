@@ -16,6 +16,7 @@
 #define SCHEMA_INITIAL_STRING_CAPACITY 64
 
 #include <ascii-chat/options/schema.h>
+#include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/builder.h>
@@ -297,6 +298,17 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
 
   g_schema_built = true;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t config_schema_build_from_registry(void) {
+  registry_init_size();
+  static option_descriptor_t descriptors[OPTIONS_REGISTRY_CAPACITY];
+  memset(descriptors, 0, sizeof(descriptors));
+  for (size_t i = 0; i < g_registry_size; ++i)
+    descriptors[i] = registry_entry_to_descriptor(&g_options_registry[i]);
+  options_config_t registry_config = {.descriptors = descriptors, .num_descriptors = g_registry_size};
+  const options_config_t *configs[] = {&registry_config};
+  return config_schema_build_from_configs(configs, 1);
 }
 
 // ============================================================================

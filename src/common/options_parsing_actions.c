@@ -522,16 +522,7 @@ void action_create_manpage(const char *output_path) {
 // ============================================================================
 
 void action_create_config(const char *output_path) {
-  // Build the schema first so config_create_default can generate options from it
-  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-  if (unified_config) {
-    asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
-    if (schema_build_result != ASCIICHAT_OK) {
-      // Schema build failed, but continue anyway
-      (void)schema_build_result;
-    }
-    // options_config_destroy(unified_config);
-  }
+  (void)config_schema_build_from_registry();
 
   const char *config_path = NULL;
 

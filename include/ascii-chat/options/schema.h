@@ -123,6 +123,14 @@ const config_option_metadata_t *config_schema_get_all(size_t *count);
 asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs);
 
 /**
+ * @brief Builds configuration metadata directly from the ascii-chat registry.
+ *
+ * @return ASCIICHAT_OK on success, or an error code.
+ * @note This is the native path; callers must not construct a legacy preset.
+ */
+asciichat_error_t config_schema_build_from_registry(void);
+
+/**
  * @brief Clean up dynamically allocated schema resources
  *
  * Frees all memory allocated by config_schema_build_from_configs(),

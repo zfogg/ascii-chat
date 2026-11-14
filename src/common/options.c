@@ -1417,16 +1417,7 @@ static asciichat_error_t handle_immediate_actions(options_t *opts, const binary_
       *handled = true;
       return ASCIICHAT_OK;
     } else if (actions->create_config) {
-      // Build the schema first so config_create_default can generate options from it
-      const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-      if (unified_config) {
-        asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
-        if (schema_build_result != ASCIICHAT_OK) {
-          // Schema build failed, but continue anyway
-          (void)schema_build_result;
-        }
-        options_config_destroy(unified_config);
-      }
+      (void)config_schema_build_from_registry();
 
       // Call action handler which handles all output and prompts properly
       action_create_config(actions->config_create_path);
@@ -1756,17 +1747,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
 }
 
 static void build_options_schema(void) {
-  // Build the config schema dynamically from the unified config
-  // This generates TOML keys, CLI flags, categories, and types from builder data
-  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-  if (unified_config) {
-    asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
-    if (schema_build_result != ASCIICHAT_OK) {
-      // Schema build failed, but continue with static schema as fallback
-      (void)schema_build_result;
-    }
-    options_config_destroy(unified_config);
-  }
+  (void)config_schema_build_from_registry();
 }
 
 static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {

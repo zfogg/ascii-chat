@@ -1410,15 +1410,8 @@ asciichat_error_t config_create_default(const char *config_path) {
   // Get all options from schema
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
-  {
-    options_config_t *unified_config = options_preset_unified(NULL, NULL);
-    if (unified_config) {
-      const options_config_t *schema_config = unified_config;
-      (void)config_schema_build_from_configs(&schema_config, 1);
-      options_config_destroy(unified_config);
-      metadata = config_schema_get_all(&metadata_count);
-    }
-  }
+  (void)config_schema_build_from_registry();
+  metadata = config_schema_get_all(&metadata_count);
 
   // Build list of unique categories in order of first appearance
   const char *categories[CONFIG_CATEGORY_CAPACITY] = {0}; // Max expected categories
