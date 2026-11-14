@@ -27,15 +27,13 @@
     const module = await ClientModuleFactory({
       locateFile: (name) => `/wasm/${name}`,
     });
-    const renderer = new module.TerminalRendererBinding(18, 1, 12, false, 0);
+    const renderer = new module.AsciiRendererBinding(18, 1, 12, false, 0);
     if (!renderer.valid())
       throw new Error(`renderer create failed: ${renderer.error()}`);
     const frame = "\x1b[31mRED   \x1b[32mGREEN   \x1b[34mBLUE";
-    if (renderer.feed(frame)) throw new Error("renderer feed failed");
-    const width = renderer.width();
-    const height = renderer.height();
-    const pixels = new Uint8ClampedArray(width * height * 4);
-    if (!renderer.copyPixels(pixels)) throw new Error("renderer copy failed");
+    const { width, height } = renderer.dimensions();
+    const pixels = renderer.render(frame, 0);
+    if (!pixels) throw new Error("renderer render failed");
     const canvas = document.querySelector("#result");
     canvas.width = width;
     canvas.height = height;
@@ -57,15 +55,13 @@
       "\x1b[0m\x1b[48;2;17;33;49m                  ",
     ];
     const renderPixels = (target, text) => {
-      if (target.feed(text)) throw new Error("cell cache test feed failed");
-      const pixels = new Uint8ClampedArray(width * height * 4);
-      if (!target.copyPixels(pixels))
-        throw new Error("cell cache pixel copy failed");
-      return pixels;
+      const pixels = target.render(text, 0);
+      if (!pixels) throw new Error("cell cache render failed");
+      return new Uint8ClampedArray(pixels);
     };
     let comparisons = 0;
     for (const text of sampleFrames) {
-      const fresh = new module.TerminalRendererBinding(18, 1, 12, false, 0);
+      const fresh = new module.AsciiRendererBinding(18, 1, 12, false, 0);
       if (!fresh.valid()) throw new Error("create failed");
       let expected;
       try {

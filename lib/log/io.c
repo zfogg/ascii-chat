@@ -5,6 +5,7 @@
 
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/common/sync.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
@@ -12,14 +13,22 @@
 
 #define LOG_IO_BUFFER_SIZE 8192
 
+/* stdout/stderr are process-global.  Serialise descriptor redirection so a
+ * startup/shutdown worker cannot restore another capture's descriptors. */
+static static_mutex_t g_log_io_mutex = STATIC_MUTEX_INIT;
+
 log_io_t log_io_start(void) {
   log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
+
+  static_mutex_lock_named(&g_log_io_mutex, "log_io");
 
   // A pipe cannot be drained until the wrapped call returns. A temporary file
   // lets backend worker threads finish even when diagnostics exceed pipe capacity.
   capture.output = platform_tmpfile();
-  if (!capture.output)
+  if (!capture.output) {
+    static_mutex_unlock(&g_log_io_mutex);
     return capture;
+  }
 
   fflush(stdout);
   fflush(stderr);
@@ -44,6 +53,7 @@ fail:
   if (capture.saved_stderr_fd >= 0)
     platform_close(capture.saved_stderr_fd);
   fclose(capture.output);
+  static_mutex_unlock(&g_log_io_mutex);
   return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
 }
 
@@ -109,4 +119,6 @@ void log_io_stop(log_io_t capture, const char *prefix) {
 
     fclose(capture.output);
   }
+
+  static_mutex_unlock(&g_log_io_mutex);
 }

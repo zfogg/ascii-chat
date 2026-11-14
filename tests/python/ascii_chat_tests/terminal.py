@@ -90,7 +90,7 @@ class CaptureStream(pyte.Stream):
 
 
 class Terminal:
-    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None):
+    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None, cwd=None):
         from .cli import prepare_test_command
         argv = prepare_test_command(argv)
         self.terminal_replies = terminal_replies
@@ -108,7 +108,7 @@ class Terminal:
             # Match a UTF-8 terminal, including its console code page.
             command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)
             self.process = PtyProcess.spawn(
-                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols), env=child_environment
+                ["cmd.exe", "/d", "/c", command], cwd=str(cwd) if cwd else None, dimensions=(rows, cols), env=child_environment
             )
         else:
             import pexpect

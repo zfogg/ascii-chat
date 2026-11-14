@@ -48,9 +48,9 @@ function adopt() {
       stunServers: [],
       turnServers: [],
     },
-    signaling as any,
-    joined as any,
-    protocol as any,
+    signaling as unknown as Parameters<typeof BrowserHostSession.adopt>[1],
+    joined as unknown as Parameters<typeof BrowserHostSession.adopt>[2],
+    protocol as unknown as Parameters<typeof BrowserHostSession.adopt>[3],
   );
   return { host, signaling, protocol };
 }

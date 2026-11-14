@@ -105,9 +105,9 @@ typedef struct {
   uint8_t public_key[CRYPTO_PUBLIC_KEY_SIZE];  /**< Ed25519 public key (for agent mode or verification) */
   char key_comment[MAX_COMMENT_LEN];           /**< SSH key comment (for agent identification) */
   char gpg_keygrip[MAX_GPG_KEYGRIP_LEN];       /**< GPG keygrip (40 hex chars + null) for gpg-agent signing */
-/**
- * @brief Private identity-key material used for server authentication and signing
- */
+  /**
+   * @brief Private identity-key material used for server authentication and signing
+   */
 } private_key_t;
 
 /** @} */

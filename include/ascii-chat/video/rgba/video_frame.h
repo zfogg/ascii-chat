@@ -100,7 +100,9 @@
  */
 
 /**
- * @brief When code needs to work with simple frame swap, it keeps `current_frame`, `frame_a`, `frame_b`, `use_frame_a` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief When code needs to work with simple frame swap, it keeps `current_frame`, `frame_a`, `frame_b`, `use_frame_a`
+ * here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release
+ * any allocation, lock, thread, or callback context recorded in those fields.
  * @brief One captured, decoded, or rendered video frame and its timing metadata.
  *
  * Represents a single video frame with data, dimensions, timing, and quality

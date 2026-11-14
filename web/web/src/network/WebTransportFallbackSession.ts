@@ -76,9 +76,6 @@ export class WebTransportFallbackSession implements ClientSession {
   sendPacket(type: number, payload: Uint8Array) {
     this.requireActive().sendPacket(type, payload);
   }
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array) {
-    this.requireActive().sendUnencryptedAcipPacket(type, payload);
-  }
   connect() {
     return (this.connectPromise ??= this.start());
   }

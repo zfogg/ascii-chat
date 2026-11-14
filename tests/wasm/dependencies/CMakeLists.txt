@@ -4,7 +4,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 if(NOT EMSCRIPTEN)
-    message(FATAL_ERROR "Configure this test with the Emscripten toolchain (emcmake cmake).")
+    message(FATAL_ERROR "Configure this test with CMake and the repository's Emscripten toolchain file.")
 endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

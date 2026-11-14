@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/ui/fps_counter.h>
+#include <string.h>
 
 Test(fps_counter, startup_and_rates) {
   fps_counter_t *counter = fps_counter_create();
@@ -87,5 +88,23 @@ Test(fps_counter, acquired_frame_ids_exclude_redraws_and_failed_presentations) {
   fps_counter_write_end(counter, true);
   fps_counter_frame_end(counter, 300000000ULL);
   cr_assert_float_eq(fps_counter_get_at(counter, 300000000ULL), 10, 0.01);
+  fps_counter_destroy(counter);
+}
+
+Test(fps_counter, overlay_keeps_a_fixed_width_for_effective_fps) {
+  fps_counter_t *counter = fps_counter_create();
+  char overlay[128];
+
+  cr_assert(fps_counter_set_visible(counter, true));
+  fps_counter_set_effective_fps(counter, 9);
+  size_t short_target_length = fps_counter_format(counter, overlay, sizeof(overlay), 80, true);
+  cr_assert_gt(short_target_length, 0);
+  cr_assert_not_null(strstr(overlay, "FPS:  0/  9"));
+
+  fps_counter_set_effective_fps(counter, 144);
+  size_t long_target_length = fps_counter_format(counter, overlay, sizeof(overlay), 80, true);
+  cr_assert_eq(long_target_length, short_target_length);
+  cr_assert_not_null(strstr(overlay, "FPS:  0/144"));
+
   fps_counter_destroy(counter);
 }

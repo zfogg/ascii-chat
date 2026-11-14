@@ -4,6 +4,38 @@ import {
   HANDOFF_PACKET,
 } from "../../src/network/HandoffProtocol";
 const module = vi.hoisted(() => ({
+  HandoffBinding: class {
+    private sequence = 0;
+    valid() {
+      return true;
+    }
+    error() {
+      return 0;
+    }
+    close() {}
+    delete() {}
+    process(event: { type: string; packet?: Uint8Array }) {
+      if (event.type === "sample") {
+        const sequence = ++this.sequence;
+        const first = new Uint8Array(64);
+        const view = new DataView(first.buffer);
+        view.setUint32(0, 1);
+        view.setUint32(4, sequence);
+        return { code: 0, outputs: [first, new Uint8Array(65600)] };
+      }
+      if (event.type === "receive")
+        return {
+          code: 0,
+          action: {
+            kind: 6,
+            participant: new Uint8Array(16),
+            generation: 1,
+            sequence: 1,
+          },
+        };
+      return { code: 0, bytes: new Uint8Array(64) };
+    }
+  },
   handoffDecode: () => ({
     kind: 6,
     participant: new Uint8Array(16),
@@ -27,13 +59,21 @@ const module = vi.hoisted(() => ({
     return bytes;
   },
 }));
-vi.mock("../../src/wasm/client", () => ({ getClientModule: () => module }));
+vi.mock("../../src/wasm/client", () => ({
+  getClientModule: () => module,
+}));
 it("keeps the original probe clock and sequence through slow host startup", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] });
   const joined = {
     sessionId: new Uint8Array(16),
     participantId: new Uint8Array(16),
-  } as any;
+  } as {
+    sessionId: Uint8Array;
+    participantId: Uint8Array;
+    hostId: Uint8Array;
+    turnUsername: string;
+    turnPassword: string;
+  };
   const probes: { sequence: number; at: number }[] = [];
   const send = (type: number, bytes: Uint8Array) => {
     expect(type).toBe(HANDOFF_PACKET);

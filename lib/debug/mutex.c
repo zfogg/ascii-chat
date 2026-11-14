@@ -26,7 +26,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/source_root.h>
-#include <ascii-chat/os/api.h>
+#include <ascii-chat/api.h>
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>

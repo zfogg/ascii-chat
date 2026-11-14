@@ -1,5 +1,12 @@
-export { createWasmModule, getWasmAssetUrl } from "./assetUrl";
+export {
+  createWasmModule,
+  getWasmAssetUrl,
+  getWasmCapabilities,
+} from "./assetUrl";
+export type { WasmCapabilityManifest } from "./assetUrl";
 export type { ClientLikeKind } from "./assetUrl";
+export { installPacketTypes, PacketType } from "./protocol";
+export type { PacketType as PacketTypeValue, PacketTypes } from "./protocol";
 export {
   initMirrorWasm,
   adoptMirrorWasmModule,
@@ -10,7 +17,6 @@ export {
   convertFrameToAscii,
   transformCaptureRgba,
   submitAudioVisualizationSamples,
-  submitAudioSamples,
   renderAudioVisualization,
   renderAudioVisualizationFrame,
   isWasmReady,
@@ -34,15 +40,18 @@ export {
   paletteTypes,
   paletteName,
   defaultPalettes,
+  defaultGlyphPalette,
   TextRenderer,
 } from "@ascii-chat/shared/wasm/options";
 export type { SessionUiEvent } from "../components/AsciiRenderer/types";
 export type {
   AudioProcessorBinding,
   OpusCodecBinding,
-  PeerCryptoBinding,
+  AudioSessionBinding,
+  BrowserSessionBinding,
   DiscoveryBinding,
-  HostPacketBinding,
+  HandoffBinding,
+  BrowserHostBinding,
   AVStateBinding,
 } from "./generated/client-bindings";
 export type { MainModule as ClientWasmBindings } from "./generated/client-bindings";

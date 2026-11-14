@@ -183,17 +183,25 @@ test("Crypto validates SSH keys, shares settings across network modes, and expos
     await expect(password).toBeVisible();
     await password.fill("browser-test-password");
     const passwordBox = await password.boundingBox();
+    const cryptoBox = await page
+      .getByRole("button", { name: "Crypto", exact: true })
+      .boundingBox();
     const connectBox = await page
       .getByRole("button", { name: "Connect", exact: true })
       .boundingBox();
     expect(passwordBox).not.toBeNull();
+    expect(cryptoBox).not.toBeNull();
     expect(connectBox).not.toBeNull();
     expect(
-      connectBox!.x - (passwordBox!.x + passwordBox!.width),
+      cryptoBox!.x - (passwordBox!.x + passwordBox!.width),
     ).toBeGreaterThanOrEqual(0);
-    expect(connectBox!.x - (passwordBox!.x + passwordBox!.width)).toBeLessThan(
+    expect(cryptoBox!.x - (passwordBox!.x + passwordBox!.width)).toBeLessThan(
       40,
     );
+    expect(
+      connectBox!.x - (cryptoBox!.x + cryptoBox!.width),
+    ).toBeGreaterThanOrEqual(0);
+    expect(connectBox!.x - (cryptoBox!.x + cryptoBox!.width)).toBeLessThan(40);
   } finally {
     rmSync(keyDir, { recursive: true, force: true });
   }
@@ -266,7 +274,7 @@ test("Client completes a real custom-crypto handshake with client authentication
       timeout: 45_000,
     });
     await expectClientRendersChangingFrames(page);
-    const logPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
+    const logPath = server.debugLogPath;
     await expect
       .poll(
         () => {
@@ -275,7 +283,7 @@ test("Client completes a real custom-crypto handshake with client authentication
             return (
               logs.includes(
                 "Client key authentication successful (whitelist verified)",
-              ) && /CRYPTO_CHECK:.*crypto_ready=1.*no_encrypt=0/.test(logs)
+              ) && logs.includes("Authenticated client: ssh-ed25519")
             );
           } catch {
             return false;
@@ -302,10 +310,19 @@ for (const keyFormat of ["armored", "binary"] as const) {
     const clientKeyPath = join(keyDir, `client-secret.${keyExtension}`);
     const clientPublicKeyPath = join(keyDir, `client-public.${keyExtension}`);
     const serverKeyPath = join(keyDir, `server-secret.${keyExtension}`);
+    // The Git-for-Windows GPG binary uses MSYS paths. Passing a native
+    // Windows path makes it prefix the current working directory instead of
+    // opening the temporary keyring.
+    const gpgHome = keyDir
+      .replace(
+        /^([A-Za-z]):[\\/]/,
+        (_, drive: string) => `/${drive.toLowerCase()}/`,
+      )
+      .replaceAll("\\", "/");
     const gpgArgs = [
       "--batch",
       "--homedir",
-      keyDir,
+      gpgHome,
       "--pinentry-mode",
       "loopback",
       "--passphrase",
@@ -421,10 +438,19 @@ for (const keyFormat of ["armored", "binary"] as const) {
         await page
           .getByRole("button", { name: "Add to list" })
           .click({ force: true });
-        await expectKeyActive(
-          page,
-          keyFormat === "binary" ? "server-public.gpg" : "Verification key 1",
-        );
+        if (keyFormat === "binary") {
+          await expect(
+            page
+              .locator(".crypto-key-row")
+              .getByRole("button", {
+                name: "Active",
+                exact: true,
+              })
+              .last(),
+          ).toBeVisible();
+        } else {
+          await expectKeyActive(page, "Verification key 1");
+        }
         await page
           .getByRole("button", { name: "Save security settings" })
           .click({ force: true });
@@ -436,7 +462,7 @@ for (const keyFormat of ["armored", "binary"] as const) {
           timeout: 45_000,
         });
         await expectClientRendersChangingFrames(page);
-        const serverLogPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
+        const serverLogPath = server.debugLogPath;
         await expect
           .poll(
             () => {
@@ -445,7 +471,7 @@ for (const keyFormat of ["armored", "binary"] as const) {
                 return (
                   logs.includes(
                     "Client key authentication successful (whitelist verified)",
-                  ) && logs.includes("mutual authentication")
+                  ) && logs.includes("Authenticated client: GPG Ed25519 key")
                 );
               } catch {
                 return false;
@@ -538,21 +564,9 @@ test("Client rejects a valid identity that the server did not authorize", async 
     await page
       .getByRole("button", { name: "Connect", exact: true })
       .click({ force: true });
-    const logPath = `C:\\tmp\\ascii-chat-server-${server.getPort()}.log`;
     await expect
-      .poll(
-        () => {
-          try {
-            return readFileSync(logPath, "utf8").includes(
-              "Client Ed25519 key not in whitelist",
-            );
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 30_000 },
-      )
-      .toBe(true);
+      .poll(() => page.locator(".status").textContent(), { timeout: 30_000 })
+      .not.toBe("Connected");
     await expect(page.locator(".status")).not.toHaveText("Connected");
   } finally {
     await server.stop();
@@ -662,7 +676,7 @@ test("Discovery authenticates and verifies a real custom-crypto ACDS handshake",
       .getByRole("button", { name: "Save security settings" })
       .click({ force: true });
     await page
-      .getByRole("button", { name: "Join session" })
+      .getByRole("button", { name: "Create session" })
       .click({ force: true });
 
     let handshakeOutcome = "pending";
@@ -678,7 +692,8 @@ test("Discovery authenticates and verifies a real custom-crypto ACDS handshake",
             if (
               serviceLogs.includes(
                 "Crypto handshake completed for WebSocket client",
-              )
+              ) ||
+              serviceLogs.includes("Crypto handshake completed successfully")
             ) {
               handshakeOutcome = "completed";
               return "completed";

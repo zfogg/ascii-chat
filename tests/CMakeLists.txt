@@ -426,6 +426,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
         add_executable(${test_exe_name} ${test_src} ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
 
+        # The HTTP renderer is an application-side service shared by the API
+        # and MCP servers, not part of the core shared library.  Its focused
+        # unit test owns the implementation directly so it tests the same
+        # source used by those entry points without broadening the core module.
+        if(test_exe_name STREQUAL "test_unit_network_http_renderer")
+            target_sources(${test_exe_name} PRIVATE ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c)
+            target_include_directories(${test_exe_name} PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+        endif()
+
         # Configure BUILD_RPATH to prefer locally built libraries over system-installed ones
         # This ensures tests use the correct libasciichat from build/lib instead of /usr/local/lib
         # Priority: local build lib > LLVM libs > system libs

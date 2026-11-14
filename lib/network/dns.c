@@ -6,7 +6,7 @@
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/dns.h>
-#include <ascii-chat/os/network.h>
+#include <ascii-chat/network/platform.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 

@@ -26,6 +26,7 @@ typedef struct {
  */
 typedef struct {
   acip_transport_t *transport; // Borrowed until the receive worker joins.
+  acip_client_session_t client_session;
   session_protocol_media_t media;
   acip_client_callbacks_t control;
   asciichat_error_t callback_result;

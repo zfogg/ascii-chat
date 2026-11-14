@@ -102,7 +102,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 
-#include <ascii-chat/os/network.h> // Consolidates platform-specific network headers (includes TCP options)
+#include <ascii-chat/network/platform.h> // Consolidates platform-specific network headers (includes TCP options)
 
 // Debug flags
 #define DEBUG_NETWORK 1

@@ -70,7 +70,7 @@
   flex: 1 1 0%;
   flex-direction: column;
   min-width: 0;
-  min-height: min(28rem, 65dvh);
+  min-height: min(calc(55dvh + 1px), 42rem);
   background: var(--color-terminal-bg);
 }
 

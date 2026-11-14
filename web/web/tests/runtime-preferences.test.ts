@@ -29,13 +29,16 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let values: Record<string, string | boolean | number> = { ...initial };
   const patches: Record<string, unknown>[] = [];
   engine.module = {
-    browser_options_revision: () => revision,
-    readOptions: () => ({ revision, values: { ...values } }),
-    patchOptions: (patch) => {
-      patches.push(patch);
-      values = { ...values, ...patch };
-      revision++;
-      return 0;
+    OptionsBinding: {
+      help: () => undefined,
+      revision: () => revision,
+      read: () => ({ revision, values: { ...values } }),
+      patch: (patch) => {
+        patches.push(patch);
+        values = { ...values, ...patch };
+        revision++;
+        return 0;
+      },
     },
   };
   return {
@@ -216,7 +219,11 @@ describe("browser preference transactions", () => {
   });
   it("submits stabilization to the engine", () => {
     const c = createEngine();
-    applyMirrorWasmSettings({ ...DEFAULT_SETTINGS, stabilize: true });
+    applyMirrorWasmSettings({
+      ...DEFAULT_SETTINGS,
+      stabilize: true,
+      stabilizeExplicit: true,
+    });
     expect(c.patches[0]).toMatchObject({ stabilize: true });
   });
   it("submits renderer and palette selection to the engine", () => {

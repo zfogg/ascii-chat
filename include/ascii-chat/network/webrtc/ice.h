@@ -138,8 +138,8 @@ typedef struct {
 
   /* Extensions */
   char extensions[NETWORK_WEBRTC_ICE_EXTENSIONS_BUFFER_SIZE]; ///< Additional extensions (e.g., "tcptype passive")
-/**
- */
+  /**
+   */
 } ice_candidate_t;
 
 /* ============================================================================

@@ -2,7 +2,7 @@
 #define SIMD_CELL_SVE 1
 #define SIMD_CELL_ISA sve
 #include "../simd/pack.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

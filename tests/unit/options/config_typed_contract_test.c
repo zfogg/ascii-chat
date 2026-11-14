@@ -3,7 +3,7 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 
@@ -29,11 +29,9 @@ static void setup(void) {
   }
   options_builder_add_bool(b, "stretch", 0, offsetof(options_t, stretch), false, "Stretch", "Contract", false, NULL);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
-  options_builder_add_double(b, "snapshot-delay", 0, offsetof(options_t, snapshot_delay), 0, "Delay", "Contract", false,
-                             NULL, NULL, false);
+  options_builder_add_double(b, "snapshot-delay", 0, offsetof(options_t, snapshot_delay), 0, "Delay", "Contract", false, NULL, NULL, false);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
-  options_builder_add_string(b, "log-file", 0, offsetof(options_t, log_file), NULL, "Log", "Contract", false, NULL,
-                             NULL);
+  options_builder_add_string(b, "log-file", 0, offsetof(options_t, log_file), NULL, "Log", "Contract", false, NULL, NULL);
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   schema = options_builder_build(b);
   options_builder_destroy(b);
@@ -61,9 +59,8 @@ static asciichat_error_t load(const char *toml, bool strict, options_t *options)
 }
 Test(config_typed_contract, typed_toml_loads_enum_names_scalars_and_escaped_strings) {
   options_t options = options_t_new();
-  const char *toml =
-      "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
-      "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
+  const char *toml = "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
+                     "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
   cr_assert_eq(load(toml, true, &options), ASCIICHAT_OK);
   cr_assert_eq(options.color_mode, TERM_COLOR_TRUECOLOR);
   cr_assert_eq(options.render_mode, RENDER_MODE_BACKGROUND);
@@ -82,16 +79,11 @@ Test(config_typed_contract, numeric_enum_compatibility_and_invalid_values_preser
     const char *key;
     size_t offset;
     int valid;
-  } fields[] = {{"color_mode", offsetof(options_t, color_mode), TERM_COLOR_256},
-                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_AUTO},
-                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_NONE},
-                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_16},
-                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_TRUECOLOR},
-                {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_HALF_BLOCK},
-                {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_FOREGROUND},
-                {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_BACKGROUND},
-                {"palette_type", offsetof(options_t, palette_type), PALETTE_DIGITAL},
-                {"color_filter", offsetof(options_t, color_filter), COLOR_FILTER_NONE}};
+  } fields[] = {{"color_mode", offsetof(options_t, color_mode), TERM_COLOR_256},           {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_AUTO},
+                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_NONE},          {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_16},
+                {"color_mode", offsetof(options_t, color_mode), TERM_COLOR_TRUECOLOR},     {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_HALF_BLOCK},
+                {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_FOREGROUND}, {"render_mode", offsetof(options_t, render_mode), RENDER_MODE_BACKGROUND},
+                {"palette_type", offsetof(options_t, palette_type), PALETTE_DIGITAL},      {"color_filter", offsetof(options_t, color_filter), COLOR_FILTER_NONE}};
   for (size_t i = 0; i < sizeof(fields) / sizeof(*fields); ++i) {
     options_t options = options_t_new();
     char toml[256];

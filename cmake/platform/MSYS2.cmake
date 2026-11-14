@@ -40,7 +40,10 @@ if(NOT EXISTS "${MSYS2_BASH_EXECUTABLE}" OR NOT EXISTS "${MSYS2_MAKE_EXECUTABLE}
 endif()
 execute_process(COMMAND "${MSYS2_MAKE_EXECUTABLE}" --version
     OUTPUT_VARIABLE _msys2_make_version RESULT_VARIABLE _msys2_make_result)
-if(NOT _msys2_make_result EQUAL 0 OR NOT _msys2_make_version MATCHES "-msys")
+execute_process(COMMAND "${ASCIICHAT_MSYS2_ROOT}/usr/bin/ldd.exe" "${MSYS2_MAKE_EXECUTABLE}"
+    OUTPUT_VARIABLE _msys2_make_libraries RESULT_VARIABLE _msys2_ldd_result)
+if(NOT _msys2_make_result EQUAL 0 OR NOT _msys2_ldd_result EQUAL 0 OR
+   NOT _msys2_make_libraries MATCHES "msys-2\\.0\\.dll")
     message(FATAL_ERROR "${MSYS2_MAKE_EXECUTABLE} must be MSYS2 Make, not native Windows Make.")
 endif()
 message(STATUS "MSYS2 Autotools environment: ${ASCIICHAT_MSYS2_ROOT}")

@@ -23,7 +23,7 @@
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/process.h>
-#include <ascii-chat/os/pipe.h>
+#include <libplatform/pipe.h>
 
 #include <ctype.h>
 #include <errno.h>

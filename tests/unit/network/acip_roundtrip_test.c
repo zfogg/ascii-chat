@@ -174,12 +174,23 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ASCIICHAT_OK);
   cr_assert_eq(envelope.type, PACKET_TYPE_PING);
   cr_assert_eq(envelope.len, sizeof(payload));
+  cr_assert_eq(envelope.allocated_size, sizeof(payload));
   cr_assert_not_null(envelope.allocated_buffer);
   cr_assert_arr_eq(envelope.data, payload, sizeof(payload));
-  buffer_release(envelope.allocated_buffer);
+  packet_envelope_release(&envelope);
   acip_client_callbacks_t callbacks = {.on_ping = client_ping, .app_ctx = &wire};
-  cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
+  acip_client_session_t session;
+  acip_client_session_init(&session, &transport, &callbacks);
+  cr_assert_eq(acip_client_session_dispatch(&session, PACKET_TYPE_PING, payload, sizeof(payload)), ASCIICHAT_OK);
   cr_assert_eq(wire.callbacks, 1);
+  uint8_t malformed = 0;
+  cr_assert_eq(packet_parse_envelope(&malformed, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
+               ERROR_INVALID_PARAM);
+  cr_assert_eq(acip_client_dispatch_packet(&transport, PACKET_TYPE_PING, payload, sizeof(payload), &callbacks),
+               ASCIICHAT_OK);
+  cr_assert_eq(wire.callbacks, 2);
+  cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
+  cr_assert_eq(wire.callbacks, 3);
 }
 
 Test(acip_roundtrip, client_drains_queued_packet_after_disconnect) {
@@ -222,6 +233,60 @@ Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch)
   cr_assert_eq(acip_client_receive_and_dispatch(&transport, &client), ERROR_INVALID_PARAM);
   cr_assert_eq(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_INVALID_PARAM);
   cr_assert_eq(wire.callbacks, 0);
+}
+
+Test(acip_roundtrip, shared_envelope_release_preserves_other_buffer_owner) {
+  uint8_t *owned = buffer_alloc(NULL, 4);
+  cr_assert_not_null(owned);
+  memcpy(owned, "key!", 4);
+  const void *shared = buffer_share(owned);
+  cr_assert_not_null(shared);
+  packet_envelope_t envelope = {.allocated_buffer = owned, .allocated_size = 4};
+  packet_envelope_release(&envelope);
+  cr_assert_arr_eq(shared, "key!", 4);
+  buffer_release(shared);
+}
+
+Test(acip_roundtrip, unique_envelope_release_wipes_initialized_bytes_before_pool_reuse) {
+  uint8_t *owned = buffer_alloc(NULL, 16);
+  cr_assert_not_null(owned);
+  memset(owned, 0xa5, 16);
+  packet_envelope_t envelope = {.allocated_buffer = owned, .allocated_size = 16};
+  packet_envelope_release(&envelope);
+
+  uint8_t *reused = buffer_alloc(NULL, 16);
+  cr_assert_not_null(reused);
+  cr_assert_eq(reused, owned);
+  uint8_t zeros[16] = {0};
+  cr_assert_arr_eq(reused, zeros, sizeof(zeros));
+  buffer_release(reused);
+}
+
+Test(acip_roundtrip, packet_parser_accepts_maximum_payload_and_rejects_oversized_wire) {
+  uint8_t *payload = buffer_alloc(NULL, MAX_PACKET_SIZE);
+  uint8_t *wire = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE);
+  cr_assert_not_null(payload);
+  cr_assert_not_null(wire);
+  memset(payload, 0x5a, MAX_PACKET_SIZE);
+  size_t wire_length = 0;
+  cr_assert_eq(packet_encode(PACKET_TYPE_PING, payload, MAX_PACKET_SIZE, 0, wire,
+                             sizeof(packet_header_t) + MAX_PACKET_SIZE, &wire_length),
+               ASCIICHAT_OK);
+  cr_assert_eq(wire_length, sizeof(packet_header_t) + MAX_PACKET_SIZE);
+  packet_envelope_t envelope = {0};
+  cr_assert_eq(packet_parse_envelope(wire, wire_length, NULL, &envelope), ASCIICHAT_OK);
+  cr_assert_eq(envelope.type, PACKET_TYPE_PING);
+  cr_assert_eq(envelope.len, MAX_PACKET_SIZE);
+  cr_assert_eq(memcmp(envelope.data, payload, MAX_PACKET_SIZE), 0);
+  packet_envelope_release(&envelope);
+  buffer_release(wire);
+  buffer_release(payload);
+
+  uint8_t *oversized = buffer_alloc(NULL, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1);
+  cr_assert_not_null(oversized);
+  cr_assert_eq(packet_parse_envelope(oversized, sizeof(packet_header_t) + MAX_PACKET_SIZE + 1, NULL, &envelope),
+               ERROR_INVALID_PARAM);
+  buffer_release(oversized);
 }
 
 Test(acip_roundtrip, missing_context_disconnection_and_backend_errors) {

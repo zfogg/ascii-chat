@@ -14,6 +14,7 @@ class TestSessionUi {
   loading() {}
   log() {}
   redraw() {}
+  close() {}
   delete() {}
   media(text: string) {
     this.frame = text;
@@ -76,7 +77,9 @@ it.each([false, true])(
         }
       },
     );
-    const feed = vi.fn(() => 0),
+    const render = vi.fn<() => Uint8ClampedArray | null>(
+        () => new Uint8ClampedArray(10 * 10 * 4),
+      ),
       draw = vi.fn(),
       fps = vi.fn();
     const ref = { current: null as AsciiRendererHandle | null };
@@ -91,11 +94,8 @@ it.each([false, true])(
         current: {
           valid: () => true,
           error: () => 0,
-          setZalgo: vi.fn(() => 0),
-          feed,
-          width: () => 10,
-          height: () => 10,
-          copyPixels: () => true,
+          dimensions: () => ({ cols: 1, rows: 1, width: 10, height: 10 }),
+          render,
         },
       },
       canvasRef: {
@@ -132,7 +132,7 @@ it.each([false, true])(
     expect(
       ref.current!.writeFrame("different rows", { cols: 60, rows: 24 }),
     ).toBe(true);
-    expect(feed).toHaveBeenCalledTimes(workerRendering ? 0 : 3);
+    expect(render).toHaveBeenCalledTimes(workerRendering ? 0 : 3);
     expect(draw).toHaveBeenCalledTimes(3);
     expect(ref.current!.writeFrame("matching", { cols: 60, rows: 20 })).toBe(
       true,
@@ -170,7 +170,7 @@ it.each([false, true])(
     expect(fps).toHaveBeenLastCalledWith(0);
     if (!workerRendering) {
       const log = vi.spyOn(console, "error").mockImplementation(() => {});
-      feed.mockReturnValueOnce(30);
+      render.mockReturnValueOnce(null);
       const painted = draw.mock.calls.length;
       expect(ref.current!.writeFrame("unsupported character")).toBe(false);
       expect(draw).toHaveBeenCalledTimes(painted);
@@ -196,6 +196,7 @@ it("releases an invalid UI binding immediately", () => {
           valid() {
             return false;
           }
+          close() {}
           delete = dispose;
         },
       },

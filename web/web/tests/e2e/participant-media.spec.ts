@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ServerFixture, getRandomPort } from "./server-fixture";
 
-const origin =
-  process.env["PARTICIPANT_TEST_ORIGIN"] || "http://localhost:33198";
 let server: ServerFixture;
 test.beforeAll(async () => {
   server = new ServerFixture(getRandomPort());
@@ -17,7 +15,7 @@ test("shared C avState and browser media survive stop and restart", async ({
 }) => {
   test.setTimeout(90000);
   await page.goto(
-    `${origin}/client?test&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+    `/client?test&testServerUrl=${encodeURIComponent(server.getUrl())}`,
   );
   await expect(page.locator(".status")).toContainText("Connected", {
     timeout: 30000,
@@ -72,21 +70,23 @@ test("shared C avState and browser media survive stop and restart", async ({
   });
 
   for (let cycle = 0; cycle < 2; cycle++) {
-    await page.getByRole("button", { name: "Stop", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Start Webcam", exact: true }),
-    ).toBeVisible();
     await page
-      .getByRole("button", { name: "Start Webcam", exact: true })
+      .getByRole("button", { name: "Disable webcam", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Stop", exact: true }),
+      page.getByRole("button", { name: "Enable webcam", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Enable webcam", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Disable webcam", exact: true }),
     ).toBeVisible();
   }
 
   for (let cycle = 0; cycle < 3; cycle++) {
     await page
-      .getByRole("button", { name: "Mute microphone", exact: true })
+      .getByRole("button", { name: "Disable microphone", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Enable microphone", exact: true })
@@ -110,7 +110,7 @@ test("shared C avState and browser media survive stop and restart", async ({
 test("real WASM rejects late microphone startup after cancellation", async ({
   page,
 }) => {
-  await page.goto(`${origin}/client`);
+  await page.goto("/client");
   const result = await page.evaluate(async () => {
     const clientPath = "/src/wasm/client.ts";
     const audioPath = "/src/audio/AudioPipeline.ts";
@@ -177,21 +177,23 @@ test("fixed encoder failure permits webcam restart", async ({ page }) => {
     Object.defineProperty(window, "VideoEncoder", { value: FailingEncoder });
   });
   await page.goto(
-    `${origin}/client?test&encoding=H.264&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+    `/client?test&encoding=H.264&testServerUrl=${encodeURIComponent(server.getUrl())}`,
   );
   await expect(page.locator(".status")).toContainText("Connected", {
     timeout: 30000,
   });
   await expect(
-    page.getByRole("button", { name: "Start Webcam", exact: true }),
+    page.getByRole("button", { name: "Enable webcam", exact: true }),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute(
     "data-encoded-frames",
     "1",
   );
-  await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Enable webcam", exact: true })
+    .click();
   await expect(
-    page.getByRole("button", { name: "Stop", exact: true }),
+    page.getByRole("button", { name: "Disable webcam", exact: true }),
   ).toBeVisible();
   await expect
     .poll(() =>
@@ -215,7 +217,7 @@ for (const direct of [true, false]) {
         Promise.reject(new Error("Injected preview failure"));
     }, direct);
     await page.goto(
-      `${origin}/client?test&encoding=raw&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+      `/client?test&encoding=raw&testServerUrl=${encodeURIComponent(server.getUrl())}`,
     );
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 30000,
@@ -230,7 +232,7 @@ for (const direct of [true, false]) {
         )
         .toBeGreaterThan(5);
       await expect(
-        page.getByRole("button", { name: "Stop", exact: true }),
+        page.getByRole("button", { name: "Disable webcam", exact: true }),
       ).toBeVisible();
     } else {
       await expect(
@@ -239,7 +241,7 @@ for (const direct of [true, false]) {
         }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Start Webcam", exact: true }),
+        page.getByRole("button", { name: "Enable webcam", exact: true }),
       ).toBeVisible();
     }
   });

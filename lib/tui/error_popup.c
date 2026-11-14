@@ -17,6 +17,7 @@
 #define ERROR_POPUP_LINE_CAPACITY 2048
 
 #include <ascii-chat/otel.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/ui/buttons.h>
@@ -274,7 +275,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     trace.symbols = NULL;
     trace.tried_symbolize = false;
     if (trace.count) {
-      backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
+      LOG_IO("symbolizer", { backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS); });
       if (trace.symbols)
         backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, backtrace_filter_error_internal);
       backtrace_t_free(&trace);

@@ -21,7 +21,6 @@ export interface ClientSession {
   getPublicKey(): string | null;
   getState(): ConnectionState;
   sendPacket(type: number, payload: Uint8Array): void;
-  sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void;
   onStateChange(callback: (state: ConnectionState) => void): void;
   onPacketReceived(
     callback: (packet: ParsedPacket, payload: Uint8Array) => void,

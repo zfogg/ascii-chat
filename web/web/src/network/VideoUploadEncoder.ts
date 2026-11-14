@@ -86,7 +86,9 @@ export class VideoUploadEncoder {
       framerate: fps,
       bitrate: UploadQuality.bitrateCeiling(width, height, fps),
       latencyMode: "realtime",
-      hardwareAcceleration: "prefer-hardware",
+      // Let the browser use a software codec when hardware acceleration is
+      // unavailable; raw frames can overwhelm a relayed connection.
+      hardwareAcceleration: "no-preference",
       ...(codec === "hevc"
         ? { hevc: { format: "annexb" as const } }
         : { avc: { format: "annexb" as const } }),

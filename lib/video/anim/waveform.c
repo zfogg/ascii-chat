@@ -3,7 +3,7 @@
 #include "visualization_internal.h"
 
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 
 #include <math.h>
 #include <string.h>

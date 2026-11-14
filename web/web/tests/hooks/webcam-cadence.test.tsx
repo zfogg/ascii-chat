@@ -148,7 +148,6 @@ async function startCapture(
     clientRef: {
       current: {
         sendPacket,
-        sendUnencryptedAcipPacket: vi.fn(),
         getState: () => transportState,
       } as unknown as ClientSession,
     },

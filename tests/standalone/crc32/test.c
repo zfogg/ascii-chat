@@ -1,6 +1,6 @@
 // Standalone correctness and throughput checks against independent CRC32-C algorithms.
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/platform/cpu.h>
+#include <libplatform/cpu.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,8 +60,7 @@ static void bench(const char *name, uint32_t (*fn)(const void *, size_t), const 
     elapsed = clock() - start;
   } while (elapsed < CLOCKS_PER_SEC / 5);
   double seconds = (double)elapsed / CLOCKS_PER_SEC;
-  printf("%-18s %6zu bytes: %9.1f MiB/s (%7.1f ns/call)\n", name, len, calls * (double)len / seconds / 1048576.0,
-         seconds * 1e9 / calls);
+  printf("%-18s %6zu bytes: %9.1f MiB/s (%7.1f ns/call)\n", name, len, calls * (double)len / seconds / 1048576.0, seconds * 1e9 / calls);
 }
 
 int main(int argc, char **argv) {

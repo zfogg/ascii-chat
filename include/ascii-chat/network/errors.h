@@ -9,7 +9,7 @@
  */
 
 #include "../common.h"
-#include "../os/socket.h"
+#include <libplatform/socket.h>
 #include "../network/acip/acds.h"
 #include "../network/rate_limit/rate_limit.h"
 #include <stddef.h>

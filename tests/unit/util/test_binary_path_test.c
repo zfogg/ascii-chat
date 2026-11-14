@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 
 Test(test_binary_path, absolute_build_directory_resolves_from_ctest_working_directory) {
   const char *build_dir = SAFE_GETENV("BUILD_DIR");

@@ -14,7 +14,9 @@
 
 /** Owned by a single participant. Its owner serializes reads and writes. */
 /**
- * @brief acip render settings keeps the values that move through the subsystem: `caps`, `width`, `height`, `revision`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief acip render settings keeps the values that move through the subsystem: `caps`, `width`, `height`, `revision`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
  */
 typedef struct {
   terminal_capabilities_t caps;
@@ -28,7 +30,9 @@ typedef struct {
 
 /** Host-order header; wire encoding uses five network-order uint32 values. */
 /**
- * @brief acip settings header keeps the values that move through the subsystem: `schema`, `request`, `expected_revision`, `revision`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief acip settings header keeps the values that move through the subsystem: `schema`, `request`,
+ * `expected_revision`, `revision`. Some members are pointers into caller- or subsystem-owned memory, so lifetime
+ * follows the API that populated them rather than the struct copy itself.
  */
 typedef struct {
   uint32_t schema, request, expected_revision, revision, status;

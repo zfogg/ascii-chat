@@ -17,8 +17,6 @@ asciichat_error_t session_quic_listeners_open(int port, quic_endpoint_t **native
   bool browser = *browser_address || *origin;
   bool requested = *native_address || browser || quic_port;
   if (!requested) {
-    if (*certificate || *key)
-      return SET_ERRNO(ERROR_USAGE, "TLS credentials require a secure network listener");
     return ASCIICHAT_OK;
   }
   if (quic_port < 0 || quic_port > UINT16_MAX)

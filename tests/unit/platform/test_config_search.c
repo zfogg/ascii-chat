@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 

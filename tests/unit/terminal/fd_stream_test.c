@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/terminal/fd/writer.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/common.h>
 #include <fcntl.h>
 #include <string.h>

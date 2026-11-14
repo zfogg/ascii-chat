@@ -140,7 +140,7 @@ The WASM modules (mirror-web and client-web) are built automatically during the 
 vp run wasm:build
 ```
 
-This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to WebAssembly modules and places them in
+This invokes Emscripten to compile `src/web/mirror.c` and the browser client/network sources to WebAssembly modules and places them in
 `src/wasm/dist/`.
 
 **Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS, `pacman -S emscripten` on Arch,
@@ -183,10 +183,11 @@ ctest --test-dir build/web -R '^wasm-dependencies$' --output-on-failure
 ```
 
 For a separate, clean dependency build, use the same test as a standalone
-project with the SDK activated (CMake 3.28 or newer):
+project with the repository's Emscripten toolchain file (CMake 3.30 or newer).
+There is no need to invoke `emcmake` or `emmake` from the shell:
 
 ```bash
-emcmake cmake -S tests/wasm/dependencies -B build/wasm-dependencies -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S tests/wasm/dependencies -B build/wasm-dependencies -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/Emscripten.cmake"
 cmake --build build/wasm-dependencies --parallel
 ctest --test-dir build/wasm-dependencies --output-on-failure
 ```

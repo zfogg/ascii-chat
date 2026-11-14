@@ -73,6 +73,7 @@ include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
 include(${_cmake_dir}/deps/FFTW.cmake)
 include(${_cmake_dir}/deps/Utf8proc.cmake)
+include(${_cmake_dir}/dependencies/Libplatform.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -90,7 +91,8 @@ asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
     ${CMAKE_BINARY_DIR}/generated
-    ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
+    ${DEPS_ROOT}/ascii-chat-deps/libplatform/include
+    ${DEPS_ROOT}/ascii-chat-deps/libplatform/lib
     ${INCLUDE_ROOT}
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
@@ -106,6 +108,15 @@ include_directories(
     ${OPUS_INCLUDE_DIRS}  # opus
     ${ZSTD_INCLUDE_DIRS}  # zstd
 )
+if(EMSCRIPTEN)
+    include_directories(SYSTEM /home/zfogg/.cache/emscripten/sysroot/include)
+    find_path(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE string.h
+        HINTS "$ENV{EMSDK}/upstream/emscripten/cache/sysroot/include"
+              "/home/zfogg/.cache/emscripten/sysroot/include")
+    if(ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE)
+        include_directories(SYSTEM ${ASCIICHAT_EMSCRIPTEN_SYSROOT_INCLUDE})
+    endif()
+endif()
 
 # Source files for WASM mirror entry point
 # IMPORTANT: Do NOT include src/mirror/main.c or session/*.c files
@@ -116,31 +127,8 @@ set(WEB_SRC_MIRROR
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
 )
 
-# Platform abstraction layer for WASM
-set(PLATFORM_SRC
-    ${LIB_ROOT}/platform/wasm/init.c
-    ${LIB_ROOT}/platform/wasm/terminal.c
-    ${LIB_ROOT}/platform/wasm/thread.c
-    ${LIB_ROOT}/platform/wasm/filesystem.c
-    ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
-    ${LIB_ROOT}/platform/wasm/time.c
-    ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/process_title.c
-    ${LIB_ROOT}/platform/filesystem.c
-    ${LIB_ROOT}/platform/wasm/stubs/util.c
-    ${LIB_ROOT}/platform/wasm/stubs/actions.c
-    ${LIB_ROOT}/platform/wasm/stubs/manpage.c
-    ${LIB_ROOT}/platform/wasm/stubs/video.c
-    ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
-    ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c
-    ${LIB_ROOT}/platform/wasm/stubs/audio.c
-    ${LIB_ROOT}/platform/wasm/stubs/network.c
-    ${LIB_ROOT}/platform/wasm/stubs/misc.c
-    ${LIB_ROOT}/platform/wasm/stubs/comprehensive.c
-    ${LIB_ROOT}/platform/wasm/ffmpeg_decoder.c
-    ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
-)
+# Platform implementations are supplied by the shared libplatform target.
+set(PLATFORM_SRC)
 
 # WASM rendering components (libvterm + FreeType)
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
@@ -254,10 +242,13 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/palette.c
     ${LIB_ROOT}/video/ascii/output_buffer.c
     ${LIB_ROOT}/video/ascii/sgr.c
-    ${LIB_ROOT}/video/ascii/render.c
+    ${LIB_ROOT}/video/ascii/render/render.c
+    ${LIB_ROOT}/video/ascii/render/common.c
+    ${LIB_ROOT}/video/ascii/render/luminance.c
+    ${LIB_ROOT}/video/ascii/render/glyph.c
+    ${LIB_ROOT}/video/ascii/stabilize.c
     ${LIB_ROOT}/video/ascii/simd/cells.c
     ${LIB_ROOT}/video/ascii/simd/dispatch.c
-    ${LIB_ROOT}/platform/cpu.c
     ${LIB_ROOT}/video/ascii/common.c
     ${LIB_ROOT}/video/ascii/scalar/background.c
     ${LIB_ROOT}/video/ascii/scalar/foreground.c
@@ -285,11 +276,9 @@ set(LIB_SRC_COMMON
 
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
-    ${LIB_ROOT}/debug/sync.c
     ${LIB_ROOT}/debug/stats.c
     ${LIB_ROOT}/debug/errno.c
     ${LIB_ROOT}/debug/debug_helpers.c
-    ${LIB_ROOT}/debug/atomic.c
     ${LIB_ROOT}/debug/mutex.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
@@ -304,10 +293,9 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/search.c
     ${LIB_ROOT}/log/io.c
     ${LIB_ROOT}/log/wasm.c
+    ${LIB_ROOT}/log/asan.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
-    ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
@@ -325,9 +313,9 @@ set(LIB_SRC_COMMON
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${LIB_ROOT}/tui/session.c
+    ${LIB_ROOT}/tui/status.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
-    ${LIB_ROOT}/platform/keyboard.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
@@ -351,7 +339,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c
     ${LIB_ROOT}/stats/descriptors.c
-    ${LIB_ROOT}/platform/wasm/stubs/stats.c
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
@@ -362,6 +349,7 @@ set(LIB_SRC_COMMON
 set(LIB_SRC_MIRROR_ONLY
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
     ${LIB_ROOT}/audio/visualization.c
+    ${LIB_ROOT}/audio/spectral.c
     ${LIB_ROOT}/video/anim/waveform.c
     ${LIB_ROOT}/video/anim/fft.c
 )
@@ -388,13 +376,16 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/traffic.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/security.c
+    ${LIB_ROOT}/network/browser/transport.c
+    ${LIB_ROOT}/network/browser/client.c
+    ${LIB_ROOT}/network/browser/session.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)
 set(COMMON_WEB_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/common/font.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/capture.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/update_banner.c
 )
 
 # Compile shared lib sources once for both WASM targets (OBJECT library)
@@ -436,6 +427,7 @@ endif()
 
 add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PUBLIC asciichat-icu)
+target_link_libraries(wasm-common PUBLIC libplatform::libplatform)
 
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
@@ -443,6 +435,7 @@ target_link_libraries(wasm-common PRIVATE
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
+
 
 target_include_directories(wasm-common PRIVATE
     ${LIBSODIUM_INCLUDE_DIRS}
@@ -494,8 +487,10 @@ target_link_libraries(mirror-web PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
+    ${FFTW_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
+target_include_directories(mirror-web PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # Apply sanitizers
 apply_sanitizers_to_target(mirror-web)
@@ -514,8 +509,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/effects.c
     ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/settings.c
@@ -525,7 +518,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/opus.c
     ${LIB_ROOT}/ringbuffer.c
     ${LIB_ROOT}/util/aspect_ratio.c
-    ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
 )
 
 # Create WASM client module
@@ -537,13 +529,10 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/client_opts.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/av_state.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/protocol.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_frames.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/discovery.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_host.cpp
     ${LIB_SRC_CLIENT_CRYPTO}
@@ -595,6 +584,12 @@ apply_sanitizers_to_target(client-web)
 # key-file loading and detecting input arrays that alias growable WASM memory.
 set(EXPORTED_RUNTIME_METHODS_CSV "HEAPU8,FS")
 
+# Emscripten's threaded modules contain passive TLS initialization segments.
+# Pack their zero ranges into memory.fill operations rather than embedding
+# large zero-filled buffers in every module. Emscripten supplies Binaryen's
+# zero-filled-memory assumption for these non-side-module links.
+set(ASCII_WEB_MEMORY_PACKING "-sBINARYEN_EXTRA_PASSES=memory-packing")
+
 # Emscripten writes declarations as a side effect of linking. Ninja must know
 # about them so a missing declaration causes the link to run again.
 add_custom_command(TARGET mirror-web POST_BUILD
@@ -623,6 +618,7 @@ target_link_options(mirror-web PRIVATE
     -sASSERTIONS=1
     -msimd128
     -O3
+    ${ASCII_WEB_MEMORY_PACKING}
     --no-entry
     -Wno-js-compiler
     -Wno-pthreads-mem-growth
@@ -647,6 +643,7 @@ target_link_options(client-web PRIVATE
     -sASSERTIONS=1
     -msimd128
     -O3
+    ${ASCII_WEB_MEMORY_PACKING}
     --no-entry
     -Wno-js-compiler
     -Wno-pthreads-mem-growth
@@ -706,7 +703,8 @@ add_executable(renderer-web
 )
 target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1)
 target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
-target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${VTERM_LDFLAGS})
+target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${FFTW_LIBRARIES} ${VTERM_LDFLAGS})
+target_include_directories(renderer-web PRIVATE ${FFTW_INCLUDE_DIRS})
 add_custom_command(TARGET renderer-web POST_BUILD
     BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/renderer-bindings.d.ts"
     COMMAND ${CMAKE_COMMAND} -E true)
@@ -716,13 +714,19 @@ target_link_options(renderer-web PRIVATE
     -lembind -sMODULARIZE=1 -sEXPORT_ES6=1 "-sEXPORT_NAME=RendererModule"
     "-sEXPORTED_FUNCTIONS=[]" "-sEXPORTED_RUNTIME_METHODS=HEAPU8,FS"
     -sENVIRONMENT=web,worker -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=32MB -sMAXIMUM_MEMORY=128MB
-    -sSTACK_SIZE=2097152 -sASSERTIONS=1 -msimd128 -O3 --no-entry -Wno-js-compiler -Wno-pthreads-mem-growth
+    -sSTACK_SIZE=2097152 -sASSERTIONS=1 -msimd128 -O3 ${ASCII_WEB_MEMORY_PACKING} --no-entry -Wno-js-compiler -Wno-pthreads-mem-growth
 )
 set_target_properties(renderer-web PROPERTIES OUTPUT_NAME "renderer")
 apply_sanitizers_to_target(renderer-web)
 
 target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
 target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
+
+# The platform implementation is a static library; link it explicitly into
+# each Emscripten entry point so its object files are retained by wasm-ld.
+target_link_libraries(client-web PRIVATE libplatform::libplatform)
+target_link_libraries(mirror-web PRIVATE libplatform::libplatform)
+target_link_libraries(renderer-web PRIVATE libplatform::libplatform)
 
 # This file is configured as a separate CMake project for Emscripten, so the
 # parent project's defer finalization cannot see these targets. Reuse the same
@@ -736,4 +740,12 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     include("${DEFER_CONFIG_FILE}")
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
     defer_targets(${_ascii_wasm_defer_targets})
+    # Defer parses headers before compiling, so libsodium's generated headers
+    # must exist before any scan or transformation can run on a clean build.
+    get_property(_wasm_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_wasm_target IN LISTS _wasm_targets)
+        if(_wasm_target MATCHES "^defer-")
+            add_dependencies(${_wasm_target} libsodium-wasm)
+        endif()
+    endforeach()
 endif()

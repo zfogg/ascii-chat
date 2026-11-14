@@ -5,7 +5,7 @@ export function sessionUiMedia(
 ) {
   if (!video) return;
   if (["m", "M", "ArrowUp", "ArrowDown"].includes(event.key))
-    video.volume = event.module.browser_ui_volume();
+    video.volume = event.module.SessionUiBinding.volume();
   if (!video.srcObject && Number.isFinite(video.duration)) {
     if (event.action === 5 || event.action === 4)
       video.currentTime = Math.min(

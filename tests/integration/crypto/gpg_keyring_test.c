@@ -3,7 +3,7 @@
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/gpg/signing.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -16,18 +16,7 @@ static void generate_key(unsigned int sequence) {
   char output[8192];
   char identity[80];
   safe_snprintf(identity, sizeof(identity), "coverage-%u@example.invalid", sequence);
-  const char *generate[] = {"gpg",
-                            "--batch",
-                            "--pinentry-mode",
-                            "loopback",
-                            "--passphrase",
-                            "",
-                            "--quick-generate-key",
-                            identity,
-                            "ed25519",
-                            "sign",
-                            "0",
-                            NULL};
+  const char *generate[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", identity, "ed25519", "sign", "0", NULL};
   cr_assert_eq(platform_execute_subprocess("gpg", generate, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--with-colons", "--list-keys", identity, NULL};
   cr_assert_eq(platform_execute_subprocess("gpg", list, output, sizeof(output), NULL, NULL), 0);
@@ -103,8 +92,7 @@ Test(gpg_keyring, native_detached_signature_is_accepted_by_gnupg_and_tampering_i
   char message_path[256], signature_path[256];
   int message_fd, signature_fd;
   cr_assert_eq(platform_create_temp_file(message_path, sizeof(message_path), "ascii-gpg-message", &message_fd), 0);
-  cr_assert_eq(platform_create_temp_file(signature_path, sizeof(signature_path), "ascii-gpg-signature", &signature_fd),
-               0);
+  cr_assert_eq(platform_create_temp_file(signature_path, sizeof(signature_path), "ascii-gpg-signature", &signature_fd), 0);
   cr_assert_eq(platform_write(message_fd, message, sizeof(message) - 1), (ssize_t)sizeof(message) - 1);
   cr_assert_eq(platform_write(signature_fd, signature, size), (ssize_t)size);
   platform_close(message_fd);

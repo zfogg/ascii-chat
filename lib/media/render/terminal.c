@@ -21,7 +21,7 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/media/render/renderer.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>

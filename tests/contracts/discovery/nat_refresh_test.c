@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include "../../../src/discovery/session.h"
 #include <ascii-chat/network/webrtc/peer_manager.h>
 
@@ -16,9 +16,7 @@ static unsigned forwarded_sdp, forwarded_ice;
 static const void *forwarded_message;
 static webrtc_peer_manager_t *forwarded_manager;
 static asciichat_error_t forwarded_result;
-static asciichat_error_t refresh_manager_create(const webrtc_peer_manager_config_t *config,
-                                                const webrtc_signaling_callbacks_t *signaling,
-                                                webrtc_peer_manager_t **out) {
+static asciichat_error_t refresh_manager_create(const webrtc_peer_manager_config_t *config, const webrtc_signaling_callbacks_t *signaling, webrtc_peer_manager_t **out) {
   if (fail_peer_manager)
     return ERROR_MEMORY;
   return webrtc_peer_manager_create(config, signaling, out);
@@ -96,8 +94,7 @@ static void setup(void) {
   log_set_level(LOG_DEV);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
-  static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = refresh_clock,
-                                      .platform_sleep_ms = refresh_sleep};
+  static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = refresh_clock, .platform_sleep_ms = refresh_sleep};
   app_callbacks_register(&callbacks);
   memset(&session, 0, sizeof(session));
   cr_assert_eq(mutex_init(&session.nat_quality_mutex, "nat_refresh_test"), 0);
@@ -221,17 +218,13 @@ static void recovery_destroy(acip_transport_t *t) {
   (void)t;
   ++recovery_destroyed;
 }
-static const acip_transport_methods_t recovery_methods = {.send = recovery_send,
-                                                          .is_connected = recovery_is_connected,
-                                                          .get_type = recovery_get_type,
-                                                          .destroy_impl = recovery_destroy};
+static const acip_transport_methods_t recovery_methods = {.send = recovery_send, .is_connected = recovery_is_connected, .get_type = recovery_get_type, .destroy_impl = recovery_destroy};
 static acip_transport_t recovery_transport = {.methods = &recovery_methods};
 static void recovery_participant(void) {
   session_participant_config_t config = {.address = "127.0.0.1", .port = 27001};
   session.participant_ctx = session_participant_create(&config);
   cr_assert_not_null(session.participant_ctx);
-  cr_assert_eq(session_participant_set_transport(session.participant_ctx, &recovery_transport, ACIP_TRANSPORT_BORROWED),
-               ASCIICHAT_OK);
+  cr_assert_eq(session_participant_set_transport(session.participant_ctx, &recovery_transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
 }
 Test(nat_refresh, host_liveness_uses_pongs_and_bounded_consecutive_failures) {
   recovery_participant();

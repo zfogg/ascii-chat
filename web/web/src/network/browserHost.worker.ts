@@ -1,18 +1,18 @@
 import { initClientWasm, getClientModule, PacketType } from "../wasm/client";
 import { buildImageFramePayload } from "./packetBuilders";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
-import type { HostPacketBinding } from "@ascii-chat/shared/wasm";
+import type { BrowserHostBinding } from "@ascii-chat/shared/wasm";
 
 const post = self.postMessage as unknown as (
   message: unknown,
   transfer?: Transferable[],
 ) => void;
-let module: NonNullable<ReturnType<typeof getClientModule>>;
-let hostInput: HostPacketBinding;
+let host: BrowserHostBinding;
 const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
 const videoGenerations = new Map<number, number>();
 let packets: { id: number; bytes: Uint8Array }[] = [];
+let clientModule: Awaited<ReturnType<typeof getClientModule>> = null;
 let pendingBatches = 0;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleRender() {
@@ -26,7 +26,8 @@ function scheduleRender() {
   );
 }
 function renderIfDue() {
-  if (!module || pendingBatches >= 2 || performance.now() < nextFrameAt) return;
+  if (!clientModule || pendingBatches >= 2 || performance.now() < nextFrameAt)
+    return;
   if (renderTimer !== null) clearTimeout(renderTimer);
   renderTimer = null;
   render();
@@ -82,15 +83,32 @@ function receivePacket(id: number, type: number, bytes: Uint8Array) {
     decoder.receive(type, bytes);
     return;
   }
-  if (hostInput.receive(client, type, bytes))
+  if (host.receive(client, type, bytes))
     throw new Error("C host rejected packet.");
+}
+function drainHostPackets() {
+  for (const packet of host.drainPackets()) {
+    if (
+      pendingBatches >= 2 &&
+      new DataView(
+        packet.bytes.buffer,
+        packet.bytes.byteOffset,
+        packet.bytes.byteLength,
+      ).getUint16(8) === PacketType.AUDIO_OPUS_BATCH
+    )
+      continue;
+    const entry = [...clients].find(([, value]) => value === packet.id);
+    const id = entry?.[0] ?? admittingClient;
+    if (id !== null && id !== undefined)
+      packets.push({ id, bytes: packet.bytes });
+  }
 }
 function render() {
   try {
     if (pendingBatches < 2) {
       const start = performance.now();
-      if (module.browser_host_render())
-        throw new Error("C host could not render video.");
+      if (host.render()) throw new Error("C host could not render video.");
+      drainHostPackets();
       const duration = performance.now() - start;
       totalMs += duration;
       maxMs = Math.max(maxMs, duration);
@@ -135,8 +153,6 @@ function render() {
     fail(error);
   }
 }
-// C emits SERVER_STATE synchronously while attaching the new transport.
-// Preserve its logical recipient before the C id is returned and registered.
 let admittingClient: number | null = null;
 let queue = Promise.resolve();
 self.onmessage = (event) => {
@@ -145,33 +161,19 @@ self.onmessage = (event) => {
       const message = event.data;
       if (message.kind === "init") {
         await initClientWasm();
-        const clientModule = getClientModule();
+        clientModule = getClientModule();
         if (!clientModule) throw new Error("Client WASM module is unavailable");
-        module = clientModule;
-        if (module.browser_host_create())
+        host = new clientModule.BrowserHostBinding();
+        if (!host.valid())
           throw new Error("Could not initialize C host worker.");
-        hostInput = new module.HostPacketBinding();
-        module.hostPacketCallback = (actual, bytes) => {
-          if (
-            pendingBatches >= 2 &&
-            new DataView(
-              bytes.buffer,
-              bytes.byteOffset,
-              bytes.byteLength,
-            ).getUint16(8) === PacketType.AUDIO_OPUS_BATCH
-          )
-            return;
-          const entry = [...clients].find(([, value]) => value === actual);
-          const id = entry?.[0] ?? admittingClient;
-          if (id !== null) packets.push({ id, bytes });
-        };
         post({ kind: "ready" });
         nextFrameAt = performance.now();
         render();
         setInterval(() => {
           try {
-            if (module.browser_host_render_audio())
+            if (host.renderAudio())
               throw new Error("C host could not mix audio.");
+            drainHostPackets();
             if (packets.length) {
               pendingBatches++;
               post(
@@ -188,17 +190,17 @@ self.onmessage = (event) => {
         let id: number;
         admittingClient = message.id;
         try {
-          id = module.browser_host_add_client();
+          id = host.addClient();
         } finally {
           admittingClient = null;
         }
         if (!id) throw new Error("Host participant limit reached.");
         clients.set(message.id, id);
-        if (message.local && module.browser_host_set_local_client(id))
+        if (message.local && host.setLocalClient(id))
           throw new Error("Could not configure the host's local display.");
       } else if (message.kind === "remove") {
         const id = clients.get(message.id);
-        if (id) module.browser_host_remove_client(id);
+        if (id) host.removeClient(id);
         clients.delete(message.id);
         videoGenerations.delete(message.id);
         decoders.get(message.id)?.destroy();

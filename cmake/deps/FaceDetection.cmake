@@ -10,10 +10,15 @@ function(ascii_chat_add_face_detector target)
         ${root}/deps/ascii-chat-deps/libfacedetection/src
         ${root}/deps/ascii-chat-deps
         ${root}/include)
-    # Retain ASan and its C++ runtime ABI, without integer instrumentation in upstream inference loops.
+    # Retain ASan and its C++ runtime ABI, without sanitizer instrumentation in upstream inference loops.
+    set(_face_detector_sanitize_exclusions -fno-sanitize=undefined,float-divide-by-zero)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        list(APPEND _face_detector_sanitize_exclusions
+            -fno-sanitize=integer,nullability,implicit-conversion)
+    endif()
     set_source_files_properties(${sources} PROPERTIES
         SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON
-        COMPILE_OPTIONS "-w;-O3;-fno-sanitize=undefined,integer,nullability,implicit-conversion,float-divide-by-zero")
+        COMPILE_OPTIONS "-w;-O3;${_face_detector_sanitize_exclusions}")
     set_source_files_properties(${root}/lib/video/face_detect.cpp PROPERTIES
         SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON)
 endfunction()

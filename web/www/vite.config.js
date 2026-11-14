@@ -58,6 +58,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "ascii-chat/react": path.resolve(
+        __dirname,
+        "../../src/web/renderer/src/react.ts",
+      ),
       "ascii-chat": path.resolve(
         __dirname,
         "../../src/web/renderer/src/index.ts",

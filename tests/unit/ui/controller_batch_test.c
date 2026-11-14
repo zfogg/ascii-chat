@@ -4,7 +4,7 @@
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -39,8 +39,7 @@ Test(controller_batch, redirected_output_is_synchronous_and_restores_ownership) 
   terminal_size_t minimum = {.cols = 8, .rows = 4};
   const char snapshot[] = "rendered";
   cr_assert_not(ui_controller_is_owner());
-  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, fd, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ASCIICHAT_OK);
+  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, fd, minimum, render_snapshot, snapshot, sizeof(snapshot)), ASCIICHAT_OK);
   cr_assert_not(ui_controller_is_owner());
   cr_assert_not(ui_controller_is_presenting());
   cr_assert_eq(ui_controller_write(fd, "direct\n", 7), ASCIICHAT_OK);
@@ -65,21 +64,16 @@ Test(controller_batch, redirected_output_is_synchronous_and_restores_ownership) 
 Test(controller_batch, invalid_snapshots_and_frames_are_rejected_before_rendering) {
   terminal_size_t minimum = {.cols = 8, .rows = 4};
   const char snapshot[] = "unused";
-  cr_assert_eq(ui_controller_submit(UI_SCREEN_COUNT, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
-  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, NULL, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
-  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, NULL, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(ui_controller_submit(UI_SCREEN_COUNT, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
+  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, NULL, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
+  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, NULL, sizeof(snapshot)), ERROR_INVALID_PARAM);
   cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, 0), ERROR_INVALID_PARAM);
   minimum.cols = 0;
-  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
   minimum.cols = 8;
   cr_assert_eq(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, NULL, 1), ERROR_INVALID_PARAM);
   cr_assert_eq(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, 0), ERROR_INVALID_PARAM);
-  cr_assert_eq(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, UI_CONTROLLER_MAX_FRAME_BYTES + 1),
-               ERROR_INVALID_PARAM);
+  cr_assert_eq(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, UI_CONTROLLER_MAX_FRAME_BYTES + 1), ERROR_INVALID_PARAM);
   cr_assert_eq(ui_controller_write(-1, NULL, 1), ASCIICHAT_OK);
   cr_assert_eq(ui_controller_write(-1, snapshot, 0), ASCIICHAT_OK);
   cr_assert_not(ui_controller_is_owner());
@@ -108,9 +102,7 @@ Test(controller_batch, sync_mailbox_dismissal_does_not_emit_batch_newline) {
   cr_redirect_stderr();
   ui_controller_select_interactive(UI_SCREEN_SYNC);
   const bool snapshot = true;
-  asciichat_error_t result =
-      ui_controller_submit(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){.cols = 8, .rows = 4}, dismiss_over_sync,
-                           &snapshot, sizeof(snapshot));
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){.cols = 8, .rows = 4}, dismiss_over_sync, &snapshot, sizeof(snapshot));
   ui_controller_select_interactive(-1);
   cr_assert_eq(result, ASCIICHAT_OK);
   cr_assert_eq(ui_controller_write(STDOUT_FILENO, "sentinel", 8), ASCIICHAT_OK);

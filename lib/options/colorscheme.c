@@ -14,10 +14,11 @@
 
 #include <defer.h>
 #include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <libplatform/terminal.h>
-#include <libplatform/util/string.h>
+#include <util/string.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <sys/stat.h>
 #include <libplatform/filesystem.h>
@@ -28,7 +29,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <stdatomic.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/tui/controller.h>
 
 /* ============================================================================
@@ -426,7 +427,7 @@ asciichat_error_t colorscheme_set_active_scheme(const char *name) {
   atomic_fetch_add(&g_scheme_revision, 1);
   mutex_unlock(&g_colorscheme_mutex);
 
-  log_debug("Switched to color scheme: %s", name);
+  log_dev("Switched to color scheme: %s", name);
   return ASCIICHAT_OK;
 }
 

@@ -8,10 +8,10 @@ import {
 } from "vite-plus/test";
 
 const mock = vi.hoisted(() => ({
-  primaryOptions: null as any,
+  primaryOptions: null as unknown,
   primaryConnect: vi.fn(),
   primaryDisconnect: vi.fn(),
-  fallbackOptions: null as any,
+  fallbackOptions: null as unknown,
   fallbackConnect: vi.fn(),
   fallbackDisconnect: vi.fn(),
 }));
@@ -128,7 +128,7 @@ describe("WebTransport fallback", () => {
       100,
     );
     const connecting = session.connect();
-    mock.primaryOptions.onTransportReady();
+    (mock.primaryOptions as { onTransportReady(): void }).onTransportReady();
     await vi.advanceTimersByTimeAsync(200);
     expect(mock.fallbackConnect).not.toHaveBeenCalled();
     session.disconnect();
