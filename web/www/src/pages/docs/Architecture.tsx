@@ -103,12 +103,12 @@ const FLOWS: Record<string, Flow> = {
           "Scans argv for mode keywords (server/client/mirror/discovery-service) or a session string. Parses binary-level flags before mode is known.",
         files: [
           {
-            path: "lib/options/options.c",
+            path: "src/common/options/options.c",
             fn: "detect_mode_and_parse_binary_options()",
             note: "Determines mode before builder runs",
           },
           {
-            path: "lib/options/strings.c",
+            path: "src/common/options/strings.c",
             fn: "asciichat_mode_from_string()",
             note: 'Maps "server" → MODE_SERVER, etc.',
           },
@@ -132,22 +132,22 @@ const FLOWS: Record<string, Flow> = {
           "A flat array of up to 2048 registry_entry_t descriptors, one per option. Each stores: long_name, short_name, type, byte offset, env_var_name, range [min,max].",
         files: [
           {
-            path: "lib/options/registry/core.c",
+            path: "src/common/options/registry/core.c",
             fn: "registry_init_from_builders()",
             note: "Merges category arrays into g_options_registry[]",
           },
           {
-            path: "lib/options/registry/general.c",
+            path: "src/common/options/registry/general.c",
             fn: "g_general_options[]",
             note: "Core options: port, address, fps, width, height",
           },
           {
-            path: "lib/options/registry/display.c",
+            path: "src/common/options/registry/display.c",
             fn: "g_display_options[]",
             note: "color-mode, palette, render-mode, color-filter",
           },
           {
-            path: "lib/options/registry/security.c",
+            path: "src/common/options/registry/security.c",
             fn: "g_security_options[]",
             note: "--password, --key, --server-key, --client-keys",
           },
@@ -166,12 +166,12 @@ const FLOWS: Record<string, Flow> = {
           "Returns a preset_config_t for the detected mode. Lists which option groups are active, default overrides, and mutually exclusive flags.",
         files: [
           {
-            path: "lib/options/config/presets.c",
+            path: "src/common/options/config/presets.c",
             fn: "options_preset_unified()",
             note: "Single preset function covering all modes via mode_bitmask filtering",
           },
           {
-            path: "lib/options/registry/mode_defaults.c",
+            path: "src/common/options/registry/mode_defaults.c",
             fn: "apply_mode_defaults()",
             note: "Sets mode-specific defaults",
           },
@@ -190,17 +190,17 @@ const FLOWS: Record<string, Flow> = {
           "The option builder walks argv. For each --flag it looks up the registry entry and calls the typed parser. Custom parsers handle timestamps, port ranges, palette strings, PCRE2 grep patterns.",
         files: [
           {
-            path: "lib/options/builder/builder.c",
+            path: "src/common/options/builder/builder.c",
             fn: "options_build()",
             note: "Core argv walking loop; dispatches to typed parsers",
           },
           {
-            path: "lib/options/parsing/parsers.c",
+            path: "src/common/options/parsing/parsers.c",
             fn: "parse_setting() / parse_enum()",
             note: "PCRE2-validated setting strings",
           },
           {
-            path: "lib/options/config/config.c",
+            path: "src/common/options/config/config.c",
             fn: "options_config_parse_toml()",
             note: "Loads and merges TOML config file",
           },
@@ -219,12 +219,12 @@ const FLOWS: Record<string, Flow> = {
           "After CLI parse, each registry entry's env_var_name is checked. Env vars override config-file values but yield to explicit CLI flags.",
         files: [
           {
-            path: "lib/options/parsing/parsers.c",
+            path: "src/common/options/parsing/parsers.c",
             fn: "apply_env_var_overrides()",
             note: "Iterates registry, applies env vars with lower priority than CLI",
           },
           {
-            path: "lib/options/parsing/validation.c",
+            path: "src/common/options/parsing/validation.c",
             fn: "options_validate()",
             note: "Cross-field validation, range checks, mutually exclusive flags",
           },
@@ -243,17 +243,17 @@ const FLOWS: Record<string, Flow> = {
           "options_state_init() allocates an options_t on the heap and stores a pointer in a global atomic_ptr_t (g_options). Reader threads call GET_OPTION() — a single lock-free atomic_ptr_load with no mutexes.",
         files: [
           {
-            path: "lib/options/rcu.c",
+            path: "src/common/options/runtime.c",
             fn: "options_state_init()",
             note: "Allocates initial options_t, publishes to g_options via atomic store",
           },
           {
-            path: "lib/options/rcu.c",
+            path: "src/common/options/runtime.c",
             fn: "options_get()",
             note: "Lock-free atomic_ptr_load; falls back to static g_default_options if NULL",
           },
           {
-            path: "lib/options/rcu.c",
+            path: "src/common/options/runtime.c",
             fn: "options_update()",
             note: "Copy-on-write: allocate → memcpy → updater → swap → deferred-free old",
           },

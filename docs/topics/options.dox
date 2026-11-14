@@ -9,7 +9,7 @@
  * ascii-chat. It handles server and client options, validates settings, and
  * manages application configuration.
  *
- * **Implementation**: lib/options.h, lib/config.h
+ * **Implementation**: include/ascii-chat/options/options.h, include/ascii-chat/options/config.h
  *
  * **Key Features**:
  * - Command-line argument parsing with getopt
