@@ -139,7 +139,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_examples.c
     ${CMAKE_SOURCE_DIR}/src/common/options_manpage_content_positional.c
     # options/completions/
-    ${CMAKE_SOURCE_DIR}/src/common/options_completions.c
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)

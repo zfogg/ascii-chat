@@ -64,6 +64,7 @@
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/manpage.h>
+#include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
@@ -80,6 +81,7 @@
 #include <libplatform/system.h>
 #include <libflags/flags.h>
 #include <libflags/commands.h>
+#include <libflags/completions/completions.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/systemd.h>
 #include <libplatform/terminal.h>
@@ -100,6 +102,96 @@
 
 static void js_log_options(const char *msg) {
   (void)msg;
+}
+
+static asciichat_error_t options_generate_completion_with_libflags(completion_format_t format, FILE *output) {
+  options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
+  if (!config)
+    return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
+
+  const options_config_t *schema_config = config;
+  if (config_schema_build_from_configs(&schema_config, 1) != ASCIICHAT_OK) {
+    options_config_destroy(config);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion metadata");
+  }
+
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  if (!builder) {
+    options_config_destroy(config);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
+  }
+
+  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH
+                                   : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH
+                                   : format == COMPLETION_FORMAT_ZSH ? FLAGS_COMPLETION_ZSH
+                                   : FLAGS_COMPLETION_POWERSHELL;
+  bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
+  flags_schema_builder_destroy(builder);
+  options_config_destroy(config);
+  return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
+}
+
+asciichat_error_t completions_generate_for_shell(completion_format_t format, FILE *output) {
+  if (!output)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
+  switch (format) {
+  case COMPLETION_FORMAT_BASH:
+  case COMPLETION_FORMAT_FISH:
+  case COMPLETION_FORMAT_ZSH:
+  case COMPLETION_FORMAT_POWERSHELL:
+    return options_generate_completion_with_libflags(format, output);
+  default:
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown completion format: %d", format);
+  }
+}
+
+const char *completions_get_shell_name(completion_format_t format) {
+  return flags_completion_shell_name((flags_completion_shell_t)format);
+}
+
+completion_format_t completions_parse_shell_name(const char *shell_name) {
+  if (!shell_name)
+    return COMPLETION_FORMAT_UNKNOWN;
+  flags_completion_shell_t parsed = flags_completion_shell_parse(shell_name);
+  return parsed == FLAGS_COMPLETION_UNKNOWN ? COMPLETION_FORMAT_UNKNOWN : (completion_format_t)parsed;
+}
+
+option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
+  if (!count)
+    return NULL;
+
+  option_descriptor_t *combined = NULL;
+  size_t combined_count = 0;
+  const asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
+  for (size_t mode_index = 0; mode_index < sizeof(modes) / sizeof(modes[0]); mode_index++) {
+    size_t mode_count = 0;
+    const option_descriptor_t *mode_options = options_registry_get_for_mode(modes[mode_index], &mode_count);
+    if (!mode_options)
+      continue;
+    for (size_t option_index = 0; option_index < mode_count; option_index++) {
+      bool found = false;
+      for (size_t existing_index = 0; existing_index < combined_count; existing_index++) {
+        if (strcmp(combined[existing_index].long_name, mode_options[option_index].long_name) == 0) {
+          found = true;
+          break;
+        }
+      }
+      if (found)
+        continue;
+      option_descriptor_t *resized = SAFE_REALLOC(combined, (combined_count + 1) * sizeof(*combined), option_descriptor_t *);
+      if (!resized) {
+        SAFE_FREE(combined);
+        SAFE_FREE(mode_options);
+        *count = 0;
+        return NULL;
+      }
+      combined = resized;
+      combined[combined_count++] = mode_options[option_index];
+    }
+    SAFE_FREE(mode_options);
+  }
+  *count = combined_count;
+  return combined;
 }
 
 // ============================================================================
