@@ -542,6 +542,11 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+  // Configure the console before --help or any early option error can emit
+  // Unicode text.
+  terminal_enable_ansi();
+#endif
   if (process_utf8_arguments(&argc, &argv) != ASCIICHAT_OK) {
     fprintf(stderr, "Failed to convert command-line arguments to UTF-8\n");
     return 1;
