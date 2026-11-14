@@ -30,6 +30,17 @@ FetchContent_Declare(libplatform
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
+# libplatform is an independently built shared library. Do not propagate the
+# application's gcov instrumentation into its objects: Clang's profile runtime
+# is linked into each instrumented executable, while lld rejects a shared
+# library that leaves those gcov entry points unresolved. The application and
+# its tests remain fully instrumented for coverage.
+if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(libplatform-objects PRIVATE
+        -fno-profile-arcs
+        -fno-test-coverage)
+endif()
+
 target_include_directories(asciichat-project-includes INTERFACE
     "${_ascii_chat_libplatform_source}/lib")
 if(FONTCONFIG_LINK_LIBRARIES)
