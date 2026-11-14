@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libplatform/util/string.h>
+#include <util/string.h>
 
 /**
  * @file util/string.h

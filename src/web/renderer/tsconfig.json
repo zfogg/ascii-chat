@@ -18,9 +18,9 @@
       "@ascii-chat/shared/wasm/generated/*": [
         "../../../web/packages/shared/src/wasm/generated/*"
       ],
-      "@ascii-chat/shared/components/*": [
-        "../../../web/packages/shared/src/components/*"
-      ]
+      "@ascii-chat/shared/wasm": ["../../../web/packages/shared/src/wasm/index.ts"],
+      "@ascii-chat/shared/wasm/*": ["../../../web/packages/shared/src/wasm/*"],
+      "@ascii-chat/shared/components/*": ["../../../web/packages/shared/src/components/*"]
     }
   },
   "include": [

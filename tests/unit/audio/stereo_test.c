@@ -7,7 +7,7 @@
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include "../../../src/common/session/audio.h"
 #include <ascii-chat/options/rcu.h>

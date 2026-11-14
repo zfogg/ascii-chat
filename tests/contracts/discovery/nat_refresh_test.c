@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include "../../../src/discovery/session.h"
 #include <ascii-chat/network/webrtc/peer_manager.h>
 

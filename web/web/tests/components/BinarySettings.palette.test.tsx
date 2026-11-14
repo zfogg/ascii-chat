@@ -93,7 +93,7 @@ test.each([
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, renderer: "luminance" }}
       mode={mode}
       onChange={onChange}
     />,

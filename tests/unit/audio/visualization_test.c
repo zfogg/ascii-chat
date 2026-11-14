@@ -7,7 +7,6 @@
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
-#include <libplatform/terminal.h>
 #include <ascii-chat/util/time.h>
 #include <math.h>
 #include <string.h>

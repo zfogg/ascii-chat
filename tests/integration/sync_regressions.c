@@ -1,7 +1,7 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/coverage.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
@@ -11,9 +11,10 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/cond.h>
-#include <ascii-chat/platform/wakeup.h>
-#include <ascii-chat/platform/rwlock.h>
+#include <libplatform/wakeup.h>
+#include <libplatform/rwlock.h>
 #include <libplatform/thread.h>
+#include <libplatform/debug/sync.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/tui/controller.h>
@@ -23,8 +24,6 @@
 #include <ascii-chat/stats/stats.h>
 #include <stdatomic.h>
 #include <string.h>
-
-extern void debug_sync_check_cond_deadlocks(void);
 #include <errno.h>
 
 static atomic_bool entered, proceed, removed;
@@ -592,14 +591,14 @@ int main(int argc, char **argv) {
         holders += stacks[i][j].mutex_key == (uintptr_t)&test_mutex;
     mutex_stack_free_all_threads(stacks, counts, count);
     CHECK(holders == 1);
-    CHECK(atomic_load_explicit(&test_cond.waiting_count, memory_order_acquire) == 1);
+    CHECK(atomic_load(&test_cond.waiting_count) == 1);
     cond_signal(&test_cond);
     mutex_unlock(&test_mutex);
     CHECK(thread_join(&holder, NULL) == ASCIICHAT_OK);
-    CHECK(atomic_load_explicit(&test_cond.waiting_count, memory_order_acquire) == 0);
+    CHECK(atomic_load(&test_cond.waiting_count) == 0);
     mutex_lock(&test_mutex);
     CHECK(cond_timedwait(&test_cond, &test_mutex, NS_PER_MS_INT) == ETIMEDOUT);
-    CHECK(atomic_load_explicit(&test_cond.waiting_count, memory_order_acquire) == 0);
+    CHECK(atomic_load(&test_cond.waiting_count) == 0);
     mutex_unlock(&test_mutex);
     // Two real waiters share one wall-clock interval, not two thread-seconds.
     uint64_t completed_wait = test_cond.total_wait_ns;
@@ -607,10 +606,10 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < 2; ++i)
       CHECK(platform_thread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     deadline = time_get_ns() + NS_PER_SEC_INT;
-    while (atomic_load_explicit(&test_cond.waiting_count, memory_order_acquire) != 2 && time_get_ns() < deadline)
+    while (atomic_load(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
       platform_sleep_ms(1);
     mutex_lock(&test_mutex);
-    CHECK(atomic_load_explicit(&test_cond.waiting_count, memory_order_acquire) == 2);
+    CHECK(atomic_load(&test_cond.waiting_count) == 2);
     uint64_t wait_started = test_cond.wait_started_ns, total_wait = 0;
     CHECK(wait_started);
     uint64_t query_now = time_get_ns();

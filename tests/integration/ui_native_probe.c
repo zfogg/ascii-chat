@@ -2,8 +2,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/question.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/crypto/discovery_keys.h>

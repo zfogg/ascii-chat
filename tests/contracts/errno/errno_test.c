@@ -64,7 +64,7 @@ Test(errno_stack, concurrency_contract) {
 Test(errno_stack, scheduler_shutdown_and_first_exit_code) {
   cr_assert_eq(debug_stats_init(), ASCIICHAT_OK);
   cr_assert_eq(debug_stats_start_thread(), ASCIICHAT_OK);
-  cr_assert_eq(debug_sync_start_thread(60 * NS_PER_SEC_INT, 60 * NS_PER_SEC_INT), ASCIICHAT_OK);
+  cr_assert_eq(debug_sync_start_thread(0, 0), ASCIICHAT_OK);
   cr_assert_eq(debug_errno_start_thread(), ASCIICHAT_OK);
   debug_errno_print_delayed(60 * NS_PER_SEC_INT);
   debug_sync_print_state_delayed(60 * NS_PER_SEC_INT);

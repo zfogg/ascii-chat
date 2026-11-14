@@ -40,10 +40,26 @@ static int fixture_worker(platform_thread_t *thread, const char *name, void *(*f
   (void)data;
   return -1;
 }
+static asciichat_error_t fixture_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute, void *context) {
+  (void)job;
+  (void)name;
+  (void)execute;
+  (void)context;
+  return ERROR_THREAD;
+}
 void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled, http_renderer_process_result_t *result) {
   (void)request;
   (void)cancelled;
   SAFE_STRNCPY(result->error, "No renderer requested by this contract", sizeof(result->error));
+}
+void http_renderer_process_result_destroy(http_renderer_process_result_t *result) {
+  if (!result)
+    return;
+  for (size_t i = 0; i < result->frame_count; ++i)
+    SAFE_FREE(result->frames[i].text);
+  SAFE_FREE(result->frames);
+  SAFE_FREE(result->text);
+  memset(result, 0, sizeof(*result));
 }
 void mcp_http_wake(mcp_server_t *server) {
   (void)server;
@@ -57,12 +73,14 @@ void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response) {
 #define webcam_free_device_list fixture_camera_free
 #define audio_free_device_list fixture_audio_free
 #define platform_thread_create fixture_worker
+#define http_renderer_job_start fixture_job_start
 #include "../../../src/mcp-server/protocol.c"
 #undef webcam_list_devices
 #undef audio_list_input_devices
 #undef webcam_free_device_list
 #undef audio_free_device_list
 #undef platform_thread_create
+#undef http_renderer_job_start
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
@@ -286,7 +304,7 @@ Test(mcp_requests, protocol_envelopes_reject_invalid_types_and_worker_start_fail
                    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
                    "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
                    -32603);
-  cr_assert_not(server.jobs[0].started);
+  cr_assert_not(server.jobs[0].renderer_job.started);
   cr_assert_null(server.jobs[0].message);
   cr_assert_null(server.jobs[0].request.argv);
 }

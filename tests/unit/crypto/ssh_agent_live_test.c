@@ -2,7 +2,7 @@
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/keys.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/tests/logging.h>

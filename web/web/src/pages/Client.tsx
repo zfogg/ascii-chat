@@ -188,7 +188,7 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
-  const peerCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+  const browserSecurityOptions = useMemo<ClientCryptoOptions>(() => {
     const options: ClientCryptoOptions = {};
     if (discoveryCryptoOptions.password)
       options.password = discoveryCryptoOptions.password;
@@ -328,7 +328,7 @@ export function ClientPage({
             ...(discoveryApplicationEncryption === undefined
               ? {}
               : { applicationEncryption: discoveryApplicationEncryption }),
-            cryptoOptions: peerCryptoOptions,
+            cryptoOptions: browserSecurityOptions,
             signalingCryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
@@ -352,7 +352,7 @@ export function ClientPage({
       signalingUrl,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
-      peerCryptoOptions,
+      browserSecurityOptions,
       stunUrls,
       turnUrls,
       connectionRoute,
@@ -791,7 +791,7 @@ export function ClientPage({
   );
 
   useEffect(() => {
-    getMirrorModule()?.browser_ui_audio(
+    getMirrorModule()?.SessionUiBinding.setAudio(
       Number(audioEnabled || micEnabled || displayInput),
     );
   }, [audioEnabled, micEnabled, displayInput, connectionState, rendererReady]);
@@ -850,7 +850,7 @@ export function ClientPage({
     try {
       const pipeline = ensureAudio();
       const ui = getMirrorModule();
-      if (ui) pipeline.setVolume(ui.browser_ui_volume());
+      if (ui) pipeline.setVolume(ui.SessionUiBinding.volume());
       if (speakers) await pipeline.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
@@ -1721,7 +1721,9 @@ export function ClientPage({
                   event,
                   fileSelected ? fileVideoRef.current : videoRef.current,
                 );
-                audioRef.current?.setVolume(event.module.browser_ui_volume());
+                audioRef.current?.setVolume(
+                  event.module.SessionUiBinding.volume(),
+                );
                 if (event.action === 3) disconnectMedia();
               }}
               zalgo={settings.zalgo ?? 0}

@@ -6,8 +6,8 @@
 #include <limits.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/memory.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/media/render/renderer.h>

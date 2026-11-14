@@ -17,10 +17,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define CHECK(x)                                                                                                                                                                                       \
-  do {                                                                                                                                                                                                 \
-    if (!(x))                                                                                                                                                                                          \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x);                                                                                                                                      \
+#define CHECK(x)                                                                                                       \
+  do {                                                                                                                 \
+    if (!(x))                                                                                                          \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x);                                                      \
   } while (0)
 #define PASSWORD "transport-metrics-password"
 #define SAMPLE_LIMIT 4096
@@ -95,7 +95,12 @@ static void negotiate(acip_transport_t *sender, acip_transport_t *receiver, cryp
   // This in-process fixture authenticates the shared password, without TOFU UI.
   handshake[0].addressless_transport = true;
   client_negotiation_t client = {.transport = sender, .handshake = &handshake[0]};
-  network_negotiation_t server = {.protocol = NETWORK_PROTOCOL_MEDIA, .handshake = &handshake[1], .initialized = true, .password = PASSWORD, .require_auth = true, .require_encryption = true};
+  network_negotiation_t server = {.protocol = NETWORK_PROTOCOL_MEDIA,
+                                  .handshake = &handshake[1],
+                                  .initialized = true,
+                                  .password = PASSWORD,
+                                  .require_auth = true,
+                                  .require_encryption = true};
   platform_thread_t thread;
   CHECK(platform_thread_create(&thread, "metrics_negotiate", client_negotiate, &client) == ASCIICHAT_OK);
   uint64_t start = time_get_ns();
@@ -110,7 +115,8 @@ static void negotiate(acip_transport_t *sender, acip_transport_t *receiver, cryp
     CHECK(length >= sizeof(packet_header_t));
     packet_header_t header;
     memcpy(&header, data, sizeof(header));
-    CHECK(network_negotiation_receive(&server, receiver, NET_TO_HOST_U16(header.type), (uint8_t *)data + sizeof(header), length - sizeof(header)) == ASCIICHAT_OK);
+    CHECK(network_negotiation_receive(&server, receiver, NET_TO_HOST_U16(header.type), (uint8_t *)data + sizeof(header),
+                                      length - sizeof(header)) == ASCIICHAT_OK);
     buffer_release(owner);
   }
   CHECK(thread_join(&thread, NULL) == ASCIICHAT_OK);
@@ -193,7 +199,11 @@ int main(int argc, char **argv) {
       p->security = SAFE_CALLOC(1, sizeof(acip_security_t), acip_security_t *);
       p->security->mode = ACIP_CRYPTO_FULL;
       CHECK(crypto_handshake_init_with_password("metrics", &p->security->handshake, i == 1, PASSWORD) == ASCIICHAT_OK);
-      webrtc_config_t config = {.bind_address = "127.0.0.1", .on_local_description = description, .on_local_candidate = candidate, .on_datachannel_open = opened, .user_data = p};
+      webrtc_config_t config = {.bind_address = "127.0.0.1",
+                                .on_local_description = description,
+                                .on_local_candidate = candidate,
+                                .on_datachannel_open = opened,
+                                .user_data = p};
       CHECK(webrtc_create_peer_connection(&config, &p->pc) == ASCIICHAT_OK);
     }
     CHECK(webrtc_create_datachannel(peers[0].pc, "acip", &peers[0].dc) == ASCIICHAT_OK);
@@ -213,9 +223,13 @@ int main(int argc, char **argv) {
   } else {
     if (!strcmp(mode, "quic") || datagrams) {
       quic_config_t server = {.certificate_file = argv[2], .private_key_file = argv[3], .enable_datagrams = datagrams};
-      quic_config_t client = {.ca_file = argv[2], .enable_datagrams = datagrams, .prefer_audio_datagrams = datagrams, .prefer_visual_datagrams = datagrams};
+      quic_config_t client = {.ca_file = argv[2],
+                              .enable_datagrams = datagrams,
+                              .prefer_audio_datagrams = datagrams,
+                              .prefer_visual_datagrams = datagrams};
       CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &server, &endpoints[1]) == ASCIICHAT_OK);
-      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &client, &endpoints[0]) == ASCIICHAT_OK);
+      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &client, &endpoints[0]) ==
+            ASCIICHAT_OK);
       struct sockaddr_storage address;
       socklen_t length;
       CHECK(quic_endpoint_address(endpoints[1], &address, &length) == ASCIICHAT_OK);
@@ -256,11 +270,14 @@ int main(int argc, char **argv) {
     }
     negotiate(sender, receiver, handshake);
   }
-  acip_transport_type_t expected = endpoints[0] ? ACIP_TRANSPORT_QUIC : peers[0].pc ? ACIP_TRANSPORT_WEBRTC : ACIP_TRANSPORT_TCP;
+  acip_transport_type_t expected = endpoints[0]  ? ACIP_TRANSPORT_QUIC
+                                   : peers[0].pc ? ACIP_TRANSPORT_WEBRTC
+                                                 : ACIP_TRANSPORT_TCP;
   CHECK(acip_transport_get_type(sender) == expected && acip_transport_get_type(receiver) == expected);
   if (datagrams) {
     acip_transport_capabilities_t caps;
-    CHECK(acip_transport_get_capabilities(sender, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload);
+    CHECK(acip_transport_get_capabilities(sender, &caps) == ASCIICHAT_OK && caps.datagrams &&
+          caps.max_datagram_payload);
     CHECK(sender->prefer_audio_datagrams && sender->prefer_visual_datagrams);
   }
   log_warn("METRICS_SETUP transport=%s ms=%.3f", mode, (double)(time_get_ns() - setup_start) / NS_PER_MS_INT);
@@ -315,16 +332,20 @@ int main(int argc, char **argv) {
     for (int flow = 0; flow < 3; ++flow) {
       samples_t *s = &r->samples[phase][flow];
       if (!s->count && datagrams && phase == 0 && flow == 2) {
-        log_warn("METRICS phase=%d flow=%d count=0 sent=%llu rejected=%llu", phase, flow, (unsigned long long)sent[phase][flow], (unsigned long long)rejected[phase][flow]);
+        log_warn("METRICS phase=%d flow=%d count=0 sent=%llu rejected=%llu", phase, flow,
+                 (unsigned long long)sent[phase][flow], (unsigned long long)rejected[phase][flow]);
         continue;
       }
       CHECK(s->count);
       qsort(s->ages, s->count, sizeof(uint64_t), compare);
       log_warn("METRICS phase=%d flow=%d count=%llu p50_ms=%.3f p95_ms=%.3f max_ms=%.3f max_gap_ms=%.3f "
                "interruptions=%llu bytes=%llu recovery_ms=%.3f sent=%llu rejected=%llu reordered=%llu",
-               phase, flow, (unsigned long long)s->count, (double)s->ages[s->count / 2] / NS_PER_MS_INT, (double)s->ages[(s->count - 1) * 95 / 100] / NS_PER_MS_INT,
-               (double)s->ages[s->count - 1] / NS_PER_MS_INT, (double)s->max_gap / NS_PER_MS_INT, (unsigned long long)s->interruptions, (unsigned long long)s->bytes,
-               (double)r->first_recovery[flow] / NS_PER_MS_INT, (unsigned long long)sent[phase][flow], (unsigned long long)rejected[phase][flow], (unsigned long long)r->out_of_order[flow]);
+               phase, flow, (unsigned long long)s->count, (double)s->ages[s->count / 2] / NS_PER_MS_INT,
+               (double)s->ages[(s->count - 1) * 95 / 100] / NS_PER_MS_INT,
+               (double)s->ages[s->count - 1] / NS_PER_MS_INT, (double)s->max_gap / NS_PER_MS_INT,
+               (unsigned long long)s->interruptions, (unsigned long long)s->bytes,
+               (double)r->first_recovery[flow] / NS_PER_MS_INT, (unsigned long long)sent[phase][flow],
+               (unsigned long long)rejected[phase][flow], (unsigned long long)r->out_of_order[flow]);
     }
   for (int flow = 0; flow < 3; ++flow)
     CHECK(r->first_recovery[flow]);

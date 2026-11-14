@@ -8,8 +8,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/thread.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/errno.h>
-#include <ascii-chat/platform/symbols.h>
+#include <libplatform/errno.h>
+#include <ascii-chat/os/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>

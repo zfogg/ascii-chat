@@ -152,7 +152,6 @@
 #include <stdio.h>
 #include "../common.h"
 #include "../options/options.h" // For option_mode_bitmask_t
-#include <libflags/builder.h>
 
 /**
  * @brief Custom help section descriptor
@@ -197,8 +196,10 @@ typedef enum {
  */
 typedef struct {
   // Enum values with descriptions (null-terminated arrays)
-  const char **enum_values;       ///< Enum value strings (null-terminated, e.g., {"auto", "none", "16", "256", "truecolor", NULL})
-  const char **enum_descriptions; ///< Descriptions parallel to enum_values (null-terminated, e.g., "Auto-detect from terminal")
+  const char *
+      *enum_values; ///< Enum value strings (null-terminated, e.g., {"auto", "none", "16", "256", "truecolor", NULL})
+  const char *
+      *enum_descriptions; ///< Descriptions parallel to enum_values (null-terminated, e.g., "Auto-detect from terminal")
   const int *enum_integer_values; ///< Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums)
 
   // Numeric range
@@ -288,7 +289,8 @@ typedef struct {
   option_metadata_t metadata; ///< Metadata for shell completions (enums, ranges, examples, etc.)
 
   // Mode-aware default getter (for options with mode-specific defaults)
-  const void *(*mode_default_getter)(asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
+  const void *(*mode_default_getter)(
+      asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
   /**
    */
 } option_descriptor_t;
@@ -536,12 +538,6 @@ void options_builder_destroy(options_builder_t *builder);
  */
 options_config_t *options_builder_build(options_builder_t *builder);
 
-/** Builds a generic libflags schema view of the application registry. */
-flags_schema_builder_t *options_config_build_flags_schema(const options_config_t *config);
-
-/** Configures automatic ascii-chat environment names on a libflags context. */
-bool options_config_configure_flags_environment(flags_context_t *context, const char *prefix);
-
 /**
  * @brief Free options config
  *
@@ -569,7 +565,8 @@ void options_config_destroy(options_config_t *config);
  * @param required If true, option must be provided
  * @param env_var_name Environment variable fallback (or NULL)
  */
-void options_builder_add_bool(options_builder_t *builder, const char *long_name, char short_name, size_t offset, bool default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_bool(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
+                              bool default_value, const char *help_text, const char *group, bool required,
                               const char *env_var_name);
 
 /**
@@ -586,7 +583,8 @@ void options_builder_add_bool(options_builder_t *builder, const char *long_name,
  * @param env_var_name Environment variable fallback (or NULL)
  * @param validate Validator function receiving full struct (or NULL)
  */
-void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset, int default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
+                             int default_value, const char *help_text, const char *group, bool required,
                              const char *env_var_name, bool (*validate)(const void *options_struct));
 
 /**
@@ -596,8 +594,11 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
  *
  * @param metadata Pointer to option_metadata_t with numeric_range, examples, etc. (can be NULL)
  */
-void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, int default_value, const char *help_text, const char *group,
-                                           bool required, const char *env_var_name, bool (*validate)(const void *options_struct), const option_metadata_t *metadata);
+void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, int default_value, const char *help_text, const char *group,
+                                           bool required, const char *env_var_name,
+                                           bool (*validate)(const void *options_struct),
+                                           const option_metadata_t *metadata);
 
 /**
  * @brief Add string option
@@ -615,7 +616,8 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
  * @param env_var_name Environment variable fallback (or NULL)
  * @param validate Validator function receiving full struct (or NULL)
  */
-void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const char *default_value, const char *help_text, const char *group, bool required,
+void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
+                                const char *default_value, const char *help_text, const char *group, bool required,
                                 const char *env_var_name, bool (*validate)(const void *options_struct));
 
 /**
@@ -632,11 +634,16 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
  * @param env_var_name Environment variable fallback (or NULL)
  * @param validate Validator function receiving full struct (or NULL)
  */
-void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset, double default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name, bool (*validate)(const void *options_struct), bool optional_arg);
+void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
+                                double default_value, const char *help_text, const char *group, bool required,
+                                const char *env_var_name, bool (*validate)(const void *options_struct),
+                                bool optional_arg);
 
-void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, double default_value, const char *help_text, const char *group,
-                                              bool required, const char *env_var_name, bool (*validate)(const void *options_struct), const option_metadata_t *metadata, bool optional_arg);
+void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                              size_t offset, double default_value, const char *help_text,
+                                              const char *group, bool required, const char *env_var_name,
+                                              bool (*validate)(const void *options_struct),
+                                              const option_metadata_t *metadata, bool optional_arg);
 
 /**
  * @brief Add option with custom callback parser
@@ -653,8 +660,10 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
  * @param required If true, option must be provided
  * @param env_var_name Environment variable fallback (or NULL)
  */
-void options_builder_add_callback(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
-                                  bool (*parse_fn)(const char *arg, void *dest, char **error_msg), const char *help_text, const char *group, bool required, const char *env_var_name);
+void options_builder_add_callback(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
+                                  const void *default_value, size_t value_size,
+                                  bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                  const char *help_text, const char *group, bool required, const char *env_var_name);
 
 /**
  * @brief Add option with custom callback parser that supports optional arguments
@@ -674,9 +683,11 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
  * @param env_var_name Environment variable fallback (or NULL)
  * @param optional_arg If true, argument is optional for this callback
  */
-void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
-                                           bool (*parse_fn)(const char *arg, void *dest, char **error_msg), const char *help_text, const char *group, bool required, const char *env_var_name,
-                                           bool optional_arg);
+void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, const void *default_value, size_t value_size,
+                                           bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                           const char *help_text, const char *group, bool required,
+                                           const char *env_var_name, bool optional_arg);
 
 /**
  * @brief Add callback option with full metadata (for enums, ranges, examples, etc.)
@@ -698,9 +709,12 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
  * @param optional_arg If true, argument is optional for this callback
  * @param metadata Completion metadata (enums, ranges, examples, etc.)
  */
-void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name, size_t offset, const void *default_value, size_t value_size,
-                                                bool (*parse_fn)(const char *arg, void *dest, char **error_msg), const char *help_text, const char *group, bool required, const char *env_var_name,
-                                                bool optional_arg, const option_metadata_t *metadata);
+void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                                size_t offset, const void *default_value, size_t value_size,
+                                                bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                                const char *help_text, const char *group, bool required,
+                                                const char *env_var_name, bool optional_arg,
+                                                const option_metadata_t *metadata);
 
 /**
  * @brief Add action option (executes action and may exit)
@@ -715,7 +729,8 @@ void options_builder_add_callback_with_metadata(options_builder_t *builder, cons
  * @param help_text Help description
  * @param group Group name for help
  */
-void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name, void (*action_fn)(void), const char *help_text, const char *group);
+void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name,
+                                void (*action_fn)(void), const char *help_text, const char *group);
 
 /**
  * @brief Set mode bitmask on the last added option descriptor
@@ -769,7 +784,8 @@ void options_builder_set_arg_placeholder(options_builder_t *builder, const char 
  * options_builder_set_input_type(builder, "color-mode", OPTION_INPUT_ENUM);
  * ```
  */
-void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values, const char **descriptions);
+void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
+                                     const char **descriptions);
 
 /**
  * @brief Set numeric range for an option
@@ -823,7 +839,8 @@ void options_builder_set_examples(options_builder_t *builder, const char *option
  * options_builder_set_input_type(builder, "log-file", OPTION_INPUT_FILEPATH);
  * ```
  */
-void options_builder_set_input_type(options_builder_t *builder, const char *option_name, option_input_type_t input_type);
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
+                                    option_input_type_t input_type);
 
 /**
  * @brief Mark option as accepting multiple values
@@ -850,7 +867,8 @@ void options_builder_mark_as_list(options_builder_t *builder, const char *option
  * @param option_name Long name of option to set metadata for
  * @param default_value Default value as string for display
  */
-void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name, const char *default_value);
+void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name,
+                                               const char *default_value);
 
 /**
  * @brief Add full option descriptor (advanced)
@@ -872,7 +890,8 @@ void options_builder_add_descriptor(options_builder_t *builder, const option_des
  * @param depends_on Option it depends on
  * @param error_message Custom error message (or NULL for default)
  */
-void options_builder_add_dependency_requires(options_builder_t *builder, const char *option_name, const char *depends_on, const char *error_message);
+void options_builder_add_dependency_requires(options_builder_t *builder, const char *option_name,
+                                             const char *depends_on, const char *error_message);
 
 /**
  * @brief Add anti-dependency: if option_name is set, conflicts_with must NOT be set
@@ -882,7 +901,8 @@ void options_builder_add_dependency_requires(options_builder_t *builder, const c
  * @param conflicts_with Option it conflicts with
  * @param error_message Custom error message (or NULL for default)
  */
-void options_builder_add_dependency_conflicts(options_builder_t *builder, const char *option_name, const char *conflicts_with, const char *error_message);
+void options_builder_add_dependency_conflicts(options_builder_t *builder, const char *option_name,
+                                              const char *conflicts_with, const char *error_message);
 
 /**
  * @brief Add implication: if option_name is set, implies defaults to true
@@ -892,7 +912,8 @@ void options_builder_add_dependency_conflicts(options_builder_t *builder, const 
  * @param implies Option that is implied
  * @param error_message Custom message (rarely used, can be NULL)
  */
-void options_builder_add_dependency_implies(options_builder_t *builder, const char *option_name, const char *implies, const char *error_message);
+void options_builder_add_dependency_implies(options_builder_t *builder, const char *option_name, const char *implies,
+                                            const char *error_message);
 
 /**
  * @brief Add full dependency (advanced)
@@ -964,8 +985,11 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
  * @param parse_fn Custom parser (receives arg, config, remaining args, error_msg)
  *                 Returns number of args consumed (usually 1), or -1 on error
  */
-void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required, const char *section_heading, const char **examples, size_t num_examples,
-                                    option_mode_bitmask_t mode_bitmask, int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg));
+void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
+                                    const char *section_heading, const char **examples, size_t num_examples,
+                                    option_mode_bitmask_t mode_bitmask,
+                                    int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
+                                                    char **error_msg));
 
 /**
  * @brief Parse positional arguments
@@ -982,7 +1006,8 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
  * @param options_struct Options struct to fill
  * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
  */
-asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc, char **remaining_argv, void *options_struct);
+asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc,
+                                                  char **remaining_argv, void *options_struct);
 
 // ============================================================================
 // Programmatic Help Generation
@@ -1015,7 +1040,8 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
  *                           "Run in a specific mode");
  * ```
  */
-void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options, const char *description);
+void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
+                               const char *description);
 
 /**
  * @brief Add example descriptor
@@ -1052,7 +1078,8 @@ void options_builder_add_usage(options_builder_t *builder, const char *mode, con
  * @param description Help text for this example
  * @param owns_args If true, duplicate and track the args string
  */
-void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args, const char *description, bool owns_args);
+void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
+                                 const char *description, bool owns_args);
 
 /**
  * @brief Add an example with utility command support
@@ -1066,7 +1093,8 @@ void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitma
  * @param description Help text for this example
  * @param is_utility_command Must be true for utility commands
  */
-void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args, const char *description, bool is_utility_command);
+void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
+                                         const char *description, bool is_utility_command);
 
 /**
  * @brief Add mode descriptor
@@ -1099,7 +1127,8 @@ void options_builder_add_mode(options_builder_t *builder, const char *name, cons
  *
  * @ingroup options_builder
  */
-void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content, option_mode_bitmask_t mode_bitmask);
+void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content,
+                                        option_mode_bitmask_t mode_bitmask);
 
 // ============================================================================
 // Preset Configurations
@@ -1147,7 +1176,9 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
  * @param remaining_argv Optional: receives array of non-option args
  * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
  */
-asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct, option_mode_bitmask_t detected_mode, int *remaining_argc, char ***remaining_argv);
+asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
+                                       option_mode_bitmask_t detected_mode, int *remaining_argc,
+                                       char ***remaining_argv);
 
 /**
  * @brief Validate options struct
@@ -1162,7 +1193,8 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
  * @param error_message Optional: receives detailed error message (must free)
  * @return ASCIICHAT_OK if valid, error code otherwise
  */
-asciichat_error_t options_config_validate(const options_config_t *config, const void *options_struct, char **error_message);
+asciichat_error_t options_config_validate(const options_config_t *config, const void *options_struct,
+                                          char **error_message);
 
 /**
  * @brief Calculate global max column width for help output alignment
@@ -1208,7 +1240,8 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
  * @param mode Optional mode to filter by (if MODE_SERVER, MODE_CLIENT, etc., filters by mode_bitmask)
  *             If NULL or invalid, shows all options (for binary-level help)
  */
-void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width, asciichat_mode_t mode);
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
+                                                      asciichat_mode_t mode);
 
 /**
  * @brief Print everything except the USAGE section (backward compatibility)
@@ -1233,7 +1266,8 @@ void options_config_print_options_sections(const options_config_t *config, FILE 
  * @param description Brief description
  * @param desc Output file stream
  */
-void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name, const char *description, FILE *desc);
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name,
+                                 const char *description, FILE *desc);
 
 /**
  * @brief Clean up memory owned by options struct
@@ -1305,7 +1339,8 @@ int options_format_default_value(option_type_t type, const void *default_value, 
  * }
  * @endcode
  */
-const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config, option_mode_bitmask_t current_mode_bitmask);
+const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config,
+                                          option_mode_bitmask_t current_mode_bitmask);
 
 /** Set the CLI parser for the last added string option; environment strings remain scalar. */
 void options_builder_set_string_parser(options_builder_t *builder, bool (*parser)(const char *, void *, char **));

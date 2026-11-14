@@ -251,12 +251,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   `[Client] Payload size: ${capsPayload.length} bytes`,
                 );
                 console.log(`[Client] Sending CLIENT_CAPABILITIES packet...`);
-                // Send as unencrypted ACIP packet (like native client does)
-                // These are protocol control packets that must arrive before encryption fully setup
-                conn.sendUnencryptedAcipPacket(
-                  PacketType.CLIENT_CAPABILITIES,
-                  capsPayload,
-                );
+                conn.sendPacket(PacketType.CLIENT_CAPABILITIES, capsPayload);
                 console.log(`[Client] CLIENT_CAPABILITIES sent successfully`);
 
                 // Send STREAM_START to tell server we're about to send video
@@ -265,11 +260,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 );
                 const streamPayload = buildStreamStartPacket(false); // Video only, no audio
                 console.log(`[Client] Sending STREAM_START packet...`);
-                // Send as unencrypted ACIP packet (like native client does)
-                conn.sendUnencryptedAcipPacket(
-                  PacketType.STREAM_START,
-                  streamPayload,
-                );
+                conn.sendPacket(PacketType.STREAM_START, streamPayload);
                 console.log(`[Client] STREAM_START sent successfully`);
               } catch (err) {
                 console.error("[Client] Failed to send setup packets:", err);

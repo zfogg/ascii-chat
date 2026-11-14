@@ -749,7 +749,7 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
   image_t image = {.w = 2, .h = 2, .pixels = pixels};
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR};
   ascii_stabilizer_t history = {.fixed_step_ns = 16666667};
-  const render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
+  const terminal_render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
   const ascii_renderer_t renderers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
   for (size_t r = 0; r < sizeof(renderers) / sizeof(renderers[0]); ++r) {
     caps.text_renderer = renderers[r];

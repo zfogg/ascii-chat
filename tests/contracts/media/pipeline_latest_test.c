@@ -4,7 +4,7 @@
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <libplatform/wakeup.h>
 
 #define g_snapshot_first_frame_rendered test_pipeline_snapshot_first_frame_rendered
 bool g_snapshot_first_frame_rendered = false;

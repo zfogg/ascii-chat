@@ -20,12 +20,12 @@
 #include <ascii-chat/media/codecs.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/pcre2.h>
+#include <libplatform/terminal.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <pcre2.h>
-#include <libplatform/terminal.h>
-#include <libplatform/util/string.h>
+#include <util/string.h>
 
 /* ============================================================================
  * Utility Functions

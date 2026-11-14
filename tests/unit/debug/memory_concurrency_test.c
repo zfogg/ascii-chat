@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <libplatform/thread.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 
 #ifdef DEBUG_MEMORY

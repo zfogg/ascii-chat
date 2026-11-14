@@ -139,7 +139,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         clientRef.current?.getState() === ConnectionState.CONNECTED
       ) {
         try {
-          clientRef.current.sendUnencryptedAcipPacket(
+          clientRef.current.sendPacket(
             PacketType.STREAM_STOP,
             buildStreamStartPacket(false),
           );
@@ -659,11 +659,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         const streamPayload = buildStreamStartPacket(
           includeAudio || !!providedStream?.getAudioTracks().length,
         );
-        // Send as unencrypted ACIP packet (like native client does)
-        clientRef.current.sendUnencryptedAcipPacket(
-          PacketType.STREAM_START,
-          streamPayload,
-        );
+        clientRef.current.sendPacket(PacketType.STREAM_START, streamPayload);
         console.log("[Client] STREAM_START sent");
       } else {
         console.log(
@@ -981,7 +977,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (avState.current(generation)) {
         if (clientRef.current?.getState() === ConnectionState.CONNECTED) {
           try {
-            clientRef.current.sendUnencryptedAcipPacket(
+            clientRef.current.sendPacket(
               PacketType.STREAM_STOP,
               buildStreamStartPacket(false),
             );

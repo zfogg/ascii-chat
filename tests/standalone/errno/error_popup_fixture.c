@@ -7,7 +7,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/os/keyboard.h>
-#include <ascii-chat/os/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/os/symbols.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/tui/controller.h>

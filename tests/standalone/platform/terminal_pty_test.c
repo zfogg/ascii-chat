@@ -11,7 +11,7 @@
 #include <libplatform/thread.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
-#include <libplatform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/prompt.h>

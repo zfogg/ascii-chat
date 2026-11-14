@@ -762,15 +762,20 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
   return composite;
 }
 
-/**
- * @brief Convert composite image to ASCII using client capabilities
- * @param composite Composite image to convert
- * @param target_client_id Client ID for capability lookup
- * @param width Terminal width in characters
- * @param height Terminal height in characters
- * @return Allocated ASCII frame string (caller must free) or NULL on error
- * @ingroup server_stream
- */
+/* FNV-1a intentionally wraps at 64 bits; keep that defined hash operation
+ * out of integer-overflow sanitizer diagnostics. */
+#if defined(__clang__)
+__attribute__((no_sanitize("unsigned-integer-overflow")))
+#endif
+static uint64_t hash_client_id(const char *client_id) {
+  uint64_t hash = 1469598103934665603ULL;
+  for (const unsigned char *p = (const unsigned char *)client_id; *p; ++p) {
+    hash ^= *p;
+    hash *= 1099511628211ULL;
+  }
+  return hash ? hash : 1;
+}
+
 static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, image_source_t *sources, int source_count, int sources_with_video, int width, int height) {
   if (!history->cells || history->width != (size_t)width || sources_with_video <= 0 || (history->height != (size_t)height && history->height != (size_t)height * 2))
     return;
@@ -783,12 +788,7 @@ static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, ima
   for (int i = 0; i < source_count && count < 9; ++i) {
     if (!sources[i].has_video || !sources[i].image)
       continue;
-    uint64_t hash = 1469598103934665603ULL;
-    for (const unsigned char *p = (const unsigned char *)sources[i].client_id; *p; ++p) {
-      hash ^= *p;
-      hash *= 1099511628211ULL;
-    }
-    owners[count++] = hash ? hash : 1;
+    owners[count++] = hash_client_id(sources[i].client_id);
   }
   int cell_width = width / cols, cell_height = (height * 2) / rows;
   if (!cell_width || !cell_height)
@@ -806,6 +806,15 @@ static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, ima
   }
 }
 
+/**
+ * @brief Convert composite image to ASCII using client capabilities
+ * @param composite Composite image to convert
+ * @param target_client_id Client ID for capability lookup
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @return Allocated ASCII frame string (caller must free) or NULL on error
+ * @ingroup server_stream
+ */
 static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width, unsigned short height, acip_render_settings_t *out_rendering, image_source_t *sources,
                                         int source_count, int sources_with_video) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily

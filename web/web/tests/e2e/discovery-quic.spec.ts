@@ -3,8 +3,8 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createSocket } from "node:dgram";
 import { createServer } from "node:net";
 import { createServer as createVite, type ViteDevServer } from "vite";
-import { X509Certificate, createHash } from "node:crypto";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { X509Certificate, createHash, randomInt } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 async function port(): Promise<number> {
@@ -16,14 +16,27 @@ async function port(): Promise<number> {
 }
 async function sharedPort(): Promise<number> {
   for (let attempt = 0; attempt < 100; ++attempt) {
-    const value = await port();
+    const value = randomInt(10000, 60000);
     const socket = createSocket("udp4");
-    const ok = await new Promise<boolean>((done) => {
+    const udpAvailable = await new Promise<boolean>((done) => {
       socket.once("error", () => done(false));
       socket.bind(value, "127.0.0.1", () => done(true));
     });
-    if (ok) await new Promise<void>((done) => socket.close(() => done()));
-    else socket.close();
+    if (!udpAvailable) {
+      try {
+        socket.close();
+      } catch {
+        /* A failed bind can leave the socket closed. */
+      }
+      continue;
+    }
+    const server = createServer();
+    const ok = await new Promise<boolean>((done) => {
+      server.once("error", () => done(false));
+      server.listen(value, "127.0.0.1", () => done(true));
+    });
+    if (ok) await new Promise<void>((done) => server.close(() => done()));
+    await new Promise<void>((done) => socket.close(() => done()));
     if (ok) return value;
   }
   throw new Error("No common TCP and UDP port available");
@@ -127,12 +140,12 @@ class Native {
   }
 }
 
-for (const { browserQuic, automaticHost } of [
-  { browserQuic: false, automaticHost: false },
-  { browserQuic: true, automaticHost: false },
-  { browserQuic: true, automaticHost: true },
+for (const { browserQuic, hostWebRtc } of [
+  { browserQuic: false, hostWebRtc: true },
+  { browserQuic: true, hostWebRtc: true },
+  { browserQuic: true, hostWebRtc: false },
 ])
-  test(`native QUIC discovery clients and a browser share ${automaticHost ? "an automatically hosted QUIC WebTransport" : browserQuic ? "QUIC WebTransport" : "a WebRTC fallback"} discovery session`, async ({
+  test(`native QUIC discovery clients and a browser share ${browserQuic ? (hostWebRtc ? "QUIC WebTransport with WebRTC enabled" : "QUIC WebTransport without WebRTC") : "a WebRTC fallback"} discovery session`, async ({
     page,
   }, info) => {
     const rekeyTest =
@@ -143,9 +156,14 @@ for (const { browserQuic, automaticHost } of [
     page.on("pageerror", (error) => browserLog.push(error.message));
     const root = info.outputPath("mixed-discovery");
     mkdirSync(root, { recursive: true });
-    const binary =
-      process.env["ASCII_CHAT_TEST_BINARY"] ||
-      resolve("../../build/bin/ascii-chat.exe");
+    const configuredBinary = process.env["ASCII_CHAT_TEST_BINARY"];
+    const binary = configuredBinary
+      ? resolve(configuredBinary)
+      : ([
+          resolve("../../build/bin/ascii-chat.exe"),
+          resolve("../../build/native-quic-check/bin/ascii-chat.exe"),
+        ].find((candidate) => existsSync(candidate)) ??
+        resolve("../../build/bin/ascii-chat.exe"));
     const certificate = resolve(root, "cert.pem"),
       key = resolve(root, "key.pem"),
       identity = resolve(root, "host-id");
@@ -190,7 +208,6 @@ for (const { browserQuic, automaticHost } of [
       identity,
     ]);
     const tcp = await sharedPort(),
-      ws = await port(),
       acdsTcp = await port(),
       acdsWs = await port();
     const common = [
@@ -261,7 +278,7 @@ for (const { browserQuic, automaticHost } of [
     }
     const processes: Native[] = [];
     const start = (args: string[]) => {
-      const native = new Native(binary, root, args, rekeyTest, automaticHost);
+      const native = new Native(binary, root, args, rekeyTest, true);
       processes.push(native);
       return native;
     };
@@ -276,7 +293,14 @@ for (const { browserQuic, automaticHost } of [
         "--websocket-port",
         String(acdsWs),
         ...(browserQuic
-          ? ["--websocket-tls-cert", certificate, "--websocket-tls-key", key]
+          ? [
+              "--tls-cert",
+              certificate,
+              "--tls-key",
+              key,
+              "--quic-bind-address",
+              "127.0.0.1",
+            ]
           : []),
         "--database",
         resolve(root, "acds.db"),
@@ -284,24 +308,16 @@ for (const { browserQuic, automaticHost } of [
       ]);
       await acds.ready(/Server accepting connections/);
       const host = start([
-        ...(automaticHost
-          ? [
-              "--test-pattern",
-              "--no-webrtc",
-              "--audio=false",
-              "--width",
-              "40",
-              "--height",
-              "12",
-            ]
-          : ["server", "0.0.0.0"]),
+        "--test-pattern",
+        hostWebRtc ? "--webrtc" : "--no-webrtc",
+        "--audio=false",
+        "--width",
+        "40",
+        "--height",
+        "12",
         "--port",
         String(tcp),
-        ...(automaticHost
-          ? []
-          : ["--websocket-port", String(ws), "--status-screen=false"]),
         ...common,
-        ...(automaticHost ? [] : ["--discovery", "--webrtc"]),
         "--discovery-expose-ip",
         "--password",
         "network-test-password",
@@ -309,9 +325,9 @@ for (const { browserQuic, automaticHost } of [
         identity,
         "--quic-bind-address",
         "127.0.0.1",
-        "--quic-tls-cert",
+        "--tls-cert",
         certificate,
-        "--quic-tls-key",
+        "--tls-key",
         key,
         ...(browserQuic
           ? [
@@ -328,19 +344,15 @@ for (const { browserQuic, automaticHost } of [
       const session = host.output.match(
         /Session created: ([a-z]+-[a-z]+-[a-z]+)/,
       )![1]!;
-      const acceptedPattern = automaticHost
-        ? /Setting transport=.* for client (\d+)/g
-        : /Added new transport client (\S+).*type=5,/g;
-      const ingressPattern = automaticHost
-        ? /Frame received from client (\d+)/g
-        : /Server image ingress client=(\S+)/g;
+      const acceptedPattern = /Setting transport=.* for client (\d+)/g;
+      const ingressPattern = /Frame received from client (\d+)/g;
       const clients: Native[] = [];
       for (let i = 0; i < 2; ++i) {
         const client = start([
           session,
           ...common,
           "--discovery-quic",
-          "--quic-ca-file",
+          "--tls-ca-file",
           certificate,
           "--server-key",
           `${identity}.pub`,
@@ -397,31 +409,17 @@ for (const { browserQuic, automaticHost } of [
         page.getByRole("button", { name: "Disconnect", exact: true }),
       ).toBeVisible({ timeout: 40000 });
       if (browserQuic)
-        await host.ready(
-          automaticHost
-            ? /Setting transport=.* for client \d+/
-            : /WebTransport.*authenticated|authenticated.*WebTransport|type=5,/i,
-          40000,
-        );
-      else await host.ready(/Authenticated WebRTC connection adopted/, 40000);
+        await host.ready(/Setting transport=.* for client \d+/, 40000);
       await expect
         .poll(
           () => {
-            const browserId = browserQuic
-              ? [
-                  ...new Set(
-                    [...host.output.matchAll(acceptedPattern)].map((m) => m[1]),
-                  ),
-                ][2]
-              : host.output.match(
-                  /Added new transport client (\S+).*type=3,/,
-                )?.[1];
+            const browserId = [
+              ...new Set(
+                [...host.output.matchAll(acceptedPattern)].map((m) => m[1]),
+              ),
+            ][2];
             return browserId
-              ? host.output.includes(
-                  automaticHost
-                    ? `Frame received from client ${browserId} `
-                    : `Server image ingress client=${browserId} `,
-                )
+              ? host.output.includes(`Frame received from client ${browserId} `)
               : false;
           },
           { timeout: 20000 },

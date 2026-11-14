@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <libplatform/atomic.h>
 #include <string.h>

@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>

@@ -1010,7 +1010,9 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
-    target_link_libraries(ascii-chat-shared PRIVATE libplatform)
+    # Consumers of the shared object also call platform APIs directly (tests,
+    # tooling, and small probes), so keep libplatform transitively visible.
+    target_link_libraries(ascii-chat-shared PUBLIC libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1967,7 +1969,9 @@ target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
-    target_link_options(ascii-chat-shared PRIVATE "${FFTW_FLOAT_LIBRARY}")
+    if(TARGET FFTW3::fftw3f)
+        target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
+    endif()
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})

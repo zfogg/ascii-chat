@@ -1,0 +1,327 @@
+/**
+ * @file media.c
+ * @brief Media file and stream options
+ * @ingroup options
+ *
+ * Options for streaming from media files, URLs, seeking, looping,
+ * and cookie handling for streaming services.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
+ */
+
+#include <math.h>
+#include <ascii-chat/options/registry/common.h>
+#include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
+
+#include <ascii-chat/options/parsers.h>
+#include <ascii-chat/os/memory.h>
+#include <string.h>
+
+// ============================================================================
+// Validators
+// ============================================================================
+
+#ifndef __EMSCRIPTEN__
+static const bool default_render_kitty_value = false;
+
+static bool validate_kitty_output(const void *data) {
+  const options_t *opts = data;
+  bool kitty = opts->render_kitty || strcmp(opts->render_file, "--kitty") == 0;
+  if (kitty && !opts->snapshot_mode) {
+    SET_ERRNO(ERROR_USAGE, "Kitty graphics output requires --snapshot");
+    return false;
+  }
+  if (opts->render_kitty && (strcmp(opts->render_file, "-") == 0 || strcmp(opts->render_file, "pipe:") == 0)) {
+    SET_ERRNO(ERROR_USAGE, "Kitty graphics and binary media cannot share stdout");
+    return false;
+  }
+  return true;
+}
+#else
+#define validate_kitty_output NULL
+#endif
+
+static bool validate_video_codec(const void *opts_struct) {
+  const options_t *opts = (const options_t *)opts_struct;
+  if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 || strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
+    return true;
+  SET_ERRNO(ERROR_USAGE, "--video-codec must be auto, hevc, h264, or raw");
+  return false;
+}
+
+static bool validate_render_font_size(const void *opts_struct) {
+  (void)opts_struct;
+  const options_t *opts = (const options_t *)opts_struct;
+  if (!isfinite(opts->render_font_size) || opts->render_font_size < 0.0) {
+    SET_ERRNO(ERROR_USAGE, "--render-font-size must be 0 (auto) or a positive finite size");
+    return false;
+  }
+  return true;
+}
+
+// CLI arguments append to one ordered list. Environment/config strings retain
+// their ordinary precedence and are used as a single-item fallback at capture.
+static bool parse_media_argument(const char *arg, void *field, bool url, char **error) {
+  options_t *opts = (options_t *)((char *)field - (url ? offsetof(options_t, media_url) : offsetof(options_t, media_file)));
+  asciichat_error_t result = media_playlist_append(&opts->media_playlist, arg, url);
+  if (result != ASCIICHAT_OK) {
+    if (error)
+      *error = platform_strdup("Invalid media artifact or playlist limit exceeded");
+    return false;
+  }
+  if (opts->media_playlist.count == 1) {
+    opts->media_file[0] = opts->media_url[0] = '\0';
+    SAFE_STRNCPY(url ? opts->media_url : opts->media_file, opts->media_playlist.paths[0], OPTIONS_BUFF_SIZE);
+  }
+  return true;
+}
+static bool parse_media_file(const char *arg, void *field, char **error) {
+  return parse_media_argument(arg, field, false, error);
+}
+static bool parse_media_url(const char *arg, void *field, char **error) {
+  return parse_media_argument(arg, field, true, error);
+}
+
+// ============================================================================
+// MEDIA CATEGORY - Media file and stream options
+// ============================================================================
+const registry_entry_t g_media_entries[] = { // Media File Streaming Options
+    {"file",
+     'f',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, media_file),
+     "",
+     0,
+     "Append a media file to the playback playlist (repeat --file/--url in order). Stream from media file or stdin "
+     "(use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
+     "ffmpeg-codecs.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_FILE",
+     NULL,
+     parse_media_file,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.input_type = OPTION_INPUT_FILEPATH},
+     NULL},
+    {"url",
+     'u',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, media_url),
+     "",
+     0,
+     "Append a network URL to the playback playlist (repeat --file/--url in order). Direct HTTP/HTTPS/RTSP streams use "
+     "FFmpeg; complex sites (YouTube, TikTok, etc.) use "
+     "yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp "
+     "https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_URL",
+     NULL,
+     parse_media_url,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"loop",
+     'l',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, media_loop),
+     &default_media_loop_value,
+     sizeof(bool),
+     "Loop single media or repeat the complete playlist.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_LOOP",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"pause",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, pause),
+     &default_pause_value,
+     sizeof(bool),
+     "Start playback paused (toggle with spacebar, requires --file or --url).",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_PAUSE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"seek",
+     's',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, media_seek_timestamp),
+     &default_media_seek_value,
+     sizeof(double),
+     "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms).",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_SEEK",
+     NULL,
+     parse_timestamp,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.examples = g_seek_examples, .input_type = OPTION_INPUT_STRING},
+     NULL},
+    {"yt-dlp-options",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, yt_dlp_options),
+     NULL,
+     sizeof(((options_t *)0)->yt_dlp_options),
+     "Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. "
+     "Examples: --no-warnings or --proxy socks5://127.0.0.1:1080 or --cookies-from-browser=firefox.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_YT_DLP_OPTIONS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"video-codec",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, video_codec),
+     "auto",
+     sizeof(((options_t *)0)->video_codec),
+     "Video codec: auto (default) tries HEVC, H.264, then raw RGB. Explicit hevc, h264, or raw never falls back.",
+     "MEDIA",
+     "CODEC",
+     false,
+     "ASCII_CHAT_VIDEO_CODEC",
+     validate_video_codec,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR,
+     {0},
+     NULL},
+
+#define RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
+
+#ifndef __EMSCRIPTEN__
+    {"render-kitty",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, render_kitty),
+     &default_render_kitty_value,
+     sizeof(bool),
+     "Display a snapshot using Kitty graphics (requires --snapshot). Combine with --render-file to save it.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_RENDER_KITTY",
+     validate_kitty_output,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {0},
+     NULL},
+#endif
+
+    {"render-file",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, render_file),
+     "",
+     sizeof(((options_t *)0)->render_file),
+     "Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: "
+     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg. Named files retain ASCII on stdout and show terminal "
+     "progress while finishing; redirect stdout to hide it.",
+     "MEDIA",
+     "PATH",
+     false,
+     "ASCII_CHAT_RENDER_FILE",
+     validate_kitty_output,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.input_type = OPTION_INPUT_FILEPATH},
+     NULL},
+
+    {"render-theme",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, render_theme),
+     &default_render_theme_value,
+     sizeof(int),
+     "Terminal color scheme for rendered output: dark, light, auto.",
+     "MEDIA",
+     "THEME",
+     false,
+     "ASCII_CHAT_RENDER_THEME",
+     NULL,
+     parse_render_theme,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.enum_values = g_render_theme_values, .enum_descriptions = g_render_theme_descs, .input_type = OPTION_INPUT_ENUM},
+     NULL},
+
+    {"render-font",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, render_font),
+     "",
+     sizeof(((options_t *)0)->render_font),
+     "Font for render-file output: bundled names (matrix or default), system font names, or absolute .ttf/.otf path. "
+     "Default: default (bundled DejaVu Sans Mono). "
+     "Examples: matrix, default, JetBrains Mono, Nerd Font Mono, /path/to/font.ttf.",
+     "MEDIA",
+     "FONT",
+     false,
+     "ASCII_CHAT_RENDER_FONT",
+     NULL,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.input_type = OPTION_INPUT_FILEPATH},
+     NULL},
+
+    {"render-font-size",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, render_font_size),
+     &default_render_font_size_value,
+     sizeof(double),
+     "Font size in points for render-file output (default: 0, auto-scales video; positive fractional sizes supported).",
+     "MEDIA",
+     "SIZE",
+     false,
+     "ASCII_CHAT_RENDER_FONT_SIZE",
+     validate_render_font_size,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.input_type = OPTION_INPUT_NUMERIC},
+     NULL},
+
+    REGISTRY_TERMINATOR()};

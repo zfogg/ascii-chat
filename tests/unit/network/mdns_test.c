@@ -203,7 +203,7 @@ Test(mdns, unadvertise_service_null_context_fails) {
 
 #ifdef __APPLE__
 #include <dns_sd.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 
 static DNSServiceErrorType mock_browse(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *, DNSServiceBrowseReply, void *);
 static DNSServiceErrorType mock_resolve(DNSServiceRef *, DNSServiceFlags, uint32_t, const char *, const char *, const char *, DNSServiceResolveReply, void *);

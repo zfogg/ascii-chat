@@ -33,7 +33,7 @@ void path_cleanup_thread_locals(void) {}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
- * Returns a pointer to a static buffer (not thread-safe, but sufficient for __FILE__ normalization)
+ * Returns a pointer to a thread-local buffer.
  */
 static const char *normalize_path(const char *path) {
   if (!path) {
@@ -44,8 +44,6 @@ static const char *normalize_path(const char *path) {
   /* Use thread-local storage to avoid buffer corruption when multiple threads
    * or rapid calls reuse the same static buffer. Each thread gets its own buffer. */
   static _Thread_local char normalized[PLATFORM_MAX_PATH_LENGTH];
-  static _Thread_local char components[PLATFORM_MAX_PATH_LENGTH][PATH_COMPONENT_BUFFER_SIZE];
-  int component_count = 0;
   size_t path_len = strlen(path);
 
   if (path_len >= PLATFORM_MAX_PATH_LENGTH) {
@@ -54,6 +52,21 @@ static const char *normalize_path(const char *path) {
 
   const char *pos = path;
   bool absolute = path_is_absolute(path);
+  size_t out_pos = 0;
+  size_t component_count = 0;
+
+#ifdef _WIN32
+  if (absolute && path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':') {
+    normalized[out_pos++] = path[0];
+    normalized[out_pos++] = ':';
+    normalized[out_pos++] = PATH_DELIM;
+  }
+#else
+  if (absolute) {
+    normalized[out_pos++] = PATH_DELIM;
+  }
+#endif
+  const size_t prefix_len = out_pos;
 
   /* Skip past the absolute path prefix if present */
   if (absolute) {
@@ -83,53 +96,33 @@ static const char *normalize_path(const char *path) {
     size_t component_len = (size_t)(parse_pos - component_start);
     if (component_len == 0)
       continue;
-    if (component_len >= sizeof(components[0])) {
-      component_len = sizeof(components[0]) - 1;
+    if (component_len >= PATH_COMPONENT_BUFFER_SIZE) {
+      component_len = PATH_COMPONENT_BUFFER_SIZE - 1;
     }
     if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
       continue;
     }
     if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
       if (component_count > 0) {
+        while (out_pos > prefix_len && normalized[out_pos - 1] != PATH_DELIM)
+          --out_pos;
+        if (out_pos > prefix_len)
+          --out_pos;
         component_count--;
         continue;
       }
-      if (!absolute) {
-        memcpy(components[component_count], component_start, component_len);
-        components[component_count][component_len] = '\0';
-        component_count++;
-      }
-      continue;
+      if (absolute)
+        continue;
     }
-    memcpy(components[component_count], component_start, component_len);
-    components[component_count][component_len] = '\0';
-    component_count++;
-  }
-
-  /* Build normalized path */
-  size_t out_pos = 0;
-#ifdef _WIN32
-  if (absolute && path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':') {
-    normalized[out_pos++] = path[0];
-    normalized[out_pos++] = ':';
-    normalized[out_pos++] = PATH_DELIM;
-  }
-#else
-  if (absolute) {
-    normalized[out_pos++] = PATH_DELIM;
-  }
-#endif
-
-  for (int i = 0; i < component_count; i++) {
-    if (i > 0) {
+    if (component_count > 0) {
       normalized[out_pos++] = PATH_DELIM;
     }
-    size_t comp_len = strlen(components[i]);
-    if (out_pos + comp_len >= PLATFORM_MAX_PATH_LENGTH) {
+    if (out_pos + component_len >= PLATFORM_MAX_PATH_LENGTH) {
       break;
     }
-    memcpy(normalized + out_pos, components[i], comp_len);
-    out_pos += comp_len;
+    memcpy(normalized + out_pos, component_start, component_len);
+    out_pos += component_len;
+    component_count++;
   }
 
   normalized[out_pos] = '\0';

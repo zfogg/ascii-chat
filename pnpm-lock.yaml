@@ -350,6 +350,9 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.9
         version: 2.2.10(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      ascii-chat:
+        specifier: workspace:*
+        version: link:../../src/web/renderer
       fzstd:
         specifier: ^0.1.1
         version: 0.1.1
@@ -445,6 +448,9 @@ importers:
       '@ascii-chat/shared':
         specifier: workspace:*
         version: link:../packages/shared
+      ascii-chat:
+        specifier: workspace:*
+        version: link:../../src/web/renderer
       minisearch:
         specifier: ^7.2.0
         version: 7.2.0

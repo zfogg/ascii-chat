@@ -1361,6 +1361,18 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
  */
 asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *crypto_ctx);
 
+/**
+ * @brief Parse one complete wire packet using the shared client receive path.
+ *
+ * Copies the wire packet into an owned buffer, validates it, and decrypts an
+ * encrypted envelope through the shared ACIP security implementation. The
+ * caller owns `out->allocated_buffer` and must release it with buffer_release.
+ */
+asciichat_error_t packet_parse_envelope(const void *wire, size_t length, void *crypto_ctx, packet_envelope_t *out);
+
+/** Wipe and release an envelope allocation, then clear the envelope. */
+void packet_envelope_release(packet_envelope_t *envelope);
+
 /** @} */
 
 /**

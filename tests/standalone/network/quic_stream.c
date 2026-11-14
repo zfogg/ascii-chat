@@ -8,10 +8,10 @@
 #include <network/quic/datagram.h>
 #include <string.h>
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression))                                                                                                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
+#define CHECK(expression)                                                                                              \
+  do {                                                                                                                 \
+    if (!(expression))                                                                                                 \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                             \
   } while (0)
 
 typedef struct {
@@ -37,7 +37,8 @@ static void test_datagrams(void) {
   uint8_t fragments[4][128];
   size_t sizes[4];
   for (uint16_t i = 0; i < 4; ++i)
-    CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 7, packet, sizeof(packet), 100, i, fragments[i], sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
+    CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 7, packet, sizeof(packet), 100, i, fragments[i],
+                                 sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
   quic_datagram_reader_t reader = {0};
   acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
   uint8_t *output = NULL;
@@ -54,27 +55,39 @@ static void test_datagrams(void) {
   buffer_release(output);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20, &flow, &output, &output_size) == ASCIICHAT_OK);
   fragments[0][QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 21, &flow, &output, &output_size) == ERROR_NETWORK_PROTOCOL);
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 21, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
   fragments[0][QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
-  CHECK(quic_datagram_read(&reader, fragments[1], sizes[1] - 1, 22, &flow, &output, &output_size) == ERROR_NETWORK_PROTOCOL);
+  CHECK(quic_datagram_read(&reader, fragments[1], sizes[1] - 1, 22, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
   fragments[1][26] = 1;
-  CHECK(quic_datagram_read(&reader, fragments[1], sizes[1], 22, &flow, &output, &output_size) == ERROR_NETWORK_PROTOCOL);
+  CHECK(quic_datagram_read(&reader, fragments[1], sizes[1], 22, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
   fragments[1][26] = 0;
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_CONTROL, 1, packet, sizeof(packet), 100, 0, fragments[1], sizeof(fragments[1]), &sizes[1]) == ERROR_INVALID_PARAM);
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 4, fragments[1], sizeof(fragments[1]), &sizes[1]) == ERROR_NETWORK_SIZE);
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 0, fragments[1], 40, &sizes[1]) == ERROR_BUFFER_FULL);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_CONTROL, 1, packet, sizeof(packet), 100, 0, fragments[1],
+                               sizeof(fragments[1]), &sizes[1]) == ERROR_INVALID_PARAM);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 4, fragments[1],
+                               sizeof(fragments[1]), &sizes[1]) == ERROR_NETWORK_SIZE);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 0, fragments[1], 40, &sizes[1]) ==
+        ERROR_BUFFER_FULL);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 19, &flow, &output, &output_size) == ERROR_INVALID_PARAM);
   CHECK(reader.bytes > 0);
   quic_datagram_expire(&reader, 20 + QUIC_DATAGRAM_EXPIRY_NS);
   CHECK(reader.bytes == 0);
   for (uint64_t id = 1; id <= 4; ++id) {
-    CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, id, packet, sizeof(packet), 100, 0, fragments[0], sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-    CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output, &output_size) == ASCIICHAT_OK);
+    CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, id, packet, sizeof(packet), 100, 0, fragments[0],
+                                 sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+    CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                             &output_size) == ASCIICHAT_OK);
   }
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 5, packet, sizeof(packet), 100, 0, fragments[0], sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output, &output_size) == ERROR_BUFFER_FULL);
-  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 5, packet, sizeof(packet), 100, 0, fragments[0], sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
-  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output, &output_size) == ASCIICHAT_OK);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 5, packet, sizeof(packet), 100, 0, fragments[0],
+                               sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                           &output_size) == ERROR_BUFFER_FULL);
+  CHECK(quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 5, packet, sizeof(packet), 100, 0, fragments[0],
+                               sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+  CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20 + QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                           &output_size) == ASCIICHAT_OK);
   quic_datagram_reset(&reader);
   CHECK(reader.bytes == 0);
 }
@@ -85,10 +98,13 @@ int main(void) {
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(parse_numeric_socket_address("127.0.0.1", 23456, &address, &address_length) == ASCIICHAT_OK);
-  CHECK(address.ss_family == AF_INET && address_length == sizeof(struct sockaddr_in) && NET_TO_HOST_U16(((struct sockaddr_in *)&address)->sin_port) == 23456);
+  CHECK(address.ss_family == AF_INET && address_length == sizeof(struct sockaddr_in) &&
+        NET_TO_HOST_U16(((struct sockaddr_in *)&address)->sin_port) == 23456);
   CHECK(parse_numeric_socket_address("::1", 23456, &address, &address_length) == ASCIICHAT_OK);
-  CHECK(address.ss_family == AF_INET6 && address_length == sizeof(struct sockaddr_in6) && NET_TO_HOST_U16(((struct sockaddr_in6 *)&address)->sin6_port) == 23456);
-  CHECK(parse_numeric_socket_address("localhost", 23456, &address, &address_length) == ERROR_INVALID_PARAM && address_length == 0);
+  CHECK(address.ss_family == AF_INET6 && address_length == sizeof(struct sockaddr_in6) &&
+        NET_TO_HOST_U16(((struct sockaddr_in6 *)&address)->sin6_port) == 23456);
+  CHECK(parse_numeric_socket_address("localhost", 23456, &address, &address_length) == ERROR_INVALID_PARAM &&
+        address_length == 0);
   test_datagrams();
   const char payload[] = "video";
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
@@ -101,7 +117,9 @@ int main(void) {
 
   for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
     uint8_t wire[ACIP_QUIC_STREAM_PREAMBLE_SIZE + 2 * sizeof(packet)];
-    packet_type_t type = traffic == ACIP_TRAFFIC_CONTROL ? PACKET_TYPE_PING : traffic == ACIP_TRAFFIC_AUDIO ? PACKET_TYPE_AUDIO_BATCH : PACKET_TYPE_IMAGE_FRAME;
+    packet_type_t type = traffic == ACIP_TRAFFIC_CONTROL ? PACKET_TYPE_PING
+                         : traffic == ACIP_TRAFFIC_AUDIO ? PACKET_TYPE_AUDIO_BATCH
+                                                         : PACKET_TYPE_IMAGE_FRAME;
     header.type = HOST_TO_NET_U16(type);
     memcpy(packet, &header, sizeof(header));
     CHECK(quic_stream_preamble((acip_traffic_class_t)traffic, wire) == ASCIICHAT_OK);
@@ -133,7 +151,8 @@ int main(void) {
     packet_header_t empty = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
     uint8_t control_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
     CHECK(quic_stream_preamble(ACIP_TRAFFIC_CONTROL, control_preamble) == ASCIICHAT_OK);
-    capture_t empty_state = {.expected = ACIP_TRAFFIC_CONTROL, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
+    capture_t empty_state = {
+        .expected = ACIP_TRAFFIC_CONTROL, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
     CHECK(quic_stream_read(&reader, control_preamble, sizeof(control_preamble), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, &empty, sizeof(empty), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(empty_state.count == 1 && quic_stream_finish(&reader) == ASCIICHAT_OK);
@@ -157,7 +176,8 @@ int main(void) {
     uint8_t encrypted_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
     capture_t encrypted_state = {.expected = (acip_traffic_class_t)traffic, .packet = packet, .size = sizeof(packet)};
     CHECK(quic_stream_preamble((acip_traffic_class_t)traffic, encrypted_preamble) == ASCIICHAT_OK);
-    CHECK(quic_stream_read(&reader, encrypted_preamble, sizeof(encrypted_preamble), capture, &encrypted_state) == ASCIICHAT_OK);
+    CHECK(quic_stream_read(&reader, encrypted_preamble, sizeof(encrypted_preamble), capture, &encrypted_state) ==
+          ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, packet, sizeof(packet), capture, &encrypted_state) == ASCIICHAT_OK);
     CHECK(encrypted_state.count == 1);
     quic_stream_reset(&reader);

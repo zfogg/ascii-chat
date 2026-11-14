@@ -4,7 +4,11 @@
 # builds use the static library unless the caller explicitly requests shared
 # dependencies. musl is always static because its release toolchain is static.
 
-include(FetchContent)
+# This file is included by both the top-level native project and the
+# standalone src/web WASM project. CMAKE_SOURCE_DIR is src/web in the latter,
+# so resolve paths from this file instead of assuming the caller is the repo
+# root.
+get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
 if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_ascii_chat_libplatform_shared OFF)
@@ -23,15 +27,19 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
-set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
+set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
-FetchContent_Declare(libplatform
-    SOURCE_DIR "${_ascii_chat_libplatform_source}"
-    BINARY_DIR "${_ascii_chat_libplatform_build}")
-FetchContent_MakeAvailable(libplatform)
+if(NOT TARGET libplatform)
+    add_subdirectory(
+        "${_ascii_chat_libplatform_source}"
+        "${_ascii_chat_libplatform_build}"
+        EXCLUDE_FROM_ALL)
+endif()
 
-target_include_directories(asciichat-project-includes INTERFACE
-    "${_ascii_chat_libplatform_source}/lib")
+if(TARGET asciichat-project-includes)
+    target_include_directories(asciichat-project-includes INTERFACE
+        "${_ascii_chat_libplatform_source}/lib")
+endif()
 
 # libplatform owns the shared path/logging helpers, so give it the checkout
 # root that CMake already knows instead of letting it fall back to ".".
@@ -42,6 +50,17 @@ else()
 endif()
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+target_include_directories(libplatform-objects PRIVATE
+    ${_ascii_chat_repo_root}/include
+    ${_ascii_chat_repo_root}/deps
+    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
+    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+if(LIBSODIUM_INCLUDE_DIRS)
+    target_include_directories(libplatform-objects PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+if(EMSCRIPTEN)
+    target_compile_options(libplatform-objects PRIVATE -pthread -matomics -mbulk-memory)
+endif()
 
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
@@ -59,7 +78,13 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
+if(FONTCONFIG_LINK_LIBRARIES)
+    target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
+endif()
+
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)
+unset(_ascii_chat_repo_root)
 unset(_ascii_chat_source_root)

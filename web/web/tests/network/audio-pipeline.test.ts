@@ -349,7 +349,7 @@ describe("AudioPipeline", () => {
     pipeline.close();
   });
 
-  it("restores microphone enhancement after display audio stops", async () => {
+  it("retains capture bypass after display audio stops", async () => {
     vi.stubGlobal(
       "MediaStream",
       class {
@@ -362,14 +362,14 @@ describe("AudioPipeline", () => {
     const pipeline = new AudioPipeline();
     const create = vi.mocked(AudioCapture.create);
     await pipeline.startCapture();
-    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
     await pipeline.setDisplayStream({
       getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
     } as unknown as MediaStream);
-    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
     expect(create.mock.calls.at(-1)![1].media).toBe(true);
     await pipeline.setDisplayStream(null);
-    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
     expect(pipeline.captureActive).toBe(true);
     expect(getUserMedia).toHaveBeenCalledOnce();
     expect(stopTrack).not.toHaveBeenCalled();

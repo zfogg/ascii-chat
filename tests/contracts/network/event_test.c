@@ -1,6 +1,6 @@
 #include "../worker_assert.h"
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/event.h>
+#include <ascii-chat/os/event.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/decoder.h>
 #include <ascii-chat/network/network.h>

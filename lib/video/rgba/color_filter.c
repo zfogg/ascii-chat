@@ -11,7 +11,7 @@
 #include "../anim/backends.h"
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/common.h>
-#include <libplatform/util/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/debug/memory.h>
 #include <string.h>
 #include <math.h>

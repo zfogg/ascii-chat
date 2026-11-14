@@ -374,7 +374,11 @@ export class AudioPipeline {
 
   private createCaptureGraph(generation: number): Promise<AudioCapture> {
     return AudioCapture.create(this.context!, {
-      bypass: isTestMode(),
+      // Browser capture constraints already own echo cancellation and level
+      // control. Running the stateful native AGC/compressor a second time
+      // makes the transmitted level depend on how long this graph has been
+      // alive, which is especially visible when a display stream is added.
+      bypass: true,
       microphoneChannels: getMicrophoneLayout().channels,
       firstChannel: getMicrophoneLayout().firstChannel,
       media: !!this.displayStream,

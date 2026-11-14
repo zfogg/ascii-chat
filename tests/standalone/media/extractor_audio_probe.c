@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdatomic.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/options/colorscheme.h>
 
 static _Atomic bool stop_keyboard_poll;

@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <string.h>

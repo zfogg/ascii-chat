@@ -4,7 +4,7 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/acds_handlers.h>
 #include <ascii-chat/network/errors.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

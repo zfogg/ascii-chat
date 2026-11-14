@@ -9,7 +9,15 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # libc++ wraps C headers with include_next; target C headers must follow it,
     # including during the first toolchain pass before libc++ has been staged.
     string(REPLACE "-isystem" "-idirafter" _cxx "${_c}")
-    string(APPEND _cxx " -stdlib=libc++ -nostdinc++")
+    # Some third-party C++ targets inherit the musl flags while selecting a
+    # non-libc++ standard library; Clang then reports -stdlib as unused.
+    # Keep libc++ selected for the project, but avoid noisy diagnostics from
+    # those dependency compile commands.
+    string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
+    # Clang diagnoses precedence and duplicate-platform-macro patterns in the
+    # external musl headers; keep these diagnostics out of project output.
+    string(APPEND _c " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
+    string(APPEND _cxx " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
     if(ALPINE_LIBCXX_INCLUDE_DIR)
         string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
     endif()

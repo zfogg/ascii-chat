@@ -4,6 +4,10 @@
 
 #include <ascii-chat/network/consensus/election.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Versioned control frames. Integer fields are explicitly encoded, never cast
  * from transport buffers. All deadlines belong to the receiver's clock. */
 #define CONSENSUS_HANDOFF_PACKET 6090
@@ -103,3 +107,7 @@ bool consensus_handoff_tick(consensus_handoff_t *state, uint64_t now_ms, consens
 
 /* Caller authenticates the reporter; obsolete host reports are ignored. */
 void consensus_handoff_host_lost(consensus_handoff_t *state, const uint8_t host[SESSION_ID_SIZE]);
+
+#ifdef __cplusplus
+}
+#endif

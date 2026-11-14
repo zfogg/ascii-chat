@@ -1,6 +1,6 @@
 ---
 name: ascii-chat-testing
-description: Write, select, run, and diagnose ascii-chat C and Python tests across Windows, macOS, and Linux, including Criterion, Docker, JUnit results, and Codecov coverage.
+description: Write, select, run, and diagnose ascii-chat C and Python tests across Windows, macOS, and Linux, including WSL, Criterion, Docker fallback environments, JUnit results, and Codecov coverage.
 ---
 
 # ascii-chat testing
@@ -25,7 +25,7 @@ Prefer Criterion for new ordinary C regressions and extend existing suites. Stan
 
 ## Configure and discover
 
-Use Clang and Ninja. Preserve build/dependency caches and unrelated work; reconfigure rather than deleting `build/`. The default preset currently disables tests, so enable them explicitly:
+Use Clang and Ninja. On Windows, prefer WSL (the repository's Arch WSL environment) for Linux-native C and Criterion tests: it is substantially faster and less cumbersome than starting Docker containers. Preserve build/dependency caches and unrelated work; reconfigure rather than deleting `build/`. The default preset currently disables tests, so enable them explicitly:
 
 ```sh
 uv sync --frozen
@@ -38,9 +38,9 @@ ctest --test-dir build -L '^integration$' --no-tests=error --output-on-failure -
 ctest --test-dir build -L '^performance$' --no-tests=error --output-on-failure --parallel
 ```
 
-Criterion works natively on **macOS, including Intel, and glibc Linux**. This supersedes older Intel-Mac Docker-only testing guidance. Windows and musl builds disable Criterion; from Windows use Linux Docker. Release/RelWithDebInfo disable it by default: add `-DASCIICHAT_FORCE_CRITERION_TESTS=ON` with `BUILD_TESTS=ON` on supported platforms. Verify discovery; zero selected tests is not a pass.
+Criterion works natively on **macOS, including Intel, glibc Linux, and the repository's Arch WSL environment**. On Windows, use WSL first for Linux/Criterion coverage and native Windows only for Windows-specific behavior. Use Docker only when WSL is unavailable, when an isolated reproducible container is specifically needed, or when matching a CI/container architecture is the purpose of the test. Release/RelWithDebInfo disable Criterion by default: add `-DASCIICHAT_FORCE_CRITERION_TESTS=ON` with `BUILD_TESTS=ON` on supported platforms. Verify discovery; zero selected tests is not a pass.
 
-Read [running-tests.md](references/running-tests.md) for focused Criterion commands, Windows Docker, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat Cross Platform Development and/or Testing](../ascii-chat-cross-platform-development-and-or-testing/SKILL.md) for SSH, source transfer, compiler setup, and persistent environments.
+Read [running-tests.md](references/running-tests.md) for focused Criterion commands, WSL-first commands, Docker fallback, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat Cross Platform Development and/or Testing](../ascii-chat-cross-platform-development-and-or-testing/SKILL.md) for WSL/SSH source setup, compiler selection, cache preservation, and persistent environments.
 
 ## Python tests
 
@@ -74,4 +74,4 @@ See [running-tests.md](references/running-tests.md) for direct and CTest command
 
 ## Verify and report
 
-Build the changed suite and run focused cases, then the relevant category/process scenario. Reconfigure after adding globbed C sources. Inspect `ctest -N -V` and CMake for exclusions, platform guards, fixture dependencies, serialization and deadlines. Report SHA/dirty patch, OS/architecture, commands, exits, counts/skips, and artifact paths. Distinguish compilation, executed assertions, coverage generation, accepted uploads, and native runtime evidence. Docker proves Linux behavior, not native Windows or macOS behavior.
+Build the changed suite and run focused cases, then the relevant category/process scenario. Reconfigure after adding globbed C sources. Inspect `ctest -N -V` and CMake for exclusions, platform guards, fixture dependencies, serialization and deadlines. Report SHA/dirty patch, OS/architecture, commands, exits, counts/skips, and artifact paths. Distinguish compilation, executed assertions, coverage generation, accepted uploads, and native runtime evidence. WSL is the preferred fast Linux test environment on Windows; Docker proves containerized Linux behavior and does not prove native Windows or macOS behavior.

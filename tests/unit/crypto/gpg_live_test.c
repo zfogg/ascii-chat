@@ -4,9 +4,9 @@
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>

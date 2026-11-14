@@ -1002,12 +1002,12 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     first_pixel_rgb = ((uint32_t)((unsigned char *)pixel_data)[0] << 16) | ((uint32_t)((unsigned char *)pixel_data)[1] << 8) | (uint32_t)((unsigned char *)pixel_data)[2];
   }
   if (is_new_frame) {
-    log_dev("RECV_FRAME #%u NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x", client->frames_received, client->client_id, header->width, header->height,
-            data_len, incoming_pixel_hash, first_pixel_rgb, client->last_received_frame_hash);
+    log_dev("RECV_FRAME #%llu NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x", (unsigned long long)client->frames_received, client->client_id, header->width,
+            header->height, data_len, incoming_pixel_hash, first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
-    log_dev("RECV_FRAME #%u DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x", client->frames_received, client->client_id, header->width, header->height, data_len,
-            incoming_pixel_hash, first_pixel_rgb);
+    log_dev("RECV_FRAME #%llu DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x", (unsigned long long)client->frames_received, client->client_id, header->width,
+            header->height, data_len, incoming_pixel_hash, first_pixel_rgb);
   }
   if (client->frames_received_logged > 0 && client->frames_received_logged % 60 == 0) {
     log_info("Incoming video signature client=%s frames=%u state=%s hash=0x%08x size=%ux%u bytes=%zu", client->client_id, client->frames_received_logged, is_new_frame ? "changing" : "duplicate",
@@ -1055,7 +1055,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+      log_debug_every(NS_PER_SEC_INT * 5, "Frame committed: client %s, seq=%llu, size=%zu", client->client_id, (unsigned long long)frame->sequence_number, total_size);
     } else {
       log_warn_every(NS_PER_SEC_INT * 5, "FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame, frame ? (void *)frame->data : NULL, data_len);
     }

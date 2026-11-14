@@ -2,7 +2,7 @@
 #include <criterion/criterion.h>
 #include "session/connection.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

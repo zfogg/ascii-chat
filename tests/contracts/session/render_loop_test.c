@@ -3,7 +3,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/runtime.h>
 #include <libplatform/system.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>

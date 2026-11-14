@@ -68,7 +68,7 @@ Test(terminal_detect, get_terminal_size_null_pointers) {
  * ============================================================================ */
 
 Test(terminal_detect, detect_terminal_capabilities_basic) {
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   // Basic sanity checks
   cr_assert_not_null(caps.term_type);
@@ -114,7 +114,7 @@ ParameterizedTest(colorterm_test_case_t *tc, terminal_detect, colorterm_variable
     setenv("COLORTERM", tc->colorterm_value, 1);
   }
 
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
@@ -175,7 +175,7 @@ ParameterizedTest(term_color_test_case_t *tc, terminal_detect, term_variable_col
   // Set TERM value
   setenv("TERM", tc->term_value, 1);
 
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
@@ -244,7 +244,7 @@ ParameterizedTest(utf8_test_case_t *tc, terminal_detect, utf8_support_detection_
     setenv("LC_CTYPE", tc->lc_ctype_value, 1);
   }
 
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   cr_assert_eq(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description, tc->expected_utf8_support, caps.utf8_support);
 
@@ -283,7 +283,7 @@ Test(terminal_detect, render_mode_selection) {
   unsetenv("COLORTERM");
   setenv("TERM", "xterm-256color", 1);
   setenv("LANG", "en_US.UTF-8", 1);
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND); // Always defaults to foreground
   cr_assert_neq(caps.capabilities & TERM_CAP_BACKGROUND, 0);
 
@@ -292,13 +292,13 @@ Test(terminal_detect, render_mode_selection) {
   setenv("LANG", "C", 1);
   unsetenv("LC_ALL");   // Clear LC_ALL which takes precedence
   unsetenv("LC_CTYPE"); // Clear LC_CTYPE which also affects UTF-8 detection
-  caps = detect_terminal_capabilities(NULL);
+  caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);
 
   // Test monochrome fallback
   setenv("TERM", "dumb", 1);
   setenv("LANG", "C", 1);
-  caps = detect_terminal_capabilities(NULL);
+  caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(caps.color_level, TERM_COLOR_NONE);
 
@@ -330,7 +330,7 @@ Test(terminal_detect, capability_flags) {
 
   // Test truecolor capabilities
   setenv("COLORTERM", "truecolor", 1);
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_TRUE, 0);
   cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_256, 0);
   cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_16, 0);
@@ -362,14 +362,14 @@ Test(terminal_detect, terminal_type_storage) {
   // Test TERM storage
   setenv("TERM", "xterm-256color", 1);
   setenv("COLORTERM", "truecolor", 1);
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_str_eq(caps.term_type, "xterm-256color");
   cr_assert_str_eq(caps.colorterm, "truecolor");
 
   // Test unknown terminal
   unsetenv("TERM");
   unsetenv("COLORTERM");
-  caps = detect_terminal_capabilities(NULL);
+  caps = detect_terminal_capabilities(options_terminal_settings());
   cr_assert_str_eq(caps.term_type, "unknown");
   cr_assert_str_eq(caps.colorterm, "");
 
@@ -395,7 +395,7 @@ Test(terminal_detect, color_level_names) {
 }
 
 Test(terminal_detect, detection_reliability) {
-  terminal_capabilities_t caps = detect_terminal_capabilities(NULL);
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
   // POSIX systems should generally have reliable detection
   cr_assert(caps.detection_reliable);
 }

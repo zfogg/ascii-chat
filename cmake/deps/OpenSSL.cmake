@@ -428,7 +428,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     endif()
     set(OPENSSL_LIBDIR "lib")
 
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION};prefix=${OPENSSL_CONFIGURE_PREFIX};cc=${CMAKE_C_COMPILER};cc_version=${CMAKE_C_COMPILER_VERSION}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};afalg=disabled-wasm;shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION};prefix=${OPENSSL_CONFIGURE_PREFIX};cc=${CMAKE_C_COMPILER};cc_version=${CMAKE_C_COMPILER_VERSION}")
 
     if(OPENSSL_BUILD_SHARED)
         set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -513,6 +513,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         )
         if(OPENSSL_NO_ASM)
             list(APPEND OPENSSL_CONFIGURE_ARGS no-asm)
+        endif()
+        # The Emscripten sysroot does not provide Linux kernel headers. OpenSSL
+        # otherwise enables the Linux AF_ALG engine when it sees the generic
+        # Linux target, which makes the browser dependency build fail in
+        # engines/e_afalg.c.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+            list(APPEND OPENSSL_CONFIGURE_ARGS no-afalgeng)
         endif()
         if(OPENSSL_BUILD_SHARED)
             list(APPEND OPENSSL_CONFIGURE_ARGS shared)

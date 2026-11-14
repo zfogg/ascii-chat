@@ -22,8 +22,10 @@ Before changing code, inspect the current tree and run `git status --short
 - `src/web/`: the nested Emscripten project. `CMakeLists.txt` selects the
   browser source set, WASM platform files/stubs, shared native libraries,
   generated fonts, bindings, and the `client`, `mirror`, `renderer`, and host
-  entry points. `src/web/main_wasm.c`, `mirror.c`, `client.c`, `renderer/`, and
-  `bindings/` are the first places to read for a module change.
+  entry points. `src/web/main_wasm.c`, `mirror.c`, `renderer/`, and
+  `bindings/` are the first places to read for a module change. The browser
+  client implementation is in `lib/network/browser/client.c`; the old
+  `src/web/client.c` source has been removed.
 - `src/web/bindings/`: Embind translation units. These are the deliberate
   JavaScript ABI, not a place to expose every C function. Generated TypeScript
   declarations live separately under `web/packages/shared/src/wasm/generated/`.
@@ -128,8 +130,7 @@ stub with the same signature and explicit browser semantics.
 
 The WASM CMake source list intentionally omits terminal `main.c` and blocking
 session screen loops. JavaScript owns the browser render/event loop and calls
-functions such as mirror conversion, client ticks, packet processing, and
-renderer feed operations. Never make a browser callback allocate, log heavily,
+coarse session events, frame operations, and renderer frames. Never make a browser callback allocate, log heavily,
 block, or wait for a native terminal condition.
 
 ## Why web.ascii-chat.com is possible
@@ -164,29 +165,39 @@ current binding families are:
 - `av_state.cpp`: `AVStateBinding` (`valid`, `generation`, `begin`,
   `complete`, `current`, `active`, `beginStop`, `finishStop`) for lifecycle
   synchronization.
-- `client_frames.cpp`: `validateFrame` for incoming frame validation.
-- `discovery.cpp`: `DiscoveryBinding` (`valid`, `callbackToken`, `enter`,
-  `receive`, `leave`, `snapshot`) plus `handoffEncode`/`handoffDecode`.
-- `face.cpp`: `faceReset`, `faceDetect`, and `faceTick`.
+- `discovery.cpp`: `DiscoveryBinding` (`valid`, `error`, `close`, `process`,
+  `processBatch`, and `drainOutputs`).
+  Handoff encoding/decoding belongs to the client session event ABI rather than
+  separate browser-visible helpers.
+- `face.cpp`: `FaceFollowBinding` (`valid`, `error`, `close`, `reset`, `detect`,
+  and `tick`).
 - `frame.cpp`: stabilizer/capture helpers plus `MirrorFrameBinding`
   (`convert`, `transform`, `submitAudio`, `renderAudio`).
-- `key_parser.cpp`: browser key/error APIs (`parseKey`, `keyParserError`,
-  `errorSnapshot`, `errorFrame`, and dismissal).
+- `key_parser.cpp`: `KeyParserBinding` and `ErrorBinding` for browser key/error
+  parsing, snapshots, frames, and dismissal.
 - `mirror_session.cpp`: `initMirror`, `sessionRenderCleanup`, and
   `mirror_cleanup`.
-- `networking.cpp`: client initialization/cleanup, keypair/public-key and
-  connection-state APIs, crypto policy/handshake, server addressing, and QUIC
-  init/tick/epoch/output/packet APIs, plus `ClientSessionBinding`.
-- `peer_crypto.cpp`: `configureCrypto` and `PeerCryptoBinding` for session
-  crypto, reliable send/receive/tick, QUIC lifecycle/output, and received data.
-- `protocol.cpp`: handshake, packet crypto, JSON packet parsing, and packet
-  serialization helpers.
-- `session_host.cpp`: browser host lifecycle/render/audio plus
-  `HostPacketBinding.receive`.
+- `networking.cpp`: client initialization/cleanup and the
+  `ClientSessionBinding.process(event)` session boundary for handshake,
+  packet, crypto-policy, addressing, and QUIC events.
+  `ClientSessionBinding.protocolInfo()` is the native source for stable
+  protocol version, connection-state, and crypto-mode metadata.
+- `browser_session.cpp`: the `BrowserSessionBinding` constructor accepts the
+  session credentials, and `BrowserSessionBinding.process(event)` drives the
+  browser transport-backed session. Client credentials use the client session's
+  `configure-crypto` event. The binding reuses the shared ACIP security,
+  handshake, packet, and QUIC code for reliable send/receive/tick, lifecycle,
+  and packet sealing/opening.
+- The old granular `protocol.cpp` binding was removed. Packet parsing,
+  serialization, handshake, and crypto are reached through the client session
+  event API and its TypeScript domain helpers.
+- `session_host.cpp`: `BrowserHostBinding` browser host lifecycle/render/audio,
+  packet receive, and owned `drainPackets` output.
 - `session_ui.cpp`: UI FPS/volume and `SessionUiBinding` for resize, loading,
   logs, media, key, tick, clear, and redraw.
-- `terminal_renderer.cpp`: `TerminalRendererBinding` (`valid`, `error`,
-  `cols`, `rows`, `width`, `height`, `setZalgo`, `feed`, `copyPixels`).
+- `terminal_renderer.cpp`: `AsciiRendererBinding` (`valid`, `error`,
+  `dimensions`, `render`). It accepts a complete text frame and reuses its
+  C++-held output buffer where possible.
 - `test_pattern.cpp`: `TestPatternBinding` (`valid`, `render`).
 
 Generated declarations in `web/packages/shared/src/wasm/generated/` are useful
@@ -247,6 +258,12 @@ The shared package's `AsciiRenderer`, hooks, raster worker, and utilities are
 the intended consumer of `renderer-web`. Extend those APIs when adding a
 renderer feature; do not make `web/web` privately reimplement the renderer.
 
+Do not add wrapper functions around already-bound methods. Call the generated
+Embind class or the existing coarse event boundary directly. A helper is only
+appropriate when it owns real browser lifecycle work, validation, or domain
+behavior; a function that merely forwards arguments to a WASM method is extra
+ABI-shaped indirection and should not be introduced.
+
 The longer-term goal is to publish `renderer-web` as the open-source
 `ascii-chat` npm package: a polished browser renderer anyone can use to render
 ASCII art. Expect that package to grow around the same core with H.264/HEVC
@@ -275,7 +292,7 @@ and the E2E tests in `web/web/tests/e2e/video-encoding.spec.ts` together.
 ## Crypto and browser transports
 
 `web/web/{discovery,client}` use the same application crypto/session machinery
-as the CLI through the client and peer-crypto bindings. The transport wrapper
+as the CLI through the client and browser-session bindings. The transport wrapper
 differs: browsers use WSS/WebSocket fallback, WebRTC/DTLS, and WebTransport
 HTTP/3/QUIC where available, with browser APIs handling the underlying socket,
 TLS, and ICE mechanics. Native QUIC and browser WebTransport share ACIP
@@ -309,7 +326,7 @@ crypto handshake or packet format.
 Useful checks include:
 
 ```powershell
-cmake --build build --target mirror-web client-web renderer-web
+cmake --build build/web --target mirror-web client-web renderer-web
 pnpm --dir web/web test
 pnpm --dir web/web exec playwright test tests/e2e/video-encoding.spec.ts
 ```

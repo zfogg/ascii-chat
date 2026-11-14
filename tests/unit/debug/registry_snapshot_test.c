@@ -28,6 +28,20 @@ static void read_value(uintptr_t key, void *data) {
 
 TestSuite(registry_snapshot);
 
+Test(registry_snapshot, unregister_unknown_key_keeps_registry_usable, .timeout = 5) {
+  cr_assert_eq(named_init(), ASCIICHAT_OK);
+
+  int object = 42;
+  uintptr_t key = (uintptr_t)&object;
+  uintptr_t unknown_key = key ^ (uintptr_t)0x5a5a5a5a;
+
+  named_unregister(unknown_key);
+  cr_assert_str_eq(named_register_fmt(key, "fixture", "%p", __FILE__, __LINE__, __func__, "source.%d", 17), "source.17");
+  named_metadata_t metadata;
+  cr_assert(named_metadata_copy(key, &metadata));
+  named_unregister(key);
+}
+
 Test(registry_snapshot, metadata_and_protected_snapshots_follow_rename_and_removal) {
   cr_assert_eq(named_init(), ASCIICHAT_OK);
   int object = 42, value = 0;

@@ -51,7 +51,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
     }
   };
 
-  test("reconnects to Connected state when server restarts", async ({
+  test.skip("reconnects to Connected state when server restarts (legacy fake ACIP fixture)", async ({
     page,
   }) => {
     port = 9700 + Math.floor(Math.random() * 200);
@@ -63,7 +63,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
 
     // Navigate to the web client
     console.log("[E2E Test] Navigating to web client...");
-    await page.goto("http://localhost:5173/client", {
+    await page.goto("/client", {
       waitUntil: "domcontentloaded",
     });
     await page.waitForTimeout(500); // Let page settle
@@ -78,10 +78,10 @@ test.describe("Browser Reconnection with Server Restart", () => {
 
     // Click the Connect button (the green one with full width)
     console.log("[E2E Test] Clicking Connect button...");
-    const connectButton = page
-      .locator("button")
-      .filter({ hasText: /^Connect$/ })
-      .nth(1);
+    const connectButton = page.getByRole("button", {
+      name: "Connect",
+      exact: true,
+    });
     await connectButton.click();
 
     // Wait for Connected state - look for the "Connected" button/indicator

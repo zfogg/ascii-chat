@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/os/keyboard.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
 #include <string.h>

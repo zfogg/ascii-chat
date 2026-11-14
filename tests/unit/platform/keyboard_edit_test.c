@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <string.h>
 
 typedef struct {

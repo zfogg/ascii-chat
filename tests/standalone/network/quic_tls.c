@@ -9,7 +9,7 @@
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>

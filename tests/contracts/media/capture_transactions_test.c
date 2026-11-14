@@ -2,7 +2,7 @@
 #include "../../../src/common/session/capture.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 
 static media_source_type_t requested_type;

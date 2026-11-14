@@ -35,7 +35,7 @@
 #include "os/filesystem.h" // platform file and descriptor helpers
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
-#include <libplatform/util/string.h>
+#include <util/string.h>
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
@@ -119,7 +119,8 @@ extern "C" {
 #endif
 
 /* Forward declaration for asciichat_fatal_with_context - now after asciichat_error_t is defined */
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
+void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
+                                  const char *format, ...);
 
 #ifdef __cplusplus
 }
@@ -203,28 +204,28 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @param throttle_ns Refuse execution until this many nanoseconds pass
  * @param code_block  Code to execute when throttle conditions permit (use braces: { ... })
  */
-#define RUN_BURST_AND_THROTTLE(burst_ns, throttle_ns, code_block)                                                                                                                                      \
-  do {                                                                                                                                                                                                 \
-    static uint64_t burst_start = 0;                                                                                                                                                                   \
-    uint64_t now = time_get_ns();                                                                                                                                                                      \
-                                                                                                                                                                                                       \
-    /* First call or timer reset */                                                                                                                                                                    \
-    if (burst_start == 0) {                                                                                                                                                                            \
-      burst_start = now;                                                                                                                                                                               \
-      code_block;                                                                                                                                                                                      \
-    } else {                                                                                                                                                                                           \
-      uint64_t elapsed_ns = now - burst_start;                                                                                                                                                         \
-                                                                                                                                                                                                       \
-      if (elapsed_ns < (uint64_t)(burst_ns)) {                                                                                                                                                         \
-        /* Within burst window */                                                                                                                                                                      \
-        code_block;                                                                                                                                                                                    \
-      } else if (elapsed_ns >= (uint64_t)(throttle_ns)) {                                                                                                                                              \
-        /* Throttle period complete, reset and execute */                                                                                                                                              \
-        burst_start = now;                                                                                                                                                                             \
-        code_block;                                                                                                                                                                                    \
-      }                                                                                                                                                                                                \
-      /* else: in throttle period, do nothing */                                                                                                                                                       \
-    }                                                                                                                                                                                                  \
+#define RUN_BURST_AND_THROTTLE(burst_ns, throttle_ns, code_block)                                                      \
+  do {                                                                                                                 \
+    static uint64_t burst_start = 0;                                                                                   \
+    uint64_t now = time_get_ns();                                                                                      \
+                                                                                                                       \
+    /* First call or timer reset */                                                                                    \
+    if (burst_start == 0) {                                                                                            \
+      burst_start = now;                                                                                               \
+      code_block;                                                                                                      \
+    } else {                                                                                                           \
+      uint64_t elapsed_ns = now - burst_start;                                                                         \
+                                                                                                                       \
+      if (elapsed_ns < (uint64_t)(burst_ns)) {                                                                         \
+        /* Within burst window */                                                                                      \
+        code_block;                                                                                                    \
+      } else if (elapsed_ns >= (uint64_t)(throttle_ns)) {                                                              \
+        /* Throttle period complete, reset and execute */                                                              \
+        burst_start = now;                                                                                             \
+        code_block;                                                                                                    \
+      }                                                                                                                \
+      /* else: in throttle period, do nothing */                                                                       \
+    }                                                                                                                  \
   } while (0)
 
 /* ============================================================================
@@ -260,33 +261,33 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 
 /* Safe memory allocation with error checking - returns allocated pointer */
-#define SAFE_MALLOC(size, cast)                                                                                                                                                                        \
-  ({                                                                                                                                                                                                   \
-    cast _ptr = (cast)ALLOC_MALLOC(size);                                                                                                                                                              \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                                                                                                      \
-    }                                                                                                                                                                                                  \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_MALLOC(size, cast)                                                                                        \
+  ({                                                                                                                   \
+    cast _ptr = (cast)ALLOC_MALLOC(size);                                                                              \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
   })
 
 /* Safe zero-initialized memory allocation */
-#define SAFE_CALLOC(count, size, cast)                                                                                                                                                                 \
-  ({                                                                                                                                                                                                   \
-    cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                                                                                                   \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));                                                                                      \
-    }                                                                                                                                                                                                  \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_CALLOC(count, size, cast)                                                                                 \
+  ({                                                                                                                   \
+    cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                   \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
   })
 
 /* Safe memory reallocation */
-#define SAFE_REALLOC(ptr, size, cast)                                                                                                                                                                  \
-  ({                                                                                                                                                                                                   \
-    void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                                                                                                      \
-    if (!tmp_ptr) {                                                                                                                                                                                    \
-      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                                                                                                                    \
-    }                                                                                                                                                                                                  \
-    (cast)(tmp_ptr);                                                                                                                                                                                   \
+#define SAFE_REALLOC(ptr, size, cast)                                                                                  \
+  ({                                                                                                                   \
+    void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                      \
+    if (!tmp_ptr) {                                                                                                    \
+      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                                    \
+    }                                                                                                                  \
+    (cast)(tmp_ptr);                                                                                                   \
   })
 
 /* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
@@ -305,52 +306,56 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 /* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
 #ifdef USE_MIMALLOC
 /* Use mimalloc's aligned allocation (works on all platforms) */
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                                                                                     \
-  ({                                                                                                                                                                                                   \
-    cast _ptr = (cast)mi_malloc_aligned((size), (alignment));                                                                                                                                          \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size), (size_t)(alignment));                                                                          \
-    }                                                                                                                                                                                                  \
-    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                                                                                                             \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr = (cast)mi_malloc_aligned((size), (alignment));                                                          \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
+    _ptr;                                                                                                              \
   })
 #else
 /* Fall back to platform-specific aligned allocation when mimalloc is disabled */
 #ifdef _WIN32
 /* Windows uses _aligned_malloc() for aligned allocation */
 #include <malloc.h>
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                                                                                     \
-  ({                                                                                                                                                                                                   \
-    cast _ptr = (cast)_aligned_malloc((size), (alignment));                                                                                                                                            \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size), (size_t)(alignment));                                                                          \
-    }                                                                                                                                                                                                  \
-    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                                                                                                             \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr = (cast)_aligned_malloc((size), (alignment));                                                            \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
+    _ptr;                                                                                                              \
   })
 #elif defined(__APPLE__)
 /* macOS uses posix_memalign() for aligned allocation */
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                                                                                     \
-  ({                                                                                                                                                                                                   \
-    cast _ptr;                                                                                                                                                                                         \
-    int result = posix_memalign((void **)&_ptr, (alignment), (size));                                                                                                                                  \
-    if (result != 0 || !_ptr) {                                                                                                                                                                        \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size), (size_t)(alignment));                                                                          \
-    }                                                                                                                                                                                                  \
-    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                                                                                                             \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr;                                                                                                         \
+    int result = posix_memalign((void **)&_ptr, (alignment), (size));                                                  \
+    if (result != 0 || !_ptr) {                                                                                        \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
+    _ptr;                                                                                                              \
   })
 #else
 /* Linux/other platforms use aligned_alloc() (C11) */
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                                                                                     \
-  ({                                                                                                                                                                                                   \
-    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                                                                                                    \
-    cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                                                                                                        \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size, (size_t)(alignment));                                                                            \
-    }                                                                                                                                                                                                  \
-    TRACK_ALIGNED_ALLOC(_ptr, aligned_size, __FILE__, __LINE__);                                                                                                                                       \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
+    cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,                  \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, aligned_size, __FILE__, __LINE__);                                                       \
+    _ptr;                                                                                                              \
   })
 #endif
 #endif
@@ -359,84 +364,84 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define SAFE_MALLOC_SIMD(size, cast) SAFE_MALLOC_ALIGNED(size, 16, cast)
 
 /* 16-byte aligned zero-initialized allocation */
-#define SAFE_CALLOC_SIMD(count, size, cast)                                                                                                                                                            \
-  ({                                                                                                                                                                                                   \
-    size_t total_size = (count) * (size);                                                                                                                                                              \
-    cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                                                                                                    \
-    memset(_ptr, 0, total_size);                                                                                                                                                                       \
-    _ptr;                                                                                                                                                                                              \
+#define SAFE_CALLOC_SIMD(count, size, cast)                                                                            \
+  ({                                                                                                                   \
+    size_t total_size = (count) * (size);                                                                              \
+    cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                    \
+    memset(_ptr, 0, total_size);                                                                                       \
+    _ptr;                                                                                                              \
   })
 
 /* Safe free that nulls the pointer - available in all builds */
-#define SAFE_FREE(ptr)                                                                                                                                                                                 \
-  do {                                                                                                                                                                                                 \
-    if ((ptr) != NULL) {                                                                                                                                                                               \
-      ALLOC_FREE((void *)(ptr));                                                                                                                                                                       \
-      (ptr) = NULL;                                                                                                                                                                                    \
-    }                                                                                                                                                                                                  \
+#define SAFE_FREE(ptr)                                                                                                 \
+  do {                                                                                                                 \
+    if ((ptr) != NULL) {                                                                                               \
+      ALLOC_FREE((void *)(ptr));                                                                                       \
+      (ptr) = NULL;                                                                                                    \
+    }                                                                                                                  \
   } while (0)
 
 /* These block declarations require the defer header and source transformer. */
-#define SAFE_MALLOC_DEFER_FREE(name, size, cast)                                                                                                                                                       \
-  cast name = SAFE_MALLOC(size, cast);                                                                                                                                                                 \
+#define SAFE_MALLOC_DEFER_FREE(name, size, cast)                                                                       \
+  cast name = SAFE_MALLOC(size, cast);                                                                                 \
   defer(SAFE_FREE(name))
-#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast)                                                                                                                                                \
-  cast name = SAFE_CALLOC(count, size, cast);                                                                                                                                                          \
+#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast)                                                                \
+  cast name = SAFE_CALLOC(count, size, cast);                                                                          \
   defer(SAFE_FREE(name))
 
 /* Safe fclose that nulls the pointer - for use with defer() */
 /* Usage: defer(SAFE_FCLOSE(fp)); */
-#define SAFE_FCLOSE(fp)                                                                                                                                                                                \
-  do {                                                                                                                                                                                                 \
-    if ((fp) != NULL) {                                                                                                                                                                                \
-      fclose(fp);                                                                                                                                                                                      \
-      (fp) = NULL;                                                                                                                                                                                     \
-    }                                                                                                                                                                                                  \
+#define SAFE_FCLOSE(fp)                                                                                                \
+  do {                                                                                                                 \
+    if ((fp) != NULL) {                                                                                                \
+      fclose(fp);                                                                                                      \
+      (fp) = NULL;                                                                                                     \
+    }                                                                                                                  \
   } while (0)
 
 /* Untracked malloc/free - bypass memory tracking for special cases like mode_argv */
 /* These use raw malloc/free to avoid appearing in leak reports */
-#define UNTRACKED_MALLOC(size, cast)                                                                                                                                                                   \
-  ({                                                                                                                                                                                                   \
-    cast _ptr = (cast)malloc(size);                                                                                                                                                                    \
-    if (!_ptr) {                                                                                                                                                                                       \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                                                                                                      \
-    }                                                                                                                                                                                                  \
-    _ptr;                                                                                                                                                                                              \
+#define UNTRACKED_MALLOC(size, cast)                                                                                   \
+  ({                                                                                                                   \
+    cast _ptr = (cast)malloc(size);                                                                                    \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
   })
 
-#define UNTRACKED_FREE(ptr)                                                                                                                                                                            \
-  do {                                                                                                                                                                                                 \
-    if ((ptr) != NULL) {                                                                                                                                                                               \
-      free((void *)(ptr));                                                                                                                                                                             \
-      (ptr) = NULL;                                                                                                                                                                                    \
-    }                                                                                                                                                                                                  \
+#define UNTRACKED_FREE(ptr)                                                                                            \
+  do {                                                                                                                 \
+    if ((ptr) != NULL) {                                                                                               \
+      free((void *)(ptr));                                                                                             \
+      (ptr) = NULL;                                                                                                    \
+    }                                                                                                                  \
   } while (0)
 
 /* Safe string copy */
-#define SAFE_STRNCPY(dst, src, size)                                                                                                                                                                   \
-  do {                                                                                                                                                                                                 \
-    size_t _safe_strncpy_size = (size);                                                                                                                                                                \
-    if (_safe_strncpy_size > 0) {                                                                                                                                                                      \
-      (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1);                                                                                                                \
-    }                                                                                                                                                                                                  \
+#define SAFE_STRNCPY(dst, src, size)                                                                                   \
+  do {                                                                                                                 \
+    size_t _safe_strncpy_size = (size);                                                                                \
+    if (_safe_strncpy_size > 0) {                                                                                      \
+      (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1);                                \
+    }                                                                                                                  \
   } while (0)
 
 #include "asciichat_errno.h"
 /* Safe string duplication with memory tracking */
-#define SAFE_STRDUP(dst, src)                                                                                                                                                                          \
-  do {                                                                                                                                                                                                 \
-    if (src) {                                                                                                                                                                                         \
-      size_t _len = strlen(src) + 1;                                                                                                                                                                   \
-      (dst) = SAFE_MALLOC(_len, char *);                                                                                                                                                               \
-      if (dst) {                                                                                                                                                                                       \
-        SAFE_MEMCPY((dst), _len, (src), _len);                                                                                                                                                         \
-      } else {                                                                                                                                                                                         \
-        SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src));                                                                                                                           \
-      }                                                                                                                                                                                                \
-    } else {                                                                                                                                                                                           \
-      (dst) = NULL;                                                                                                                                                                                    \
-    }                                                                                                                                                                                                  \
+#define SAFE_STRDUP(dst, src)                                                                                          \
+  do {                                                                                                                 \
+    if (src) {                                                                                                         \
+      size_t _len = strlen(src) + 1;                                                                                   \
+      (dst) = SAFE_MALLOC(_len, char *);                                                                               \
+      if (dst) {                                                                                                       \
+        SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
+      } else {                                                                                                         \
+        SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src));                                           \
+      }                                                                                                                \
+    } else {                                                                                                           \
+      (dst) = NULL;                                                                                                    \
+    }                                                                                                                  \
   } while (0)
 
 /* Platform-safe environment variable access */
@@ -507,7 +512,8 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * Casts offset to size_t to avoid sign conversion warnings when subtracting from buffer_size.
  * Returns 0 if offset is negative or >= buffer_size (prevents underflow).
  */
-#define SAFE_BUFFER_SIZE(buffer_size, offset) ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
+#define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
+  ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
 
 /* ============================================================================
  * Thread Creation and Synchronization Macros
@@ -527,12 +533,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  *
  * @ingroup common
  */
-#define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                                                                                                     \
-  do {                                                                                                                                                                                                 \
-    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                                                                                                       \
-      log_error("Failed to create thread: %s", #func);                                                                                                                                                 \
-      return -1;                                                                                                                                                                                       \
-    }                                                                                                                                                                                                  \
+#define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
+  do {                                                                                                                 \
+    if (platform_thread_create(&(thread), (func), (arg)) != 0) {                                                       \
+      log_error("Failed to create thread: %s", #func);                                                                 \
+      return -1;                                                                                                       \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -547,12 +553,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  *
  * @ingroup common
  */
-#define MUTEX_INIT_OR_RETURN(m)                                                                                                                                                                        \
-  do {                                                                                                                                                                                                 \
-    if (mutex_init(&(m)) != 0) {                                                                                                                                                                       \
-      log_error("Failed to initialize mutex: %s", #m);                                                                                                                                                 \
-      return -1;                                                                                                                                                                                       \
-    }                                                                                                                                                                                                  \
+#define MUTEX_INIT_OR_RETURN(m)                                                                                        \
+  do {                                                                                                                 \
+    if (mutex_init(&(m)) != 0) {                                                                                       \
+      log_error("Failed to initialize mutex: %s", #m);                                                                 \
+      return -1;                                                                                                       \
+    }                                                                                                                  \
   } while (0)
 
 /* Include logging.h to provide logging macros to all files that include common.h */
@@ -634,12 +640,12 @@ void asciichat_shared_destroy(void);
  *                         crypto_result);
  * ```
  */
-#define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if ((expr) != (ok_value)) {                                                                                                                                                                        \
-      log_error(msg, ##__VA_ARGS__);                                                                                                                                                                   \
-      return (expr);                                                                                                                                                                                   \
-    }                                                                                                                                                                                                  \
+#define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                              \
+  do {                                                                                                                 \
+    if ((expr) != (ok_value)) {                                                                                        \
+      log_error(msg, ##__VA_ARGS__);                                                                                   \
+      return (expr);                                                                                                   \
+    }                                                                                                                  \
   } while (0)
 
 /* ============================================================================

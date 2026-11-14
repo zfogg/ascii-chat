@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>

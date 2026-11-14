@@ -32,7 +32,9 @@ test.describe("Mirror Page Rendering", () => {
     await page.goto(MIRROR_URL);
 
     // Verify the page loaded with the control bar
-    await expect(page.locator("text=ASCII Mirror")).toBeVisible({
+    await expect(
+      page.getByText("Mirror mode (synthetic test input)"),
+    ).toBeVisible({
       timeout: 3000,
     });
 
