@@ -127,7 +127,7 @@
  * options_builder_t *builder = options_builder_create("myapp");
  *
  * // Add options from registry (filtered by mode)
- * options_registry_add_all_to_builder(builder);
+ * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_CLIENT);
  *
  * // Or add custom options
  * option_descriptor_t my_opt = {
@@ -138,14 +138,15 @@
  *     .mode_bitmask = OPTION_MODE_CLIENT,
  *     // ... other fields ...
  * };
- * options_builder_add_descriptor(builder, &my_opt);
+ * flags_schema_builder_add_option(builder, &my_opt);
  *
- * // Build immutable config
- * options_config_t *config = options_builder_build(builder);
+ * // Build immutable schema
+ * const flags_schema_t *schema = flags_schema_builder_schema(builder);
  *
  * // Parse command line with custom config
  * options_t my_opts = options_t_new();
- * options_config_parse_args(config, argc, argv, &my_opts);
+ * flags_context_t *context = flags_create(schema, &my_opts, sizeof(my_opts));
+ * flags_parse(context, argc, argv, &result);
  *
  * // Publish to RCU for lock-free access
  * options_state_init();
