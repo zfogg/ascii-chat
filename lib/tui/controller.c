@@ -1239,7 +1239,11 @@ static void *presentation_main(void *unused) {
           fps_counter_frame_end(g_fps, time_get_ns());
       }
       if (!covered && show_fps && !g_media_overlay_written)
-        fps_counter_render(g_fps, screen->fd, size.cols, active == UI_SCREEN_HELP);
+        // The frame may have repainted the overlay's row without owning the
+        // synchronized media write. Always repaint the complete label here;
+        // suppressing unchanged values leaves a stale/blank FPS label that
+        // visibly flickers as the UI redraws.
+        fps_counter_render(g_fps, screen->fd, size.cols, true);
       if (g_help_sync_open) {
         (void)write_output_chunk(screen->fd, "\033[?2026l", 8);
         g_help_sync_open = false;

@@ -231,14 +231,22 @@ endfunction()
 # Args:
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
-    # Enhanced debug info with macro definitions
-    target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
+    # Dev is the optimized, sanitizer-free developer build. Keep full debug
+    # symbols and diagnostics, but do not turn the renderer into an O0 build:
+    # audio visualizations are computed on the presentation thread and their
+    # unoptimized FFT/waveform paths cannot sustain the configured frame rate.
+    if(BUILD_TYPE STREQUAL "Dev")
+        target_compile_options(asciichat-project-options INTERFACE -g2 -O2 -DDEBUG)
+    else()
+        # Enhanced debug info with macro definitions
+        target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
 
-    # Better debugging experience
-    target_compile_options(asciichat-project-options INTERFACE
-        -fno-inline                           # Disable inlining for easier stepping
-        -fno-eliminate-unused-debug-types     # Keep all debug types
-    )
+        # Better debugging experience
+        target_compile_options(asciichat-project-options INTERFACE
+            -fno-inline                           # Disable inlining for easier stepping
+            -fno-eliminate-unused-debug-types     # Keep all debug types
+        )
+    endif()
 
     # Clang-specific debug enhancements
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")

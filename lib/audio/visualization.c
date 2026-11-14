@@ -223,7 +223,10 @@ char *visualization_encode(const char *cells, const unsigned char *colors, bool 
         frame[used++] = ch;
       }
     }
-    frame[used++] = '\n';
+    if (y + 1 < rows) {
+      frame[used++] = '\r';
+      frame[used++] = '\n';
+    }
   }
   frame[used] = '\0';
   return frame;

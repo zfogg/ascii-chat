@@ -6,7 +6,6 @@
 
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
-#include <libplatform/terminal.h>
 #include <ascii-chat/ui/output.h>
 #include <string.h>
 #include <stdio.h>
@@ -151,8 +150,6 @@ bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
   counter->visible = visible;
   if (changed)
     counter->last_fps = -1;
-  if (changed && visible)
-    counter->dark_background = terminal_has_dark_background();
   return changed;
 }
 
