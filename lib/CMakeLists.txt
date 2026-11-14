@@ -100,7 +100,6 @@ set(CORE_SRCS
     # options/builder/
     ${CMAKE_SOURCE_DIR}/src/common/options_builder.c
     ${CMAKE_SOURCE_DIR}/src/common/options_builder_handlers.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_builder_help.c
     # options/config/
     ${CMAKE_SOURCE_DIR}/src/common/options_config.c
     ${CMAKE_SOURCE_DIR}/src/common/options_config_schema.c
