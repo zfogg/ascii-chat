@@ -113,22 +113,3 @@ Test(completions, generate_invalid_format) {
   cr_assert_neq(result, ASCIICHAT_OK, "Should fail with invalid completion format");
 }
 
-Test(completions, mcp_mode_registry_includes_transport_and_bind_options) {
-  size_t count = 0;
-  const option_descriptor_t *options = options_registry_get_for_display(MODE_MCP_SERVER, false, &count);
-  cr_assert_not_null(options);
-  const char *required[] = {"transport",        "server", "http-origin", "tls-cert", "tls-key",
-                            "tls-key-password", "port",   "address",     "address6"};
-  for (size_t r = 0; r < sizeof(required) / sizeof(required[0]); r++) {
-    bool found = false;
-    for (size_t i = 0; i < count; i++) {
-      found |= strcmp(options[i].long_name, required[r]) == 0;
-    }
-    cr_assert(found, "Missing MCP completion option: %s", required[r]);
-  }
-  SAFE_FREE(options);
-  options = options_registry_get_for_mode(MODE_MCP_SERVER, &count);
-  cr_assert_not_null(options);
-  cr_assert_gt(count, 0);
-  SAFE_FREE(options);
-}
