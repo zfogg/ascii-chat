@@ -416,6 +416,10 @@ test("shared rendering constants match the native definitions", async ({
     ),
     "utf8",
   );
+  const render = readFileSync(
+    new URL("../../../../include/ascii-chat/video/ascii/render/render.h", import.meta.url),
+    "utf8",
+  );
   await page.goto("/");
   const values = await page.evaluate(async () => {
     const url = "/index.js";
@@ -465,7 +469,7 @@ test("shared rendering constants match the native definitions", async ({
     );
   for (const [key, value] of Object.entries(values.TextRenderer))
     expect(value).toBe(
-      nativeNumber(options, "ASCII_RENDERER_" + key.toUpperCase()),
+      nativeNumber(render, "ASCII_RENDERER_" + key.toUpperCase()),
     );
   const paletteLimit = options.match(
     /#define\s+OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE\s+(\d+)/,

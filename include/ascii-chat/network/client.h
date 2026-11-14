@@ -20,7 +20,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/audio/audio.h>
 

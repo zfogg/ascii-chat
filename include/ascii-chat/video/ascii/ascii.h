@@ -153,8 +153,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal);
  *
  * @ingroup video
  */
-char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
-                    const bool aspect_ratio, const bool stretch, const char *palette_chars,
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color, const bool aspect_ratio, const bool stretch, const char *palette_chars,
                     const char luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /* ============================================================================
@@ -194,35 +193,28 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  *
  * @ingroup video
  */
-char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
-                                      const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch, const char *palette_chars);
+char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                      const char *palette_chars);
 
 /** Convert with explicit contain (true) or cover (false) viewport fitting. */
-char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height,
-                                          const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                          const bool stretch, const char *palette_chars, const bool contain);
+char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                          const char *palette_chars, const bool contain);
 
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 
 /** Caller owns the reusable resize image; calls using it must be serialized. */
-char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
-                                                const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                                const bool stretch, const char *palette_chars, const bool contain,
-                                                image_t **workspace);
+char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                                const char *palette_chars, const bool contain, image_t **workspace);
 
 /** Borrow output from the caller-owned buffer until its next conversion or release.
  * Both workspaces require a single owner; passing NULL output keeps owned-output semantics.
  */
-char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
-                                 const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output);
 
 /** Convert with a history owned by this stream; reset it when the source changes. */
-char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
-                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                            const bool stretch, const char *palette_chars, const bool contain,
-                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer);
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                            const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer);
 
 /**
  * @brief Convert image to ASCII art with terminal capabilities

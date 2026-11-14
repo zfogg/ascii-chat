@@ -2,7 +2,7 @@
 #define SIMD_CELL_SSSE3 1
 #define SIMD_CELL_ISA ssse3
 #include "../simd/pack.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

@@ -544,7 +544,9 @@ set_source_files_properties(
 # Keep per-pixel rendering and frame validation responsive in Debug builds.
 # Debug information and sanitizer instrumentation remain enabled.
 set_property(SOURCE
-    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/common.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/glyph.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/output_buffer.c"
     "${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/ascii.c"
@@ -598,10 +600,20 @@ ascii_chat_add_face_detector(ascii-chat-video)
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
-if(TARGET fftw3f)
+if(TARGET PkgConfig::FFTW_FLOAT)
+    set(FFTW_FLOAT_LIBRARY PkgConfig::FFTW_FLOAT)
+elseif(TARGET fftw3f)
     set(FFTW_FLOAT_LIBRARY fftw3f)
 else()
-    find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFTW_FLOAT QUIET IMPORTED_TARGET fftw3f)
+    endif()
+    if(TARGET PkgConfig::FFTW_FLOAT)
+        set(FFTW_FLOAT_LIBRARY PkgConfig::FFTW_FLOAT)
+    else()
+        find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
+    endif()
 endif()
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
