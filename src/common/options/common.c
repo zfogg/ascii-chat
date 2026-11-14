@@ -13,6 +13,7 @@
 
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/common.h>
+#include <libflags/format.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
@@ -562,19 +563,12 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
 
 const char *options_get_type_placeholder(option_type_t type) {
   switch (type) {
-  case OPTION_TYPE_INT:
-    return "INTEGER";
-  case OPTION_TYPE_DOUBLE:
-    return "NUMBER";
-  case OPTION_TYPE_STRING:
-    return "STRING";
-  case OPTION_TYPE_CALLBACK:
-    return "VALUE";
-  case OPTION_TYPE_BOOL:
-    return "BOOLEAN";
-  case OPTION_TYPE_ACTION:
-  default:
-    return "";
+  case OPTION_TYPE_BOOL: return flags_type_placeholder(FLAGS_TYPE_BOOL);
+  case OPTION_TYPE_INT: return flags_type_placeholder(FLAGS_TYPE_INT64);
+  case OPTION_TYPE_DOUBLE: return flags_type_placeholder(FLAGS_TYPE_DOUBLE);
+  case OPTION_TYPE_STRING: return flags_type_placeholder(FLAGS_TYPE_STRING);
+  case OPTION_TYPE_CALLBACK: return flags_type_placeholder(FLAGS_TYPE_CUSTOM);
+  default: return "";
   }
 }
 
@@ -584,23 +578,15 @@ int options_format_default_value(option_type_t type, const void *default_value, 
   }
 
   switch (type) {
-  case OPTION_TYPE_BOOL:
-    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
+  case OPTION_TYPE_BOOL: return flags_format_default_value(FLAGS_TYPE_BOOL, default_value, buf, bufsize);
   case OPTION_TYPE_INT: {
-    int int_val = 0;
-    memcpy(&int_val, default_value, sizeof(int));
-    return safe_snprintf(buf, bufsize, "%d", int_val);
+    int64_t value = 0;
+    memcpy(&value, default_value, sizeof(int));
+    return flags_format_default_value(FLAGS_TYPE_INT64, &value, buf, bufsize);
   }
-  case OPTION_TYPE_STRING:
-    return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
-  case OPTION_TYPE_DOUBLE: {
-    double double_val = 0.0;
-    memcpy(&double_val, default_value, sizeof(double));
-    return safe_snprintf(buf, bufsize, "%.2f", double_val);
-  }
-  default:
-    // OPTION_TYPE_CALLBACK and OPTION_TYPE_ACTION don't have defaults to display
-    return 0;
+  case OPTION_TYPE_STRING: return flags_format_default_value(FLAGS_TYPE_STRING, default_value, buf, bufsize);
+  case OPTION_TYPE_DOUBLE: return flags_format_default_value(FLAGS_TYPE_DOUBLE, default_value, buf, bufsize);
+  default: return 0;
   }
 }
 
