@@ -727,6 +727,8 @@ runs:
         # Clone vcpkg to a temp location
         $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
+          # This full single-branch clone is intentionally allowed to take
+          # several minutes: vcpkg versioning requires historical port blobs.
           Write-Host "Cloning vcpkg history for the pinned baseline..."
           git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 clone --no-tags --single-branch https://github.com/microsoft/vcpkg.git $vcpkgDir
           if ($LASTEXITCODE -ne 0) { throw "Could not clone vcpkg" }
