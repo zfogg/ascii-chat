@@ -151,10 +151,19 @@ jobs:
           EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$VERSION^{}" | cut -f1)
           if [[ -n "$EXISTING_TAG" ]]; then
             CHANGED_FILES=$(git diff --name-only "$EXISTING_TAG" "$GITHUB_SHA")
-            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA" || [[ "$CHANGED_FILES" != ".github/workflows/release.yml" ]]; then
-              echo "::error::Tag $VERSION points to $EXISTING_TAG and the release workflow source contains changes beyond the workflow itself."
+            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA"; then
+              echo "::error::Tag $VERSION does not point at an ancestor of the workflow commit."
               exit 1
             fi
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                .github/workflows/release.yml|.github/actions/install-deps/action.yml) ;;
+                *)
+                  echo "::error::Tag $VERSION points to $EXISTING_TAG and the release source contains changes beyond the release workflow and dependency action."
+                  exit 1
+                  ;;
+              esac
+            done <<< "$CHANGED_FILES"
             echo "Tag $VERSION points to tested source $EXISTING_TAG; only the release workflow changed, so reusing it."
           else
             git tag -a "$VERSION" -m "Release $VERSION"
