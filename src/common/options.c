@@ -1870,8 +1870,7 @@ asciichat_error_t options_validate_libflags(options_t *options) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode, int mode_argc, char **mode_argv, int *remaining_argc, char ***remaining_argv) {
-  (void)config;
+static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t detected_mode, int mode_argc, char **mode_argv, int *remaining_argc, char ***remaining_argv) {
   // Extract binary-level options BEFORE applying unified defaults
   // (which might override them from config files)
   binary_level_opts_t binary_before_defaults = extract_binary_level(opts);
@@ -1881,11 +1880,6 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   bool saved_flip_y = opts->flip_y;
   if (SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = OPT_FLIP_X_DEFAULT;
-  // Apply defaults from unified config
-  asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
-  if (defaults_result != ASCIICHAT_OK) {
-    return defaults_result;
-  }
   // An enabled environment flag overrides the opposite config-file choice.
   const char *encrypt_env = SAFE_GETENV("ASCII_CHAT_ENCRYPT");
   const char *no_encrypt_env = SAFE_GETENV("ASCII_CHAT_NO_ENCRYPT");
@@ -2322,10 +2316,10 @@ static asciichat_error_t validate_option_strings(const options_t *opts) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t validate_parsed_options(options_t *opts, options_config_t *config, int remaining_argc, char **remaining_argv) {
+static asciichat_error_t validate_parsed_options(options_t *opts, int remaining_argc, char **remaining_argv) {
   // Validate options
   log_dev("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
-  asciichat_error_t result = validate_options_and_report(config, opts);
+  asciichat_error_t result = validate_options_and_report(NULL, opts);
   log_dev("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%s", asciichat_error_format(NULL, result));
   if (result != ASCIICHAT_OK) {
     return result;
@@ -2691,7 +2685,6 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Mode parsing owns the temporary argv and schema until the shared cleanup path.
   mode_arguments_t mode_args = {.argc = argc, .argv = argv};
-  options_config_t *config = NULL;
   result = build_mode_argv(argc, argv, mode_index, &mode_args);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
@@ -2704,14 +2697,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  config = options_preset_unified(NULL, NULL);
-  if (!config) {
-    result = SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
-    goto cleanup;
-  }
   int remaining_argc;
   char **remaining_argv;
-  result = parse_mode_options(&opts, config, detected_mode, mode_args.argc, mode_args.argv, &remaining_argc, &remaining_argv);
+  result = parse_mode_options(&opts, detected_mode, mode_args.argc, mode_args.argv, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
@@ -2743,7 +2731,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  result = validate_parsed_options(&opts, config, remaining_argc, remaining_argv);
+  result = validate_parsed_options(&opts, remaining_argc, remaining_argv);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
@@ -2751,11 +2739,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  log_dev("★ OPTIONS_CONFIG_DESTROY: About to call");
-  options_config_destroy(config);
-  config = NULL;
-  log_dev("★ OPTIONS_CONFIG_DESTROY: Done");
-
   log_dev("★ STAGE 7: Starting post-processing");
   // Resolve identity, dimensions, and media before exposing the final options to actions.
   result = collect_server_identity_keys(&opts, detected_mode, argc, argv);
@@ -2781,9 +2764,6 @@ asciichat_error_t options_init(int argc, char **argv) {
 
 cleanup:
   if (result != ASCIICHAT_OK)
-    if (config) {
-      options_config_destroy(config);
-    }
   SAFE_FREE(mode_args.allocated);
   return result;
 }

@@ -706,8 +706,8 @@ void usage(FILE *desc, asciichat_mode_t mode) {
 // ============================================================================
 
 asciichat_error_t validate_options_and_report(const void *config, const void *opts) {
-  if (!config || !opts) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options is NULL");
+  if (!opts) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Options are NULL");
   }
 
   const options_t *options = (const options_t *)opts;
