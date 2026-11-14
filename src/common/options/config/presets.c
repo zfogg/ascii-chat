@@ -25,7 +25,7 @@
 
 // ============================================================================
 // NOTE: All static parser functions and group helper functions have been
-// moved to lib/options/registry.c and are no longer needed here.
+// moved to src/common/options/registry/ and are no longer needed here.
 // The registry is now the single source of truth for all option definitions.
 // ============================================================================
 

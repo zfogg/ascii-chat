@@ -1,5 +1,5 @@
 /**
- * @file lib/options/colorscheme.c
+ * @file src/common/options/colorscheme.c
  * @brief Color scheme management implementation and early initialization
  * @ingroup options
  *

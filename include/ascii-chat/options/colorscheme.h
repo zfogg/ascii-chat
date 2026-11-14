@@ -1,5 +1,5 @@
 /**
- * @file lib/options/colorscheme.h
+ * @file include/ascii-chat/options/colorscheme.h
  * @brief Color scheme management system for ascii-chat
  * @ingroup options
  *
@@ -285,7 +285,7 @@ asciichat_error_t options_colorscheme_init_early(int argc, const char *const arg
 /**
  * @brief Shared mutex for color scheme compilation
  *
- * Used by lib/options/colorscheme.c and lib/log/logging.c to synchronize
+ * Used by src/common/options/colorscheme.c and lib/log/logging.c to synchronize
  * color scheme compilation. Defined in colorscheme.c and declared here
  * for use by logging.c.
  */

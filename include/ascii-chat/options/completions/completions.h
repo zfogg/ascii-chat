@@ -40,7 +40,7 @@
  *
  * To add support for a new shell:
  *
- * 1. Create `lib/options/completions/SHELL_NAME.h` and `.c`
+ * 1. Create `src/common/options/completions/SHELL_NAME.h` and `.c`
  * 2. Implement `completions_generate_SHELL_NAME()` function
  * 3. Add case to `completions_generate_for_shell()` dispatcher
  * 4. Update `completion_parse_shell_name()` to recognize new shell
