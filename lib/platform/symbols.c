@@ -23,21 +23,18 @@ bool symbol_module_is_project(const char *module_name) {
   for (const char *cursor = module_name; *cursor; ++cursor)
     if (*cursor == '/' || *cursor == '\\')
       basename = cursor + 1;
-  static const char *const project_modules[] = {"ascii-chat", "ascii-chat.exe", "asciichat.dll", "libasciichat.a",
-                                                 "libasciichat.so", "libasciichat.dll", "libasciichat.dylib"};
+  static const char *const project_modules[] = {"ascii-chat", "ascii-chat.exe", "asciichat.dll", "libasciichat.a", "libasciichat.so", "libasciichat.dll", "libasciichat.dylib"};
   for (size_t i = 0; i < sizeof(project_modules) / sizeof(project_modules[0]); ++i)
     if (ascii_case_equal(basename, project_modules[i]))
       return true;
-  return strncmp(basename, "libasciichat.", strlen("libasciichat.")) == 0 &&
-         (strstr(basename, ".so") || strstr(basename, ".dylib"));
+  return strncmp(basename, "libasciichat.", strlen("libasciichat.")) == 0 && (strstr(basename, ".so") || strstr(basename, ".dylib"));
 }
 
 static bool source_path_is_absolute(const char *path) {
   return path && ((isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '/' || path[2] == '\\')) || path[0] == '/' || path[0] == '\\');
 }
 
-asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output, size_t output_size, bool *external,
-                                            const char *const *owned_dirs) {
+asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output, size_t output_size, bool *external, const char *const *owned_dirs) {
   if (!output || !output_size || !external)
     return ERROR_INVALID_PARAM;
   const char *path = source_path ? source_path : "unknown";
