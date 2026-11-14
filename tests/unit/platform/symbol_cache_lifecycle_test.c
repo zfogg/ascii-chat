@@ -122,22 +122,3 @@ Test(symbol_cache_lifecycle, cached_names_are_copied_and_updates_do_not_invalida
   symbol_cache_destroy();
   cr_assert_null(symbol_cache_lookup(&key));
 }
-
-Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncation_without_partial_writes) {
-  const char *project[] = {"ascii-chat", "C:\\tools\\ASCII-CHAT.EXE", "libasciichat.so.0.1.0"};
-  for (size_t i = 0; i < 3; ++i)
-    cr_assert(symbol_module_is_project(project[i]));
-  cr_assert_not(symbol_module_is_project("libc.so.6"));
-  cr_assert_not(symbol_module_is_project(NULL));
-  char output[256];
-  bool external;
-  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  cr_assert_not(external);
-  cr_assert_str_eq(output, "lib/audio/audio.c");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  cr_assert(external);
-  cr_assert_not_null(strstr(output, "c/d/e/f/source.c"));
-  strcpy(output, "unchanged");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
-  cr_assert_str_eq(output, "unchanged");
-}

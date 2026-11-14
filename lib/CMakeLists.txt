@@ -29,7 +29,6 @@ set(CORE_SRCS
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
-    ${LIB_DIR}/platform/symbols.c
     ${LIB_DIR}/otel.c
     ${LIB_DIR}/asciichat_errno.c
     ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c
