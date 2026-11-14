@@ -1750,6 +1750,14 @@ options_t options_t_new(void);
 asciichat_error_t options_init(int argc, char **argv);
 
 /**
+ * @brief Validates parsed values with the libflags schema and ascii-chat policy.
+ *
+ * @param options Parsed option storage.
+ * @return ASCIICHAT_OK when generic and application policy validation succeeds.
+ */
+asciichat_error_t options_validate_libflags(options_t *options);
+
+/**
  * @brief Print usage information for a specific mode
  * @param stream File stream to write to (typically stdout or stderr)
  * @param mode Mode to show usage for (MODE_SERVER, MODE_CLIENT, MODE_MIRROR, etc.)

@@ -710,9 +710,6 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options is NULL");
   }
 
-  char *error_message = NULL;
-  // Cast opaque config pointer to actual type
-  const options_config_t *config_typed = (const options_config_t *)config;
   const options_t *options = (const options_t *)opts;
   if (options->webrtc_relay_only && options->detected_mode == MODE_CLIENT) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires discovery mode; connect using a session name");
@@ -729,14 +726,8 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
   if (strlen(options->turn_username) > 127 || strlen(options->turn_credential) > 127) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
   }
-  asciichat_error_t result = options_config_validate(config_typed, opts, &error_message);
-  if (result != ASCIICHAT_OK) {
-    if (error_message) {
-      log_error("%s", error_message);
-      SAFE_FREE(error_message);
-    }
-  }
-  return result;
+  (void)config;
+  return options_validate_libflags((options_t *)options);
 }
 
 // ============================================================================

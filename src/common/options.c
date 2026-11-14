@@ -1863,6 +1863,32 @@ static bool add_ascii_chat_dependencies(flags_schema_builder_t *builder) {
   return true;
 }
 
+asciichat_error_t options_validate_libflags(options_t *options) {
+  if (!options)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Options storage is NULL");
+  const option_mode_bitmask_t mode_mask = options->detected_mode == MODE_DISCOVERY
+                                              ? OPTION_MODE_ALL
+                                              : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << options->detected_mode));
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags validation schema");
+  if (options_registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK || !add_ascii_chat_dependencies(builder)) {
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build libflags validation schema");
+  }
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), options, sizeof(*options));
+  if (!context) {
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags validation context");
+  }
+  const bool valid = flags_validate(context);
+  flags_destroy_preserving_storage(context);
+  flags_schema_builder_destroy(builder);
+  if (!valid)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "One or more options failed libflags validation");
+  return ASCIICHAT_OK;
+}
+
 static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode, int mode_argc, char **mode_argv, int *remaining_argc, char ***remaining_argv) {
   (void)config;
   // Extract binary-level options BEFORE applying unified defaults
