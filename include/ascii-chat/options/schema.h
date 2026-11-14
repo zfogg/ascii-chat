@@ -7,8 +7,7 @@
  * that can appear in TOML configuration files. The schema drives the
  * generic config parser, eliminating duplicate validation code.
  *
- * @note This is separate from builder.h's option_descriptor_t which is
- *       for CLI parsing. This schema is specifically for TOML config files.
+ * @note This metadata adapts the ascii-chat registry to libflags TOML support.
  */
 
 #pragma once

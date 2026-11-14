@@ -9,7 +9,7 @@
  * ## Architecture Overview
  *
  * The registry is the **single source of truth** for option definitions. It works with:
- * - **Builder** (`builder.h`): Use builder to construct custom option configurations,
+ * - **libflags schema**: Use libflags to construct reusable option schemas,
  *   populated from the registry via `options_registry_add_all_to_flags_builder()`.
  * - **RCU Thread-Safety** (`rcu.h`): Registered options are parsed and published to
  *   RCU for lock-free thread-safe access via `GET_OPTION()` macro.

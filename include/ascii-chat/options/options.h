@@ -13,7 +13,7 @@
  * and unified options state for ascii-chat with support for multiple modes (server, client,
  * mirror, discovery service). The system unifies several layers:
  *
- * - **Builder API** (`builder.h`): Flexible option configuration with mode bitmasks
+ * - **libflags schema API**: Reusable typed option configuration with mode commands
  * - **Registry** (`registry.h`): Single definition of all options with mode applicability
  * - **RCU Thread-Safety** (`rcu.h`): Lock-free read access to options via `GET_OPTION()` macro
  * - **Unified State** (`options_t` struct): Single source of truth for all option values
@@ -25,7 +25,7 @@
  * 1. **Option Descriptors** (registry.c): Single-source-of-truth definitions of all options
  *    with metadata (long name, short name, mode bitmask, defaults, validators, etc.)
  *
- * 2. **Builder Pattern** (builder.h): Flexible API for programmatically constructing option
+ * 2. **libflags schema pattern**: Flexible API for programmatically constructing option
  *    configurations. Supports mode-specific options, dependencies, and custom validators.
  *
  * 3. **Presets** (presets.h): Pre-built configurations for common modes (unified, server, client,
@@ -192,7 +192,7 @@
  * @see options_init() - Main entry point for parsing
  * @see options_get() - Get pointer to current options struct
  * @see GET_OPTION() - Convenience macro for reading single fields
- * @see builder.h - Builder API for custom configurations
+ * @see libflags/flags.h - Generic option schema and parsing API
  * @see registry.h - Central registry of all options
  * @see rcu.h - RCU-based thread-safe access
  * @see presets.h - Pre-built configurations

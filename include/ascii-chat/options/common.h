@@ -78,7 +78,7 @@
  *
  * @see options.h - Main options module
  * @see registry.h - Central registry of all options
- * @see builder.h - Builder API using these validators
+ * @see libflags/flags.h - Generic typed option validation
  * @see validation.h - Additional validation functions
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -301,7 +301,7 @@ bool validate_webcam_index(const char *value_str, unsigned short int *out_index)
  * Calls options_config_validate() and handles error message display and cleanup.
  * Validates all option dependencies, conflicts, and custom validators.
  *
- * @param config Options configuration (opaque pointer, defined in builder.h)
+ * @param config Reserved compatibility parameter; may be NULL.
  * @param opts Options struct to validate
  * @return ASCIICHAT_OK if valid, error code otherwise
  *
