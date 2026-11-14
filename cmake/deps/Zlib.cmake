@@ -145,6 +145,14 @@ if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
                 "zlib library used by dependency subprojects" FORCE)
             set(ZLIB_LIBRARIES "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE STRING
                 "zlib libraries used by dependency subprojects" FORCE)
+        else()
+            # pkg-config has already verified that the system linker can resolve
+            # zlib.  Some distributions hide the absolute library path from
+            # CMake's search roots, so preserve the portable linker token.
+            set(ZLIB_LIBRARY "-lz" CACHE STRING
+                "zlib linker flag used by dependency subprojects" FORCE)
+            set(ZLIB_LIBRARIES "-lz" CACHE STRING
+                "zlib linker flag used by dependency subprojects" FORCE)
         endif()
     endif()
 endif()
