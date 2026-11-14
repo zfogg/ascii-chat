@@ -36,21 +36,29 @@ FetchContent_MakeAvailable(libplatform)
 # library that leaves those gcov entry points unresolved. The application and
 # its tests remain fully instrumented for coverage.
 if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(libplatform-objects PRIVATE
-        -fno-profile-arcs
-        -fno-test-coverage)
+    # Coverage flags are added to the parent project's interface target after
+    # dependencies are configured. Defer the exclusion until the directory
+    # finishes configuring so it is the final target-local option ordering.
+    function(_ascii_chat_disable_libplatform_coverage)
+        if(TARGET libplatform-objects)
+            target_compile_options(libplatform-objects PRIVATE
+                -fno-profile-arcs
+                -fno-test-coverage)
+        endif()
+        foreach(_ascii_chat_utf8proc_target IN ITEMS utf8proc libplatform-utf8proc)
+            if(TARGET ${_ascii_chat_utf8proc_target})
+                target_compile_options(${_ascii_chat_utf8proc_target} PRIVATE
+                    -fno-profile-arcs
+                    -fno-test-coverage)
+            endif()
+        endforeach()
+    endfunction()
+    cmake_language(DEFER CALL _ascii_chat_disable_libplatform_coverage)
 
     # libplatform's private utf8proc archive is also a dependency-only target.
     # Keep it out of coverage instrumentation for the same reason: its objects
     # must not leave profile-runtime references in the archive consumed by the
     # platform library.
-    foreach(_ascii_chat_utf8proc_target IN ITEMS utf8proc libplatform-utf8proc)
-        if(TARGET ${_ascii_chat_utf8proc_target})
-            target_compile_options(${_ascii_chat_utf8proc_target} PRIVATE
-                -fno-profile-arcs
-                -fno-test-coverage)
-        endif()
-    endforeach()
 endif()
 
 target_include_directories(asciichat-project-includes INTERFACE
