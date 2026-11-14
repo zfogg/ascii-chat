@@ -58,8 +58,7 @@ static void media_center_line(frame_buffer_t *buffer, const char *text, int row,
   frame_buffer_append(buffer, "\033[K", 3);
 }
 
-static void media_panel_clear_background(frame_buffer_t *buffer, terminal_size_t size, int top, int logo_rows,
-                                         int shown) {
+static void media_panel_clear_background(frame_buffer_t *buffer, terminal_size_t size, int top, int logo_rows, int shown) {
   for (int row = 1; row <= size.rows; ++row) {
     bool logo = row >= top && row < top + logo_rows;
     bool heading = row == top + logo_rows + 1 || row == top + logo_rows + 2;
@@ -69,8 +68,7 @@ static void media_panel_clear_background(frame_buffer_t *buffer, terminal_size_t
   }
 }
 
-void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const char *title, const char *instruction,
-                           const char *text, size_t cursor) {
+void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const char *title, const char *instruction, const char *text, size_t cursor) {
   bool compact = size.cols < 52;
   int logo_rows = compact ? 1 : 4;
   int lines = 1;
@@ -89,8 +87,7 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
   int top = (size.rows - height) / 2 + 1;
   if (top < 1)
     top = 1;
-  bool colors = !GET_OPTION(strip_ansi) &&
-                terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
   frame_buffer_append(buffer, "\033[0m\033[H\033[?25l", 13);
   frame_buffer_printf(buffer, "\033[%d;1H", top);
   const animation_sample_t *sample = ui_controller_animation_sample();
@@ -160,20 +157,15 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
   password_center_line(buffer, target, top + 2, left, width);
   password_center_line(buffer, "This server requires a password.", top + 3, left, width);
   if (s->incorrect || s->newline_limit)
-    password_center_line(
-        buffer,
-        colored_string(LOG_COLOR_WARN, s->newline_limit ? "Maximum 3 newlines." : "Incorrect password. Try again."),
-        top + 4, left, width);
+    password_center_line(buffer, colored_string(LOG_COLOR_WARN, s->newline_limit ? "Maximum 3 newlines." : "Incorrect password. Try again."), top + 4, left, width);
   frame_buffer_printf(buffer, "\033[%d;%dHPassword", top + 6, left + 2);
   ui_popup_frame(buffer, top + 7, left + 2, width - 4, lines + 2, LOG_COLOR_DEBUG);
-  const ui_button_t buttons[] = {{.label = "[ Confirm ]", .disabled = !s->can_confirm, .color = LOG_COLOR_INFO},
-                                 {.label = "[ Cancel ]", .color = LOG_COLOR_ERROR}};
+  const ui_button_t buttons[] = {{.label = "[ Confirm ]", .disabled = !s->can_confirm, .color = LOG_COLOR_INFO}, {.label = "[ Cancel ]", .color = LOG_COLOR_ERROR}};
   ui_buttons_render(buffer, top + 9 + lines, left + 2, width - 4, buttons, 2, s->selected_button);
   const char *orange = s->color ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
   const char *foreground = s->color ? ui_text_color_prefix(LOG_COLOR_RESET) : "";
   char shortcuts[TUI_PROMPT_SHORTCUTS_BUFFER_SIZE];
-  snprintf(shortcuts, sizeof(shortcuts), "%sTab%s select  %sEnter%s confirm  %sEsc%s cancel", orange, foreground,
-           orange, foreground, orange, foreground);
+  snprintf(shortcuts, sizeof(shortcuts), "%sTab%s select  %sEnter%s confirm  %sEsc%s cancel", orange, foreground, orange, foreground, orange, foreground);
   password_center_line(buffer, shortcuts, top + 10 + lines, left, width);
   snprintf(shortcuts, sizeof(shortcuts), "%sShift+Enter%s newline (maximum 3)", orange, foreground);
   password_center_line(buffer, shortcuts, top + 11 + lines, left, width);
@@ -204,15 +196,13 @@ static void render_prompt(terminal_size_t size, const void *data) {
     return;
   }
   if (strncmp(snapshot->text, "Open media:", 11) == 0) {
-    ui_media_panel_render(buffer, size, "Open media:", "Drop files / paste paths or URLs; Enter plays; Esc cancels",
-                          visible, snapshot->cursor);
+    ui_media_panel_render(buffer, size, "Open media:", "Drop files / paste paths or URLs; Enter plays; Esc cancels", visible, snapshot->cursor);
     ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
     frame_buffer_destroy(buffer);
     return;
   }
   frame_buffer_append(buffer, "\033[0m\033[H", 7);
-  int row =
-      ui_notice_render(buffer, snapshot->text, snapshot->severity, size.cols, snapshot->unicode, snapshot->color) + 2;
+  int row = ui_notice_render(buffer, snapshot->text, snapshot->severity, size.cols, snapshot->unicode, snapshot->color) + 2;
   frame_buffer_printf(buffer, "\033[%d;1H\033[2K", row);
   ui_input_render(buffer, row, 1, size.cols - 3, 1, visible, snapshot->cursor, false);
   ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
@@ -267,8 +257,7 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
   return ui_prompt_present_kind(prompt, visible, cursor, secret, secret ? UI_PROMPT_PASSWORD : UI_PROMPT_INPUT);
 }
 
-asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible, size_t cursor, bool secret,
-                                         ui_prompt_kind_t kind) {
+asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible, size_t cursor, bool secret, ui_prompt_kind_t kind) {
   size_t prompt_bytes = strlen(prompt) + 1;
   size_t visible_bytes = strlen(visible) + 1;
   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
@@ -282,18 +271,15 @@ asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible
   snapshot->secret = secret;
   snapshot->severity = ui_notice_prompt_severity();
   bool media = strncmp(prompt, "Open media:", 11) == 0;
-  snapshot->color =
-      !media && !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd(), options_terminal_settings());
+  snapshot->color = !media && !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd(), options_terminal_settings());
   snapshot->unicode = !media && terminal_should_use_utf8(GET_OPTION(force_utf8));
   memcpy(snapshot->text, prompt, prompt_bytes);
   memcpy(snapshot->text + prompt_bytes, visible, visible_bytes);
   // Height is measured at the minimum width, so every larger terminal fits.
-  terminal_size_t minimum = {.cols = 40,
-                             .rows = ui_notice_render(NULL, prompt, snapshot->severity, 40, false, false) + 3};
+  terminal_size_t minimum = {.cols = 40, .rows = ui_notice_render(NULL, prompt, snapshot->severity, 40, false, false) + 3};
   if (media)
     minimum.rows = 8;
-  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), minimum, render_prompt, snapshot,
-                                                  sizeof(*snapshot) + prompt_bytes + visible_bytes);
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), minimum, render_prompt, snapshot, sizeof(*snapshot) + prompt_bytes + visible_bytes);
   SAFE_FREE(snapshot);
   return result;
 }
@@ -330,13 +316,10 @@ static void render_media_loading(terminal_size_t size, const void *data) {
 }
 
 asciichat_error_t ui_media_loading_present(void) {
-  return ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8},
-                              render_media_loading, "", 1);
+  return ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8}, render_media_loading, "", 1);
 }
 
-asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor,
-                                             size_t selected_button, bool incorrect, bool can_confirm,
-                                             bool newline_limit) {
+asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor, size_t selected_button, bool incorrect, bool can_confirm, bool newline_limit) {
   if (!target || !masked || selected_button > 1)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid password presentation");
   size_t target_bytes = strlen(target) + 1, masked_bytes = strlen(masked) + 1;
@@ -356,8 +339,7 @@ asciichat_error_t ui_password_prompt_present(const char *target, const char *mas
   s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd(), options_terminal_settings());
   memcpy(s->text, target, target_bytes);
   memcpy(s->text + target_bytes, masked, masked_bytes);
-  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(),
-                                                  (terminal_size_t){.cols = 40, .rows = 19}, render_prompt, s, bytes);
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), (terminal_size_t){.cols = 40, .rows = 19}, render_prompt, s, bytes);
   SAFE_FREE(s);
   return result;
 }

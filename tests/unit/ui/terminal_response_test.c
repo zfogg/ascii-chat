@@ -69,6 +69,17 @@ Test(terminal_response, slow_reply_does_not_expire_into_keyboard_input) {
   cr_assert_eq(keyboard_stream_read(next_byte), '-');
 }
 
+Test(terminal_response, delayed_osc_reply_escape_does_not_become_keyboard_input) {
+  keyboard_stream_reset();
+  input = "\033";
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
+  keyboard_stream_query_started();
+  platform_sleep_ms(75);
+  input = "]11;rgb:1717/1717/1717\033\\o";
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
+  cr_assert_eq(keyboard_stream_read(next_byte), 'o');
+}
+
 Test(terminal_response, oversized_reply_is_discarded_through_terminator) {
   keyboard_stream_reset();
   char reply[400];

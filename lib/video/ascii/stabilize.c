@@ -23,10 +23,8 @@ void ascii_stabilizer_reset(ascii_stabilizer_t *state) {
   memset(state, 0, sizeof(*state));
 }
 
-asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
-                                           uint64_t configuration) {
-  if (!state || !width || !height || width > SIZE_MAX / height ||
-      width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration) {
+  if (!state || !width || !height || width > SIZE_MAX / height || width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stabilization viewport");
   if (state->cells && state->width == width && state->height == height && state->configuration == configuration)
     return ASCIICHAT_OK;
@@ -60,8 +58,7 @@ static unsigned source_color_motion(uint32_t previous, uint32_t current) {
   return difference / 3;
 }
 
-uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
-                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color) {
   unsigned motion = 0;
   if (cell->valid) {
@@ -73,8 +70,7 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
   uint32_t output_color = color;
   if (cell->valid && motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
     uint64_t margin = candidate_error / 8 + 128;
-    if (previous_error != UINT64_MAX &&
-        (previous_error <= candidate_error || previous_error - candidate_error <= margin))
+    if (previous_error != UINT64_MAX && (previous_error <= candidate_error || previous_error - candidate_error <= margin))
       result = cell->glyph;
     // Weight depends on elapsed time, avoiding a different response at each FPS.
     unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
@@ -89,10 +85,8 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
   return result;
 }
 
-uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16],
-                                const int16_t rgb_samples[3][16], bool colored, uint32_t candidate,
-                                uint64_t candidate_error, uint64_t previous_error, uint32_t previous_color,
-                                uint64_t elapsed_ns, uint32_t *color, uint32_t *background) {
+uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16], const int16_t rgb_samples[3][16], bool colored, uint32_t candidate, uint64_t candidate_error,
+                                uint64_t previous_error, uint32_t previous_color, uint64_t elapsed_ns, uint32_t *color, uint32_t *background) {
   ascii_temporal_cell_t old = *cell;
   unsigned motion = 0, color_motion = 0;
   for (int i = 0; i < 16; ++i)
@@ -104,15 +98,12 @@ uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t sampl
     color_motion /= 48;
   }
   uint64_t effective_elapsed = color_motion > ASCII_TEMPORAL_MOTION_LIMIT ? UINT64_MAX : elapsed_ns;
-  uint32_t selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, *color,
-                                              effective_elapsed, color);
+  uint32_t selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, *color, effective_elapsed, color);
   if (selected != candidate) {
     *cell = old;
-    selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, previous_color,
-                                       effective_elapsed, color);
+    selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, previous_color, effective_elapsed, color);
   }
-  if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT &&
-      elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+  if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
     unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
     *background = ascii_stabilizer_blend_color(old.background, *background, weight);
   }
@@ -168,8 +159,7 @@ void ascii_stabilizer_frame_row(ascii_frame_t *frame, ascii_color_t mode, bool b
       cell->color = frame->packed[x] = color;
       cell->valid = true;
       if (background)
-        frame->luma[x] =
-            (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
+        frame->luma[x] = (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
     }
     if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
       ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -189,8 +179,7 @@ void ascii_stabilizer_halfrow(ascii_frame_t *frame, ascii_color_t mode, const si
         memset(samples, luma, sizeof(samples));
         ascii_temporal_cell_t *cell = &frame->stabilizer->cells[(top_row + half) * frame->width + x];
         uint64_t elapsed = frame->stabilizer->elapsed_ns;
-        if (cell->valid && mode != ASCII_COLOR_NONE &&
-            source_color_motion(cell->source_color, color) > ASCII_TEMPORAL_MOTION_LIMIT)
+        if (cell->valid && mode != ASCII_COLOR_NONE && source_color_motion(cell->source_color, color) > ASCII_TEMPORAL_MOTION_LIMIT)
           elapsed = UINT64_MAX;
         cell->source_color = color;
         ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, elapsed, pixels[half]);
@@ -205,7 +194,6 @@ void ascii_stabilizer_halfrow(ascii_frame_t *frame, ascii_color_t mode, const si
       ops->quantize(frame->packed, frame->fg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
       ops->quantize(frame->index, frame->bg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode,
-                   frame->table);
+    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode, frame->table);
   }
 }

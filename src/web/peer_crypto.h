@@ -13,8 +13,7 @@ typedef struct crypto_context_t crypto_context_t;
 extern "C" {
 #endif
 
-browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
-                                          const uint8_t *expected_key);
+browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity, const uint8_t *expected_key);
 void peer_crypto_destroy(browser_peer_crypto_t *peer);
 bool peer_crypto_ready(browser_peer_crypto_t *peer);
 const char *peer_crypto_error(void);

@@ -19,6 +19,7 @@
 #include <ascii-chat/os/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/source_root.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -159,8 +160,7 @@ static void notify_locked(const asciichat_error_context_t *context) {
 }
 
 const char *asciichat_error_format(const char *message, asciichat_error_t code) {
-  static PLATFORM_THREAD_LOCAL char buffers[ERROR_RENDER_SLOT_COUNT]
-                                           [ASCIICHAT_ERRNO_MESSAGE_MAX + ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
+  static PLATFORM_THREAD_LOCAL char buffers[ERROR_RENDER_SLOT_COUNT][ASCIICHAT_ERRNO_MESSAGE_MAX + ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
   static PLATFORM_THREAD_LOCAL unsigned next;
   char *output = buffers[next++ % 8];
   char suffix[ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
@@ -219,8 +219,7 @@ size_t errno_title_snapshot(asciichat_error_context_t *latest) {
     }
   }
   for (size_t i = 0; i < g_notification_count; ++i) {
-    const asciichat_error_context_t *entry =
-        &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+    const asciichat_error_context_t *entry = &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
     error_thread_t *thread = find_thread(entry->thread_id);
     bool pending = false;
     if (thread && thread->generation == entry->generation) {
@@ -360,8 +359,7 @@ static void push_context(asciichat_error_context_t *context) {
   bool already_notified = false;
   if (context->cause_id) {
     for (size_t i = 0; i < g_notification_count; ++i) {
-      const asciichat_error_context_t *entry =
-          &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+      const asciichat_error_context_t *entry = &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
       if (entry->error_id == context->cause_id || entry->cause_id == context->cause_id) {
         already_notified = true;
         break;
@@ -422,8 +420,7 @@ static void push_context(asciichat_error_context_t *context) {
   registry_unlock();
 }
 
-static asciichat_error_t set_formatted(asciichat_error_t code, const char *file, int line, const char *function,
-                                       int sys_errno, bool system, int wsa, bool windows_socket, const char *format,
+static asciichat_error_t set_formatted(asciichat_error_t code, const char *file, int line, const char *function, int sys_errno, bool system, int wsa, bool windows_socket, const char *format,
                                        va_list args) {
   if (code == ASCIICHAT_OK || g_recording)
     return code;
@@ -455,15 +452,13 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
   ascii_otel_error_code(code, context.context_message);
 #endif
   if (!g_suppress_logging) {
-    log_debug("%s%s", asciichat_error_format(context.context_message, code),
-              context.message_truncated ? " [message truncated]" : "");
+    log_debug("%s%s", asciichat_error_format(context.context_message, code), context.message_truncated ? " [message truncated]" : "");
   }
   g_recording = false;
   return code;
 }
 
-asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
-                                         const char *format, ...) {
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...) {
   va_list args;
   va_start(args, format);
   asciichat_error_t result = set_formatted(code, file, line, function, 0, false, 0, false, format, args);
@@ -471,14 +466,11 @@ asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *fil
   return result;
 }
 
-asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function,
-                            const char *message) {
+asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function, const char *message) {
   return errno_set_with_message(code, file, line, function, "%s", message ? message : "");
 }
 
-asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
-                                                          const char *function, int sys_errno, const char *format,
-                                                          ...) {
+asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line, const char *function, int sys_errno, const char *format, ...) {
   va_list args;
   va_start(args, format);
   asciichat_error_t result = set_formatted(code, file, line, function, sys_errno, true, 0, false, format, args);
@@ -486,23 +478,19 @@ asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code
   return result;
 }
 
-asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
-                                              int sys_errno) {
-  return errno_set_with_system_error_and_message(code, file, line, function, sys_errno, "System operation failed (%d)",
-                                                 sys_errno);
+asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function, int sys_errno) {
+  return errno_set_with_system_error_and_message(code, file, line, function, sys_errno, "System operation failed (%d)", sys_errno);
 }
 
 // WSA metadata must be published together with the frame, never patched later.
-static asciichat_error_t set_wsa(asciichat_error_t code, const char *file, int line, const char *function, int wsa,
-                                 const char *format, ...) {
+static asciichat_error_t set_wsa(asciichat_error_t code, const char *file, int line, const char *function, int wsa, const char *format, ...) {
   va_list args;
   va_start(args, format);
   asciichat_error_t result = set_formatted(code, file, line, function, 0, false, wsa, true, format, args);
   va_end(args);
   return result;
 }
-asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
-                                           int wsa_error) {
+asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function, int wsa_error) {
   return set_wsa(code, file, line, function, wsa_error, "Socket operation failed (%d)", wsa_error);
 }
 
@@ -569,8 +557,7 @@ bool errno_has_code_since(asciichat_errno_scope_t scope, asciichat_error_t code)
 bool errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out) {
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
-  bool found = thread && thread->generation == scope.generation && thread->top != NO_FRAME &&
-               g_frames[thread->top].context.error_id > scope.after_id;
+  bool found = thread && thread->generation == scope.generation && thread->top != NO_FRAME && g_frames[thread->top].context.error_id > scope.after_id;
   if (found && out)
     *out = g_frames[thread->top].context;
   registry_unlock();
@@ -623,8 +610,7 @@ bool errno_clear_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
   registry_lock();
   uint64_t now = time_get_ns();
   error_thread_t *thread = find_thread(id);
-  bool matches =
-      thread && thread->generation == generation && thread->depth && g_frames[thread->top].context.error_id == error_id;
+  bool matches = thread && thread->generation == generation && thread->depth && g_frames[thread->top].context.error_id == error_id;
   if (matches)
     pop_locked(thread, ASCIICHAT_ERRNO_HANDLED, now);
   registry_unlock();
@@ -786,9 +772,8 @@ void asciichat_error_stats_reset(void) {
 }
 void asciichat_error_stats_print(void) {
   asciichat_error_stats_t stats = asciichat_error_stats_get();
-  log_plain("Errors: total=%" PRIu64 " pending=%zu threads=%zu dropped=%" PRIu64 " history_overwritten=%" PRIu64,
-            stats.total_errors, stats.pending_errors, stats.registered_threads, stats.dropped_errors,
-            stats.overwritten_history);
+  log_plain("Errors: total=%" PRIu64 " pending=%zu threads=%zu dropped=%" PRIu64 " history_overwritten=%" PRIu64, stats.total_errors, stats.pending_errors, stats.registered_threads,
+            stats.dropped_errors, stats.overwritten_history);
   for (size_t i = 1; i < ARRAY_SIZE(stats.error_counts); ++i)
     if (stats.error_counts[i])
       log_plain("  %s: %" PRIu64, asciichat_error_string((asciichat_error_t)i), stats.error_counts[i]);
@@ -800,14 +785,11 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
   bool previous = g_recording;
   g_recording = true;
   uint64_t now = time_get_ns();
-  log_plain("  Error #%" PRIu64 " thread=%" PRIu64 "/%" PRIu64 " code=%d cause=#%" PRIu64 " age=%.3fs",
-            context->error_id, context->thread_id, context->generation, context->code, context->cause_id,
+  log_plain("  Error #%" PRIu64 " thread=%" PRIu64 "/%" PRIu64 " code=%d cause=#%" PRIu64 " age=%.3fs", context->error_id, context->thread_id, context->generation, context->code, context->cause_id,
             now >= context->created_ns ? (double)(now - context->created_ns) / 1e9 : 0.0);
-  log_plain("  %s%s", asciichat_error_format(context->context_message, context->code),
-            context->message_truncated ? " [truncated]" : "");
+  log_plain("  %s%s", asciichat_error_format(context->context_message, context->code), context->message_truncated ? " [truncated]" : "");
   if (context->file)
-    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file), context->line,
-              context->function ? context->function : "?");
+    log_plain("  %s:%d in %s()", extract_project_relative_path(context->file, ASCIICHAT_OWNED_SOURCE_DIRS), context->line, context->function ? context->function : "?");
   if (context->has_system_error)
     log_plain("  System error: %d", context->system_errno);
   if (context->has_wsa_error)
@@ -816,10 +798,9 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
     backtrace_t trace = context->backtrace;
     trace.symbols = NULL;
     trace.tried_symbolize = false;
-    backtrace_symbolize(&trace);
+    backtrace_symbolize(&trace, ASCIICHAT_OWNED_SOURCE_DIRS);
     if (trace.symbols)
-      backtrace_print(LOG_ERROR, "Error backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
-                      backtrace_filter_error_internal);
+      backtrace_print(LOG_ERROR, "Error backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, backtrace_filter_error_internal);
     backtrace_t_free(&trace);
   }
   g_recording = previous;
@@ -858,8 +839,7 @@ void errno_print_history(void) {
   static const char *outcomes[] = {"handled", "dismissed", "thread-exit", "overflow"};
   for (size_t i = 0; i < count; ++i) {
     const asciichat_errno_history_t *event = &events[i];
-    log_plain("Error #%" PRIu64 " thread=%" PRIu64 " code=%d %s after %.3fms: %s", event->context.error_id,
-              event->context.thread_id, event->context.code, outcomes[event->outcome],
+    log_plain("Error #%" PRIu64 " thread=%" PRIu64 " code=%d %s after %.3fms: %s", event->context.error_id, event->context.thread_id, event->context.code, outcomes[event->outcome],
               (double)(event->resolved_ns - event->context.created_ns) / 1e6, event->context.context_message);
   }
 }
@@ -876,12 +856,11 @@ void errno_print_hash_stats(void) {
   }
   size_t entries = g_stats.registered_threads;
   registry_unlock();
-  log_plain("Error registry: entries=%zu buckets=%d used=%zu max_chain=%zu reserved_bytes=%zu", entries, ERRNO_BUCKETS,
-            used, max_chain, sizeof(g_threads) + sizeof(g_buckets) + sizeof(g_frames) + sizeof(g_history));
+  log_plain("Error registry: entries=%zu buckets=%d used=%zu max_chain=%zu reserved_bytes=%zu", entries, ERRNO_BUCKETS, used, max_chain,
+            sizeof(g_threads) + sizeof(g_buckets) + sizeof(g_frames) + sizeof(g_history));
 }
 
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
-                                  const char *format, ...) {
+void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...) {
   // This path must also work when an allocator or a diagnostic itself failed.
   bool previous = g_recording;
   g_recording = true;
@@ -891,8 +870,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   vsnprintf(message, sizeof(message), format ? format : "", args);
   va_end(args);
   NOTICE(FATAL, "FATAL ERROR", "%s", asciichat_error_format(message, code));
-  log_error("Fatal: %s (at %s:%d in %s)", asciichat_error_format(message, code), file ? file : "?", line,
-            function ? function : "?");
+  log_error("Fatal: %s (at %s:%d in %s)", asciichat_error_format(message, code), file ? file : "?", line, function ? function : "?");
   errno_print_stacks();
   g_recording = previous;
 #ifdef EMSCRIPTEN_BUILD
@@ -905,8 +883,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 bool errno_scope_is_clean(asciichat_errno_scope_t scope) {
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
-  bool clean = !thread || thread->generation != scope.generation || !thread->depth ||
-               g_frames[thread->top].context.error_id <= scope.after_id;
+  bool clean = !thread || thread->generation != scope.generation || !thread->depth || g_frames[thread->top].context.error_id <= scope.after_id;
   registry_unlock();
   return clean;
 }

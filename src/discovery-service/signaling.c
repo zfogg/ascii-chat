@@ -104,8 +104,7 @@ static void broadcast_callback(network_connection_t *connection, void *user_arg)
     return;
   }
 
-  log_debug("Broadcast: checking participant=%02x%02x... (session=%02x%02x...)", acds_data->participant_id[0],
-            acds_data->participant_id[1], acds_data->session_id[0], acds_data->session_id[1]);
+  log_debug("Broadcast: checking participant=%02x%02x... (session=%02x%02x...)", acds_data->participant_id[0], acds_data->participant_id[1], acds_data->session_id[0], acds_data->session_id[1]);
 
   // Check if client is in target session
   if (!uuid_equals(acds_data->session_id, ctx->target_session_id)) {
@@ -115,38 +114,30 @@ static void broadcast_callback(network_connection_t *connection, void *user_arg)
 
   // Skip excluded participant (e.g., sender)
   if (ctx->exclude_participant_id && uuid_equals(acds_data->participant_id, ctx->exclude_participant_id)) {
-    log_debug("Broadcast: excluding sender (participant=%02x%02x...)", acds_data->participant_id[0],
-              acds_data->participant_id[1]);
+    log_debug("Broadcast: excluding sender (participant=%02x%02x...)", acds_data->participant_id[0], acds_data->participant_id[1]);
     return; // Skip sender
   }
 
   // Send packet through transport (not raw socket)
-  log_debug("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type,
-            acds_data->participant_id[0], acds_data->participant_id[1]);
-  asciichat_error_t result =
-      packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet, ctx->packet_len, 0);
+  log_debug("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type, acds_data->participant_id[0], acds_data->participant_id[1]);
+  asciichat_error_t result = packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet, ctx->packet_len, 0);
   if (result == ASCIICHAT_OK) {
     ctx->sent_count++;
-    log_debug("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0],
-              acds_data->participant_id[1]);
+    log_debug("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0], acds_data->participant_id[1]);
   } else {
-    log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0],
-             acds_data->participant_id[1], asciichat_error_format(NULL, result));
+    log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0], acds_data->participant_id[1], asciichat_error_format(NULL, result));
   }
 }
 
-asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp,
-                                      size_t total_packet_len) {
+asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp, size_t total_packet_len) {
   if (!db || !network_server || !sdp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or sdp is NULL");
   }
 
   /* Find session by UUID using database lookup */
-  log_debug("SDP relay: Looking up session_id=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            sdp->session_id[0], sdp->session_id[1], sdp->session_id[2], sdp->session_id[3], sdp->session_id[4],
-            sdp->session_id[5], sdp->session_id[6], sdp->session_id[7], sdp->session_id[8], sdp->session_id[9],
-            sdp->session_id[10], sdp->session_id[11], sdp->session_id[12], sdp->session_id[13], sdp->session_id[14],
-            sdp->session_id[15]);
+  log_debug("SDP relay: Looking up session_id=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", sdp->session_id[0], sdp->session_id[1], sdp->session_id[2], sdp->session_id[3],
+            sdp->session_id[4], sdp->session_id[5], sdp->session_id[6], sdp->session_id[7], sdp->session_id[8], sdp->session_id[9], sdp->session_id[10], sdp->session_id[11], sdp->session_id[12],
+            sdp->session_id[13], sdp->session_id[14], sdp->session_id[15]);
   session_entry_t *session = database_session_find_by_id(db, sdp->session_id);
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for SDP relay");
@@ -157,15 +148,10 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_ser
   if (is_broadcast_uuid(sdp->recipient_id)) {
     // Broadcast to all participants in session (except sender)
     log_debug("Broadcasting SDP to all participants in session (excluding sender)");
-    return signaling_broadcast(db, network_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
-                               sdp->sender_id);
+    return signaling_broadcast(db, network_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len, sdp->sender_id);
   } else {
     // Unicast to specific recipient
-    find_client_context_t ctx = {.target_participant_id = sdp->recipient_id,
-                                 .found = false,
-                                 .type = PACKET_TYPE_ACIP_WEBRTC_SDP,
-                                 .packet = sdp,
-                                 .length = total_packet_len};
+    find_client_context_t ctx = {.target_participant_id = sdp->recipient_id, .found = false, .type = PACKET_TYPE_ACIP_WEBRTC_SDP, .packet = sdp, .length = total_packet_len};
 
     network_server_foreach(network_server, find_participant_callback, &ctx);
 
@@ -185,8 +171,7 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_ser
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice,
-                                      size_t total_packet_len) {
+asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice, size_t total_packet_len) {
   if (!db || !network_server || !ice) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or ice is NULL");
   }
@@ -202,15 +187,10 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_ser
   if (is_broadcast_uuid(ice->recipient_id)) {
     // Broadcast to all participants in session (except sender)
     log_debug("Broadcasting ICE candidate to all participants in session (excluding sender)");
-    return signaling_broadcast(db, network_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
-                               ice->sender_id);
+    return signaling_broadcast(db, network_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len, ice->sender_id);
   } else {
     // Unicast to specific recipient
-    find_client_context_t ctx = {.target_participant_id = ice->recipient_id,
-                                 .found = false,
-                                 .type = PACKET_TYPE_ACIP_WEBRTC_ICE,
-                                 .packet = ice,
-                                 .length = total_packet_len};
+    find_client_context_t ctx = {.target_participant_id = ice->recipient_id, .found = false, .type = PACKET_TYPE_ACIP_WEBRTC_ICE, .packet = ice, .length = total_packet_len};
 
     network_server_foreach(network_server, find_participant_callback, &ctx);
 
@@ -230,18 +210,15 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_ser
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server,
-                                      const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type,
-                                      const void *packet, size_t packet_len, const uint8_t *exclude_participant_id) {
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type, const void *packet, size_t packet_len,
+                                      const uint8_t *exclude_participant_id) {
   if (!db || !network_server || !session_id || !packet) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, session_id, or packet is NULL");
   }
 
-  log_debug("★ SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...", packet_type, packet_len,
-            session_id[0], session_id[1]);
+  log_debug("★ SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...", packet_type, packet_len, session_id[0], session_id[1]);
   if (exclude_participant_id) {
-    log_debug("★ SIGNALING_BROADCAST: excluding participant=%02x%02x...", exclude_participant_id[0],
-              exclude_participant_id[1]);
+    log_debug("★ SIGNALING_BROADCAST: excluding participant=%02x%02x...", exclude_participant_id[0], exclude_participant_id[1]);
   }
 
   /* Find session by UUID using database lookup */
@@ -252,12 +229,8 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_ser
   session_entry_destroy(session); // We only need to validate existence
 
   // Broadcast to all participants in session (excluding sender if specified)
-  broadcast_context_t ctx = {.target_session_id = session_id,
-                             .exclude_participant_id = exclude_participant_id,
-                             .packet_type = packet_type,
-                             .packet = packet,
-                             .packet_len = packet_len,
-                             .sent_count = 0};
+  broadcast_context_t ctx = {
+      .target_session_id = session_id, .exclude_participant_id = exclude_participant_id, .packet_type = packet_type, .packet = packet, .packet_len = packet_len, .sent_count = 0};
 
   network_server_foreach(network_server, broadcast_callback, &ctx);
 

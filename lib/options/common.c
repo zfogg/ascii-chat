@@ -118,8 +118,7 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
 
 // Find similar option across all modes and suggest it with mode information
 // Returns formatted suggestion string with mode info, or NULL if no good match
-const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config,
-                                          option_mode_bitmask_t current_mode_bitmask) {
+const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config, option_mode_bitmask_t current_mode_bitmask) {
   if (!unknown_opt || !config) {
     return NULL;
   }
@@ -166,8 +165,7 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
   } else {
     // Option exists but in a different mode - show all available modes
     const char *modes_str = format_available_modes(best_match->mode_bitmask);
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in modes: %s)?",
-                  best_match->long_name, modes_str);
+    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in modes: %s)?", best_match->long_name, modes_str);
   }
 
   return suggestion;
@@ -189,12 +187,10 @@ int strtoint_safe(const char *str) {
 }
 
 // Forward declaration for get_required_argument (defined later in file)
-char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                            asciichat_mode_t mode);
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
 // Validate and retrieve required argument for an option
-char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
-                                 asciichat_mode_t mode) {
+char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode) {
   char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, mode);
   if (!value) {
     (void)option_error_invalid();
@@ -292,9 +288,7 @@ asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
 
   log_error("No Ed25519 SSH key found at %s", full_path);
   SAFE_FREE(full_path);
-  return SET_ERRNO(
-      ERROR_CRYPTO_KEY,
-      "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
 }
 
 // ============================================================================
@@ -322,8 +316,7 @@ char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_siz
 
 // Helper function to handle required arguments with consistent error messages
 // Returns NULL on error (caller should check and return error code)
-char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                            asciichat_mode_t mode) {
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode) {
   // Check if opt_value is NULL or empty
   if (!opt_value || strlen(opt_value) == 0) {
     goto error;
@@ -404,13 +397,12 @@ asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts
     opts->color_mode = COLOR_MODE_AUTO;
   } else if (strcmp(value_str, OPT_COLOR_MODE_NONE) == 0 || strcmp(value_str, OPT_COLOR_MODE_MONO) == 0) {
     opts->color_mode = COLOR_MODE_NONE;
-  } else if (strcmp(value_str, OPT_COLOR_MODE_16) == 0 || strcmp(value_str, "16color") == 0 ||
-             strcmp(value_str, "ansi") == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_16) == 0 || strcmp(value_str, "16color") == 0 || strcmp(value_str, "ansi") == 0) {
     opts->color_mode = COLOR_MODE_16_COLOR;
   } else if (strcmp(value_str, OPT_COLOR_MODE_256) == 0 || strcmp(value_str, "256color") == 0) {
     opts->color_mode = COLOR_MODE_256_COLOR;
-  } else if (strcmp(value_str, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(value_str, "24bit") == 0 ||
-             strcmp(value_str, "tc") == 0 || strcmp(value_str, "rgb") == 0 || strcmp(value_str, OPT_VALUE_TRUE) == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(value_str, "24bit") == 0 || strcmp(value_str, "tc") == 0 || strcmp(value_str, "rgb") == 0 ||
+             strcmp(value_str, OPT_VALUE_TRUE) == 0) {
     opts->color_mode = COLOR_MODE_TRUECOLOR;
   } else {
     log_error("Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor", value_str);
@@ -470,8 +462,7 @@ asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *o
   }
 
   if (strlen(value_str) >= sizeof(opts->palette_custom)) {
-    log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str),
-              sizeof(opts->palette_custom) - 1);
+    log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str), sizeof(opts->palette_custom) - 1);
     return ERROR_INVALID_PARAM;
   }
 
@@ -657,8 +648,7 @@ void update_dimensions_to_terminal_size(options_t *opts) {
   asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
   if (terminal_result == ASCIICHAT_OK) {
     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
-    log_dev("Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)", term_width, term_height, opts->auto_width,
-            opts->auto_height);
+    log_dev("Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)", term_width, term_height, opts->auto_width, opts->auto_height);
     if (opts->auto_width) {
       opts->width = term_width;
       log_debug("Auto-width: set width to %u", opts->width);

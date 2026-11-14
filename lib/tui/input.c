@@ -73,12 +73,10 @@ static _Atomic bool g_input_buffered;
 
 static bool input_switch_key(keyboard_key_t key) {
   tui_shortcut_t action = tui_shortcut_action(key);
-  return action == TUI_SHORTCUT_STATS || action == TUI_SHORTCUT_ERRORS || action == TUI_SHORTCUT_HELP ||
-         action == TUI_SHORTCUT_LOGS || action == TUI_SHORTCUT_MEDIA;
+  return action == TUI_SHORTCUT_STATS || action == TUI_SHORTCUT_ERRORS || action == TUI_SHORTCUT_HELP || action == TUI_SHORTCUT_LOGS || action == TUI_SHORTCUT_MEDIA;
 }
 
-keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*read_key)(void),
-                                     bool (*classify_paste)(const char *)) {
+keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*read_key)(void), bool (*classify_paste)(const char *)) {
   if (s->ready)
     return KEY_NONE;
   for (unsigned i = 0; i < 1024; ++i) {
@@ -110,8 +108,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
         text[0] = (char)key;
         bytes = 1;
       }
-      if (!bytes || (key < 32 && key != '\r' && key != '\n' && key != '\t') || key == 127 ||
-          bytes >= sizeof(s->paste) - s->length)
+      if (!bytes || (key < 32 && key != '\r' && key != '\n' && key != '\t') || key == 127 || bytes >= sizeof(s->paste) - s->length)
         s->invalid = true;
       else {
         memcpy(s->paste + s->length, text, bytes);
@@ -183,8 +180,7 @@ static input_editor_t g_media_editor;
 
 // Publish only whether routing work remains; the actual queues stay serialized.
 static void input_unlock(void) {
-  atomic_store(&g_input_buffered,
-               g_sync_key_count || g_events.count || g_events.ready || g_events.pasting || g_media_editor.active);
+  atomic_store(&g_input_buffered, g_sync_key_count || g_events.count || g_events.ready || g_events.pasting || g_media_editor.active);
   mutex_unlock(&g_input_mutex);
 }
 
@@ -193,8 +189,7 @@ static bool input_ready(void) {
 }
 
 static bool input_media_paste(const char *text) {
-  return text[0] == '.' || text[0] == '/' || text[0] == '\\' || text[0] == '~' || text[0] == '\'' || text[0] == '"' ||
-         (strlen(text) > 2 && text[1] == ':') || strstr(text, "://") != NULL;
+  return text[0] == '.' || text[0] == '/' || text[0] == '\\' || text[0] == '~' || text[0] == '\'' || text[0] == '"' || (strlen(text) > 2 && text[1] == ':') || strstr(text, "://") != NULL;
 }
 
 static keyboard_key_t input_read_event(void) {
@@ -281,8 +276,7 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
 
 void ui_input_poll_sync(void) {
 #ifndef NDEBUG
-  if (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
-      mutex_trylock(&g_input_mutex) != 0)
+  if (atomic_load(&g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() || mutex_trylock(&g_input_mutex) != 0)
     return;
   if (g_switch_pending) {
     input_unlock();
@@ -315,8 +309,7 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
-                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE || GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   if (action == TUI_SHORTCUT_LOGS && !server) {
     ascii_otel_ui_usage("logs", "shortcut", 0);
     ui_controller_toggle_logs();
@@ -368,8 +361,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     input_unlock();
     return KEY_NONE;
   }
-  if (state.screen == UI_SCREEN_HELP &&
-      (ui_error_popup_visible() || keyboard_help_parent_screen() == UI_SCREEN_ERROR)) {
+  if (state.screen == UI_SCREEN_HELP && (ui_error_popup_visible() || keyboard_help_parent_screen() == UI_SCREEN_ERROR)) {
     keyboard_key_t key = keyboard_help_check_signal_cancel() ? KEY_ESCAPE : input_next_key();
     if (key == KEY_ESCAPE || key == KEY_QUESTION)
       keyboard_help_toggle_terminal(ui_controller_active_fd());
@@ -391,8 +383,15 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     keyboard_key_t key = input_next_key();
     if (key == KEY_QUESTION)
       keyboard_help_toggle_terminal(ui_controller_active_fd());
-    else if (key != KEY_NONE && key != KEY_PASTE && key != 3)
+    else if (key != KEY_NONE && key != KEY_PASTE && key != 3) {
       ui_error_popup_key(key);
+      /* The first q dismisses the modal error.  Only a later q, after the
+       * final error is gone, is allowed to reach the session exit handler. */
+      if (key == 'q' && !ui_error_popup_visible()) {
+        input_unlock();
+        return key;
+      }
+    }
     if (key == KEY_PASTE)
       g_events.ready = false;
     input_unlock();
@@ -405,8 +404,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (notice_key == KEY_PASTE)
       g_events.ready = false;
     bool first_use = ui_controller_first_use_key(notice_key);
-    if (!first_use &&
-        (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3))
+    if (!first_use && (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3))
       ui_controller_remove(UI_SCREEN_NOTICE);
     input_unlock();
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
@@ -447,8 +445,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
       if (key == KEY_PASTE)
         g_events.ready = false;
-      ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled",
-                          0);
+      ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled", 0);
       g_media_editor.active = false;
       ui_prompt_remove();
     } else if (key == '\r' || key == '\n') {
@@ -483,12 +480,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
         g_media_editor.pasted = true;
       } else if (!(key == ' ' && g_media_editor.pasted && g_media_editor.cursor == g_media_editor.length)) {
         g_media_editor.pasted = false;
-        ui_input_edit_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &g_media_editor.length,
-                          &g_media_editor.cursor, key);
+        ui_input_edit_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &g_media_editor.length, &g_media_editor.cursor, key);
       }
-      if (ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                                 g_media_editor.buffer, g_media_editor.cursor, false,
-                                 UI_PROMPT_MEDIA_INPUT) != ASCIICHAT_OK) {
+      if (ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels", g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT) !=
+          ASCIICHAT_OK) {
         g_media_editor.active = false;
         ui_prompt_remove();
         CLEAR_ERRNO();
@@ -497,13 +492,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     input_unlock();
     return KEY_NONE;
   }
-  bool primary =
-      screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_MDNS;
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
-                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+  bool primary = screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_MDNS;
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE || GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   bool server_owner = screen == UI_SCREEN_STATS && server && !ui_controller_screen_live(UI_SCREEN_STATUS);
-  bool active = state.screen < 0 || state.screen == (int)screen ||
-                ((primary || server_owner) && state.screen <= UI_SCREEN_SYNC && state.screen != UI_SCREEN_STATS);
+  bool active = state.screen < 0 || state.screen == (int)screen || ((primary || server_owner) && state.screen <= UI_SCREEN_SYNC && state.screen != UI_SCREEN_STATS);
   keyboard_key_t key = KEY_NONE;
   if (active) {
     if (g_sync_key_count) {
@@ -522,8 +514,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     }
     if (screen != UI_SCREEN_PROMPT) {
       key = input_common_key(key, state.screen);
-      if (key != KEY_PASTE && !log_search_is_entering() &&
-          !(screen == UI_SCREEN_MDNS && state.screen == UI_SCREEN_MDNS))
+      if (key != KEY_PASTE && !log_search_is_entering() && !(screen == UI_SCREEN_MDNS && state.screen == UI_SCREEN_MDNS))
         key = ui_sync_handle_key(key);
     }
   }
@@ -560,7 +551,6 @@ void ui_input_shutdown(void) {
     return;
   mutex_destroy(&g_input_prompt_mutex);
   mutex_destroy(&g_input_mutex);
-  NAMED_UNREGISTER(&g_input_lifecycle.state);
   lifecycle_destroy_commit(&g_input_lifecycle);
 }
 
@@ -569,14 +559,12 @@ void ui_input_shutdown(void) {
  * buttons, and reject excess newlines before insertion. Clipboard and terminal
  * paste share atomic insertion; temporary secret buffers are wiped on exit.
  */
-static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts,
-                                      bool password_dialog, bool incorrect) {
+static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts, bool password_dialog, bool incorrect) {
   if (!prompt || !buffer || max_len < 2)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid prompt buffer");
   if (keyboard_init() != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Cannot initialize prompt input");
-  const char *usage_name = ui_prompt_kind_name(
-      password_dialog || (opts.kind == UI_PROMPT_INPUT && !opts.echo) ? UI_PROMPT_PASSWORD : opts.kind);
+  const char *usage_name = ui_prompt_kind_name(password_dialog || (opts.kind == UI_PROMPT_INPUT && !opts.echo) ? UI_PROMPT_PASSWORD : opts.kind);
   if (password_dialog && incorrect)
     ascii_otel_ui_usage(usage_name, "rejected", 0);
   char *visible = SAFE_CALLOC(max_len, 1, char *);
@@ -631,11 +619,8 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
         display_cursor = 0;
     }
     // Presentation owns only the mask; the caller retains the credential.
-    result = password_dialog
-                 ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
-                                              len >= MIN_PASSWORD_LENGTH, newline_limit)
-                 : ui_prompt_present_kind(timed_prompt, visible, display_cursor, !opts.echo,
-                                          opts.kind == UI_PROMPT_INPUT && !opts.echo ? UI_PROMPT_PASSWORD : opts.kind);
+    result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect, len >= MIN_PASSWORD_LENGTH, newline_limit)
+                             : ui_prompt_present_kind(timed_prompt, visible, display_cursor, !opts.echo, opts.kind == UI_PROMPT_INPUT && !opts.echo ? UI_PROMPT_PASSWORD : opts.kind);
     if (result != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
@@ -671,8 +656,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     // Validate the whole paste before editing so rejection cannot leave a partial password.
     if (key == KEY_PASTE || key == 22) {
       char pasted[TUI_INPUT_PASTED_BUFFER_SIZE] = {0};
-      asciichat_error_t pasted_result =
-          key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
+      asciichat_error_t pasted_result = key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
       if (pasted_result == ASCIICHAT_OK) {
         if (key == 22) {
           size_t write = 0;
@@ -772,8 +756,7 @@ asciichat_error_t ui_input_media_begin(const char *text) {
   g_media_editor.length = g_media_editor.cursor = strlen(text);
   g_media_editor.deadline = ui_input_deadline(120);
   asciichat_error_t result =
-      ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                             g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT);
+      ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels", g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT);
   g_media_editor.active = result == ASCIICHAT_OK;
   input_unlock();
   return result;

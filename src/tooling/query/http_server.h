@@ -100,8 +100,7 @@ struct HttpResponse {
   std::string body;
 
   HttpResponse() = default;
-  HttpResponse(int code, std::string text, std::string content_type, std::string response_body)
-      : status_code(code), status_text(std::move(text)), body(std::move(response_body)) {
+  HttpResponse(int code, std::string text, std::string content_type, std::string response_body) : status_code(code), status_text(std::move(text)), body(std::move(response_body)) {
     headers["Content-Type"] = std::move(content_type);
   }
 
@@ -131,8 +130,7 @@ struct HttpResponse {
   }
 
   static HttpResponse serverError(const std::string &message = "Internal Server Error") {
-    return HttpResponse(500, "Internal Server Error", "application/json",
-                        R"({"error":")" + json::escape(message) + R"("})");
+    return HttpResponse(500, "Internal Server Error", "application/json", R"({"error":")" + json::escape(message) + R"("})");
   }
 
   static HttpResponse noContent() {

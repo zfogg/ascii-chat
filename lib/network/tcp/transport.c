@@ -70,8 +70,7 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     }
     size_t ciphertext_len = 0;
     packet_header_t outer;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)wire.data + sizeof(outer),
-                                 plan.ciphertext_capacity, &outer, &ciphertext_len);
+    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)wire.data + sizeof(outer), plan.ciphertext_capacity, &outer, &ciphertext_len);
     if (result != ASCIICHAT_OK) {
       socket_send_buffer_free(&wire);
       mutex_unlock(&tcp->send_mutex);
@@ -90,8 +89,7 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     if (result == ASCIICHAT_OK && !supported) {
       socket_buffer_t slice = {wire.data, wire_len};
       uint64_t elapsed = time_get_ns() - send_start;
-      result = elapsed >= timeout ? SET_ERRNO(ERROR_NETWORK_TIMEOUT, "TCP send deadline expired")
-                                  : socket_sendv_all(tcp->sockfd, &slice, 1, timeout - elapsed);
+      result = elapsed >= timeout ? SET_ERRNO(ERROR_NETWORK_TIMEOUT, "TCP send deadline expired") : socket_sendv_all(tcp->sockfd, &slice, 1, timeout - elapsed);
     }
     socket_send_buffer_free(&wire);
   }
@@ -119,12 +117,10 @@ asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, b
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
-                                  void **out_allocated_buffer) {
+static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, size_t *out_len, void **out_allocated_buffer) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
-  log_debug("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd,
-            tcp->is_connected ? "true" : "false");
+  log_debug("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd, tcp->is_connected ? "true" : "false");
 
   if (!tcp->is_connected) {
     log_error("[TCP_RECV_STATE] ❌ DISCONNECTED: Cannot recv - transport marked disconnected! sockfd=%d", tcp->sockfd);
@@ -134,16 +130,12 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   // Use secure packet receive with envelope
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL && transport->crypto_ctx->encrypt_data);
-  log_debug("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd,
-            enforce_encryption ? "yes" : "no");
+  log_debug("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd, enforce_encryption ? "yes" : "no");
 
-  uint64_t receive_timeout_ns =
-      transport->receive_timeout_ns != 0 ? transport->receive_timeout_ns : RECV_TIMEOUT * NS_PER_SEC_INT;
+  uint64_t receive_timeout_ns = transport->receive_timeout_ns != 0 ? transport->receive_timeout_ns : RECV_TIMEOUT * NS_PER_SEC_INT;
   asciichat_errno_scope_t receive_scope = errno_checkpoint();
-  packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx,
-                                                                   enforce_encryption, &envelope, receive_timeout_ns);
-  log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",
-            result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
+  packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope, receive_timeout_ns);
+  log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu", result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {
     if (result == PACKET_RECV_EOF) {
@@ -196,8 +188,7 @@ static asciichat_error_t tcp_close(acip_transport_t *transport) {
     tcp->sockfd = INVALID_SOCKET_VALUE;
   }
 
-  log_warn("[TCP_CLOSE_STATE] 🔴 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport,
-           tcp->sockfd, tcp->is_connected ? "yes" : "no");
+  log_warn("[TCP_CLOSE_STATE] 🔴 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport, tcp->sockfd, tcp->is_connected ? "yes" : "no");
 
   if (!tcp->is_connected) {
     log_debug("[TCP_CLOSE_STATE] ✅ CLOSE_IDEMPOTENT: transport already disconnected (sockfd=%d)", tcp->sockfd);
@@ -210,8 +201,7 @@ static asciichat_error_t tcp_close(acip_transport_t *transport) {
            (void *)transport, tcp->sockfd);
   tcp->is_connected = false;
 
-  log_warn("[TCP_CLOSE_STATE] ✅ CLOSE_COMPLETE: TCP transport marked as disconnected. transport=%p, sockfd=%d",
-           (void *)transport, tcp->sockfd);
+  log_warn("[TCP_CLOSE_STATE] ✅ CLOSE_COMPLETE: TCP transport marked as disconnected. transport=%p, sockfd=%d", (void *)transport, tcp->sockfd);
   return ASCIICHAT_OK;
 }
 
@@ -228,8 +218,7 @@ static socket_t tcp_get_socket(acip_transport_t *transport) {
 static bool tcp_is_connected(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
   bool result = tcp->is_connected;
-  log_debug_every(LOG_RATE_FAST, "transport=%p, sockfd=%d, result=%s", (void *)transport, tcp->sockfd,
-                  result ? "true" : "false");
+  log_debug_every(LOG_RATE_FAST, "transport=%p, sockfd=%d, result=%s", (void *)transport, tcp->sockfd, result ? "true" : "false");
   return result;
 }
 
@@ -369,8 +358,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
   NAMED_REGISTER(tcp_data, "impl", "tcp_impl", "0x%tx", (uintptr_t)(const void *)(transport));
 
-  log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
-           (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
+  log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s", (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
 #ifndef __EMSCRIPTEN__
   if (transport && acip_outbound_create(transport) != ASCIICHAT_OK) {
@@ -398,8 +386,7 @@ void acip_transport_destroy(acip_transport_t *transport) {
     return;
   }
 
-  log_debug("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport,
-            transport->impl_data);
+  log_debug("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
 
 #ifndef __EMSCRIPTEN__
   acip_outbound_destroy(transport);
@@ -413,8 +400,7 @@ void acip_transport_destroy(acip_transport_t *transport) {
   }
 
   // Close if still connected
-  if (transport->methods && transport->methods->close && transport->methods->is_connected &&
-      transport->methods->is_connected(transport)) {
+  if (transport->methods && transport->methods->close && transport->methods->is_connected && transport->methods->is_connected(transport)) {
     log_debug("[TRANSPORT_DESTROY] 🔴 STILL_CONNECTED: calling close() first (type=%d)", type);
     asciichat_error_t close_result = transport->methods->close(transport);
     if (close_result != ASCIICHAT_OK)

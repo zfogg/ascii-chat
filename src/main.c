@@ -225,17 +225,17 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 // Register with descriptive name for debug output
 #ifndef NDEBUG
-#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
-  do {                                                                                                                 \
-    static bool _global_atomics_registered = false;                                                                    \
-    if (!_global_atomics_registered) {                                                                                 \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                            \
-      _global_atomics_registered = true;                                                                               \
-    }                                                                                                                  \
+#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    static bool _global_atomics_registered = false;                                                                                                                                                    \
+    if (!_global_atomics_registered) {                                                                                                                                                                 \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                                                                                                            \
+      _global_atomics_registered = true;                                                                                                                                                               \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
-#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
-  do {                                                                                                                 \
+#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
   } while (0)
 #endif
 
@@ -255,7 +255,15 @@ void signal_exit(void) {
   // other threads may hold mutex locks. We avoid log_console() here to prevent
   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
   // The shutdown will be logged by normal thread context later.
-  atomic_store_bool(&g_should_exit, true);
+  // Ctrl-C can arrive through both the console-control handler and the
+  // terminal input path.  Only the first request may run the shutdown
+  // callback; running it twice races teardown and can leave the process stuck.
+  if (atomic_exchange_bool(&g_should_exit, true))
+    return;
+  log_info("Shutdown signal received");
+  // Interrupt telemetry network I/O immediately. Full drain/free remains in
+  // the normal teardown path, but cancellation must not wait for atexit.
+  ascii_otel_request_shutdown();
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
     cb();
@@ -277,10 +285,7 @@ void set_interrupt_callback(void (*cb)(void)) {
  */
 static void handle_sigterm(int sig) {
   // Write to stderr about which signal was received for debugging
-  const char *sig_name = (sig == SIGTERM)  ? "SIGTERM"
-                         : (sig == SIGINT) ? "SIGINT"
-                         : (sig == SIGHUP) ? "SIGHUP"
-                                           : "UNKNOWN";
+  const char *sig_name = (sig == SIGTERM) ? "SIGTERM" : (sig == SIGINT) ? "SIGINT" : (sig == SIGHUP) ? "SIGHUP" : "UNKNOWN";
   char log_out[MAIN_LOG_OUT_BUFFER_SIZE];
   safe_snprintf(log_out, sizeof(log_out), "Signal '%s' received", sig_name);
 
@@ -302,12 +307,18 @@ static void handle_sigterm(int sig) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
-  debug_sync_trigger_print();
-  debug_errno_trigger_print();
-  debug_stats_trigger_print();
+  // Defer these diagnostics to the normal teardown path. Console callbacks
+  // must remain non-blocking while the application is trying to exit.
 #endif
 
   // Call signal_exit() to set flag AND interrupt blocking socket operations
+  signal_exit();
+}
+#endif
+
+#ifdef _WIN32
+static void windows_sigint_handler(int sig) {
+  (void)sig;
   signal_exit();
 }
 #endif
@@ -321,6 +332,11 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
     return false;
   }
+
+  // The console callback must initiate shutdown before touching UI state.
+  // UI locks/initialization can be unavailable at this point, while the
+  // telemetry cancellation path is deliberately lock-free and immediate.
+  signal_exit();
 
   // Check if keyboard help screen is active (defined in session/display.c)
   // Uses atomic load only - safe from signal context
@@ -351,7 +367,6 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     platform_force_exit(1);
   }
 
-  signal_exit();
   return true;
 }
 
@@ -388,7 +403,19 @@ static void common_handle_sigusr2(int sig) {
  * Called once at startup before mode dispatch
  */
 void setup_signal_handlers(void) {
-  platform_set_console_ctrl_handler(console_ctrl_handler);
+  if (!platform_set_console_ctrl_handler(console_ctrl_handler)) {
+    log_warn("Failed to register Windows console control handler: %d", platform_get_last_error());
+  }
+
+#ifdef _WIN32
+  /* Keep a CRT fallback for consoles that deliver Ctrl-C as SIGINT rather
+   * than invoking the process console handler (notably private test consoles). */
+  signal(SIGINT, windows_sigint_handler);
+#ifdef SIGBREAK
+  signal(SIGBREAK, windows_sigint_handler);
+#endif
+  log_debug("Signal handlers registered");
+#endif
 
 #ifndef _WIN32
   platform_signal_handler_t handlers[] = {
@@ -504,7 +531,10 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * ============================================================================ */
 
 static void on_exit_show_cursor(void) {
-  ui_controller_restore_terminal();
+  if (shutdown_is_requested())
+    ui_controller_restore_terminal_output();
+  else
+    ui_controller_restore_terminal();
 }
 
 /* ============================================================================
@@ -555,6 +585,8 @@ int main(int argc, char *argv[]) {
       .config_directory = "ascii-chat",
       .data_directory = "ascii-chat",
   };
+  // Register the application identity before options_init() so libplatform's
+  // automatic config search uses %APPDATA%\\ascii-chat, not its generic default.
   (void)platform_set_application_config(&platform_config);
 
   asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);
@@ -574,11 +606,8 @@ int main(int argc, char *argv[]) {
     }
     if (!strchr(argv[i], '=')) {
       const char *name = argv[i] + (argv[i][1] == '-' ? 2 : 1);
-      const registry_entry_t *descriptor = argv[i][1] == '-'
-                                               ? registry_find_entry_by_name(name)
-                                               : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
-      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION &&
-          i + 1 < argc) {
+      const registry_entry_t *descriptor = argv[i][1] == '-' ? registry_find_entry_by_name(name) : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
+      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
         bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
         for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
           if (strcmp(argv[i + 1], mode->name) == 0)
@@ -708,9 +737,7 @@ int main(int argc, char *argv[]) {
       continue; // Value is part of this arg, no need to skip next
     }
 
-    const registry_entry_t *descriptor =
-        arg[1] == '-' ? registry_find_entry_by_name(opt_name)
-                      : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
+    const registry_entry_t *descriptor = arg[1] == '-' ? registry_find_entry_by_name(opt_name) : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
     if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
       bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
       for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
@@ -809,8 +836,7 @@ int main(int argc, char *argv[]) {
   // Documentation actions should not be preceded by startup diagnostics.
   bool early_quiet_output = false;
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--version") == 0 ||
-        strcmp(argv[i], "-V") == 0) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
       early_quiet_output = true;
       break;
     }
@@ -837,6 +863,11 @@ int main(int argc, char *argv[]) {
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
+
+  // Install the console handler before option/media initialization. Startup
+  // can create worker threads and begin telemetry before mode dispatch; a
+  // Ctrl-C during that window must still enter the coordinated shutdown path.
+  setup_signal_handlers();
 
   // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
@@ -878,8 +909,7 @@ int main(int argc, char *argv[]) {
     if (HAS_ERRNO(&error_ctx)) {
       NOTICE(WARNING, "INVALID OPTIONS", "%s", error_ctx.context_message);
     } else {
-      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options %s",
-             asciichat_error_format(NULL, options_result));
+      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options %s", asciichat_error_format(NULL, options_result));
     }
 
     // Clean up options state before exiting
@@ -927,8 +957,7 @@ int main(int argc, char *argv[]) {
         // File ends with .log - replace with .json
         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
         // Replace .log with .json
-        asciichat_error_t strcpy_result =
-            SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
+        asciichat_error_t strcpy_result = SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
         if (strcpy_result != ASCIICHAT_OK) {
           log_error("Failed to write .json extension: %s", asciichat_error_format(NULL, strcpy_result));
         }
@@ -948,8 +977,7 @@ int main(int argc, char *argv[]) {
 
   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
-  bool final_format_console_only =
-      early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
+  bool final_format_console_only = early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
   if (final_format && final_format[0] != '\0') {
     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
     if (fmt_result != ASCIICHAT_OK) {
@@ -980,8 +1008,7 @@ int main(int argc, char *argv[]) {
   // Apply quiet mode - disables terminal output
   // Status screen mode only disables terminal output if terminal is interactive
   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-  if (GET_OPTION(quiet) ||
-      (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen) && terminal_is_interactive())) {
+  if (GET_OPTION(quiet) || (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen) && terminal_is_interactive())) {
     log_set_terminal_output(false);
   }
 
@@ -1088,10 +1115,6 @@ int main(int argc, char *argv[]) {
     update_banner_start_check();
   }
 
-  // Set up global signal handlers BEFORE mode dispatch
-  // All modes use the same centralized exit mechanism
-  setup_signal_handlers();
-
   // Register application callbacks so lib code can check exit flags
   // This connects the render loop's should_exit check to signal_exit()
   static const app_callbacks_t app_callbacks = {
@@ -1145,8 +1168,7 @@ int main(int argc, char *argv[]) {
   // Mode entry points use options_get() to access parsed options
   if (title_init_result == ASCIICHAT_OK) {
     asciichat_errno_scope_t title_scope = errno_scope_begin();
-    asciichat_error_t title_result =
-        platform_process_title_set_args("ascii-chat: ", mode->name, argc, argv, opts->mode_arg_index);
+    asciichat_error_t title_result = platform_process_title_set_args("ascii-chat: ", mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
       log_debug("Could not set process title for %s mode", mode->name);
     } else {
@@ -1160,9 +1182,11 @@ int main(int argc, char *argv[]) {
   if (opts->detected_mode != MODE_MCP_SERVER || !strcmp(GET_OPTION(mcp_transport), "http"))
     (void)ui_controller_title_start(mode->name, platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO);
   errno_scope_end(terminal_title_scope, ASCIICHAT_ERRNO_DISMISSED);
-  asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
-  if (stats_result != ASCIICHAT_OK)
-    return stats_result;
+  if (strcmp(mode->name, "mirror") != 0) {
+    asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
+    if (stats_result != ASCIICHAT_OK)
+      return stats_result;
+  }
   asciichat_error_t otel_result = ascii_otel_init(mode->name, argc, argv);
   if (otel_result != ASCIICHAT_OK) {
     asciichat_error_context_t context;
@@ -1174,9 +1198,13 @@ int main(int argc, char *argv[]) {
   asciichat_error_t requested_exit = errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
-  stats_runtime_stop();
-  ascii_otel_exit(exit_code);
+  if (!shutdown_is_requested())
+    stats_runtime_stop();
+  if (!shutdown_is_requested())
+    ascii_otel_exit(exit_code);
+  log_debug("Shutdown: entering telemetry shutdown");
   ascii_otel_shutdown();
+  log_debug("Shutdown: telemetry shutdown complete");
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report

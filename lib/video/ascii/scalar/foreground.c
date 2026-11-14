@@ -55,15 +55,13 @@ void quantize_color(int *r, int *g, int *b, int levels) {
 }
 
 char *rgb_to_ansi_fg(int r, int g, int b) {
-  _Thread_local static char
-      color_code[VIDEO_ASCII_SCALAR_FOREGROUND_COLOR_CODE_BUFFER_SIZE]; // \033[38;2;255;255;255m + \0 = 20 bytes max
+  _Thread_local static char color_code[VIDEO_ASCII_SCALAR_FOREGROUND_COLOR_CODE_BUFFER_SIZE]; // \033[38;2;255;255;255m + \0 = 20 bytes max
   SAFE_SNPRINTF(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
   return color_code;
 }
 
 char *rgb_to_ansi_bg(int r, int g, int b) {
-  _Thread_local static char
-      color_code[VIDEO_ASCII_SCALAR_FOREGROUND_COLOR_CODE_BUFFER_SIZE]; // \033[48;2;255;255;255m + \0 = 20 bytes max
+  _Thread_local static char color_code[VIDEO_ASCII_SCALAR_FOREGROUND_COLOR_CODE_BUFFER_SIZE]; // \033[48;2;255;255;255m + \0 = 20 bytes max
   SAFE_SNPRINTF(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
   return color_code;
 }

@@ -64,6 +64,8 @@ void ui_controller_packet_begin(void);
 void ui_controller_packet_end(void);
 /** Stop presentation and restore cursor visibility on an interactive terminal. */
 void ui_controller_restore_terminal(void);
+/** Restore terminal output without acquiring controller/UI locks. */
+void ui_controller_restore_terminal_output(void);
 void ui_controller_redraw(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);
@@ -93,6 +95,9 @@ void ui_controller_select_interactive(int screen);
  * Other terminal text is suppressed while a screen owns the terminal; non-TTY output remains synchronous.
  */
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len);
+
+/** Return the largest prefix of a chunk that does not end in a UTF-8 continuation byte. */
+size_t ui_controller_trim_utf8_chunk(const char *data, size_t length);
 /** Retire live screens and synchronously render final text before the caller exits. */
 void ui_controller_finish(int fd, const char *data, size_t len);
 

@@ -84,8 +84,7 @@ static yyjson_mut_val *object_schema(yyjson_mut_doc *d) {
   yyjson_mut_obj_add_val(d, v, "properties", yyjson_mut_obj(d));
   return v;
 }
-static void property(yyjson_mut_doc *d, yyjson_mut_val *s, const char *name, const char *type,
-                     const char *description) {
+static void property(yyjson_mut_doc *d, yyjson_mut_val *s, const char *name, const char *type, const char *description) {
   yyjson_mut_val *v = yyjson_mut_obj(d);
   yyjson_mut_obj_add_str(d, v, "type", type);
   yyjson_mut_obj_add_str(d, v, "description", description);
@@ -114,12 +113,10 @@ static bool output_format_available(const char *format) {
   else if (!strcmp(format, "ogv") || !strcmp(format, "ogg"))
     codec = "libtheora";
   else if (!strcmp(format, "webm"))
-    return avcodec_find_encoder_by_name("libvpx-vp9") || avcodec_find_encoder_by_name("libvpx") ||
-           avcodec_find_encoder_by_name("vp9") || avcodec_find_encoder_by_name("libvpx-vp8") ||
+    return avcodec_find_encoder_by_name("libvpx-vp9") || avcodec_find_encoder_by_name("libvpx") || avcodec_find_encoder_by_name("vp9") || avcodec_find_encoder_by_name("libvpx-vp8") ||
            avcodec_find_encoder_by_name("vp8");
   else
-    return avcodec_find_encoder_by_name("libx264") || avcodec_find_encoder_by_name("libopenh264") ||
-           avcodec_find_encoder_by_name("h264_mf") || avcodec_find_encoder(AV_CODEC_ID_H264);
+    return avcodec_find_encoder_by_name("libx264") || avcodec_find_encoder_by_name("libopenh264") || avcodec_find_encoder_by_name("h264_mf") || avcodec_find_encoder(AV_CODEC_ID_H264);
   return avcodec_find_encoder_by_name(codec) != NULL;
 }
 
@@ -151,17 +148,13 @@ static yyjson_mut_val *options_schema(yyjson_mut_doc *d, const mcp_policy_t *p) 
 static void file_properties(yyjson_mut_doc *d, yyjson_mut_val *s, bool local) {
   if (local)
     property(d, s, "path", "string", "Local media path. Mutually exclusive with data_base64.");
-  property(d, s, "data_base64", "string",
-           "Base64 encoded media bytes; client must read/encode the file. Maximum decoded size 16 MiB.");
+  property(d, s, "data_base64", "string", "Base64 encoded media bytes; client must read/encode the file. Maximum decoded size 16 MiB.");
   property(d, s, "mime_type", "string", "Media MIME type, e.g. image/png, video/mp4, audio/wav.");
 }
 yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   const char *names[] = {"render_file", "render_url", "render_webcam", "render_visualization"};
-  const char *descs[] = {
-      "Convert uploaded media or a local file into ASCII art. Source can be omitted for test-pattern/test-audio.",
-      "Convert URL media into ASCII art using the CLI media resolver.",
-      "Capture a local webcam as ASCII art; test-pattern avoids camera access.",
-      "Render waveform or FFT from test audio, uploaded audio, URL audio, or local audio/microphone."};
+  const char *descs[] = {"Convert uploaded media or a local file into ASCII art. Source can be omitted for test-pattern/test-audio.", "Convert URL media into ASCII art using the CLI media resolver.",
+                         "Capture a local webcam as ASCII art; test-pattern avoids camera access.", "Render waveform or FFT from test audio, uploaded audio, URL audio, or local audio/microphone."};
   yyjson_mut_val *tools = yyjson_mut_arr(d);
   for (int i = 0; i < 4; ++i) {
     if (p->restricted && i == MCP_WEBCAM)
@@ -183,8 +176,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
       yyjson_mut_obj_add_val(d, yyjson_mut_obj_get(props, "output_format"), "enum", available);
     }
     if (!p->restricted)
-      property(d, s, "output_path", "string",
-               "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
+      property(d, s, "output_path", "string", "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
     property(d, s, "output", "string", "Output mode: text or files. Defaults to text unless output_path is supplied.");
     const char *output_modes[] = {"text", "files", NULL};
     enum_strings(d, yyjson_mut_obj_get(props, "output"), output_modes);
@@ -225,8 +217,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
       property(d, audio, "type", "string", "Audio source, default test.");
       const char *types[] = {"test", "file", "url", "microphone", NULL};
       const char *remote_types[] = {"test", "file", "url", NULL};
-      enum_strings(d, yyjson_mut_obj_get(yyjson_mut_obj_get(audio, "properties"), "type"),
-                   p->restricted ? remote_types : types);
+      enum_strings(d, yyjson_mut_obj_get(yyjson_mut_obj_get(audio, "properties"), "type"), p->restricted ? remote_types : types);
       file_properties(d, audio, !p->restricted);
       property(d, audio, "url", "string", "Audio URL.");
       yyjson_mut_obj_add_val(d, props, "audio", audio);
@@ -258,8 +249,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   if (!p->restricted) {
     yyjson_mut_val *tool = yyjson_mut_obj(d);
     yyjson_mut_obj_add_str(d, tool, "name", "device_list");
-    yyjson_mut_obj_add_str(d, tool, "description",
-                           "List local video and microphone device indices, names, and defaults.");
+    yyjson_mut_obj_add_str(d, tool, "description", "List local video and microphone device indices, names, and defaults.");
     yyjson_mut_obj_add_val(d, tool, "inputSchema", object_schema(d));
     yyjson_mut_val *annotations = yyjson_mut_obj(d);
     yyjson_mut_obj_add_bool(d, annotations, "readOnlyHint", true);
@@ -318,8 +308,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_
   if (path) {
     if (p->restricted)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Local paths are unavailable in server mode");
-    if (!yyjson_is_str(path) || !*yyjson_get_str(path) || !strcmp(yyjson_get_str(path), "-") ||
-        strstr(yyjson_get_str(path), "://"))
+    if (!yyjson_is_str(path) || !*yyjson_get_str(path) || !strcmp(yyjson_get_str(path), "-") || strstr(yyjson_get_str(path), "://"))
       return SET_ERRNO(ERROR_INVALID_PARAM, "path must be a local file, not stdin or a URL");
     SAFE_STRNCPY(r->source_path, yyjson_get_str(path), sizeof(r->source_path));
     return option(r, "file", yyjson_get_str(path));
@@ -335,8 +324,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, http_
   SAFE_SNPRINTF(file, sizeof(file), "%s/media", r->upload_dir);
   size_t cap = yyjson_get_len(data) / 4 * 3 + 3, len = 0;
   unsigned char *bytes = SAFE_MALLOC(cap, unsigned char *);
-  int rc = sodium_base642bin(bytes, cap, yyjson_get_str(data), yyjson_get_len(data), "\r\n\t ", &len, NULL,
-                             sodium_base64_VARIANT_ORIGINAL);
+  int rc = sodium_base642bin(bytes, cap, yyjson_get_str(data), yyjson_get_len(data), "\r\n\t ", &len, NULL, sodium_base64_VARIANT_ORIGINAL);
   if (rc || !len || len > 16 * 1024 * 1024) {
     SAFE_FREE(bytes);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid base64 or media exceeds 16 MiB");
@@ -361,8 +349,7 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, http_r
   const char *url = yyjson_get_str(v);
   SAFE_STRNCPY(r->source_url, url, sizeof(r->source_url));
   if (strncmp(url, "https://", sizeof("https://") - 1) && strncmp(url, "http://", sizeof("http://") - 1) &&
-      (p->restricted ||
-       (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))
+      (p->restricted || (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }
@@ -413,8 +400,7 @@ static asciichat_error_t stage_output(const char *path, http_renderer_process_re
   r->output_type = HTTP_RENDER_OUTPUT_FILE;
   return option(r, "render-file", r->stage_file);
 }
-asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a,
-                                    http_renderer_process_request_t *r) {
+asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, http_renderer_process_request_t *r) {
   memset(r, 0, sizeof(*r));
   r->output_type = HTTP_RENDER_OUTPUT_TEXT;
   r->options.width = 100;
@@ -422,21 +408,18 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   r->options.color_mode = TERM_COLOR_NONE;
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
-  static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
-                                       "audio",        "visualization", "options",       "output_path", "timeout_ms",
-                                       "audio_device", "volume",        "output_format", "output",      NULL};
+  static const char *const fields[] = {"path",       "data_base64",  "mime_type", "url",           "video_device", "audio", "visualization", "options", "output_path",
+                                       "timeout_ms", "audio_device", "volume",    "output_format", "output",       NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
-  const char *source_fields[] = {"path",  "data_base64",   "mime_type",    "url",   "video_device",
-                                 "audio", "visualization", "audio_device", "volume"};
+  const char *source_fields[] = {"path", "data_base64", "mime_type", "url", "video_device", "audio", "visualization", "audio_device", "volume"};
   for (size_t i = 0; i < 9; ++i) {
     bool allowed = tool == MCP_FILE ? i < 3 : tool == MCP_URL ? i == 3 : tool == MCP_WEBCAM ? i == 4 || i >= 7 : i >= 5;
     if (!allowed && mcp_get(a, source_fields[i]))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Argument %s is not valid for this tool", source_fields[i]);
   }
-  if (p->restricted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path") ||
-                        mcp_get(a, "audio_device") || mcp_get(a, "volume")))
+  if (p->restricted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path") || mcp_get(a, "audio_device") || mcp_get(a, "volume")))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Local capability is unavailable in server mode");
   yyjson_val *timeout = mcp_get(a, "timeout_ms");
   if (timeout) {
@@ -450,10 +433,8 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   yyjson_val *opts = mcp_get(a, "options");
   if (opts && !yyjson_is_obj(opts))
     return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
-  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path"),
-             *output_mode = mcp_get(a, "output");
-  if (output_mode && (!yyjson_is_str(output_mode) ||
-                      (strcmp(yyjson_get_str(output_mode), "text") && strcmp(yyjson_get_str(output_mode), "files"))))
+  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path"), *output_mode = mcp_get(a, "output");
+  if (output_mode && (!yyjson_is_str(output_mode) || (strcmp(yyjson_get_str(output_mode), "text") && strcmp(yyjson_get_str(output_mode), "files"))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "output must be text or files");
   if (output_mode && !strcmp(yyjson_get_str(output_mode), "text") && output_value)
     return SET_ERRNO(ERROR_INVALID_PARAM, "output=text cannot be combined with output_path");
@@ -498,8 +479,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       if (omitted)
         continue;
       double n = yyjson_get_num(v);
-      if ((!strcmp(name, "width") && (n < e->metadata.numeric_range.min || n > 512)) ||
-          (!strcmp(name, "height") && (n < e->metadata.numeric_range.min || n > 256)) ||
+      if ((!strcmp(name, "width") && (n < e->metadata.numeric_range.min || n > 512)) || (!strcmp(name, "height") && (n < e->metadata.numeric_range.min || n > 256)) ||
           (!strcmp(name, "snapshot-delay") && (n < 0 || n > 30)) || (!strcmp(name, "fps") && (n < 0 || n > 144)))
         return SET_ERRNO(ERROR_INVALID_PARAM, "Option %s is out of bounds", name);
       err = option(r, name, buf);
@@ -569,9 +549,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       return err;
   } else if (tool == MCP_WEBCAM) {
     r->capture_webcam = !synthetic;
-    bool record_audio =
-        audio_device || volume || enabled(opts, "audio") ||
-        (mcp_get(a, "output_path") && yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0 && !mcp_get(opts, "audio"));
+    bool record_audio = audio_device || volume || enabled(opts, "audio") || (mcp_get(a, "output_path") && yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0 && !mcp_get(opts, "audio"));
     if (record_audio && mcp_get(opts, "audio") && !enabled(opts, "audio"))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Microphone selection conflicts with options.audio=false");
     if (record_audio && !test_audio) {
@@ -645,18 +623,14 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (format && (!p->restricted || !p->hosted))
     return SET_ERRNO(ERROR_INVALID_PARAM, "output_format is available only in HTTP server mode");
   if (p->restricted && p->hosted) {
-    const char *ext =
-        format && yyjson_is_str(format) ? yyjson_get_str(format)
-        : (yyjson_is_false(mcp_get(opts, "snapshot")) || yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
-                                                                                                              : "png";
+    const char *ext = format && yyjson_is_str(format) ? yyjson_get_str(format) : (yyjson_is_false(mcp_get(opts, "snapshot")) || yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4" : "png";
     if ((format && !yyjson_is_str(format)) || !mcp_output_mime(ext) || !output_format_available(ext))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output_format");
     unsigned char random[16];
     char token[33], path[PLATFORM_MAX_PATH_LENGTH];
     randombytes_buf(random, sizeof(random));
     sodium_bin2hex(token, sizeof(token), random, sizeof(random));
-    int path_len =
-        safe_snprintf(path, sizeof(path), "%s/%lld-%s.%s", p->downloads_dir, (long long)time(NULL) + 1800, token, ext);
+    int path_len = safe_snprintf(path, sizeof(path), "%s/%lld-%s.%s", p->downloads_dir, (long long)time(NULL) + 1800, token, ext);
     if (path_len < 0 || (size_t)path_len >= sizeof(path))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Download path is too long");
     err = stage_output(path, r);

@@ -99,8 +99,7 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
     return SET_ERRNO(ERROR_MEMORY, "Could not allocate client connection");
   client_connection_t *connection = *out;
   client_sync_entries(connection, true);
-  session_connection_init(&connection->lifecycle,
-                          (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
+  session_connection_init(&connection->lifecycle, (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
   connection->crypto_mode = ACIP_CRYPTO_ENCRYPT;
   asciichat_error_t result = ASCIICHAT_OK;
   if (result == ASCIICHAT_OK && server_connection_init(connection) != 0)
@@ -130,8 +129,7 @@ static void client_detach(void *context) {
   connection->crypto_ctx = NULL;
 }
 
-static asciichat_error_t client_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
-                                        const char *password, void *context) {
+static asciichat_error_t client_prepare(network_connection_t *network, const connection_endpoint_t *endpoint, const char *password, void *context) {
   client_connection_t *connection = context;
   atomic_ptr_store(&connection->transport, network_connection_transport(network));
   server_connection_set_ip(connection, endpoint->host);
@@ -140,8 +138,7 @@ static asciichat_error_t client_prepare(network_connection_t *network, const con
   return result;
 }
 
-asciichat_error_t client_connection_start(client_connection_t *connection, const char *address, uint16_t port,
-                                          char *password, size_t password_capacity) {
+asciichat_error_t client_connection_start(client_connection_t *connection, const char *address, uint16_t port, char *password, size_t password_capacity) {
   ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
   if (!password || password_capacity < PASSWORD_BUFFER_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing session password storage");
@@ -153,9 +150,7 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
                                           .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
                                           .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
   const network_connect_config_t *connect_config = address && strncmp(address, "quic://", 7) == 0 ? &quic_config : NULL;
-  asciichat_error_t result =
-      session_connection_establish("client", address, port, connect_config, &connection->network, password,
-                                   password_capacity, client_prepare, client_detach, connection);
+  asciichat_error_t result = session_connection_establish("client", address, port, connect_config, &connection->network, password, password_capacity, client_prepare, client_detach, connection);
   atomic_ptr_store(&connection->transport, network_connection_transport(connection->network));
   connection->crypto_ctx = connection->network ? network_connection_handshake(connection->network) : NULL;
   if (result != ASCIICHAT_OK)
@@ -209,8 +204,7 @@ static asciichat_error_t client_join(void *context) {
     if (result != ASCIICHAT_OK)
       return result;
   }
-  log_info("CLIENT_CONNECTION_STOPPED: workers=0 frames=%llu",
-           (unsigned long long)atomic_load_u64(&connection->frames_rendered));
+  log_info("CLIENT_CONNECTION_STOPPED: workers=0 frames=%llu", (unsigned long long)atomic_load_u64(&connection->frames_rendered));
   return ASCIICHAT_OK;
 }
 

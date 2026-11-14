@@ -468,8 +468,7 @@ static void log_search_update_filter_locked(void) {
 
 void log_search_process_pending(void) {
   mutex_lock(&g_search_state.mutex);
-  bool ready = g_search_state.mode == LOG_SEARCH_MODE_ENTERING &&
-               flow_control_debounce_take_ready(&g_search_state.debounce, time_get_ns());
+  bool ready = g_search_state.mode == LOG_SEARCH_MODE_ENTERING && flow_control_debounce_take_ready(&g_search_state.debounce, time_get_ns());
   if (ready)
     log_search_update_filter_locked();
   mutex_unlock(&g_search_state.mutex);
@@ -494,8 +493,7 @@ asciichat_error_t log_search_insert_text(const char *text) {
   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING)
     result = SET_ERRNO(ERROR_INVALID_STATE, "Search input is not active");
   else {
-    result = ui_input_insert(g_search_state.input_buffer, sizeof(g_search_state.input_buffer), &g_search_state.len,
-                             &g_search_state.cursor, normalized);
+    result = ui_input_insert(g_search_state.input_buffer, sizeof(g_search_state.input_buffer), &g_search_state.len, &g_search_state.cursor, normalized);
     if (result == ASCIICHAT_OK)
       flow_control_debounce_trigger(&g_search_state.debounce, time_get_ns(), LOG_SEARCH_DEBOUNCE_NS);
   }
@@ -571,15 +569,13 @@ asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_en
   return log_search_filter_buffer(logs ? logs : log_get_session_log_buffer(), out_entries, out_count);
 }
 
-asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, session_log_entry_t **out_entries,
-                                           size_t *out_count) {
+asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, session_log_entry_t **out_entries, size_t *out_count) {
   if (!out_entries || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "out_entries and out_count must not be NULL");
   }
 
   // Get logs from in-memory buffer
-  session_log_entry_t *buffer_entries =
-      SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+  session_log_entry_t *buffer_entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
   if (!buffer_entries) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate log buffer");
   }
@@ -601,8 +597,7 @@ asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, sessio
   }
 
   // Filter entries with PCRE2
-  session_log_entry_t *filtered =
-      SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+  session_log_entry_t *filtered = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
   if (!filtered) {
     mutex_unlock(&g_search_state.mutex);
     SAFE_FREE(buffer_entries);
@@ -746,8 +741,7 @@ void log_search_render_input_line(int width) {
   char output_buf[LOG_SEARCH_OUTPUT_BUFFER_SIZE];
 
   // Build output: "/" + pattern
-  int pattern_len =
-      snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_search_state.len, g_search_state.input_buffer);
+  int pattern_len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_search_state.len, g_search_state.input_buffer);
 
   if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
     // Write the pattern to terminal

@@ -22,7 +22,7 @@ set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/include)
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
 set(CORE_SRCS
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
@@ -186,7 +186,6 @@ set(CORE_SRCS
     # Third-party: tomlc17
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
-
 
 if(WIN32)
     # The upstream TOML parser uses portable C stdio rather than MSVC's secure CRT extensions.
@@ -411,7 +410,8 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 add_library(ascii-chat-platform INTERFACE)
 target_link_libraries(ascii-chat-platform INTERFACE libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/libplatform/include
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
 )
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-platform INTERFACE ${ASCIICHAT_LIBUV_TARGET})
@@ -599,6 +599,13 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
+target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
+if(TARGET fftw3f)
+    set(FFTW_FLOAT_LIBRARY fftw3f)
+else()
+    find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
+endif()
+target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
     target_link_libraries(ascii-chat-platform INTERFACE ${FFMPEG_LIBRARIES})
@@ -1942,10 +1949,15 @@ target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
 
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
+    target_link_options(ascii-chat-shared PRIVATE "${FFTW_FLOAT_LIBRARY}")
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
 
 target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
 if(TARGET ascii-chat-shared)

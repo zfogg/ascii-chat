@@ -62,6 +62,9 @@ int mirror_init(void) {
     return -1;
   }
 
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK)
+    return -1;
+
   // Honor parsed verbosity and let INFO use stdout (console.log).
   log_init(NULL, GET_OPTION(log_level), false, false);
   // Use debug-style format in WASM so browser console shows full log headers.
@@ -135,10 +138,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
   caps.color_level = color_mode;
   caps.capabilities = 0;
-  caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
-                     : (color_mode == TERM_COLOR_16)  ? 16
-                     : (color_mode == TERM_COLOR_256) ? 256
-                                                      : 16777216;
+  caps.color_count = (color_mode == TERM_COLOR_NONE) ? 0 : (color_mode == TERM_COLOR_16) ? 16 : (color_mode == TERM_COLOR_256) ? 256 : 16777216;
   caps.utf8_support = true;
   caps.detection_reliable = true;
   caps.render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
@@ -214,9 +214,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   }
 
   // Convert to ASCII using capability-aware function
-  char *ascii_output = ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
-                                                             stretch, palette_chars, contain != 0, NULL, NULL,
-                                                             caps.stabilize ? &g_stabilizer : NULL);
+  char *ascii_output =
+      ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio, stretch, palette_chars, contain != 0, NULL, NULL, caps.stabilize ? &g_stabilizer : NULL);
   if (!caps.stabilize)
     ascii_stabilizer_reset(&g_stabilizer);
 
@@ -277,10 +276,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
 
 validate_output:
   if (ascii_output) {
-    bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode != RENDER_MODE_HALF_BLOCK &&
-                       dst_width > 0 && dst_height > 0 && dst_width <= IMAGE_MAX_WIDTH / 8 &&
-                       dst_height <= IMAGE_MAX_HEIGHT / 8 &&
-                       (!caps.palette_explicit || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
+    bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode != RENDER_MODE_HALF_BLOCK && dst_width > 0 && dst_height > 0 && dst_width <= IMAGE_MAX_WIDTH / 8 &&
+                       dst_height <= IMAGE_MAX_HEIGHT / 8 && (!caps.palette_explicit || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
     if (!glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
       ascii_frame_source_t source = {.frame_data = ascii_output, .frame_size = strlen(ascii_output)};
       size_t normalized_size;
@@ -291,14 +288,10 @@ validate_output:
     if (!ascii_output)
       return NULL;
     acip_render_settings_t rendering = {.caps = caps};
-    const char *contract_palette =
-        glyph_match && !caps.palette_explicit
-            ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-            : palette_chars;
+    const char *contract_palette = glyph_match && !caps.palette_explicit ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" : palette_chars;
     SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = matrix_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
-    if (session_frame_validate_contract(ascii_output, strlen(ascii_output), dst_width, dst_height, &rendering,
-                                        effects) != ASCIICHAT_OK) {
+    if (session_frame_validate_contract(ascii_output, strlen(ascii_output), dst_width, dst_height, &rendering, effects) != ASCIICHAT_OK) {
       SAFE_FREE(ascii_output);
       return NULL;
     }
@@ -309,20 +302,13 @@ validate_output:
 void mirror_submit_audio_samples(const float *samples, int count, int source) {
   if (!samples || count <= 0 || count > 8192)
     return;
-  audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
-                                                                      : AUDIO_VISUALIZATION_SOURCE_MEDIA,
-                             samples, (size_t)count);
+  audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA, samples, (size_t)count);
 }
 
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
-  audio_visualization_source_t audio_source =
-      source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
-  char *text =
-      GET_OPTION(fft)
-          ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
-                                           GET_OPTION(flip_x), GET_OPTION(flip_y))
-          : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
-                                                GET_OPTION(flip_x), GET_OPTION(flip_y));
+  audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
+  char *text = GET_OPTION(fft) ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y))
+                               : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER, GET_OPTION(flip_x), GET_OPTION(flip_y));
   if (text && session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
     SAFE_FREE(text);
     return NULL;

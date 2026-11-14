@@ -361,8 +361,7 @@ void *stats_logger_thread(void *arg) {
                     "  Total locks released: %llu\n"
                     "  Currently held: %u\n"
                     "  Net locks (acquired - released): %lld",
-                    (unsigned long long)total_acquired, (unsigned long long)total_released, currently_held,
-                    (long long)total_acquired - (long long)total_released);
+                    (unsigned long long)total_acquired, (unsigned long long)total_released, currently_held, (long long)total_acquired - (long long)total_released);
     }
 #endif
 
@@ -474,7 +473,6 @@ void log_server_stats(void) {
            "  frames_sent=%llu\n"
            "  frames_dropped=%llu\n"
            "  Average FPS: capture=%.2f, send=%.2f",
-           (unsigned long long)g_stats.frames_captured, (unsigned long long)g_stats.frames_sent,
-           (unsigned long long)g_stats.frames_dropped, g_stats.avg_capture_fps, g_stats.avg_send_fps);
+           (unsigned long long)g_stats.frames_captured, (unsigned long long)g_stats.frames_sent, (unsigned long long)g_stats.frames_dropped, g_stats.avg_capture_fps, g_stats.avg_send_fps);
   mutex_unlock(&g_stats_mutex);
 }

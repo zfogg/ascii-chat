@@ -137,14 +137,48 @@ static const char *normalize_path(const char *path) {
   return normalized;
 }
 
-const char *extract_project_relative_path(const char *file) {
+const char *extract_project_relative_path(const char *file, const char *const *owned_dirs) {
   // This runs inside logging and while the memory tracker holds its mutex.
   // Avoid allocations, filesystem access, mutable caches, and error logging.
   if (!file) {
     return "unknown";
   }
+  if (!owned_dirs) {
+    return file;
+  }
 
-  const char *root = ASCIICHAT_SOURCE_ROOT;
+  const char *root = NULL;
+  size_t root_length = 0;
+  if (owned_dirs) {
+    for (size_t dir_index = 0; owned_dirs[dir_index]; dir_index++) {
+      const char *candidate = owned_dirs[dir_index];
+      size_t candidate_length = strlen(candidate);
+      bool matches = true;
+      for (size_t i = 0; i < candidate_length; i++) {
+        unsigned char source_char = (unsigned char)candidate[i];
+        unsigned char file_char = (unsigned char)file[i];
+        if (source_char == '/' || source_char == '\\') {
+          if (file_char != '/' && file_char != '\\') { matches = false; break; }
+        } else {
+#ifdef _WIN32
+          if (tolower(source_char) != tolower(file_char)) { matches = false; break; }
+#else
+          if (source_char != file_char) { matches = false; break; }
+#endif
+        }
+      }
+      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') &&
+          candidate_length > root_length) {
+        root = candidate;
+        root_length = candidate_length;
+      }
+    }
+  }
+  if (root) {
+    return file + root_length + 1;
+  }
+
+  root = ASCIICHAT_SOURCE_ROOT;
   size_t i = 0;
   bool root_matches = true;
   for (; root[i]; i++) {
@@ -342,8 +376,7 @@ char *get_discovery_database_dir(void) {
   if (platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &data_dirs) == ASCIICHAT_OK) {
     for (size_t i = 0; i < data_dirs.count; i++) {
       platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
-      if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
-          platform_access(candidate->path, PLATFORM_ACCESS_WRITE) == 0) {
+      if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK && platform_access(candidate->path, PLATFORM_ACCESS_WRITE) == 0) {
         char *selected_dir = candidate->path;
         candidate->path = NULL;
         platform_directory_list_destroy(&data_dirs);
@@ -728,8 +761,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
       }
 
       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
-      safe_snprintf(resolved_buf, sizeof(resolved_buf), "%s%s%s", safe_base, needs_sep ? PATH_SEPARATOR_STR : "",
-                    input);
+      safe_snprintf(resolved_buf, sizeof(resolved_buf), "%s%s%s", safe_base, needs_sep ? PATH_SEPARATOR_STR : "", input);
 
       // Normalize the resolved path
       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];

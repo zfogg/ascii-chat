@@ -60,8 +60,7 @@ static _Thread_local int g_resize_columns_workspace[ASCII_RESIZE_WORKSPACE_POOL_
 static _Thread_local unsigned g_resize_workspace_depth;
 
 static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width, ssize_t viewport_height) {
-  if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 ||
-      viewport_height <= 0) {
+  if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 || viewport_height <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "invalid image or viewport dimensions");
     return;
   }
@@ -152,8 +151,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   return ASCIICHAT_OK;
 }
 
-char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
-                    const bool _aspect_ratio, const bool stretch, const char *palette_chars,
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color, const bool _aspect_ratio, const bool stretch, const char *palette_chars,
                     const char luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
     log_error("invalid parameters");
@@ -258,42 +256,31 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 }
 
 // Capability-aware ASCII conversion using terminal capabilities
-char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
-                                      const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch, const char *palette_chars) {
+char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                      const char *palette_chars) {
 
-  return ascii_convert_with_capabilities_fit(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
-                                             false);
+  return ascii_convert_with_capabilities_fit(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, false);
 }
 
-char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height,
-                                          const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                          const bool stretch, const char *palette_chars, const bool contain) {
+char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                          const char *palette_chars, const bool contain) {
 
-  return ascii_convert_with_capabilities_workspace(original, width, height, caps, use_aspect_ratio, stretch,
-                                                   palette_chars, contain, NULL);
+  return ascii_convert_with_capabilities_workspace(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain, NULL);
 }
 
-char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
-                                                const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                                const bool stretch, const char *palette_chars, const bool contain,
-                                                image_t **workspace) {
+char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                                const char *palette_chars, const bool contain, image_t **workspace) {
 
-  return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain,
-                                    workspace, NULL);
+  return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain, workspace, NULL);
 }
 
-char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
-                                 const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output) {
-  return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
-                                               contain, workspace, output, NULL);
+  return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain, workspace, output, NULL);
 }
 
-char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
-                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                            const bool stretch, const char *palette_chars, const bool contain,
-                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer) {
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                            const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer) {
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -318,13 +305,11 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
 
   // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
   bool explicit_palette = caps->palette_explicit;
-  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette &&
-      !ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars)) {
+  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette && !ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
     return NULL;
   }
-  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode != RENDER_MODE_HALF_BLOCK &&
-                     resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
+  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode != RENDER_MODE_HALF_BLOCK && resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
                      resized_height <= IMAGE_MAX_HEIGHT / 8;
   if (glyph_match) {
     resized_width *= 8;
@@ -398,10 +383,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
       if (p.r == 0 && p.g == 0 && p.b == 0)
         orig_black++;
     }
-    log_debug_every(5 * NS_PER_SEC_INT,
-                    ">>> ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", orig_black,
-                    orig_total, orig_total > 0 ? 100.0 * orig_black / orig_total : 0, original->pixels[0].r,
-                    original->pixels[0].g, original->pixels[0].b);
+    log_debug_every(5 * NS_PER_SEC_INT, ">>> ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", orig_black, orig_total,
+                    orig_total > 0 ? 100.0 * orig_black / orig_total : 0, original->pixels[0].r, original->pixels[0].g, original->pixels[0].b);
   } else {
     log_warn("Skipping debug check: corrupted image dimensions (w=%d, h=%d)", original->w, original->h);
   }
@@ -410,9 +393,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   uint64_t prof_print_start_ns = prof_resize_end_ns;
 
   // DEBUG: Log dimensions going to renderer
-  log_debug_every(10 * US_PER_SEC_INT, "original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)",
-                  original->w, original->h, width, height, resized->w, resized->h, pad_width, pad_height,
-                  caps->render_mode);
+  log_debug_every(10 * US_PER_SEC_INT, "original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)", original->w, original->h, width, height, resized->w, resized->h, pad_width,
+                  pad_height, caps->render_mode);
 
   // Check if image is all black
   int black_pixels = 0, total_pixels = 0;
@@ -422,17 +404,14 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     if (p.r == 0 && p.g == 0 && p.b == 0)
       black_pixels++;
   }
-  log_debug_every(5 * NS_PER_SEC_INT,
-                  ">>> Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", black_pixels,
-                  total_pixels, total_pixels > 0 ? 100.0 * black_pixels / total_pixels : 0, resized->pixels[0].r,
-                  resized->pixels[0].g, resized->pixels[0].b);
+  log_debug_every(5 * NS_PER_SEC_INT, ">>> Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", black_pixels, total_pixels,
+                  total_pixels > 0 ? 100.0 * black_pixels / total_pixels : 0, resized->pixels[0].r, resized->pixels[0].g, resized->pixels[0].b);
 
   // Apply the target client's filter after resizing, so it is scoped to this
   // client and never mutates the shared source frame.
   if (caps->color_filter != COLOR_FILTER_NONE) {
     const float time_seconds = (float)time_get_ns() / (float)NS_PER_SEC_INT;
-    if (apply_color_filter((uint8_t *)resized->pixels, (uint32_t)resized->w, (uint32_t)resized->h,
-                           (uint32_t)(resized->w * sizeof(rgb_pixel_t)), caps->color_filter, time_seconds) != 0) {
+    if (apply_color_filter((uint8_t *)resized->pixels, (uint32_t)resized->w, (uint32_t)resized->h, (uint32_t)(resized->w * sizeof(rgb_pixel_t)), caps->color_filter, time_seconds) != 0) {
       log_warn("Failed to apply client color filter %d", caps->color_filter);
     }
   }
@@ -442,16 +421,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   ascii_stabilizer_t *active_stabilizer = NULL;
   if (stabilizer) {
     uint64_t configuration = 1469598103934665603ULL;
-    const unsigned values[] = {(unsigned)caps->text_renderer,
-                               (unsigned)caps->color_level,
-                               (unsigned)caps->render_mode,
-                               (unsigned)caps->color_filter,
-                               (unsigned)explicit_palette,
-                               (unsigned)use_aspect_ratio,
-                               (unsigned)stretch,
-                               (unsigned)contain,
-                               (unsigned)original->w,
-                               (unsigned)original->h};
+    const unsigned values[] = {(unsigned)caps->text_renderer, (unsigned)caps->color_level, (unsigned)caps->render_mode, (unsigned)caps->color_filter, (unsigned)explicit_palette,
+                               (unsigned)use_aspect_ratio,    (unsigned)stretch,           (unsigned)contain,           (unsigned)original->w,        (unsigned)original->h};
     for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
       configuration ^= values[i];
       // FNV multiplication intentionally wraps modulo 2^64.
@@ -466,11 +437,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);
     if (ascii_stabilizer_prepare(stabilizer, (size_t)width, history_height, configuration) == ASCIICHAT_OK) {
       uint64_t now = time_get_ns();
-      stabilizer->elapsed_ns = stabilizer->fixed_step_ns
-                                   ? stabilizer->fixed_step_ns
-                                   : (stabilizer->last_timestamp_ns && now >= stabilizer->last_timestamp_ns
-                                          ? now - stabilizer->last_timestamp_ns
-                                          : UINT64_MAX);
+      stabilizer->elapsed_ns =
+          stabilizer->fixed_step_ns ? stabilizer->fixed_step_ns : (stabilizer->last_timestamp_ns && now >= stabilizer->last_timestamp_ns ? now - stabilizer->last_timestamp_ns : UINT64_MAX);
       stabilizer->last_timestamp_ns = now;
       active_stabilizer = stabilizer;
     }
@@ -486,8 +454,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                                                 .palette = explicit_palette ? palette_chars : NULL,
                                                 .backend = simd_cells_backend(),
                                                 .background = caps->render_mode == RENDER_MODE_BACKGROUND};
-  char *ascii = glyph_match ? ascii_render_image(resized, &glyph_options)
-                            : image_print_with_capabilities(resized, caps, palette_chars);
+  char *ascii = glyph_match ? ascii_render_image(resized, &glyph_options) : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
   ascii_stabilizer_set_target(previous_stabilizer);
 
@@ -509,8 +476,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
 
   size_t ascii_len = strlen(ascii);
   if (ascii_len == 0) {
-    log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
-              resized->h);
+    log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
     if (!output)
       SAFE_FREE(ascii);
     if (!workspace)
@@ -525,9 +491,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   uint64_t prof_pad_end_ns = time_get_ns();
 
   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
-  log_debug_every(US_PER_SEC_INT, "ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
-                  (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
-                  (double)pad_time_ns / NS_PER_MS_INT, ascii_len);
+  log_debug_every(US_PER_SEC_INT, "ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu", (double)alloc_time_us / 1000, (double)resize_time_us / 1000,
+                  (double)print_time_us / 1000, (double)pad_time_ns / NS_PER_MS_INT, ascii_len);
 
   if (!workspace)
     image_destroy(resized);
@@ -552,9 +517,7 @@ asciichat_error_t ascii_write(const char *frame) {
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate ASCII presentation");
   memcpy(output, "\033[H", 3);
   memcpy(output + 3, frame, len);
-  asciichat_error_t result =
-      ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
-                            (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, output, len + 3);
+  asciichat_error_t result = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, output, len + 3);
   SAFE_FREE(output);
   return result;
 }
@@ -950,11 +913,9 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return image_print_color_simd((image_t *)image, use_background, false, palette);
   }
   case TERM_COLOR_256:
-    return ascii_render(image, palette, ASCII_COLOR_256, render_mode == RENDER_MODE_BACKGROUND, false,
-                        simd_cells_backend());
+    return ascii_render(image, palette, ASCII_COLOR_256, render_mode == RENDER_MODE_BACKGROUND, false, simd_cells_backend());
   case TERM_COLOR_16:
-    return ascii_render(image, palette, ASCII_COLOR_16, render_mode == RENDER_MODE_BACKGROUND, false,
-                        simd_cells_backend());
+    return ascii_render(image, palette, ASCII_COLOR_16, render_mode == RENDER_MODE_BACKGROUND, false, simd_cells_backend());
   case TERM_COLOR_NONE:
   case TERM_COLOR_AUTO:
   default:

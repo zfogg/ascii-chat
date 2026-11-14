@@ -22,8 +22,7 @@ unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[
   static const unsigned coverage[] = {3, 6, 10, 18, 28, 40, 55, 70, 85, 100};
   static const unsigned minimum[] = {1, 1, 1, 1, 1, 1, 2, 3, 4, 6};
   static const uint16_t short_marks[] = {0x0334, 0x0335, 0x0336, 0x0337, 0x0338};
-  static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a,
-                                         0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
+  static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a, 0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
   unsigned index = (unsigned)level - 1;
   uint32_t hash = zalgo_hash((uint32_t)((uint64_t)row * UINT64_C(0x9e3779b9)) ^ col ^ UINT32_C(0x5a17));
   if (hash % 100 >= coverage[index])

@@ -173,8 +173,7 @@ static void *refresh_mdns_servers(void *data) {
       else
         empty_refreshes = 0;
       if (apply_snapshot) {
-        bool changed = count != refresh->count ||
-                       (count && memcmp(refresh->servers, servers, (size_t)count * sizeof(*servers)) != 0);
+        bool changed = count != refresh->count || (count && memcmp(refresh->servers, servers, (size_t)count * sizeof(*servers)) != 0);
         refresh->count = count;
         if (count)
           memcpy(refresh->servers, servers, (size_t)count * sizeof(*servers));
@@ -197,9 +196,7 @@ static void mdns_divider(frame_buffer_t *buffer, int columns, int width, bool un
 }
 
 static void mdns_footer(frame_buffer_t *buffer, int columns, const char *input, bool colors, bool live) {
-  const char *parts[] = {"Arrows", "/",           "j",   "/", "k", ": move | ",
-                         "Enter",  ": select | ", "Esc", "/", "q", live ? ": cancel | Auto-refresh" : ": cancel",
-                         input};
+  const char *parts[] = {"Arrows", "/", "j", "/", "k", ": move | ", "Enter", ": select | ", "Esc", "/", "q", live ? ": cancel | Auto-refresh" : ": cancel", input};
   bool keys[] = {true, false, true, false, true, false, true, false, true, false, true, false, false};
   int length = 0;
   for (size_t i = 0; i < sizeof(parts) / sizeof(parts[0]); ++i)
@@ -211,8 +208,7 @@ static void mdns_footer(frame_buffer_t *buffer, int columns, const char *input, 
     int shown = (int)strlen(parts[i]);
     if (shown > width - used)
       shown = width - used;
-    frame_buffer_printf(buffer, "%s%.*s", colors ? ui_text_color_prefix(keys[i] ? LOG_COLOR_DEV : LOG_COLOR_GREY) : "",
-                        shown, parts[i]);
+    frame_buffer_printf(buffer, "%s%.*s", colors ? ui_text_color_prefix(keys[i] ? LOG_COLOR_DEV : LOG_COLOR_GREY) : "", shown, parts[i]);
     used += shown;
   }
   frame_buffer_printf(buffer, "%s", colors ? "\033[0m" : "");
@@ -270,8 +266,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
   for (int i = first; i < snapshot->count && i < first + available; ++i) {
     char line[TUI_MDNS_LINE_BUFFER_SIZE], clipped[TUI_MDNS_CLIPPED_BUFFER_SIZE];
     const char *address = ui_mdns_get_best_address(&snapshot->servers[i]);
-    snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == list.selected ? ">" : " ", i + 1,
-             snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",
+    snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == list.selected ? ">" : " ", i + 1, snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",
              snapshot->servers[i].port);
     truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 2);
     if (colors && i == list.selected)
@@ -280,8 +275,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     frame_buffer_printf(buffer, "\033[0m\r");
   }
   if (snapshot->count > available)
-    ui_scrollbar_render(buffer, top + logo_height + (show_title ? 2 : 1), size.cols, available, (size_t)snapshot->count,
-                        (size_t)available, (size_t)first);
+    ui_scrollbar_render(buffer, top + logo_height + (show_title ? 2 : 1), size.cols, available, (size_t)snapshot->count, (size_t)available, (size_t)first);
   mdns_divider(buffer, size.cols - 1, panel_width, unicode, colors);
   mdns_footer(buffer, size.cols, snapshot->input, colors, snapshot->live);
   frame_buffer_flush(buffer);
@@ -294,8 +288,7 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   return ui_mdns_select_until(servers, count, ui_input_deadline(30));
 }
 
-static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_t deadline, mdns_refresh_t *refresh,
-                             ui_mdns_server_t *chosen) {
+static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_t deadline, mdns_refresh_t *refresh, ui_mdns_server_t *chosen) {
   if (count < 0 || (!servers && count > 0))
     return -1;
   if (!terminal_can_prompt_user(!GET_OPTION(snapshot_mode)))
@@ -337,8 +330,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
         memcpy(snapshot->servers, refresh->servers, (size_t)count * sizeof(*servers));
         ui_selectable_list_reset(&snapshot->list);
         for (int i = 0; i < count; ++i) {
-          if (previous.port == snapshot->servers[i].port &&
-              strcmp(ui_mdns_get_best_address(&previous), ui_mdns_get_best_address(&snapshot->servers[i])) == 0) {
+          if (previous.port == snapshot->servers[i].port && strcmp(ui_mdns_get_best_address(&previous), ui_mdns_get_best_address(&snapshot->servers[i])) == 0) {
             snapshot->list.selected = i;
             break;
           }
@@ -349,8 +341,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
       }
       mutex_unlock(&refresh->mutex);
     }
-    if (ui_controller_submit(UI_SCREEN_MDNS, STDERR_FILENO, (terminal_size_t){.cols = 2, .rows = 4},
-                             render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
+    if (ui_controller_submit(UI_SCREEN_MDNS, STDERR_FILENO, (terminal_size_t){.cols = 2, .rows = 4}, render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_MDNS, 100);
     if (ui_input_expired(deadline)) {
@@ -360,8 +351,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
     if (key == KEY_ESCAPE || key == 'q' || key == 3)
       break;
     if (key == KEY_HOME || key == KEY_END) {
-      ui_viewport_t viewport = {.selected = (size_t)snapshot->list.selected,
-                                .first_visible = (size_t)snapshot->list.first_visible};
+      ui_viewport_t viewport = {.selected = (size_t)snapshot->list.selected, .first_visible = (size_t)snapshot->list.first_visible};
       ui_viewport_key(&viewport, (size_t)count, MDNS_LIST_MAX_ROWS, key);
       snapshot->list.selected = (int)viewport.selected;
       snapshot->list.first_visible = (int)viewport.first_visible;

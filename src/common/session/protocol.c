@@ -14,6 +14,7 @@
 #include <string.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
@@ -34,18 +35,15 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
       return;
     data = (const uint8_t *)data + prefix;
     length -= prefix;
-    if (contract.revision && contract.revision == protocol->settings_revision &&
-        protocol->effective_render_settings.palette[0] &&
-        strcmp(contract.palette, protocol->effective_render_settings.palette) != 0 &&
-        protocol->effective_render_settings.caps.utf8_support) {
+    if (contract.revision && contract.revision == protocol->settings_revision && protocol->effective_render_settings.palette[0] &&
+        strcmp(contract.palette, protocol->effective_render_settings.palette) != 0 && protocol->effective_render_settings.caps.utf8_support) {
       protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Frame palette contradicts acknowledged revision");
       return;
     }
   }
   bool compressed = (header->flags & FRAME_FLAG_IS_COMPRESSED) != 0;
   size_t expected = compressed ? header->compressed_size : header->original_size;
-  if (!header->original_size || expected > FRAME_RENDER_MAX_BYTES || length != expected ||
-      (compressed && !header->compressed_size) || (!compressed && header->compressed_size)) {
+  if (!header->original_size || expected > FRAME_RENDER_MAX_BYTES || length != expected || (compressed && !header->compressed_size) || (!compressed && header->compressed_size)) {
     protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Invalid participant ASCII frame length");
     return;
   }
@@ -57,8 +55,7 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
   asciichat_errno_scope_t decode_scope = errno_checkpoint();
   char *text;
   if (protocol->media.frame_workspace) {
-    protocol->callback_result = packet_decode_frame_data_workspace(
-        protocol->media.frame_workspace, data, length, compressed, header->original_size, header->compressed_size);
+    protocol->callback_result = packet_decode_frame_data_workspace(protocol->media.frame_workspace, data, length, compressed, header->original_size, header->compressed_size);
     if (protocol->callback_result != ASCIICHAT_OK)
       return;
     text = protocol->media.frame_workspace->data;
@@ -67,28 +64,20 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
   }
   if (!text) {
     asciichat_error_context_t cause;
-    protocol->callback_result = errno_peek_since(decode_scope, &cause)
-                                    ? cause.code
-                                    : SET_ERRNO(ERROR_INVALID_FRAME, "Could not decode participant ASCII frame");
+    protocol->callback_result = errno_peek_since(decode_scope, &cause) ? cause.code : SET_ERRNO(ERROR_INVALID_FRAME, "Could not decode participant ASCII frame");
     return;
   }
   if (asciichat_crc32(text, header->original_size) != header->checksum) {
     protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Participant ASCII frame checksum mismatch");
-  } else if ((protocol->callback_result =
-                  session_frame_validate_contract(text, header->original_size, header->width, header->height,
-                                                  has_contract ? &contract : NULL, effects)) == ASCIICHAT_OK) {
+  } else if ((protocol->callback_result = session_frame_validate_contract(text, header->original_size, header->width, header->height, has_contract ? &contract : NULL, effects)) == ASCIICHAT_OK) {
     // A valid old frame may arrive after a resize/settings update. Skip it
     // without disconnecting the transport or disturbing audio and recovery.
     if (protocol->media.terminal_output) {
       // Redirected snapshots have no physical viewport; the UI fallback is
       // not a bound on their explicitly configured or default output size.
-      terminal_size_t viewport =
-          (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
-      uint32_t width = terminal_get_effective_width(GET_OPTION(width), 80),
-               height = terminal_get_effective_height(GET_OPTION(height), 24);
-      if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) ||
-          (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width ||
-          header->height > height) {
+      terminal_size_t viewport = (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
+      uint32_t width = terminal_get_effective_width(GET_OPTION(width), 80), height = terminal_get_effective_height(GET_OPTION(height), 24);
+      if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) || (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width || header->height > height) {
         protocol->frames_skipped_viewport++;
         goto done;
       }
@@ -104,8 +93,7 @@ done:
 
 static void receive_samples(const audio_batch_packet_t *header, const float *samples, size_t count, void *context) {
   session_protocol_t *protocol = context;
-  if (header && (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) ||
-                 count % header->channels)) {
+  if (header && (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) || count % header->channels)) {
     protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported participant audio format");
     return;
   }
@@ -128,8 +116,7 @@ static void receive_opus(const void *data, size_t length, void *context) {
     return;
   float samples[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS]; // 120 ms at 48 kHz.
   size_t decoded = 0;
-  protocol->callback_result = protocol->media.decode_opus(
-      data, length, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS, &decoded, protocol->media.context);
+  protocol->callback_result = protocol->media.decode_opus(data, length, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS, &decoded, protocol->media.context);
   if (protocol->callback_result != ASCIICHAT_OK)
     return;
   if (decoded > AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS) {
@@ -146,8 +133,7 @@ static void receive_opus_batch(const void *data, size_t length, void *context) {
   const uint16_t *sizes;
   size_t opus_length;
   int rate, duration, count;
-  protocol->callback_result =
-      packet_parse_opus_batch(data, length, &opus, &opus_length, &sizes, &rate, &duration, &count);
+  protocol->callback_result = packet_parse_opus_batch(data, length, &opus, &opus_length, &sizes, &rate, &duration, &count);
   if (protocol->callback_result != ASCIICHAT_OK)
     return;
   if (rate != AUDIO_SAMPLE_RATE || duration < 1 || duration > 120 || count < 1 || count > 256) {
@@ -201,14 +187,12 @@ static void receive_error(const error_packet_t *header, const char *message, voi
     protocol->callback_result = SET_ERRNO(ERROR_NETWORK, "Participant peer error: %s", message);
 }
 
-void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
-                           acip_client_callbacks_t control) {
+void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media, acip_client_callbacks_t control) {
   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
   protocol->effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 }
 
-asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
-                                            size_t length) {
+asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload, size_t length) {
   if (!protocol || (!payload && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant protocol packet");
   protocol->callback_result = ASCIICHAT_OK;
@@ -219,11 +203,9 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
     asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
     if (result != ASCIICHAT_OK)
       return result;
-    if ((header.request && header.request < protocol->settings_request) ||
-        header.revision < protocol->settings_revision)
+    if ((header.request && header.request < protocol->settings_request) || header.revision < protocol->settings_revision)
       return ASCIICHAT_OK;
-    options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
-              *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+    options_t *current = SAFE_MALLOC(sizeof(*current), options_t *), *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
     acip_render_settings_options(&protocol->effective_render_settings, current);
     result = options_prepare_json(current, json, json_length, candidate, true);
     if (result == ASCIICHAT_OK)
@@ -243,21 +225,15 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
       log_info("Remote rendering update accepted (request=%u, revision=%u)", header.request, header.revision);
     return ASCIICHAT_OK;
   }
-  acip_client_callbacks_t media = {.on_ascii_frame = receive_frame,
-                                   .on_audio_batch = receive_samples,
-                                   .on_audio_opus_batch = receive_opus_batch,
-                                   .on_server_state = receive_state,
-                                   .on_error = receive_error,
-                                   .app_ctx = protocol};
+  acip_client_callbacks_t media = {
+      .on_ascii_frame = receive_frame, .on_audio_batch = receive_samples, .on_audio_opus_batch = receive_opus_batch, .on_server_state = receive_state, .on_error = receive_error, .app_ctx = protocol};
   bool audio = type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS_BATCH;
-  bool common =
-      audio || type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_SERVER_STATE || type == PACKET_TYPE_ERROR_MESSAGE;
+  bool common = audio || type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_SERVER_STATE || type == PACKET_TYPE_ERROR_MESSAGE;
   asciichat_error_t result;
   if (type == PACKET_TYPE_PING && !protocol->control.on_ping)
     result = acip_send_pong(protocol->transport);
   else
-    result =
-        acip_handle_client_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
+    result = acip_handle_client_packet(protocol->transport, type, payload, length, common ? &media : &protocol->control);
   if (result == ASCIICHAT_OK)
     result = protocol->callback_result;
   if (result == ASCIICHAT_OK) {
@@ -271,12 +247,10 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   return result;
 }
 
-void session_protocol_build_capabilities(unsigned short width, unsigned short height,
-                                         terminal_capabilities_packet_t *packet) {
+void session_protocol_build_capabilities(unsigned short width, unsigned short height, terminal_capabilities_packet_t *packet) {
   const options_t *opts = options_get();
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height, opts->auto_width,
-            opts->auto_height);
+  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height, opts->auto_width, opts->auto_height);
 
   // Connection and transport availability is checked by threaded_send_packet()
 
@@ -293,8 +267,8 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   bool is_interactive = terminal_is_interactive();
   caps.wants_padding = is_interactive && !is_snapshot_mode;
 
-  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
-            caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
+  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)", caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(),
+            terminal_is_stdout_tty());
 
   // Apply user's color mode override
   caps = apply_color_mode_override(caps, options_terminal_settings());
@@ -387,8 +361,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   *packet = net_packet;
 }
 
-asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision,
-                                                   session_protocol_send_settings_fn send, void *context) {
+asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision, session_protocol_send_settings_fn send, void *context) {
   if (!advertised || !advertised_revision || !send)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Settings update requires state and a send callback");
   if (advertised->cols > 0 && advertised->rows > 0 && *advertised_revision == options_revision())

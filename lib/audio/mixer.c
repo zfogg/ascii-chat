@@ -159,8 +159,7 @@ void ducking_destroy(ducking_t *duck) {
   }
 }
 
-void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns,
-                        uint64_t release_ns) {
+void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns, uint64_t release_ns) {
   duck->threshold_dB = threshold_dB;
   duck->leader_margin_dB = leader_margin_dB;
   duck->atten_dB = atten_dB;
@@ -352,8 +351,7 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
       config.noise_gate = false;
     }
     for (int i = 0; i <= max_sources; ++i) {
-      if (spectral_create(&config, &mixer->spectral_left[i]) != ASCIICHAT_OK ||
-          (channels == 2 && spectral_create(&config, &mixer->spectral_right[i]) != ASCIICHAT_OK)) {
+      if (spectral_create(&config, &mixer->spectral_left[i]) != ASCIICHAT_OK || (channels == 2 && spectral_create(&config, &mixer->spectral_right[i]) != ASCIICHAT_OK)) {
         mixer_destroy(mixer);
         return NULL;
       }
@@ -575,8 +573,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     for (int i = 0; i < mixer->max_sources; i++) {
       if (mixer->source_ids[i] != 0 && mixer->source_active[i] && mixer->source_buffers[i]) {
         // Read samples from this source's ring buffer
-        size_t samples_read_size =
-            audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        size_t samples_read_size = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         int samples_read = (int)samples_read_size;
 
         // Accept partial frames - pad with silence if needed
@@ -584,8 +581,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
         if (samples_read > 0) {
           // Pad remaining samples with silence if we got a partial frame
           if (samples_read < frame_size) {
-            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-                        (frame_size - samples_read) * sizeof(float));
+            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0, (frame_size - samples_read) * sizeof(float));
           }
 
           source_map[source_count] = i;
@@ -614,11 +610,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
       // Update envelope using frame peak (one update per frame instead of per-sample)
       if (peak > mixer->ducking.envelope[slot]) {
-        mixer->ducking.envelope[slot] =
-            mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
       } else {
-        mixer->ducking.envelope[slot] =
-            mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
       }
 
       // Count speaking sources
@@ -763,8 +757,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
             queue->count -= samples_read_size;
           }
         } else {
-          samples_read_size =
-              audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+          samples_read_size = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         }
         int samples_read = (int)samples_read_size;
 
@@ -773,8 +766,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         if (samples_read > 0) {
           // Pad remaining samples with silence if we got a partial frame
           if (samples_read < frame_size) {
-            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-                        (frame_size - samples_read) * sizeof(float));
+            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0, (frame_size - samples_read) * sizeof(float));
           }
 
           // DIAGNOSTIC: Calculate RMS of this source's audio
@@ -785,8 +777,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
               sum_squares += source_samples[source_count][s] * source_samples[source_count][s];
             }
             source_rms = sqrtf(sum_squares / (float)samples_read);
-            log_dev_every(NS_PER_MS_INT, "MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f",
-                          mixer->source_ids[i], i, samples_read, source_rms);
+            log_dev_every(NS_PER_MS_INT, "MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f", mixer->source_ids[i], i, samples_read, source_rms);
           }
 
           source_map[source_count] = i;
@@ -801,8 +792,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     if (read_time_ns > 10 * NS_PER_MS_INT) {
       char read_time_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
-      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str,
-                     source_count);
+      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str, source_count);
     }
 
     if (GET_OPTION(no_audio_mixer)) {
@@ -830,11 +820,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
       // Update envelope using frame peak (one update per frame instead of per-sample)
       if (peak > mixer->ducking.envelope[slot]) {
-        mixer->ducking.envelope[slot] =
-            mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
       } else {
-        mixer->ducking.envelope[slot] =
-            mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
       }
 
       // Count speaking sources

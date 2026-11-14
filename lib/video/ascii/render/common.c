@@ -57,8 +57,7 @@ static size_t glyph_bytes(uint32_t key) {
   return first < 128 ? 1 : (first & 0xe0) == 0xc0 ? 2 : (first & 0xf0) == 0xe0 ? 3 : 4;
 }
 
-void ascii_emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cells_t *ops, const uint32_t *glyph,
-                             const uint32_t *fg, const uint32_t *bg, size_t width) {
+void ascii_emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cells_t *ops, const uint32_t *glyph, const uint32_t *fg, const uint32_t *bg, size_t width) {
   if (mode == ASCII_COLOR_NONE) {
     if (ops->emit_mono) {
       ops->emit_mono(out, glyph, width);
@@ -98,11 +97,8 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image or palette");
   size_t bytes, pixels, capacity, rows;
-  if (checked_size_mul((size_t)image->w, (size_t)image->h, &pixels) != ASCIICHAT_OK ||
-      checked_size_mul(pixels, 48u, &capacity) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)image->h, 5u, &rows) != ASCIICHAT_OK ||
-      checked_size_add(capacity, rows, &capacity) != ASCIICHAT_OK ||
-      checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK ||
+  if (checked_size_mul((size_t)image->w, (size_t)image->h, &pixels) != ASCIICHAT_OK || checked_size_mul(pixels, 48u, &capacity) != ASCIICHAT_OK ||
+      checked_size_mul((size_t)image->h, 5u, &rows) != ASCIICHAT_OK || checked_size_add(capacity, rows, &capacity) != ASCIICHAT_OK || checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK ||
       checked_size_mul((size_t)image->w, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK)
     return ERROR_INVALID_PARAM;
   utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
@@ -110,8 +106,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
-  if (ascii_stabilizer_target() && ascii_stabilizer_target()->cells &&
-      ascii_stabilizer_target()->width == (size_t)image->w && ascii_stabilizer_target()->height == (size_t)image->h)
+  if (ascii_stabilizer_target() && ascii_stabilizer_target()->cells && ascii_stabilizer_target()->width == (size_t)image->w && ascii_stabilizer_target()->height == (size_t)image->h)
     frame->stabilizer = ascii_stabilizer_target();
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, (size_t)cache->cache64[i].byte_len);
@@ -133,8 +128,7 @@ uint32_t ascii_background_contrast(ascii_color_t mode, uint32_t color, uint8_t l
   return luma < 128 ? (mode == ASCII_COLOR_TRUE ? 0xffffffu : 15u) : 0;
 }
 
-void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
-                          const simd_cells_t *ops) {
+void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops) {
   ascii_stabilizer_frame_row(frame, mode, background, ops);
   for (size_t x = 0; x < frame->width; ++x) {
     frame->fg[x] = frame->bg[x] = UINT32_MAX;
@@ -158,28 +152,23 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
   return frame->output.buf;
 }
 
-asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
-                                        ascii_color_t mode) {
+asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode) {
   ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
   outbuf_t *target = ascii_render_set_output_target(NULL);
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;
-  if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE ||
-      checked_size_mul((size_t)width, 3, &row_bytes) != ASCIICHAT_OK || row_bytes > INT_MAX)
+  if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE || checked_size_mul((size_t)width, 3, &row_bytes) != ASCIICHAT_OK || row_bytes > INT_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block input");
   if (*stride <= 0)
     *stride = (int)row_bytes;
-  if ((size_t)*stride < row_bytes || checked_size_mul((size_t)*stride, (size_t)height, &extent) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)width, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK ||
-      checked_size_mul((size_t)width, ((size_t)height + 1) / 2, &capacity) != ASCIICHAT_OK ||
-      checked_size_mul(capacity, 48u, &capacity) != ASCIICHAT_OK ||
+  if ((size_t)*stride < row_bytes || checked_size_mul((size_t)*stride, (size_t)height, &extent) != ASCIICHAT_OK || checked_size_mul((size_t)width, 6 * sizeof(uint32_t), &bytes) != ASCIICHAT_OK ||
+      checked_size_mul((size_t)width, ((size_t)height + 1) / 2, &capacity) != ASCIICHAT_OK || checked_size_mul(capacity, 48u, &capacity) != ASCIICHAT_OK ||
       checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block stride or size");
   prepare_output(frame, capacity, target);
   frame->width = (size_t)width;
   frame->source_height = (size_t)height;
-  if (ascii_stabilizer_target() && ascii_stabilizer_target()->cells &&
-      ascii_stabilizer_target()->width == (size_t)width && ascii_stabilizer_target()->height == (size_t)height)
+  if (ascii_stabilizer_target() && ascii_stabilizer_target()->cells && ascii_stabilizer_target()->width == (size_t)width && ascii_stabilizer_target()->height == (size_t)height)
     frame->stabilizer = ascii_stabilizer_target();
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;

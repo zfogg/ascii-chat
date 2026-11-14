@@ -185,8 +185,7 @@ asciichat_error_t session_audio_start_duplex(session_audio_ctx_t *ctx) {
   }
 
   if (!ctx->pipeline) {
-    client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(
-        ctx->audio_ctx.capture_media_source && media_source_has_audio(ctx->audio_ctx.capture_media_source));
+    client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(ctx->audio_ctx.capture_media_source && media_source_has_audio(ctx->audio_ctx.capture_media_source));
     ctx->pipeline = client_audio_pipeline_create(&config);
     if (!ctx->pipeline)
       return SET_ERRNO(ERROR_AUDIO, "Cannot initialize session audio processing");
@@ -293,8 +292,7 @@ void session_audio_remove_source(session_audio_ctx_t *ctx, uint32_t source_id) {
   }
 }
 
-asciichat_error_t session_audio_write_source(session_audio_ctx_t *ctx, uint32_t source_id, const float *samples,
-                                             size_t num_samples) {
+asciichat_error_t session_audio_write_source(session_audio_ctx_t *ctx, uint32_t source_id, const float *samples, size_t num_samples) {
   if (!ctx || !ctx->initialized || !samples) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }

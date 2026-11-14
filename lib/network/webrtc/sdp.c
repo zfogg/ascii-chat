@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <pcre2.h>
+#include <libplatform/util/string.h>
 
 /* ============================================================================
  * Utility Functions
@@ -61,8 +62,7 @@ const char *sdp_renderer_name(int renderer_type) {
  * SDP Offer Generation
  * ============================================================================ */
 
-asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
-                                     const opus_config_t *audio_config, const terminal_format_params_t *format,
+asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count, const opus_config_t *audio_config, const terminal_format_params_t *format,
                                      uint32_t video_codec_caps, uint32_t audio_codec_caps, sdp_session_t *offer_out) {
   if (!capabilities || capability_count == 0 || !audio_config || !offer_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP offer parameters");
@@ -102,8 +102,7 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
   sdp += written;
   remaining -= written;
 
-  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", offer_out->session_id,
-                          offer_out->session_version);
+  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", offer_out->session_id, offer_out->session_version);
   sdp += written;
   remaining -= written;
 
@@ -164,10 +163,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
       compression_name = "zstd";
     }
 
-    written = safe_snprintf(sdp, remaining,
-                            "a=fmtp:%d width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n", pt,
-                            cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
-                            cap_format->csi_rep_support ? 1 : 0);
+    written = safe_snprintf(sdp, remaining, "a=fmtp:%d width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n", pt, cap_format->width, cap_format->height, renderer_name, charset_name,
+                            compression_name, cap_format->csi_rep_support ? 1 : 0);
     sdp += written;
     remaining -= written;
   }
@@ -188,10 +185,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
  * SDP Answer Generation
  * ============================================================================ */
 
-asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
-                                      size_t server_capability_count, const opus_config_t *audio_config,
-                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps,
-                                      uint32_t server_audio_codec_caps, sdp_session_t *answer_out) {
+asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities, size_t server_capability_count, const opus_config_t *audio_config,
+                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps, uint32_t server_audio_codec_caps, sdp_session_t *answer_out) {
   if (!offer || !server_capabilities || server_capability_count == 0 || !audio_config || !answer_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP answer parameters");
   }
@@ -210,8 +205,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
     memcpy(&answer_out->audio_config, audio_config, sizeof(opus_config_t));
     // Negotiate audio codec capabilities: intersection of client and server
     answer_out->codec_capabilities_audio = offer->codec_capabilities_audio & server_audio_codec_caps;
-    log_debug("SDP: Audio codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_audio,
-              server_audio_codec_caps, answer_out->codec_capabilities_audio);
+    log_debug("SDP: Audio codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_audio, server_audio_codec_caps, answer_out->codec_capabilities_audio);
   }
 
   // Answer video section: find best mutually-supported codec with capability negotiation
@@ -220,8 +214,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
   if (answer_out->has_video && offer->video_codecs && offer->video_codec_count > 0) {
     // Negotiate video codec capabilities: intersection of client and server
     answer_out->codec_capabilities_video = offer->codec_capabilities_video & server_video_codec_caps;
-    log_debug("SDP: Video codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_video,
-              server_video_codec_caps, answer_out->codec_capabilities_video);
+    log_debug("SDP: Video codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_video, server_video_codec_caps, answer_out->codec_capabilities_video);
 
     // Find best terminal capability codec: iterate through server preferences and find first match in offer
     int selected_index = -1;
@@ -279,8 +272,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
   sdp += written;
   remaining -= written;
 
-  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", answer_out->session_id,
-                          answer_out->session_version);
+  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", answer_out->session_id, answer_out->session_version);
   sdp += written;
   remaining -= written;
 
@@ -307,8 +299,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
     remaining -= written;
 
     // Negotiated audio codec capabilities (custom attribute)
-    written =
-        safe_snprintf(sdp, remaining, "a=codec-capabilities-audio:0x%x\r\n", answer_out->codec_capabilities_audio);
+    written = safe_snprintf(sdp, remaining, "a=codec-capabilities-audio:0x%x\r\n", answer_out->codec_capabilities_audio);
     sdp += written;
     remaining -= written;
   }
@@ -335,16 +326,13 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
       compression_name = "zstd";
     }
 
-    written = safe_snprintf(sdp, remaining,
-                            "a=fmtp:96 width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n",
-                            cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
-                            cap_format->csi_rep_support ? 1 : 0);
+    written = safe_snprintf(sdp, remaining, "a=fmtp:96 width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n", cap_format->width, cap_format->height, renderer_name, charset_name,
+                            compression_name, cap_format->csi_rep_support ? 1 : 0);
     sdp += written;
     remaining -= written;
 
     // Negotiated video codec capabilities (custom attribute)
-    written =
-        safe_snprintf(sdp, remaining, "a=codec-capabilities-video:0x%x\r\n", answer_out->codec_capabilities_video);
+    written = safe_snprintf(sdp, remaining, "a=codec-capabilities-video:0x%x\r\n", answer_out->codec_capabilities_video);
     sdp += written;
     remaining -= written;
   }
@@ -590,8 +578,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
         } else if (in_video_section && video_codec_index < SDP_VIDEO_CODEC_CAPACITY) {
           // Terminal capability codec
           if (!session->video_codecs) {
-            session->video_codecs =
-                SAFE_MALLOC(SDP_VIDEO_CODEC_CAPACITY * sizeof(terminal_capability_t), terminal_capability_t *);
+            session->video_codecs = SAFE_MALLOC(SDP_VIDEO_CODEC_CAPACITY * sizeof(terminal_capability_t), terminal_capability_t *);
           }
 
           terminal_capability_t *cap = &session->video_codecs[video_codec_index];
@@ -667,8 +654,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
  * Video Codec Selection
  * ============================================================================ */
 
-asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip_codec_t *selected_codec,
-                                               terminal_format_params_t *selected_format) {
+asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip_codec_t *selected_codec, terminal_format_params_t *selected_format) {
   if (!answer || !selected_codec || !selected_format) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for codec selection");
   }
@@ -684,8 +670,7 @@ asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip
   *selected_codec = selected_cap->codec;
   memcpy(selected_format, &selected_cap->format, sizeof(terminal_format_params_t));
 
-  log_debug("SDP: Selected video codec %s with resolution %ux%u", sdp_codec_name(selected_cap->codec),
-            selected_cap->format.width, selected_cap->format.height);
+  log_debug("SDP: Selected video codec %s with resolution %ux%u", sdp_codec_name(selected_cap->codec), selected_cap->format.width, selected_cap->format.height);
 
   return ASCIICHAT_OK;
 }
@@ -694,8 +679,7 @@ asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip
  * Terminal Capability Detection
  * ============================================================================ */
 
-asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabilities, size_t capability_count,
-                                                   size_t *detected_count) {
+asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabilities, size_t capability_count, size_t *detected_count) {
   if (!capabilities || capability_count == 0 || !detected_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capability detection parameters");
   }
@@ -788,8 +772,8 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
 
   *detected_count = idx;
 
-  log_debug("SDP: Detected %zu terminal capabilities (colors=%d, utf8=%s, csi_rep=%s, size=%ux%u)", *detected_count,
-            color_level, has_utf8 ? "yes" : "no", has_csi_rep ? "yes" : "no", term_width, term_height);
+  log_debug("SDP: Detected %zu terminal capabilities (colors=%d, utf8=%s, csi_rep=%s, size=%ux%u)", *detected_count, color_level, has_utf8 ? "yes" : "no", has_csi_rep ? "yes" : "no", term_width,
+            term_height);
 
   return ASCIICHAT_OK;
 }

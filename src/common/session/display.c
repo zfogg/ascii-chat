@@ -194,10 +194,8 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
   int height = (int)GET_OPTION(height);
   ctx->render_fps = encoder_fps;
 
-  log_info("render-file: Initializing encoder after media timing selection: path='%s', grid=%dx%d, fps=%u",
-           render_file_opt, width, height, encoder_fps);
-  asciichat_error_t err =
-      render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &ctx->render_file);
+  log_info("render-file: Initializing encoder after media timing selection: path='%s', grid=%dx%d, fps=%u", render_file_opt, width, height, encoder_fps);
+  asciichat_error_t err = render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &ctx->render_file);
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t error;
     if (HAS_ERRNO(&error))
@@ -224,8 +222,7 @@ static void display_sync_entries(session_display_ctx_t *ctx, bool add) {
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_CREATE);
   if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
-                                (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
-                                 !detect_terminal_capabilities(options_terminal_settings()).utf8_support))) {
+                                (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() && !detect_terminal_capabilities(options_terminal_settings()).utf8_support))) {
     SET_ERRNO(ERROR_USAGE, "--zalgo requires UTF-8 terminal output (on Windows, run chcp 65001 first)");
     return NULL;
   }
@@ -263,8 +260,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // fail under ConPTY even though stdout is an interactive console.
   ctx->has_tty = terminal_is_stdout_tty();
   const char *stdout_output = GET_OPTION(render_file);
-  bool owns_stdout = GET_OPTION(render_kitty) || strcmp(stdout_output, "--kitty") == 0 ||
-                     strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;
+  bool owns_stdout = GET_OPTION(render_kitty) || strcmp(stdout_output, "--kitty") == 0 || strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;
   if (owns_stdout)
     ctx->has_tty = false;
   if (ctx->has_tty) {
@@ -315,9 +311,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->caps.pad_height = 0;
   }
 
-  log_debug("Padding mode: wants_padding=%d (snapshot=%d, has_tty=%d, stdin_tty=%d, stdout_tty=%d), pad_height=%zu",
-            ctx->caps.wants_padding, is_snapshot_mode, ctx->has_tty, terminal_is_stdin_tty(), terminal_is_stdout_tty(),
-            ctx->caps.pad_height);
+  log_debug("Padding mode: wants_padding=%d (snapshot=%d, has_tty=%d, stdin_tty=%d, stdout_tty=%d), pad_height=%zu", ctx->caps.wants_padding, is_snapshot_mode, ctx->has_tty, terminal_is_stdin_tty(),
+            terminal_is_stdout_tty(), ctx->caps.pad_height);
 
   // Apply color mode override if specified
   if (config->color_mode != TERM_COLOR_AUTO) {
@@ -328,13 +323,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->caps = apply_color_mode_override(ctx->caps, options_terminal_settings());
 
   // Initialize palette
-  int palette_result = initialize_client_palette(config->palette_type, config->custom_palette, ctx->palette_chars,
-                                                 &ctx->palette_len, ctx->luminance_palette);
+  int palette_result = initialize_client_palette(config->palette_type, config->custom_palette, ctx->palette_chars, &ctx->palette_len, ctx->luminance_palette);
   if (palette_result != ASCIICHAT_OK) {
     log_warn("Failed to initialize palette, using default");
     // Fall back to standard palette
-    (void)initialize_client_palette(PALETTE_STANDARD, NULL, ctx->palette_chars, &ctx->palette_len,
-                                    ctx->luminance_palette);
+    (void)initialize_client_palette(PALETTE_STANDARD, NULL, ctx->palette_chars, &ctx->palette_len, ctx->luminance_palette);
   }
 
   // Pre-warm UTF-8 palette cache during initialization (not during rendering)
@@ -379,12 +372,16 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
+  if (GET_OPTION(fft) && audio_visualization_fft_init() != ASCIICHAT_OK) {
+    session_display_destroy(ctx);
+    return NULL;
+  }
+
   display_sync_entries(ctx, true);
 
   // Initialize render-file unless media setup needs to determine its timing first.
   const char *render_file_opt = GET_OPTION(render_file);
-  log_debug("render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
-            render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
+  log_debug("render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)", render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
   if (!config->defer_render_file) {
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
     if (render_err != ASCIICHAT_OK) {
@@ -400,9 +397,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->initialized = true;
   if (ctx->has_tty && !ctx->snapshot_mode) {
     const char initial[] = "\033[H";
-    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, ctx->tty_info.fd,
-                                         (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
-                                         initial, sizeof(initial) - 1);
+    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, ctx->tty_info.fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, initial, sizeof(initial) - 1);
   }
 
   return ctx;
@@ -617,16 +612,16 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   caps_copy.palette_explicit = values->palette_explicit;
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)values->color_mode;
   const palette_def_t *builtin = get_builtin_palette(values->palette_type);
-  const char *selected_palette = !values->palette_explicit                ? ctx->palette_chars
-                                 : values->palette_type == PALETTE_CUSTOM ? values->palette_custom
-                                 : builtin                                ? builtin->chars
-                                                                          : ctx->palette_chars;
+  const char *selected_palette = !values->palette_explicit ? ctx->palette_chars : values->palette_type == PALETTE_CUSTOM ? values->palette_custom : builtin ? builtin->chars : ctx->palette_chars;
   char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
   SAFE_STRNCPY(palette_chars, selected_palette, sizeof(palette_chars));
   bool preserve_aspect_ratio = !stretch;
 
   // Determine if we should apply flip_x and flip_y
-  bool flip_x_enabled = GET_OPTION(flip_x);
+  // Synthetic test patterns are already oriented for diagnostics.  Do not
+  // inherit the webcam's mirrored default unless the user explicitly chose
+  // horizontal flipping.
+  bool flip_x_enabled = GET_OPTION(flip_x) && (!GET_OPTION(test_pattern) || GET_OPTION(flip_x_explicit));
   bool flip_y_enabled = GET_OPTION(flip_y);
 
   color_filter_t color_filter = GET_OPTION(color_filter);
@@ -671,8 +666,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     uint64_t t_flip_alloc_start = time_get_ns();
-    flipped_image = ctx->render_file ? image_new(image->w, image->h)
-                                     : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
+    flipped_image = ctx->render_file ? image_new(image->w, image->h) : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
 
     if (flipped_image) {
@@ -718,8 +712,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
       uint64_t t_flip_reverse_end = time_get_ns();
       display_image = flipped_image;
 
-      log_dev("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, flip=%llu us (x=%d, y=%d)",
-              (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
+      log_dev("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, flip=%llu us (x=%d, y=%d)", (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
               (t_flip_reverse_end - t_flip_reverse_start) / 1000, flip_x_enabled, flip_y_enabled);
     }
   }
@@ -732,18 +725,14 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   image_t *filtered_image = NULL;
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
-    filtered_image = ctx->render_file
-                         ? image_new(display_image->w, display_image->h)
-                         : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
+    filtered_image = ctx->render_file ? image_new(display_image->w, display_image->h) : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
     if (filtered_image && filtered_image->pixels && display_image->pixels) {
-      memcpy(filtered_image->pixels, display_image->pixels,
-             (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
+      memcpy(filtered_image->pixels, display_image->pixels, (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
 
       // Apply filter to the copy
       int stride = (int)display_image->w * 3;
       float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
-      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w, (uint32_t)display_image->h,
-                         (uint32_t)stride, color_filter, time_seconds);
+      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w, (uint32_t)display_image->h, (uint32_t)stride, color_filter, time_seconds);
     }
   }
 
@@ -752,17 +741,14 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   uint64_t t_convert_start = time_get_ns();
   // Recording converts concurrently on its encoder thread and retains owned output.
-  outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
-                         ? &ctx->ascii_workspace
-                         : NULL;
+  outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled ? &ctx->ascii_workspace : NULL;
   // Recording and live display run on separate threads and own separate histories.
   bool recording = ctx->render_file && !reuse;
   ascii_stabilizer_t *history = recording ? &ctx->recording_stabilizer : &ctx->stabilizer;
   if (recording && ctx->render_fps)
     history->fixed_step_ns = NS_PER_SEC_INT / ctx->render_fps;
-  char *result = ascii_convert_with_buffers_stabilized(
-      ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, palette_chars, false,
-      ctx->render_file ? NULL : &ctx->resize_workspace, output, caps_copy.stabilize ? history : NULL);
+  char *result = ascii_convert_with_buffers_stabilized(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, palette_chars, false,
+                                                       ctx->render_file ? NULL : &ctx->resize_workspace, output, caps_copy.stabilize ? history : NULL);
   if (!caps_copy.stabilize)
     ascii_stabilizer_reset(history);
   uint64_t t_convert_end = time_get_ns();
@@ -812,10 +798,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
   bool explicit_palette = caps_copy.palette_explicit;
-  bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
-                     caps_copy.render_mode != RENDER_MODE_HALF_BLOCK && width > 0 && height > 0 &&
-                     width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
-                     (!explicit_palette || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
+  bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH && caps_copy.render_mode != RENDER_MODE_HALF_BLOCK && width > 0 && height > 0 && width <= IMAGE_MAX_WIDTH / 8 &&
+                     height <= IMAGE_MAX_HEIGHT / 8 && (!explicit_palette || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
   if (result && !glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
     ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
     size_t normalized_size;
@@ -825,10 +809,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
   if (result) {
     acip_render_settings_t rendering = {.caps = caps_copy};
-    const char *contract_palette =
-        glyph_match && !explicit_palette
-            ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-            : palette_chars;
+    const char *contract_palette = glyph_match && !explicit_palette ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" : palette_chars;
     SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
     if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {
@@ -838,8 +819,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
 
   uint64_t validation_finished_ns = time_get_ns();
-  log_debug_every(US_PER_SEC_INT, "DISPLAY_STAGE: conversion_ms=%.2f validation_ms=%.2f",
-                  (double)(t_convert_end - t_convert_start) / NS_PER_MS_INT,
+  log_debug_every(US_PER_SEC_INT, "DISPLAY_STAGE: conversion_ms=%.2f validation_ms=%.2f", (double)(t_convert_end - t_convert_start) / NS_PER_MS_INT,
                   (double)(validation_finished_ns - validation_started_ns) / NS_PER_MS_INT);
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
@@ -850,11 +830,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   uint64_t t_cleanup_end = time_get_ns();
 
   // Log total breakdown with actual measured times
-  log_dev_every(US_PER_SEC_INT,
-                "CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
-                (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
-                (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
-                (t_cleanup_end - t_flip_start) / 1000);
+  log_dev_every(US_PER_SEC_INT, "CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us", (t_flip_end - t_flip_start) / 1000,
+                (t_filter_end - t_filter_start) / 1000, (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000, (t_cleanup_end - t_flip_start) / 1000);
 
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - stats_start);
   stats_counter_add(stats_runtime_scope(), result ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -869,8 +846,7 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   unsigned int width = terminal_get_effective_width(GET_OPTION(width), 80);
   unsigned int height = terminal_get_effective_height(GET_OPTION(height), 24);
   bool use_color = ctx->caps.color_level == TERM_COLOR_TRUECOLOR && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER
-                                                                            : AUDIO_VISUALIZATION_COLOR_DARKER;
+  int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIX;
   if (selected_audio == AUDIO_SOURCE_MEDIA)
@@ -879,11 +855,8 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
     visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
   else if (selected_audio == AUDIO_SOURCE_CALL)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
-  char *text = GET_OPTION(fft)
-                   ? audio_visualization_render_fft(width, height, visual_source, use_color, color_mode,
-                                                    GET_OPTION(flip_x), GET_OPTION(flip_y))
-                   : audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode,
-                                                         GET_OPTION(flip_x), GET_OPTION(flip_y));
+  char *text = GET_OPTION(fft) ? audio_visualization_render_fft(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x), GET_OPTION(flip_y))
+                               : audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x), GET_OPTION(flip_y));
   if (text && session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
     SAFE_FREE(text);
     return NULL;
@@ -983,6 +956,66 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
+  /* Inspect the payload before any terminal presentation.  This is bounded
+   * diagnostics: it records shape/control-byte anomalies and a short tail,
+   * never the full webcam frame. */
+  {
+    size_t lines = 0, current = 0, min_line = SIZE_MAX, max_line = 0, last_line = 0;
+    unsigned control_bytes = 0, escape_bytes = 0;
+    for (size_t i = 0; i < frame_len; ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == '\n') {
+        min_line = MIN(min_line, current);
+        max_line = MAX(max_line, current);
+        last_line = current;
+        ++lines;
+        current = 0;
+      } else {
+        current++;
+        if (byte < 32 && byte != '\r' && byte != '\t')
+          ++control_bytes;
+        if (byte == 0x1b)
+          ++escape_bytes;
+      }
+    }
+    if (current) {
+      min_line = MIN(min_line, current);
+      max_line = MAX(max_line, current);
+      last_line = current;
+    }
+    char tail[64] = {0};
+    size_t tail_start = frame_len > 24 ? frame_len - 24 : 0;
+    size_t tail_used = 0;
+    for (size_t i = tail_start; i < frame_len && tail_used + 4 < sizeof(tail); ++i)
+      tail_used += (size_t)safe_snprintf(tail + tail_used, sizeof(tail) - tail_used, "%02X ", (unsigned char)ascii[i]);
+
+    // Also capture the actual glyphs in the final row.  Byte/line counts alone
+    // cannot distinguish a bad terminal write from a bad rendered frame.
+    size_t row_start = 0;
+    for (size_t i = 0; i < frame_len; ++i)
+      if (ascii[i] == '\n')
+        row_start = i + 1;
+    char last_row[192] = {0};
+    size_t row_used = 0;
+    for (size_t i = row_start; i < frame_len && row_used + 5 < sizeof(last_row); ++i) {
+      unsigned char byte = (unsigned char)ascii[i];
+      if (byte == 0x1b) {
+        ++i;
+        while (i < frame_len && !((ascii[i] >= '@' && ascii[i] <= 'Z') || (ascii[i] >= 'a' && ascii[i] <= 'z')))
+          ++i;
+        continue;
+      }
+      if (byte >= 32 && byte < 127)
+        last_row[row_used++] = (char)byte;
+      else if (byte == '\r' || byte == '\t')
+        last_row[row_used++] = ' ';
+      else
+        row_used += (size_t)safe_snprintf(last_row + row_used, sizeof(last_row) - row_used, "\\x%02X", byte);
+    }
+    log_debug_every(US_PER_SEC_INT, "FRAME_DATA: bytes=%zu lines=%zu line_bytes=%zu..%zu last=%zu controls=%u escapes=%u last_row=\"%s\" tail=%s", frame_len, lines,
+                    min_line == SIZE_MAX ? 0 : min_line, max_line, last_line, control_bytes, escape_bytes, last_row, tail);
+  }
+
   // Apply digital rain effect if enabled
   char *display_frame = (char *)ascii;
   char *rain_result = NULL;
@@ -1016,13 +1049,11 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
 
   // Binary video owns stdout in every terminal mode.
   const char *output = GET_OPTION(render_file);
-  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
-                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
+  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 || strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   char *zalgo_frame = NULL;
   int zalgo_level = GET_OPTION(zalgo);
   if (zalgo_level > 0 && !binary_stdout) {
-    asciichat_error_t err =
-        zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
+    asciichat_error_t err = zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
     if (err == ASCIICHAT_OK) {
       display_frame = zalgo_frame;
       frame_len = strlen(zalgo_frame);
@@ -1068,7 +1099,10 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Output routing logic
-  bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
+  // A snapshot still needs terminal cursor framing when stdout is a real TTY.
+  // `terminal_is_interactive()` also depends on stdin, which is commonly false
+  // for scripted snapshot invocations even though the PTY can display output.
+  bool use_tty_control = ctx->has_tty || (ctx->snapshot_mode && ctx->tty_info.fd >= 0 && platform_isatty(ctx->tty_info.fd));
 
   uint64_t frame_write_started_ns = time_get_ns();
 
@@ -1080,9 +1114,29 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-    const char *cursor_home_sequence = "\033[H";
-    size_t cursor_seq_len = 3;
-    size_t total_size = cursor_seq_len + frame_len;
+    // Media output must not inherit a scrolling region left by another UI
+    // screen or by terminal-side diagnostic handling. A plain home command
+    // homes within that region, so a later frame can begin on a different
+    // physical row after the terminal scrolls.
+    const char *cursor_home_sequence = "\033[r\033[H";
+    const char *erase_below_sequence = "\033[J";
+    size_t cursor_seq_len = 6;
+    size_t erase_below_len = 3;
+    // ESC[J erases from the cursor through the end of the screen.  When the
+    // frame fills the terminal height, the cursor is on the final cell and
+    // ESC[J erases the bottom-right glyph we just rendered.  Only clear below
+    // shorter frames, where the cursor is guaranteed to be above the last row.
+    size_t frame_rows = 1;
+    for (size_t i = 0; i < frame_len; ++i)
+      frame_rows += display_frame[i] == '\n';
+    int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
+    terminal_size_t terminal = {0};
+    if (terminal_get_size_fd(output_fd, &terminal) == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
+      erase_below_len = 0;
+    // The frame is shorter than the terminal in some configurations.  Erase
+    // from the final frame cursor to the bottom of the screen in the same
+    // submission so stale rows cannot survive a resize or a shorter frame.
+    size_t total_size = cursor_seq_len + frame_len + erase_below_len;
 
     if (ctx->tty_frame_capacity < total_size) {
       size_t capacity = ctx->tty_frame_capacity ? ctx->tty_frame_capacity : 4096;
@@ -1097,12 +1151,19 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+      memcpy(frame_buffer + cursor_seq_len + frame_len, erase_below_sequence, erase_below_len);
 
-      log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout",
-                      total_size, cursor_seq_len, frame_len);
-      asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
-          UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
-          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
+      log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len, frame_len);
+      asciichat_error_t presented = ASCIICHAT_OK;
+      if (ctx->snapshot_mode) {
+        // Snapshot processes may exit immediately after the first frame. Write
+        // directly so teardown cannot discard a queued UI-controller update.
+        if (platform_write_all(output_fd, frame_buffer, total_size) != total_size)
+          presented = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write snapshot frame to terminal");
+      } else {
+        presented = (fresh ? ui_controller_present : ui_controller_present_retained)(UI_SCREEN_MEDIA, output_fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer,
+                                                                                     total_size);
+      }
       if (was_first_frame && presented == ASCIICHAT_OK)
         ui_controller_remove(UI_SCREEN_SPLASH);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
@@ -1179,8 +1240,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
 cleanup_frame:
-  log_dev_every(3 * US_PER_SEC_INT, "FRAME_WRITE: Published in %.2f ms",
-                (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
+  log_dev_every(3 * US_PER_SEC_INT, "FRAME_WRITE: Published in %.2f ms", (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
 
   // Clean up digital rain result if allocated
   SAFE_FREE(plain_frame);
@@ -1200,8 +1260,7 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_ENCODE_FRAME);
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_debug("ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p", (void *)ctx, (void *)image,
-              (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
+    log_debug("ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p", (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
   }
 
   if (!ctx || !ctx->initialized) {
@@ -1239,10 +1298,8 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
   uint64_t stats_record_start = time_get_ns();
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, render_frame, captured_ns);
   uint64_t recorded_ns = time_get_ns();
-  log_debug_every(US_PER_SEC_INT, "RECORD_FRAME: convert_ms=%.2f output_ms=%.2f total_ms=%.2f",
-                  (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT,
-                  (double)(recorded_ns - converted_ns) / NS_PER_MS_INT,
-                  (double)(recorded_ns - conversion_started_ns) / NS_PER_MS_INT);
+  log_debug_every(US_PER_SEC_INT, "RECORD_FRAME: convert_ms=%.2f output_ms=%.2f total_ms=%.2f", (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT,
+                  (double)(recorded_ns - converted_ns) / NS_PER_MS_INT, (double)(recorded_ns - conversion_started_ns) / NS_PER_MS_INT);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_RECORDING, time_get_ns() - stats_record_start);
   if (fe == ASCIICHAT_OK)
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);
@@ -1302,8 +1359,7 @@ bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
 asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const float *buffer, size_t num_samples) {
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_AUDIO);
   if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu", ctx, buffer,
-                     num_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu", ctx, buffer, num_samples);
   }
 
   if (!ctx->audio_playback_enabled || !ctx->audio_ctx) {
@@ -1423,8 +1479,7 @@ void keyboard_help_toggle_global(void) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
-  log_debug("duration=%.3f, ctx=%p, render_file=%p", actual_duration_sec, (void *)ctx,
-            ctx ? (void *)ctx->render_file : NULL);
+  log_debug("duration=%.3f, ctx=%p, render_file=%p", actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
 
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
@@ -1432,7 +1487,8 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
   }
 
   if (!ctx->render_file) {
-    log_warn("  -> render_file is NULL, cannot set duration");
+    // Terminal snapshots have no render-file encoder; their duration is
+    // governed by the capture loop and requires no additional action.
     return;
   }
 

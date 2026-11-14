@@ -38,14 +38,12 @@
  */
 #define PACKET_MAX_DIMENSION 32768
 
-static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                      uint32_t original_size, uint32_t compressed_size) {
+static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed, uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > PACKET_MAX_FRAME_SIZE) {
     char size_str[NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE];
     format_bytes_pretty(original_size, size_str, sizeof(size_str));
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s (max %d MB)", size_str,
-              PACKET_MAX_FRAME_SIZE / (1024 * 1024));
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s (max %d MB)", size_str, PACKET_MAX_FRAME_SIZE / (1024 * 1024));
     return NULL;
   }
 
@@ -59,18 +57,15 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   if (is_compressed) {
     // Validate compressed frame size
     if (frame_data_len != compressed_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
-                frame_data_len);
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size, frame_data_len);
       return NULL;
     }
 
     // Decompress using compression API
-    asciichat_error_t decompress_result =
-        decompress_data_exact(frame_data_ptr, frame_data_len, frame_data, original_size);
+    asciichat_error_t decompress_result = decompress_data_exact(frame_data_ptr, frame_data_len, frame_data, original_size);
 
     if (decompress_result != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
-                asciichat_error_string(decompress_result));
+      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size, asciichat_error_string(decompress_result));
       return NULL;
     }
 
@@ -94,8 +89,7 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   return result;
 }
 
-char *packet_decode_frame_data_malloc(const char *data, size_t length, bool compressed, uint32_t original_size,
-                                      uint32_t compressed_size) {
+char *packet_decode_frame_data_malloc(const char *data, size_t length, bool compressed, uint32_t original_size, uint32_t compressed_size) {
   uint64_t started = time_get_ns();
   char *result = decode_frame_data_malloc(data, length, compressed, original_size, compressed_size);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - started);
@@ -103,8 +97,7 @@ char *packet_decode_frame_data_malloc(const char *data, size_t length, bool comp
   return result;
 }
 
-asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                                  void *output_buffer, size_t output_size, uint32_t original_size,
+asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed, void *output_buffer, size_t output_size, uint32_t original_size,
                                                   uint32_t compressed_size) {
   if (!frame_data_ptr || !output_buffer) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL pointer in frame decode");
@@ -117,25 +110,21 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
   if (is_compressed) {
     // Validate compressed frame size
     if (frame_data_len != compressed_size) {
-      return SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
-                       frame_data_len);
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size, frame_data_len);
     }
 
     // Decompress using compression API
-    asciichat_error_t decompress_result =
-        decompress_data_exact(frame_data_ptr, frame_data_len, output_buffer, original_size);
+    asciichat_error_t decompress_result = decompress_data_exact(frame_data_ptr, frame_data_len, output_buffer, original_size);
 
     if (decompress_result != ASCIICHAT_OK) {
-      return SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
-                       asciichat_error_string(decompress_result));
+      return SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size, asciichat_error_string(decompress_result));
     }
 
     log_debug_every(US_PER_SEC_INT, "Decompressed frame to buffer: %zu -> %u bytes", frame_data_len, original_size);
   } else {
     // Uncompressed frame - validate size
     if (frame_data_len != original_size) {
-      return SET_ERRNO(ERROR_NETWORK_SIZE, "Uncompressed frame size mismatch: expected %u, got %zu", original_size,
-                       frame_data_len);
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Uncompressed frame size mismatch: expected %u, got %zu", original_size, frame_data_len);
     }
 
     // Copy data to output buffer
@@ -145,23 +134,19 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length,
-                                                     bool compressed, uint32_t original_size,
-                                                     uint32_t compressed_size) {
+asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length, bool compressed, uint32_t original_size, uint32_t compressed_size) {
   if (!workspace || original_size > PACKET_MAX_FRAME_SIZE)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid decoded ASCII workspace size: %u", original_size);
   uint64_t started = time_get_ns();
   asciichat_error_t result = buffer_workspace_reserve(workspace, NULL, (size_t)original_size + 1);
   if (result == ASCIICHAT_OK)
-    result = packet_decode_frame_data_buffer(data, length, compressed, workspace->data,
-                                             buffer_capacity(workspace->data), original_size, compressed_size);
+    result = packet_decode_frame_data_buffer(data, length, compressed, workspace->data, buffer_capacity(workspace->data), original_size, compressed_size);
   if (result == ASCIICHAT_OK) {
     ((char *)workspace->data)[original_size] = '\0';
     workspace->length = original_size;
   }
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - started);
-  stats_counter_add(stats_runtime_scope(),
-                    result == ASCIICHAT_OK ? STATS_COUNTER_FRAMES_DECODED : STATS_COUNTER_FRAMES_DROPPED, 1);
+  stats_counter_add(stats_runtime_scope(), result == ASCIICHAT_OK ? STATS_COUNTER_FRAMES_DECODED : STATS_COUNTER_FRAMES_DROPPED, 1);
   return result;
 }
 
@@ -177,8 +162,7 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
 
   // Check dimensions are within reasonable bounds
   if (width > PACKET_MAX_DIMENSION || height > PACKET_MAX_DIMENSION) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Frame dimensions exceed maximum: %ux%u (max %u)", width, height,
-                     PACKET_MAX_DIMENSION);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Frame dimensions exceed maximum: %ux%u (max %u)", width, height, PACKET_MAX_DIMENSION);
   }
 
   // Calculate RGB buffer size with overflow checking (width * height * 3 bytes per pixel)
@@ -196,8 +180,7 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
   if (rgb_size > PACKET_MAX_FRAME_SIZE) {
     char size_str[NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE];
     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
-    return SET_ERRNO(ERROR_MEMORY, "Frame buffer size exceeds maximum: %s (max %d MB)", size_str,
-                     PACKET_MAX_FRAME_SIZE / (1024 * 1024));
+    return SET_ERRNO(ERROR_MEMORY, "Frame buffer size exceeds maximum: %s (max %d MB)", size_str, PACKET_MAX_FRAME_SIZE / (1024 * 1024));
   }
 
   *out_rgb_size = rgb_size;
@@ -208,11 +191,9 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
 // This module now provides a wrapper inline function in packet_parsing.h for backwards compatibility
 // See lib/audio/audio.h for the canonical implementation
 
-asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
-                                          size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
+asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data, size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
                                           int *out_frame_duration, int *out_frame_count) {
-  if (!packet_data || !out_opus_data || !out_opus_size || !out_frame_sizes || !out_sample_rate || !out_frame_duration ||
-      !out_frame_count) {
+  if (!packet_data || !out_opus_data || !out_opus_size || !out_frame_sizes || !out_sample_rate || !out_frame_duration || !out_frame_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in Opus batch parsing");
   }
 
@@ -226,8 +207,7 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
       snprintf(hex_buf + i * 2, 3, "%02x", ((uint8_t *)packet_data)[i]);
     }
     hex_buf[bytes_to_show * 2] = '\0';
-    log_error("★ OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=%zu, first_bytes=%s", packet_len, header_size,
-              hex_buf);
+    log_error("★ OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=%zu, first_bytes=%s", packet_len, header_size, hex_buf);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small: %zu < %zu", packet_len, header_size);
   }
 
@@ -250,8 +230,7 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
   // Extract frame sizes array (after 16-byte header)
   size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
   if (packet_len < header_size + frame_sizes_bytes) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small for frame sizes: %zu < %zu", packet_len,
-                     header_size + frame_sizes_bytes);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small for frame sizes: %zu < %zu", packet_len, header_size + frame_sizes_bytes);
   }
   // NOTE: Frame sizes are in network byte order - caller must use NET_TO_HOST_U16() when reading
   *out_frame_sizes = (const uint16_t *)(buf + header_size);

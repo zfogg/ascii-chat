@@ -34,11 +34,7 @@ static int glyph_palette_index(const uint8_t *p, size_t *length) {
 static uint8_t glyph_block_pixel(int block, int x, int y) {
   if (block >= 17)
     return (uint8_t)((block - 16) * 255 / 4);
-  bool set = block == 0    ? y < 4
-             : block <= 7  ? y >= 8 - block
-             : block == 8  ? true
-             : block <= 15 ? x < 16 - block
-                           : x >= 4;
+  bool set = block == 0 ? y < 4 : block <= 7 ? y >= 8 - block : block == 8 ? true : block <= 15 ? x < 16 - block : x >= 4;
   return set ? 255 : 0;
 }
 
@@ -63,8 +59,7 @@ static uint32_t glyph_key(int index) {
   if (index < GLYPH_ASCII_COUNT)
     return (uint32_t)(index + 32);
   uint32_t cp = 0x2580u + (uint32_t)(index - GLYPH_ASCII_COUNT);
-  const uint8_t bytes[4] = {(uint8_t)(0xe0u | (cp >> 12)), (uint8_t)(0x80u | ((cp >> 6) & 63)),
-                            (uint8_t)(0x80u | (cp & 63)), 0};
+  const uint8_t bytes[4] = {(uint8_t)(0xe0u | (cp >> 12)), (uint8_t)(0x80u | ((cp >> 6) & 63)), (uint8_t)(0x80u | (cp & 63)), 0};
   uint32_t key = 0;
   memcpy(&key, bytes, sizeof(key));
   return key;
@@ -123,8 +118,7 @@ static uint32_t glyph_foreground(const glyph_candidate_t *glyph, const int16_t s
     int weighted = 0;
     for (int i = 0; i < 16; ++i)
       weighted += samples[c][i] * glyph->mask[i];
-    unsigned average =
-        glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
+    unsigned average = glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
     // Blend with a covered median pixel to reduce isolated outliers without
     // creating colors by independently taking a median of each channel.
     bool representative = !glyph->sum || luminance[median] * glyph->sum * 2 >= weighted_luma;
@@ -163,10 +157,8 @@ static uint32_t glyph_ordered_dither(uint32_t rgb, int x, int y, ascii_color_t m
   return result;
 }
 
-char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette,
-                         bool background) {
-  if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
-      mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
+char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette, bool background) {
+  if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
     return NULL;
   }
@@ -174,8 +166,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
   int candidates[GLYPH_COUNT];
   // Restrict the atlas to unique palette entries before scoring any cells.
   size_t candidate_count = 0;
-  int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
-      ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
+  int (*shape_correlation)(const int16_t[16], const int16_t[16]) = ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
     if (!ascii_glyph_palette_supported_impl(palette)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains an unsupported character");
@@ -208,8 +199,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
     if (g >= GLYPH_ASCII_COUNT)
       glyph_block_mask(g - GLYPH_ASCII_COUNT, block_mask);
     for (int i = 0; i < 64; ++i)
-      glyph->fine[i] =
-          g < GLYPH_ASCII_COUNT ? glyph_masks_fine[g][i] : glyph_block_pixel(g - GLYPH_ASCII_COUNT, i % 8, i / 8);
+      glyph->fine[i] = g < GLYPH_ASCII_COUNT ? glyph_masks_fine[g][i] : glyph_block_pixel(g - GLYPH_ASCII_COUNT, i % 8, i / 8);
     glyph->sum = glyph->energy = 0;
     for (int i = 0; i < 16; ++i) {
       glyph->mask[i] = mask[i];
@@ -286,8 +276,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
         int tone_delta = sample_mean - glyphs[c].tone;
         int tone_error = 16 * tone_delta * tone_delta;
         // Shape and color residuals cannot lower the brightness error.
-        if (!is_previous && shortlist_count == GLYPH_SHORTLIST &&
-            (uint64_t)tone_error > shortlist_error[shortlist_count - 1])
+        if (!is_previous && shortlist_count == GLYPH_SHORTLIST && (uint64_t)tone_error > shortlist_error[shortlist_count - 1])
           continue;
         int dot = shape_correlation(centered_samples, glyphs[c].centered);
         uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
@@ -359,11 +348,9 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       if (previous) {
         uint32_t previous_color = rgb;
         uint64_t margin = best_error / 8 + 128;
-        if (previous->glyph != selected && previous_error != UINT64_MAX &&
-            (previous_error <= best_error || previous_error - best_error <= margin))
+        if (previous->glyph != selected && previous_error != UINT64_MAX && (previous_error <= best_error || previous_error - best_error <= margin))
           previous_color = glyph_foreground(&glyphs[previous_index], samples, sums);
-        selected = ascii_stabilizer_glyph(previous, patch, samples, mode != ASCII_COLOR_NONE, selected, best_error,
-                                          previous_error, previous_color, frame.stabilizer->elapsed_ns, &rgb, &bg_rgb);
+        selected = ascii_stabilizer_glyph(previous, patch, samples, mode != ASCII_COLOR_NONE, selected, best_error, previous_error, previous_color, frame.stabilizer->elapsed_ns, &rgb, &bg_rgb);
       }
       frame.glyph[x] = selected;
       frame.packed[x] = rgb;

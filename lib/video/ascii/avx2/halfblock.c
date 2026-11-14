@@ -2,11 +2,12 @@
 #define SIMD_CELL_AVX2 1
 #define SIMD_CELL_ISA avx2
 #include "../simd/pack.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
+#include <libplatform/util/string.h>
 #include <ascii-chat/video/ascii/avx2.h>
 char *render_halfblocks_avx2(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode) {
   if (width <= 0 || height <= 0)
@@ -26,8 +27,7 @@ char *render_halfblocks_avx2(const uint8_t *rgb, int width, int height, int stri
       simd_quantize_avx2(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       simd_quantize_avx2(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    simd_halfblock_avx2(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode,
-                        frame.table);
+    simd_halfblock_avx2(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode, frame.table);
     ascii_frame_emit_halfrow(&frame, mode, y + 2 < (size_t)height, &simd_cells_avx2);
   }
   return ascii_frame_finish(&frame);

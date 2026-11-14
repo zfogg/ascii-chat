@@ -15,27 +15,21 @@ typedef struct quic_connection quic_connection_t;
 
 /* Produce a best-effort CONNECTION_CLOSE before an owned connection is
  * discarded. A zero-length result means that no close can be sent. */
-asciichat_error_t quic_connection_write_close(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet,
-                                              size_t capacity, size_t *length, uint64_t now_ns);
+asciichat_error_t quic_connection_write_close(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet, size_t capacity, size_t *length, uint64_t now_ns);
 
-asciichat_error_t quic_connection_client_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
-                                                uint64_t now_ns, quic_connection_t **out);
+asciichat_error_t quic_connection_client_create(quic_tls_t *tls, const char *server_name, const ngtcp2_path *path, uint64_t now_ns, quic_connection_t **out);
 /** Creates a server connection for an acceptable QUIC v1 Initial packet.
  * The caller must subsequently pass that same packet to receive(). */
-asciichat_error_t quic_connection_server_create(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
-                                                size_t initial_length, uint64_t now_ns, quic_connection_t **out);
+asciichat_error_t quic_connection_server_create(quic_tls_t *tls, const ngtcp2_path *path, const void *initial, size_t initial_length, uint64_t now_ns, quic_connection_t **out);
 /* As above, after validating the Retry token and recovering its original DCID. */
-asciichat_error_t quic_connection_server_create_validated(quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
-                                                          size_t initial_length, const ngtcp2_cid *original_dcid,
-                                                          uint64_t now_ns, quic_connection_t **out);
-asciichat_error_t quic_connection_receive(quic_connection_t *connection, const ngtcp2_path *path, const void *packet,
-                                          size_t length, uint64_t now_ns);
+asciichat_error_t quic_connection_server_create_validated(quic_tls_t *tls, const ngtcp2_path *path, const void *initial, size_t initial_length, const ngtcp2_cid *original_dcid, uint64_t now_ns,
+                                                          quic_connection_t **out);
+asciichat_error_t quic_connection_receive(quic_connection_t *connection, const ngtcp2_path *path, const void *packet, size_t length, uint64_t now_ns);
 /** Writes a single UDP payload, or sets length to zero if no packet is ready.
  * The returned path identifies the local and remote addresses for that packet.
  * The endpoint must retain an unsent payload across socket backpressure and
  * call packet_sent after successful transmission, before writing another. */
-asciichat_error_t quic_connection_write(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet,
-                                        size_t capacity, size_t *length, uint64_t now_ns);
+asciichat_error_t quic_connection_write(quic_connection_t *connection, ngtcp2_path_storage *path, void *packet, size_t capacity, size_t *length, uint64_t now_ns);
 asciichat_error_t quic_connection_packet_sent(quic_connection_t *connection, uint64_t now_ns);
 /** Reports the class of newly submitted stream or datagram data in the pending packet.
  * Retransmissions from other streams may also be present in that packet. */
@@ -47,12 +41,10 @@ bool quic_connection_tls_ready(const quic_connection_t *connection);
 /** Shared listeners wait for TLS ALPN and, for h3, an accepted CONNECT. */
 bool quic_connection_accept_ready(const quic_connection_t *connection);
 bool quic_connection_webtransport_ready(const quic_connection_t *connection);
-asciichat_error_t quic_connection_peer_address(const quic_connection_t *connection, struct sockaddr_storage *address,
-                                               socklen_t *length);
+asciichat_error_t quic_connection_peer_address(const quic_connection_t *connection, struct sockaddr_storage *address, socklen_t *length);
 /* Match an incoming destination CID, including the server's original Initial
  * CID. Called only on the connection lane. */
-asciichat_error_t quic_connection_matches_cid(const quic_connection_t *connection, const uint8_t *cid, size_t length,
-                                              bool *matches);
+asciichat_error_t quic_connection_matches_cid(const quic_connection_t *connection, const uint8_t *cid, size_t length, bool *matches);
 /** Install a serialized receive callback. It borrows complete wire packets;
  * the callback must copy what it retains and must not reenter the connection. */
 asciichat_error_t quic_connection_set_receiver(quic_connection_t *connection, quic_stream_emit_fn emit, void *context);
@@ -61,8 +53,7 @@ asciichat_error_t quic_connection_clear_receiver(quic_connection_t *connection, 
 /** The notifier runs on the serialized lane when the readiness exchange completes. */
 void quic_connection_set_security_notifier(quic_connection_t *connection, void (*notify)(void *), void *context);
 /* Notifier runs on the serialized lane and must not acquire the outbound queue lock. */
-void quic_connection_set_keyframe_notifier(quic_connection_t *connection, void (*notify)(uint16_t, uint32_t, void *),
-                                           void *context);
+void quic_connection_set_keyframe_notifier(quic_connection_t *connection, void (*notify)(uint16_t, uint32_t, void *), void *context);
 /** Permit outbound media after the authenticated readiness exchange. The
  * owner must separately coordinate later application control barriers. */
 asciichat_error_t quic_connection_allow_media(quic_connection_t *connection);
@@ -76,14 +67,11 @@ bool quic_connection_security_ready(const quic_connection_t *connection);
 /** Copy one complete ACIP wire packet to its reliable stream. Admission is
  * bounded; ERROR_BUFFER_FULL leaves the queue unchanged. The connection owns
  * submitted bytes until ngtcp2 acknowledges them or the connection is freed. */
-asciichat_error_t quic_connection_submit(quic_connection_t *connection, acip_traffic_class_t traffic_class,
-                                         const void *packet, size_t length);
+asciichat_error_t quic_connection_submit(quic_connection_t *connection, acip_traffic_class_t traffic_class, const void *packet, size_t length);
 /* Maximum ACQD payload for the current path, or zero when unavailable. */
 size_t quic_connection_datagram_payload(const quic_connection_t *connection);
-asciichat_error_t quic_connection_validate_datagram(const quic_connection_t *connection,
-                                                    acip_traffic_class_t traffic_class, uint64_t deadline_ns);
-asciichat_error_t quic_connection_submit_datagram(quic_connection_t *connection, acip_traffic_class_t traffic_class,
-                                                  const void *packet, size_t length, uint64_t deadline_ns);
+asciichat_error_t quic_connection_validate_datagram(const quic_connection_t *connection, acip_traffic_class_t traffic_class, uint64_t deadline_ns);
+asciichat_error_t quic_connection_submit_datagram(quic_connection_t *connection, acip_traffic_class_t traffic_class, const void *packet, size_t length, uint64_t deadline_ns);
 size_t quic_connection_pending_bytes(const quic_connection_t *connection);
 /* Queue FIN after all previously admitted data for an open stream. No further
  * packets may be submitted to that class. ngtcp2 retransmits the FIN on loss. */
@@ -93,5 +81,4 @@ void quic_connection_destroy(quic_connection_t **connection);
 
 /* Client-only immediate migration after handshake confirmation. The new local
  * socket must already be bound; its owner keeps it alive for the connection. */
-asciichat_error_t quic_connection_migrate(quic_connection_t *connection, const struct sockaddr *local, socklen_t length,
-                                          uint64_t now_ns);
+asciichat_error_t quic_connection_migrate(quic_connection_t *connection, const struct sockaddr *local, socklen_t length, uint64_t now_ns);

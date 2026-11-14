@@ -136,8 +136,7 @@ asciichat_error_t parse_long(const char *str, long *out_value, long min_value, l
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value,
-                              unsigned long max_value) {
+asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value, unsigned long max_value) {
   if (!str) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "String pointer is NULL");
   }
@@ -178,8 +177,7 @@ asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigne
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value,
-                                  unsigned long long max_value) {
+asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value, unsigned long long max_value) {
   if (!str) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "String pointer is NULL");
   }

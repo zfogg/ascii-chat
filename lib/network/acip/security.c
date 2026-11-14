@@ -16,8 +16,7 @@ void acip_security_cleanup(acip_security_t *security) {
 }
 
 asciichat_error_t acip_security_start(acip_security_t *security, acip_transport_t *transport) {
-  if (!security || !transport || security->mode > ACIP_CRYPTO_FULL ||
-      security->handshake.state != CRYPTO_HANDSHAKE_INIT)
+  if (!security || !transport || security->mode > ACIP_CRYPTO_FULL || security->handshake.state != CRYPTO_HANDSHAKE_INIT)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer security initialization");
   security->handshake.addressless_transport = true;
   transport->crypto_ctx = &security->handshake.crypto_ctx;
@@ -29,8 +28,7 @@ asciichat_error_t acip_security_start(acip_security_t *security, acip_transport_
   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
 }
 
-asciichat_error_t acip_security_receive(acip_security_t *security, acip_transport_t *transport, packet_type_t type,
-                                        const void *payload, size_t length) {
+asciichat_error_t acip_security_receive(acip_security_t *security, acip_transport_t *transport, packet_type_t type, const void *payload, size_t length) {
   if (!security || !transport || (!payload && length) || security->ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Unexpected peer security packet");
   crypto_handshake_context_t *ctx = &security->handshake;
@@ -41,8 +39,7 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
     protocol_version_packet_t version;
     memcpy(&version, payload, sizeof(version));
     uint8_t mode = version.supports_encryption;
-    if (NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR ||
-        NET_TO_HOST_U16(version.protocol_revision) != PROTOCOL_VERSION_MINOR ||
+    if (NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR || NET_TO_HOST_U16(version.protocol_revision) != PROTOCOL_VERSION_MINOR ||
         NET_TO_HOST_U16(version.protocol_patch) != PROTOCOL_VERSION_PATCH || mode > ACIP_CRYPTO_FULL)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported peer security protocol");
     if (ctx->is_server) {
@@ -87,8 +84,7 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
   } else {
     switch (type) {
     case PACKET_TYPE_CRYPTO_PARAMETERS:
-      if (security->parameters_received || ctx->state != CRYPTO_HANDSHAKE_INIT ||
-          length != sizeof(crypto_parameters_packet_t))
+      if (security->parameters_received || ctx->state != CRYPTO_HANDSHAKE_INIT || length != sizeof(crypto_parameters_packet_t))
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid peer crypto parameters");
       result = crypto_handshake_set_parameters(ctx, payload);
       if (result == ASCIICHAT_OK && ctx->crypto_ctx.encrypt_data != !!ACIP_CRYPTO_HAS_ENCRYPT(security->mode))
@@ -146,33 +142,25 @@ bool acip_security_rekey_packet(uint16_t type) {
   return rekey_message(type) != CRYPTO_REKEY_NONE;
 }
 
-asciichat_error_t acip_security_rekey_encode(unsigned flow, crypto_rekey_message_t type, const void *payload,
-                                             size_t length, void *packet, size_t capacity, size_t *written) {
+asciichat_error_t acip_security_rekey_encode(unsigned flow, crypto_rekey_message_t type, const void *payload, size_t length, void *packet, size_t capacity, size_t *written) {
   if (type <= CRYPTO_REKEY_NONE || type > CRYPTO_REKEY_NEEDED || flow >= CRYPTO_RECORD_CHANNELS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rekey message");
   return packet_encode(rekey_types[type], payload, length, flow, packet, capacity, written);
 }
 
-asciichat_error_t acip_security_rekey_receive(crypto_rekey_session_t *session, acip_traffic_class_t flow,
-                                              acip_delivery_t delivery, const void *packet, size_t length, uint64_t now,
-                                              bool *consumed) {
+asciichat_error_t acip_security_rekey_receive(crypto_rekey_session_t *session, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint64_t now, bool *consumed) {
   packet_header_t header;
   asciichat_error_t result = packet_validate(packet, length, 0, &header);
   if (result != ASCIICHAT_OK)
     return result;
-  return crypto_rekey_session_receive(session, flow, delivery, rekey_message(NET_TO_HOST_U16(header.type)),
-                                      (const uint8_t *)packet + sizeof(header), length - sizeof(header), now, consumed);
+  return crypto_rekey_session_receive(session, flow, delivery, rekey_message(NET_TO_HOST_U16(header.type)), (const uint8_t *)packet + sizeof(header), length - sizeof(header), now, consumed);
 }
 
-asciichat_error_t acip_security_rekey_seal(crypto_record_t *records, unsigned flow, crypto_rekey_message_t message,
-                                           const void *payload, size_t length, uint8_t **wire, size_t *written) {
+asciichat_error_t acip_security_rekey_seal(crypto_record_t *records, unsigned flow, crypto_rekey_message_t message, const void *payload, size_t length, uint8_t **wire, size_t *written) {
   uint8_t packet[sizeof(packet_header_t) + CRYPTO_PUBLIC_KEY_SIZE];
   size_t packet_length = 0;
-  asciichat_error_t result =
-      acip_security_rekey_encode(flow, message, payload, length, packet, sizeof(packet), &packet_length);
-  return result == ASCIICHAT_OK ? acip_packet_seal(records, (acip_traffic_class_t)flow, ACIP_DELIVERY_RELIABLE, packet,
-                                                   packet_length, wire, written)
-                                : result;
+  asciichat_error_t result = acip_security_rekey_encode(flow, message, payload, length, packet, sizeof(packet), &packet_length);
+  return result == ASCIICHAT_OK ? acip_packet_seal(records, (acip_traffic_class_t)flow, ACIP_DELIVERY_RELIABLE, packet, packet_length, wire, written) : result;
 }
 
 asciichat_error_t acip_security_activate(acip_transport_t *transport) {
@@ -190,8 +178,7 @@ asciichat_error_t acip_security_activate(acip_transport_t *transport) {
   return result;
 }
 
-asciichat_error_t acip_security_decrypt(crypto_context_t *crypto, unsigned flow, unsigned delivery, const void *payload,
-                                        size_t length, uint8_t **output, size_t *written, uint64_t *sequence,
+asciichat_error_t acip_security_decrypt(crypto_context_t *crypto, unsigned flow, unsigned delivery, const void *payload, size_t length, uint8_t **output, size_t *written, uint64_t *sequence,
                                         bool *consumed) {
   if (!output || !written || !consumed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing security receive output");
@@ -206,9 +193,8 @@ asciichat_error_t acip_security_decrypt(crypto_context_t *crypto, unsigned flow,
   if (result == ASCIICHAT_OK) {
     packet_header_t header;
     memcpy(&header, *output, sizeof(header));
-    result = crypto_session_receive(session, session->records.last_receive_channel, delivery,
-                                    rekey_message(NET_TO_HOST_U16(header.type)), *output + sizeof(header),
-                                    *written - sizeof(header), time_get_ns(), consumed);
+    result = crypto_session_receive(session, session->records.last_receive_channel, delivery, rekey_message(NET_TO_HOST_U16(header.type)), *output + sizeof(header), *written - sizeof(header),
+                                    time_get_ns(), consumed);
   }
   crypto_session_unlock(session);
   if (result != ASCIICHAT_OK) {
@@ -219,8 +205,7 @@ asciichat_error_t acip_security_decrypt(crypto_context_t *crypto, unsigned flow,
   return result;
 }
 
-asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traffic_class_t *flow, uint8_t **wire,
-                                             size_t *length) {
+asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traffic_class_t *flow, uint8_t **wire, size_t *length) {
   if (!flow || !wire || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing security output");
   *wire = NULL;
@@ -234,8 +219,7 @@ asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traf
   if (result == ASCIICHAT_OK && session->count) {
     crypto_session_message_t *message = &session->messages[session->head];
     *flow = (acip_traffic_class_t)message->channel;
-    result = acip_security_rekey_seal(&session->records, message->channel, message->type, message->payload,
-                                      message->length, wire, length);
+    result = acip_security_rekey_seal(&session->records, message->channel, message->type, message->payload, message->length, wire, length);
     if (result == ASCIICHAT_OK) {
       memset(message, 0, sizeof(*message));
       session->head = (session->head + 1) % CRYPTO_SESSION_MESSAGES;
@@ -282,8 +266,7 @@ asciichat_error_t acip_security_request_rekey(acip_transport_t *transport) {
   return result;
 }
 
-asciichat_error_t acip_security_seal(crypto_context_t *crypto, acip_traffic_class_t flow, acip_delivery_t delivery,
-                                     const void *packet, size_t length, uint8_t **output, size_t *written) {
+asciichat_error_t acip_security_seal(crypto_context_t *crypto, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written) {
   crypto_session_t *session = NULL;
   asciichat_error_t result = crypto_session_lock(crypto, &session);
   if (result == ASCIICHAT_OK) {
@@ -293,8 +276,7 @@ asciichat_error_t acip_security_seal(crypto_context_t *crypto, acip_traffic_clas
   return result;
 }
 
-asciichat_error_t acip_security_open(crypto_context_t *crypto, acip_traffic_class_t flow, acip_delivery_t delivery,
-                                     const void *packet, size_t length, uint8_t **output, size_t *written,
+asciichat_error_t acip_security_open(crypto_context_t *crypto, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written,
                                      uint64_t *sequence, bool *consumed) {
   packet_header_t header;
   asciichat_error_t result = packet_validate(packet, length, 0, &header);
@@ -302,6 +284,5 @@ asciichat_error_t acip_security_open(crypto_context_t *crypto, acip_traffic_clas
     return result;
   if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED)
     return SET_ERRNO(ERROR_CRYPTO, "Expected authenticated session record");
-  return acip_security_decrypt(crypto, flow, delivery, (const uint8_t *)packet + sizeof(header),
-                               length - sizeof(header), output, written, sequence, consumed);
+  return acip_security_decrypt(crypto, flow, delivery, (const uint8_t *)packet + sizeof(header), length - sizeof(header), output, written, sequence, consumed);
 }

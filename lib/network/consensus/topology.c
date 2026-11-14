@@ -26,8 +26,7 @@ typedef struct consensus_topology {
 } consensus_topology_t;
 
 // Helper: find position of UUID in array
-static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int count,
-                              const uint8_t target[SESSION_ID_SIZE]) {
+static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int count, const uint8_t target[SESSION_ID_SIZE]) {
   for (int i = 0; i < count; i++) {
     if (memcmp(uuids[i], target, SESSION_ID_SIZE) == 0) {
       return i;
@@ -41,11 +40,9 @@ static int qsort_uuid_compare(const void *a, const void *b) {
   return memcmp(a, b, SESSION_ID_SIZE);
 }
 
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
-                                            int num_participants, const uint8_t my_id[SESSION_ID_SIZE],
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int num_participants, const uint8_t my_id[SESSION_ID_SIZE],
                                             consensus_topology_t **out_topology) {
-  if (!participant_ids || !my_id || !out_topology || num_participants <= 0 ||
-      num_participants > MAX_SESSION_PARTICIPANTS) {
+  if (!participant_ids || !my_id || !out_topology || num_participants <= 0 || num_participants > MAX_SESSION_PARTICIPANTS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid topology creation parameters");
   }
 
@@ -117,9 +114,7 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
-                                             uint8_t out_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
-                                             int *out_count) {
+asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology, uint8_t out_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int *out_count) {
   if (!topology || !out_ids || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }

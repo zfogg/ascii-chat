@@ -74,7 +74,7 @@
  * ## Detector and builds
  *
  * Native and browser use the same pinned BSD-3-Clause libfacedetection sources and
- * embedded model in `deps/libfacedetection`. No OpenCV, external model download, or
+ * embedded model in `deps/ascii-chat-deps/libfacedetection`. No OpenCV, external model download, or
  * cloud inference is required. `lib/video/face_follow.c` implements the shared
  * controller; a narrow C++ adapter isolates the detector from C consumers.
  *
@@ -90,7 +90,7 @@
  * Generate an 18-second fixture from OpenCV's moving-face/occlusion clip:
  *
  * ```sh
- * uv run --project tests/ascii_chat_tests --frozen python tests/scripts/create_face_follow_fixture.py
+ * uv run --frozen python tests/scripts/create_face_follow_fixture.py
  * cd web/web
  * vp exec playwright test tests/e2e/face-follow.spec.ts --project chromium --workers 1
  * ```

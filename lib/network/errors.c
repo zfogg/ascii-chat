@@ -9,8 +9,7 @@
 #include <string.h>
 
 bool network_error_is_local_rejection(asciichat_error_t code) {
-  return code == ERROR_INVALID_PARAM || code == ERROR_INVALID_FRAME || code == ERROR_NETWORK_SIZE ||
-         code == ERROR_BUFFER_OVERFLOW || code == ERROR_BUFFER_FULL || code == ERROR_MEMORY;
+  return code == ERROR_INVALID_PARAM || code == ERROR_INVALID_FRAME || code == ERROR_NETWORK_SIZE || code == ERROR_BUFFER_OVERFLOW || code == ERROR_BUFFER_FULL || code == ERROR_MEMORY;
 }
 network_error_action_t network_error_action(asciichat_error_t code) {
   switch (code) {
@@ -130,8 +129,7 @@ asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t e
     error.error_code = ACIP_ERROR_INTERNAL;
     break;
   }
-  SAFE_STRNCPY(error.error_message, asciichat_error_string(network_error_public_code(error_code)),
-               sizeof(error.error_message));
+  SAFE_STRNCPY(error.error_message, asciichat_error_string(network_error_public_code(error_code)), sizeof(error.error_message));
 
   // Send error packet
   int result = send_packet(sockfd, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
@@ -142,8 +140,7 @@ asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t e
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
-                                              rate_event_type_t event_type, bool *allowed) {
+asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, rate_event_type_t event_type, bool *allowed) {
   if (!allowed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing rate-limit decision output");
   *allowed = false;
@@ -160,8 +157,7 @@ asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, cons
   return result;
 }
 
-asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
-                                                     packet_type_t packet_type, bool *allowed) {
+asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, packet_type_t packet_type, bool *allowed) {
   if (!allowed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing rate-limit decision output");
   *allowed = false;

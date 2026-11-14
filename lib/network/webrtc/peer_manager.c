@@ -50,15 +50,15 @@ typedef struct {
   acip_security_t *security;               ///< Owned until transferred to the transport
   atomic_t security_ready;
   atomic_t handshake_started_ns;
-  atomic_ptr_t pending_transport; ///< Owned until authenticated and handed to the application
-  bool is_connected;              ///< DataChannel opened
-  bool remote_sdp_attempted;      ///< A remote description was applied or attempted
-  bool remote_description_set;    ///< libdatachannel has installed the remote SDP and ICE transport
+  atomic_ptr_t pending_transport;                                                  ///< Owned until authenticated and handed to the application
+  bool is_connected;                                                               ///< DataChannel opened
+  bool remote_sdp_attempted;                                                       ///< A remote description was applied or attempted
+  bool remote_description_set;                                                     ///< libdatachannel has installed the remote SDP and ICE transport
   char remote_ice_ufrag[NETWORK_WEBRTC_PEER_MANAGER_REMOTE_ICE_UFRAG_BUFFER_SIZE]; ///< ICE generation currently
                                                                                    ///< installed on this peer
-  bool gathering_timeout_reported;     ///< ICE gathering timed out while trickle candidates may still connect
-  struct webrtc_peer_manager *manager; ///< Back-reference to manager
-  UT_hash_handle hh;                   ///< uthash handle
+  bool gathering_timeout_reported;                                                 ///< ICE gathering timed out while trickle candidates may still connect
+  struct webrtc_peer_manager *manager;                                             ///< Back-reference to manager
+  UT_hash_handle hh;                                                               ///< uthash handle
   /**
    */
 } peer_entry_t;
@@ -102,9 +102,7 @@ static void free_pending_ice_candidate(pending_ice_candidate_t *candidate) {
   SAFE_FREE(candidate);
 }
 
-static asciichat_error_t queue_pending_ice_candidate(webrtc_peer_manager_t *manager,
-                                                     const uint8_t participant_id[SESSION_ID_SIZE],
-                                                     const char *candidate, const char *mid) {
+static asciichat_error_t queue_pending_ice_candidate(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE], const char *candidate, const char *mid) {
   if (manager->pending_ice_count >= MAX_PENDING_ICE_CANDIDATES) {
     return SET_ERRNO(ERROR_NETWORK, "Too many ICE candidates arrived before remote SDP");
   }
@@ -292,8 +290,7 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
   acip_security_t *security = peer->security;
   if (!security)
     return;
-  acip_transport_t *transport =
-      acip_webrtc_transport_create_secure(peer->pc, peer->dc, security, on_peer_security_ready, peer);
+  acip_transport_t *transport = acip_webrtc_transport_create_secure(peer->pc, peer->dc, security, on_peer_security_ready, peer);
   if (!transport) {
     return;
   }
@@ -324,14 +321,12 @@ static void on_local_description(webrtc_peer_connection_t *pc, const char *sdp, 
     return;
   }
 
-  log_debug("peer->session_id=%02x%02x%02x%02x..., peer->participant_id=%02x%02x%02x%02x...", peer->session_id[0],
-            peer->session_id[1], peer->session_id[2], peer->session_id[3], peer->participant_id[0],
-            peer->participant_id[1], peer->participant_id[2], peer->participant_id[3]);
+  log_debug("peer->session_id=%02x%02x%02x%02x..., peer->participant_id=%02x%02x%02x%02x...", peer->session_id[0], peer->session_id[1], peer->session_id[2], peer->session_id[3],
+            peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3]);
 
   log_debug("Sending SDP %s to remote peer via ACDS", type);
 
-  asciichat_error_t result =
-      manager->signaling.send_sdp(peer->session_id, peer->participant_id, type, sdp, manager->signaling.user_data);
+  asciichat_error_t result = manager->signaling.send_sdp(peer->session_id, peer->participant_id, type, sdp, manager->signaling.user_data);
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send SDP via signaling: %s", asciichat_error_format(NULL, result));
@@ -361,8 +356,7 @@ static void on_local_candidate(webrtc_peer_connection_t *pc, const char *candida
   log_debug("  [1] libdatachannel gave us candidate: '%s' (len=%zu)", candidate, strlen(candidate));
   log_debug("  [1] libdatachannel gave us mid: '%s' (len=%zu)", mid, strlen(mid));
 
-  asciichat_error_t result =
-      manager->signaling.send_ice(peer->session_id, peer->participant_id, candidate, mid, manager->signaling.user_data);
+  asciichat_error_t result = manager->signaling.send_ice(peer->session_id, peer->participant_id, candidate, mid, manager->signaling.user_data);
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send ICE candidate via signaling: %s", asciichat_error_format(NULL, result));
@@ -409,9 +403,7 @@ static void on_state_change(webrtc_peer_connection_t *pc, webrtc_state_t state, 
  * @brief Create peer connection for remote participant
  * @note Caller must hold peers_mutex
  */
-static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *manager,
-                                                       const uint8_t session_id[SESSION_ID_SIZE],
-                                                       const uint8_t participant_id[SESSION_ID_SIZE],
+static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE],
                                                        peer_entry_t **peer_out) {
   // Check if peer already exists
   peer_entry_t *existing = find_peer_locked(manager, participant_id);
@@ -440,8 +432,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     SAFE_FREE(peer);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security");
   }
-  asciichat_error_t security_result =
-      acip_security_init_options(peer->security, manager->role == WEBRTC_ROLE_CREATOR, true, NULL);
+  asciichat_error_t security_result = acip_security_init_options(peer->security, manager->role == WEBRTC_ROLE_CREATOR, true, NULL);
   if (security_result != ASCIICHAT_OK) {
     SAFE_FREE(peer->security);
     SAFE_FREE(peer);
@@ -518,8 +509,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   // Add to hash table
   add_peer_locked(manager, peer);
 
-  log_debug("Created WebRTC peer connection for participant (role: %s)",
-            manager->role == WEBRTC_ROLE_CREATOR ? "creator" : "joiner");
+  log_debug("Created WebRTC peer connection for participant (role: %s)", manager->role == WEBRTC_ROLE_CREATOR ? "creator" : "joiner");
 
   *peer_out = peer;
   return ASCIICHAT_OK;
@@ -529,9 +519,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
 // Public API
 // =============================================================================
 
-asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t *config,
-                                             const webrtc_signaling_callbacks_t *signaling_callbacks,
-                                             webrtc_peer_manager_t **manager_out) {
+asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t *config, const webrtc_signaling_callbacks_t *signaling_callbacks, webrtc_peer_manager_t **manager_out) {
   if (!config || !signaling_callbacks || !manager_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -661,8 +649,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     if (existing && existing->remote_sdp_attempted && existing->pc) {
       webrtc_state_t state = webrtc_get_state(existing->pc);
       bool comparable_ice_generation = has_incoming_ice_ufrag && existing->remote_ice_ufrag[0] != '\0';
-      bool new_ice_generation =
-          comparable_ice_generation && strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
+      bool new_ice_generation = comparable_ice_generation && strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
       bool terminal_state = state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED;
       if (!terminal_state && comparable_ice_generation && !new_ice_generation && existing->remote_description_set) {
         log_debug("Ignoring duplicate WebRTC offer for existing ICE generation");
@@ -672,8 +659,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
         return ASCIICHAT_OK;
       }
       if (terminal_state || new_ice_generation) {
-        log_info("Replacing WebRTC peer for %s",
-                 new_ice_generation ? "new ICE generation" : "terminal connection state");
+        log_info("Replacing WebRTC peer for %s", new_ice_generation ? "new ICE generation" : "terminal connection state");
         remove_peer_locked(manager, existing);
       }
     }
@@ -784,8 +770,7 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE],
-                                              const uint8_t participant_id[SESSION_ID_SIZE]) {
+asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!manager || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -794,8 +779,8 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Only joiners can initiate connections");
   }
 
-  log_debug("session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...", session_id[0], session_id[1],
-            session_id[2], session_id[3], participant_id[0], participant_id[1], participant_id[2], participant_id[3]);
+  log_debug("session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...", session_id[0], session_id[1], session_id[2], session_id[3], participant_id[0], participant_id[1], participant_id[2],
+            participant_id[3]);
 
   mutex_lock(&manager->peers_mutex);
 
@@ -818,8 +803,7 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
   return ASCIICHAT_OK;
 }
 
-bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE],
-                                   webrtc_state_t *state_out) {
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE], webrtc_state_t *state_out) {
   if (!manager || !participant_id || !state_out) {
     return false;
   }
@@ -834,8 +818,7 @@ bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t
   return found;
 }
 
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                  const uint8_t participant_id[SESSION_ID_SIZE]) {
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!manager || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Peer manager and participant ID are required");
   }
@@ -883,15 +866,13 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
     }
 
     uint64_t handshake_started = atomic_load_u64(&peer->handshake_started_ns);
-    bool handshake_expired = handshake_started && !atomic_load_bool(&peer->security_ready) &&
-                             time_elapsed_ns(handshake_started, time_get_ns()) > 30 * NS_PER_SEC_INT;
+    bool handshake_expired = handshake_started && !atomic_load_bool(&peer->security_ready) && time_elapsed_ns(handshake_started, time_get_ns()) > 30 * NS_PER_SEC_INT;
     if (handshake_expired || connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED) {
       webrtc_gathering_state_t state = webrtc_get_gathering_state(peer->pc);
 
       log_error("WebRTC negotiation failed for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, "
                 "gathering=%d, connection=%d)",
-                peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3],
-                timeout_ms, state, connection_state);
+                peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3], timeout_ms, state, connection_state);
 
       // Remove and close peers whose ICE connection has actually failed.
       remove_peer_locked(manager, peer);

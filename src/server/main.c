@@ -129,7 +129,7 @@
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
-#include <ascii-chat/os/string.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/util/string.h>
 #include <libplatform/symbols.h>
 #include <libplatform/system.h>
@@ -546,9 +546,7 @@ static void server_handle_sigint(int sig) {
  * @param user_data User context pointer (unused)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
-                                         const char *sdp, void *user_data) {
+static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type, const char *sdp, void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -581,12 +579,11 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
-  log_debug("Server sending WebRTC SDP %s to participant (sender=%02x%02x..., recipient=%02x%02x...) via ACDS",
-            sdp_type, g_server_participant_id[0], g_server_participant_id[1], recipient_id[0], recipient_id[1]);
+  log_debug("Server sending WebRTC SDP %s to participant (sender=%02x%02x..., recipient=%02x%02x...) via ACDS", sdp_type, g_server_participant_id[0], g_server_participant_id[1], recipient_id[0],
+            recipient_id[1]);
 
   // Send via ACDS transport using generic packet sender
-  asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len, 0);
 
   SAFE_FREE(packet);
 
@@ -610,9 +607,7 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
  * @param user_data User context pointer (unused)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
-                                         const char *mid, void *user_data) {
+static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate, const char *mid, void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -650,12 +645,10 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
   memcpy(payload + candidate_len + 1, mid, mid_len);
   payload[candidate_len + 1 + mid_len] = '\0';
 
-  log_debug("Server sending WebRTC ICE candidate to participant (%.8s..., mid=%s) via ACDS", (const char *)recipient_id,
-            mid);
+  log_debug("Server sending WebRTC ICE candidate to participant (%.8s..., mid=%s) via ACDS", (const char *)recipient_id, mid);
   log_debug("  [2] Before ACDS send - candidate: '%s' (len=%zu)", candidate, strlen(candidate));
   log_debug("  [2] Before ACDS send - mid: '%s' (len=%zu)", mid, strlen(mid));
-  log_debug("  [2] Before ACDS send - payload_len=%zu, header.candidate_len=%u", payload_len,
-            NET_TO_HOST_U16(header->candidate_len));
+  log_debug("  [2] Before ACDS send - payload_len=%zu, header.candidate_len=%u", payload_len, NET_TO_HOST_U16(header->candidate_len));
 
   // Hex dump payload for debugging
   log_debug("  [2] Hex dump of payload being sent (first 100 bytes):");
@@ -670,8 +663,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
   }
 
   // Send via ACDS transport using generic packet sender
-  asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len, 0);
 
   SAFE_FREE(packet);
 
@@ -692,8 +684,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer (server_context_t*)
  */
-static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE],
-                                      void *user_data) {
+static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE], void *user_data) {
   server_context_t *server_ctx = (server_context_t *)user_data;
   if (!transport || !participant_id || !server_ctx) {
     log_error("Invalid parameters");
@@ -749,15 +740,13 @@ static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len,
   // Determine SDP type (offer=0, answer=1)
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
 
-  log_debug("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id,
-            sdp_len);
+  log_debug("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id, sdp_len);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_webrtc_peer_manager, sdp);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to handle remote SDP from participant %.8s...: %s", (const char *)sdp->sender_id,
-              asciichat_error_format(NULL, result));
+    log_error("Failed to handle remote SDP from participant %.8s...: %s", (const char *)sdp->sender_id, asciichat_error_format(NULL, result));
   }
 }
 
@@ -786,15 +775,14 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
     return;
   }
 
-  log_debug("Received WebRTC ICE candidate from participant %02x%02x%02x%02x...", ice->sender_id[0], ice->sender_id[1],
-            ice->sender_id[2], ice->sender_id[3]);
+  log_debug("Received WebRTC ICE candidate from participant %02x%02x%02x%02x...", ice->sender_id[0], ice->sender_id[1], ice->sender_id[2], ice->sender_id[3]);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_ice(g_webrtc_peer_manager, ice);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to handle remote ICE candidate from participant %02x%02x%02x%02x...: %s", ice->sender_id[0],
-              ice->sender_id[1], ice->sender_id[2], ice->sender_id[3], asciichat_error_format(NULL, result));
+    log_error("Failed to handle remote ICE candidate from participant %02x%02x%02x%02x...: %s", ice->sender_id[0], ice->sender_id[1], ice->sender_id[2], ice->sender_id[3],
+              asciichat_error_format(NULL, result));
   }
 }
 
@@ -865,8 +853,7 @@ static void __attribute__((unused)) advertise_mdns_with_session(const char *sess
     log_warn("mDNS advertising failed - LAN discovery disabled");
   } else {
     log_info("🌐 mDNS: Server advertised as '%s.local' on LAN", session_name);
-    log_debug("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
-              service.name, service.port, session_string, service.txt_count);
+    log_debug("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type, service.name, service.port, session_string, service.txt_count);
   }
 }
 
@@ -879,11 +866,7 @@ static void __attribute__((unused)) advertise_mdns_with_session(const char *sess
  * @return NULL
  */
 static asciichat_error_t acds_send_host_sample(uint32_t sequence) {
-  consensus_handoff_message_t message = {.kind = HANDOFF_SAMPLE_START,
-                                         .sequence = sequence,
-                                         .capabilities = 0,
-                                         .nat_tier = 255,
-                                         .port = (uint16_t)GET_OPTION(port)};
+  consensus_handoff_message_t message = {.kind = HANDOFF_SAMPLE_START, .sequence = sequence, .capabilities = 0, .nat_tier = 255, .port = (uint16_t)GET_OPTION(port)};
   memcpy(message.session, g_server_session_id, SESSION_ID_SIZE);
   memcpy(message.participant, g_server_participant_id, SESSION_ID_SIZE);
   size_t length = CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES;
@@ -891,8 +874,7 @@ static asciichat_error_t acds_send_host_sample(uint32_t sequence) {
   if (!bytes)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery host sample");
   consensus_handoff_encode(&message, bytes);
-  asciichat_error_t result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes,
-                                                       CONSENSUS_HANDOFF_HEADER, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, CONSENSUS_HANDOFF_HEADER, 0);
   if (result == ASCIICHAT_OK) {
     message.kind = HANDOFF_SAMPLE_DATA;
     consensus_handoff_encode(&message, bytes);
@@ -967,17 +949,13 @@ static void on_acds_pong(void *ctx) {
   log_debug("ACDS keepalive: Received PONG from ACDS server");
 }
 
-static asciichat_error_t acds_signaling_packet(network_connection_t *connection, packet_type_t type,
-                                               const void *payload, size_t length, void *arg) {
+static asciichat_error_t acds_signaling_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *arg) {
   (void)arg;
   if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
     consensus_handoff_message_t message;
     return consensus_handoff_decode(payload, length, &message);
   }
-  const acip_client_callbacks_t callbacks = {.on_webrtc_sdp = on_webrtc_sdp_server,
-                                             .on_webrtc_ice = on_webrtc_ice_server,
-                                             .on_ping = on_acds_ping,
-                                             .on_pong = on_acds_pong};
+  const acip_client_callbacks_t callbacks = {.on_webrtc_sdp = on_webrtc_sdp_server, .on_webrtc_ice = on_webrtc_ice_server, .on_ping = on_acds_ping, .on_pong = on_acds_pong};
   return acip_handle_client_packet(network_connection_transport(connection), type, payload, length, &callbacks);
 }
 static void *acds_receive_thread(void *arg) {
@@ -1094,8 +1072,7 @@ static int init_server_crypto(void) {
       }
 
       // Validate SSH key file (skip validation for special prefixes)
-      bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
-                             strncmp(key_path, "gitlab:", 7) == 0);
+      bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0);
 
       if (!is_special_key) {
         if (validate_ssh_key_file(key_path) != 0) {
@@ -1135,8 +1112,7 @@ static int init_server_crypto(void) {
     const char *key_path = GET_OPTION(encrypt_key);
 
     // Validate SSH key file (skip validation for special prefixes)
-    bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
-                           strncmp(key_path, "gitlab:", 7) == 0);
+    bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0);
 
     if (!is_special_key) {
       if (validate_ssh_key_file(key_path) != 0) {
@@ -1227,13 +1203,11 @@ static void server_stats_connection(network_connection_t *connection, void *arg)
   if (!visit->view->page)
     return;
   mutex_lock(&client->client_state_mutex);
-  uint64_t received =
-      client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
+  uint64_t received = client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
   unsigned width = client->width, height = client->height;
   mutex_unlock(&client->client_state_mutex);
-  stats_view_add(visit->view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height,
-                 (unsigned long long)atomic_load_u64(&client->frames_sent_count), (unsigned long long)received,
-                 (unsigned long long)outbound.dropped, queued);
+  stats_view_add(visit->view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height, (unsigned long long)atomic_load_u64(&client->frames_sent_count),
+                 (unsigned long long)received, (unsigned long long)outbound.dropped, queued);
 }
 static void server_stats_provider(stats_view_t *view, void *unused) {
   (void)unused;
@@ -1256,9 +1230,8 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
     return;
   }
 
-  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address,
-                   network_server_config(tcp)->ipv6_address, GET_OPTION(port), g_server_start_time, "Server",
-                   g_session_is_mdns_only, out_status);
+  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, GET_OPTION(port), g_server_start_time, "Server", g_session_is_mdns_only,
+                   out_status);
 }
 
 /* ============================================================================
@@ -1397,8 +1370,7 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
   if (policy->has_password || policy->has_identity) {
     // Auto-enable privacy: IP revealed only after verification
     policy->expose_ip = false;
-    log_plain("ACDS privacy enabled: IP disclosed only after %s verification",
-              policy->has_password ? "password" : "identity");
+    log_plain("ACDS privacy enabled: IP disclosed only after %s verification", policy->has_password ? "password" : "identity");
   } else if (policy->explicit_expose) {
     // Explicit opt-in to public IP disclosure
     // Only prompt if running interactively (can prompt user)
@@ -1436,9 +1408,7 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
   return true;
 }
 
-static void __attribute__((unused)) server_prepare_discovery_request(acds_session_create_params_t *params,
-                                                                     const server_discovery_policy_t *policy, int port,
-                                                                     nat_upnp_context_t *upnp_ctx,
+static void __attribute__((unused)) server_prepare_discovery_request(acds_session_create_params_t *params, const server_discovery_policy_t *policy, int port, nat_upnp_context_t *upnp_ctx,
                                                                      bool upnp_succeeded) {
   // Use server's Ed25519 identity public key if available
   if (g_server_encryption_enabled && policy->has_identity) {
@@ -1465,8 +1435,7 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
 
   // Set IP disclosure policy (determined above)
   params->acds_expose_ip = policy->expose_ip;
-  log_debug("Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
-            params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
+  log_debug("Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)", params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
 
   // Set session type (Direct TCP or WebRTC)
   // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
@@ -1503,27 +1472,22 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
-  if (GET_OPTION(quic_bind_address)[0] ||
-      (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+  if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
   if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));
   if (params->session_type == SESSION_TYPE_DIRECT_TCP) {
-    if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) !=
-        ASCIICHAT_OK) {
+    if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) != ASCIICHAT_OK) {
       params->session_type = SESSION_TYPE_WEBRTC;
       log_info("ACDS session type: WebRTC (router mapping expired before registration)");
     }
   }
 
   // DEBUG: Log what we're sending to ACDS
-  log_debug("Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
-            params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
+  log_debug("Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u", params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 
-static void __attribute__((unused)) server_join_discovery_session(const acds_session_create_params_t *params,
-                                                                  acds_session_create_result_t *result,
-                                                                  const char *session_string,
+static void __attribute__((unused)) server_join_discovery_session(const acds_session_create_params_t *params, acds_session_create_result_t *result, const char *session_string,
                                                                   const server_discovery_policy_t *policy) {
   // Server must join its own session so ACDS can route signaling messages
   log_debug("Server joining session as first participant for WebRTC signaling...");
@@ -1543,17 +1507,14 @@ static void __attribute__((unused)) server_join_discovery_session(const acds_ses
   acds_session_join_result_t join_result = {0};
   asciichat_error_t join_err = acds_session_join(g_acds_client, &join_params, &join_result);
   if (join_err != ASCIICHAT_OK || !join_result.success) {
-    log_error("Failed to join own session: %s (error: %s)", asciichat_error_format(NULL, join_err),
-              join_result.error_message[0] ? join_result.error_message : "unknown");
+    log_error("Failed to join own session: %s (error: %s)", asciichat_error_format(NULL, join_err), join_result.error_message[0] ? join_result.error_message : "unknown");
     // Continue anyway - this is not fatal for Direct TCP sessions
   } else {
-    log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
-              join_result.participant_id[1]);
+    log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0], join_result.participant_id[1]);
     // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
     memcpy(g_server_participant_id, join_result.participant_id, SESSION_ID_SIZE);
     memcpy(g_server_session_id, join_result.session_id, SESSION_ID_SIZE);
-    log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
-              g_server_participant_id[1]);
+    log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0], g_server_participant_id[1]);
     memcpy(result->session_id, join_result.session_id, SESSION_ID_SIZE);
   }
 }
@@ -1595,8 +1556,7 @@ static int server_configure_stun(stun_server_t stun_servers[MAX_CONFIGURED_STUN_
       }
     } else {
       log_warn("Failed to parse STUN servers, using defaults");
-      stun_count =
-          stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+      stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
       log_debug("Using default STUN servers, count=%d", stun_count);
       for (int i = 0; i < stun_count; i++) {
         log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
@@ -1607,14 +1567,12 @@ static int server_configure_stun(stun_server_t stun_servers[MAX_CONFIGURED_STUN_
   return stun_count;
 }
 
-static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS], const char *turn_username,
-                                    const char *turn_credential) {
+static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS], const char *turn_username, const char *turn_credential) {
   size_t turn_count = 0;
   const char *urls = GET_OPTION(turn_servers);
   if (!urls || !urls[0] || !turn_username[0] || !turn_credential[0])
     return 0;
-  asciichat_error_t result = webrtc_turn_servers_parse(urls, turn_username, turn_credential, turn_servers,
-                                                       MAX_CONFIGURED_TURN_SERVERS, &turn_count);
+  asciichat_error_t result = webrtc_turn_servers_parse(urls, turn_username, turn_credential, turn_servers, MAX_CONFIGURED_TURN_SERVERS, &turn_count);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to configure TURN servers: %s", asciichat_error_format(NULL, result));
     return 0;
@@ -1650,27 +1608,23 @@ static void __attribute__((unused)) server_init_webrtc(void) {
     // Configure peer_manager
     const char *server_address = GET_OPTION(address);
     const char *ice_bind_address = GET_OPTION(webrtc_bind_address);
-    bool bind_webrtc_to_server_address = server_address && server_address[0] &&
-                                         strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
-    webrtc_peer_manager_config_t pm_config = {
-        .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-                                     // Honor an explicitly selected server interface for ICE. With a
-                                     // wildcard bind, let libdatachannel gather candidates on all interfaces.
-        .bind_address =
-            ice_bind_address[0] ? ice_bind_address : (bind_webrtc_to_server_address ? server_address : NULL),
-        .stun_servers = stun_servers,
-        .stun_count = stun_count,
-        .turn_servers = turn_servers,
-        .turn_count = turn_count,
-        .relay_only = GET_OPTION(webrtc_relay_only),
-        .turn_username = turn_auth_username,
-        .turn_credential = turn_auth_credential,
-        .on_transport_ready = on_webrtc_transport_ready,
-        .user_data = &g_server_ctx};
+    bool bind_webrtc_to_server_address = server_address && server_address[0] && strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
+    webrtc_peer_manager_config_t pm_config = {.role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+                                                                           // Honor an explicitly selected server interface for ICE. With a
+                                                                           // wildcard bind, let libdatachannel gather candidates on all interfaces.
+                                              .bind_address = ice_bind_address[0] ? ice_bind_address : (bind_webrtc_to_server_address ? server_address : NULL),
+                                              .stun_servers = stun_servers,
+                                              .stun_count = stun_count,
+                                              .turn_servers = turn_servers,
+                                              .turn_count = turn_count,
+                                              .relay_only = GET_OPTION(webrtc_relay_only),
+                                              .turn_username = turn_auth_username,
+                                              .turn_credential = turn_auth_credential,
+                                              .on_transport_ready = on_webrtc_transport_ready,
+                                              .user_data = &g_server_ctx};
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
-    webrtc_signaling_callbacks_t signaling_callbacks = {
-        .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
+    webrtc_signaling_callbacks_t signaling_callbacks = {.send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
 
     // Create peer_manager
     asciichat_error_t pm_result = webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
@@ -1695,8 +1649,7 @@ static void __attribute__((unused)) server_init_webrtc(void) {
   }
 }
 
-static void server_register_discovery(server_discovery_startup_t *startup, int port, nat_upnp_context_t *upnp_ctx,
-                                      bool upnp_succeeded) {
+static void server_register_discovery(server_discovery_startup_t *startup, int port, nat_upnp_context_t *upnp_ctx, bool upnp_succeeded) {
   /*
    * Server mode is a direct listener.  Shareable discovery sessions belong to
    * discovery mode, which owns the ACDS session lifecycle and only announces a
@@ -1821,8 +1774,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
 
   // A local mapping behind upstream NAT must not suppress WebRTC discovery.
   nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
-  bool upnp_succeeded =
-      nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private && is_internet_ipv4(upnp_ctx->external_ip);
+  bool upnp_succeeded = nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private && is_internet_ipv4(upnp_ctx->external_ip);
 
   asciichat_error_t result = server_init_client_manager_lock();
   if (result != ASCIICHAT_OK) {

@@ -15,6 +15,7 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
 #include <ascii-chat/os/memory.h>
@@ -179,6 +180,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
     if (platform_init() != ASCIICHAT_OK) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
     }
+    if (socket_init() != 0) {
+      FATAL(ERROR_PLATFORM_INIT, "Failed to initialize sockets");
+    }
 
     // 4. buffer domain - Initialize global shared buffer domain
     buffer_system_init();
@@ -218,6 +222,15 @@ void asciichat_shared_destroy(void) {
   }
   shutdown_done = true;
 
+  // Ctrl-C has already stopped the application pipeline. Diagnostic workers
+  // may be inside logging/registry code and joining them from the atexit
+  // thread can deadlock. Restore the terminal output state and let the OS
+  // reclaim those process-owned workers after the remaining atexit handlers.
+  if (shutdown_is_requested()) {
+    ui_controller_restore_terminal_output();
+    return;
+  }
+
   // Stop diagnostic readers before destroying symbols or synchronization state.
   debug_sync_cleanup_thread();
   debug_errno_cleanup_thread();
@@ -228,6 +241,11 @@ void asciichat_shared_destroy(void) {
   ui_input_shutdown();
   keyboard_destroy();
   symbol_cache_destroy();
+  // A signal-driven exit has already stopped all application workers. Do not
+  // enter the late atexit cleanup graph, whose debug-registry locks can be
+  // held by the console runtime; the OS reclaims process-owned resources.
+  if (shutdown_is_requested())
+    return;
 
   // Cleanup in reverse order of initialization (LIFO)
   // This ensures dependencies are properly handled

@@ -26,8 +26,7 @@ int ui_buttons_key(ui_buttons_t *s, const ui_button_t *b, size_t n, keyboard_key
   return -1;
 }
 
-void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const ui_button_t *b, size_t n,
-                       size_t selected) {
+void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const ui_button_t *b, size_t n, size_t selected) {
   if (!out || !b || row < 1 || left < 1 || width < 1) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid buttons output or geometry");
     return;
@@ -41,8 +40,7 @@ void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const 
     int length = display_width(b[i].label);
     int x = stacked ? left + (width - length) / 2 : col;
     bool selected_button = i == selected;
-    bool colors = !GET_OPTION(strip_ansi) && GET_OPTION(color_mode) != TERM_COLOR_NONE &&
-                  terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
+    bool colors = !GET_OPTION(strip_ansi) && GET_OPTION(color_mode) != TERM_COLOR_NONE && terminal_should_color_output(frame_buffer_get_screen_output_fd(), options_terminal_settings());
     if (selected_button && colors) {
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       if (mode == TERM_COLOR_AUTO)
@@ -63,12 +61,8 @@ void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const 
         frame_buffer_printf(out, "\033[%dm", palette.background == TERM_BACKGROUND_DARK ? 100 : 47);
       frame_buffer_printf(out, "%s\033[0m", b[i].label);
     } else {
-      const char *label = colored_string(b[i].disabled ? LOG_COLOR_GREY
-                                         : b[i].color  ? b[i].color
-                                                       : LOG_COLOR_FATAL,
-                                         b[i].label);
-      frame_buffer_printf(out, "\033[%d;%dH%s%s\033[0m", row + (stacked ? (int)i : 0), x,
-                          selected_button ? "\033[7m" : "", label);
+      const char *label = colored_string(b[i].disabled ? LOG_COLOR_GREY : b[i].color ? b[i].color : LOG_COLOR_FATAL, b[i].label);
+      frame_buffer_printf(out, "\033[%d;%dH%s%s\033[0m", row + (stacked ? (int)i : 0), x, selected_button ? "\033[7m" : "", label);
     }
     col += length + 3;
   }

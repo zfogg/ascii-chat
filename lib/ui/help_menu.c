@@ -99,8 +99,7 @@ terminal_size_t ui_help_menu_measure(const ui_help_menu_t *m) {
 }
 
 bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_help_menu_t *m) {
-  if (!out || !m || (m->count && !m->entries) || (m->settings_count && !m->settings) || m->count > 62 ||
-      m->settings_count > 62) {
+  if (!out || !m || (m->count && !m->entries) || (m->settings_count && !m->settings) || m->count > 62 || m->settings_count > 62) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid help output or entry counts");
     return false;
   }
@@ -111,8 +110,7 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
   measure(m, &keys, &left, &right);
   lines[0] = "";
   for (size_t i = 0; i < rows; ++i) {
-    char lhs[UI_HELP_MENU_LHS_BUFFER_SIZE] = "", rhs[UI_HELP_MENU_RHS_BUFFER_SIZE] = "",
-         padded[UI_HELP_MENU_PADDED_BUFFER_SIZE];
+    char lhs[UI_HELP_MENU_LHS_BUFFER_SIZE] = "", rhs[UI_HELP_MENU_RHS_BUFFER_SIZE] = "", padded[UI_HELP_MENU_PADDED_BUFFER_SIZE];
     if (i < m->count) {
       const ui_help_entry_t *entry = &m->entries[i];
       if (!entry->keys)
@@ -143,7 +141,6 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
     snprintf(text[i], sizeof(text[i]), "%s%s%s", padded, right ? "   " : "", rhs);
     lines[i + 1] = text[i];
   }
-  ui_popup_t box = {
-      .title = m->title, .lines = lines, .line_count = rows + 1, .footer = m->footer, .top_margin = m->top_margin};
+  ui_popup_t box = {.title = m->title, .lines = lines, .line_count = rows + 1, .footer = m->footer, .top_margin = m->top_margin};
   return ui_popup_render(out, size, &box);
 }

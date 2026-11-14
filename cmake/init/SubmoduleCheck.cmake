@@ -24,6 +24,7 @@ function(check_and_init_git_submodules)
         "deps/ascii-chat-deps/ngtcp2/CMakeLists.txt"
         "deps/ascii-chat-deps/nghttp3/CMakeLists.txt"
         "deps/ascii-chat-deps/nghttp3/lib/sfparse/sfparse.c"
+        "deps/ascii-chat-deps/libplatform/CMakeLists.txt"
     )
     set(MISSING_SUBMODULES FALSE)
     foreach(SUBMODULE ${REQUIRED_SUBMODULES})

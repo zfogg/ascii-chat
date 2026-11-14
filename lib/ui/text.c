@@ -122,9 +122,7 @@ void ui_text_values_style(char *out, size_t cap, const char *text, log_color_t z
       const char *styled = colored_string(value == 0 ? zero_color : LOG_COLOR_FATAL, number);
       append(out, cap, &used, styled, strlen(styled));
       p = end;
-    } else if ((p == text || !isalnum((unsigned char)p[-1])) &&
-               ((!strncmp(p, "enabled", 7) && !isalnum((unsigned char)p[7])) ||
-                (!strncmp(p, "disabled", 8) && !isalnum((unsigned char)p[8])))) {
+    } else if ((p == text || !isalnum((unsigned char)p[-1])) && ((!strncmp(p, "enabled", 7) && !isalnum((unsigned char)p[7])) || (!strncmp(p, "disabled", 8) && !isalnum((unsigned char)p[8])))) {
       bool enabled = *p == 'e';
       const char *styled = colored_string(enabled ? LOG_COLOR_INFO : LOG_COLOR_ERROR, enabled ? "enabled" : "disabled");
       append(out, cap, &used, styled, strlen(styled));

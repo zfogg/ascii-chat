@@ -27,18 +27,14 @@ typedef struct {
 } ascii_stabilizer_t;
 
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
-asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
-                                           uint64_t configuration);
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
 void ascii_stabilizer_reset(ascii_stabilizer_t *state);
 /** Select history for the current thread until the previous target is restored. */
 ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state);
 /** Choose a glyph using current and previous candidate errors and patch motion. */
-uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
-                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color);
 ascii_stabilizer_t *ascii_stabilizer_target(void);
 uint32_t ascii_stabilizer_blend_color(uint32_t previous, uint32_t current, unsigned weight);
-uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16],
-                                const int16_t rgb_samples[3][16], bool colored, uint32_t candidate,
-                                uint64_t candidate_error, uint64_t previous_error, uint32_t previous_color,
-                                uint64_t elapsed_ns, uint32_t *color, uint32_t *background);
+uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16], const int16_t rgb_samples[3][16], bool colored, uint32_t candidate, uint64_t candidate_error,
+                                uint64_t previous_error, uint32_t previous_color, uint64_t elapsed_ns, uint32_t *color, uint32_t *background);

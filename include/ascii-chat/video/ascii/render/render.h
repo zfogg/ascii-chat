@@ -39,12 +39,10 @@ bool ascii_render_palette_supported(ascii_renderer_t kind, const char *palette);
 
 #include <ascii-chat/video/ascii/stabilize.h>
 
-char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither,
-                   const simd_cells_t *ops);
+char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither, const simd_cells_t *ops);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
-char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,
-                              const simd_cells_t *ops);
+char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color, const simd_cells_t *ops);
 
 /** Internal one-shot output target, consumed by the next frame initializer.
  * Returns the prior target so capability conversion can restore its scope.

@@ -10,8 +10,7 @@
 
 #include "luminance.h"
 
-char *ascii_luminance_render(const image_t *image, const char *palette, ascii_color_t mode, bool background,
-                             bool dither, const simd_cells_t *ops) {
+char *ascii_luminance_render(const image_t *image, const char *palette, ascii_color_t mode, bool background, bool dither, const simd_cells_t *ops) {
   if (!ops || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering backend or color mode");
     return NULL;
@@ -55,8 +54,7 @@ char *ascii_luminance_render(const image_t *image, const char *palette, ascii_co
         // Floyd-Steinberg error propagation is ordered; the other stages remain SIMD.
         for (int x = 0; x < image->w; ++x) {
           uint32_t pixel = frame.packed[x];
-          frame.index[x] = rgb_to_16color_dithered((int)(pixel >> 16), (int)((pixel >> 8) & 255), (int)(pixel & 255), x,
-                                                   y, image->w, image->h, errors);
+          frame.index[x] = rgb_to_16color_dithered((int)(pixel >> 16), (int)((pixel >> 8) & 255), (int)(pixel & 255), x, y, image->w, image->h, errors);
         }
       } else
         ops->quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -67,8 +65,7 @@ char *ascii_luminance_render(const image_t *image, const char *palette, ascii_co
   return ascii_frame_finish(&frame);
 }
 
-char *ascii_luminance_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode,
-                                 const simd_cells_t *ops) {
+char *ascii_luminance_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode, const simd_cells_t *ops) {
 #if SIMD_SUPPORT_SSE2
   if (ops == &simd_cells_sse2)
     return render_halfblocks_sse2(rgb, width, height, stride, mode);
@@ -111,8 +108,7 @@ char *ascii_luminance_halfblocks(const uint8_t *rgb, int width, int height, int 
       ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
     }
-    ops->halfblock(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode,
-                   frame.table);
+    ops->halfblock(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode, frame.table);
     ascii_frame_emit_halfrow(&frame, mode, y + 2 < (size_t)height, ops);
   }
   return ascii_frame_finish(&frame);

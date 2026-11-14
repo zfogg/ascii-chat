@@ -16,6 +16,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <libplatform/system.h>
+#include <libplatform/util/string.h>
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>
@@ -263,10 +264,8 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
 
   log_debug("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
   if (sb->size > 0) {
-    log_info(
-        "  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-        sb->data[0], sb->data[1], sb->data[2], sb->data[3], sb->data[4], sb->data[5], sb->data[6], sb->data[7],
-        sb->data[8], sb->data[9], sb->data[10], sb->data[11], sb->data[12], sb->data[13], sb->data[14], sb->data[15]);
+    log_info("  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", sb->data[0], sb->data[1], sb->data[2], sb->data[3], sb->data[4], sb->data[5],
+             sb->data[6], sb->data[7], sb->data[8], sb->data[9], sb->data[10], sb->data[11], sb->data[12], sb->data[13], sb->data[14], sb->data[15]);
   }
   return sb;
 }
@@ -339,8 +338,7 @@ static void ffmpeg_otel_result(int result, bool streaming) {
     gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
 }
 
-static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,
-                              AVDictionary **options) {
+static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input, AVDictionary **options) {
   ASCII_OTEL_SCOPE(FFMPEG_FORMAT_OPEN);
   ASCII_OTEL_ATTR_STRING("media.source.kind", !path ? "stdin" : strstr(path, "://") ? "network" : "file");
   int result = avformat_open_input(format, path, input, options);
@@ -384,8 +382,7 @@ static int traced_frame_receive(AVCodecContext *codec, AVFrame *frame) {
   ffmpeg_otel_result(result, true);
   return result;
 }
-static int traced_video_scale(struct SwsContext *context, const uint8_t *const data[], const int stride[], int start,
-                              int height, uint8_t *const output[], const int output_stride[]) {
+static int traced_video_scale(struct SwsContext *context, const uint8_t *const data[], const int stride[], int start, int height, uint8_t *const output[], const int output_stride[]) {
   ASCII_OTEL_SCOPE(FFMPEG_SCALE);
   ASCII_OTEL_ATTR_INT("video.frame.height", height);
   int result = sws_scale(context, data, stride, start, height, output, output_stride);
@@ -393,8 +390,7 @@ static int traced_video_scale(struct SwsContext *context, const uint8_t *const d
   ffmpeg_otel_result(result, false);
   return result;
 }
-static int traced_audio_resample(struct SwrContext *context, uint8_t **output, int capacity, const uint8_t **input,
-                                 int samples) {
+static int traced_audio_resample(struct SwrContext *context, uint8_t **output, int capacity, const uint8_t **input, int samples) {
   ASCII_OTEL_SCOPE(FFMPEG_RESAMPLE);
   ASCII_OTEL_ATTR_INT("audio.input.samples", samples);
   int result = swr_convert(context, output, capacity, input, samples);
@@ -418,8 +414,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // The consumer releases the previous image and wakes us when taking the
     // next frame. Seek completion and shutdown also signal this condition.
     while (!decoder->prefetch_should_stop &&
-           (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress || decoder->prefetch_frame_ready ||
-            (decoder->buffer_a_in_use && decoder->buffer_b_in_use)))
+           (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress || decoder->prefetch_frame_ready || (decoder->buffer_a_in_use && decoder->buffer_b_in_use)))
       cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
     if (decoder->prefetch_should_stop) {
       break;
@@ -514,8 +509,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       // Frame decoded - mutex still held
       // Update position tracking
-      decoder->last_video_pts =
-          get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
+      decoder->last_video_pts = get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
 
       // Convert frame to RGB24
       int width = decoder->video_codec_ctx->width;
@@ -550,9 +544,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       static int decode_count = 0;
       if (++decode_count <= 3) {
-        log_debug("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
-                  decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format,
-                  decoder->is_stdin);
+        log_debug("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)", decode_count, width, height, decoder->video_codec_ctx->pix_fmt,
+                  decoder->frame->format, decoder->is_stdin);
       }
 
       // For fragmented MP4 from stdin, pixel format might not be set - default to YUV420p
@@ -573,14 +566,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       if (!decoder->sws_ctx) {
         log_debug("Lazy init swscale: width=%d, height=%d, pix_fmt=%d", width, height, pix_fmt_to_use);
         if (width > 0 && height > 0 && pix_fmt_to_use != AV_PIX_FMT_NONE) {
-          LOG_IO("swscaler", {
-            decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height, AV_PIX_FMT_RGB24,
-                                              SWS_BILINEAR, NULL, NULL, NULL);
-          });
+          LOG_IO("swscaler", { decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL); });
           if (!decoder->sws_ctx) {
-            SET_ERRNO(ERROR_MEDIA_DECODE,
-                      "Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
-                      pix_fmt_to_use);
+            SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)", pix_fmt_to_use);
             break;
           }
 
@@ -597,9 +585,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
           log_debug("Lazy initialized swscale context with %dx%d from pix_fmt=%d", width, height, pix_fmt_to_use);
         } else {
-          SET_ERRNO(ERROR_MEDIA_DECODE,
-                    "Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width, height,
-                    pix_fmt_to_use, AV_PIX_FMT_NONE);
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width, height, pix_fmt_to_use, AV_PIX_FMT_NONE);
           break;
         }
       }
@@ -609,13 +595,11 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         uint8_t *y_data = decoder->frame->data[0];
         uint8_t *u_data = decoder->frame->data[1];
         uint8_t *v_data = decoder->frame->data[2];
-        log_debug("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count,
-                  y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
+        log_debug("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count, y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
                   decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
       }
 
-      int ret_scale = traced_video_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
-                                         decoder->frame->linesize, 0, height, dst_data, dst_linesize);
+      int ret_scale = traced_video_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height, dst_data, dst_linesize);
       if (ret_scale <= 0) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Video conversion failed: %d", ret_scale);
         break;
@@ -665,8 +649,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
         if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
-          SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
-                       sizeof(decoder->prefetch_failure.context_message));
+          SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed", sizeof(decoder->prefetch_failure.context_message));
         }
       }
     }
@@ -696,8 +679,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 /**
  * @brief Open codec for stream
  */
-static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMediaType type, int *stream_idx,
-                                            AVCodecContext **codec_ctx) {
+static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMediaType type, int *stream_idx, AVCodecContext **codec_ctx) {
   ASCII_OTEL_SCOPE(FFMPEG_CODEC_OPEN);
   ASCII_OTEL_ATTR_STRING("media.type", type == AVMEDIA_TYPE_AUDIO ? "audio" : "video");
   int ret = av_find_best_stream(fmt_ctx, type, -1, -1, NULL, 0);
@@ -743,8 +725,7 @@ static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMed
 
 // A missing/unsupported stream can fall back to the other media type. Allocation
 // and other initialization failures still fail decoder creation with their cause.
-static asciichat_error_t open_optional_codec_context(AVFormatContext *format, enum AVMediaType type, int *stream_index,
-                                                     AVCodecContext **context) {
+static asciichat_error_t open_optional_codec_context(AVFormatContext *format, enum AVMediaType type, int *stream_index, AVCodecContext **context) {
   asciichat_errno_scope_t scope = errno_scope_begin();
   asciichat_error_t result = open_codec_context(format, type, stream_index, context);
   if (result == ERROR_MEDIA_DECODE && HAS_ERRNO_CODE_SINCE(scope, ERROR_MEDIA_DECODE)) {
@@ -773,9 +754,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
   return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
 }
 
-ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
-                                                             const char *headers, const char *cookies,
-                                                             const char *proxy) {
+ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data, const char *headers, const char *cookies, const char *proxy) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
@@ -820,8 +799,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
 
     // FFmpeg accepts HTTP authorities that the application URL validator rejects.
     // Classify the protocol rather than validating the host for timeout settings.
-    bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 ||
-                            platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
+    bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 || platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
     asciichat_errno_scope_t url_scope = errno_scope_begin();
     bool is_url = is_http || (path && strstr(path, "://") && url_is_valid(path));
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
@@ -881,8 +859,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
   }
 
   // Open video codec
-  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO,
-                                                      &decoder->video_stream_idx, &decoder->video_codec_ctx);
+  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx, &decoder->video_codec_ctx);
   if (err != ASCIICHAT_OK) {
     ffmpeg_decoder_destroy(decoder);
     return NULL;
@@ -890,8 +867,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
 
   // Open audio codec - audio is enabled by default (no option needed)
   // Always try to open audio codec, don't rely on GET_OPTION(audio_enabled) which has a default issue
-  err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                                    &decoder->audio_codec_ctx);
+  err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx, &decoder->audio_codec_ctx);
   if (err != ASCIICHAT_OK) {
     ffmpeg_decoder_destroy(decoder);
     return NULL;
@@ -918,8 +894,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
     // Validate codec context has valid dimensions and pixel format
     // For HTTP streams, these might not be valid until first frame is read
     if (decoder->video_codec_ctx->width <= 0 || decoder->video_codec_ctx->height <= 0) {
-      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame",
-               decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
+      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame", decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
       // Don't create swscale context yet - will create it lazily on first frame read
     } else if (decoder->video_codec_ctx->pix_fmt == AV_PIX_FMT_NONE) {
       log_warn("Video codec has invalid pixel format, will initialize swscale on first frame");
@@ -927,10 +902,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
     } else {
       // Create swscale context with valid parameters
       LOG_IO("swscaler", {
-        decoder->sws_ctx =
-            sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                           decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                           decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+        decoder->sws_ctx = sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height, decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                                          decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
       });
       if (!decoder->sws_ctx) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
@@ -1028,8 +1001,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
     decoder->prefetch_should_stop = false;
   }
 
-  log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
-            decoder->audio_stream_idx >= 0 ? "yes" : "no");
+  log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no", decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
   char decoder_name[MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE];
   snprintf(decoder_name, sizeof(decoder_name), "%s", path);
@@ -1145,16 +1117,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   }
 
   // Open codecs (same as file-based decoder)
-  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO,
-                                                      &decoder->video_stream_idx, &decoder->video_codec_ctx);
+  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx, &decoder->video_codec_ctx);
   if (err != ASCIICHAT_OK) {
     ffmpeg_decoder_destroy(decoder);
     return NULL;
   }
 
   if (GET_OPTION(audio_enabled)) {
-    err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                                      &decoder->audio_codec_ctx);
+    err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx, &decoder->audio_codec_ctx);
     if (err != ASCIICHAT_OK) {
       ffmpeg_decoder_destroy(decoder);
       return NULL;
@@ -1185,8 +1155,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     // Validate codec context has valid dimensions and pixel format
     // For stdin/HTTP streams, these might not be valid until first frame is read
     if (decoder->video_codec_ctx->width <= 0 || decoder->video_codec_ctx->height <= 0) {
-      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame",
-               decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
+      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame", decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
       // Don't create swscale context yet - will create it lazily on first frame read
     } else if (decoder->video_codec_ctx->pix_fmt == AV_PIX_FMT_NONE) {
       log_warn("Video codec has invalid pixel format, will initialize swscale on first frame");
@@ -1194,10 +1163,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     } else {
       // Create swscale context with valid parameters
       LOG_IO("swscaler", {
-        decoder->sws_ctx =
-            sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                           decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                           decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+        decoder->sws_ctx = sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height, decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                                          decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
       });
       if (!decoder->sws_ctx) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
@@ -1291,8 +1258,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     }
   }
 
-  log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
-            decoder->audio_stream_idx >= 0 ? "yes" : "no");
+  log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no", decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
   NAMED_REGISTER_FFMPEG_DECODER(decoder, "stdin", NULL);
   NAMED_REGISTER_ATOMIC(&decoder->eof_reached, "ffmpeg_eof", decoder);
@@ -1392,8 +1358,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
  * Video Operations
  * ============================================================================ */
 
-ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame,
-                                                asciichat_error_context_t *failure) {
+ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame, asciichat_error_context_t *failure) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_POLL_VIDEO);
   if (frame)
     *frame = NULL;
@@ -1408,8 +1373,7 @@ ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image
   }
   // Empty polls need no protected state. EOF and errors still confirm under
   // the mutex so a final pending frame takes precedence over termination.
-  if (!atomic_load_explicit(&decoder->prefetch_frame_ready, memory_order_acquire) &&
-      !atomic_load_explicit(&decoder->prefetch_failed, memory_order_acquire) && !ffmpeg_decoder_at_end(decoder))
+  if (!atomic_load_explicit(&decoder->prefetch_frame_ready, memory_order_acquire) && !atomic_load_explicit(&decoder->prefetch_failed, memory_order_acquire) && !ffmpeg_decoder_at_end(decoder))
     return FFMPEG_FRAME_WAITING;
 
   mutex_lock(&decoder->prefetch_mutex);
@@ -1474,8 +1438,7 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
   atomic_store(&decoder->prefetch_failed, false);
 
-  int thread_err = platform_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
-                                          ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err = platform_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }
@@ -1505,8 +1468,7 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
     log_warn("Video prefetch thread is still stopping");
 }
 
-void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_exit_callback)(void *),
-                                      void *user_data) {
+void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_exit_callback)(void *), void *user_data) {
   if (!decoder) {
     return;
   }
@@ -1615,8 +1577,8 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     }
 
     packet_count++;
-    log_debug_every(US_PER_SEC_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count,
-                    decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
+    log_debug_every(US_PER_SEC_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count, decoder->packet->pts, decoder->packet->dts, decoder->packet->duration,
+                    decoder->packet->size);
 
     // Send packet to decoder
     ret = traced_packet_send(decoder->audio_codec_ctx, decoder->packet);
@@ -1641,16 +1603,13 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       }
 
       // Update position tracking
-      decoder->last_audio_pts =
-          get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->audio_stream_idx]->time_base);
+      decoder->last_audio_pts = get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->audio_stream_idx]->time_base);
 
       // Resample the complete frame and retain output beyond this callback's
       // requested block. Flushing the resampler between packets would insert
       // padding into inputs whose sample rate differs from the output rate.
       uint8_t *out_ptr = (uint8_t *)decoder->audio_buffer;
-      int converted =
-          traced_audio_resample(decoder->swr_ctx, &out_ptr, (int)(decoder->audio_buffer_size / TARGET_CHANNELS),
-                                (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
+      int converted = traced_audio_resample(decoder->swr_ctx, &out_ptr, (int)(decoder->audio_buffer_size / TARGET_CHANNELS), (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
 
       if (converted > 0) {
         size_t available = (size_t)converted * TARGET_CHANNELS;

@@ -53,8 +53,8 @@
 
 #include <errno.h>
 
-static void handle_ascii_frame_packet(client_connection_t *connection, const ascii_frame_packet_t *frame_header,
-                                      const char *frame_data) {
+static void handle_ascii_frame_packet(client_connection_t *connection, const ascii_frame_packet_t *frame_header, const char *frame_data) {
+  bool snapshot_should_exit = false;
   ascii_frame_packet_t header = *frame_header;
   if (should_exit())
     return;
@@ -89,20 +89,17 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
 
     if (!connection->frame_first_frame_recorded) {
       connection->frame_first_frame_time_ns = time_get_ns();
-      atomic_store_u64(
-          &connection->snapshot_first_frame_time_ns,
-          connection->frame_first_frame_time_ns); // Also store globally for access from data_reception_thread
-      log_info("[SNAPSHOT_INIT] SET g_snapshot_first_frame_time_ns=%llu first_frame_time_ns=%llu",
-               (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
+      atomic_store_u64(&connection->snapshot_first_frame_time_ns,
+                       connection->frame_first_frame_time_ns); // Also store globally for access from data_reception_thread
+      log_info("[SNAPSHOT_INIT] SET g_snapshot_first_frame_time_ns=%llu first_frame_time_ns=%llu", (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
                (unsigned long long)connection->frame_first_frame_time_ns);
       connection->frame_first_frame_recorded = true;
 
       if (GET_OPTION(snapshot_delay) == 0) {
         log_debug("Snapshot captured immediately (delay=0)!");
-        signal_exit();
+        snapshot_should_exit = true;
       } else {
-        log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
-                  GET_OPTION(snapshot_delay));
+        log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", GET_OPTION(snapshot_delay));
       }
     } else {
       uint64_t current_time_ns = time_get_ns();
@@ -112,8 +109,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
       // Log every 0.5 seconds to debug timing
 
       if (current_time_ns - connection->frame_last_debug_log_ns > 500 * 1000 * 1000) { // 500ms
-        log_debug("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                  snapshot_delay, (unsigned long long)connection->frame_first_frame_time_ns,
+        log_debug("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed, snapshot_delay, (unsigned long long)connection->frame_first_frame_time_ns,
                   (unsigned long long)current_time_ns);
         connection->frame_last_debug_log_ns = current_time_ns;
       }
@@ -122,7 +118,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
         char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s (target=%.3f)", duration_str, snapshot_delay);
-        signal_exit();
+        snapshot_should_exit = true;
       }
     }
   }
@@ -163,10 +159,15 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
   // by both client and host/discovery modes for consistent metrics
 
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
-  log_debug_every(US_PER_SEC_INT, "CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()",
-                  frame_data, strlen(frame_data));
+  log_debug_every(US_PER_SEC_INT, "CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()", frame_data, strlen(frame_data));
   display_render_frame(connection, frame_data);
   log_debug_every(US_PER_SEC_INT, "DISPLAY_RENDER_RETURNED: frame was rendered");
+
+  // The frame must be presented before snapshot shutdown is requested.  The
+  // reception thread is also responsible for rendering the packet, so exiting
+  // above would discard the very frame that satisfied the snapshot condition.
+  if (snapshot_should_exit)
+    signal_exit();
 }
 
 static bool handle_error_message_packet(client_connection_t *connection, const void *data, size_t len) {
@@ -206,8 +207,7 @@ static void handle_remote_log_packet(const void *data, size_t len) {
   uint16_t flags = 0;
   char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1] = {0};
 
-  asciichat_error_t parse_result =
-      packet_parse_remote_log(data, len, &remote_level, &direction, &flags, message, sizeof(message), NULL);
+  asciichat_error_t parse_result = packet_parse_remote_log(data, len, &remote_level, &direction, &flags, message, sizeof(message), NULL);
   if (parse_result != ASCIICHAT_OK) {
     log_error("Failed to parse remote log packet from server: %s", asciichat_error_format(NULL, parse_result));
     return;
@@ -238,8 +238,7 @@ static asciichat_error_t client_play_samples(const float *samples, size_t count,
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t client_decode_opus(const void *data, size_t length, float *samples, size_t capacity,
-                                            size_t *decoded, void *context) {
+static asciichat_error_t client_decode_opus(const void *data, size_t length, float *samples, size_t capacity, size_t *decoded, void *context) {
   *decoded = 0;
   if (!GET_OPTION(audio_enabled))
     return ASCIICHAT_OK;
@@ -288,8 +287,7 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_error = acip
  * Data Reception Thread
  * ============================================================================ */
 
-static asciichat_error_t client_connection_packet(network_connection_t *network, packet_type_t type,
-                                                  const void *payload, size_t length, void *arg) {
+static asciichat_error_t client_connection_packet(network_connection_t *network, packet_type_t type, const void *payload, size_t length, void *arg) {
   (void)network;
   client_connection_t *connection = arg;
   asciichat_error_t result = session_protocol_dispatch(&connection->protocol, type, payload, length);
@@ -302,8 +300,7 @@ static void *data_reception_thread_func(void *arg) {
   network_connection_callbacks_t callbacks = {.packet = client_connection_packet};
   asciichat_error_t result = network_connection_run(connection->network, &callbacks, connection);
   uint64_t first_frame = atomic_load_u64(&connection->snapshot_first_frame_time_ns);
-  if (GET_OPTION(snapshot_mode) && first_frame &&
-      time_ns_to_s(time_elapsed_ns(first_frame, time_get_ns())) >= GET_OPTION(snapshot_delay)) {
+  if (GET_OPTION(snapshot_mode) && first_frame && time_ns_to_s(time_elapsed_ns(first_frame, time_get_ns())) >= GET_OPTION(snapshot_delay)) {
     signal_exit();
   } else if (!should_exit()) {
     if (result == ERROR_CRYPTO) {
@@ -343,8 +340,7 @@ static asciichat_error_t client_startup_peer_error(client_connection_t *connecti
     if (received == ASCIICHAT_OK && type == PACKET_TYPE_ERROR_MESSAGE)
       result = network_error_decode(type, payload, length);
     buffer_release(allocation);
-    if (result != send_error ||
-        (received != ASCIICHAT_OK && received != ERROR_NETWORK_TIMEOUT && received != ERROR_NETWORK_INCOMPLETE))
+    if (result != send_error || (received != ASCIICHAT_OK && received != ERROR_NETWORK_TIMEOUT && received != ERROR_NETWORK_INCOMPLETE))
       break;
   }
   transport->receive_timeout_ns = previous_timeout;
@@ -381,8 +377,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // reply to the initial settings packet immediately, and that reply must not
   // wait for the worker that dispatches it.
   atomic_store_bool(&connection->data_thread_exited, false);
-  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
-      ASCIICHAT_OK) {
+  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
     LOG_ERRNO_IF_SET("Data reception thread creation failed");
     return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
@@ -395,8 +390,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
   asciichat_error_t cap_result =
-      threaded_send_terminal_size_with_auto_detect(connection, (int)terminal_get_effective_width(GET_OPTION(width), 80),
-                                                   (int)terminal_get_effective_height(GET_OPTION(height), 24));
+      threaded_send_terminal_size_with_auto_detect(connection, (int)terminal_get_effective_width(GET_OPTION(width), 80), (int)terminal_get_effective_height(GET_OPTION(height), 24));
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return client_startup_peer_error(connection, cap_result);
@@ -409,8 +403,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   options_snapshot_t initial_settings;
   if (options_read_snapshot(&initial_settings) != ASCIICHAT_OK)
     return client_startup_peer_error(connection, ERROR_CONFIG);
-  asciichat_error_t settings_result =
-      acip_settings_send(server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
+  asciichat_error_t settings_result = acip_settings_send(server_connection_get_transport(connection), &initial_settings.values, 1, UINT32_MAX);
   if (settings_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send initial rendering settings");
     return client_startup_peer_error(connection, settings_result);
@@ -421,8 +414,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
-  log_debug("[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)", stream_types,
-            (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  log_debug("[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)", stream_types, (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
   asciichat_error_t stream_result = threaded_send_stream_start_packet(connection, stream_types);
   if (stream_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
@@ -572,8 +564,7 @@ static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, v
 
   // Log SDP type for debugging
   const char *sdp_type_str = (sdp->sdp_type == 0) ? "offer" : "answer";
-  log_debug("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str,
-            (const char *)sdp->session_id);
+  log_debug("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str, (const char *)sdp->session_id);
 
   // Handle SDP through peer manager (extracts variable data internally)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_peer_manager, sdp);
@@ -619,8 +610,7 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
   }
 
   // Join succeeded - we have session context now
-  log_debug("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
-            (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
+  log_debug("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)", (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
             joined->server_address, joined->server_port);
 
   // Check if this is a WebRTC session
