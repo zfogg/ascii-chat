@@ -574,7 +574,10 @@ jobs:
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
-          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          CMAKE_ARGS=""
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          fi
           CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
