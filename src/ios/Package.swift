@@ -24,7 +24,7 @@ let package = Package(
                 "test_frame.h",
                 "Tests"
             ],
-            sources: ["IOSSessionModel.swift"]
+            sources: ["IOSSessionModel.swift", "IOSKeyboardInput.swift"]
         ),
         .testTarget(
             name: "AsciiChatIOSModelTests",

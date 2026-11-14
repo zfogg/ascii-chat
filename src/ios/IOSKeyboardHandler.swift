@@ -40,21 +40,17 @@ final class IOSKeyboardHandler: UIView {
     }
 
     @objc private func handleCommand(_ command: UIKeyCommand) {
-        let key: String
+        let input: String
         switch command.input {
-        case UIKeyCommand.inputUpArrow: key = "\u{1b}[A"
-        case UIKeyCommand.inputDownArrow: key = "\u{1b}[B"
-        case UIKeyCommand.inputLeftArrow: key = "\u{1b}[D"
-        case UIKeyCommand.inputRightArrow: key = "\u{1b}[C"
-        case UIKeyCommand.inputEscape: key = "\u{1b}"
-        case UIKeyCommand.inputDelete: key = "\u{7f}"
-        case "h": key = "\u{08}"
-        case "c": key = "\u{03}"
-        case "d": key = "\u{04}"
-        case "l": key = "\u{0c}"
-        case "u": key = "\u{15}"
-        default: return
+        case UIKeyCommand.inputUpArrow: input = "UIKeyInputUpArrow"
+        case UIKeyCommand.inputDownArrow: input = "UIKeyInputDownArrow"
+        case UIKeyCommand.inputLeftArrow: input = "UIKeyInputLeftArrow"
+        case UIKeyCommand.inputRightArrow: input = "UIKeyInputRightArrow"
+        case UIKeyCommand.inputEscape: input = "UIKeyInputEscape"
+        case UIKeyCommand.inputDelete: input = "UIKeyInputDelete"
+        default: input = command.input ?? ""
         }
+        guard let key = IOSKeyboardInput.terminalSequence(for: input) else { return }
         push(key)
     }
 

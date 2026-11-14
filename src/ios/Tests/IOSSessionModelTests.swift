@@ -3,6 +3,40 @@ import XCTest
 
 @MainActor
 final class IOSSessionModelTests: XCTestCase {
+    func testModeTitlesMatchNativeLaunchModes() {
+        XCTAssertEqual(IOSMode.allCases.map(\.title), ["Mirror", "Client", "Discovery"])
+        XCTAssertEqual(IOSMode.allCases.map(\.id), [0, 1, 2])
+    }
+
+    func testHardwareKeyboardSequencesMatchTerminalInput() {
+        let cases = [
+            ("UIKeyInputUpArrow", "\u{1b}[A"),
+            ("UIKeyInputDownArrow", "\u{1b}[B"),
+            ("UIKeyInputLeftArrow", "\u{1b}[D"),
+            ("UIKeyInputRightArrow", "\u{1b}[C"),
+            ("UIKeyInputEscape", "\u{1b}"),
+            ("UIKeyInputDelete", "\u{7f}"),
+            ("h", "\u{08}"),
+            ("c", "\u{03}"),
+            ("d", "\u{04}"),
+            ("l", "\u{0c}"),
+            ("u", "\u{15}")
+        ]
+        for (input, expected) in cases {
+            XCTAssertEqual(IOSKeyboardInput.terminalSequence(for: input), expected, input)
+        }
+        XCTAssertNil(IOSKeyboardInput.terminalSequence(for: "unsupported"))
+    }
+
+    func testFailedSessionPublishesFailureMessage() {
+        let model = IOSSessionModel()
+        model.start(mode: .client)
+        model.finish(result: 2)
+        XCTAssertEqual(model.status, .finished(2))
+        XCTAssertEqual(model.message, "Session failed (2)")
+        XCTAssertFalse(model.isActive)
+    }
+
     func testSessionLifecyclePublishesExpectedState() async {
         let model = IOSSessionModel()
         model.start(mode: .mirror)

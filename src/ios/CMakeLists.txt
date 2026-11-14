@@ -24,6 +24,7 @@ configure_file("${IOS_CA_CERTIFICATE_BUNDLE}" "${IOS_CA_CERTIFICATE_RESOURCE}" C
 add_executable(ascii-chat-ios-app
     AsciiChatApp.swift
     IOSKeyboardHandler.swift
+    IOSKeyboardInput.swift
     IOSSessionModel.swift
     test_frame.c
     ${APP_SRCS}
@@ -77,4 +78,53 @@ set_target_properties(ascii-chat-ios-app PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
     XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.ascii-chat.ios"
     XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "17.0"
+)
+
+# Keep the simulator runtime check attached to the app target graph without
+# making it part of normal builds. The script discovers the booted simulator
+# and validates a real non-black mirror frame through the shared C dispatcher.
+if(BUILD_IOS_SIM)
+    add_custom_target(ascii-chat-ios-simulator-smoke
+        DEPENDS ascii-chat-ios-app
+        COMMAND "${CMAKE_SOURCE_DIR}/tests/manual/test_ios_simulator_render.sh"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ascii-chat-ios-app.app"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        USES_TERMINAL
+        COMMENT "Running iOS simulator mirror smoke test"
+    )
+    add_custom_target(ascii-chat-ios-settings-smoke
+        DEPENDS ascii-chat-ios-app
+        COMMAND "${CMAKE_SOURCE_DIR}/tests/manual/test_ios_simulator_settings.sh"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ascii-chat-ios-app.app"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        USES_TERMINAL
+        COMMENT "Running iOS simulator settings smoke test"
+    )
+    add_custom_target(ascii-chat-ios-simulator-client-smoke
+        DEPENDS ascii-chat-ios-app
+        COMMAND "${CMAKE_SOURCE_DIR}/tests/manual/test_ios_simulator_client.sh"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ascii-chat-ios-app.app"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        USES_TERMINAL
+        COMMENT "Running iOS simulator client smoke test against a local server"
+    )
+endif()
+
+set(_ios_bundle_architecture "${CMAKE_OSX_ARCHITECTURES}")
+if(NOT _ios_bundle_architecture)
+    if(BUILD_IOS_SIM)
+        set(_ios_bundle_architecture "x86_64")
+    else()
+        set(_ios_bundle_architecture "arm64")
+    endif()
+endif()
+
+add_custom_target(ascii-chat-ios-bundle-check
+    DEPENDS ascii-chat-ios-app
+    COMMAND "${CMAKE_SOURCE_DIR}/tests/manual/test_ios_bundle.sh"
+            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ascii-chat-ios-app.app"
+            "${_ios_bundle_architecture}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    USES_TERMINAL
+    COMMENT "Validating iOS app bundle resources and metadata"
 )
