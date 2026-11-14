@@ -16,6 +16,29 @@
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/actions.h>
 #include <string.h>
+#include <stdlib.h>
+
+static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
+  (void)name;
+  (void)old_value;
+  const registry_entry_t *entry = user_data;
+  if (!context || !entry || !new_value)
+    return;
+  if (entry->type == OPTION_TYPE_ACTION) {
+    option_action_fn action = options_action_callback(entry->long_name, false);
+    if (action)
+      action();
+    return;
+  }
+  if (!entry->parse_fn)
+    return;
+  void *storage = flags_context_storage(context);
+  if (!storage)
+    return;
+  char *error = NULL;
+  entry->parse_fn(new_value->string, (char *)storage + entry->offset, &error);
+  free(error);
+}
 
 asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder) {
   if (!builder) {
@@ -122,7 +145,11 @@ asciichat_error_t options_registry_add_all_to_flags_builder(flags_schema_builder
                                         .default_value = entry->default_value,
                                         .enum_values = entry->metadata.enum_values,
                                         .enum_value_count = 0,
-                                        .dynamic_string = entry->owns_memory};
+                                        .dynamic_string = entry->owns_memory,
+                                        .on_change = entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION ? registry_flags_change : NULL,
+                                        .user_data = (void *)entry};
+    if (entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION)
+      option.storage_size = 0;
     if (entry->metadata.enum_values) {
       while (entry->metadata.enum_values[option.enum_value_count])
         ++option.enum_value_count;
